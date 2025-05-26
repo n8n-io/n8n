@@ -39,34 +39,86 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				chatEventBus.emit('scrollToBottom');
 			});
 
-			const sendMessageResponse = await api.sendMessage(
-				text,
-				files,
-				currentSessionId.value as string,
-				options,
-			);
+						// Create a placeholder message for streaming - will be added when first chunk arrives
+			let receivedMessage: ChatMessage | null = null;
 
-			let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+			try {
+					// Use streaming API
+					await api.sendMessageStreaming(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+						(chunk: string) => {
+							// Create the message on first chunk to avoid showing "Empty Response"
+							if(receivedMessage){
+								messages.value.splice(messages.value.length - 1, 1);
+							}
+							receivedMessage = {
+								id: uuidv4(),
+								type: 'text',
+								text: receivedMessage?.text ?? '',
+								sender: 'bot',
+							};
 
-			if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
-				try {
-					textMessage = JSON.stringify(sendMessageResponse, null, 2);
-				} catch (e) {
-					// Failed to stringify the object so fallback to empty string
+							// Update the message text with the new chunk
+							console.log('Adding chunk', chunk);
+							if (receivedMessage && 'text' in receivedMessage) {
+								receivedMessage.text += chunk;
+							}
+
+							messages.value.push(receivedMessage);
+							console.log('Received message', receivedMessage);
+
+							// Force Vue reactivity update
+							void nextTick(() => {
+								chatEventBus.emit('scrollToBottom');
+							});
+						},
+					);
+				// 	// Use regular API
+				// 	const sendMessageResponse = await api.sendMessage(
+				// 		text,
+				// 		files,
+				// 		currentSessionId.value as string,
+				// 		options,
+				// 	);
+
+				// 	let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+
+				// 	if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+				// 		try {
+				// 			textMessage = JSON.stringify(sendMessageResponse, null, 2);
+				// 		} catch (e) {
+				// 			// Failed to stringify the object so fallback to empty string
+				// 		}
+				// 	}
+
+				// 	receivedMessage.text = textMessage;
+				// }
+			} catch (error) {
+				// If streaming or regular API fails, show error message
+				if (!receivedMessage) {
+					receivedMessage = {
+						id: uuidv4(),
+						type: 'text',
+						text: '',
+						sender: 'bot',
+					};
+					messages.value.push(receivedMessage);
 				}
+				if (receivedMessage && 'text' in receivedMessage) {
+					receivedMessage.text = 'Error: Failed to receive response';
+				}
+				console.error('Chat API error:', error);
+			} finally {
+				// Always set waiting to false when done, regardless of success or failure
+				waitingForResponse.value = false;
 			}
-
-			const receivedMessage: ChatMessage = {
-				id: uuidv4(),
-				text: textMessage,
-				sender: 'bot',
-			};
-			messages.value.push(receivedMessage);
-
-			waitingForResponse.value = false;
 
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
+				console.log(messages.value);
 			});
 		}
 

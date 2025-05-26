@@ -12,6 +12,7 @@ export function createPage({
 	allowFileUploads,
 	allowedFilesMimeTypes,
 	customCss,
+	enableStreaming,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -26,6 +27,7 @@ export function createPage({
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
 	customCss?: string;
+	enableStreaming?: boolean;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -55,6 +57,15 @@ export function createPage({
 		? loadPreviousSession
 		: 'notSupported';
 
+	// Use local development build if available, otherwise fallback to CDN
+	const isDevelopment = true; //process.env.NODE_ENV === 'development' || process.env.N8N_DEV_RELOAD === 'true';
+	const chatCssUrl = isDevelopment
+		? '/static/chat/style.css'
+		: 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css';
+	const chatJsUrl = isDevelopment
+		? '/static/chat/chat.bundle.es.js'
+		: 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
 	return `<!doctype html>
 	<html lang="en">
 		<head>
@@ -62,7 +73,7 @@ export function createPage({
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+			<link href="${chatCssUrl}" rel="stylesheet" />
 			<style>
 				html,
 				body,
@@ -75,7 +86,7 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+				import { createChat } from '${chatJsUrl}';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';
@@ -120,6 +131,7 @@ export function createPage({
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
 						allowedFilesMimeTypes: '${sanitizedAllowedFilesMimeTypes}',
+						enableStreaming: ${!!enableStreaming},
 						i18n: {
 							${en ? `en: ${JSON.stringify(en)},` : ''}
 						},

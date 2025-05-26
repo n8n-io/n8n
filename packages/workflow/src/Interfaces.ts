@@ -2079,6 +2079,10 @@ export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
 	webhookResponse?: any;
 	noWebhookResponse?: boolean;
+	streamingResponse?: {
+		stream: NodeJS.ReadableStream;
+		headers?: Record<string, string>;
+	};
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
@@ -2309,6 +2313,9 @@ export interface IWorkflowExecutionDataProcess {
 		data?: ITaskData;
 	};
 	agentRequest?: AiAgentRequest;
+	streamingEnabled?: boolean;
+	streamingResponse?: (chunk: string) => void;
+	streamingClose?: () => void;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2383,6 +2390,9 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	streamingEnabled?: boolean;
+	streamingResponse?: (chunk: string) => void;
+	streamingClose?: () => void;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
