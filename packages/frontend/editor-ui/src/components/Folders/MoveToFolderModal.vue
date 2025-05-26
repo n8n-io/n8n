@@ -81,6 +81,7 @@ const allCredentials = ref<ICredentialsResponse[]>([]);
 const shareableCredentials = computed(() =>
 	allCredentials.value.filter(
 		(credential) =>
+			projectsStore.currentProject?.id !== selectedProject.value?.id &&
 			getResourcePermissions(credential.scopes).credential.share &&
 			usedCredentials.value.find((uc) => uc.id === credential.id),
 	),
@@ -290,9 +291,20 @@ onMounted(async () => {
 		]);
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
-		allCredentials.value = credentials ?? [];
+		allCredentials.value = credentials;
 	} else {
-		// TODO: Somehow find all credentials used in folder and subfolders
+		if (projectsStore.currentProject?.id && currentFolder.value?.id) {
+			const [used, credentials] = await Promise.all([
+				await foldersStore.fetchFolderUsedCredentials(
+					projectsStore.currentProject.id,
+					currentFolder.value.id,
+				),
+				credentialsStore.fetchAllCredentials(),
+			]);
+
+			usedCredentials.value = used;
+			allCredentials.value = credentials;
+		}
 	}
 });
 </script>
@@ -373,7 +385,13 @@ onMounted(async () => {
 				:class="$style.textBlock"
 				data-test-id="project-move-resource-modal-checkbox-all"
 			>
-				<i18n-t keypath="projects.move.resource.modal.message.usedCredentials">
+				<i18n-t
+					:keypath="
+						data.resourceType === 'workflow'
+							? 'folders.move.modal.message.usedCredentials.workflow'
+							: 'folders.move.modal.message.usedCredentials.folder'
+					"
+				>
 					<template #usedCredentials>
 						<N8nTooltip placement="top">
 							<span :class="$style.tooltipText">

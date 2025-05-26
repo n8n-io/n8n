@@ -971,6 +971,8 @@
 	"folders.move.modal.folder.label": "Folder",
 	"folders.move.modal.folder.placeholder": "Select a folder",
 	"folders.move.modal.folder.noData.label": "No folders found",
+	"folders.move.modal.message.usedCredentials.workflow": "Also share the {usedCredentials} used by this workflow to ensure it will continue to run correctly",
+	"folders.move.modal.message.usedCredentials.folder": "Also share the {usedCredentials} used by these workflows to keep them running correctly",
 	"folders.move.success.title": "Successfully moved folder",
 	"folders.move.success.message": "<b>{folderName}</b> has been moved to <b>{newFolderName}</b>, along with all its workflows and subfolders.<br/><br/><a href=\"{link}\">View {newFolderName}</a>",
 	"folders.move.error.title": "Problem moving folder",

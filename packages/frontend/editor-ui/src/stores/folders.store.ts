@@ -5,6 +5,7 @@ import type {
 	FolderCreateResponse,
 	FolderShortInfo,
 	FolderTreeResponseItem,
+	IUsedCredential,
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
@@ -169,6 +170,19 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		}));
 	}
 
+	async function fetchFolderUsedCredentials(
+		projectId: string,
+		folderId: string,
+	): Promise<IUsedCredential[]> {
+		const usedCredentials = await workflowsApi.getFolderUsedCredentials(
+			rootStore.restApiContext,
+			projectId,
+			folderId,
+		);
+
+		return usedCredentials;
+	}
+
 	async function moveFolder(
 		projectId: string,
 		folderId: string,
@@ -317,5 +331,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		getHiddenBreadcrumbsItems,
 		draggedElement,
 		activeDropTarget,
+		fetchFolderUsedCredentials,
 	};
 });

@@ -5,6 +5,7 @@ import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRestApiContext,
+	IUsedCredential,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
@@ -157,6 +158,19 @@ export async function getProjectFolders(
 			...(options ? options : {}),
 			...(select ? { select: JSON.stringify(select) } : {}),
 		},
+	);
+	return res.data;
+}
+
+export async function getFolderUsedCredentials(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<IUsedCredential[]> {
+	const res = await getFullApiResponse<IUsedCredential[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/credentials`,
 	);
 	return res.data;
 }
