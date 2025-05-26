@@ -253,16 +253,16 @@ describe('WorkflowStatisticsService', () => {
 	describe('nodeFetchedData', () => {
 		let workflowStatisticsService: WorkflowStatisticsService;
 		let eventService: EventService;
-		let fakeUser: User;
-		let fakeProject: Project;
+		let user: User;
+		let project: Project;
 		let ownershipService: OwnershipService;
 		let entityManager: EntityManager;
 		let userService: UserService;
 		let workflowStatisticsRepository: WorkflowStatisticsRepository;
 
 		beforeAll(() => {
-			fakeUser = mock<User>({ id: 'abcde-fghij' });
-			fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
+			user = mock<User>({ id: 'abcde-fghij' });
+			project = mock<Project>({ id: '12345-67890', type: 'personal' });
 			ownershipService = mockInstance(OwnershipService);
 			userService = mockInstance(UserService);
 			const globalConfig = Container.get(GlobalConfig);
@@ -288,8 +288,8 @@ describe('WorkflowStatisticsService', () => {
 			);
 			globalConfig.diagnostics.enabled = true;
 			config.set('deployment.type', 'n8n-testing');
-			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
-			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);
+			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
+			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
 		});
 
 		afterAll(() => {
@@ -313,8 +313,8 @@ describe('WorkflowStatisticsService', () => {
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
-				userId: fakeUser.id,
-				project: fakeProject.id,
+				userId: user.id,
+				project: project.id,
 				workflowId,
 				nodeType: node.type,
 				nodeId: node.id,
@@ -330,7 +330,7 @@ describe('WorkflowStatisticsService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
 				userId: '',
-				project: fakeProject.id,
+				project: project.id,
 				workflowId,
 				nodeType: node.type,
 				nodeId: node.id,
@@ -356,8 +356,8 @@ describe('WorkflowStatisticsService', () => {
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
-				userId: fakeUser.id,
-				project: fakeProject.id,
+				userId: user.id,
+				project: project.id,
 				workflowId,
 				nodeType: node.type,
 				nodeId: node.id,
