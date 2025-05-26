@@ -622,7 +622,7 @@ export async function executeWebhook(
 		};
 
 		// Pass streaming context through workflow execution data
-		if (webhookResultData.streamingResponse) {
+		if (webhookResultData.isStreaming) {
 			console.log('WebhookHelpers: Setting up streaming context in runData');
 			runData.streamingEnabled = true;
 			runData.streamingResponse = (chunk: string) => {

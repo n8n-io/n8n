@@ -2079,10 +2079,7 @@ export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
 	webhookResponse?: any;
 	noWebhookResponse?: boolean;
-	streamingResponse?: {
-		stream: NodeJS.ReadableStream;
-		headers?: Record<string, string>;
-	};
+	isStreaming?: boolean;
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';

@@ -17,6 +17,8 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { ArrayContains } from '@n8n/typeorm';
+import { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -120,23 +122,33 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				// Use streamEvents to get token-by-token streaming while maintaining tool calling
 				const eventStream = executor.streamEvents(inputData, { version: 'v2' });
 
-				let agentResult: any = null;
+				const agentResult: any = {
+					output: ''
+				};
 
 				for await (const event of eventStream) {
 					// Stream chat model tokens as they come in
 					if (event.event === 'on_chat_model_stream') {
-						const chunk = event.data?.chunk;
+						const chunk = event.data?.chunk as AIMessageChunk;
 						if (chunk?.content) {
-							const chunkText = typeof chunk.content === 'string' ? chunk.content : JSON.stringify(chunk.content);
+							console.log('Chunk:', chunk);
+							const chunkContent = chunk.content;
+							let chunkText = '';
+							if(Array.isArray(chunkContent)) {
+								console.log('Chunk is object:', chunkContent);
+								for(const message of chunkContent) {
+									chunkText = (message as MessageContentText)?.text;
+								}
+							} else if(typeof(chunkContent) === 'string') {
+								console.log('Chunk is string:', chunkContent);
+								chunkText = chunkContent;
+							}
 							console.log('Streaming token:', chunkText);
 							streamingResponseFn.call(this, chunkText);
+							agentResult.output += chunkText;
 						}
 					}
 
-					// Capture the final agent result
-					if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
-						agentResult = event.data?.output;
-					}
 				}
 
 				// Close the streaming response
@@ -145,13 +157,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					(this as any).additionalData.streamingClose.call();
 				}
 
+				console.log("Final result data", agentResult);
+				return agentResult;
+
 				// Return the final agent result or fallback to regular execution if streaming failed
-				if (agentResult) {
-					return agentResult;
-				} else {
-					// Fallback to regular execution if streaming didn't capture the result
-					return await executor.invoke(inputData, { signal: this.getExecutionCancelSignal() });
-				}
 			} else {
 				// Handle regular execution
 				return await executor.invoke(
@@ -191,6 +200,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				response.output = parsedOutput?.output ?? parsedOutput;
 			}
 
+			console.log("Setting output value", response)
 			// Omit internal keys before returning the result.
 			const itemResult = {
 				json: omit(

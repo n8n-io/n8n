@@ -43,6 +43,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			let receivedMessage: ChatMessage | null = null;
 
 			try {
+				if(options?.enableStreaming) {
 					// Use streaming API
 					await api.sendMessageStreaming(
 						text,
@@ -76,26 +77,34 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 							});
 						},
 					);
-				// 	// Use regular API
-				// 	const sendMessageResponse = await api.sendMessage(
-				// 		text,
-				// 		files,
-				// 		currentSessionId.value as string,
-				// 		options,
-				// 	);
+				} else {
+					receivedMessage = {
+						id: uuidv4(),
+						type: 'text',
+						text: '',
+						sender: 'bot',
+					};
+					// Use regular API
+					const sendMessageResponse = await api.sendMessage(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+					);
 
-				// 	let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+					let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
 
-				// 	if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
-				// 		try {
-				// 			textMessage = JSON.stringify(sendMessageResponse, null, 2);
-				// 		} catch (e) {
-				// 			// Failed to stringify the object so fallback to empty string
-				// 		}
-				// 	}
+					if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+						try {
+							textMessage = JSON.stringify(sendMessageResponse, null, 2);
+						} catch (e) {
+							// Failed to stringify the object so fallback to empty string
+						}
+					}
 
-				// 	receivedMessage.text = textMessage;
-				// }
+					receivedMessage.text = textMessage;
+					messages.value.push(receivedMessage);
+				}
 			} catch (error) {
 				// If streaming or regular API fails, show error message
 				if (!receivedMessage) {

@@ -594,22 +594,10 @@ ${cssVariables}
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				'Connection': 'keep-alive',
-				'X-Accel-Buffering': 'no', // Disable nginx buffering
 			});
 
 			// Flush headers immediately
 			res.flushHeaders();
-
-			// Store streaming context in workflow static data
-			const workflowStaticData = ctx.getWorkflowStaticData('global');
-			workflowStaticData.streamingEnabled = true;
-			workflowStaticData.streamingResponse = (chunk: string) => {
-				const jsonChunk = JSON.stringify({ output: chunk });
-				res.write(jsonChunk+"\n");
-			};
-			workflowStaticData.streamingClose = () => {
-				res.end();
-			};
 
 			if (req.contentType === 'multipart/form-data') {
 				returnData = [await this.handleFormData(ctx)];
@@ -620,13 +608,8 @@ ${cssVariables}
 			console.log('ChatTrigger: Returning streaming response data');
 			return {
 				workflowData: [ctx.helpers.returnJsonArray(returnData)],
-				streamingResponse: {
-					stream: res as any,
-					headers: {
-						'Content-Type': 'text/plain; charset=utf-8',
-						'Transfer-Encoding': 'chunked',
-					},
-				},
+				noWebhookResponse: true,
+				isStreaming: true,
 			};
 		} else {
 			console.log('ChatTrigger: Streaming not enabled, using regular response');
