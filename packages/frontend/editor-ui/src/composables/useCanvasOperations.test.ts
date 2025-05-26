@@ -2419,6 +2419,60 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
+
+		it('should delete all connections of a node with multiple connections', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });
+
+			const sourceNode = createTestNode({ id: 'source', name: 'Source Node' });
+			const targetNode = createTestNode({ id: 'target', name: 'Target Node' });
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
+						],
+					],
+				},
+				[targetNode.name]: {
+					[NodeConnectionTypes.Main]: [],
+				},
+			};
+
+			workflowsStore.removeConnection = vi.fn();
+
+			workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
+				if (id === sourceNode.id) return sourceNode;
+				if (id === targetNode.id) return targetNode;
+				return null;
+			});
+			workflowsStore.getNodeByName = vi.fn().mockImplementation((name) => {
+				if (name === sourceNode.name) return sourceNode;
+				if (name === targetNode.name) return targetNode;
+				return null;
+			});
+
+			deleteConnectionsByNodeId(targetNode.id);
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(2);
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+			});
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
+				],
+			});
+		});
 	});
 
 	describe('duplicateNodes', () => {
