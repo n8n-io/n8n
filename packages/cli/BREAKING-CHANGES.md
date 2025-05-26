@@ -88,7 +88,7 @@ If you are using Prometheus metrics from these categories and are using a non-em
 
 ### What changed?
 
-Calling `$(...).last()` (or `$(...).first()` or `$(...).all()` respectively) without arguments is returning the the last item (or first or all items) of the output that connects the two nodes. Before it was returning the item/items of the first output of that node.
+Calling `$(...).last()` (or `$(...).first()` or `$(...).all()` respectively) without arguments is returning the last item (or first or all items) of the output that connects the two nodes. Before it was returning the item/items of the first output of that node.
 
 ### When is action necessary?
 

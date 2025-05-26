@@ -27,7 +27,7 @@ export class BinaryDataConfig {
 	localStoragePath: string;
 
 	/**
-	 * Secret for creating publicly-accesible signed URLs for binary data.
+	 * Secret for creating publicly-accessible signed URLs for binary data.
 	 * When not passed in, this will be derived from the instances's encryption-key
 	 **/
 	@Env('N8N_BINARY_DATA_SIGNING_SECRET')

@@ -121,7 +121,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
-	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
+	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
 	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
 		({ item }) => item,
 	);

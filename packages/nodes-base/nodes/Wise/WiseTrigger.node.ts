@@ -78,7 +78,7 @@ export class WiseTrigger implements INodeType {
 					},
 					{
 						name: 'Transfer State Changed',
-						value: 'tranferStateChange',
+						value: 'transferStateChange',
 						description: "Triggered every time a transfer's status is updated",
 					},
 				],

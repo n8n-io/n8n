@@ -717,7 +717,7 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
-	describe('explicit completions (opened by Ctrl+Space or programatically)', () => {
+	describe('explicit completions (opened by Ctrl+Space or programmatically)', () => {
 		test('should return completions for: {{ $json.foo| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter')
 				.mockReturnValueOnce(undefined)
