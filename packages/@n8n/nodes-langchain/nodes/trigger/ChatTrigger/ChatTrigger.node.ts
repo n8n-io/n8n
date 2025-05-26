@@ -145,7 +145,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the \'executions\' tab',
 				name: 'hostedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -213,6 +213,13 @@ export class ChatTrigger extends Node {
 				},
 				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
+			},
+			{
+				displayName: 'Enable Streaming',
+				name: 'enableStreaming',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable streaming responses for connected AI agents',
 			},
 			{
 				displayName: 'Options',
@@ -493,6 +500,8 @@ ${cssVariables}
 			customCss?: string;
 		};
 
+		const enableStreaming = ctx.getNodeParameter('enableStreaming', false) as boolean;
+
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
@@ -543,6 +552,7 @@ ${cssVariables}
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
+					enableStreaming,
 				});
 
 				res.status(200).send(page).end();
@@ -573,6 +583,55 @@ ${cssVariables}
 
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
+
+		// Handle streaming responses
+		if (enableStreaming) {
+			console.log('ChatTrigger: Setting up streaming response');
+			// Set up streaming response headers
+
+			res.writeHead(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				'Connection': 'keep-alive',
+				'X-Accel-Buffering': 'no', // Disable nginx buffering
+			});
+
+			// Flush headers immediately
+			res.flushHeaders();
+
+			// Store streaming context in workflow static data
+			const workflowStaticData = ctx.getWorkflowStaticData('global');
+			workflowStaticData.streamingEnabled = true;
+			workflowStaticData.streamingResponse = (chunk: string) => {
+				const jsonChunk = JSON.stringify({ output: chunk });
+				res.write(jsonChunk+"\n");
+			};
+			workflowStaticData.streamingClose = () => {
+				res.end();
+			};
+
+			if (req.contentType === 'multipart/form-data') {
+				returnData = [await this.handleFormData(ctx)];
+			} else {
+				returnData = [{ json: bodyData }];
+			}
+
+			console.log('ChatTrigger: Returning streaming response data');
+			return {
+				workflowData: [ctx.helpers.returnJsonArray(returnData)],
+				streamingResponse: {
+					stream: res as any,
+					headers: {
+						'Content-Type': 'text/plain; charset=utf-8',
+						'Transfer-Encoding': 'chunked',
+					},
+				},
+			};
+		} else {
+			console.log('ChatTrigger: Streaming not enabled, using regular response');
+		}
+
 		if (req.contentType === 'multipart/form-data') {
 			returnData = [await this.handleFormData(ctx)];
 			return {
