@@ -681,16 +681,16 @@ export class SourceControlImportService {
 		// After folders are created, setup the parentFolder relationship
 		await Promise.all(
 			mappedFolders.folders.map(async (folder) => {
-				await this.folderRepository.update(
-					{ id: folder.id },
-					{
-						parentFolder: folder.parentFolderId ? { id: folder.parentFolderId } : null,
-						createdAt: folder.createdAt,
-						updatedAt: folder.updatedAt,
-					},
-				);
+				if (folder.parentFolderId) {
+					await this.folderRepository.update(
+						{ id: folder.id },
+						{ parentFolder: { id: folder.parentFolderId } },
+					);
+				}
 			}),
 		);
+
+		await this.deleteFoldersNotInWorkfolder([candidate]);
 
 		return mappedFolders;
 	}
