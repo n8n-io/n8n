@@ -1,9 +1,11 @@
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { omit } from 'lodash';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -17,8 +19,6 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
-import { ArrayContains } from '@n8n/typeorm';
-import { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -148,19 +148,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 							agentResult.output += chunkText;
 						}
 					}
-
-				}
-
-				// Close the streaming response
-				if ((this as any).additionalData?.streamingClose) {
-					console.log('streamingClose');
-					(this as any).additionalData.streamingClose.call();
 				}
 
 				console.log("Final result data", agentResult);
 				return agentResult;
-
-				// Return the final agent result or fallback to regular execution if streaming failed
 			} else {
 				// Handle regular execution
 				return await executor.invoke(
@@ -200,7 +191,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				response.output = parsedOutput?.output ?? parsedOutput;
 			}
 
-			console.log("Setting output value", response)
+			console.log("Setting output value", response);
 			// Omit internal keys before returning the result.
 			const itemResult = {
 				json: omit(
