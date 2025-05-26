@@ -206,16 +206,15 @@ const onSelect = (action: string) => {
 							<slot name="subtitle">{{ projectDescription }}</slot>
 						</N8nText>
 						<div v-else :class="$style.projectDescriptionWrapper">
-							<div :class="[$style.truncate]" style="flex: 999">
-								<N8nText color="text-light" data-test-id="project-subtitle">
+							<N8nTooltip :content="projectDescription" placement="bottom-end">
+								<N8nText
+									:class="$style.truncate"
+									color="text-light"
+									data-test-id="project-subtitle"
+								>
 									<slot name="subtitle">{{ projectDescription }}</slot>
-								</N8nText>
-							</div>
-							<div style="flex: 1">
-								<N8nTooltip :content="projectDescription" style="flex: 1">
-									<N8nIcon color="text-light" icon="info-circle" size="small"></N8nIcon
-								></N8nTooltip>
-							</div>
+								</N8nText></N8nTooltip
+							>
 						</div>
 					</template>
 				</div>
@@ -270,8 +269,6 @@ const onSelect = (action: string) => {
 }
 
 .projectDescriptionWrapper {
-	display: flex;
-	gap: 4px;
 	max-width: 50vw;
 }
 
