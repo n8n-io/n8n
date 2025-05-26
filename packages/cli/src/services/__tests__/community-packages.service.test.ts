@@ -446,19 +446,14 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			expect(exec).toHaveBeenCalledTimes(3);
-
-			expect(rm).toHaveBeenNthCalledWith(
-				1,
-				'/tmp/n8n-jest-global-downloads/node_modules/n8n-nodes-test',
-				{ force: true, recursive: true },
-			);
-
+			expect(rm).toHaveBeenCalledTimes(2);
+			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
 			expect(rm).toHaveBeenNthCalledWith(
 				2,
 				'/tmp/n8n-jest-global-downloads/n8n-nodes-test-latest.tgz',
 			);
 
+			expect(exec).toHaveBeenCalledTimes(3);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
 				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
