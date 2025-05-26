@@ -1,0 +1,56 @@
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment and venv
+env/
+venv/
+.env
+
+# Git specific
+.git/
+.gitignore
+
+# Local data and state (should be mounted as volumes if needed, or handled by init scripts)
+db_backups/
+whoosh_index/
+*.db
+*.db-journal # SQLite journal files, WAL files
+*.db-shm
+*.db-wal
+
+
+# IDE and editor specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts and distribution
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Test related
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# MyPy cache
+.mypy_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# OS specific
+.DS_Store
+Thumbs.db

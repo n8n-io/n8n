@@ -1,0 +1,213 @@
+/* Basic body styling */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f6;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 1rem 0;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2em;
+}
+
+/* Search and filter section */
+#searchSection {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    gap: 10px; /* Space between items */
+}
+
+#searchInput {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 300px; /* Adjust as needed */
+}
+
+#categoryFilter {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    min-width: 150px;
+}
+
+#searchButton {
+    padding: 10px 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#searchButton:hover {
+    background-color: #2980b9;
+}
+
+/* Results container */
+#resultsContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive grid */
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto; /* Center the container */
+}
+
+/* Template card styling */
+.template-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Pushes button to bottom */
+}
+
+.template-card h3 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+.template-card p {
+    font-size: 0.9em;
+    margin-bottom: 10px;
+    flex-grow: 1; /* Allows description to take available space */
+}
+.template-card .category, .template-card .tags, .template-card .nodes {
+    font-size: 0.8em;
+    color: #555;
+    margin-bottom: 5px;
+}
+.template-card .tags span, .template-card .nodes span {
+    background-color: #e0e0e0;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-right: 3px;
+    display: inline-block;
+}
+
+
+.template-card button.import-button {
+    background-color: #27ae60;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    align-self: flex-start; /* Align button to the start of the card's cross axis */
+}
+
+.template-card button.import-button:hover {
+    background-color: #229954;
+}
+
+/* Pagination controls */
+#paginationControls {
+    text-align: center;
+    padding: 20px;
+}
+
+#paginationControls button {
+    padding: 8px 15px;
+    margin: 0 5px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#paginationControls button:hover {
+    background-color: #2980b9;
+}
+
+#paginationControls button:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+/* Modal styling */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 25px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px; /* Maximum width */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+.modal-content input[type="text"] {
+    width: calc(100% - 22px); /* Full width minus padding and border */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.modal-content button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+#confirmImportButton {
+    background-color: #27ae60;
+    color: white;
+}
+#confirmImportButton:hover {
+    background-color: #229954;
+}
+
+#closeModalButton {
+    background-color: #e74c3c;
+    color: white;
+}
+#closeModalButton:hover {
+    background-color: #c0392b;
+}
+
+#importStatus {
+    margin-top: 15px;
+    font-size: 0.9em;
+}

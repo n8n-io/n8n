@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Template Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>n8n Workflow Template Manager</h1>
+    </header>
+
+    <section id="searchSection">
+        <input type="text" id="searchInput" placeholder="Search templates...">
+        <select id="categoryFilter">
+            <option value="">All Categories</option>
+            <!-- Categories will be populated here by JavaScript -->
+        </select>
+        <button id="searchButton">Search</button>
+    </section>
+
+    <section id="resultsSection">
+        <div id="resultsContainer">
+            <!-- Template cards will be populated here -->
+        </div>
+        <div id="paginationControls">
+            <!-- Pagination buttons will be populated here -->
+        </div>
+    </section>
+
+    <div id="importModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h2>Import Template</h2>
+            <p>Importing: <span id="modalTemplateName">Template Name Here</span></p>
+            <input type="text" id="n8nInstanceUrl" placeholder="https://my.n8n.instance.com">
+            <input type="text" id="n8nApiKey" placeholder="Your n8n API Key">
+            <button id="confirmImportButton">Import</button>
+            <button id="closeModalButton">Close</button>
+            <p id="importStatus"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
