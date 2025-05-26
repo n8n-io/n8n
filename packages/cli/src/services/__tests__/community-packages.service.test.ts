@@ -6,7 +6,7 @@ import { InstalledNodesRepository } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir as fsMkdir, readFile, writeFile, rm } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { Logger, InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -446,37 +446,33 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			expect(exec).toHaveBeenCalledTimes(5);
+			expect(exec).toHaveBeenCalledTimes(4);
+
+			expect(rm).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true, force: true });
 
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`rm -rf ${testBlockPackageDir}`,
-				expect.any(Function),
-			);
-
-			expect(exec).toHaveBeenNthCalledWith(
-				2,
 				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				3,
+				2,
 				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				4,
+				3,
 				`npm install ${testBlockNpmInstallArgs}`,
 				{ cwd: testBlockPackageDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				5,
+				4,
 				`rm ${testBlockTarballName}`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
