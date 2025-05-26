@@ -106,6 +106,7 @@ const i18n = useI18n();
 
 	.link {
 		padding-left: 0px;
+		display: flex;
 	}
 
 	.link:hover {
