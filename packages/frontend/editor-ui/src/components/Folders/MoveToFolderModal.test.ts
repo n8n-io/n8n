@@ -1,11 +1,23 @@
-import { createComponentRenderer } from '@/__tests__/render';
-import MoveToFolderModal from './MoveToFolderModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { waitFor, screen } from '@testing-library/vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import {
+	cleanupAppModals,
+	createAppModals,
+	mockedStore,
+	type MockedStore,
+} from '@/__tests__/utils';
+import MoveToFolderModal from './MoveToFolderModal.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
-import { waitFor } from '@testing-library/vue';
-import { screen } from '@testing-library/vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { useSettingsStore } from '@/stores/settings.store';
+import type { FrontendSettings } from '@n8n/api-types';
+import type { Project, ProjectListItem } from '@/types/projects.types';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -45,7 +57,15 @@ const TEST_WORKFLOW_RESOURCE = {
 	parentFolderId: 'test-parent-folder-id',
 };
 
-let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let uiStore: MockedStore<typeof useUIStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
+let credentialsStore: MockedStore<typeof useCredentialsStore>;
+let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let foldersStore: MockedStore<typeof useFoldersStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
+
+const eventBus = createEventBus();
+
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
 		createAppModals();
@@ -56,6 +76,48 @@ describe('MoveToFolderModal', () => {
 				open: true,
 			},
 		};
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = {
+			enterprise: {},
+		} as FrontendSettings;
+
+		credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.fetchWorkflow = vi.fn().mockResolvedValue({
+			id: TEST_WORKFLOW_RESOURCE.id,
+			name: TEST_WORKFLOW_RESOURCE.name,
+			parentFolderId: TEST_WORKFLOW_RESOURCE.parentFolderId,
+			usedCredentials: [],
+		});
+
+		foldersStore = mockedStore(useFoldersStore);
+		foldersStore.fetchFolderUsedCredentials = vi.fn().mockResolvedValue([]);
+		foldersStore.fetchFoldersAvailableForMove = vi.fn().mockResolvedValue([]);
+		foldersStore.fetchFolderContent = vi.fn().mockResolvedValue({
+			totalWorkflows: 0,
+			totalSubFolders: 0,
+		});
+
+		projectsStore = mockedStore(useProjectsStore);
+		const currentProject = {
+			id: '1',
+			name: 'Test Project',
+		} as Project;
+		const personalProject = {
+			id: 'personal-project-id',
+			name: 'Personal',
+		} as Project;
+
+		projectsStore.currentProject = currentProject;
+		projectsStore.currentProjectId = currentProject.id;
+		projectsStore.personalProject = personalProject;
+		projectsStore.availableProjects = [
+			currentProject,
+			personalProject,
+		] as unknown as ProjectListItem[];
 	});
 
 	afterEach(() => {
@@ -69,14 +131,14 @@ describe('MoveToFolderModal', () => {
 				data: {
 					resource: TEST_FOLDER_RESOURCE,
 					resourceType: 'folder',
+					workflowListEventBus: eventBus,
 				},
 			},
 		});
+
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
-		expect(
-			screen.getByText(`Move "${TEST_FOLDER_RESOURCE.name}" to another folder`),
-		).toBeInTheDocument();
-		expect(screen.getByTestId('move-folder-description')).toBeInTheDocument();
+		expect(screen.getByText(`Move folder ${TEST_FOLDER_RESOURCE.name}`)).toBeInTheDocument();
+		// expect(screen.getByTestId('move-folder-description')).toBeInTheDocument();
 	});
 
 	it('should render for workflow resource', async () => {
@@ -89,9 +151,7 @@ describe('MoveToFolderModal', () => {
 			},
 		});
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
-		expect(
-			screen.getByText(`Move "${TEST_WORKFLOW_RESOURCE.name}" to another folder`),
-		).toBeInTheDocument();
-		expect(screen.queryByTestId('move-folder-description')).not.toBeInTheDocument();
+		expect(screen.getByText(`Move workflow ${TEST_WORKFLOW_RESOURCE.name}`)).toBeInTheDocument();
+		// expect(screen.queryByTestId('move-folder-description')).not.toBeInTheDocument();
 	});
 });

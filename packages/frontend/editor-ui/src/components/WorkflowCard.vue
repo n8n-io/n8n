@@ -148,9 +148,8 @@ const actions = computed(() => {
 	}
 
 	if (
-		workflowPermissions.value.update &&
-		showFolders.value &&
-		!props.readOnly &&
+		((workflowPermissions.value.update && showFolders.value && !props.readOnly) ||
+			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
 	) {
 		items.push({
