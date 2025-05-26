@@ -288,13 +288,11 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
-			relations.map((v) =>
-				this.projectRelationRepository.create({
-					projectId: project.id,
-					userId: v.userId,
-					role: v.role,
-				}),
-			),
+			relations.map((v) => ({
+				projectId: project.id,
+				userId: v.userId,
+				role: v.role,
+			})),
 		);
 	}
 

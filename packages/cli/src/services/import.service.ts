@@ -57,7 +57,8 @@ export class ImportService {
 
 				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const { tags, ...workflowDataForUpsert } = workflow;
+				const upsertResult = await tx.upsert(WorkflowEntity, workflowDataForUpsert, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
