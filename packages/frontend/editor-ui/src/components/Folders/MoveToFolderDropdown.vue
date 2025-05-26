@@ -3,7 +3,6 @@ import { useI18n } from '@/composables/useI18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
 import { N8nSelect } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
@@ -52,17 +51,6 @@ const selectedLocationId = computed<string | null>({
 
 const loading = ref(false);
 
-const currentProject = computed(() => {
-	return projectsStore.availableProjects.find((project) => project.id === props.currentProjectId);
-});
-
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return currentProject.value?.name;
-});
-
 const fetchAvailableLocations = async (query?: string) => {
 	loading.value = true;
 	const folders = await foldersStore.fetchFoldersAvailableForMove(
@@ -76,15 +64,10 @@ const fetchAvailableLocations = async (query?: string) => {
 		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
 	}
 	// Finally always add project root to the results (if folder is not already in root)
-	if (
-		projectName.value &&
-		(!!props.parentFolderId || props.currentProjectId !== projectsStore.currentProject?.id)
-	) {
+	if (!!props.parentFolderId || props.currentProjectId !== projectsStore.currentProject?.id) {
 		availableLocations.value.unshift({
 			id: props.currentProjectId,
-			name: i18n.baseText('folders.move.project.root.name', {
-				interpolate: { projectName: projectName.value },
-			}),
+			name: i18n.baseText('folders.move.project.root.name'),
 			resource: 'project',
 			createdAt: '',
 			updatedAt: '',
@@ -116,9 +99,14 @@ defineExpose({
 	focusOnInput,
 });
 
+const maxPathLength = 4;
 const separator = computed(() => {
 	return '/';
 });
+
+const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) => {
+	return index === location.path.length - 1 || index >= 3;
+};
 </script>
 
 <template>
@@ -148,27 +136,37 @@ const separator = computed(() => {
 				<div :class="$style['folder-select-item']">
 					<ul :class="$style.list">
 						<li v-if="location.resource === 'project'" :class="$style.current">
-							{{ location.name }}
+							<n8n-text>{{ location.name }}</n8n-text>
 						</li>
-						<li v-if="location.path.length" :class="$style.separator">
-							{{ separator }}
-						</li>
-						<template v-for="(fragment, index) in location.path" :key="`${location.id}-${index}`">
-							<li
-								:class="{
-									[$style.item]: true,
-									[$style.current]: index === location.path.length - 1,
-								}"
-								:title="fragment"
-								:data-resourceid="fragment"
-								data-test-id="breadcrumbs-item"
-								data-target="folder-breadcrumb-item"
+						<template v-else>
+							<li v-if="location.path.length > maxPathLength" :class="$style.item">
+								<n8n-text>...</n8n-text>
+							</li>
+							<li v-if="location.path.length > 0" :class="$style.separator">
+								<n8n-text>{{ separator }}</n8n-text>
+							</li>
+							<template
+								v-for="(fragment, index) in location.path.slice(-maxPathLength)"
+								:key="`${location.id}-${index}`"
 							>
-								<n8n-text>{{ fragment }}</n8n-text>
-							</li>
-							<li v-if="index !== location.path.length - 1" :class="$style.separator">
-								{{ separator }}
-							</li>
+								<li
+									:class="{
+										[$style.item]: true,
+										[$style.current]: isTopLevelFolder(location, index),
+									}"
+									:title="fragment"
+									:data-resourceid="fragment"
+									data-test-id="breadcrumbs-item"
+									data-target="folder-breadcrumb-item"
+								>
+									<n8n-text>
+										{{ fragment }}
+									</n8n-text>
+								</li>
+								<li v-if="!isTopLevelFolder(location, index)" :class="$style.separator">
+									<n8n-text>{{ separator }}</n8n-text>
+								</li>
+							</template>
 						</template>
 					</ul>
 				</div>
@@ -224,6 +222,6 @@ li {
 
 .separator {
 	font-size: var(--font-size-s);
-	color: var(--color-foreground-light);
+	color: var(--color-text-light);
 }
 </style>

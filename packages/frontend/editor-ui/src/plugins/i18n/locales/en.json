@@ -979,7 +979,7 @@
 	"folders.move.workflow.error.title": "Problem moving workflow",
 	"folders.move.workflow.success.title": "Successfully moved workflow",
 	"folders.move.workflow.success.message": "<b>{workflowName}</b> has been moved to <b>{newFolderName}</b>.<br/><br/><a href=\"{link}\">View {newFolderName}</a>",
-	"folders.move.project.root.name": "{projectName} (Project root)",
+	"folders.move.project.root.name": "No folder (project root)",
 	"folders.open.error.title": "Problem opening folder",
 	"folders.create.error.title": "Problem creating folder",
 	"folders.empty.actionbox.title": "Nothing in folder \"{folderName}\" yet",
