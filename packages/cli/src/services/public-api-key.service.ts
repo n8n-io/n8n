@@ -39,17 +39,15 @@ export class PublicApiKeyService {
 		user: User,
 		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
 	) {
-		const apiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.insert(
-			this.apiKeyRepository.create({
-				userId: user.id,
-				apiKey,
-				label,
-				scopes,
-			}),
-		);
+		const apiKeyString = this.generateApiKey(user, expiresAt);
+		await this.apiKeyRepository.insert({
+			userId: user.id,
+			apiKey: apiKeyString,
+			label,
+			scopes,
+		});
 
-		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
+		return await this.apiKeyRepository.findOneByOrFail({ apiKey: apiKeyString });
 	}
 
 	/**

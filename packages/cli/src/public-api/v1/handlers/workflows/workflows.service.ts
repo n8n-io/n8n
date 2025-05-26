@@ -104,7 +104,8 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 }
 
 export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
+	const { tags, ...dataForUpdate } = updateData;
+	return await Container.get(WorkflowRepository).update(workflowId, dataForUpdate);
 }
 
 export function parseTagNames(tags: string): string[] {
