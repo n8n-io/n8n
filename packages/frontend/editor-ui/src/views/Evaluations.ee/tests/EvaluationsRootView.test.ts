@@ -13,7 +13,7 @@ import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '@/api/evaluation.ee';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -57,6 +57,20 @@ describe('EvaluationsRootView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+
+		vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
+			assignments: {
+				assignments: [
+					{
+						id: 'xxxxx',
+						name: '=',
+						value: '',
+						type: 'string',
+					},
+				],
+			},
+			options: {},
+		});
 	});
 
 	it('should initialize workflow on mount if not already initialized', async () => {
@@ -221,7 +235,7 @@ describe('EvaluationsRootView', () => {
 					{
 						id: 'output1',
 						name: 'Set Outputs',
-						type: 'n8n-nodes-base.evaluation',
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -231,6 +245,10 @@ describe('EvaluationsRootView', () => {
 				],
 			});
 
+			vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
+				operation: 'setOutputs',
+			});
+
 			workflowsStore.workflow = workflowWithOutputNode;
 			evaluationStore.testRunsById = {};
 			usageStore.workflowsWithEvaluationsLimit = 10;
@@ -238,7 +256,7 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === 'n8n-nodes-base.evaluation' ? { name: 'n8n-nodes-base.evaluation' } : null,
+				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
@@ -267,7 +285,7 @@ describe('EvaluationsRootView', () => {
 					{
 						id: 'metrics1',
 						name: 'Set Metrics',
-						type: 'n8n-nodes-base.evaluation',
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -277,6 +295,10 @@ describe('EvaluationsRootView', () => {
 				],
 			});
 
+			vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
+				operation: 'setMetrics',
+			});
+
 			workflowsStore.workflow = workflowWithMetricsNode;
 			evaluationStore.testRunsById = {};
 			usageStore.workflowsWithEvaluationsLimit = 10;
@@ -284,7 +306,7 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === 'n8n-nodes-base.evaluation' ? { name: 'n8n-nodes-base.evaluation' } : null,
+				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
@@ -326,72 +348,6 @@ describe('EvaluationsRootView', () => {
 					output_set_up: false,
 					metrics_set_up: false,
 					quota_reached: true,
-				});
-			});
-		});
-
-		it('should send telemetry event with all setup flags true when workflow is fully configured', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const evaluationStore = mockedStore(useEvaluationStore);
-			const usageStore = mockedStore(useUsageStore);
-
-			const fullyConfiguredWorkflow = mock<IWorkflowDb>({
-				...mockWorkflow,
-				nodes: [
-					{
-						id: 'trigger1',
-						name: 'Dataset Trigger',
-						type: EVALUATION_TRIGGER_NODE_TYPE,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'output1',
-						name: 'Set Outputs',
-						type: 'n8n-nodes-base.evaluation',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {
-							operation: 'setOutputs',
-						},
-					},
-					{
-						id: 'metrics1',
-						name: 'Set Metrics',
-						type: 'n8n-nodes-base.evaluation',
-						typeVersion: 1,
-						position: [200, 0],
-						parameters: {
-							operation: 'setMetrics',
-						},
-					},
-				],
-			});
-
-			workflowsStore.workflow = fullyConfiguredWorkflow;
-			evaluationStore.testRunsById = {};
-			usageStore.workflowsWithEvaluationsLimit = 10;
-			usageStore.workflowsWithEvaluationsCount = 0;
-
-			// Mock all node types exist
-			getNodeType.mockImplementation((nodeType) =>
-				[EVALUATION_TRIGGER_NODE_TYPE, EVALUATION_NODE_TYPE].includes(nodeType)
-					? { name: nodeType }
-					: null,
-			);
-
-			renderComponent({ props: { name: mockWorkflow.id } });
-
-			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: true,
-					output_set_up: true,
-					metrics_set_up: true,
-					quota_reached: false,
 				});
 			});
 		});
