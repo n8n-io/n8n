@@ -7,7 +7,6 @@ import { captor, mock } from 'jest-mock-extended';
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
 import { McpServer } from '../McpServer';
-import exp from 'constants';
 
 const sessionId = 'mock-session-id';
 const mockServer = mock<Server>();

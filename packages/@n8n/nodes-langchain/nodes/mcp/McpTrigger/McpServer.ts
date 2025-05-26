@@ -162,7 +162,7 @@ export class McpServer {
 					throw new OperationalError('Require a sessionId for the tool call');
 				}
 
-				const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
+				const callId = `${extra.sessionId}_${extra.requestId}`;
 
 				const requestedTool: Tool | undefined = this.tools.find(
 					(tool) => tool.name === request.params.name,
