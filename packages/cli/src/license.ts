@@ -133,7 +133,7 @@ export class License implements LicenseProvider {
 		return databaseSettings?.value ?? '';
 	}
 
-	async onFeatureChange() {
+	private async onFeatureChange() {
 		void this.broadcastReloadLicenseCommand();
 	}
 
