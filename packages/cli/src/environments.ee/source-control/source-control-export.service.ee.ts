@@ -31,6 +31,7 @@ import {
 	getFoldersPath,
 	getVariablesPath,
 	getWorkflowExportPath,
+	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
 	stringContainsExpression,
@@ -235,6 +236,7 @@ export class SourceControlExportService {
 						id: true,
 					},
 				},
+				where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
 			});
 
 			if (folders.length === 0) {
@@ -245,19 +247,38 @@ export class SourceControlExportService {
 				};
 			}
 
+			const allowedProjects =
+				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+
 			const fileName = getFoldersPath(this.gitFolder);
+
+			const existingFolders = await readFoldersFromSourceControlFile(fileName);
+
+			// keep all folders that are not accessible by the current user
+			// if allowedProjects is undefined, all folders are accessible by the current user
+			const newFolders =
+				allowedProjects === undefined
+					? []
+					: existingFolders.folders.filter((folder) => {
+							return !allowedProjects.some((project) => project.id === folder.homeProjectId);
+						});
+
+			newFolders.push(
+				...folders.map((f) => ({
+					id: f.id,
+					name: f.name,
+					parentFolderId: f.parentFolder?.id ?? null,
+					homeProjectId: f.homeProject.id,
+					createdAt: f.createdAt.toISOString(),
+					updatedAt: f.updatedAt.toISOString(),
+				})),
+			);
+
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
 					{
-						folders: folders.map((f) => ({
-							id: f.id,
-							name: f.name,
-							parentFolderId: f.parentFolder?.id ?? null,
-							homeProjectId: f.homeProject.id,
-							createdAt: f.createdAt.toISOString(),
-							updatedAt: f.updatedAt.toISOString(),
-						})),
+						folders: newFolders,
 					},
 					null,
 					2,

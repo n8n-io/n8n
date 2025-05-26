@@ -59,6 +59,28 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	);
 }
 
+export async function readFoldersFromSourceControlFile(file: string): Promise<{
+	folders: Array<{
+		id: string;
+		name: string;
+		parentFolderId: null | string;
+		homeProjectId: string;
+		createdAt: string;
+		updatedAt: string;
+	}>;
+}> {
+	return jsonParse<{
+		folders: Array<{
+			id: string;
+			name: string;
+			parentFolderId: null | string;
+			homeProjectId: string;
+			createdAt: string;
+			updatedAt: string;
+		}>;
+	}>(await fsReadFile(file, { encoding: 'utf8' }), { fallbackValue: { folders: [] } });
+}
+
 export function sourceControlFoldersExistCheck(
 	folders: string[],
 	createIfNotExists = true,
