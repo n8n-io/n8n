@@ -376,7 +376,7 @@ onMounted(async () => {
 				v-if="shareableCredentials.length"
 				v-model="shareUsedCredentials"
 				:class="$style.textBlock"
-				data-test-id="project-move-resource-modal-checkbox-all"
+				data-test-id="folders-move-modal-share-credentials-checkbox"
 			>
 				<i18n-t
 					:keypath="
@@ -405,6 +405,13 @@ onMounted(async () => {
 					</template>
 				</i18n-t>
 			</N8nCheckbox>
+			<N8nCallout
+				v-if="shareableCredentials.length && !shareUsedCredentials"
+				:class="$style.credentialsCallout"
+				theme="warning"
+			>
+				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
+			</N8nCallout>
 			<span v-if="unShareableCredentials.length" :class="$style.textBlock">
 				<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
 					<template #credentials>
@@ -474,5 +481,9 @@ onMounted(async () => {
 
 .tooltipText {
 	text-decoration: underline;
+}
+
+.credentialsCallout {
+	margin-top: var(--spacing-s);
 }
 </style>
