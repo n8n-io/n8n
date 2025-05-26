@@ -341,7 +341,7 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 			.expect(403);
 	});
 
-	test('should all used credentials from workflows within the folder and subfolders', async () => {
+	test('should get all used credentials from workflows within the folder and subfolders', async () => {
 		const project = await createTeamProject('test', owner);
 		const rootFolder = await createFolder(project, { name: 'Root' });
 
