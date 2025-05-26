@@ -6,19 +6,31 @@ import RunsSection from '@/components/Evaluations/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { N8nButton } from '@n8n/design-system';
 import { orderBy } from 'lodash-es';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	name: string;
 }>();
 
 const locale = useI18n();
+const toast = useToast();
+
 const evaluationStore = useEvaluationStore();
 
 const selectedMetric = ref<string>('');
 
 async function runTest() {
-	await evaluationStore.startTestRun(props.name);
-	await evaluationStore.fetchTestRuns(props.name);
+	try {
+		await evaluationStore.startTestRun(props.name);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
+	}
+
+	try {
+		await evaluationStore.fetchTestRuns(props.name);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
 }
 
 const runs = computed(() => {
