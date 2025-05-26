@@ -3112,6 +3112,7 @@
 	"freeAi.credits.showError.claim.message": "Enable to claim credits",
 	"freeAi.credits.showWarning.workflow.activation.title": "You're using free OpenAI API credits",
 	"freeAi.credits.showWarning.workflow.activation.description": "To make sure your workflow runs smoothly in the future, replace the free OpenAI API credits with your own API key.",
+	"insights.heading": "Insights",
 	"insights.lastNDays": "Last {count} days",
 	"insights.lastNHours": "Last {count} hours",
 	"insights.months": "{count} months",
