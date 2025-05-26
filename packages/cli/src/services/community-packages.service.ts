@@ -69,7 +69,7 @@ export class CommunityPackagesService {
 
 	missingPackages: string[] = [];
 
-	private packageJsonPath = join(this.instanceSettings.nodesDownloadDir, 'package.json');
+	readonly packageJsonPath = join(this.instanceSettings.nodesDownloadDir, 'package.json');
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -278,7 +278,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async ensurePackageJson() {
+	async ensurePackageJson() {
 		try {
 			await access(this.packageJsonPath, constants.F_OK);
 		} catch {
@@ -291,7 +291,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async checkForMissingPackages() {
+	async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
