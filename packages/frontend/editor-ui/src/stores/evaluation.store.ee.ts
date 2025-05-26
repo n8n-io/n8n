@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsageStore } from '@/stores/usage.store';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
@@ -10,6 +9,7 @@ import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -24,9 +24,9 @@ export const useEvaluationStore = defineStore(
 		// Store instances
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
-		const usageStore = useUsageStore();
 		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
+		const settingsStore = useSettingsStore();
 
 		// Computed
 
@@ -38,7 +38,7 @@ export const useEvaluationStore = defineStore(
 		const isEvaluationEnabled = computed(
 			() =>
 				posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
-				usageStore.workflowsWithEvaluationsLimit !== 0,
+				settingsStore.settings.evaluation.quota !== 0,
 		);
 
 		const isLoading = computed(() => loadingTestRuns.value);
