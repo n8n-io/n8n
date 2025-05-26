@@ -34,6 +34,7 @@ import type {
 	WebhookResponseData,
 } from 'n8n-workflow';
 import {
+    ApplicationError,
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ExecutionCancelledError,
@@ -42,6 +43,7 @@ import {
 	NodeOperationError,
 	OperationalError,
 	UnexpectedError,
+	UserError,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
@@ -387,7 +389,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	) as WebhookResponseData | string | undefined;
 
-	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -621,24 +623,6 @@ export async function executeWebhook(
 			projectId: project?.id,
 		};
 
-		// Pass streaming context through workflow execution data
-		if (webhookResultData.isStreaming) {
-			console.log('WebhookHelpers: Setting up streaming context in runData');
-			runData.streamingEnabled = true;
-			runData.streamingResponse = (chunk: string) => {
-				console.log('WebhookHelpers: Streaming chunk:', chunk);
-				res.write(chunk);
-				res.flush();
-			};
-			runData.streamingClose = () => {
-				console.log('WebhookHelpers: Closing streaming response');
-				res.end();
-			};
-			// The streamingResponse function should already be set up in the workflow static data
-			// We don't need to override it here, just pass the flag
-		} else {
-			console.log('WebhookHelpers: No streaming response found in webhookResultData');
-		}
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
@@ -656,6 +640,58 @@ export async function executeWebhook(
 				executionId,
 				workflow,
 			);
+		}
+
+		if (responseMode === 'streaming') {
+			let containsStreamingNode = false;
+			for (const node of workflow.queryNodes(nodeType => nodeType.description.properties.find(it => it.name ==='enableStreaming') !== undefined)) {
+				console.log(node.name , node.parameters?.enableStreaming);
+				if(node.parameters?.enableStreaming) {
+					console.log("Found streaming parameter")
+					containsStreamingNode = true;
+				}
+			}
+			if (!containsStreamingNode) {
+				responseCallback(
+					new UserError("Streaming response mode needs at least one streaming node"),
+					{
+						data: {
+							error: "No streaming node found for streaming response mode"
+						},
+						responseCode: 400,
+						noWebhookResponse: false,
+					},
+				);
+				return;
+			}
+			// Set up streaming response headers
+
+			res.writeHead(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				'Connection': 'keep-alive',
+			});
+
+			// Flush headers immediately
+			res.flushHeaders();
+
+		// Pass streaming context through workflow execution data
+			console.log('WebhookHelpers: Setting up streaming context in runData');
+			runData.streamingEnabled = true;
+			runData.streamingResponse = (chunk: string) => {
+				console.log('WebhookHelpers: Streaming chunk:', chunk);
+				res.write(chunk);
+				res.flush();
+			};
+			runData.streamingClose = () => {
+				console.log('WebhookHelpers: Closing streaming response');
+				res.end();
+			};
+			// The streamingResponse function should already be set up in the workflow static data
+			// We don't need to override it here, just pass the flag
+		} else {
+			console.log('WebhookHelpers: No streaming response found in webhookResultData');
 		}
 
 		// Start now to run the workflow

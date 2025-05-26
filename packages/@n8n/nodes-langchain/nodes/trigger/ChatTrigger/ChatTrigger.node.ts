@@ -215,13 +215,6 @@ export class ChatTrigger extends Node {
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
 			{
-				displayName: 'Enable Streaming',
-				name: 'enableStreaming',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to enable streaming responses for connected AI agents',
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -330,6 +323,11 @@ export class ChatTrigger extends Node {
 								value: 'responseNode',
 								description: 'Response defined in that node',
 							},
+							{
+								name: 'Streaming Response',
+								value: 'streaming',
+								description: 'Streaming response from specified nodes (e.g. Agents)',
+							}
 						],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
@@ -500,7 +498,10 @@ ${cssVariables}
 			customCss?: string;
 		};
 
-		const enableStreaming = ctx.getNodeParameter('enableStreaming', false) as boolean;
+		const responseMode = ctx.getNodeParameter('options.responseMode', 'lastNode') as string;
+		const enableStreaming = responseMode === 'streaming';
+		console.log('ChatTrigger: Response mode', responseMode);
+		console.log('ChatTrigger: Enable streaming', enableStreaming);
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
@@ -587,17 +588,6 @@ ${cssVariables}
 		// Handle streaming responses
 		if (enableStreaming) {
 			console.log('ChatTrigger: Setting up streaming response');
-			// Set up streaming response headers
-
-			res.writeHead(200, {
-				'Content-Type': 'application/json; charset=utf-8',
-				'Transfer-Encoding': 'chunked',
-				'Cache-Control': 'no-cache',
-				'Connection': 'keep-alive',
-			});
-
-			// Flush headers immediately
-			res.flushHeaders();
 
 			if (req.contentType === 'multipart/form-data') {
 				returnData = [await this.handleFormData(ctx)];
@@ -609,7 +599,6 @@ ${cssVariables}
 			return {
 				workflowData: [ctx.helpers.returnJsonArray(returnData)],
 				noWebhookResponse: true,
-				isStreaming: true,
 			};
 		} else {
 			console.log('ChatTrigger: Streaming not enabled, using regular response');

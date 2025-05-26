@@ -18,8 +18,6 @@ export function sendSuccessResponse(
 ) {
 	// If headers have already been sent (e.g., for streaming responses), we can't send a success response
 	if (res.headersSent) {
-		Container.get(Logger).error('Cannot send success response - headers already sent');
-		res.end();
 		return;
 	}
 
