@@ -5,8 +5,11 @@ import { useUsageStore } from '@/stores/usage.store';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
-import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { EVALUATION_DATASET_TRIGGER_NODE, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { STORES } from '@n8n/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { EVALUATION_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -22,6 +25,8 @@ export const useEvaluationStore = defineStore(
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
 		const usageStore = useUsageStore();
+		const workflowsStore = useWorkflowsStore();
+		const nodeTypesStore = useNodeTypesStore();
 
 		// Computed
 
@@ -49,6 +54,42 @@ export const useEvaluationStore = defineStore(
 				},
 				{},
 			);
+		});
+
+		const datasetTriggerExist = computed(() => {
+			return workflowsStore.workflow.nodes.some(
+				(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+			);
+		});
+
+		function evaluationNodeExist(operation: string) {
+			return workflowsStore.workflow.nodes.some((node) => {
+				if (node.type !== EVALUATION_NODE_TYPE) {
+					return false;
+				}
+
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) return false;
+
+				const nodeParameters = NodeHelpers.getNodeParameters(
+					nodeType.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					nodeType,
+				);
+
+				return nodeParameters?.operation === operation;
+			});
+		}
+
+		const evaluationSetMetricsNodeExist = computed(() => {
+			return evaluationNodeExist('setMetrics');
+		});
+
+		const evaluationSetOutputsNodeExist = computed(() => {
+			return evaluationNodeExist('setOutputs');
 		});
 
 		// Methods
@@ -150,6 +191,9 @@ export const useEvaluationStore = defineStore(
 			isFeatureEnabled,
 			isEvaluationEnabled,
 			testRunsByWorkflowId,
+			datasetTriggerExist,
+			evaluationSetMetricsNodeExist,
+			evaluationSetOutputsNodeExist,
 
 			// Methods
 			fetchTestCaseExecutions,

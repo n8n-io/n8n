@@ -4,7 +4,7 @@ import { N8nText, N8nButton, N8nCallout } from '@n8n/design-system';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 import { useUsageStore } from '@/stores/usage.store';
@@ -23,28 +23,6 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
 	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
-});
-
-const datasetTriggerExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
-	);
-});
-
-const evaluationMetricNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
-	);
-});
-
-const evaluationSetOutputNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		// FIXME: handle default operation properly
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' &&
-			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
-	);
 });
 
 const evaluationsAvailable = computed(() => {
@@ -72,14 +50,14 @@ const initializeActiveStep = () => {
 	}
 
 	if (
-		datasetTriggerExist.value &&
-		evaluationSetOutputNodeExist.value &&
-		evaluationMetricNodeExist.value
+		evaluationStore.datasetTriggerExist &&
+		evaluationStore.evaluationSetOutputsNodeExist &&
+		evaluationStore.evaluationSetMetricsNodeExist
 	) {
 		activeStepIndex.value = 3;
-	} else if (datasetTriggerExist.value && evaluationSetOutputNodeExist.value) {
+	} else if (evaluationStore.datasetTriggerExist && evaluationStore.evaluationSetOutputsNodeExist) {
 		activeStepIndex.value = 2;
-	} else if (datasetTriggerExist.value) {
+	} else if (evaluationStore.datasetTriggerExist) {
 		activeStepIndex.value = 1;
 	} else {
 		activeStepIndex.value = 0;
@@ -121,7 +99,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="1"
 					:title="locale.baseText('evaluations.setupWizard.step1.title')"
-					:is-completed="datasetTriggerExist"
+					:is-completed="evaluationStore.datasetTriggerExist"
 					:is-active="activeStepIndex === 0"
 					@click="toggleStep(0)"
 				/>
@@ -156,7 +134,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="2"
 					:title="locale.baseText('evaluations.setupWizard.step2.title')"
-					:is-completed="evaluationSetOutputNodeExist"
+					:is-completed="evaluationStore.evaluationSetOutputsNodeExist"
 					:is-active="activeStepIndex === 1"
 					@click="toggleStep(1)"
 				/>
@@ -185,7 +163,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="3"
 					:title="locale.baseText('evaluations.setupWizard.step3.title')"
-					:is-completed="evaluationMetricNodeExist"
+					:is-completed="evaluationStore.evaluationSetMetricsNodeExist"
 					:is-active="activeStepIndex === 2"
 					:is-optional="true"
 					@click="toggleStep(2)"
@@ -255,10 +233,13 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
-							v-if="evaluationMetricNodeExist && !evaluationsQuotaExceeded"
+							v-if="evaluationStore.evaluationSetMetricsNodeExist && !evaluationsQuotaExceeded"
 							size="medium"
 							type="secondary"
-							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
+							:disabled="
+								!evaluationStore.datasetTriggerExist ||
+								!evaluationStore.evaluationSetOutputsNodeExist
+							"
 							@click="$emit('runTest')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
@@ -267,7 +248,10 @@ function onSeePlans() {
 							v-else
 							size="medium"
 							type="secondary"
-							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
+							:disabled="
+								!evaluationStore.datasetTriggerExist ||
+								!evaluationStore.evaluationSetOutputsNodeExist
+							"
 							@click="navigateToWorkflow('executeEvaluation')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.altButton') }}
