@@ -65,6 +65,9 @@ export class License implements LicenseProvider {
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
+		const onFeatureChange = isMainInstance
+			? async () => await this.onFeatureChange()
+			: async () => {};
 		const onLicenseRenewed = isMainInstance
 			? async () => await this.onLicenseRenewed()
 			: async () => {};
@@ -101,6 +104,7 @@ export class License implements LicenseProvider {
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,
 				collectPassthroughData,
+				onFeatureChange,
 				onLicenseRenewed,
 			});
 
@@ -129,7 +133,15 @@ export class License implements LicenseProvider {
 		return databaseSettings?.value ?? '';
 	}
 
-	async onLicenseRenewed(): Promise<void> {
+	async onFeatureChange() {
+		void this.broadcastReloadLicenseCommand();
+	}
+
+	private async onLicenseRenewed() {
+		void this.broadcastReloadLicenseCommand();
+	}
+
+	private async broadcastReloadLicenseCommand(): Promise<void> {
 		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
