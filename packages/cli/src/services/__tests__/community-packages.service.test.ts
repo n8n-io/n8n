@@ -73,9 +73,8 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
-	const instanceSettings = mock<InstanceSettings>({
-		nodesDownloadDir: '/tmp/n8n-jest-global-downloads',
-	});
+	const nodesDownloadDir = '/tmp/n8n-jest-global-downloads';
+	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
@@ -448,10 +447,7 @@ describe('CommunityPackagesService', () => {
 			// ASSERT:
 			expect(rm).toHaveBeenCalledTimes(2);
 			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
-			expect(rm).toHaveBeenNthCalledWith(
-				2,
-				'/tmp/n8n-jest-global-downloads/n8n-nodes-test-latest.tgz',
-			);
+			expect(rm).toHaveBeenNthCalledWith(2, `${nodesDownloadDir}/n8n-nodes-test-latest.tgz`);
 
 			expect(exec).toHaveBeenCalledTimes(3);
 			expect(exec).toHaveBeenNthCalledWith(
@@ -541,9 +537,8 @@ describe('CommunityPackagesService', () => {
 		test('should update package dependencies', async () => {
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 
-			expect(access).toHaveBeenCalledWith('/tmp/n8n-jest-global-downloads/package.json', 0);
 			expect(writeFile).toHaveBeenCalledWith(
-				'/tmp/n8n-jest-global-downloads/package.json',
+				`${nodesDownloadDir}/package.json`,
 				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
 				'utf-8',
 			);
@@ -554,7 +549,7 @@ describe('CommunityPackagesService', () => {
 
 			mocked(access).mockRejectedValueOnce(new Error('ENOENT'));
 			expect(writeFile).toHaveBeenCalledWith(
-				'/tmp/n8n-jest-global-downloads/package.json',
+				`${nodesDownloadDir}/package.json`,
 				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
 				'utf-8',
 			);

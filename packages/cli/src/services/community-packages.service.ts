@@ -8,7 +8,7 @@ import { exec } from 'child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
 import { join } from 'path';
 import { promisify } from 'util';
 
@@ -57,11 +57,19 @@ const asyncExec = promisify(exec);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
+type PackageJson = {
+	name: 'installed-nodes';
+	private: true;
+	dependencies: Record<string, string>;
+};
+
 @Service()
 export class CommunityPackagesService {
 	reinstallMissingPackages = false;
 
 	missingPackages: string[] = [];
+
+	private packageJsonPath = join(this.instanceSettings.nodesDownloadDir, 'package.json');
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -72,6 +80,11 @@ export class CommunityPackagesService {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	async init() {
+		await this.ensurePackageJson();
+		await this.checkForMissingPackages();
+	}
 
 	get hasMissingPackages() {
 		return this.missingPackages.length > 0;
@@ -265,7 +278,20 @@ export class CommunityPackagesService {
 		}
 	}
 
-	async checkForMissingPackages() {
+	private async ensurePackageJson() {
+		try {
+			await access(this.packageJsonPath, constants.F_OK);
+		} catch {
+			const packageJson: PackageJson = {
+				name: 'installed-nodes',
+				private: true,
+				dependencies: {},
+			};
+			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+		}
+	}
+
+	private async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
@@ -496,32 +522,9 @@ export class CommunityPackagesService {
 	}
 
 	async updatePackageJsonDependency(packageName: string, version: string) {
-		const nodesDir = this.instanceSettings.nodesDownloadDir;
-		const packageJsonPath = join(nodesDir, 'package.json');
-
-		let packageJson: {
-			name: string;
-			private: boolean;
-			dependencies: Record<string, string>;
-		};
-
-		try {
-			await access(packageJsonPath, constants.F_OK);
-
-			const existingContent = await readFile(packageJsonPath, 'utf-8');
-			packageJson = JSON.parse(existingContent) as typeof packageJson;
-
-			packageJson.dependencies ??= {};
-		} catch {
-			packageJson = {
-				name: 'installed-nodes',
-				private: true,
-				dependencies: {},
-			};
-		}
-
+		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+		const packageJson = jsonParse<PackageJson>(existingContent);
 		packageJson.dependencies[packageName] = version;
-
-		await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 }
