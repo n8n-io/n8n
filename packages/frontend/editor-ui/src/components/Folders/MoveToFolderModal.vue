@@ -270,16 +270,6 @@ const descriptionMessage = computed(() => {
 	});
 });
 
-// const projectIcon = computed<ItemProjectIcon>(() => {
-// 	const defaultIcon: ItemProjectIcon = { type: 'icon', value: 'layer-group' };
-// 	if (currentProject.value?.type === ProjectTypes.Personal) {
-// 		return { type: 'icon', value: 'user' };
-// 	} else if (currentProject.value?.type === ProjectTypes.Team) {
-// 		return currentProject.value.icon ?? defaultIcon;
-// 	}
-// 	return defaultIcon;
-// });
-
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
 const isFolderSelectable = computed(() => {
