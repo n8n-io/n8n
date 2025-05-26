@@ -265,7 +265,7 @@ export class SourceControlService {
 			if (
 				statusResult.some((requested) => {
 					return !allowedResources.some((allowed) => {
-						return allowed.id === requested.id && allowed.type === requested.id;
+						return allowed.id === requested.id && allowed.type === requested.type;
 					});
 				})
 			) {

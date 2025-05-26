@@ -1,13 +1,16 @@
 import {
 	CredentialsEntity,
 	type Folder,
+	FolderRepository,
 	Project,
 	type TagEntity,
+	TagRepository,
 	type User,
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
+import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 
 import {
@@ -30,6 +33,15 @@ import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../shared/test-db';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { Cipher } from 'n8n-core';
+import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
+import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
+import { EventService } from '@/events/event.service';
+import { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
+import { mock } from 'jest-mock-extended';
+import { update } from 'lodash';
 
 jest.mock('fast-glob');
 
@@ -114,22 +126,7 @@ function toExportableWorkflow(
 }
 
 describe('SourceControlService', () => {
-	beforeAll(async () => {
-		await testDb.init();
-
-		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-		await sourceControlPreferencesService.setPreferences({
-			connected: true,
-			keyGeneratorType: 'rsa',
-		});
-	});
-
-	afterAll(async () => {
-		await testDb.terminate();
-	});
-
-	describe('getStatus', () => {
-		/*
+	/*
 			Test scenarios (push):
 				1. 	globalAdmin
 						sees everything, workflows in different projects, credentials in different projects, tags and mappings in different projects, folders in different projects
@@ -146,47 +143,62 @@ describe('SourceControlService', () => {
 				TBD!
 		*/
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let projectAdmin: User;
+	let globalAdmin: User;
+	let globalOwner: User;
+	let globalMember: User;
+	let projectAdmin: User;
 
-		let projectA: Project;
-		let projectB: Project;
+	let projectA: Project;
+	let projectB: Project;
 
-		let globalAdminScope: Scope;
-		let globalOwnerScope: Scope;
-		let globalMemberScope: Scope;
-		let projectAdminScope: Scope;
-		let projectAScope: Scope;
-		let projectBScope: Scope;
+	let globalAdminScope: Scope;
+	let globalOwnerScope: Scope;
+	let globalMemberScope: Scope;
+	let projectAdminScope: Scope;
+	let projectAScope: Scope;
+	let projectBScope: Scope;
 
-		let allWorkflows: WorkflowEntity[];
-		let tags: TagEntity[];
-		let gitFiles: Record<string, unknown>;
+	let allWorkflows: WorkflowEntity[];
+	let tags: TagEntity[];
+	let gitFiles: Record<string, unknown>;
 
-		let movedOutOfScopeWorkflow: WorkflowEntity;
-		let movedIntoScopeWorkflow: WorkflowEntity;
+	let movedOutOfScopeWorkflow: WorkflowEntity;
+	let movedIntoScopeWorkflow: WorkflowEntity;
 
-		let deletedOutOfScopeWorkflow: WorkflowEntity;
-		let deletedInScopeWorkflow: WorkflowEntity;
+	let deletedOutOfScopeWorkflow: WorkflowEntity;
+	let deletedInScopeWorkflow: WorkflowEntity;
 
-		let movedOutOfScopeCredential: CredentialsEntity;
-		let movedIntoScopeCredential: CredentialsEntity;
+	let movedOutOfScopeCredential: CredentialsEntity;
+	let movedIntoScopeCredential: CredentialsEntity;
 
-		let deletedOutOfScopeCredential: CredentialsEntity;
-		let deletedInScopeCredential: CredentialsEntity;
+	let deletedOutOfScopeCredential: CredentialsEntity;
+	let deletedInScopeCredential: CredentialsEntity;
 
-		let service: SourceControlService;
+	let gitService: SourceControlGitService;
+	let service: SourceControlService;
 
-		const globMock = fastGlob.default as unknown as jest.Mock<
-			Promise<string[]>,
-			[fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]
-		>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+	let cipher: Cipher;
 
-		beforeAll(async () => {
-			/*
+	const globMock = fastGlob.default as unknown as jest.Mock<
+		Promise<string[]>,
+		[fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]
+	>;
+	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsRmSync = jest.spyOn(fs, 'rmSync');
+
+	beforeAll(async () => {
+		await testDb.init();
+
+		cipher = Container.get(Cipher);
+
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+		});
+
+		/*
 				Set up test conditions:
 				4 users:
 					globalAdmin
@@ -207,312 +219,321 @@ describe('SourceControlService', () => {
 				1. Workflow moved in git to other project
 			*/
 
-			[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
-				await createUser({ role: 'global:admin' }),
-				await createUser({ role: 'global:owner' }),
-				await createUser({ role: 'global:member' }),
-				await createUser({ role: 'global:member' }),
-			]);
+		[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
+			await createUser({ role: 'global:admin' }),
+			await createUser({ role: 'global:owner' }),
+			await createUser({ role: 'global:member' }),
+			await createUser({ role: 'global:member' }),
+		]);
 
-			[projectA, projectB] = await Promise.all([
-				createTeamProject('ProjectA', projectAdmin),
-				createTeamProject('ProjectB'),
-			]);
+		[projectA, projectB] = await Promise.all([
+			createTeamProject('ProjectA', projectAdmin),
+			createTeamProject('ProjectB'),
+		]);
 
-			let [
-				globalAdminWorkflows,
-				globalOwnerWorkflows,
-				globalMemberWorkflows,
-				projectAdminWorkflows,
-				projectAWorkflows,
-				projectBWorkflows,
-			] = await Promise.all(
-				[globalAdmin, globalOwner, globalMember, projectAdmin, projectA, projectB].map(
-					async (owner) => [
-						await createWorkflow(
-							{
-								name: `${owner.id}-WFA`,
-							},
-							owner,
-						),
-						await createWorkflow(
-							{
-								name: `${owner.id}-WFB`,
-							},
-							owner,
-						),
-					],
-				),
-			);
-
-			allWorkflows = [
-				...globalAdminWorkflows,
-				...globalOwnerWorkflows,
-				...globalMemberWorkflows,
-				...projectAdminWorkflows,
-				...projectAWorkflows,
-				...projectBWorkflows,
-			];
-
-			deletedOutOfScopeWorkflow = Object.assign(new WorkflowEntity(), {
-				id: 'deletedOutOfScope',
-				name: 'deletedOutOfScope',
-			});
-
-			deletedInScopeWorkflow = Object.assign(new WorkflowEntity(), {
-				id: 'deletedInScope',
-				name: 'deletedInScope',
-			});
-
-			deletedInScopeCredential = Object.assign(new CredentialsEntity(), {
-				id: 'deletedInScope',
-				name: 'deletedInScope',
-				data: '',
-				type: '',
-			});
-
-			deletedOutOfScopeCredential = Object.assign(new CredentialsEntity(), {
-				id: 'deletedOutOfScope',
-				name: 'deletedOutOfScope',
-				data: '',
-				type: '',
-			});
-
-			[
-				movedOutOfScopeCredential,
-				movedIntoScopeCredential,
-				movedOutOfScopeWorkflow,
-				movedIntoScopeWorkflow,
-			] = await Promise.all([
-				await createCredentials(
-					{
-						name: 'OutOfScope',
-						data: '',
-						type: '',
-					},
-					projectB,
-				),
-				await createCredentials(
-					{
-						name: 'IntoScope',
-						data: '',
-						type: '',
-					},
-					projectA,
-				),
-				await createWorkflow(
-					{
-						name: 'OutOfScope',
-					},
-					projectB,
-				),
-				await createWorkflow(
-					{
-						name: 'IntoScope',
-					},
-					projectA,
-				),
-			]);
-
-			let [projectACredentials, projectBCredentials] = await Promise.all(
-				[projectA, projectB].map(async (project) => [
-					await createCredentials(
+		let [
+			globalAdminWorkflows,
+			globalOwnerWorkflows,
+			globalMemberWorkflows,
+			projectAdminWorkflows,
+			projectAWorkflows,
+			projectBWorkflows,
+		] = await Promise.all(
+			[globalAdmin, globalOwner, globalMember, projectAdmin, projectA, projectB].map(
+				async (owner) => [
+					await createWorkflow(
 						{
-							name: `${project.name}-CredA`,
-							data: '',
-							type: '',
+							name: `${owner.id}-WFA`,
 						},
-						project,
+						owner,
 					),
-					await createCredentials(
+					await createWorkflow(
 						{
-							name: `${project.name}-CredB‚`,
-							data: '',
-							type: '',
+							name: `${owner.id}-WFB`,
 						},
-						project,
+						owner,
 					),
-				]),
-			);
+				],
+			),
+		);
 
-			tags = await Promise.all([
-				createTag({
-					name: 'testTag1',
-				}),
-				createTag({
-					name: 'testTag2',
-				}),
-				createTag({
-					name: 'testTag3',
-				}),
-			]);
+		allWorkflows = [
+			...globalAdminWorkflows,
+			...globalOwnerWorkflows,
+			...globalMemberWorkflows,
+			...projectAdminWorkflows,
+			...projectAWorkflows,
+			...projectBWorkflows,
+		];
 
-			await Promise.all(
-				tags.map(async (tag) => {
-					await Promise.all(
-						allWorkflows.map(async (workflow) => {
-							await assignTagToWorkflow(tag, workflow);
-						}),
-					);
-				}),
-			);
-
-			let [projectAFolders, projectBFolders] = await Promise.all(
-				[projectA, projectB].map(async (project) => {
-					const parent = await createFolder(project, {
-						name: `${project.name}-FolderA`,
-					});
-
-					return [
-						parent,
-						await createFolder(project, {
-							name: `${project.name}-FolderB`,
-						}),
-						await createFolder(project, {
-							name: `${project.name}-FolderA.1`,
-							parentFolder: parent,
-						}),
-					];
-				}),
-			);
-
-			globalAdminScope = {
-				credentials: [],
-				workflows: globalAdminWorkflows,
-				folders: [],
-			};
-
-			globalOwnerScope = {
-				credentials: [],
-				workflows: globalOwnerWorkflows,
-				folders: [],
-			};
-
-			globalMemberScope = {
-				credentials: [],
-				workflows: globalMemberWorkflows,
-				folders: [],
-			};
-
-			projectAdminScope = {
-				credentials: [],
-				workflows: projectAdminWorkflows,
-				folders: [],
-			};
-
-			projectAScope = {
-				credentials: projectACredentials,
-				folders: projectAFolders,
-				workflows: projectAWorkflows,
-			};
-
-			projectBScope = {
-				credentials: projectBCredentials,
-				folders: projectBFolders,
-				workflows: projectBWorkflows,
-			};
-
-			service = Container.get(SourceControlService);
-
-			// Skip actual git operations
-			service.sanityCheck = async () => {};
-			service.resetWorkfolder = async () => undefined;
-
-			// Git mocking
-			gitFiles = {
-				'workflows/deletedOutOfScope.json': toExportableWorkflow(
-					deletedOutOfScopeWorkflow,
-					projectB,
-				),
-				'workflows/deletedInScope.json': toExportableWorkflow(deletedInScopeWorkflow, projectA),
-				'workflows/globalAdminWFA.json': toExportableWorkflow(globalAdminWorkflows[0], globalAdmin),
-				'workflows/globalOwnerWFA.json': toExportableWorkflow(globalOwnerWorkflows[0], globalOwner),
-				'workflows/globalMemberWFA.json': toExportableWorkflow(
-					globalMemberWorkflows[0],
-					globalMember,
-				),
-				'workflows/projectAdminWFA.json': toExportableWorkflow(
-					projectAdminWorkflows[0],
-					projectAdmin,
-				),
-				'workflows/projectAWFA.json': toExportableWorkflow(projectAWorkflows[0], projectA),
-				'workflows/projectBWFA.json': toExportableWorkflow(projectBWorkflows[0], projectB),
-				'workflows/outofscope.json': toExportableWorkflow(
-					movedOutOfScopeWorkflow,
-					projectA,
-					'otherID',
-				),
-				'workflows/intoscope.json': toExportableWorkflow(
-					movedIntoScopeWorkflow,
-					projectB,
-					'otherID',
-				),
-				'credential_stubs/AcredA.json': toExportableCredential(projectACredentials[0], projectA),
-				'credential_stubs/BcredA.json': toExportableCredential(projectBCredentials[0], projectB),
-				'credential_stubs/movedOutOfScopeCred.json': toExportableCredential(
-					movedOutOfScopeCredential,
-					projectB,
-				),
-				'credential_stubs/movedIntoScopeCred.json': toExportableCredential(
-					movedIntoScopeCredential,
-					projectA,
-				),
-				'credential_stubs/deletedOutOfScopeCred.json': toExportableCredential(
-					deletedOutOfScopeCredential,
-					projectB,
-				),
-				'credential_stubs/deletedIntoScopeCred.json': toExportableCredential(
-					deletedInScopeCredential,
-					projectA,
-				),
-				'folders.json': {
-					folders: [toExportableFolder(projectAFolders[0]), toExportableFolder(projectBFolders[0])],
-				},
-				'tags.json': {
-					tags: tags.map((t) => {
-						return {
-							id: t.id,
-							name: t.name,
-						};
-					}),
-					mappings: [
-						...globalAdminWorkflows.map((m) => {
-							return {
-								workflowId: m.id,
-								tagId: tags[0].id,
-							};
-						}),
-					],
-				},
-			};
-
-			globMock.mockImplementation(async (path, opts) => {
-				if (opts.cwd?.endsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
-					// asking for workflows
-					return Object.keys(gitFiles).filter((file) =>
-						file.startsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER),
-					);
-				} else if (opts.cwd?.endsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
-					// asking for credentials
-					return Object.keys(gitFiles).filter((file) =>
-						file.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER),
-					);
-				} else if (path === SOURCE_CONTROL_FOLDERS_EXPORT_FILE) {
-					// asking for folders
-					return ['folders.json'];
-				} else if (path === SOURCE_CONTROL_TAGS_EXPORT_FILE) {
-					// asking for folders
-					return ['tags.json'];
-				}
-
-				return [];
-			});
-
-			fsReadFile.mockImplementation(async (path: string) => {
-				return JSON.stringify(gitFiles[path]);
-			});
+		deletedOutOfScopeWorkflow = Object.assign(new WorkflowEntity(), {
+			id: 'deletedOutOfScope',
+			name: 'deletedOutOfScope',
 		});
 
+		deletedInScopeWorkflow = Object.assign(new WorkflowEntity(), {
+			id: 'deletedInScope',
+			name: 'deletedInScope',
+		});
+
+		deletedInScopeCredential = Object.assign(new CredentialsEntity(), {
+			id: 'deletedInScope',
+			name: 'deletedInScope',
+			data: cipher.encrypt({}),
+			type: '',
+		});
+
+		deletedOutOfScopeCredential = Object.assign(new CredentialsEntity(), {
+			id: 'deletedOutOfScope',
+			name: 'deletedOutOfScope',
+			data: cipher.encrypt({}),
+			type: '',
+		});
+
+		[
+			movedOutOfScopeCredential,
+			movedIntoScopeCredential,
+			movedOutOfScopeWorkflow,
+			movedIntoScopeWorkflow,
+		] = await Promise.all([
+			await createCredentials(
+				{
+					name: 'OutOfScope',
+					data: cipher.encrypt({}),
+					type: '',
+				},
+				projectB,
+			),
+			await createCredentials(
+				{
+					name: 'IntoScope',
+					data: cipher.encrypt({}),
+					type: '',
+				},
+				projectA,
+			),
+			await createWorkflow(
+				{
+					name: 'OutOfScope',
+				},
+				projectB,
+			),
+			await createWorkflow(
+				{
+					name: 'IntoScope',
+				},
+				projectA,
+			),
+		]);
+
+		let [projectACredentials, projectBCredentials] = await Promise.all(
+			[projectA, projectB].map(async (project) => [
+				await createCredentials(
+					{
+						name: `${project.name}-CredA`,
+						data: cipher.encrypt({}),
+						type: '',
+					},
+					project,
+				),
+				await createCredentials(
+					{
+						name: `${project.name}-CredB‚`,
+						data: cipher.encrypt({}),
+						type: '',
+					},
+					project,
+				),
+			]),
+		);
+
+		tags = await Promise.all([
+			createTag({
+				name: 'testTag1',
+			}),
+			createTag({
+				name: 'testTag2',
+			}),
+			createTag({
+				name: 'testTag3',
+			}),
+		]);
+
+		await Promise.all(
+			tags.map(async (tag) => {
+				await Promise.all(
+					allWorkflows.map(async (workflow) => {
+						await assignTagToWorkflow(tag, workflow);
+					}),
+				);
+			}),
+		);
+
+		let [projectAFolders, projectBFolders] = await Promise.all(
+			[projectA, projectB].map(async (project) => {
+				const parent = await createFolder(project, {
+					name: `${project.name}-FolderA`,
+				});
+
+				return [
+					parent,
+					await createFolder(project, {
+						name: `${project.name}-FolderB`,
+					}),
+					await createFolder(project, {
+						name: `${project.name}-FolderA.1`,
+						parentFolder: parent,
+					}),
+				];
+			}),
+		);
+
+		globalAdminScope = {
+			credentials: [],
+			workflows: globalAdminWorkflows,
+			folders: [],
+		};
+
+		globalOwnerScope = {
+			credentials: [],
+			workflows: globalOwnerWorkflows,
+			folders: [],
+		};
+
+		globalMemberScope = {
+			credentials: [],
+			workflows: globalMemberWorkflows,
+			folders: [],
+		};
+
+		projectAdminScope = {
+			credentials: [],
+			workflows: projectAdminWorkflows,
+			folders: [],
+		};
+
+		projectAScope = {
+			credentials: projectACredentials,
+			folders: projectAFolders,
+			workflows: projectAWorkflows,
+		};
+
+		projectBScope = {
+			credentials: projectBCredentials,
+			folders: projectBFolders,
+			workflows: projectBWorkflows,
+		};
+
+		gitService = mock<SourceControlGitService>();
+
+		service = new SourceControlService(
+			mock(),
+			gitService,
+			sourceControlPreferencesService,
+			Container.get(SourceControlExportService),
+			Container.get(SourceControlImportService),
+			Container.get(TagRepository),
+			Container.get(FolderRepository),
+			Container.get(EventService),
+		);
+
+		// Skip actual git operations
+		service.sanityCheck = async () => {};
+		service.resetWorkfolder = async () => undefined;
+
+		// Git mocking
+		gitFiles = {
+			'workflows/deletedOutOfScope.json': toExportableWorkflow(deletedOutOfScopeWorkflow, projectB),
+			'workflows/deletedInScope.json': toExportableWorkflow(deletedInScopeWorkflow, projectA),
+			'workflows/globalAdminWFA.json': toExportableWorkflow(globalAdminWorkflows[0], globalAdmin),
+			'workflows/globalOwnerWFA.json': toExportableWorkflow(globalOwnerWorkflows[0], globalOwner),
+			'workflows/globalMemberWFA.json': toExportableWorkflow(
+				globalMemberWorkflows[0],
+				globalMember,
+			),
+			'workflows/projectAdminWFA.json': toExportableWorkflow(
+				projectAdminWorkflows[0],
+				projectAdmin,
+			),
+			'workflows/projectAWFA.json': toExportableWorkflow(projectAWorkflows[0], projectA),
+			'workflows/projectBWFA.json': toExportableWorkflow(projectBWorkflows[0], projectB),
+			'workflows/outofscope.json': toExportableWorkflow(
+				movedOutOfScopeWorkflow,
+				projectA,
+				'otherID',
+			),
+			'workflows/intoscope.json': toExportableWorkflow(movedIntoScopeWorkflow, projectB, 'otherID'),
+			'credential_stubs/AcredA.json': toExportableCredential(projectACredentials[0], projectA),
+			'credential_stubs/BcredA.json': toExportableCredential(projectBCredentials[0], projectB),
+			'credential_stubs/movedOutOfScopeCred.json': toExportableCredential(
+				movedOutOfScopeCredential,
+				projectB,
+			),
+			'credential_stubs/movedIntoScopeCred.json': toExportableCredential(
+				movedIntoScopeCredential,
+				projectA,
+			),
+			'credential_stubs/deletedOutOfScopeCred.json': toExportableCredential(
+				deletedOutOfScopeCredential,
+				projectB,
+			),
+			'credential_stubs/deletedIntoScopeCred.json': toExportableCredential(
+				deletedInScopeCredential,
+				projectA,
+			),
+			'folders.json': {
+				folders: [toExportableFolder(projectAFolders[0]), toExportableFolder(projectBFolders[0])],
+			},
+			'tags.json': {
+				tags: tags.map((t) => {
+					return {
+						id: t.id,
+						name: t.name,
+					};
+				}),
+				mappings: [
+					...globalAdminWorkflows.map((m) => {
+						return {
+							workflowId: m.id,
+							tagId: tags[0].id,
+						};
+					}),
+				],
+			},
+		};
+
+		globMock.mockImplementation(async (path, opts) => {
+			if (opts.cwd?.endsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
+				// asking for workflows
+				return Object.keys(gitFiles).filter((file) =>
+					file.startsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER),
+				);
+			} else if (opts.cwd?.endsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
+				// asking for credentials
+				return Object.keys(gitFiles).filter((file) =>
+					file.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER),
+				);
+			} else if (path === SOURCE_CONTROL_FOLDERS_EXPORT_FILE) {
+				// asking for folders
+				return ['folders.json'];
+			} else if (path === SOURCE_CONTROL_TAGS_EXPORT_FILE) {
+				// asking for folders
+				return ['tags.json'];
+			}
+
+			return [];
+		});
+
+		fsReadFile.mockImplementation(async (path: string) => {
+			return JSON.stringify(gitFiles[path]);
+		});
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
+	describe('getStatus', () => {
 		describe('direction: push', () => {
 			describe('global:admin user', () => {
 				it('should see all workflows', async () => {
@@ -771,6 +792,257 @@ describe('SourceControlService', () => {
 						new Set([projectAScope.folders[1].id, projectAScope.folders[2].id]),
 					);
 				});
+			});
+		});
+	});
+
+	describe('pushWorkfolder', () => {
+		describe('on readonly instance', () => {
+			beforeAll(async () => {
+				await sourceControlPreferencesService.setPreferences({
+					connected: true,
+					keyGeneratorType: 'rsa',
+					branchReadOnly: true,
+				});
+			});
+
+			afterAll(async () => {
+				await sourceControlPreferencesService.setPreferences({
+					connected: true,
+					keyGeneratorType: 'rsa',
+					branchReadOnly: false,
+				});
+			});
+
+			it('should fail with BadRequest', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					await expect(
+						service.pushWorkfolder(globalMember, {
+							fileNames: allChanges,
+							commitMessage: 'Test',
+						}),
+					).rejects.toThrowError(BadRequestError);
+				}
+			});
+		});
+
+		describe('global:admin user', () => {
+			it('should update all workflows', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				const updatedFiles: string[] = [];
+
+				fsWriteFile.mockImplementation(async (path) => {
+					updatedFiles.push(`${path}`);
+				});
+
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					const result = await service.pushWorkfolder(globalAdmin, {
+						fileNames: allChanges,
+						commitMessage: 'Test',
+						force: true,
+					});
+
+					const filesToWrite =
+						result.statusResult.filter(
+							(change) =>
+								(change.type === 'workflow' || change.type === 'credential') &&
+								change.status !== 'deleted',
+						).length +
+						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
+						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
+
+					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
+
+					allChanges.forEach((change) => {
+						if (change.type === 'workflow' && change.status !== 'deleted') {
+							expect(updatedFiles.includes(change.file)).toBe(true);
+						}
+					});
+				}
+			});
+
+			it('should update all credentials', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				const updatedFiles: string[] = [];
+
+				fsWriteFile.mockReset();
+
+				fsWriteFile.mockImplementation(async (path) => {
+					updatedFiles.push(`${path}`);
+				});
+
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					const result = await service.pushWorkfolder(globalAdmin, {
+						fileNames: allChanges,
+						commitMessage: 'Test',
+						force: true,
+					});
+
+					const filesToWrite =
+						result.statusResult.filter(
+							(change) =>
+								(change.type === 'workflow' || change.type === 'credential') &&
+								change.status !== 'deleted',
+						).length +
+						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
+						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
+
+					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
+
+					allChanges.forEach((change) => {
+						if (change.type === 'credential' && change.status !== 'deleted') {
+							expect(updatedFiles.includes(change.file)).toBe(true);
+						}
+					});
+				}
+			});
+
+			it('should update all workflows and credentials without arguments', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				const updatedFiles: string[] = [];
+
+				fsWriteFile.mockReset();
+
+				fsWriteFile.mockImplementation(async (path) => {
+					updatedFiles.push(`${path}`);
+				});
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					const result = await service.pushWorkfolder(globalAdmin, {
+						fileNames: [],
+						commitMessage: 'Test',
+						force: true,
+					});
+
+					const filesToWriteFromResult =
+						result.statusResult.filter(
+							(change) =>
+								(change.type === 'workflow' || change.type === 'credential') &&
+								change.status !== 'deleted',
+						).length +
+						(result.statusResult.some((change) => change.type === 'folders') ? 1 : 0) +
+						(result.statusResult.some((change) => change.type === 'tags') ? 1 : 0);
+
+					const filesToWrite =
+						allChanges.filter(
+							(change) =>
+								(change.type === 'workflow' || change.type === 'credential') &&
+								change.status !== 'deleted',
+						).length +
+						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
+						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
+
+					expect(filesToWriteFromResult).toBe(filesToWrite);
+					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
+
+					allChanges.forEach((change) => {
+						if (change.type === 'credential' && change.status !== 'deleted') {
+							expect(updatedFiles.includes(change.file)).toBe(true);
+						}
+					});
+
+					allChanges.forEach((change) => {
+						if (change.type === 'workflow' && change.status !== 'deleted') {
+							expect(updatedFiles.includes(change.file)).toBe(true);
+						}
+					});
+				}
+			});
+
+			it('should update all tags and mappings', async () => {
+				// TODO
+			});
+			it('should update all folders', async () => {
+				// TODO
+			});
+		});
+
+		describe('global:member', () => {
+			it('should deny all changes', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					await expect(
+						service.pushWorkfolder(globalMember, {
+							fileNames: allChanges,
+							commitMessage: 'Test',
+						}),
+					).rejects.toThrowError(ForbiddenError);
+				}
+			});
+
+			it('should deny any changes', async () => {
+				let allChanges = await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
+
+				if (!Array.isArray(allChanges)) {
+					expect(Array.isArray(allChanges)).toBe(true);
+				} else {
+					await expect(
+						service.pushWorkfolder(globalMember, {
+							fileNames: [allChanges[0]],
+							commitMessage: 'Test',
+						}),
+					).rejects.toThrowError(ForbiddenError);
+				}
+			});
+		});
+
+		describe('project:admin', () => {
+			it('should update selected workflows', async () => {
+				// TODO
+			});
+			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {
+				// TODO
+			});
+			it('should update selected credentials', async () => {
+				// TODO
+			});
+			it('should throw ForbiddenError when trying to push credentials out of scope', async () => {
+				// TODO
+			});
+			it('should update tag mappings in scope and keep out of scope ones', async () => {
+				// TODO
+			});
+			it('should update folders in scope and keep out of scope ones', async () => {
+				// TODO
 			});
 		});
 	});
