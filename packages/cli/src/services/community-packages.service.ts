@@ -5,10 +5,11 @@ import { InstalledPackagesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'path';
 import { promisify } from 'util';
 
 import {
@@ -467,13 +468,23 @@ export class CommunityPackagesService {
 			const packageJsonPath = `${packageDirectory}/package.json`;
 			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const { devDependencies, peerDependencies, optionalDependencies, ...packageJson } =
-				JSON.parse(packageJsonContent);
+			const {
+				devDependencies,
+				peerDependencies,
+				optionalDependencies,
+				...packageJson
+			}: {
+				version: string;
+				devDependencies: Record<string, string>;
+				peerDependencies: Record<string, string>;
+				optionalDependencies: Record<string, string>;
+			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
 			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
-			await asyncExec(`rm ${tarballName}`, { cwd: downloadFolder });
+			await rm(join(downloadFolder, tarballName));
 		}
 
 		return packageDirectory;
@@ -481,20 +492,36 @@ export class CommunityPackagesService {
 
 	private async deletePackageDirectory(packageName: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await asyncExec(`rm -rf ${packageDirectory}`);
+		await rm(packageDirectory, { recursive: true, force: true });
 	}
 
-	async generatePackageJson() {
-		const installedPackages = await this.getAllInstalledPackages();
-		const pkgJson = {
-			name: 'installed-nodes',
-			private: true,
-			dependencies: installedPackages.reduce<Record<string, string>>((acc, cur) => {
-				acc[cur.packageName] = cur.installedVersion;
-				return acc;
-			}, {}),
-		};
+	async updatePackageJsonDependency(packageName: string, version: string) {
 		const nodesDir = this.instanceSettings.nodesDownloadDir;
-		await writeFile(`${nodesDir}/package.json`, JSON.stringify(pkgJson, null, 2));
+		const packageJsonPath = join(nodesDir, 'package.json');
+
+		let packageJson: {
+			name: string;
+			private: boolean;
+			dependencies: Record<string, string>;
+		};
+
+		try {
+			await access(packageJsonPath, constants.F_OK);
+
+			const existingContent = await readFile(packageJsonPath, 'utf-8');
+			packageJson = JSON.parse(existingContent) as typeof packageJson;
+
+			packageJson.dependencies ??= {};
+		} catch {
+			packageJson = {
+				name: 'installed-nodes',
+				private: true,
+				dependencies: {},
+			};
+		}
+
+		packageJson.dependencies[packageName] = version;
+
+		await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 }

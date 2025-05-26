@@ -6,7 +6,7 @@ import { InstalledNodesRepository } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir as fsMkdir, readFile, writeFile, rm, access } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { Logger, InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -446,39 +446,37 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			expect(exec).toHaveBeenCalledTimes(5);
+			expect(exec).toHaveBeenCalledTimes(3);
 
-			expect(exec).toHaveBeenNthCalledWith(
+			expect(rm).toHaveBeenNthCalledWith(
 				1,
-				`rm -rf ${testBlockPackageDir}`,
-				expect.any(Function),
+				'/tmp/n8n-jest-global-downloads/node_modules/n8n-nodes-test',
+				{ force: true, recursive: true },
+			);
+
+			expect(rm).toHaveBeenNthCalledWith(
+				2,
+				'/tmp/n8n-jest-global-downloads/n8n-nodes-test-latest.tgz',
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				2,
+				1,
 				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				3,
+				2,
 				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				4,
+				3,
 				`npm install ${testBlockNpmInstallArgs}`,
 				{ cwd: testBlockPackageDir },
-				expect.any(Function),
-			);
-
-			expect(exec).toHaveBeenNthCalledWith(
-				5,
-				`rm ${testBlockTarballName}`,
-				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
@@ -535,6 +533,35 @@ describe('CommunityPackagesService', () => {
 			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
+			);
+		});
+	});
+
+	describe('updatePackageJsonDependency', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+		});
+
+		test('should update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			expect(access).toHaveBeenCalledWith('/tmp/n8n-jest-global-downloads/package.json', 0);
+			expect(writeFile).toHaveBeenCalledWith(
+				'/tmp/n8n-jest-global-downloads/package.json',
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
+			);
+		});
+
+		test('should create file and update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			mocked(access).mockRejectedValueOnce(new Error('ENOENT'));
+			expect(writeFile).toHaveBeenCalledWith(
+				'/tmp/n8n-jest-global-downloads/package.json',
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
 			);
 		});
 	});
