@@ -56,7 +56,7 @@ export const useEvaluationStore = defineStore(
 			);
 		});
 
-		const datasetTriggerExist = computed(() => {
+		const evaluationTriggerExists = computed(() => {
 			return workflowsStore.workflow.nodes.some(
 				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 			);
@@ -191,7 +191,7 @@ export const useEvaluationStore = defineStore(
 			isFeatureEnabled,
 			isEvaluationEnabled,
 			testRunsByWorkflowId,
-			datasetTriggerExist,
+			evaluationTriggerExists,
 			evaluationSetMetricsNodeExist,
 			evaluationSetOutputsNodeExist,
 

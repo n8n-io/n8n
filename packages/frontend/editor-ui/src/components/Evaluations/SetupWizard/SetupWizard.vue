@@ -50,14 +50,17 @@ const initializeActiveStep = () => {
 	}
 
 	if (
-		evaluationStore.datasetTriggerExist &&
+		evaluationStore.evaluationTriggerExists &&
 		evaluationStore.evaluationSetOutputsNodeExist &&
 		evaluationStore.evaluationSetMetricsNodeExist
 	) {
 		activeStepIndex.value = 3;
-	} else if (evaluationStore.datasetTriggerExist && evaluationStore.evaluationSetOutputsNodeExist) {
+	} else if (
+		evaluationStore.evaluationTriggerExists &&
+		evaluationStore.evaluationSetOutputsNodeExist
+	) {
 		activeStepIndex.value = 2;
-	} else if (evaluationStore.datasetTriggerExist) {
+	} else if (evaluationStore.evaluationTriggerExists) {
 		activeStepIndex.value = 1;
 	} else {
 		activeStepIndex.value = 0;
@@ -99,7 +102,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="1"
 					:title="locale.baseText('evaluations.setupWizard.step1.title')"
-					:is-completed="evaluationStore.datasetTriggerExist"
+					:is-completed="evaluationStore.evaluationTriggerExists"
 					:is-active="activeStepIndex === 0"
 					@click="toggleStep(0)"
 				/>
@@ -237,7 +240,7 @@ function onSeePlans() {
 							size="medium"
 							type="secondary"
 							:disabled="
-								!evaluationStore.datasetTriggerExist ||
+								!evaluationStore.evaluationTriggerExists ||
 								!evaluationStore.evaluationSetOutputsNodeExist
 							"
 							@click="$emit('runTest')"
@@ -249,7 +252,7 @@ function onSeePlans() {
 							size="medium"
 							type="secondary"
 							:disabled="
-								!evaluationStore.datasetTriggerExist ||
+								!evaluationStore.evaluationTriggerExists ||
 								!evaluationStore.evaluationSetOutputsNodeExist
 							"
 							@click="navigateToWorkflow('executeEvaluation')"
