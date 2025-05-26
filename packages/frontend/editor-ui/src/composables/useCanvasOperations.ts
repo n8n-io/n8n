@@ -1122,7 +1122,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 		for (const nodeName of checkNodes) {
 			const node = workflowsStore.nodesByName[nodeName];
-			if (node.position[0] < sourceNode.position[0]) {
+			if (!node || !sourceNode || node.position[0] < sourceNode.position[0]) {
 				continue;
 			}
 
@@ -1210,7 +1210,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = workflowsStore.workflow.connections;
+		const connections = deepCopy(workflowsStore.workflow.connections) ?? {};
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
