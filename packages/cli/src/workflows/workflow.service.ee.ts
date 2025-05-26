@@ -340,7 +340,10 @@ export class EnterpriseWorkflowService {
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
 		// 9. Move workflow to the right folder if any
-		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
+		await this.workflowRepository.update(
+			{ id: workflow.id },
+			{ parentFolder: parentFolder ? { id: parentFolder.id } : null },
+		);
 
 		// 10. try to activate it again if it was active
 		if (wasActive) {
