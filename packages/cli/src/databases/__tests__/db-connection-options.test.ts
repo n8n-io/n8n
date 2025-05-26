@@ -1,10 +1,10 @@
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import type { RegisteredEntityMetadata } from '@n8n/db';
 import { sqliteMigrations, postgresMigrations, mysqlMigrations } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
 
 import { DbConnectionOptions } from '../db-connection-options';
+import { ModuleRegistry } from '@/modules/module-registry';
 
 describe('DbConnectionOptions', () => {
 	const dbConfig = mock<GlobalConfig['database']>({
@@ -16,11 +16,11 @@ describe('DbConnectionOptions', () => {
 	});
 	const n8nFolder = '/test/n8n';
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
-	const registeredEntityMetadata = mock<RegisteredEntityMetadata>({ getEntities: () => [] });
+	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const dbConnectionOptions = new DbConnectionOptions(
 		dbConfig,
 		instanceSettingsConfig,
-		registeredEntityMetadata,
+		moduleRegistry,
 	);
 
 	beforeEach(() => jest.resetAllMocks());
