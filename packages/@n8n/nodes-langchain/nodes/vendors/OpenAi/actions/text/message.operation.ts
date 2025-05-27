@@ -224,13 +224,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let response_format;
 	if (jsonOutput) {
 		response_format = { type: 'json_object' };
-		messages = [
-			{
-				role: 'system',
-				content: 'You are a helpful assistant designed to output JSON.',
-			},
-			...messages,
-		];
+
+		// o1 family doesn't support system prompt
+		if (!model?.toString().toLocaleLowerCase().startsWith('o1')) {
+			messages = [
+				{
+					role: 'system',
+					content: 'You are a helpful assistant designed to output JSON.',
+				},
+				...messages,
+			];
+		}
 	}
 
 	const hideTools = this.getNodeParameter('hideTools', i, '') as string;
