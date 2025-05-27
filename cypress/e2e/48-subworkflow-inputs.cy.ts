@@ -8,6 +8,7 @@ import {
 	getParameterInputByName,
 	populateFixedCollection,
 	selectResourceLocatorItem,
+	selectResourceLocatorAddResourceItem,
 	typeIntoFixedCollectionItem,
 	clickWorkflowCardContent,
 	assertOutputTableContent,
@@ -63,7 +64,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				openedUrl = url;
 			});
 		});
-		selectResourceLocatorItem('workflowId', 0, 'Create a');
+		selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 		cy.then(() => cy.visit(openedUrl));
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
@@ -142,7 +143,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		cy.window().then((win) => {
 			cy.stub(win, 'open').callsFake((url) => {
 				cy.visit(url);
-				selectResourceLocatorItem('workflowId', 0, 'Create a');
+				selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 
 				openNode('When Executed by Another Workflow');
 
@@ -218,7 +219,7 @@ function validateAndReturnToParent(targetChild: string, offset: number, fields: 
 
 	// Note that outside of e2e tests this will be pre-selected correctly.
 	// Due to our workaround to remain in the same tab we need to select the correct tab manually
-	selectResourceLocatorItem('workflowId', offset, targetChild);
+	selectResourceLocatorItem('workflowId', offset - 1, targetChild);
 
 	clickExecuteNode();
 

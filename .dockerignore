@@ -17,3 +17,4 @@ docker/compose
 docker/**/Dockerfile
 .vscode
 cypress
+test-workflows

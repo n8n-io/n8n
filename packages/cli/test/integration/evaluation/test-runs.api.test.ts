@@ -6,6 +6,7 @@ import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { createTestRun, createTestCaseExecution } from '@test-integration/db/evaluation';
 import { createUserShell } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -18,6 +19,7 @@ let otherWorkflow: IWorkflowBase;
 let ownerShell: User;
 
 const testRunner = mockInstance(TestRunnerService);
+let testRunRepository: TestRunRepository;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'evaluation'],
@@ -30,7 +32,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestRun', 'WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate(['TestRun', 'TestCaseExecution', 'WorkflowEntity', 'SharedWorkflow']);
+
+	testRunRepository = Container.get(TestRunRepository);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
 	otherWorkflow = await createWorkflow({ name: 'other-workflow' });
@@ -51,17 +55,15 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 	// 	expect(resp.statusCode).toBe(404);
 	// });
 
-	// TODO: replace with workflow that is not accessible to the user
-	// test('should return 404 if user does not have access to test definition', async () => {
-	// 	const resp = await authOwnerAgent.get(
-	// 		`/evaluation/test-definitions/${otherTestDefinition.id}/runs`,
-	// 	);
-	//
-	// 	expect(resp.statusCode).toBe(404);
-	// });
+	test('should return 404 if user does not have access to workflow', async () => {
+		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
 
-	test('should retrieve list of runs for a workflow', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
+		const resp = await authOwnerAgent.get(`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}`);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should retrieve list of test runs for a workflow', async () => {
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		const resp = await authOwnerAgent.get(`/workflows/${workflowUnderTest.id}/test-runs`);
@@ -78,7 +80,6 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 	});
 
 	test('should retrieve list of test runs for a workflow with pagination', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun1 = await testRunRepository.createTestRun(workflowUnderTest.id);
 		// Mark as running just to make a slight delay between the runs
 		await testRunRepository.markAsRunning(testRun1.id);
@@ -112,11 +113,34 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 			}),
 		]);
 	});
+
+	test('should retrieve list of test runs for a shared workflow', async () => {
+		const memberShell = await createUserShell('global:member');
+		const memberAgent = testServer.authAgentFor(memberShell);
+		const memberPersonalProject = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(memberShell.id);
+
+		// Share workflow with a member
+		const sharingResponse = await authOwnerAgent
+			.put(`/workflows/${workflowUnderTest.id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
+
+		expect(sharingResponse.statusCode).toBe(200);
+
+		// Create a test run for the shared workflow
+		await testRunRepository.createTestRun(workflowUnderTest.id);
+
+		// Check if member can retrieve the test runs of a shared workflow
+		const resp = await memberAgent.get(`/workflows/${workflowUnderTest.id}/test-runs`);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toHaveLength(1);
+	});
 });
 
 describe('GET /workflows/:workflowId/test-runs/:id', () => {
 	test('should retrieve specific test run for a workflow', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		const resp = await authOwnerAgent.get(
@@ -141,7 +165,6 @@ describe('GET /workflows/:workflowId/test-runs/:id', () => {
 	});
 
 	test('should return 404 if user does not have access to the workflow', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
 
 		const resp = await authOwnerAgent.get(`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}`);
@@ -164,7 +187,6 @@ describe('GET /workflows/:workflowId/test-runs/:id', () => {
 		expect(sharingResponse.statusCode).toBe(200);
 
 		// Create a test run for the shared workflow
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		// Check if member can retrieve the test run of a shared workflow
@@ -181,9 +203,8 @@ describe('GET /workflows/:workflowId/test-runs/:id', () => {
 	});
 });
 
-describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
-	test('should delete test run for a test definition', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
+describe('DELETE /workflows/:workflowId/test-runs/:id', () => {
+	test('should delete test run of a workflow', async () => {
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		const resp = await authOwnerAgent.delete(
@@ -203,8 +224,7 @@ describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () =>
 		expect(resp.statusCode).toBe(404);
 	});
 
-	test('should return 404 if user does not have access to test definition', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
+	test('should return 404 if user does not have access to workflow', async () => {
 		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
 
 		const resp = await authOwnerAgent.delete(
@@ -215,9 +235,8 @@ describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () =>
 	});
 });
 
-describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', () => {
+describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 	test('should cancel test run', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		jest.spyOn(testRunRepository, 'markAsCancelled');
@@ -247,7 +266,6 @@ describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', 
 	});
 
 	test('should return 404 if user does not have access to the workflow', async () => {
-		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
 
 		const resp = await authOwnerAgent.post(
@@ -255,5 +273,113 @@ describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', 
 		);
 
 		expect(resp.statusCode).toBe(404);
+	});
+});
+
+describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
+	test('should retrieve test cases for a specific test run', async () => {
+		// Create a test run
+		const testRun = await createTestRun(workflowUnderTest.id);
+
+		// Create some test case executions for this test run
+		await createTestCaseExecution(testRun.id, {
+			status: 'success',
+			runAt: new Date(),
+			completedAt: new Date(),
+			metrics: { accuracy: 0.95 },
+		});
+
+		await createTestCaseExecution(testRun.id, {
+			status: 'error',
+			errorCode: 'UNKNOWN_ERROR',
+			runAt: new Date(),
+			completedAt: new Date(),
+		});
+
+		const resp = await authOwnerAgent.get(
+			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toHaveLength(2);
+		expect(resp.body.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					status: 'success',
+					metrics: { accuracy: 0.95 },
+				}),
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'UNKNOWN_ERROR',
+				}),
+			]),
+		);
+	});
+
+	test('should return empty array when no test cases exist for a test run', async () => {
+		// Create a test run with no test cases
+		const testRun = await createTestRun(workflowUnderTest.id);
+
+		const resp = await authOwnerAgent.get(
+			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual([]);
+	});
+
+	test('should return 404 if test run does not exist', async () => {
+		const resp = await authOwnerAgent.get(
+			`/workflows/${workflowUnderTest.id}/test-runs/non-existent-id/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 if user does not have access to the workflow', async () => {
+		const testRun = await createTestRun(otherWorkflow.id);
+
+		const resp = await authOwnerAgent.get(
+			`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return test cases for a shared workflow', async () => {
+		const memberShell = await createUserShell('global:member');
+		const memberAgent = testServer.authAgentFor(memberShell);
+		const memberPersonalProject = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(memberShell.id);
+
+		// Share workflow with a member
+		const sharingResponse = await authOwnerAgent
+			.put(`/workflows/${workflowUnderTest.id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
+
+		expect(sharingResponse.statusCode).toBe(200);
+
+		// Create a test run with test cases
+		const testRun = await createTestRun(workflowUnderTest.id);
+
+		await createTestCaseExecution(testRun.id, {
+			status: 'success',
+			runAt: new Date(),
+			completedAt: new Date(),
+			metrics: { precision: 0.87 },
+		});
+
+		// Check if member can retrieve the test cases of a shared workflow
+		const resp = await memberAgent.get(
+			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toHaveLength(1);
+		expect(resp.body.data[0]).toMatchObject({
+			status: 'success',
+			metrics: { precision: 0.87 },
+		});
 	});
 });
