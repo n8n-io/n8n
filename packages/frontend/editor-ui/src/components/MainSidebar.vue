@@ -505,8 +505,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
-	min-width: $sidebar-expanded-width;
-	max-width: 244px;
+	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {
