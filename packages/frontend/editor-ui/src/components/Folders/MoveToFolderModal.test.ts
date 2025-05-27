@@ -66,8 +66,6 @@ const TEST_WORKFLOW_RESOURCE = {
 	parentFolderId: 'test-parent-folder-id',
 };
 
-const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
-
 let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let credentialsStore: MockedStore<typeof useCredentialsStore>;
