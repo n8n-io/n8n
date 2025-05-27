@@ -15,7 +15,6 @@ import type {
 	INode,
 	IDataObject,
 	IWorkflowBase,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
@@ -186,28 +185,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				const triggerNode = workflowData.nodes.find((node) => node.name === options.triggerNode);
 				const isEvaluationsTriggerNode = triggerNode?.type === EVALUATION_TRIGGER_NODE_TYPE;
 				if (isEvaluationsTriggerNode) {
-					const inputPayload: INodeExecutionData = {
-						json: {
-							previousRun: {
-								// todo
-							},
-						},
-					};
-
-					const nodeData: ITaskData = {
-						startTime: Date.now(),
-						executionTime: 0,
-						executionIndex: 0,
-						executionStatus: 'success',
-						data: {
-							main: [[inputPayload]],
-						},
-						source: [null],
-					};
-
+					const previousRun = workflowsStore.getWorkflowRunData?.[options.triggerNode]?.[0];
 					triggerToStartFrom = {
 						name: options.triggerNode,
-						data: nodeData,
+						data: previousRun,
 					};
 				} else {
 					triggerToStartFrom = {

@@ -22,22 +22,6 @@ import {
 
 export const DEFAULT_STARTING_ROW = 2;
 
-interface PreviousRun {
-	row_number: number;
-	_rowsLeft: number;
-}
-
-function isPreviousRun(run: unknown): run is PreviousRun {
-	return (
-		typeof run === 'object' &&
-		run !== null &&
-		'row_number' in run &&
-		'_rowsLeft' in run &&
-		typeof run._rowsLeft === 'number' &&
-		typeof run.row_number === 'number'
-	);
-}
-
 export class EvaluationTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Evaluation Trigger',
@@ -130,10 +114,10 @@ export class EvaluationTrigger implements INodeType {
 			? (this.getNodeParameter('maxRows', 0) as number) + 1
 			: MAX_ROWS;
 
-		const previousRun = inputData?.[0]?.json?.previousRun;
-		const firstDataRow = isPreviousRun(previousRun)
-			? previousRun.row_number + 1
-			: DEFAULT_STARTING_ROW;
+		// todo handle errors
+		// todo handle 0 rows left
+		const previousRun = inputData?.[0]?.json?.row_number;
+		const firstDataRow = typeof previousRun === 'number' ? previousRun + 1 : DEFAULT_STARTING_ROW;
 		const rangeOptions = {
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
