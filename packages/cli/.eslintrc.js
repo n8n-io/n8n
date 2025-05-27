@@ -12,11 +12,7 @@ module.exports = {
 		project: './tsconfig.json',
 	},
 
-	ignorePatterns: [
-		'jest.config.js',
-		// TODO: Remove these
-		'src/databases/ormconfig.ts',
-	],
+	ignorePatterns: ['jest.config.js'],
 
 	rules: {
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
@@ -39,12 +35,6 @@ module.exports = {
 	},
 
 	overrides: [
-		{
-			files: ['./src/databases/migrations/**/*.ts'],
-			rules: {
-				'unicorn/filename-case': 'off',
-			},
-		},
 		{
 			files: [
 				'./src/databases/**/*.ts',
