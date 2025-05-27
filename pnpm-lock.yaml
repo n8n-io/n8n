@@ -733,7 +733,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(9b9a451e446ad3ea9ebac049587c5a34))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ef11abf912b177072dc4684c7f1e0991))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -760,7 +760,7 @@ importers:
         version: 0.3.2(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(415e1c4f3090ad57f7ece71a5a3da6ea)
+        version: 0.3.24(0b923e6d48682f99da8f9a63a648df33)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -789,8 +789,8 @@ importers:
         specifier: 0.1.3
         version: 0.1.3(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/qdrant':
-        specifier: 0.1.1
-        version: 0.1.1(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(typescript@5.8.2)
+        specifier: 0.1.2
+        version: 0.1.2(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(typescript@5.8.2)
       '@langchain/redis':
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
@@ -822,8 +822,8 @@ importers:
         specifier: 4.0.0
         version: 4.0.0
       '@qdrant/js-client-rest':
-        specifier: 1.11.0
-        version: 1.11.0(typescript@5.8.2)
+        specifier: 1.14.1
+        version: 1.14.1(typescript@5.8.2)
       '@supabase/supabase-js':
         specifier: 2.45.4
         version: 2.45.4
@@ -865,7 +865,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(9b9a451e446ad3ea9ebac049587c5a34)
+        version: 0.3.11(ef11abf912b177072dc4684c7f1e0991)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -3931,10 +3931,6 @@ packages:
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0, npm: '>=6.14.13'}
     deprecated: Please update to a newer version
 
-  '@fastify/busboy@2.1.1':
-    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
-    engines: {node: '>=14'}
-
   '@floating-ui/core@1.3.1':
     resolution: {integrity: sha512-Bu+AMaXNjrpjh41znzHqaz3r2Nr8hHuHZT6V2LBKMhyMl0FgKA62PNYbqnfgmzOhoWZj70Zecisbo4H1rotP5g==}
 
@@ -4817,8 +4813,8 @@ packages:
     peerDependencies:
       '@langchain/core': '>=0.2.21 <0.4.0'
 
-  '@langchain/qdrant@0.1.1':
-    resolution: {integrity: sha512-v0A8wMO6x1XnYKgaXoqWUQAkeOvwcUIQPc1tM5sDTuU3JdQrhZDfuaSg7LJAh0wXJ9Eud7MwpkjYHWUiuE17/A==}
+  '@langchain/qdrant@0.1.2':
+    resolution: {integrity: sha512-Bz4VCZeKgL8DYAyfrSOv2zF6AKKr0tISjGwqe77BATmh4ae2Zkc6mHSB0StZCLiur7u+C2weyY+YimmkcZVyeA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.2.21 <0.4.0'
@@ -5358,9 +5354,9 @@ packages:
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
 
-  '@qdrant/js-client-rest@1.11.0':
-    resolution: {integrity: sha512-RzF+HxL8A7bb/uaxU1jVS1a919bb3FCo1giB/D19UT3d50AYl4+4AyklbsjlXpWEHekbNocQAQ016fqT9hSRtQ==}
-    engines: {node: '>=18.0.0', pnpm: '>=8'}
+  '@qdrant/js-client-rest@1.14.1':
+    resolution: {integrity: sha512-CkCCTDc4gCXq+hhjB3yDw9Hs/PxCJ0bKqk/LjAAmuL9+nDm/RPue4C/tGOIMlzouTQ2l6J6t+JPeM//j38VFug==}
+    engines: {node: '>=18.17.0', pnpm: '>=8'}
     peerDependencies:
       typescript: ^5.8.2
 
@@ -13580,10 +13576,6 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici@5.28.5:
-    resolution: {integrity: sha512-zICwjrDrcrUE0pyyJc1I2QzBkLM8FINsgOrt6WjA+BgajVq9Nxu2PbFFXUrAggLfDXlZGZBVZYw7WNV5KiBiBA==}
-    engines: {node: '>=14.0'}
-
   undici@6.21.1:
     resolution: {integrity: sha512-q/1rj5D0/zayJB2FraXdaWxbhWiNKDvu8naDT2dl1yTlvJp4BLtOcp2a5BvgGNQpYYJzau7tf1WgKv3b+7mqpQ==}
     engines: {node: '>=18.17'}
@@ -16563,8 +16555,6 @@ snapshots:
 
   '@faker-js/faker@8.0.2': {}
 
-  '@fastify/busboy@2.1.1': {}
-
   '@floating-ui/core@1.3.1': {}
 
   '@floating-ui/dom@1.4.5':
@@ -16595,7 +16585,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(9b9a451e446ad3ea9ebac049587c5a34))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ef11abf912b177072dc4684c7f1e0991))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16604,7 +16594,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(9b9a451e446ad3ea9ebac049587c5a34)
+      langchain: 0.3.11(ef11abf912b177072dc4684c7f1e0991)
     transitivePeerDependencies:
       - encoding
 
@@ -17122,7 +17112,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(415e1c4f3090ad57f7ece71a5a3da6ea)':
+  '@langchain/community@0.3.24(0b923e6d48682f99da8f9a63a648df33)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17133,7 +17123,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(9b9a451e446ad3ea9ebac049587c5a34)
+      langchain: 0.3.11(ef11abf912b177072dc4684c7f1e0991)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17148,14 +17138,14 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(9b9a451e446ad3ea9ebac049587c5a34))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ef11abf912b177072dc4684c7f1e0991))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@huggingface/inference': 2.8.0
       '@mozilla/readability': 0.6.0
       '@pinecone-database/pinecone': 4.0.0
-      '@qdrant/js-client-rest': 1.11.0(typescript@5.8.2)
+      '@qdrant/js-client-rest': 1.14.1(typescript@5.8.2)
       '@smithy/eventstream-codec': 2.2.0
       '@smithy/protocol-http': 3.3.0
       '@smithy/signature-v4': 2.2.1
@@ -17334,10 +17324,10 @@ snapshots:
       flat: 5.0.2
       uuid: 10.0.0
 
-  '@langchain/qdrant@0.1.1(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(typescript@5.8.2)':
+  '@langchain/qdrant@0.1.2(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(typescript@5.8.2)':
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      '@qdrant/js-client-rest': 1.11.0(typescript@5.8.2)
+      '@qdrant/js-client-rest': 1.14.1(typescript@5.8.2)
       uuid: 10.0.0
     transitivePeerDependencies:
       - typescript
@@ -18018,12 +18008,12 @@ snapshots:
 
   '@protobufjs/utf8@1.1.0': {}
 
-  '@qdrant/js-client-rest@1.11.0(typescript@5.8.2)':
+  '@qdrant/js-client-rest@1.14.1(typescript@5.8.2)':
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       '@sevinf/maybe': 0.5.0
       typescript: 5.8.2
-      undici: 5.28.5
+      undici: 6.21.1
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -18210,7 +18200,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       axios-retry: 4.5.0(axios@1.8.3)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -20549,16 +20539,8 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       is-retry-allowed: 2.2.0
-
-  axios@1.8.3:
-    dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.8.3(debug@4.3.6):
     dependencies:
@@ -23393,7 +23375,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -23458,7 +23440,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24387,7 +24369,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(9b9a451e446ad3ea9ebac049587c5a34):
+  langchain@0.3.11(ef11abf912b177072dc4684c7f1e0991):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -26178,7 +26160,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26764,7 +26746,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
       axios: 1.9.0(debug@4.4.1)
 
@@ -27226,7 +27208,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -28189,10 +28171,6 @@ snapshots:
   underscore@1.13.6: {}
 
   undici-types@5.26.5: {}
-
-  undici@5.28.5:
-    dependencies:
-      '@fastify/busboy': 2.1.1
 
   undici@6.21.1: {}
 
