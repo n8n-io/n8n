@@ -21,7 +21,7 @@ export class McpTrigger extends Node {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Expose n8n tools as an MCP Server endpoint',
 		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
 		defaults: {
@@ -143,8 +143,9 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
+		const node = context.getNode();
 		// Get a url/tool friendly name for the server, based on the node name
-		const serverName = nodeNameToToolName(context.getNode());
+		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
 		const mcpServer: McpServer = McpServerSingleton.instance(serverName, context.logger);
 

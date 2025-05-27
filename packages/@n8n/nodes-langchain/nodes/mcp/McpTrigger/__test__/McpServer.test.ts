@@ -34,11 +34,15 @@ describe('McpServer', () => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
 
-		mcpServer = new McpServer(mock());
+		mcpServer = new McpServer('mcpServer', mock());
 	});
 
 	describe('connectTransport', () => {
 		const postUrl = '/post-url';
+
+		it('should set up the server name on initialization', () => {
+			expect(mcpServer.serverName).toEqual('mcpServer');
+		});
 
 		it('should set up a transport and server', async () => {
 			await mcpServer.connectTransport(postUrl, mockResponse);
