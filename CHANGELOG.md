@@ -1,3 +1,18 @@
+## [1.94.1](https://github.com/n8n-io/n8n/compare/n8n@1.94.0...n8n@1.94.1) (2025-05-27)
+
+
+### Bug Fixes
+
+* **core:** Fix community package installation on windows ([#15685](https://github.com/n8n-io/n8n/issues/15685)) ([b4ad956](https://github.com/n8n-io/n8n/commit/b4ad9564d8044186785fd8e90ce712e2a7cd72b3))
+* **Jira Software Node:** Use old endpoints to get all issues on self-hosted instances ([#15591](https://github.com/n8n-io/n8n/issues/15591)) ([0d6dcff](https://github.com/n8n-io/n8n/commit/0d6dcff9e6f95a97624c871713278195ac03c156))
+
+
+### Features
+
+* **editor:** Distinguish official verified nodes from community built nodes ([#15630](https://github.com/n8n-io/n8n/issues/15630)) ([17c9400](https://github.com/n8n-io/n8n/commit/17c9400cbb49daae5647ddfd993c6839583dc2d1))
+
+
+
 # [1.94.0](https://github.com/n8n-io/n8n/compare/n8n@1.93.0...n8n@1.94.0) (2025-05-19)
 
 
