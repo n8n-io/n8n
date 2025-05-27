@@ -387,6 +387,8 @@ describe('Langchain Integration', () => {
 		};
 
 		workflowPage.actions.openNode('Character Text Splitter');
+		ndv.getters.inputPanel().should('exist');
+		ndv.getters.outputPanel().should('exist');
 		ndv.getters.outputRunSelector().should('exist');
 		ndv.getters.inputRunSelector().should('exist');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '3 of 3');
