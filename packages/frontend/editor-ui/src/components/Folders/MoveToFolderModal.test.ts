@@ -74,8 +74,9 @@ let foldersStore: MockedStore<typeof useFoldersStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 
 const personalProject = createProjectListItem('personal');
+const anotherUser = createProjectListItem('personal');
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
-const projects = [personalProject, ...teamProjects];
+const projects = [personalProject, ...teamProjects, anotherUser];
 const homeProject = createProjectSharingData();
 
 const enableSharing = {
@@ -278,7 +279,7 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(getByTestId('project-sharing-select'));
 
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		expect(projectSelectDropdownItems).toHaveLength(4);
+		expect(projectSelectDropdownItems).toHaveLength(5);
 		let selectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
 		expect(selectedValue).toBe(personalProject.name);
 
@@ -595,6 +596,50 @@ describe('MoveToFolderModal', () => {
 		});
 	});
 
+	it('should transfer selected folder to personal project on submit', async () => {
+		settingsStore.settings = enableSharing;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data: {
+					resource: TEST_FOLDER_RESOURCE,
+					resourceType: 'folder',
+					workflowListEventBus: mockEventBus,
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+		const projectSelect = getByTestId('project-sharing-select');
+		await userEvent.click(getByTestId('project-sharing-select'));
+		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		const anotherUserPersonalProject = [...projectSelectDropdownItems].find(
+			(item) => item.querySelector('p')?.textContent?.trim() === anotherUser.name,
+		);
+		expect(anotherUserPersonalProject).toBeDefined();
+
+		await userEvent.click(anotherUserPersonalProject as Element);
+
+		const submitButton = getByTestId('confirm-move-folder-button');
+		expect(submitButton).toBeEnabled();
+
+		expect(submitButton).toBeEnabled();
+		await userEvent.click(submitButton);
+
+		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
+			newParent: {
+				id: anotherUser.id,
+				name: anotherUser.name,
+				type: 'project',
+			},
+			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
+			projectId: personalProject.id,
+			destinationProjectId: anotherUser.id,
+			shareCredentials: undefined,
+		});
+	});
+
 	it('should render for workflow resource', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -697,6 +742,53 @@ describe('MoveToFolderModal', () => {
 				oldParentId: TEST_WORKFLOW_RESOURCE.parentFolderId,
 			},
 			projectId: teamProjects[0].id,
+			shareCredentials: undefined,
+		});
+	});
+
+	it('should transfer selected workflow to personal project on submit', async () => {
+		settingsStore.settings = enableSharing;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data: {
+					resource: TEST_WORKFLOW_RESOURCE,
+					resourceType: 'workflow',
+					workflowListEventBus: mockEventBus,
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+		const projectSelect = getByTestId('project-sharing-select');
+		await userEvent.click(getByTestId('project-sharing-select'));
+		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		const anotherUserPersonalProject = [...projectSelectDropdownItems].find(
+			(item) => item.querySelector('p')?.textContent?.trim() === anotherUser.name,
+		);
+		expect(anotherUserPersonalProject).toBeDefined();
+
+		await userEvent.click(anotherUserPersonalProject as Element);
+
+		const submitButton = getByTestId('confirm-move-folder-button');
+		expect(submitButton).toBeEnabled();
+
+		expect(submitButton).toBeEnabled();
+		await userEvent.click(submitButton);
+
+		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
+			newParent: {
+				id: anotherUser.id,
+				name: anotherUser.name,
+				type: 'project',
+			},
+			workflow: {
+				id: TEST_WORKFLOW_RESOURCE.id,
+				name: TEST_WORKFLOW_RESOURCE.name,
+				oldParentId: TEST_WORKFLOW_RESOURCE.parentFolderId,
+			},
+			projectId: anotherUser.id,
 			shareCredentials: undefined,
 		});
 	});
