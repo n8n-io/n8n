@@ -43,6 +43,7 @@ n8n_template_manager/
 ├── requirements.txt         # Python dependencies
 └── README.md                # This file
 ```
+**Note:** The `Dockerfile` and `.dockerignore` for this application are located within the `n8n_template_manager/` directory.
 
 ## Setup and Installation
 
@@ -98,7 +99,32 @@ python main.py
 ```
 The server will typically start on `http://127.0.0.1:8000`.
 
-### 3. Accessing the Application
+### 3. Building and Running with Docker
+
+*   **Build the Docker Image:**
+    The command must be run from the **repository root** (the parent directory of `n8n_template_manager/` and `workflows/`). This is crucial because the Docker build needs access to both the application code within `n8n_template_manager/` and the sibling `workflows/` directory (which is copied into the image).
+    ```bash
+    docker build -f ./n8n_template_manager/Dockerfile . -t n8n-template-manager
+    ```
+    *   `-f ./n8n_template_manager/Dockerfile`: Specifies the path to the Dockerfile located inside the `n8n_template_manager` directory.
+    *   `.`: Sets the build context to the current directory (the repository root).
+
+*   **Run the Docker Container:**
+    ```bash
+    docker run -p 8000:8000 n8n-template-manager
+    ```
+    To run with persistent data, you need to mount volumes for the database and search index:
+    ```bash
+    docker run -p 8000:8000 \
+      -v /path/on/your/host/for_db:/app/n8n_templates.db \
+      -v /path/on/your/host/for_index:/app/whoosh_index \
+      n8n-template-manager
+    ```
+    Replace `/path/on/your/host/for_db` and `/path/on/your/host/for_index` with actual paths on your host machine.
+
+    **Note on data persistence:** The Docker image by default will use an SQLite database (`n8n_templates.db`) and Whoosh index (`whoosh_index/`) within the container (both created in the `/app` directory). For persistent data across container restarts, you should mount volumes for these paths. For example, you might map `/app/n8n_templates.db` (the database file) and `/app/whoosh_index` (the search index directory) inside the container to directories on your host machine.
+
+### 4. Accessing the Application
 
 *   **Web UI:** Open your browser and go to `http://127.0.0.1:8000/`.
 *   **API Documentation (Swagger UI):** `http://127.0.0.1:8000/docs`.
@@ -162,6 +188,27 @@ This system can serve as a data source for Retrieval Augmented Generation (RAG) 
 2.  From the search results, identify promising `template_id`s.
 3.  Use the `GET /api/v1/templates/{template_id}` endpoint to retrieve the full `raw_json` of these specific workflows.
 4.  The `raw_json` (which contains the complete n8n workflow structure, nodes, and connections) can then be fed into the RAG system's language model as context to answer questions, generate explanations, or even assist in creating new workflows.
+
+## Deployment Platforms (e.g., Render.com)
+
+When deploying this application to platforms like Render.com, Heroku, etc., using Docker, you need to configure the service settings correctly:
+
+*   **Root Directory / Build Context Path**: Ensure this setting in your deployment service points to the `n8n_template_manager/` subdirectory if the platform builds from the repository root but needs to know where your application-specific files and Dockerfile are for context *within that subdirectory*. However, for the Docker build command `docker build -f ./n8n_template_manager/Dockerfile .` to work as specified (accessing `../workflows`), the build must be initiated from the repository root.
+    *   If the platform checks out your repository and runs the build command from the repository root, you'd specify the Dockerfile path as `n8n_template_manager/Dockerfile`.
+    *   If the platform changes its working directory to `n8n_template_manager/` first and then builds, the Dockerfile path would be `Dockerfile`, but this would break the `COPY ../workflows` command in the Dockerfile unless `workflows` is *also* inside `n8n_template_manager`.
+    *   **Recommendation for Render.com & similar platforms:**
+        *   Set your service's "Build Context Directory" (or similar, often called "Root Directory" on Render) to your repository's actual root.
+        *   Specify the "Dockerfile Path" as `n8n_template_manager/Dockerfile`.
+        *   This setup ensures that the build process uses the repository root as the context, allowing the `Dockerfile` to correctly `COPY . .` (for files within `n8n_template_manager/`) and `COPY ../workflows /app/external_workflows` (or `COPY workflows /app/workflows` if the Dockerfile was adjusted to assume workflows is inside the build context of `n8n_template_manager`).
+        *   The current Dockerfile (`n8n_template_manager/Dockerfile`) has `COPY workflows /app/workflows` and `ENV DOCKER_WORKFLOW_DIR /app/workflows/n8n-templates-sorted`. This setup requires the `workflows` directory to be *inside* the `n8n_template_manager` directory at build time if the build context is `n8n_template_manager`. If the build context is the repository root, and `workflows` is a sibling to `n8n_template_manager`, the `Dockerfile`'s `COPY workflows /app/workflows` would need to be `COPY ./workflows /app/workflows` (if `workflows` is relative to root) or the path adjusted.
+        *   **To align with the Docker build command `docker build -f ./n8n_template_manager/Dockerfile .` (context is root):** The Dockerfile's `COPY` commands for app code should be prefixed with `n8n_template_manager/` (e.g., `COPY n8n_template_manager/app app/`). The current Dockerfile (from Turn 56) assumes the context *is* `n8n_template_manager/` for app files. This needs to be harmonized.
+
+Let's assume the Dockerfile (from Turn 56) is intended to be built with `n8n_template_manager` as the context. For platforms like Render:
+*   **Root Directory (for checkout):** Repository Root.
+*   **Build Command (if custom):** `docker build -f n8n_template_manager/Dockerfile -t $IMAGE_NAME n8n_template_manager` (This sets the context to `n8n_template_manager`)
+*   **Dockerfile Path (if platform builds without custom command, using a root dir):** Set Root Directory to `n8n_template_manager` on the platform, then Dockerfile path is just `Dockerfile`.
+
+This ensures that the build process uses the correct context (`n8n_template_manager/`) and finds all necessary files as defined by that Dockerfile's `COPY` commands. The `workflows` directory would need to be inside `n8n_template_manager` for this specific Dockerfile setup.
 
 ## Future Enhancements / To-Do
 
