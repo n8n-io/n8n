@@ -28,7 +28,7 @@ const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 };
 
 beforeEach(async () => {
-	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
 	owner = await createOwner();
 	member = await createMember();

@@ -4,10 +4,7 @@ import type { ITaskDataConnections } from 'n8n-workflow';
 import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
-const { NODE_ENV, E2E_TESTS } = process.env;
-export const inProduction = NODE_ENV === 'production';
-export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-export const inTest = NODE_ENV === 'test';
+const { E2E_TESTS } = process.env;
 export const inE2ETests = E2E_TESTS === 'true';
 
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
@@ -160,5 +157,3 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
-
-export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

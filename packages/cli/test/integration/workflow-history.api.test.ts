@@ -25,7 +25,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory']);
 });
 
 describe('GET /workflow-history/:workflowId', () => {

@@ -1,3 +1,6 @@
+import type { LdapConfig } from '@n8n/constants';
+import { LDAP_FEATURE_NAME } from '@n8n/constants';
+import { SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -9,7 +12,6 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -20,12 +22,7 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import {
-	BINARY_AD_ATTRIBUTES,
-	LDAP_FEATURE_NAME,
-	LDAP_LOGIN_ENABLED,
-	LDAP_LOGIN_LABEL,
-} from './constants';
+import { BINARY_AD_ATTRIBUTES, LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from './constants';
 import {
 	createFilter,
 	deleteAllLdapIdentities,
@@ -41,7 +38,6 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 } from './helpers.ee';
-import type { LdapConfig } from './types';
 
 @Service()
 export class LdapService {

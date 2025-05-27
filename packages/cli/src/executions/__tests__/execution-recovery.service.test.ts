@@ -1,3 +1,4 @@
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
@@ -6,7 +7,6 @@ import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
@@ -46,7 +46,7 @@ describe('ExecutionRecoveryService', () => {
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
-		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
+		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
 	});
 
 	afterAll(async () => {
@@ -256,14 +256,14 @@ describe('ExecutionRecoveryService', () => {
 
 				if (!runData) fail('Expected `runData` to be defined');
 
-				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
 
 				if (!manualTriggerTaskData) fail("Expected manual trigger's `taskData` to be defined");
 				if (!debugHelperTaskData) fail("Expected debug helper's `taskData` to be defined");
 
 				const originalManualTriggerTaskData =
-					IN_PROGRESS_EXECUTION_DATA.resultData.runData['When clicking "Test workflow"'].at(
+					IN_PROGRESS_EXECUTION_DATA.resultData.runData['When clicking "Execute workflow"'].at(
 						0,
 					)?.data;
 
@@ -335,7 +335,7 @@ describe('ExecutionRecoveryService', () => {
 
 				if (!runData) fail('Expected `runData` to be defined');
 
-				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
 
 				expect(manualTriggerTaskData?.executionStatus).toBe('success');

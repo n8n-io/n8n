@@ -68,6 +68,18 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'workflow-archived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
+	'workflow-unarchived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
 	'workflow-saved': {
 		user: UserLike;
 		workflow: IWorkflowDb;

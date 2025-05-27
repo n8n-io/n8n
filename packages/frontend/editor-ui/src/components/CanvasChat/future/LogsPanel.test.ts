@@ -19,6 +19,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { LOGS_PANEL_STATE } from '../types/logs';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useNDVStore } from '@/stores/ndv.store';
+import { deepCopy } from 'n8n-workflow';
+import { createTestTaskData } from '@/__tests__/mocks';
+import { useLogsStore } from '@/stores/logs.store';
+import { useUIStore } from '@/stores/ui.store';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -27,6 +32,9 @@ describe('LogsPanel', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	function render() {
 		return renderComponent(LogsPanel, {
@@ -52,10 +60,16 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);
-		workflowsStore.toggleLogsPanelOpen(false);
+
+		logsStore = mockedStore(useLogsStore);
+		logsStore.toggleOpen(false);
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
+
+		ndvStore = mockedStore(useNDVStore);
+
+		uiStore = mockedStore(useUIStore);
 
 		Object.defineProperty(document.body, 'offsetHeight', {
 			configurable: true,
@@ -160,11 +174,11 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open itself by pulling up the resizer', async () => {
-		workflowsStore.toggleLogsPanelOpen(false);
+		logsStore.toggleOpen(false);
 
 		const rendered = render();
 
-		expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.CLOSED);
+		expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -173,17 +187,17 @@ describe('LogsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
 
 		await waitFor(() => {
-			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 		});
 	});
 
 	it('should close itself by pulling down the resizer', async () => {
-		workflowsStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 
 		const rendered = render();
 
-		expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+		expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 		expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -196,13 +210,13 @@ describe('LogsPanel', () => {
 		);
 
 		await waitFor(() => {
-			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.CLOSED);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 			expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 		});
 	});
 
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
-		workflowsStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -211,26 +225,33 @@ describe('LogsPanel', () => {
 			finished: false,
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
 			stoppedAt: undefined,
-			data: { resultData: { runData: {} } },
+			data: {
+				resultData: { runData: { Chat: [createTestTaskData()] } },
+			},
 		});
 
 		const rendered = render();
 
 		await fireEvent.click(rendered.getByText('Overview'));
 
-		expect(rendered.getByText('Running')).toBeInTheDocument();
+		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		workflowsStore.addNodeExecutionData({
+		workflowsStore.addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});
 
-		const treeItem = within(await rendered.findByRole('treeitem'));
+		const lastTreeItem = await waitFor(() => {
+			const items = rendered.getAllByRole('treeitem');
 
-		expect(treeItem.getByText('AI Agent')).toBeInTheDocument();
-		expect(treeItem.getByText('Running')).toBeInTheDocument();
+			expect(items).toHaveLength(2);
+			return within(items[1]);
+		});
+
+		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
+		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',
@@ -243,11 +264,11 @@ describe('LogsPanel', () => {
 				executionStatus: 'success',
 			},
 		});
-		expect(await treeItem.findByText('AI Agent')).toBeInTheDocument();
-		expect(treeItem.getByText('Success in 33ms')).toBeInTheDocument();
+		expect(await lastTreeItem.findByText('AI Agent')).toBeInTheDocument();
+		expect(lastTreeItem.getByText('Success in 33ms')).toBeInTheDocument();
 
 		workflowsStore.setWorkflowExecutionData({
-			...aiChatExecutionResponse,
+			...workflowsStore.workflowExecutionData!,
 			id: '1234',
 			status: 'success',
 			finished: true,
@@ -263,8 +284,8 @@ describe('LogsPanel', () => {
 		const router = useRouter();
 		const operations = useCanvasOperations({ router });
 
-		workflowsStore.toggleLogsPanelOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		logsStore.toggleOpen(true);
+		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
 		workflowsStore.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
 			id: '2345',
@@ -284,5 +305,132 @@ describe('LogsPanel', () => {
 
 		expect(workflowsStore.nodesByName['AI Agent']).toBeUndefined();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+	});
+
+	it('should open NDV if the button is clicked', async () => {
+		logsStore.toggleOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
+
+		expect(ndvStore.activeNodeName).toBe(null);
+		expect(ndvStore.output.run).toBe(undefined);
+
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
+
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('AI Agent');
+			expect(ndvStore.output.run).toBe(0);
+		});
+	});
+
+	it('should toggle subtree when chevron icon button is pressed', async () => {
+		logsStore.toggleOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+		const overview = within(rendered.getByTestId('logs-overview'));
+
+		await waitFor(() => expect(overview.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(overview.queryByText('AI Agent')).toBeInTheDocument();
+		expect(overview.queryByText('AI Model')).toBeInTheDocument();
+
+		// Close subtree of AI Agent
+		await fireEvent.click(overview.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(overview.queryAllByRole('treeitem')).toHaveLength(1));
+		expect(overview.queryByText('AI Agent')).toBeInTheDocument();
+		expect(overview.queryByText('AI Model')).not.toBeInTheDocument();
+
+		// Re-open subtree of AI Agent
+		await fireEvent.click(overview.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(overview.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(overview.queryByText('AI Agent')).toBeInTheDocument();
+		expect(overview.queryByText('AI Model')).toBeInTheDocument();
+	});
+
+	it('should toggle input and output panel when the button is clicked', async () => {
+		logsStore.toggleOpen(true);
+		logsStore.toggleInputOpen(false);
+		logsStore.toggleOutputOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+
+		const header = within(rendered.getByTestId('log-details-header'));
+
+		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
+
+		await fireEvent.click(header.getByText('Input'));
+
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
+
+		await fireEvent.click(header.getByText('Output'));
+
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
+	});
+
+	describe('selection', () => {
+		beforeEach(() => {
+			logsStore.toggleOpen(true);
+			workflowsStore.setWorkflow(aiChatWorkflow);
+			workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+		});
+
+		it('should allow to select previous and next row via keyboard shortcut', async () => {
+			const { getByTestId, findByRole } = render();
+			const overview = getByTestId('logs-overview');
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			await fireEvent.keyDown(overview, { key: 'K' });
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+			await fireEvent.keyDown(overview, { key: 'J' });
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should not select a log for the selected node on canvas if sync is disabled', async () => {
+			logsStore.toggleLogSelectionSync(false);
+
+			const { findByRole, rerender } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			uiStore.lastSelectedNode = 'AI Agent';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should automatically select a log for the selected node on canvas if sync is enabled', async () => {
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			uiStore.lastSelectedNode = 'AI Agent';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+		});
+
+		it('should automatically expand and select a log for the selected node on canvas if the log entry is collapsed', async () => {
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole, getByLabelText, findByText, queryByText } = render();
+
+			await fireEvent.click(await findByText('AI Agent'));
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+			await fireEvent.click(getByLabelText('Toggle row'));
+			await rerender({});
+			expect(queryByText(/AI Model/)).not.toBeInTheDocument();
+			uiStore.lastSelectedNode = 'AI Model';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
 	});
 });

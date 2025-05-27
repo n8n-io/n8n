@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '@test/mocking';
@@ -38,7 +38,7 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
+				Pick<User, 'password' | 'updatedAt' | 'authIdentities' | 'mfaSecret' | 'mfaRecoveryCodes'>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -47,6 +47,8 @@ describe('UserService', () => {
 			expect(publicUser.password).toBeUndefined();
 			expect(publicUser.updatedAt).toBeUndefined();
 			expect(publicUser.authIdentities).toBeUndefined();
+			expect(publicUser.mfaSecret).toBeUndefined();
+			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 		});
 
 		it('should add scopes if requested', async () => {

@@ -20,17 +20,17 @@ export class InsightsModule implements BaseN8nModule {
 		// We want to initialize the insights background process (schedulers) for the main leader instance
 		// to have only one main instance saving the insights data
 		if (this.instanceSettings.isLeader) {
-			this.insightsService.startBackgroundProcess();
+			this.insightsService.startTimers();
 		}
 	}
 
 	@OnLeaderTakeover()
 	startBackgroundProcess() {
-		this.insightsService.startBackgroundProcess();
+		this.insightsService.startTimers();
 	}
 
 	@OnLeaderStepdown()
 	stopBackgroundProcess() {
-		this.insightsService.stopBackgroundProcess();
+		this.insightsService.stopTimers();
 	}
 }

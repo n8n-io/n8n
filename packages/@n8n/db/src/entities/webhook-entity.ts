@@ -50,4 +50,8 @@ export class WebhookEntity {
 	get isDynamic() {
 		return this.webhookPath.split('/').some((s) => s.startsWith(':'));
 	}
+
+	display() {
+		return `${this.method} ${this.webhookPath}`;
+	}
 }

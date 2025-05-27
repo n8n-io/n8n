@@ -4,7 +4,8 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
@@ -18,7 +19,7 @@ import type {
 	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -26,9 +27,11 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	Connection,
+	Dimensions,
 	GraphNode,
 	NodeDragEvent,
 	NodeMouseEvent,
+	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
@@ -58,7 +61,7 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
-	'update:node:activated': [id: string];
+	'update:node:activated': [id: string, event?: MouseEvent];
 	'update:node:deactivated': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
@@ -66,7 +69,11 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
-	'click:node': [id: string];
+	'update:logs-open': [open?: boolean];
+	'update:logs:input-open': [open?: boolean];
+	'update:logs:output-open': [open?: boolean];
+	'update:has-range-selection': [isActive: boolean];
+	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -94,6 +101,10 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
+	'selection:end': [position: XYPosition];
+	'open:sub-workflow': [nodeId: string];
+	'start-chat': [];
 }>();
 
 const props = withDefaults(
@@ -141,7 +152,9 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	dimensions,
 	nodesSelectionActive,
+	userSelectionRect,
 	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
@@ -265,6 +278,7 @@ function selectUpstreamNodes(id: string) {
 
 const keyMap = computed(() => {
 	const readOnlyKeymap = {
+		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
 		ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
 		ctrl_a: () => addSelectedNodes(graphNodes.value),
@@ -279,6 +293,9 @@ const keyMap = computed(() => {
 		ArrowRight: emitWithLastSelectedNode(selectRightNode),
 		shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
 		shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
+		l: () => emit('update:logs-open'),
+		i: () => emit('update:logs:input-open'),
+		o: () => emit('update:logs:output-open'),
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -297,6 +314,7 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
+		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
 });
@@ -348,7 +366,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	emit('click:node', node.id);
+	emit('click:node', node.id, getProjectedPosition(event));
 
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
@@ -361,15 +379,17 @@ function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
-function onSelectionEnd() {
+function onSelectionEnd(event: MouseEvent) {
 	if (selectedNodes.value.length === 1) {
 		nodesSelectionActive.value = false;
 	}
+
+	emit('selection:end', getProjectedPosition(event));
 }
 
-function onSetNodeActivated(id: string) {
+function onSetNodeActivated(id: string, event?: MouseEvent) {
 	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:activated' });
-	emit('update:node:activated', id);
+	emit('update:node:activated', id, event);
 }
 
 function onSetNodeDeactivated(id: string) {
@@ -384,9 +404,21 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
-function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
+function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
+
+	if (panIntoView) {
+		const nodes = ids.map(findNode).filter(isPresent);
+
+		if (nodes.length === 0) {
+			return;
+		}
+
+		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
+
+		void setViewport(newViewport, { duration: 200 });
+	}
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -540,10 +572,9 @@ const isPaneMoving = ref(false);
 
 useViewportAutoAdjust(viewportRef, viewport, setViewport);
 
-function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+function getProjectedPosition(event?: MouseEvent | TouchEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const offsetX = event?.clientX ?? 0;
-	const offsetY = event?.clientY ?? 0;
+	const [offsetX, offsetY] = event ? getMousePosition(event) : [0, 0];
 
 	return project({
 		x: offsetX - bounds.left,
@@ -588,6 +619,10 @@ function onPaneMoveEnd() {
 	isPaneMoving.value = false;
 }
 
+function onViewportChange() {
+	emit('viewport:change', viewport.value, dimensions.value);
+}
+
 // #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
 // resulting in outdated data. We use this computed property as a workaround to get the latest node data.
 const nodeDataById = computed(() => {
@@ -603,18 +638,16 @@ const nodeDataById = computed(() => {
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent) {
+function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
+		...target,
 	});
 }
 
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
-	contextMenu.open(event, {
-		source: 'canvas',
-		nodeIds: selectedNodeIds.value,
-	});
+	onOpenContextMenu(event);
 }
 
 function onOpenNodeContextMenu(
@@ -622,11 +655,14 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (selectedNodeIds.value.includes(id)) {
-		onOpenContextMenu(event);
+	if (source === 'node-button') {
+		contextMenu.open(event, { source, nodeId: id });
+	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
+		onOpenContextMenu(event, { nodeId: id });
+	} else {
+		onSelectNodes({ ids: [id] });
+		contextMenu.open(event, { source, nodeId: id });
 	}
-
-	contextMenu.open(event, { source, nodeId: id });
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -659,6 +695,9 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'open_sub_workflow': {
+			return emit('open:sub-workflow', nodeIds[0]);
+		}
 	}
 }
 
@@ -773,6 +812,10 @@ watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
 
+watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
+	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
+);
+
 /**
  * Provide
  */
@@ -821,6 +864,7 @@ provide(CanvasKey, {
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
+		@viewport-change="onViewportChange"
 	>
 		<template #node-canvas-node="nodeProps">
 			<slot name="node" v-bind="{ nodeProps }">

@@ -20,6 +20,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		this.setupListeners({
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-archived': (event) => this.workflowArchived(event),
+			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
@@ -82,6 +84,22 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowDeleted({ user, workflowId }: RelayEventMap['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowArchived({ user, workflowId }: RelayEventMap['workflow-archived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.archived',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowUnarchived({ user, workflowId }: RelayEventMap['workflow-unarchived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.unarchived',
 			payload: { ...user, workflowId },
 		});
 	}

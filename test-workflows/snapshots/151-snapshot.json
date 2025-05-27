@@ -1,0 +1,799 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1710331888599,
+            "executionTime": 1,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise5": [
+          {
+            "startTime": 1710331888600,
+            "executionTime": 341,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 700007874,
+                      "business": {
+                        "object": true
+                      },
+                      "profile": 16154361,
+                      "accountHolderName": "Node QA",
+                      "currency": "EUR",
+                      "country": "NL",
+                      "type": "iban",
+                      "details": {
+                        "object": true
+                      },
+                      "user": 5681537,
+                      "active": true,
+                      "ownedByCustomer": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise4": [
+          {
+            "startTime": 1710331888941,
+            "executionTime": 384,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 16154361,
+                      "type": "personal",
+                      "details": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise3": [
+          {
+            "startTime": 1710331889325,
+            "executionTime": 240,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "rate": 1.09309,
+                      "source": "EUR",
+                      "target": "USD",
+                      "time": "2024-03-12T00:00:00+0000"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise2": [
+          {
+            "startTime": 1710331889565,
+            "executionTime": 249,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "accountHolder": {
+                        "object": true
+                      },
+                      "issuer": {
+                        "object": true
+                      },
+                      "bankDetails": [
+                        "json array"
+                      ],
+                      "transactions": [
+                        "json array"
+                      ],
+                      "startOfStatementBalance": {
+                        "object": true
+                      },
+                      "endOfStatementBalance": {
+                        "object": true
+                      },
+                      "endOfStatementUnrealisedGainLoss": {
+                        "object": true
+                      },
+                      "balanceAssetConfiguration": {
+                        "object": true
+                      },
+                      "query": {
+                        "object": true
+                      },
+                      "request": {
+                        "object": true
+                      },
+                      "feeSummary": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise6": [
+          {
+            "startTime": 1710331889814,
+            "executionTime": 751,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "sourceAmount": 2,
+                      "guaranteedTargetAmountAllowed": false,
+                      "targetAmountAllowed": true,
+                      "paymentOptions": [
+                        "json array"
+                      ],
+                      "notices": [
+                        "json array"
+                      ],
+                      "transferFlowConfig": {
+                        "object": true
+                      },
+                      "rateTimestamp": "2024-03-13T12:11:29Z",
+                      "clientId": "transferwise-personal-tokens",
+                      "expirationTime": "2024-03-13T12:41:29Z",
+                      "id": "9d0519da-b525-4d4d-92c2-d9ca1df535ad",
+                      "type": "REGULAR",
+                      "createdTime": "2024-03-13T12:11:29Z",
+                      "user": 5681537,
+                      "rateType": "FIXED",
+                      "rateExpirationTime": "2024-04-12T12:11:29Z",
+                      "payOut": "BANK_TRANSFER",
+                      "guaranteedTargetAmount": false,
+                      "providedAmountType": "SOURCE",
+                      "status": "PENDING",
+                      "profile": 16154361,
+                      "rate": 1,
+                      "sourceCurrency": "EUR",
+                      "targetCurrency": "EUR",
+                      "payInCountry": "GB",
+                      "funding": "POST"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise14": [
+          {
+            "startTime": 1710331890565,
+            "executionTime": 513,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "sourceAmount": 2,
+                      "guaranteedTargetAmountAllowed": false,
+                      "targetAmountAllowed": true,
+                      "paymentOptions": [
+                        "json array"
+                      ],
+                      "notices": [
+                        "json array"
+                      ],
+                      "transferFlowConfig": {
+                        "object": true
+                      },
+                      "rateTimestamp": "2024-03-13T12:11:30Z",
+                      "clientId": "transferwise-personal-tokens",
+                      "expirationTime": "2024-03-13T12:41:30Z",
+                      "id": "f4ac8d5d-2d97-4a7f-a695-c6709e1a930d",
+                      "type": "REGULAR",
+                      "createdTime": "2024-03-13T12:11:30Z",
+                      "user": 5681537,
+                      "rateType": "FIXED",
+                      "rateExpirationTime": "2024-04-12T12:11:30Z",
+                      "payOut": "BANK_TRANSFER",
+                      "guaranteedTargetAmount": false,
+                      "providedAmountType": "SOURCE",
+                      "status": "PENDING",
+                      "profile": 16154361,
+                      "rate": 1,
+                      "sourceCurrency": "EUR",
+                      "targetCurrency": "EUR",
+                      "payInCountry": "GB",
+                      "funding": "POST"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise12": [
+          {
+            "startTime": 1710331891078,
+            "executionTime": 304,
+            "source": [
+              {
+                "previousNode": "Wise4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 16154361,
+                      "type": "personal",
+                      "details": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "id": 16154362,
+                      "type": "business",
+                      "details": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise": [
+          {
+            "startTime": 1710331891382,
+            "executionTime": 282,
+            "source": [
+              {
+                "previousNode": "Wise2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 23302,
+                      "profileId": 16154361,
+                      "recipientId": 147784111,
+                      "creationTime": "2021-03-24T14:32:25.979Z",
+                      "modificationTime": "2021-03-24T14:32:25.979Z",
+                      "active": true,
+                      "eligible": true,
+                      "balances": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise7": [
+          {
+            "startTime": 1710331891664,
+            "executionTime": 471,
+            "source": [
+              {
+                "previousNode": "Wise6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "sourceAmount": 2,
+                      "guaranteedTargetAmountAllowed": false,
+                      "targetAmountAllowed": true,
+                      "paymentOptions": [
+                        "json array"
+                      ],
+                      "notices": [
+                        "json array"
+                      ],
+                      "transferFlowConfig": {
+                        "object": true
+                      },
+                      "rateTimestamp": "2024-03-13T12:11:29Z",
+                      "clientId": "transferwise-personal-tokens",
+                      "expirationTime": "2024-03-13T12:41:29Z",
+                      "id": "9d0519da-b525-4d4d-92c2-d9ca1df535ad",
+                      "type": "REGULAR",
+                      "createdTime": "2024-03-13T12:11:29Z",
+                      "user": 5681537,
+                      "rateType": "FIXED",
+                      "rateExpirationTime": "2024-04-12T12:11:29Z",
+                      "payOut": "BANK_TRANSFER",
+                      "guaranteedTargetAmount": false,
+                      "providedAmountType": "SOURCE",
+                      "payInCountry": "GB",
+                      "funding": "POST",
+                      "status": "PENDING",
+                      "profile": 16154361,
+                      "rate": 1,
+                      "sourceCurrency": "EUR",
+                      "targetCurrency": "EUR"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise16": [
+          {
+            "startTime": 1710331892136,
+            "executionTime": 2032,
+            "source": [
+              {
+                "previousNode": "Wise14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 53112532,
+                      "user": 5681537,
+                      "targetAccount": 700007874,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "f4ac8d5d-2d97-4a7f-a695-c6709e1a930d",
+                      "status": "incoming_payment_waiting",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-03-13 12:11:34",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 1.37,
+                      "targetCurrency": "EUR",
+                      "targetValue": 1.37,
+                      "customerTransactionId": "6c67d18c-6639-4158-b8a6-325858c7d155"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise1": [
+          {
+            "startTime": 1710331894168,
+            "executionTime": 136,
+            "source": [
+              {
+                "previousNode": "Wise"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "code": "AED",
+                      "hasBankDetails": false,
+                      "payInAllowed": false,
+                      "sampleBankDetails": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise8": [
+          {
+            "startTime": 1710331894305,
+            "executionTime": 1875,
+            "source": [
+              {
+                "previousNode": "Wise7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 53112534,
+                      "user": 5681537,
+                      "targetAccount": 700007874,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "9d0519da-b525-4d4d-92c2-d9ca1df535ad",
+                      "status": "incoming_payment_waiting",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-03-13 12:11:36",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 1.37,
+                      "targetCurrency": "EUR",
+                      "targetValue": 1.37,
+                      "customerTransactionId": "f162e8de-8d10-4bc9-88ef-4840fd22b6a5"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise15": [
+          {
+            "startTime": 1710331896180,
+            "executionTime": 258,
+            "source": [
+              {
+                "previousNode": "Wise16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 53112532,
+                      "user": 5681537,
+                      "targetAccount": 700007874,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "f4ac8d5d-2d97-4a7f-a695-c6709e1a930d",
+                      "status": "cancelled",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-03-13 12:11:34",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 1.37,
+                      "targetCurrency": "EUR",
+                      "targetValue": 1.37,
+                      "customerTransactionId": "6c67d18c-6639-4158-b8a6-325858c7d155"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise9": [
+          {
+            "startTime": 1710331896438,
+            "executionTime": 250,
+            "source": [
+              {
+                "previousNode": "Wise8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 53112534,
+                      "user": 5681537,
+                      "targetAccount": 700007874,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "9d0519da-b525-4d4d-92c2-d9ca1df535ad",
+                      "status": "incoming_payment_waiting",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-03-13 12:11:36",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 1.37,
+                      "targetCurrency": "EUR",
+                      "targetValue": 1.37,
+                      "customerTransactionId": "f162e8de-8d10-4bc9-88ef-4840fd22b6a5"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise10": [
+          {
+            "startTime": 1710331896689,
+            "executionTime": 355,
+            "source": [
+              {
+                "previousNode": "Wise9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 52915297,
+                      "user": 5681537,
+                      "targetAccount": 147784111,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "2eabfb55-3b8f-4d8d-82dc-b92db67d5117",
+                      "status": "cancelled",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-02-13 02:08:50",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 2,
+                      "targetCurrency": "EUR",
+                      "targetValue": 2,
+                      "customerTransactionId": "f0431a1e-fe5f-456a-a254-4c7cc774545d"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wise13": [
+          {
+            "startTime": 1710331897044,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "Wise10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 52915297,
+                      "user": 5681537,
+                      "targetAccount": 147784111,
+                      "sourceAccount": {
+                        "object": true
+                      },
+                      "quote": {
+                        "object": true
+                      },
+                      "quoteUuid": "2eabfb55-3b8f-4d8d-82dc-b92db67d5117",
+                      "status": "cancelled",
+                      "reference": "",
+                      "rate": 1,
+                      "created": "2024-02-13 02:08:50",
+                      "business": {
+                        "object": true
+                      },
+                      "transferRequest": {
+                        "object": true
+                      },
+                      "details": {
+                        "object": true
+                      },
+                      "hasActiveIssues": false,
+                      "sourceCurrency": "EUR",
+                      "sourceValue": 2,
+                      "targetCurrency": "EUR",
+                      "targetValue": 2,
+                      "customerTransactionId": "f0431a1e-fe5f-456a-a254-4c7cc774545d"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Wise13"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-03-13T12:11:28.599Z",
+  "stoppedAt": "2024-03-13T12:11:37.044Z",
+  "status": "running",
+  "finished": true
+}

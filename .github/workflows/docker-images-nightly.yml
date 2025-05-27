@@ -37,7 +37,7 @@ jobs:
           DOCKER_BUILD_SUMMARY: false
         with:
           context: .
-          file: ./docker/images/n8n-custom/Dockerfile
+          file: ./docker/images/n8n/Dockerfile
           build-args: |
             N8N_RELEASE_TYPE=nightly
           platforms: linux/amd64,linux/arm64

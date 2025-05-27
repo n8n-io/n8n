@@ -12,7 +12,7 @@ vi.mock('@/stores/ui.store', () => {
 		})),
 	};
 });
-vi.mock('@/stores/root.store', () => {
+vi.mock('@n8n/stores/useRootStore', () => {
 	return {
 		useRootStore: vi.fn(() => ({
 			webhookUrl: 'http://webhook-base',

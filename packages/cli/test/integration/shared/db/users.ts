@@ -1,15 +1,14 @@
 import { AuthIdentity } from '@n8n/db';
 import { type User } from '@n8n/db';
+import { AuthIdentityRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, GlobalRole } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
-import { getApiKeyScopesForRole } from '@/public-api/permissions.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { randomEmail, randomName, randomValidPassword } from '../random';
@@ -39,7 +38,6 @@ export async function newUser(attributes: Partial<User> = {}): Promise<User> {
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const userInstance = await newUser(attributes);
 	const { user } = await Container.get(UserRepository).createUserWithProject(userInstance);
-	user.computeIsOwner();
 	return user;
 }
 
@@ -74,10 +72,13 @@ export async function createUserWithMfaEnabled(
 		email,
 	});
 
-	await Container.get(AuthUserRepository).update(user.id, {
+	await Container.get(UserRepository).update(user.id, {
 		mfaSecret: encryptedSecret,
 		mfaRecoveryCodes: encryptedRecoveryCodes,
 	});
+
+	user.mfaSecret = encryptedSecret;
+	user.mfaRecoveryCodes = encryptedRecoveryCodes;
 
 	return {
 		user,

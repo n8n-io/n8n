@@ -3,7 +3,7 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import * as helperModule from '@utils/helpers';
 import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
@@ -11,11 +11,6 @@ import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
 import * as responseFormatterModule from '../methods/responseFormatter';
-
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
-}));
 
 jest.mock('@utils/helpers', () => ({
 	getPromptInputByType: jest.fn(),
@@ -30,7 +25,12 @@ jest.mock('../methods/chainExecutor', () => ({
 }));
 
 jest.mock('../methods/responseFormatter', () => ({
-	formatResponse: jest.fn(),
+	formatResponse: jest.fn().mockImplementation((response) => {
+		if (typeof response === 'string') {
+			return { text: response.trim() };
+		}
+		return response;
+	}),
 }));
 
 describe('ChainLlm Node', () => {
@@ -38,8 +38,6 @@ describe('ChainLlm Node', () => {
 	let mockExecuteFunction: jest.Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-
 		node = new ChainLlm();
 		mockExecuteFunction = mock<IExecuteFunctions>();
 
@@ -65,12 +63,7 @@ describe('ChainLlm Node', () => {
 		const fakeLLM = new FakeChatModel({});
 		mockExecuteFunction.getInputConnectionData.mockResolvedValue(fakeLLM);
 
-		(responseFormatterModule.formatResponse as jest.Mock).mockImplementation((response) => {
-			if (typeof response === 'string') {
-				return { text: response.trim() };
-			}
-			return response;
-		});
+		jest.clearAllMocks();
 	});
 
 	describe('description', () => {
@@ -171,14 +164,15 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should continue on failure when configured', async () => {
-			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
 
-			(executeChainModule.executeChain as jest.Mock).mockRejectedValueOnce(
-				new UnexpectedError('Test error'),
-			);
+			const error = new Error('Test error');
+			(executeChainModule.executeChain as jest.Mock).mockRejectedValue(error);
+
+			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
 			const result = await node.execute.call(mockExecuteFunction);
+
 			expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
 		});
 
@@ -195,6 +189,148 @@ describe('ChainLlm Node', () => {
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(result[0]).toHaveLength(2);
+		});
+
+		describe('batching (version 1.7+)', () => {
+			beforeEach(() => {
+				mockExecuteFunction.getNode.mockReturnValue({
+					name: 'Chain LLM',
+					typeVersion: 1.7,
+					parameters: {},
+				} as INode);
+			});
+
+			it('should process items in batches with default settings', async () => {
+				mockExecuteFunction.getInputData.mockReturnValue([
+					{ json: { item: 1 } },
+					{ json: { item: 2 } },
+					{ json: { item: 3 } },
+				]);
+
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'messages.messageValues') return [];
+						return defaultValue;
+					},
+				);
+
+				(helperModule.getPromptInputByType as jest.Mock)
+					.mockReturnValueOnce('Test prompt 1')
+					.mockReturnValueOnce('Test prompt 2')
+					.mockReturnValueOnce('Test prompt 3');
+
+				(executeChainModule.executeChain as jest.Mock)
+					.mockResolvedValueOnce(['Response 1'])
+					.mockResolvedValueOnce(['Response 2'])
+					.mockResolvedValueOnce(['Response 3']);
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(executeChainModule.executeChain).toHaveBeenCalledTimes(3);
+				expect(result[0]).toHaveLength(3);
+			});
+
+			it('should process items in smaller batches', async () => {
+				mockExecuteFunction.getInputData.mockReturnValue([
+					{ json: { item: 1 } },
+					{ json: { item: 2 } },
+					{ json: { item: 3 } },
+					{ json: { item: 4 } },
+				]);
+
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'batching.batchSize') return 2;
+						if (param === 'batching.delayBetweenBatches') return 0;
+						if (param === 'messages.messageValues') return [];
+						return defaultValue;
+					},
+				);
+
+				(helperModule.getPromptInputByType as jest.Mock)
+					.mockReturnValueOnce('Test prompt 1')
+					.mockReturnValueOnce('Test prompt 2')
+					.mockReturnValueOnce('Test prompt 3')
+					.mockReturnValueOnce('Test prompt 4');
+
+				(executeChainModule.executeChain as jest.Mock)
+					.mockResolvedValueOnce(['Response 1'])
+					.mockResolvedValueOnce(['Response 2'])
+					.mockResolvedValueOnce(['Response 3'])
+					.mockResolvedValueOnce(['Response 4']);
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(executeChainModule.executeChain).toHaveBeenCalledTimes(4);
+				expect(result[0]).toHaveLength(4);
+			});
+
+			it('should handle errors in batches with continueOnFail', async () => {
+				mockExecuteFunction.getInputData.mockReturnValue([
+					{ json: { item: 1 } },
+					{ json: { item: 2 } },
+				]);
+
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'batching.batchSize') return 2;
+						if (param === 'batching.delayBetweenBatches') return 0;
+						if (param === 'messages.messageValues') return [];
+						return defaultValue;
+					},
+				);
+
+				mockExecuteFunction.continueOnFail.mockReturnValue(true);
+
+				(helperModule.getPromptInputByType as jest.Mock)
+					.mockReturnValueOnce('Test prompt 1')
+					.mockReturnValueOnce('Test prompt 2');
+
+				(executeChainModule.executeChain as jest.Mock)
+					.mockResolvedValueOnce(['Response 1'])
+					.mockRejectedValueOnce(new Error('Test error'));
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0]).toHaveLength(2);
+				expect(result[0][1].json).toEqual({ error: 'Test error' });
+			});
+
+			it('should handle OpenAI rate limit errors in batches', async () => {
+				mockExecuteFunction.getInputData.mockReturnValue([
+					{ json: { item: 1 } },
+					{ json: { item: 2 } },
+				]);
+
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'batching.batchSize') return 2;
+						if (param === 'batching.delayBetweenBatches') return 0;
+						if (param === 'messages.messageValues') return [];
+						return defaultValue;
+					},
+				);
+
+				mockExecuteFunction.continueOnFail.mockReturnValue(true);
+
+				(helperModule.getPromptInputByType as jest.Mock)
+					.mockReturnValueOnce('Test prompt 1')
+					.mockReturnValueOnce('Test prompt 2');
+
+				const openAiError = new NodeApiError(mockExecuteFunction.getNode(), {
+					message: 'Rate limit exceeded',
+					cause: { error: { code: 'rate_limit_exceeded' } },
+				});
+
+				(executeChainModule.executeChain as jest.Mock)
+					.mockResolvedValueOnce(['Response 1'])
+					.mockRejectedValueOnce(openAiError);
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0]).toHaveLength(2);
+				expect(result[0][1].json).toEqual({ error: expect.stringContaining('Rate limit') });
+			});
 		});
 
 		it('should unwrap object responses when node version is 1.6 or higher', async () => {

@@ -39,9 +39,58 @@ export const LICENSE_QUOTAS = {
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
+	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 export type NumericLicenseFeature = (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS];
+
+export const LDAP_FEATURE_NAME = 'features.ldap';
+
+export type ConnectionSecurity = 'none' | 'tls' | 'startTls';
+
+export interface LdapConfig {
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: ConnectionSecurity;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
+}
+
+export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
+	loginEnabled: false,
+	loginLabel: '',
+	connectionUrl: '',
+	allowUnauthorizedCerts: false,
+	connectionSecurity: 'none',
+	connectionPort: 389,
+	baseDn: '',
+	bindingAdminDn: '',
+	bindingAdminPassword: '',
+	firstNameAttribute: '',
+	lastNameAttribute: '',
+	emailAttribute: '',
+	loginIdAttribute: '',
+	ldapIdAttribute: '',
+	userFilter: '',
+	synchronizationEnabled: false,
+	synchronizationInterval: 60,
+	searchPageSize: 0,
+	searchTimeout: 60,
+};

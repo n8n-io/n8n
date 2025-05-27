@@ -1,0 +1,137 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1710331887439,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Yourls": [
+          {
+            "startTime": 1710331887439,
+            "executionTime": 121,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "url": {
+                        "object": true
+                      },
+                      "status": "success",
+                      "message": "https://n8n.io/1710331887441 added to database",
+                      "title": "n8n-ulr with random suffix",
+                      "shorturl": "http://157.90.159.163:8095/10c",
+                      "statusCode": 200
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Yourls1": [
+          {
+            "startTime": 1710331887560,
+            "executionTime": 80,
+            "source": [
+              {
+                "previousNode": "Yourls"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "shorturl": "http://157.90.159.163:8095/10c",
+                      "url": "https://n8n.io/1710331887441",
+                      "title": "n8n-ulr with random suffix",
+                      "timestamp": "2024-03-13 12:11:27",
+                      "ip": "84.145.34.143",
+                      "clicks": "0"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Yourls2": [
+          {
+            "startTime": 1710331887641,
+            "executionTime": 64,
+            "source": [
+              {
+                "previousNode": "Yourls1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "keyword": "10c",
+                      "shorturl": "http://157.90.159.163:8095/10c",
+                      "longurl": "https://n8n.io/1710331887441",
+                      "title": "n8n-ulr with random suffix",
+                      "message": "success",
+                      "statusCode": 200
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Yourls2"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-03-13T12:11:27.439Z",
+  "stoppedAt": "2024-03-13T12:11:27.705Z",
+  "status": "running",
+  "finished": true
+}

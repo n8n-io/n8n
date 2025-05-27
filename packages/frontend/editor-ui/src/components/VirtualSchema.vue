@@ -35,13 +35,8 @@ import {
 } from 'vue-virtual-scroller';
 import MappingPill from './MappingPill.vue';
 
-import {
-	EnterpriseEditionFeature,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SCHEMA_PREVIEW_EXPERIMENT,
-} from '@/constants';
+import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -60,6 +55,7 @@ type Props = {
 	connectionType?: NodeConnectionType;
 	search?: string;
 	compact?: boolean;
+	outputIndex?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -71,6 +67,7 @@ const props = withDefaults(defineProps<Props>(), {
 	search: '',
 	mappingEnabled: false,
 	compact: false,
+	outputIndex: undefined,
 });
 
 const telemetry = useTelemetry();
@@ -81,7 +78,6 @@ const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
@@ -119,7 +115,14 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 			runIndex: getLastRunIndexWithData(fullNode.name, outputIndex, props.connectionType),
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
-	const nodeData = connectedOutputsWithData
+
+	// If outputIndex is specified, only use data from that specific output branch
+	const filteredOutputsWithData =
+		props.outputIndex !== undefined
+			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
+			: connectedOutputsWithData;
+
+	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
 			getNodeInputData(fullNode, runIndex, outputIndex, props.paneType, props.connectionType),
 		)
@@ -131,7 +134,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	let schema = getSchemaForExecutionData(data);
 	let preview = false;
 
-	if (data.length === 0 && isSchemaPreviewEnabled.value) {
+	if (data.length === 0) {
 		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
 			schema = getSchemaForJsonSchema(previewSchema.result);
@@ -150,10 +153,6 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		isDataEmpty,
 	};
 };
-
-const isSchemaPreviewEnabled = computed(() =>
-	posthogStore.isVariantEnabled(SCHEMA_PREVIEW_EXPERIMENT.name, SCHEMA_PREVIEW_EXPERIMENT.variant),
-);
 
 const isVariablesEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
@@ -228,7 +227,7 @@ const contextItems = computed(() => {
 
 const nodeSchema = asyncComputed(async () => {
 	const search = props.search;
-	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
+	if (props.data.length === 0) {
 		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
 			return filterSchema(getSchemaForJsonSchema(previewSchema.result), search);

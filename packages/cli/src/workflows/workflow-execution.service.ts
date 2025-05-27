@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
@@ -18,8 +19,6 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -107,6 +106,7 @@ export class WorkflowExecutionService {
 			destinationNode,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -117,6 +117,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
+			destinationNode,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -181,6 +182,7 @@ export class WorkflowExecutionService {
 			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
@@ -377,7 +379,12 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(workflow: IWorkflowBase, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(
+		workflow: IWorkflowBase,
+		startNodes?: string[],
+		pinData?: IPinData,
+		destinationNode?: string,
+	) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
@@ -388,7 +395,27 @@ export class WorkflowExecutionService {
 
 		// full manual execution
 
-		if (startNodes?.length === 0) return firstPinnedActivator ?? null;
+		if (startNodes?.length === 0) {
+			// If there is a destination node, find the pinned activator that is a parent of the destination node
+			if (destinationNode) {
+				const destinationParents = new Set(
+					new Workflow({
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						active: workflow.active,
+						nodeTypes: this.nodeTypes,
+					}).getParentNodes(destinationNode),
+				);
+
+				const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+
+				if (activator) {
+					return activator;
+				}
+			}
+
+			return firstPinnedActivator ?? null;
+		}
 
 		// partial manual execution
 

@@ -1,11 +1,13 @@
 import type {
 	ActionResultRequestDto,
+	CommunityNodeType,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
@@ -21,46 +23,66 @@ import type {
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
+import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
+	const vettedCommunityNodeTypes = ref<Map<string, CommunityNodeType>>(new Map());
+
 	const rootStore = useRootStore();
+
+	const actionsGenerator = useActionsGenerator();
+
+	const settingsStore = useSettingsStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
-	const allNodeTypes = computed(() => {
-		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
-			(allNodeTypes, nodeType) => {
-				const versionNumbers = Object.keys(nodeType).map(Number);
-				const allNodeVersions = versionNumbers.map((version) => nodeType[version]);
+	const communityNodeType = computed(() => {
+		return (nodeTypeName: string) => {
+			return vettedCommunityNodeTypes.value.get(nodeTypeName);
+		};
+	});
 
-				return [...allNodeTypes, ...allNodeVersions];
-			},
-			[],
+	const officialCommunityNodeTypes = computed(() =>
+		Array.from(vettedCommunityNodeTypes.value.values())
+			.filter(({ isOfficialNode, isInstalled }) => isOfficialNode && !isInstalled)
+			.map(({ nodeDescription }) => nodeDescription),
+	);
+
+	const unofficialCommunityNodeTypes = computed(() =>
+		Array.from(vettedCommunityNodeTypes.value.values())
+			.filter(({ isOfficialNode, isInstalled }) => !isOfficialNode && !isInstalled)
+			.map(({ nodeDescription }) => nodeDescription),
+	);
+
+	const communityNodesAndActions = computed(() => {
+		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
+	});
+
+	const allNodeTypes = computed(() => {
+		return Object.values(nodeTypes.value).flatMap((nodeType) =>
+			Object.keys(nodeType).map((version) => nodeType[Number(version)]),
 		);
 	});
 
 	const allLatestNodeTypes = computed(() => {
-		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
-			(allLatestNodeTypes, nodeVersions) => {
+		return Object.values(nodeTypes.value)
+			.map((nodeVersions) => {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
-				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
-
-				if (!latestNodeVersion) return allLatestNodeTypes;
-
-				return [...allLatestNodeTypes, latestNodeVersion];
-			},
-			[],
-		);
+				return nodeVersions[Math.max(...versionNumbers)];
+			})
+			.filter(Boolean);
 	});
 
 	const getNodeType = computed(() => {
@@ -122,14 +144,19 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
-	const isNodesAsToolNode = computed(() => {
+	const isToolNode = computed(() => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
-			return !!(
-				nodeType &&
-				nodeType.outputs.includes(NodeConnectionTypes.AiTool) &&
-				nodeType.usableAsTool
-			);
+			if (nodeType?.outputs && Array.isArray(nodeType.outputs)) {
+				const outputTypes = nodeType.outputs.map(
+					(output: NodeConnectionType | INodeOutputConfiguration) =>
+						typeof output === 'string' ? output : output.type,
+				);
+
+				return outputTypes.includes(NodeConnectionTypes.AiTool);
+			} else {
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+			}
 		};
 	});
 
@@ -140,7 +167,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const visibleNodeTypes = computed(() => {
-		return allLatestNodeTypes.value.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
+		return allLatestNodeTypes.value
+			.concat(officialCommunityNodeTypes.value)
+			.filter((nodeType) => !nodeType.hidden);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
@@ -273,14 +302,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+
+		await fetchCommunityNodePreviews();
+
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -328,6 +365,38 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const fetchCommunityNodePreviews = async () => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return;
+		}
+		try {
+			const communityNodeTypes = await nodeTypesApi.fetchCommunityNodeTypes(
+				rootStore.restApiContext,
+			);
+
+			vettedCommunityNodeTypes.value = new Map(
+				communityNodeTypes.map((nodeType) => [nodeType.name, nodeType]),
+			);
+		} catch (error) {
+			vettedCommunityNodeTypes.value = new Map();
+		}
+	};
+
+	const getCommunityNodeAttributes = async (nodeName: string) => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return null;
+		}
+
+		try {
+			return await nodeTypesApi.fetchCommunityNodeAttributes(
+				rootStore.restApiContext,
+				removePreviewToken(nodeName),
+			);
+		} catch (error) {
+			return null;
+		}
+	};
+
 	// #endregion
 
 	return {
@@ -339,13 +408,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
-		isNodesAsToolNode,
+		isToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		communityNodesAndActions,
+		communityNodeType,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
@@ -358,5 +429,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getCommunityNodeAttributes,
 	};
 });

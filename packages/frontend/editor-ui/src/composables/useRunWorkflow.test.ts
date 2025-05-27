@@ -25,7 +25,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -66,12 +66,12 @@ vi.mock('@/stores/workflows.store', () => {
 });
 
 vi.mock('@/stores/parameterOverrides.store', () => {
-	const storeState: Partial<ReturnType<typeof useParameterOverridesStore>> & {} = {
-		parameterOverrides: {},
-		substituteParameters: vi.fn(),
+	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
+		agentRequests: {},
+		generateAgentRequest: vi.fn(),
 	};
 	return {
-		useParameterOverridesStore: vi.fn().mockReturnValue(storeState),
+		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
 	};
 });
 
@@ -138,7 +138,7 @@ describe('useRunWorkflow({ router })', () => {
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
-	let parameterOverridesStore: ReturnType<typeof useParameterOverridesStore>;
+	let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
@@ -149,7 +149,7 @@ describe('useRunWorkflow({ router })', () => {
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
 		settingsStore = useSettingsStore();
-		parameterOverridesStore = useParameterOverridesStore();
+		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers({ router });
@@ -359,6 +359,64 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toEqual(mockExecutionResponse);
 		});
 
+		it('should exclude destinationNode from startNodes when provided', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const { runWorkflow } = useRunWorkflow({ router });
+			const dataCaptor = captor<IStartRunData>();
+
+			const parentNodeName = 'parentNode';
+			const destinationNodeName = 'destinationNode';
+
+			// Mock workflow with parent-child relationship
+			const workflow = {
+				name: 'Test Workflow',
+				id: 'workflowId',
+				getParentNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === destinationNodeName) {
+						return [parentNodeName];
+					}
+					return [];
+				}),
+				nodes: {
+					[parentNodeName]: createTestNode({ name: parentNodeName }),
+					[destinationNodeName]: createTestNode({ name: destinationNodeName }),
+				},
+			} as unknown as Workflow;
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentNodeName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+						data: { main: [[{ json: { test: 'data' } }]] },
+					},
+				],
+			} as unknown as IRunData;
+
+			// ACT
+			await runWorkflow({ destinationNode: destinationNodeName });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+
+			const startNodes = dataCaptor.value.startNodes ?? [];
+			const destinationInStartNodes = startNodes.some((node) => node.name === destinationNodeName);
+
+			expect(destinationInStartNodes).toBe(false);
+		});
+
 		it('should send dirty nodes for partial executions v2', async () => {
 			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			const composable = useRunWorkflow({ router });
@@ -512,12 +570,16 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('does substituteParameters on partial execution if `partialExecutionVersion` is set to 2', async () => {
+		it('sends agentRequest on partial execution if `partialExecutionVersion` is set to 2', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
 			const { runWorkflow } = useRunWorkflow({ router });
 			const dataCaptor = captor();
+			const agentRequest = {
+				query: 'query',
+				toolName: 'tool',
+			};
 
 			const workflow = mock<Workflow>({
 				name: 'Test Workflow',
@@ -559,16 +621,31 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-
+			vi.mocked(agentRequestStore).generateAgentRequest.mockReturnValue(agentRequest);
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
-			expect(parameterOverridesStore.substituteParameters).toHaveBeenCalledWith(
-				'WorkflowId',
-				'Test id',
-				{ param: '0' },
-			);
+			expect(agentRequestStore.generateAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
+				agentRequest: {
+					query: 'query',
+					tool: {
+						name: 'tool',
+					},
+				},
+				destinationNode: 'Test node',
+				dirtyNodeNames: undefined,
+				runData: mockRunData,
+				startNodes: [
+					{
+						name: 'Test node',
+						sourceData: null,
+					},
+				],
+				triggerToStartFrom: undefined,
+				workflowData,
+			});
 			expect(result).toEqual(mockExecutionResponse);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
@@ -820,6 +897,39 @@ describe('useRunWorkflow({ router })', () => {
 
 			// Assert that markExecutionAsStopped() is called eventually
 			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
+		});
+	});
+
+	describe('sortNodesByYPosition()', () => {
+		const getNodeUi = (name: string, position: [number, number]) => {
+			return {
+				name,
+				position,
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				id: name,
+				parameters: {},
+			};
+		};
+		it('should sort nodes by Y position in ascending order', () => {
+			const { sortNodesByYPosition } = useRunWorkflow({ router });
+
+			const topNode = 'topNode';
+			const middleNode = 'middleNode';
+			const bottomNode = 'bottomNode';
+
+			vi.mocked(workflowsStore.getNodeByName).mockImplementation((name) => {
+				if (name === topNode) return getNodeUi(topNode, [100, 50]);
+				if (name === middleNode) return getNodeUi(middleNode, [200, 200]);
+				if (name === bottomNode) return getNodeUi(bottomNode, [150, 350]);
+				return null;
+			});
+
+			// Test with different order of input nodes
+			const result = sortNodesByYPosition([bottomNode, topNode, middleNode]);
+
+			// Should be sorted by Y position (top to bottom)
+			expect(result).toEqual([topNode, middleNode, bottomNode]);
 		});
 	});
 });

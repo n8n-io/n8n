@@ -1,5 +1,11 @@
-import { CredentialsEntity, SharedCredentials } from '@n8n/db';
 import type { User, ICredentialsDb } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
@@ -9,10 +15,6 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import * as Db from '@/db';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
@@ -51,14 +53,16 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const result = await Db.transaction(async (transactionManager) => {
+	const projectRepository = Container.get(ProjectRepository);
+	const { manager: dbManager } = projectRepository;
+	const result = await dbManager.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
 
 		const newSharedCredential = new SharedCredentials();
 
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			user.id,
 			transactionManager,
 		);

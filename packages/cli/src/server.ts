@@ -1,3 +1,4 @@
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -11,15 +12,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import {
-	CLI_DIR,
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	inProduction,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -65,7 +58,6 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
@@ -124,6 +116,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/community-packages.controller');
+			await import('@/controllers/community-node-types.controller');
 		}
 
 		if (inE2ETests) {

@@ -13,7 +13,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();

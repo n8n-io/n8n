@@ -25,23 +25,12 @@ export type EndpointType =
  * Getters
  */
 
-export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
-	cy.get('[data-test-id="execute-workflow-button"]').click();
-	cy.contains('Workflow executed successfully', { timeout: 4000 }).should('be.visible');
-	if (waitForSuccessBannerToDisappear) {
-		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
-	}
-}
-
 export function getCanvas() {
 	return cy.getByTestId('canvas');
 }
 
 export function getCanvasPane() {
-	return cy.ifCanvasVersion(
-		() => cy.getByTestId('node-view-background'),
-		() => getCanvas().find('.vue-flow__pane'),
-	);
+	return getCanvas().find('.vue-flow__pane');
 }
 
 export function getContextMenu() {
@@ -53,55 +42,30 @@ export function getContextMenuAction(action: string) {
 }
 
 export function getInputPlusHandle(nodeName: string) {
-	return cy.ifCanvasVersion(
-		() => cy.get(`.add-input-endpoint[data-endpoint-name="${nodeName}"]`),
-		() =>
-			cy.get(
-				`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
-			),
+	return cy.get(
+		`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
 	);
 }
 
 export function getInputPlusHandleByType(nodeName: string, endpointType: EndpointType) {
-	return cy.ifCanvasVersion(
-		() =>
-			cy.get(
-				`.add-input-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
-			),
-		() =>
-			cy.get(
-				`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
-			),
+	return cy.get(
+		`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
 	);
 }
 
 export function getOutputHandle(nodeName: string) {
-	return cy.ifCanvasVersion(
-		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
-		() => cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"]`),
-	);
+	return cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"]`);
 }
 
 export function getOutputPlusHandle(nodeName: string) {
-	return cy.ifCanvasVersion(
-		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
-		() =>
-			cy.get(
-				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
-			),
+	return cy.get(
+		`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
 	);
 }
 
 export function getOutputPlusHandleByType(nodeName: string, endpointType: EndpointType) {
-	return cy.ifCanvasVersion(
-		() =>
-			cy.get(
-				`.add-output-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
-			),
-		() =>
-			cy.get(
-				`[data-test-id="canvas-node-output-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
-			),
+	return cy.get(
+		`[data-test-id="canvas-node-output-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
 	);
 }
 
@@ -122,17 +86,23 @@ export function getNodes() {
 }
 
 export function getNodeByName(name: string) {
-	return cy.ifCanvasVersion(
-		() => cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0),
-		() => cy.getByTestId('canvas-node').filter(`[data-node-name="${name}"]`).eq(0),
-	);
+	return cy.getByTestId('canvas-node').filter(`[data-node-name="${name}"]`).eq(0);
+}
+
+export function getNodesWithSpinner() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=sync-alt]').length > 0);
+}
+
+export function getWaitingNodes() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=clock]').length > 0);
 }
 
 export function getNodeRenderedTypeByName(name: string) {
-	return cy.ifCanvasVersion(
-		() => getNodeByName(name),
-		() => getNodeByName(name).find('[data-canvas-node-render-type]'),
-	);
+	return getNodeByName(name).find('[data-canvas-node-render-type]');
 }
 
 export function getWorkflowHistoryCloseButton() {
@@ -141,23 +111,15 @@ export function getWorkflowHistoryCloseButton() {
 
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
-	target.rightclick(name ? 'center' : 'topLeft', { force: true });
+	target.trigger('contextmenu');
 	cy.getByTestId('context-menu-item-toggle_activation').click();
 }
 
 export function getConnectionBySourceAndTarget(source: string, target: string) {
-	return cy.ifCanvasVersion(
-		() =>
-			cy
-				.get('.jtk-connector')
-				.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
-				.eq(0),
-		() =>
-			cy
-				.getByTestId('edge')
-				.filter(`[data-source-node-name="${source}"][data-target-node-name="${target}"]`)
-				.eq(0),
-	);
+	return cy
+		.getByTestId('edge')
+		.filter(`[data-source-node-name="${source}"][data-target-node-name="${target}"]`)
+		.eq(0);
 }
 
 export function getConnectionLabelBySourceAndTarget(source: string, target: string) {
@@ -200,6 +162,22 @@ export function getNodeIssuesByName(nodeName: string) {
 /**
  * Actions
  */
+
+export function executeWorkflow() {
+	cy.get('[data-test-id="execute-workflow-button"]').click();
+}
+
+export function waitForSuccessBannerToAppear() {
+	cy.contains(/(Workflow|Node) executed successfully/, { timeout: 4000 }).should('be.visible');
+}
+
+export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
+	executeWorkflow();
+	waitForSuccessBannerToAppear();
+	if (waitForSuccessBannerToDisappear) {
+		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+	}
+}
 
 export function addNodeToCanvas(
 	nodeDisplayName: string,
@@ -260,18 +238,11 @@ export function addSupplementalNodeToParent(
 ) {
 	connectNodeToParent(nodeName, endpointType, parentNodeName, exactMatch);
 
-	cy.ifCanvasVersion(
-		() => {
-			getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
-		},
-		() => {
-			if (endpointType === 'main') {
-				getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
-			} else {
-				getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
-			}
-		},
-	);
+	if (endpointType === 'main') {
+		getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+	} else {
+		getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
+	}
 }
 
 export function addLanguageModelNodeToParent(
@@ -362,14 +333,17 @@ export function openContextMenu(
 		target.find('[data-test-id="overflow-node-button"]').click({ force: true });
 	}
 
-	cy.ifCanvasVersion(
-		() => {},
-		() => {
-			getContextMenu().should('be.visible');
-		},
-	);
+	getContextMenu().should('be.visible');
 }
 
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
+}
+
+export function openExecutions() {
+	cy.getByTestId('radio-button-executions').click();
+}
+
+export function clickClearExecutionDataButton() {
+	cy.getByTestId('clear-execution-data-button').click();
 }

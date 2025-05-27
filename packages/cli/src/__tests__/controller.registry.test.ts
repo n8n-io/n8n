@@ -1,6 +1,9 @@
-jest.mock('@/constants', () => ({
-	inProduction: true,
-}));
+jest.mock('@n8n/backend-common', () => {
+	return {
+		...jest.requireActual('@n8n/backend-common'),
+		inProduction: true,
+	};
+});
 
 import type { GlobalConfig } from '@n8n/config';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
@@ -108,15 +111,15 @@ describe('ControllerRegistry', () => {
 		});
 
 		it('should disallow when feature is missing', async () => {
-			license.isFeatureEnabled.calledWith('feat:sharing').mockReturnValue(false);
+			license.isLicensed.calledWith('feat:sharing').mockReturnValue(false);
 			await agent.get('/rest/test/with-sharing').expect(403);
-			expect(license.isFeatureEnabled).toHaveBeenCalled();
+			expect(license.isLicensed).toHaveBeenCalled();
 		});
 
 		it('should allow when feature is available', async () => {
-			license.isFeatureEnabled.calledWith('feat:sharing').mockReturnValue(true);
+			license.isLicensed.calledWith('feat:sharing').mockReturnValue(true);
 			await agent.get('/rest/test/with-sharing').expect(200);
-			expect(license.isFeatureEnabled).toHaveBeenCalled();
+			expect(license.isLicensed).toHaveBeenCalled();
 		});
 	});
 

@@ -24,12 +24,7 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import {
-	NodeConnectionTypes,
-	ExpressionEvaluatorProxy,
-	NodeHelpers,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -53,14 +48,13 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { get } from 'lodash-es';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -222,16 +216,19 @@ export function resolveParameter<T = IDataObject>(
 	) {
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	let _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+	let _executeData = executeData(
+		parentNode,
+		contextNode!.name,
+		inputName,
+		runIndexCurrent,
+		runIndexParent,
+	);
 
 	if (!_executeData.source) {
 		// fallback to parent's run index for multi-output case
 		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
 	}
 
-	ExpressionEvaluatorProxy.setEvaluator(
-		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-	);
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
@@ -363,12 +360,15 @@ export function executeData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
+	parentRunIndex?: number,
 ): IExecuteData {
 	const executeData = {
 		node: {},
 		data: {},
 		source: null,
 	} as IExecuteData;
+
+	parentRunIndex = parentRunIndex ?? runIndex;
 
 	const workflowsStore = useWorkflowsStore();
 
@@ -395,15 +395,15 @@ export function executeData(
 
 		if (
 			!workflowRunData[parentNodeName] ||
-			workflowRunData[parentNodeName].length <= runIndex ||
-			!workflowRunData[parentNodeName][runIndex] ||
-			!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
-			workflowRunData[parentNodeName][runIndex].data === undefined ||
-			!workflowRunData[parentNodeName][runIndex].data.hasOwnProperty(inputName)
+			workflowRunData[parentNodeName].length <= parentRunIndex ||
+			!workflowRunData[parentNodeName][parentRunIndex] ||
+			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
+			workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
+			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
 		} else {
-			executeData.data = workflowRunData[parentNodeName][runIndex].data!;
+			executeData.data = workflowRunData[parentNodeName][parentRunIndex].data!;
 			if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
 				executeData.source = {
 					[inputName]: workflowRunData[currentNode][runIndex].source,
@@ -436,6 +436,7 @@ export function executeData(
 						{
 							previousNode: parentNodeName,
 							previousNodeOutput,
+							previousNodeRun: parentRunIndex,
 						},
 					],
 				};
@@ -1161,6 +1162,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
 			newName: workflowData.name,

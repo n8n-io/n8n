@@ -20,7 +20,7 @@ describe('AwsSes Node', () => {
 						{
 							parameters: {},
 							id: '61c910d6-9997-4bc0-b95d-2b2771c3110f',
-							name: 'When clicking ‘Test workflow’',
+							name: 'When clicking ‘Execute workflow’',
 							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [720, 380],
@@ -49,7 +49,7 @@ describe('AwsSes Node', () => {
 						},
 					],
 					connections: {
-						'When clicking ‘Test workflow’': {
+						'When clicking ‘Execute workflow’': {
 							main: [
 								[
 									{
@@ -104,7 +104,7 @@ describe('AwsSes Node', () => {
 							typeVersion: 1,
 							position: [-180, 520],
 							id: '363e874a-9054-4a64-bc3f-786719dde626',
-							name: "When clicking 'Test workflow'",
+							name: 'When clicking ‘Execute workflow’',
 						},
 						{
 							parameters: {
@@ -136,7 +136,7 @@ describe('AwsSes Node', () => {
 						},
 					],
 					connections: {
-						"When clicking 'Test workflow'": {
+						'When clicking ‘Execute workflow’': {
 							main: [
 								[
 									{
