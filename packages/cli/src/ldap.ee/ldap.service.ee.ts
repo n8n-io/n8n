@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
@@ -7,7 +8,7 @@ import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
-import { Cipher, Logger } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
