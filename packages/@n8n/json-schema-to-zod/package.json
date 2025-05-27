@@ -4,14 +4,14 @@
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
+  "module": "./dist/esm/index.mjs",
   "exports": {
     "import": {
-      "types": "./dist/types/index.d.ts",
-      "default": "./dist/esm/index.js"
+      "types": "./dist/esm/index.d.mts",
+      "default": "./dist/esm/index.mjs"
     },
     "require": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/cjs/index.d.ts",
       "default": "./dist/cjs/index.js"
     }
   },
@@ -23,10 +23,7 @@
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "build:types": "tsc -p tsconfig.types.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.js",
-    "build:esm": "tsc -p tsconfig.esm.json && node postesm.js",
-    "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
+    "build": "pnpm run typecheck && tsup",
     "dry": "pnpm run build && pnpm pub --dry-run",
     "test": "jest",
     "test:watch": "jest --watch"
@@ -64,6 +61,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
+    "tsup": "catalog:",
     "zod": "catalog:"
   }
 }

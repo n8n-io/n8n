@@ -6,7 +6,8 @@
 		"strict": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"incremental": false
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }
