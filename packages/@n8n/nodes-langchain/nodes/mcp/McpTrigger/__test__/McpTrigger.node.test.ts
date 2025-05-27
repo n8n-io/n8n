@@ -12,10 +12,10 @@ import { McpTrigger } from '../McpTrigger.node';
 const mockTool = mock<Tool>({ name: 'mockTool' });
 jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mockTool]);
 
-const mockServer = mock<McpServerManager>();
+const mockServerManager = mock<McpServerManager>();
 jest.mock('../McpServer', () => ({
-	McpServerSingleton: {
-		instance: jest.fn().mockImplementation(() => mockServer),
+	McpServerManager: {
+		instance: jest.fn().mockImplementation(() => mockServerManager),
 	},
 }));
 
@@ -47,7 +47,7 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that the connectTransport method was called with correct URL
-			expect(mockServer.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
 				'McpTrigger',
 				'/custom-path/messages',
 				mockResponse,
@@ -62,13 +62,13 @@ describe('McpTrigger Node', () => {
 			mockContext.getWebhookName.mockReturnValue('default');
 
 			// Mock that the server executes a tool and returns true
-			mockServer.handlePostMessage.mockResolvedValueOnce(true);
+			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that handlePostMessage was called with request, response and tools
-			expect(mockServer.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
+			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
 				mockTool,
 			]);
 
@@ -84,7 +84,7 @@ describe('McpTrigger Node', () => {
 			mockContext.getWebhookName.mockReturnValue('default');
 
 			// Mock that the server doesn't execute a tool and returns false
-			mockServer.handlePostMessage.mockResolvedValueOnce(false);
+			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
@@ -105,7 +105,7 @@ describe('McpTrigger Node', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the sanitized server name
-			expect(mockServer.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
 				'/custom-path/messages',
 				mockResponse,
@@ -123,7 +123,7 @@ describe('McpTrigger Node', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the default server name
-			expect(mockServer.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
 				'/custom-path/messages',
 				mockResponse,

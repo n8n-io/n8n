@@ -52,7 +52,15 @@ function getRequestId(body: string): string | undefined {
 	}
 }
 
+/**
+ * This singleton is shared across the instance, making sure it is the one
+ * keeping account of MCP servers.
+ * It needs to stay in memory to keep track of the long-lived connections.
+ * It requires a logger at first creation to set everything up.
+ */
 export class McpServerManager {
+	static #instance: McpServerManager;
+
 	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
@@ -63,9 +71,18 @@ export class McpServerManager {
 
 	logger: Logger;
 
-	constructor(logger: Logger) {
+	private constructor(logger: Logger) {
 		this.logger = logger;
 		this.logger.debug('MCP Server created');
+	}
+
+	static instance(logger: Logger): McpServerManager {
+		if (!McpServerManager.#instance) {
+			McpServerManager.#instance = new McpServerManager(logger);
+			logger.debug('Created singleton MCP manager');
+		}
+
+		return McpServerManager.#instance;
 	}
 
 	async createServerAndTransport(
@@ -208,33 +225,5 @@ export class McpServerManager {
 		server.onerror = (error: unknown) => {
 			this.logger.error(`MCP Error: ${error}`);
 		};
-	}
-}
-
-/**
- * This singleton is shared across the instance, making sure we only have one server to worry about.
- * It needs to stay in memory to keep track of the long-lived connections.
- * It requires a logger at first creation to set everything up.
- */
-export class McpServerSingleton {
-	static #instance: McpServerSingleton;
-
-	private _serverData: McpServerManager;
-
-	private constructor(logger: Logger) {
-		this._serverData = new McpServerManager(logger);
-	}
-
-	static instance(logger: Logger): McpServerManager {
-		if (!McpServerSingleton.#instance) {
-			McpServerSingleton.#instance = new McpServerSingleton(logger);
-			logger.debug('Created singleton for MCP Servers');
-		}
-
-		return McpServerSingleton.#instance.serverData;
-	}
-
-	get serverData() {
-		return this._serverData;
 	}
 }

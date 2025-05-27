@@ -6,8 +6,7 @@ import { NodeConnectionTypes, Node } from 'n8n-workflow';
 import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingSSEServerTransport';
-import { McpServerSingleton } from './McpServer';
-import type { McpServerManager } from './McpServer';
+import { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -147,7 +146,7 @@ export class McpTrigger extends Node {
 		// Get a url/tool friendly name for the server, based on the node name
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServerManager: McpServerManager = McpServerSingleton.instance(context.logger);
+		const mcpServerManager: McpServerManager = McpServerManager.instance(context.logger);
 
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
