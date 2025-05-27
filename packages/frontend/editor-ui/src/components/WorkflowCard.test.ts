@@ -69,7 +69,6 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 
 describe('WorkflowCard', () => {
 	let windowOpenSpy: MockInstance;
-	let route: ReturnType<typeof vueRouter.useRoute>;
 	let router: ReturnType<typeof vueRouter.useRouter>;
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -79,7 +78,6 @@ describe('WorkflowCard', () => {
 
 	beforeEach(async () => {
 		router = vueRouter.useRouter();
-		route = vueRouter.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -188,6 +186,10 @@ describe('WorkflowCard', () => {
 
 	it("should show 'Move' action if there is move resource permission and team projects available", async () => {
 		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
 
 		const data = createWorkflow({
 			scopes: ['workflow:move'],
@@ -212,6 +214,9 @@ describe('WorkflowCard', () => {
 
 	it("should show 'Move' action if there is update resource permission and folders available", async () => {
 		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
 
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
@@ -244,6 +249,35 @@ describe('WorkflowCard', () => {
 
 		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
 			name: VIEWS.SHARED_WORKFLOWS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Move');
+	});
+
+	it("should not show 'Move' action on the 'Workflows' page", async () => {
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.WORKFLOWS,
 		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
 
 		const { getByTestId } = renderComponent({ props: { data } });
