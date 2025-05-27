@@ -4,6 +4,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { SecretsHelper } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import type {
 	IExecuteWorkflowInfo,
@@ -23,7 +24,6 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';

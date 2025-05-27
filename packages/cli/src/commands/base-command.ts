@@ -26,7 +26,6 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ModuleRegistry } from '@/modules/module-registry';
@@ -37,6 +36,8 @@ import { PostHogClient } from '@/posthog';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+
+const enterpriseModules = ['external-secrets'];
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -88,8 +89,11 @@ export abstract class BaseCommand extends Command {
 					instance: this.instanceSettings,
 				})
 			) {
-				// register module in the registry for the dependency injection
-				await import(`../modules/${moduleName}/${moduleName}.module`);
+				const resolvedModuleName = enterpriseModules.includes(moduleName)
+					? `${moduleName}.ee`
+					: moduleName;
+				const modulePath = `../modules/${resolvedModuleName}/${moduleName}.module`;
+				await import(modulePath);
 
 				this.modulesConfig.addLoadedModule(moduleName);
 				this.logger.debug(`Loaded module "${moduleName}"`);
@@ -274,11 +278,6 @@ export abstract class BaseCommand extends Command {
 				this.logger.error('Could not activate license', { error });
 			}
 		}
-	}
-
-	async initExternalSecrets() {
-		const secretsManager = Container.get(ExternalSecretsManager);
-		await secretsManager.init();
 	}
 
 	initWorkflowHistory() {

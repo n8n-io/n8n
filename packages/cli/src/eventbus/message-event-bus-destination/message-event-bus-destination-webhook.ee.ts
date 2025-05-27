@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import { Agent as HTTPSAgent } from 'https';
+import { SecretsHelper } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -14,7 +15,6 @@ import type {
 } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';

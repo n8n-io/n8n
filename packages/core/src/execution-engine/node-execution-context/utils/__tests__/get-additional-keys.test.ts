@@ -1,18 +1,14 @@
 import { mock } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
-import type {
-	IDataObject,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	SecretsHelpersBase,
-} from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
+import type { SecretsHelper } from '../../../secrets-helper.ee';
 import { getAdditionalKeys } from '../get-additional-keys';
 
 describe('getAdditionalKeys', () => {
-	const secretsHelpers = mock<SecretsHelpersBase>();
+	const secretsHelpers = mock<SecretsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',

@@ -10,7 +10,7 @@ export type ModulePreInit = {
 	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
 };
 
-const moduleNames = ['insights'] as const;
+const moduleNames = ['insights', 'external-secrets'] as const;
 export type ModuleName = (typeof moduleNames)[number];
 
 class Modules extends CommaSeparatedStringArray<ModuleName> {
@@ -29,7 +29,7 @@ class Modules extends CommaSeparatedStringArray<ModuleName> {
 export class ModulesConfig {
 	/** Comma-separated list of all modules enabled */
 	@Env('N8N_ENABLED_MODULES')
-	enabledModules: Modules = [];
+	enabledModules: Modules = ['external-secrets'];
 
 	/** Comma-separated list of all disabled modules */
 	@Env('N8N_DISABLED_MODULES')

@@ -12,7 +12,7 @@ describe('ModulesConfig', () => {
 
 	it('should initialize with insights modules if no environment variable is set', () => {
 		const config = Container.get(ModulesConfig);
-		expect(config.modules).toEqual(['insights']);
+		expect(config.modules).toEqual(['insights', 'external-secrets']);
 	});
 
 	it('should parse valid module names from environment variable', () => {
@@ -24,7 +24,7 @@ describe('ModulesConfig', () => {
 	it('should disable valid module names from environment variable', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		const config = Container.get(ModulesConfig);
-		expect(config.modules).toEqual([]);
+		expect(config.modules).toEqual(['external-secrets']);
 	});
 
 	it('should throw UnexpectedError for invalid module names', () => {

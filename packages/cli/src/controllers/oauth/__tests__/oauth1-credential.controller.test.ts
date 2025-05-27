@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import { Cipher, type InstanceSettings, Logger, SecretsHelper } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -18,7 +18,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
 
