@@ -983,9 +983,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
 		if (metadata?.length === 1) {
-			const [{ key, value }] = metadata;
-			// TODO: get from metadata
-			const exactMatch = false;
+			const [{ key, value, exactMatch }] = metadata;
 
 			const executionIdMatch = 'md.executionId = execution.id';
 			const keyMatch = exactMatch ? 'md.key = :key' : 'LOWER(md.key) = LOWER(:key)';
