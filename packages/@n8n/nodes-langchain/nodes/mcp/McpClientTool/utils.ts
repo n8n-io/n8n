@@ -1,6 +1,8 @@
+import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONSchema7 } from 'json-schema';
 import { Toolkit } from 'langchain/agents';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
 import {
@@ -96,14 +98,16 @@ export const createCallTool =
 		return result;
 	};
 
-export function mcpToolToDynamicTool(
+export async function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
 ) {
+	const dereferencedSchema = await $RefParser.dereference<JSONSchema7>(tool.inputSchema);
+
 	return new DynamicStructuredTool({
 		name: tool.name,
 		description: tool.description ?? '',
-		schema: convertJsonSchemaToZod(tool.inputSchema),
+		schema: convertJsonSchemaToZod(dereferencedSchema),
 		func: onCallTool,
 		metadata: { isFromToolkit: true },
 	});

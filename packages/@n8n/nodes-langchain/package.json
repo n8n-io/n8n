@@ -212,6 +212,7 @@
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
     "zod": "catalog:",
-    "zod-to-json-schema": "3.23.3"
+    "zod-to-json-schema": "3.23.3",
+    "@apidevtools/json-schema-ref-parser": "^12.0.2"
   }
 }
