@@ -143,35 +143,31 @@ describe('Push', () => {
 			});
 
 			describe('should throw on invalid origin', () => {
-				beforeEach(() => {
-					req.headers.host = undefined;
-				});
-
 				test.each([
 					{
 						name: 'origin is undefined',
 						origin: undefined,
-						xForwardedHost: host,
-					},
-					{
-						name: 'x-forwarded-host is undefined',
-						origin: `https://${host}`,
 						xForwardedHost: undefined,
 					},
 					{
 						name: 'origin does not match host',
-						origin: `https://subdomain.${host}`,
+						origin: 'https://123example.com',
 						xForwardedHost: undefined,
 					},
 					{
 						name: 'origin does not match host (subdomain)',
-						origin: 'https://123example.com',
+						origin: `https://subdomain.${host}`,
 						xForwardedHost: undefined,
 					},
 					{
-						name: 'only one of the forward headers is defined',
-						origin: 'https://123example.com',
-						xForwardedHost: undefined,
+						name: 'origin does not match x-forwarded-host',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: 'https://123example.com', // this is not
+					},
+					{
+						name: 'origin does not match x-forwarded-host (subdomain)',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: `https://subdomain.${host}`, // this is not
 					},
 				])('$name', ({ origin, xForwardedHost }) => {
 					req.headers.origin = origin;
@@ -193,8 +189,13 @@ describe('Push', () => {
 			describe('should not throw on invalid origin if `X-Forwarded-Host` is set correctly', () => {
 				test.each([
 					{
-						name: 'origin matches forward headers',
+						name: 'origin matches forward headers (https)',
 						origin: `https://${host}`,
+						xForwardedHost: host,
+					},
+					{
+						name: 'origin matches forward headers (http)',
+						origin: `http://${host}`,
 						xForwardedHost: host,
 					},
 					{
