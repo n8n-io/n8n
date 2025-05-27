@@ -3,7 +3,7 @@ import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServerSingleton } from './McpServer';
@@ -143,7 +143,9 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
-		const serverName = context.getNode().name;
+		// Get a url/tool friendly name for the server, based on the node name
+		const serverName = nodeNameToToolName(context.getNode());
+
 		const mcpServer: McpServer = McpServerSingleton.instance(serverName, context.logger);
 
 		if (webhookName === 'setup') {
