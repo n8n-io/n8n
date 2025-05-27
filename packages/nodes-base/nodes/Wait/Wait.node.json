@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.wait",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Core Nodes"],
+	"categories": ["Core Nodes", "HITL"],
 	"resources": {
 		"primaryDocumentation": [
 			{
@@ -21,8 +21,9 @@
 			}
 		]
 	},
-	"alias": ["pause", "sleep", "delay", "timeout"],
+	"alias": ["pause", "sleep", "delay", "timeout", "human", "form", "wait", "hitl", "approval"],
 	"subcategories": {
-		"Core Nodes": ["Helpers", "Flow"]
+		"Core Nodes": ["Helpers", "Flow"],
+		"HITL": ["Human in the Loop"]
 	}
 }

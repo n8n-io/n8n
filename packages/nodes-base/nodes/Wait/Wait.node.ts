@@ -12,6 +12,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseDateTime,
 	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../utils/utilities';
