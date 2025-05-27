@@ -143,8 +143,8 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
-
-		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
+		const serverName = context.getNode().name;
+		const mcpServer: McpServer = McpServerSingleton.instance(serverName, context.logger);
 
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp

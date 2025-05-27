@@ -52,6 +52,8 @@ function getRequestId(body: string): string | undefined {
 }
 
 export class McpServer {
+	serverName: string;
+
 	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
@@ -62,9 +64,10 @@ export class McpServer {
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
 
-	constructor(logger: Logger) {
+	constructor(serverName: string, logger: Logger) {
+		this.serverName = serverName;
 		this.logger = logger;
-		this.logger.debug('MCP Server created');
+		this.logger.debug(`MCP Server "${serverName}" created`);
 	}
 
 	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
@@ -126,7 +129,7 @@ export class McpServer {
 	setUpServer(): Server {
 		const server = new Server(
 			{
-				name: 'n8n-mcp-server',
+				name: this.serverName,
 				version: '0.1.0',
 			},
 			{
@@ -217,13 +220,13 @@ export class McpServerSingleton {
 
 	private _serverData: McpServer;
 
-	private constructor(logger: Logger) {
-		this._serverData = new McpServer(logger);
+	private constructor(serverName: string, logger: Logger) {
+		this._serverData = new McpServer(serverName, logger);
 	}
 
-	static instance(logger: Logger): McpServer {
+	static instance(serverName: string, logger: Logger): McpServer {
 		if (!McpServerSingleton.#instance) {
-			McpServerSingleton.#instance = new McpServerSingleton(logger);
+			McpServerSingleton.#instance = new McpServerSingleton(serverName, logger);
 			logger.debug('Created singleton for MCP Servers');
 		}
 
