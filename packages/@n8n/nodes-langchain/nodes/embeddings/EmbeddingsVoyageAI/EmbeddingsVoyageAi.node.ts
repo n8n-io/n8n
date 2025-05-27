@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { VoyageEmbeddings } from '@langchain/community/embeddings/voyage';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -15,7 +15,7 @@ export class EmbeddingsVoyageAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings VoyageAI',
 		name: 'embeddingsVoyageAi',
-		icon: { light: 'file:voyageai.svg', dark: 'file:voyageai.dark.svg' },
+		icon: { light: 'file:voyageai.svg', dark: 'file:voyageai.dark.png' },
 		group: ['transform'],
 		version: 1,
 		description: 'Use VoyageAI Embeddings',
@@ -44,10 +44,10 @@ export class EmbeddingsVoyageAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
 					'VoyageAI provides different models with varying dimensions. Make sure to use the same dimensionality for your vector store.',
