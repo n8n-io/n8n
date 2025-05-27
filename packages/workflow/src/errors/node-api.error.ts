@@ -11,7 +11,7 @@ import {
 	UNKNOWN_ERROR_DESCRIPTION,
 	UNKNOWN_ERROR_MESSAGE,
 	UNKNOWN_ERROR_MESSAGE_CRED,
-} from '../Constants';
+} from '../constants';
 import type {
 	INode,
 	JsonObject,
@@ -19,7 +19,7 @@ import type {
 	IStatusCodeMessages,
 	Functionality,
 	RelatedExecution,
-} from '../Interfaces';
+} from '../interfaces';
 import { removeCircularRefs } from '../utils';
 
 export interface NodeOperationErrorOptions {
