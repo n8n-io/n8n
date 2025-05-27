@@ -97,7 +97,7 @@ export class Sort implements INodeType {
 					},
 				],
 				default: {},
-				description: 'The fields of the input items to compare to see if they are the same',
+				description: 'The fields of the input items to sort by',
 				displayOptions: {
 					show: {
 						type: ['simple'],
