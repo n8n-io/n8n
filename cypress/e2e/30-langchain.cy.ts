@@ -372,7 +372,7 @@ describe('Langchain Integration', () => {
 		getNodes().should('have.length', 3);
 	});
 
-	it.only('should render runItems for sub-nodes and allow switching between them', () => {
+	it('should render runItems for sub-nodes and allow switching between them', () => {
 		const workflowPage = new WorkflowPage();
 
 		cy.visit(workflowPage.url);
