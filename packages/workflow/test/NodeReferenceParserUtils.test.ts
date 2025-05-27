@@ -646,6 +646,59 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+		/**
+		 *
+		 */
+		it('should handle assignments format of Set node correctly', () => {
+			nodes = [
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'cf8bd6cb-f28a-4a73-b141-02e5c22cfe74',
+									name: 'ghApiBaseUrl',
+									value: '={{ $("A").item.json.x.y.z }}',
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [80, 80],
+					id: '6e2fd284-2aba-4dee-8921-18be9a291484',
+					name: 'Params',
+				},
+			];
+			nodeNames = ['A', 'Params'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['x_y_z', '$("A").item.json.x.y.z']]);
+			expect(result.nodes).toEqual([
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'cf8bd6cb-f28a-4a73-b141-02e5c22cfe74',
+									name: 'ghApiBaseUrl',
+									value: "={{ $('Start').item.json.x_y_z }}",
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [80, 80],
+					id: '6e2fd284-2aba-4dee-8921-18be9a291484',
+					name: 'Params',
+				},
+			]);
+		});
+
 		it('should carry over unrelated properties', () => {
 			nodes = [
 				{

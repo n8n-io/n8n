@@ -307,7 +307,6 @@ export function useWorkflowExtraction() {
 		}
 		const { start, end } = selection;
 
-		// return true if the node
 		const isSingleIO = (
 			nodeName: string,
 			getIOs: (
@@ -346,7 +345,7 @@ export function useWorkflowExtraction() {
 		return !Array.isArray(selection);
 	}
 
-	async function replaceSelectionWithExecuteWorkflowNode(
+	async function replaceSelectionWithNode(
 		executeWorkflowNodeData: AddedNode,
 		startId: string | undefined,
 		endId: string | undefined,
@@ -377,9 +376,10 @@ export function useWorkflowExtraction() {
 				replaceOutputs: false,
 			});
 
-		for (const node of selection) {
-			canvasOperations.deleteNode(node.id, CANVAS_HISTORY_OPTIONS);
-		}
+		canvasOperations.deleteNodes(
+			selection.map((x) => x.id),
+			CANVAS_HISTORY_OPTIONS,
+		);
 
 		for (const node of selectionChildNodes) {
 			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
@@ -494,7 +494,7 @@ export function useWorkflowExtraction() {
 			executeWorkflowPosition,
 			variables,
 		);
-		await replaceSelectionWithExecuteWorkflowNode(
+		await replaceSelectionWithNode(
 			executeWorkflowNode,
 			subGraph.find((x) => x.name === start)?.id,
 			subGraph.find((x) => x.name === end)?.id,
