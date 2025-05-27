@@ -144,15 +144,22 @@ export function useWorkflowExtraction() {
 			delete newConnections[end];
 		}
 
-		const startNodeTarget =
-			nodes.find((x) => x.name === start) ?? nodes.sort((a, b) => a.position[1] - b.position[1])[0];
+		const startNodeTarget = nodes.find((x) => x.name === start);
+
+		const firstNode = startNodeTarget ?? nodes.sort((a, b) => a.position[1] - b.position[1])[0];
 
 		const startNodePosition: [number, number] = [
-			startNodeTarget.position[0] - PUSH_NODES_OFFSET,
-			startNodeTarget.position[1],
+			firstNode.position[0] - PUSH_NODES_OFFSET,
+			firstNode.position[1],
 		];
 
 		const endNodeTarget = nodes.find((x) => x.name === end);
+		const lastNode = endNodeTarget ?? nodes.sort((a, b) => b.position[1] - a.position[1])[0];
+
+		const endNodePosition: [number, number] = [
+			lastNode.position[0] - PUSH_NODES_OFFSET,
+			lastNode.position[1],
+		];
 
 		const startNodeConnection = startNodeTarget
 			? ({
@@ -161,13 +168,13 @@ export function useWorkflowExtraction() {
 							[
 								{
 									node: startNodeTarget.name,
-									type: 'main', // todo check if this is valid
+									type: 'main', // @todo check if this is valid
 									index: 0,
 								},
 							],
 						],
 					},
-				} as IConnections)
+				} satisfies IConnections)
 			: {};
 
 		const endNodeConnection = endNodeTarget
@@ -177,13 +184,13 @@ export function useWorkflowExtraction() {
 							[
 								{
 									node: returnNodeName,
-									type: 'main', // todo check if this is valid
+									type: 'main', // @todo check if this is valid
 									index: 0,
 								},
 							],
 						],
 					},
-				} as IConnections)
+				} satisfies IConnections)
 			: {};
 
 		const returnNode =
@@ -206,12 +213,10 @@ export function useWorkflowExtraction() {
 							},
 							type: 'n8n-nodes-base.set',
 							typeVersion: 3.4,
-							position: endNodeTarget
-								? [endNodeTarget.position[0] + PUSH_NODES_OFFSET, endNodeTarget.position[1]]
-								: undefined,
+							position: endNodePosition,
 							id: Math.random().toString().slice(2),
 							name: returnNodeName,
-						} as INode,
+						} satisfies INode,
 					];
 		const triggerParameters =
 			selectionVariables.size > 0
@@ -250,7 +255,7 @@ export function useWorkflowExtraction() {
 		const applyAverage = ([a, b, c]: [number, number, number]): [number, number] => [a / c, b / c];
 		const averagePosition = (n: INode[]) =>
 			applyAverage(
-				n.reduce<[number, number, number]>(
+				n.reduce(
 					(acc, v) => [acc[0] + v.position[0], acc[1] + v.position[1], acc[2] + 1],
 					[0, 0, 0],
 				),
@@ -341,7 +346,7 @@ export function useWorkflowExtraction() {
 		return !Array.isArray(selection);
 	}
 
-	async function replaceSelection(
+	async function replaceSelectionWithExecuteWorkflowNode(
 		executeWorkflowNodeData: AddedNode,
 		startId: string | undefined,
 		endId: string | undefined,
@@ -391,7 +396,7 @@ export function useWorkflowExtraction() {
 		historyStore.stopRecordingUndo();
 	}
 
-	function tryExtractNodesIntoSubworkflow(nodeIds: string[], connections: IConnections): boolean {
+	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
 		const subGraph = nodeIds
 			.map(workflowsStore.getNodeById)
 			.filter((x) => x !== undefined && x !== null);
@@ -414,15 +419,14 @@ export function useWorkflowExtraction() {
 
 		uiStore.openModalWithData({
 			name: WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
-			data: { connections, subGraph, selection },
+			data: { subGraph, selection },
 		});
 		return true;
 	}
 
-	async function extractNodesIntoSubworkflow(
+	async function doExtractNodesIntoSubworkflow(
 		selection: ExtractableSubgraphData,
 		subGraph: INodeUi[],
-		connections: IConnections,
 		newWorkflowName: string,
 	) {
 		const { start, end } = selection;
@@ -474,7 +478,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			connections,
+			workflowsStore.workflow.connections,
 			variables,
 			afterVariables,
 			startNodeName,
@@ -490,7 +494,7 @@ export function useWorkflowExtraction() {
 			executeWorkflowPosition,
 			variables,
 		);
-		await replaceSelection(
+		await replaceSelectionWithExecuteWorkflowNode(
 			executeWorkflowNode,
 			subGraph.find((x) => x.name === start)?.id,
 			subGraph.find((x) => x.name === end)?.id,
@@ -501,20 +505,44 @@ export function useWorkflowExtraction() {
 		return true;
 	}
 
+	/**
+	 * This mutates the current workflow and creates a new one.
+	 * Intended to be called from @WorkflowExtractionNameModal spawned
+	 * by @tryExtractNodesIntoSubworkflow
+	 */
+	async function extractNodesIntoSubworkflow(
+		selection: ExtractableSubgraphData,
+		subGraph: INodeUi[],
+		newWorkflowName: string,
+	) {
+		const success = await doExtractNodesIntoSubworkflow(selection, subGraph, newWorkflowName);
+		trackExtractWorkflow(subGraph.length, success);
+	}
+
+	/**
+	 * This starts the extraction process by checking whether the selection is extractable
+	 * and spawning a pop up asking for a sub-workflow name.
+	 * If confirmed, the modal calls @extractNodesIntoSubworkflow to handle the actual mutation
+	 *
+	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
+	 */
 	async function extractWorkflow(nodeIds: string[]) {
-		const success = tryExtractNodesIntoSubworkflow(nodeIds, workflowsStore.workflow.connections);
-		trackExtractWorkflow(nodeIds.length, success);
+		const success = tryExtractNodesIntoSubworkflow(nodeIds);
+		trackStartExtractWorkflow(nodeIds.length, success);
+	}
+
+	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User started nodes to sub-workflow extraction', {
+			node_count: nodeCount,
+			success,
+		});
 	}
 
 	function trackExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track(
-			'User converted nodes to sub-workflow',
-			{
-				node_count: nodeCount,
-				success,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User extracted nodes to sub-workflow', {
+			node_count: nodeCount,
+			success,
+		});
 	}
 
 	return {

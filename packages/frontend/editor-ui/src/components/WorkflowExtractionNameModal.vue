@@ -5,7 +5,7 @@ import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { N8nFormInput } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { ExtractableSubgraphData, IConnections } from 'n8n-workflow';
+import type { ExtractableSubgraphData } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps<{
@@ -13,7 +13,6 @@ const props = defineProps<{
 	data: {
 		subGraph: INodeUi[];
 		selection: ExtractableSubgraphData;
-		connections: IConnections;
 	};
 }>();
 
@@ -32,11 +31,10 @@ const workflowNameOrDefault = computed(() => {
 });
 
 const onSubmit = async () => {
-	const { selection, subGraph, connections } = props.data;
+	const { selection, subGraph } = props.data;
 	await workflowExtraction.extractNodesIntoSubworkflow(
 		selection,
 		subGraph,
-		connections,
 		workflowNameOrDefault.value,
 	);
 	modalBus.emit('close');
@@ -83,10 +81,16 @@ onMounted(() => {
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
+					data-test-id="cancel-button"
 					@click="close"
 				/>
-				<!-- :disabled="!workflowName" -->
-				<n8n-button :label="i18n.baseText('generic.confirm')" float="right" @click="onSubmit" />
+				<n8n-button
+					:label="i18n.baseText('generic.confirm')"
+					float="right"
+					:disabled="!workflowName"
+					data-test-id="submit-button"
+					@click="onSubmit"
+				/>
 			</div>
 		</template>
 	</Modal>
