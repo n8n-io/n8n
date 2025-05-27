@@ -314,7 +314,7 @@ onMounted(async () => {
 			<p
 				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
 				:class="$style.description"
-				data-test-id="move-folder-description"
+				data-test-id="move-modal-description"
 			>
 				{{ descriptionMessage }}
 			</p>
@@ -329,6 +329,32 @@ onMounted(async () => {
 						:projects="availableProjects"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
+				</div>
+
+				<div v-if="isTransferringOwnership" :class="$style.block">
+					<N8nText>
+						<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+							<template #note
+								><strong>{{
+									i18n.baseText('projects.move.resource.modal.message.note')
+								}}</strong></template
+							>
+							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
+						</i18n-t>
+						<span
+							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
+							:class="$style.textBlock"
+						>
+							{{
+								i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
+									adjustToNumber: props.data.resource.sharedWithProjects?.length,
+									interpolate: {
+										count: props.data.resource.sharedWithProjects?.length ?? 0,
+									},
+								})
+							}}
+						</span>
+					</N8nText>
 				</div>
 			</enterprise-edition>
 			<template v-if="selectedProject && isFolderSelectable">
@@ -347,36 +373,11 @@ onMounted(async () => {
 					/>
 				</div>
 			</template>
-			<div v-if="isTransferringOwnership" :class="$style.block">
-				<N8nText>
-					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
-						<template #note
-							><strong>{{
-								i18n.baseText('projects.move.resource.modal.message.note')
-							}}</strong></template
-						>
-						<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
-					</i18n-t>
-					<span
-						v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
-						:class="$style.textBlock"
-					>
-						{{
-							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
-								adjustToNumber: props.data.resource.sharedWithProjects?.length,
-								interpolate: {
-									count: props.data.resource.sharedWithProjects?.length ?? 0,
-								},
-							})
-						}}
-					</span>
-				</N8nText>
-			</div>
 			<N8nCheckbox
 				v-if="shareableCredentials.length"
 				v-model="shareUsedCredentials"
 				:class="$style.textBlock"
-				data-test-id="folders-move-modal-share-credentials-checkbox"
+				data-test-id="move-modal-share-credentials-checkbox"
 			>
 				<i18n-t
 					:keypath="
@@ -409,6 +410,7 @@ onMounted(async () => {
 				v-if="shareableCredentials.length && !shareUsedCredentials"
 				:class="$style.credentialsCallout"
 				theme="warning"
+				data-test-id="move-modal-used-credentials-warning"
 			>
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
 			</N8nCallout>
