@@ -1,5 +1,5 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
-import type { IDataObject } from '../Interfaces';
+import type { IDataObject } from '../interfaces';
 
 export interface ExpressionErrorOptions {
 	cause?: Error;
