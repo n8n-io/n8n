@@ -7,7 +7,7 @@ import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServerSingleton } from './McpServer';
-import type { McpServer } from './McpServer';
+import type { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -147,7 +147,7 @@ export class McpTrigger extends Node {
 		// Get a url/tool friendly name for the server, based on the node name
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
+		const mcpServerManager: McpServerManager = McpServerSingleton.instance(context.logger);
 
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
@@ -156,7 +156,7 @@ export class McpTrigger extends Node {
 				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
 				`/${MCP_SSE_MESSAGES_PATH}`,
 			);
-			await mcpServer.connectTransport(serverName, postUrl, resp);
+			await mcpServerManager.createServerAndTransport(serverName, postUrl, resp);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
@@ -165,7 +165,7 @@ export class McpTrigger extends Node {
 			// 'setup' call
 			const connectedTools = await getConnectedTools(context, true);
 
-			const wasToolCall = await mcpServer.handlePostMessage(req, resp, connectedTools);
+			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
 
 			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
 			return { noWebhookResponse: true };

@@ -38,8 +38,9 @@ function wasToolCall(body: string) {
 }
 
 /**
- * Extracts the request ID from a JSONRPC message
- * Returns undefined if the message doesn't have an ID or can't be parsed
+ * Extracts the request ID from a JSONRPC message (for example for tool calls).
+ * Returns undefined if the message doesn't have an ID (for example on a tool list request)
+ *
  */
 function getRequestId(body: string): string | undefined {
 	try {
@@ -51,29 +52,39 @@ function getRequestId(body: string): string | undefined {
 	}
 }
 
-export class McpServer {
+export class McpServerManager {
 	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
-	logger: Logger;
-
 	private tools: { [sessionId: string]: Tool[] } = {};
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
+
+	logger: Logger;
 
 	constructor(logger: Logger) {
 		this.logger = logger;
 		this.logger.debug('MCP Server created');
 	}
 
-	async connectTransport(
+	async createServerAndTransport(
 		serverName: string,
 		postUrl: string,
 		resp: CompressionResponse,
 	): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
-		const server = this.setUpServer(serverName);
+		const server = new Server(
+			{
+				name: serverName,
+				version: '0.1.0',
+			},
+			{
+				capabilities: { tools: {} },
+			},
+		);
+
+		this.setUpHandlers(server);
 		const { sessionId } = transport;
 		this.transports[sessionId] = transport;
 		this.servers[sessionId] = server;
@@ -127,17 +138,7 @@ export class McpServer {
 		return wasToolCall(req.rawBody.toString());
 	}
 
-	setUpServer(serverName: string): Server {
-		const server = new Server(
-			{
-				name: serverName,
-				version: '0.1.0',
-			},
-			{
-				capabilities: { tools: {} },
-			},
-		);
-
+	setUpHandlers(server: Server) {
 		server.setRequestHandler(
 			ListToolsRequestSchema,
 			async (_, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
@@ -207,7 +208,6 @@ export class McpServer {
 		server.onerror = (error: unknown) => {
 			this.logger.error(`MCP Error: ${error}`);
 		};
-		return server;
 	}
 }
 
@@ -219,13 +219,13 @@ export class McpServer {
 export class McpServerSingleton {
 	static #instance: McpServerSingleton;
 
-	private _serverData: McpServer;
+	private _serverData: McpServerManager;
 
 	private constructor(logger: Logger) {
-		this._serverData = new McpServer(logger);
+		this._serverData = new McpServerManager(logger);
 	}
 
-	static instance(logger: Logger): McpServer {
+	static instance(logger: Logger): McpServerManager {
 		if (!McpServerSingleton.#instance) {
 			McpServerSingleton.#instance = new McpServerSingleton(logger);
 			logger.debug('Created singleton for MCP Servers');

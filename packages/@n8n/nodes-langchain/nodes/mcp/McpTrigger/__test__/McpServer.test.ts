@@ -6,7 +6,7 @@ import { captor, mock } from 'jest-mock-extended';
 
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
-import { McpServer } from '../McpServer';
+import { McpServerManager } from '../McpServer';
 
 const sessionId = 'mock-session-id';
 const mockServer = mock<Server>();
@@ -28,20 +28,20 @@ describe('McpServer', () => {
 	const mockResponse = mock<CompressionResponse>();
 	const mockTool = mock<Tool>({ name: 'mockTool' });
 
-	let mcpServer: McpServer;
+	let mcpServer: McpServerManager;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
 
-		mcpServer = new McpServer(mock());
+		mcpServer = new McpServerManager(mock());
 	});
 
 	describe('connectTransport', () => {
 		const postUrl = '/post-url';
 
 		it('should set up a transport and server', async () => {
-			await mcpServer.connectTransport('mcpServer', postUrl, mockResponse);
+			await mcpServer.createServerAndTransport('mcpServer', postUrl, mockResponse);
 
 			// Check that FlushingSSEServerTransport was initialized with correct params
 			expect(FlushingSSEServerTransport).toHaveBeenCalledWith(postUrl, mockResponse);
@@ -61,7 +61,7 @@ describe('McpServer', () => {
 		});
 
 		it('should set up close handler that cleans up resources', async () => {
-			await mcpServer.connectTransport('mcpServer', postUrl, mockResponse);
+			await mcpServer.createServerAndTransport('mcpServer', postUrl, mockResponse);
 
 			// Get the close callback and execute it
 			const closeCallbackCaptor = captor<() => Promise<void>>();
