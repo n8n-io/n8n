@@ -106,7 +106,7 @@ export class RespondToWebhook implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'If active, this provides an additional output branch with the response sent to the webhook',
+					'Whether to provide an additional output branch with the response sent to the webhook',
 				isNodeSetting: true,
 				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
