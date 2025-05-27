@@ -1,8 +1,7 @@
 export const cssVariables = `
 :root {
-	--font-family: 'Open Sans', sans-serif;
-	--font-weight-normal: 400;
-	--font-weight-bold: 600;
+	/* Fonts */
+	--font-family: "Open Sans", sans-serif;
 	--font-size-body: 12px;
 	--font-size-label: 14px;
 	--font-size-test-notice: 12px;
@@ -17,10 +16,10 @@ export const cssVariables = `
 	--font-size-html-h4: 14px;
 	--font-size-html-h5: 12px;
 	--font-size-html-h6: 10px;
-	--font-size-subheader: 14px;
 
 	/* Colors */
 	--color-background: #fbfcfe;
+	--background-mobile-color: #ffffff;
 	--color-test-notice-text: #e6a23d;
 	--color-test-notice-bg: #fefaf6;
 	--color-test-notice-border: #f6dcb7;
@@ -39,24 +38,22 @@ export const cssVariables = `
 	--color-required: #ff6d5a;
 	--color-clear-button-bg: #7e8186;
 	--color-html-text: #555;
-	--color-html-link: #ff6d5a;
-	--color-header-subtext: #7e8186;
+	--color-html-link: #FF6D5A;
 
-	/* Border Radii */
+	/* Border Radius */
 	--border-radius-card: 8px;
 	--border-radius-input: 6px;
 	--border-radius-clear-btn: 50%;
-	--card-border-radius: 8px;
 
 	/* Spacing */
 	--padding-container-top: 24px;
+	--padding-mobile-container: 24px;
 	--padding-card: 24px;
+	--padding-mobile-card: 0px;
 	--padding-test-notice-vertical: 12px;
 	--padding-test-notice-horizontal: 24px;
 	--margin-bottom-card: 16px;
 	--padding-form-input: 12px;
-	--card-padding: 24px;
-	--card-margin-bottom: 16px;
 
 	/* Dimensions */
 	--container-width: 448px;
