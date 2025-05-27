@@ -24,6 +24,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
 import { isEqual } from 'lodash-es';
+import { v4 as uuidv4 } from 'uuid';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
@@ -202,7 +203,7 @@ export function useWorkflowExtraction() {
 								assignments: {
 									assignments: [
 										...selectionChildrenVariables.entries().map((x) => ({
-											id: Math.random().toString().slice(2),
+											id: uuidv4(),
 											name: x[0],
 											value: `={{ ${x[1]} }}`,
 											type: 'string', // todo infer from execution data?
@@ -214,7 +215,7 @@ export function useWorkflowExtraction() {
 							type: 'n8n-nodes-base.set',
 							typeVersion: 3.4,
 							position: endNodePosition,
-							id: Math.random().toString().slice(2),
+							id: uuidv4(),
 							name: returnNodeName,
 						} satisfies INode,
 					];

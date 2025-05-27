@@ -93,11 +93,7 @@ function onTidyUp() {
 				@click="onResetZoom"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			v-if="!readOnly"
-			:label="i18n.baseText('nodeView.tidyUp')"
-			:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
-		>
+		<KeyboardShortcutTooltip v-if="!readOnly" :label="i18n.baseText('nodeView.tidyUp')">
 			<N8nButton
 				square
 				type="tertiary"
