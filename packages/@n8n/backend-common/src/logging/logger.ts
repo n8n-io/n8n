@@ -127,14 +127,18 @@ export class Logger implements LoggerType {
 		}
 	}
 
+	private jsonConsoleFormat() {
+		return winston.format.combine(
+			winston.format.timestamp(),
+			winston.format.metadata(),
+			winston.format.json(),
+		);
+	}
+
 	private setConsoleTransport() {
 		const format =
 			this.globalConfig.logging.format === 'json'
-				? winston.format.combine(
-						winston.format.timestamp(),
-						winston.format.metadata(),
-						winston.format.json(),
-					)
+				? this.jsonConsoleFormat()
 				: this.level === 'debug' && inDevelopment
 					? this.debugDevConsoleFormat()
 					: this.level === 'debug' && inProduction
@@ -215,12 +219,6 @@ export class Logger implements LoggerType {
 	}
 
 	private setFileTransport() {
-		const format = winston.format.combine(
-			winston.format.timestamp(),
-			winston.format.metadata(),
-			winston.format.json(),
-		);
-
 		const filename = path.isAbsolute(this.globalConfig.logging.file.location)
 			? this.globalConfig.logging.file.location
 			: path.join(this.instanceSettingsConfig.n8nFolder, this.globalConfig.logging.file.location);
@@ -230,7 +228,7 @@ export class Logger implements LoggerType {
 		this.internalLogger.add(
 			new winston.transports.File({
 				filename,
-				format,
+				format: this.jsonConsoleFormat(),
 				maxsize: fileSizeMax * 1_048_576, // config * 1 MiB in bytes
 				maxFiles: fileCountMax,
 			}),
