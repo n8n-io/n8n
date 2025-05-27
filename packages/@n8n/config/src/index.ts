@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
