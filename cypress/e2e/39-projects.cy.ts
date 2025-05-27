@@ -4,7 +4,7 @@ import {
 	clickCreateNewCredential,
 	getNdvContainer,
 	selectResourceLocatorAddResourceItem,
-	getBackToCanvasButton,
+	clickGetBackToCanvas,
 } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
@@ -293,11 +293,6 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
-			// Stub window.open before adding sub-workflow opens a new tab
-			cy.window().then((win) => {
-				cy.stub(win, 'open').as('windowOpen').returns(null);
-			});
-
 			projects.createProject('Dev');
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
@@ -305,9 +300,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
+			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
+
 			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 			getNdvContainer().should('be.visible');
-			getBackToCanvasButton().click();
+			clickGetBackToCanvas();
 
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
