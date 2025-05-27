@@ -784,6 +784,7 @@ function onPasteNumber(event: ClipboardEvent) {
 	const pastedText = event.clipboardData?.getData('text');
 
 	if (shouldConvertToExpression(pastedText)) {
+		event.preventDefault();
 		valueChanged('=' + pastedText);
 		return;
 	}
