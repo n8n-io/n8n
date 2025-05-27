@@ -86,7 +86,7 @@ const waitTimeProperties: INodeProperties[] = [
 			'Whether to limit the time this node should wait for a user response before execution resumes',
 		displayOptions: {
 			show: {
-				resume: ['webhook', 'form'],
+				operation: ['webhook', 'form'],
 			},
 		},
 	},
@@ -100,7 +100,7 @@ const waitTimeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				limitWaitTime: [true],
-				resume: ['webhook', 'form'],
+				operation: ['webhook', 'form'],
 			},
 		},
 		options: [
@@ -124,7 +124,7 @@ const waitTimeProperties: INodeProperties[] = [
 			show: {
 				limitType: ['afterTimeInterval'],
 				limitWaitTime: [true],
-				resume: ['webhook', 'form'],
+				operation: ['webhook', 'form'],
 			},
 		},
 		typeOptions: {
@@ -142,7 +142,7 @@ const waitTimeProperties: INodeProperties[] = [
 			show: {
 				limitType: ['afterTimeInterval'],
 				limitWaitTime: [true],
-				resume: ['webhook', 'form'],
+				operation: ['webhook', 'form'],
 			},
 		},
 		options: [
@@ -174,7 +174,7 @@ const waitTimeProperties: INodeProperties[] = [
 			show: {
 				limitType: ['atSpecifiedTime'],
 				limitWaitTime: [true],
-				resume: ['webhook', 'form'],
+				operation: ['webhook', 'form'],
 			},
 		},
 		default: '',
@@ -195,13 +195,13 @@ const webhookSuffix: INodeProperties = {
 
 const displayOnWebhook: IDisplayOptions = {
 	show: {
-		resume: ['webhook'],
+		operation: ['webhook'],
 	},
 };
 
 const displayOnFormSubmission = {
 	show: {
-		resume: ['form'],
+		operation: ['form'],
 	},
 };
 
@@ -273,26 +273,31 @@ export class Wait extends Webhook {
 		properties: [
 			{
 				displayName: 'Resume',
-				name: 'resume',
+				noDataExpression: true,
+				name: 'operation',
 				type: 'options',
 				options: [
 					{
 						name: 'After Time Interval',
 						value: 'timeInterval',
+						action: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
 						name: 'At Specified Time',
+						action: 'timeInterval',
 						value: 'specificTime',
 						description: 'Waits until a specific date and time to continue',
 					},
 					{
 						name: 'On Webhook Call',
-						value: 'webhook',
+						action: 'timeInterval',
+						value: SEND_AND_WAIT_OPERATION,
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
 						name: 'On Form Submitted',
+						action: 'timeInterval',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},
@@ -319,7 +324,7 @@ export class Wait extends Webhook {
 					'If and how incoming resume-webhook-requests to $execution.resumeFormUrl should be authenticated for additional security',
 				displayOptions: {
 					show: {
-						resume: ['form'],
+						operation: ['form'],
 					},
 				},
 			},
@@ -331,7 +336,7 @@ export class Wait extends Webhook {
 			},
 
 			// ----------------------------------
-			//         resume:specificTime
+			//         operation:specificTime
 			// ----------------------------------
 			{
 				displayName: 'Date and Time',
@@ -339,7 +344,7 @@ export class Wait extends Webhook {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						resume: ['specificTime'],
+						operation: ['specificTime'],
 					},
 				},
 				default: '',
@@ -354,7 +359,7 @@ export class Wait extends Webhook {
 				...toWaitAmount,
 				displayOptions: {
 					show: {
-						resume: ['timeInterval'],
+						operation: ['timeInterval'],
 						'@version': [1],
 					},
 				},
@@ -364,7 +369,7 @@ export class Wait extends Webhook {
 				default: 5,
 				displayOptions: {
 					show: {
-						resume: ['timeInterval'],
+						operation: ['timeInterval'],
 					},
 					hide: {
 						'@version': [1],
@@ -375,7 +380,7 @@ export class Wait extends Webhook {
 				...unitSelector,
 				displayOptions: {
 					show: {
-						resume: ['timeInterval'],
+						operation: ['timeInterval'],
 						'@version': [1],
 					},
 				},
@@ -385,7 +390,7 @@ export class Wait extends Webhook {
 				default: 'seconds',
 				displayOptions: {
 					show: {
-						resume: ['timeInterval'],
+						operation: ['timeInterval'],
 					},
 					hide: {
 						'@version': [1],
@@ -428,7 +433,7 @@ export class Wait extends Webhook {
 				default: {},
 				displayOptions: {
 					show: {
-						resume: ['form'],
+						operation: ['form'],
 					},
 					hide: {
 						responseMode: ['responseNode'],
@@ -444,7 +449,7 @@ export class Wait extends Webhook {
 				default: {},
 				displayOptions: {
 					show: {
-						resume: ['form'],
+						operation: ['form'],
 					},
 					hide: {
 						responseMode: ['onReceived', 'lastNode'],
