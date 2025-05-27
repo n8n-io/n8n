@@ -2,7 +2,6 @@
 import { useI18n } from '@/composables/useI18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
-import { useProjectsStore } from '@/stores/projects.store';
 import { N8nSelect } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
@@ -15,13 +14,15 @@ import { computed, ref, watch } from 'vue';
 
 type Props = {
 	selectedLocation: ChangeLocationSearchResult | null;
-	currentProjectId: string;
+	selectedProjectId: string; // The project where the resource is being moved to
+	currentProjectId?: string; // The project where the resource is currently located
 	currentFolderId?: string;
 	parentFolderId?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	selectedLocation: null,
+	currentProjectId: undefined,
 	currentFolderId: undefined,
 	parentFolderId: undefined,
 });
@@ -33,7 +34,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const foldersStore = useFoldersStore();
-const projectsStore = useProjectsStore();
 
 const availableLocations = ref<ChangeLocationSearchResult[]>([]);
 const moveFolderDropdown = ref<InstanceType<typeof N8nSelect>>();
@@ -54,7 +54,7 @@ const loading = ref(false);
 const fetchAvailableLocations = async (query?: string) => {
 	loading.value = true;
 	const folders = await foldersStore.fetchFoldersAvailableForMove(
-		props.currentProjectId,
+		props.selectedProjectId,
 		props.currentFolderId,
 		{ name: query ?? undefined },
 	);
@@ -66,12 +66,12 @@ const fetchAvailableLocations = async (query?: string) => {
 
 	const rootFolderName = i18n.baseText('folders.move.project.root.name');
 	const isQueryMatchesRoot = !query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
-	const isTransfer = props.currentProjectId !== projectsStore.currentProject?.id;
+	const isTransfer = props.selectedProjectId !== props.currentProjectId;
 
 	// Finally always add project root to the results (if folder is not already in root)
 	if (isQueryMatchesRoot && (!!props.parentFolderId || isTransfer)) {
 		availableLocations.value.unshift({
-			id: props.currentProjectId,
+			id: props.selectedProjectId,
 			name: rootFolderName,
 			resource: 'project',
 			createdAt: '',
@@ -85,7 +85,7 @@ const fetchAvailableLocations = async (query?: string) => {
 };
 
 watch(
-	() => [props.currentProjectId, props.currentFolderId, props.parentFolderId],
+	() => [props.selectedProjectId, props.currentFolderId, props.parentFolderId],
 	() => {
 		availableLocations.value = [];
 		void fetchAvailableLocations();

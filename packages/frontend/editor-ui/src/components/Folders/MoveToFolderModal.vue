@@ -365,8 +365,9 @@ onMounted(async () => {
 					<MoveToFolderDropdown
 						ref="moveToFolderDropdown"
 						:selected-location="selectedFolder"
+						:selected-project-id="selectedProject.id"
+						:current-project-id="projectsStore.currentProject?.id"
 						:current-folder-id="currentFolder?.id"
-						:current-project-id="selectedProject.id"
 						:parent-folder-id="props.data.resource.parentFolderId"
 						:exclude-only-parent="props.data.resourceType === 'workflow'"
 						@location:selected="onFolderSelected"

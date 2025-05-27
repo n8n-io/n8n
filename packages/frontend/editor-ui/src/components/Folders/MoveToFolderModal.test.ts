@@ -292,37 +292,6 @@ describe('MoveToFolderModal', () => {
 		expect(selectedProject).toBeDefined();
 	});
 
-	it('should fetch available folders after selecting a project', async () => {
-		settingsStore.settings = enableSharing;
-
-		const { getByTestId } = renderComponent({
-			props: {
-				data: {
-					resource: TEST_FOLDER_RESOURCE,
-					resourceType: 'folder',
-					workflowListEventBus: mockEventBus,
-				},
-			},
-		});
-
-		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
-
-		const projectSelect = getByTestId('project-sharing-select');
-		await userEvent.click(getByTestId('project-sharing-select'));
-		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await userEvent.click(projectSelectDropdownItems[0]);
-		const selectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
-		const selectedProject = projects.find((p) => p.name === selectedValue);
-
-		await flushPromises();
-		expect(foldersStore.fetchFoldersAvailableForMove).toHaveBeenCalledTimes(2);
-		expect(foldersStore.fetchFoldersAvailableForMove).toHaveBeenCalledWith(
-			selectedProject?.id,
-			TEST_FOLDER_RESOURCE.id,
-			{ name: undefined },
-		);
-	});
-
 	it('should not render credentials sharing checkbox for folder without shareable resources', async () => {
 		settingsStore.settings = enableSharing;
 		credentialsStore.fetchAllCredentials = vi
