@@ -16,7 +16,7 @@ import type {
 	IDataObject,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/composables/useToast';
@@ -182,20 +182,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 
 			if (options.triggerNode) {
-				const triggerNode = workflowData.nodes.find((node) => node.name === options.triggerNode);
-				const isEvaluationsTriggerNode = triggerNode?.type === EVALUATION_TRIGGER_NODE_TYPE;
-				if (isEvaluationsTriggerNode) {
-					const previousRun = workflowsStore.getWorkflowRunData?.[options.triggerNode]?.[0];
-					triggerToStartFrom = {
-						name: options.triggerNode,
-						data: previousRun,
-					};
-				} else {
-					triggerToStartFrom = {
-						name: options.triggerNode,
-						data: options.nodeData,
-					};
-				}
+				triggerToStartFrom = {
+					name: options.triggerNode,
+					data: options.nodeData,
+				};
 			}
 
 			// If the destination node is specified, check if it is a chat node or has a chat parent
