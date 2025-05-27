@@ -2442,8 +2442,6 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			workflowsStore.removeConnection = vi.fn();
-
 			workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
 				if (id === sourceNode.id) return sourceNode;
 				if (id === targetNode.id) return targetNode;
@@ -2454,6 +2452,26 @@ describe('useCanvasOperations', () => {
 				if (name === targetNode.name) return targetNode;
 				return null;
 			});
+
+			workflowsStore.removeConnection = vi
+				.fn()
+				.mockImplementation((data: { connection: IConnection[] }) => {
+					const sourceData = data.connection[0];
+					const destinationData = data.connection[1];
+
+					const connections =
+						workflowsStore.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
+
+					for (const index in connections) {
+						if (
+							connections[+index].node === destinationData.node &&
+							connections[+index].type === destinationData.type &&
+							connections[+index].index === destinationData.index
+						) {
+							connections.splice(parseInt(index, 10), 1);
+						}
+					}
+				});
 
 			deleteConnectionsByNodeId(targetNode.id);
 
@@ -2472,6 +2490,10 @@ describe('useCanvasOperations', () => {
 					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
 				],
 			});
+
+			expect(
+				workflowsStore.workflow.connections[sourceNode.name][NodeConnectionTypes.Main][0],
+			).toEqual([]);
 		});
 	});
 
