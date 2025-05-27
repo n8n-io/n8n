@@ -1,32 +1,37 @@
 name: Security - Scan Docker Image With Trivy
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to scan'
+        required: true
+        default: 'latest'
+  workflow_call:
+    inputs:
+      image_tag:
+        type: string
+        description: 'Image tag to scan'
+        required: true
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
 
 jobs:
   security_scan:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Build Docker image for security scan
-        id: build_image
+      - name: Pull Docker image
         run: |
-          IMAGE_TAG="n8n-security-scan:${{ github.sha }}"
-          docker build \
-            --tag $IMAGE_TAG \
-            --file ./docker/images/n8n/Dockerfile \
-            --build-arg N8N_RELEASE_TYPE=nightly \
-            .
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          docker pull ${{ inputs.image_tag }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
         with:
-          image-ref: ${{ steps.build_image.outputs.IMAGE_TAG }}
+          image-ref: ${{ inputs.image_tag }}
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
@@ -54,7 +59,7 @@ jobs:
             if [ $TOTAL_VULNS -gt 0 ]; then
               echo "vulnerabilities_found=true" >> $GITHUB_OUTPUT
 
-              # Extract top vulnerabilities for display (limit to 15 for readability)
+              # Extract top vulnerabilities for display (limit to 10 for readability)
               TOP_VULNS=$(jq -r '
                 .Results[]?
                 | .Vulnerabilities[]?
@@ -74,7 +79,7 @@ jobs:
           fi
 
       - name: Notify Slack - Vulnerabilities Found
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: steps.process_vulns.outputs.vulnerabilities_found == 'true'
         with:
           status: 'warning'
@@ -84,6 +89,7 @@ jobs:
             :warning: *Trivy Scan: Vulnerabilities Detected*
 
             *Repository:* `${{ github.repository }}`
+            *Image Tag:* `${{ inputs.image_tag }}`
 
             *Vulnerability Summary:*
             • *Critical:* ${{ steps.process_vulns.outputs.critical_count }}
@@ -100,16 +106,17 @@ jobs:
             :point_right: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Full Scan Results>
 
       - name: Notify Slack - No Vulnerabilities
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: steps.process_vulns.outputs.vulnerabilities_found == 'false'
         with:
           status: 'success'
           channel: '#mission-security'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
-            :white_check_mark: **Trivy Scan: All Clear**
+            :white_check_mark: *Trivy Scan: All Clear*
 
             *Repository:* `${{ github.repository }}`
+            *Image Tag:* `${{ inputs.image_tag }}`
 
             No vulnerabilities detected in the Docker image scan.
 
