@@ -13,6 +13,7 @@ export const projectRoleSchema = z.enum([
 	'project:admin',
 	'project:editor',
 	'project:viewer',
+	'project:executor',
 ]);
 
 export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credential:user']);
