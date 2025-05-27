@@ -7,7 +7,6 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 import * as helpers from '@utils/helpers';
 
 import type { McpServer } from '../McpServer';
-import { McpServerSingleton } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
 const mockTool = mock<Tool>({ name: 'mockTool' });
@@ -49,6 +48,7 @@ describe('McpTrigger Node', () => {
 
 			// Verify that the connectTransport method was called with correct URL
 			expect(mockServer.connectTransport).toHaveBeenCalledWith(
+				'McpTrigger',
 				'/custom-path/messages',
 				mockResponse,
 			);
@@ -104,17 +104,17 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
-			// Verify that McpServerSingleton.instance was called with sanitized server name
-			expect(McpServerSingleton.instance).toHaveBeenCalledWith(
+			// Verify that connectTransport was called with the sanitized server name
+			expect(mockServer.connectTransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
-				mockContext.logger,
+				'/custom-path/messages',
+				mockResponse,
 			);
 		});
 
 		it('should use default server name for version 1', async () => {
 			// Configure node with version 1
 			mockContext.getNode.mockReturnValue({
-				name: 'My Custom MCP Server!',
 				typeVersion: 1,
 			} as INode);
 			mockContext.getWebhookName.mockReturnValue('setup');
@@ -122,10 +122,11 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
-			// Verify that McpServerSingleton.instance was called with default name
-			expect(McpServerSingleton.instance).toHaveBeenCalledWith(
+			// Verify that connectTransport was called with the default server name
+			expect(mockServer.connectTransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
-				mockContext.logger,
+				'/custom-path/messages',
+				mockResponse,
 			);
 		});
 	});

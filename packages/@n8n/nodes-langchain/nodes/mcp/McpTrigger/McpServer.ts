@@ -52,8 +52,6 @@ function getRequestId(body: string): string | undefined {
 }
 
 export class McpServer {
-	serverName: string;
-
 	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
@@ -64,15 +62,18 @@ export class McpServer {
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
 
-	constructor(serverName: string, logger: Logger) {
-		this.serverName = serverName;
+	constructor(logger: Logger) {
 		this.logger = logger;
-		this.logger.debug(`MCP Server "${serverName}" created`);
+		this.logger.debug('MCP Server created');
 	}
 
-	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
+	async connectTransport(
+		serverName: string,
+		postUrl: string,
+		resp: CompressionResponse,
+	): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
-		const server = this.setUpServer();
+		const server = this.setUpServer(serverName);
 		const { sessionId } = transport;
 		this.transports[sessionId] = transport;
 		this.servers[sessionId] = server;
@@ -126,10 +127,10 @@ export class McpServer {
 		return wasToolCall(req.rawBody.toString());
 	}
 
-	setUpServer(): Server {
+	setUpServer(serverName: string): Server {
 		const server = new Server(
 			{
-				name: this.serverName,
+				name: serverName,
 				version: '0.1.0',
 			},
 			{
@@ -220,13 +221,13 @@ export class McpServerSingleton {
 
 	private _serverData: McpServer;
 
-	private constructor(serverName: string, logger: Logger) {
-		this._serverData = new McpServer(serverName, logger);
+	private constructor(logger: Logger) {
+		this._serverData = new McpServer(logger);
 	}
 
-	static instance(serverName: string, logger: Logger): McpServer {
+	static instance(logger: Logger): McpServer {
 		if (!McpServerSingleton.#instance) {
-			McpServerSingleton.#instance = new McpServerSingleton(serverName, logger);
+			McpServerSingleton.#instance = new McpServerSingleton(logger);
 			logger.debug('Created singleton for MCP Servers');
 		}
 

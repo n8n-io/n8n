@@ -34,18 +34,14 @@ describe('McpServer', () => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
 
-		mcpServer = new McpServer('mcpServer', mock());
+		mcpServer = new McpServer(mock());
 	});
 
 	describe('connectTransport', () => {
 		const postUrl = '/post-url';
 
-		it('should set up the server name on initialization', () => {
-			expect(mcpServer.serverName).toEqual('mcpServer');
-		});
-
 		it('should set up a transport and server', async () => {
-			await mcpServer.connectTransport(postUrl, mockResponse);
+			await mcpServer.connectTransport('mcpServer', postUrl, mockResponse);
 
 			// Check that FlushingSSEServerTransport was initialized with correct params
 			expect(FlushingSSEServerTransport).toHaveBeenCalledWith(postUrl, mockResponse);
@@ -65,7 +61,7 @@ describe('McpServer', () => {
 		});
 
 		it('should set up close handler that cleans up resources', async () => {
-			await mcpServer.connectTransport(postUrl, mockResponse);
+			await mcpServer.connectTransport('mcpServer', postUrl, mockResponse);
 
 			// Get the close callback and execute it
 			const closeCallbackCaptor = captor<() => Promise<void>>();

@@ -147,7 +147,7 @@ export class McpTrigger extends Node {
 		// Get a url/tool friendly name for the server, based on the node name
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServer: McpServer = McpServerSingleton.instance(serverName, context.logger);
+		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
 
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
@@ -156,7 +156,7 @@ export class McpTrigger extends Node {
 				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
 				`/${MCP_SSE_MESSAGES_PATH}`,
 			);
-			await mcpServer.connectTransport(postUrl, resp);
+			await mcpServer.connectTransport(serverName, postUrl, resp);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
