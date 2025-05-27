@@ -1,5 +1,5 @@
 import type { INodeUi, XYPosition } from '@/Interface';
-import type { IConnection, INode } from 'n8n-workflow';
+import type { IConnection, INodeParameters } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 // Command names don't serve any particular purpose in the app
@@ -13,7 +13,7 @@ export const enum COMMANDS {
 	REMOVE_CONNECTION = 'removeConnection',
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 	RENAME_NODE = 'renameNode',
-	REPLACE_NODE_PROPERTIES = 'replaceNodeProperties',
+	REPLACE_NODE_PARAMETERS = 'replaceNodeParameters',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -283,40 +283,40 @@ export class RenameNodeCommand extends Command {
 	}
 }
 
-export class ReplaceNodePropertiesCommand extends Command {
+export class ReplaceNodeParametersCommand extends Command {
 	constructor(
 		private nodeId: string,
-		private currentProperties: Partial<INode>,
-		private newProperties: Partial<INode>,
+		private currentParameters: INodeParameters,
+		private newParameters: INodeParameters,
 		timestamp: number,
 	) {
-		super(COMMANDS.REPLACE_NODE_PROPERTIES, timestamp);
+		super(COMMANDS.REPLACE_NODE_PARAMETERS, timestamp);
 	}
 
 	getReverseCommand(timestamp: number): Command {
-		return new ReplaceNodePropertiesCommand(
+		return new ReplaceNodeParametersCommand(
 			this.nodeId,
-			this.newProperties,
-			this.currentProperties,
+			this.newParameters,
+			this.currentParameters,
 			timestamp,
 		);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
 		return (
-			anotherCommand instanceof ReplaceNodePropertiesCommand &&
+			anotherCommand instanceof ReplaceNodeParametersCommand &&
 			anotherCommand.nodeId === this.nodeId &&
-			anotherCommand.currentProperties === this.currentProperties &&
-			anotherCommand.newProperties === this.newProperties
+			anotherCommand.currentParameters === this.currentParameters &&
+			anotherCommand.newParameters === this.newParameters
 		);
 	}
 
 	async revert(): Promise<void> {
 		return await new Promise<void>((resolve) => {
-			historyBus.emit('revertReplaceNodeProperties', {
+			historyBus.emit('revertReplaceNodeParameters', {
 				nodeId: this.nodeId,
-				currentProperties: this.currentProperties,
-				newProperties: this.newProperties,
+				currentProperties: this.currentParameters,
+				newProperties: this.newParameters,
 			});
 			resolve();
 		});

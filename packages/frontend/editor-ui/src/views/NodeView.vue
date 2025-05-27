@@ -78,6 +78,7 @@ import type {
 	ExecutionSummary,
 	IConnection,
 	INode,
+	INodeParameters,
 } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -199,7 +200,7 @@ const {
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
-	revertReplaceNodeProperties,
+	revertReplaceNodeParameters,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
@@ -885,16 +886,16 @@ async function onRevertRenameNode({
 	await revertRenameNode(currentName, newName);
 }
 
-async function onRevertReplaceNodeProperties({
+async function onRevertReplaceNodeParameters({
 	nodeId,
 	currentProperties,
 	newProperties,
 }: {
 	nodeId: string;
-	currentProperties: Partial<INode>;
-	newProperties: Partial<INode>;
+	currentProperties: INodeParameters;
+	newProperties: INodeParameters;
 }) {
-	await revertReplaceNodeProperties(nodeId, currentProperties, newProperties);
+	await revertReplaceNodeParameters(nodeId, currentProperties, newProperties);
 }
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -1399,7 +1400,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
-	historyBus.on('revertReplaceNodeProperties', onRevertReplaceNodeProperties);
+	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1410,7 +1411,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
-	historyBus.off('revertReplaceNodeProperties', onRevertReplaceNodeProperties);
+	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 

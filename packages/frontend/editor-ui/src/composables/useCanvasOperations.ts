@@ -40,7 +40,7 @@ import {
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
 	RenameNodeCommand,
-	ReplaceNodePropertiesCommand,
+	ReplaceNodeParametersCommand,
 } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -98,6 +98,7 @@ import type {
 	NodeParameterValueType,
 	Workflow,
 	NodeConnectionType,
+	INodeParameters,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
@@ -246,33 +247,42 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		updateNodePosition(node.id, position);
 	}
 
-	function replaceNodeProperties(
+	function replaceNodeParameters(
 		nodeId: string,
-		currentProperties: Partial<INode>,
-		newProperties: Partial<INode>,
+		currentParameters: INodeParameters,
+		newParameters: INodeParameters,
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
-		// @todo this should probably use use workflowsStore.setNodeValues()?
 		const node = workflowsStore.getNodeById(nodeId);
 		if (!node) return;
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
+		workflowsStore.setNodeParameters({
+			name: node.name,
+			value: newParameters,
+		});
 
-		for (const k of Object.keys(currentProperties)) {
-			if (!(k in newProperties)) {
-				// @ts-expect-error invariant
-				delete node[k];
-			}
-		}
-		for (const [k, v] of Object.entries(newProperties)) {
-			// @ts-expect-error invariant
-			node[k] = v;
-		}
+		// for (const k of Object.keys(currentParameters)) {
+		// 	if (!(k in newParameters)) {
+		// 		// We need to explicitly remove these to correctly support undo/redo
+		// 		// @ts-expect-error invariant
+		// 		delete node[k];
+		// 	}
+		// }
+
+		// const nodeIndex = workflowsStore.workflow.nodes.findIndex((x) => x.name === node.name);
+		// for (const [k, v] of Object.entries(newParameters)) {
+		// 	workflowsStore.setNodeValueByIndex(nodeIndex, {
+		// 		name: node.name,
+		// 		key: k,
+		// 		value: v,
+		// 	});
+		// }
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(
-				new ReplaceNodePropertiesCommand(nodeId, currentProperties, newProperties, Date.now()),
+				new ReplaceNodeParametersCommand(nodeId, currentParameters, newParameters, Date.now()),
 			);
 		}
 
@@ -281,12 +291,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	async function revertReplaceNodeProperties(
+	async function revertReplaceNodeParameters(
 		nodeId: string,
-		currentProperties: Partial<INode>,
-		newProperties: Partial<INode>,
+		currentParameters: INodeParameters,
+		newParameters: INodeParameters,
 	) {
-		replaceNodeProperties(nodeId, newProperties, currentProperties);
+		replaceNodeParameters(nodeId, newParameters, currentParameters);
 	}
 
 	async function renameNode(
@@ -2213,8 +2223,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		setNodeParameters,
 		renameNode,
 		revertRenameNode,
-		replaceNodeProperties,
-		revertReplaceNodeProperties,
+		replaceNodeParameters,
+		revertReplaceNodeParameters,
 		deleteNode,
 		deleteNodes,
 		copyNodes,

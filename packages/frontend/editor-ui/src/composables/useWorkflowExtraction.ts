@@ -157,7 +157,7 @@ export function useWorkflowExtraction() {
 		const lastNode = endNodeTarget ?? nodes.sort((a, b) => b.position[1] - a.position[1])[0];
 
 		const endNodePosition: [number, number] = [
-			lastNode.position[0] - PUSH_NODES_OFFSET,
+			lastNode.position[0] + PUSH_NODES_OFFSET,
 			lastNode.position[1],
 		];
 
@@ -168,7 +168,7 @@ export function useWorkflowExtraction() {
 							[
 								{
 									node: startNodeTarget.name,
-									type: 'main', // @todo check if this is valid
+									type: 'main',
 									index: 0,
 								},
 							],
@@ -184,7 +184,7 @@ export function useWorkflowExtraction() {
 							[
 								{
 									node: returnNodeName,
-									type: 'main', // @todo check if this is valid
+									type: 'main',
 									index: 0,
 								},
 							],
@@ -384,10 +384,10 @@ export function useWorkflowExtraction() {
 		for (const node of selectionChildNodes) {
 			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
 			if (isEqual(node, currentNode)) continue;
-			canvasOperations.replaceNodeProperties(
+			canvasOperations.replaceNodeParameters(
 				node.id,
-				{ ...currentNode },
-				{ ...currentNode, parameters: { ...node.parameters } },
+				{ ...currentNode?.parameters },
+				{ ...node.parameters },
 				CANVAS_HISTORY_OPTIONS,
 			);
 		}
