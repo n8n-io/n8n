@@ -500,7 +500,12 @@ function deleteFolderAndMoveContents(folderName: string, destinationName: string
 function moveFolder(folderName: string, destinationName: string) {
 	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
 	getMoveFolderModal().should('be.visible');
-	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
+	getMoveFolderModal().find('h1').first().contains(`Move folder ${folderName}`);
+
+	// The dropdown focuses after a small delay (once modal's slide in animation is done).
+	// On the component we listen for an event, but here the wait should be very predictable.
+	cy.wait(500);
+
 	// Try to find current folder in the dropdown
 	// This tests that auto-focus worked as expected
 	cy.focused().type(folderName, { delay: 50 });
