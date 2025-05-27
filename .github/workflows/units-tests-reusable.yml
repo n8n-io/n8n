@@ -43,12 +43,12 @@ jobs:
       TURBO_FORCE: ${{ inputs.ignoreTurboCache }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ inputs.ref }}
 
       - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: useblacksmith/setup-node@v5
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
         with:
           node-version: ${{ inputs.nodeVersion }}
 
@@ -61,7 +61,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: useblacksmith/caching-for-turbo@v1
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
@@ -69,7 +69,7 @@ jobs:
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
-        uses: useblacksmith/cache/restore@v5
+        uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
@@ -87,12 +87,12 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }} # Run even if tests fail
-        uses: codecov/test-results-action@v1
+        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage to Codecov
         if: inputs.collectCoverage
-        uses: codecov/codecov-action@v5.1.2
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
