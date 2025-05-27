@@ -4,6 +4,7 @@ import type { PyDict } from 'pyodide/ffi';
 import { LoadPyodide } from './Pyodide';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
+import { checkPythonCodeImports } from './utils';
 
 type PythonSandboxContext = {
 	[K in keyof SandboxContext as K extends `$${infer I}` ? `_${I}` : K]: SandboxContext[K];
@@ -53,6 +54,8 @@ export class PythonSandbox extends Sandbox {
 	}
 
 	private async runCodeInPython<T>() {
+		checkPythonCodeImports(this.pythonCode);
+
 		const packageCacheDir = this.helpers.getStoragePath();
 		const pyodide = await LoadPyodide(packageCacheDir);
 

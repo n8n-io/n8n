@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { UserError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
-import { addPostExecutionWarning } from '../utils';
+import { addPostExecutionWarning, checkPythonCodeImports } from '../utils';
 
 describe('addPostExecutionWarning', () => {
 	const context = mock<IExecuteFunctions>();
@@ -42,5 +42,40 @@ describe('addPostExecutionWarning', () => {
 		addPostExecutionWarning(context, returnData, inputItemsLength);
 
 		expect(context.addExecutionHints).not.toHaveBeenCalled();
+	});
+});
+
+describe('checkPythonCodeImports', () => {
+	it('should throw on static "import os"', () => {
+		const code = 'import os';
+		expect(() => checkPythonCodeImports(code)).toThrowError(
+			new UserError('Forbidden import detected: os'),
+		);
+	});
+
+	it('should throw on static "import os, math"', () => {
+		const code = 'import os, math';
+		expect(() => checkPythonCodeImports(code)).toThrowError(
+			new UserError('Forbidden import detected: os'),
+		);
+	});
+
+	it('should throw on "from os import path"', () => {
+		const code = 'from os import path';
+		expect(() => checkPythonCodeImports(code)).toThrowError(
+			new UserError('Forbidden import detected: os'),
+		);
+	});
+
+	it('should throw on dynamic import "__import__(\'os\')"', () => {
+		const code = "__import__('os')";
+		expect(() => checkPythonCodeImports(code)).toThrowError(
+			new UserError('Forbidden import detected: os'),
+		);
+	});
+
+	it('should not throw for allowed import (e.g., math)', () => {
+		const code = 'import math';
+		expect(() => checkPythonCodeImports(code)).not.toThrow();
 	});
 });
