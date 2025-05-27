@@ -1,3 +1,12 @@
+## [1.95.1](https://github.com/n8n-io/n8n/compare/n8n@1.95.0...n8n@1.95.1) (2025-05-27)
+
+
+### Bug Fixes
+
+* Community packages update check ([#15684](https://github.com/n8n-io/n8n/issues/15684)) ([5ed1306](https://github.com/n8n-io/n8n/commit/5ed13065f1d9b7c84a2f97a915c754563a04b6c3))
+
+
+
 # [1.95.0](https://github.com/n8n-io/n8n/compare/n8n@1.94.0...n8n@1.95.0) (2025-05-26)
 
 
