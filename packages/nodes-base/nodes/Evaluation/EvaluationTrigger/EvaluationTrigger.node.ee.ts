@@ -20,7 +20,23 @@ import {
 	getSheet,
 } from '../utils/evaluationTriggerUtils';
 
-export let startingRow = 2;
+export const DEFAULT_STARTING_ROW = 2;
+
+interface PreviousRun {
+	row_number: number;
+	_rowsLeft: number;
+}
+
+function isPreviousRun(run: unknown): run is PreviousRun {
+	return (
+		typeof run === 'object' &&
+		run !== null &&
+		'row_number' in run &&
+		'_rowsLeft' in run &&
+		typeof run._rowsLeft === 'number' &&
+		typeof run.row_number === 'number'
+	);
+}
 
 export class EvaluationTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,12 +121,7 @@ export class EvaluationTrigger implements INodeType {
 
 	methods = { loadOptions, listSearch };
 
-	async execute(this: IExecuteFunctions, startRow?: number): Promise<INodeExecutionData[][]> {
-		// We need to allow tests to reset the startingRow
-		if (startRow) {
-			startingRow = startRow;
-		}
-
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
 
 		const MAX_ROWS = 1000;
@@ -119,10 +130,14 @@ export class EvaluationTrigger implements INodeType {
 			? (this.getNodeParameter('maxRows', 0) as number) + 1
 			: MAX_ROWS;
 
+		const previousRun = inputData?.[0]?.json?.previousRun;
+		const firstDataRow = isPreviousRun(previousRun)
+			? previousRun.row_number + 1
+			: DEFAULT_STARTING_ROW;
 		const rangeOptions = {
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
-			firstDataRow: startingRow,
+			firstDataRow,
 		};
 
 		const googleSheetInstance = getGoogleSheet.call(this);
@@ -153,8 +168,6 @@ export class EvaluationTrigger implements INodeType {
 			const currentRowNumber = currentRow.json?.row_number as number;
 
 			if (currentRow === undefined) {
-				startingRow = 2;
-
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
@@ -168,36 +181,22 @@ export class EvaluationTrigger implements INodeType {
 
 			currentRow.json._rowsLeft = rowsLeft;
 
-			startingRow = currentRowNumber + 1;
-
-			if (rowsLeft === 0) {
-				startingRow = 2;
-			}
-
 			return [[currentRow]];
 		} else {
-			const currentRow = allRows.find((row) => (row?.json?.row_number as number) === startingRow);
+			const currentRow = allRows.find((row) => (row?.json?.row_number as number) === firstDataRow);
 
 			const rowsLeft = await getRowsLeft.call(
 				this,
 				googleSheetInstance,
 				googleSheet.title,
-				`${googleSheet.title}!${startingRow}:${maxRows}`,
+				`${googleSheet.title}!${firstDataRow}:${maxRows}`,
 			);
 
 			if (currentRow === undefined) {
-				startingRow = 2;
-
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
 			currentRow.json._rowsLeft = rowsLeft;
-
-			startingRow += 1;
-
-			if (rowsLeft === 0) {
-				startingRow = 2;
-			}
 
 			return [[currentRow]];
 		}
