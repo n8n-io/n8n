@@ -105,9 +105,7 @@ defineExpose({
 });
 
 const maxPathLength = 4;
-const separator = computed(() => {
-	return '/';
-});
+const separator = '/';
 
 const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) => {
 	return index === location.path.length - 1 || index >= 3;
@@ -183,7 +181,7 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 <style module lang="scss">
 .move-folder-dropdown {
 	display: flex;
-	padding-top: var(--spacing-2xs) !important;
+	padding-top: var(--spacing-2xs);
 }
 
 .folder-select-item {
