@@ -1,6 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import {
@@ -48,7 +48,7 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
-		private readonly globalConfig: GlobalConfig,
+		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	private get workflowService() {
@@ -191,7 +191,7 @@ export class ProjectService {
 		const limit = this.licenseState.getMaxTeamProjects();
 		if (limit !== UNLIMITED_LICENSE_QUOTA) {
 			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
-			if (limit <= teamProjectCount) {
+			if (teamProjectCount >= limit) {
 				throw new TeamProjectOverQuotaError(limit);
 			}
 		}
@@ -208,7 +208,7 @@ export class ProjectService {
 	}
 
 	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		if (this.globalConfig.database.isLegacySqlite) {
+		if (this.databaseConfig.isLegacySqlite) {
 			// Using transaction in the sqlite legacy driver can cause data loss, so
 			// we avoid this here.
 			return await this.createTeamProjectWithEntityManager(
