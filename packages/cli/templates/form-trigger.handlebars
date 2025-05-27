@@ -32,6 +32,7 @@
 
 				/* Colors */
 				--color-background: #fbfcfe;
+		    --background-mobile-color: #ffffff;
 				--color-test-notice-text: #e6a23d;
 				--color-test-notice-bg: #fefaf6;
 				--color-test-notice-border: #f6dcb7;
@@ -59,7 +60,9 @@
 
 				/* Spacing */
 				--padding-container-top: 24px;
+				--padding-mobile-container: 24px;
 				--padding-card: 24px;
+				--padding-mobile-card: 0px;
 				--padding-test-notice-vertical: 12px;
 				--padding-test-notice-horizontal: 24px;
 				--margin-bottom-card: 16px;
@@ -400,7 +403,7 @@
 
 			@media only screen and (max-width: 500px) {
 				body {
-					background-color: #ffffff;
+					background-color: var(--background-mobile-color);
 				}
 				hr {
 					display: block;
@@ -408,15 +411,15 @@
 				.container {
 					width: 95%;
 					min-height: 100vh;
-					padding: 24px;
-					background-color: #ffffff;
+					padding: var(--padding-mobile-container);
+					background-color: var(--background-mobile-color);
 					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
 					box-shadow: 0px 0px 0px 0px #ffffff;
 				}
 				.card {
-					padding: 0px;
-					background-color: #ffffff;
+					padding: var(--padding-mobile-card);
+					background-color: var(--background-mobile-color);
 					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
 					box-shadow: 0px 0px 0px 0px #ffffff;
