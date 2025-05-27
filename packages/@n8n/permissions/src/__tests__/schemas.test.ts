@@ -57,6 +57,7 @@ describe('projectRoleSchema', () => {
 		{ name: 'valid role: project:admin', value: 'project:admin', expected: true },
 		{ name: 'valid role: project:editor', value: 'project:editor', expected: true },
 		{ name: 'valid role: project:viewer', value: 'project:viewer', expected: true },
+		{ name: 'valid role: project:executor', value: 'project:executor', expected: true },
 		{ name: 'invalid role', value: 'invalid-role', expected: false },
 	])('should validate $name', ({ value, expected }) => {
 		const result = projectRoleSchema.safeParse(value);
