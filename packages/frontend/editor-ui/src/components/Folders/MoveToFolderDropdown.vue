@@ -63,11 +63,16 @@ const fetchAvailableLocations = async (query?: string) => {
 	} else {
 		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
 	}
+
+	const rootFolderName = i18n.baseText('folders.move.project.root.name');
+	const isQueryMatchesRoot = !query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
+	const isTransfer = props.currentProjectId !== projectsStore.currentProject?.id;
+
 	// Finally always add project root to the results (if folder is not already in root)
-	if (!!props.parentFolderId || props.currentProjectId !== projectsStore.currentProject?.id) {
+	if (isQueryMatchesRoot && (!!props.parentFolderId || isTransfer)) {
 		availableLocations.value.unshift({
 			id: props.currentProjectId,
-			name: i18n.baseText('folders.move.project.root.name'),
+			name: rootFolderName,
 			resource: 'project',
 			createdAt: '',
 			updatedAt: '',
