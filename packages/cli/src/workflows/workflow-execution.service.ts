@@ -117,6 +117,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
+			destinationNode,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -378,7 +379,12 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(workflow: IWorkflowBase, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(
+		workflow: IWorkflowBase,
+		startNodes?: string[],
+		pinData?: IPinData,
+		destinationNode?: string,
+	) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
@@ -389,7 +395,27 @@ export class WorkflowExecutionService {
 
 		// full manual execution
 
-		if (startNodes?.length === 0) return firstPinnedActivator ?? null;
+		if (startNodes?.length === 0) {
+			// If there is a destination node, find the pinned activator that is a parent of the destination node
+			if (destinationNode) {
+				const destinationParents = new Set(
+					new Workflow({
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						active: workflow.active,
+						nodeTypes: this.nodeTypes,
+					}).getParentNodes(destinationNode),
+				);
+
+				const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+
+				if (activator) {
+					return activator;
+				}
+			}
+
+			return firstPinnedActivator ?? null;
+		}
 
 		// partial manual execution
 

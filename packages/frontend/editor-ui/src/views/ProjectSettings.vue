@@ -323,6 +323,7 @@ onMounted(() => {
 						required
 						data-test-id="project-settings-name-input"
 						:class="$style['project-name-input']"
+						@enter="onSubmit"
 						@input="onNameInput"
 						@validate="isValid = $event"
 					/>

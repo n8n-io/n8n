@@ -120,11 +120,13 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 				</n8n-tooltip>
 			</span>
 		</CategoryItem>
+
 		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
+
 		<CommunityNodeInstallHint
-			v-if="isPreview"
+			v-if="isPreview && expanded"
 			:hint="i18n.baseText('communityNodeItem.actions.hint')"
 		/>
 

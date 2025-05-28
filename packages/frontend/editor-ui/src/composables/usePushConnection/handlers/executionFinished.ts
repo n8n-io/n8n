@@ -18,7 +18,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
@@ -91,6 +91,34 @@ export async function executionFinished(
 		if (!execution) {
 			uiStore.setProcessingExecutionResults(false);
 			return;
+		}
+	}
+
+	// Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
+	if (execution.status === 'success' && execution.data?.startData?.destinationNode === undefined) {
+		// check if we have an evaluation trigger in our workflow and whether it has any run data
+		const evalTrigger = execution.workflowData.nodes.find(
+			(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+		);
+		const triggerRunData = evalTrigger
+			? execution?.data?.resultData?.runData[evalTrigger.name]
+			: undefined;
+
+		if (evalTrigger && triggerRunData !== undefined) {
+			const mainData = triggerRunData[0]?.data?.main[0];
+			const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+			if (rowsLeft && rowsLeft > 0) {
+				// Find the button that belongs to the evaluation trigger, and click it.
+				const testId = `execute-workflow-button-${evalTrigger.name}`;
+
+				setTimeout(() => {
+					const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
+						(x as HTMLElement)?.dataset?.testId?.startsWith(testId),
+					)[0];
+					(button as HTMLElement)?.click();
+				}, 2);
+			}
 		}
 	}
 
