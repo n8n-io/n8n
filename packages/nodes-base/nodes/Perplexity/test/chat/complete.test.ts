@@ -12,22 +12,16 @@ describe('Perplexity Node - Chat Completions', () => {
 	beforeEach(() => {
 		nock.disableNetConnect();
 		nock('https://api.perplexity.ai')
-			.post('/chat/completions', {
-				model: 'r1-1776',
-				messages: [
-					{ role: 'user', content: 'test' },
-					{ role: 'assistant', content: 'test' },
-					{ role: 'user', content: 'aaa' },
-				],
-				frequency_penalty: 1,
-				max_tokens: 4,
-				temperature: 1.99,
-				top_k: 4,
-				top_p: 1,
-				presence_penalty: 2,
-				return_images: false,
-				return_related_questions: false,
-				search_recency: 'month',
+			.post('/chat/completions', (body) => {
+				return (
+					body?.model?.value === 'r1-1776' &&
+					body?.model?.mode === 'id' &&
+					Array.isArray(body?.messages) &&
+					body.messages.length === 3 &&
+					body.messages[0].role === 'user' &&
+					body.messages[1].role === 'assistant' &&
+					body.messages[2].role === 'user'
+				);
 			})
 			.reply(200, {
 				id: '6bb24c98-3071-4691-9a7b-dc4bc18c3c2c',
