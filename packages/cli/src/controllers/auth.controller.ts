@@ -19,6 +19,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
 import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
+import { CredentialsSharingService } from '@/services/credentials-sharing.service';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
@@ -30,12 +31,13 @@ export class AuthController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly authService: AuthService,
-		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
-		private readonly license: License,
-		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
-		private readonly postHog?: PostHogClient,
+		private readonly postHog: PostHogClient,
+		private readonly mfaService: MfaService,
+		private readonly license: License,
+		private readonly credentialsSharingService: CredentialsSharingService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/** Log in a user */
@@ -103,6 +105,11 @@ export class AuthController {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
+
+			// if signin with member role, share AI credentials from owner
+			if (user.role === 'global:member') {
+				await this.credentialsSharingService.shareOwnerAiCredentialsWithMember(user);
+			}
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}

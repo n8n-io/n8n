@@ -4,10 +4,12 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUsersStore } from '@/stores/users.store';
 import { N8nButton, N8nSelect } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
+import { SHARED_CREDENTIAL_TYPES } from '@/constants/credentials';
 import Modal from './Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -23,6 +25,18 @@ const selectRef = ref<HTMLSelectElement>();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const usersStore = useUsersStore();
+
+const isMember = computed(() => usersStore.currentUser?.role === 'global:member');
+
+const filteredCredentialTypes = computed(() => {
+	if (!isMember.value) {
+		return credentialsStore.allCredentialTypes;
+	}
+	return credentialsStore.allCredentialTypes.filter(
+		(credential) => !SHARED_CREDENTIAL_TYPES.includes(credential.name as any),
+	);
+});
 
 onMounted(async () => {
 	try {
@@ -92,7 +106,7 @@ function openCredentialType() {
 						<font-awesome-icon icon="search" />
 					</template>
 					<N8nOption
-						v-for="credential in credentialsStore.allCredentialTypes"
+						v-for="credential in filteredCredentialTypes"
 						:key="credential.name"
 						:value="credential.name"
 						:label="credential.displayName"

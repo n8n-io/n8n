@@ -16,6 +16,7 @@ import TitledList from '@/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { SHARED_CREDENTIAL_TYPES } from '@/constants/credentials';
 import { ndvEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -41,6 +42,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { isEmpty } from '@/utils/typesUtils';
+import { useUsersStore } from '@/stores/users.store';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -76,6 +78,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const usersStore = useUsersStore();
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -302,14 +305,23 @@ function clearSelectedCredential(credentialType: string) {
 	emit('credentialSelected', updateInformation);
 }
 
+const isMember = computed(() => usersStore.currentUser?.role === 'global:member');
+
 function createNewCredential(
 	credentialType: string,
 	listenForAuthChange: boolean = false,
 	showAuthOptions = false,
 ) {
+	if (isMember.value && SHARED_CREDENTIAL_TYPES.includes(credentialType as any)) {
+		toast.showMessage({
+			title: i18n.baseText('error'),
+			message: i18n.baseText('error'),
+			type: 'error',
+		});
+		return;
+	}
+
 	if (listenForAuthChange) {
-		// If new credential dialog is open, start listening for auth type change which should happen in the modal
-		// this will be handled in this component's watcher which will set subscribed credential accordingly
 		listeningForAuthChange.value = true;
 		subscribedToCredentialType.value = credentialType;
 	}
@@ -456,6 +468,15 @@ function isCredentialExisting(credentialType: string): boolean {
 }
 
 function editCredential(credentialType: string): void {
+	if (isMember.value && SHARED_CREDENTIAL_TYPES.includes(credentialType as any)) {
+		toast.showMessage({
+			title: i18n.baseText('error'),
+			message: i18n.baseText('error'),
+			type: 'error',
+		});
+		return;
+	}
+
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
 
@@ -564,6 +585,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 						<template #empty> </template>
 						<template #footer>
 							<div
+								v-if="!(isMember && SHARED_CREDENTIAL_TYPES.includes(type.name as any))"
 								data-test-id="node-credentials-select-item-new"
 								:class="['clickable', $style.newCredential]"
 								@click="onClickCreateCredential(type)"
@@ -587,7 +609,11 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					</div>
 
 					<div
-						v-if="selected[type.name] && isCredentialExisting(type.name)"
+						v-if="
+							selected[type.name] &&
+							isCredentialExisting(type.name) &&
+							!(isMember && SHARED_CREDENTIAL_TYPES.includes(type.name as any))
+						"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
