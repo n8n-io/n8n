@@ -36,6 +36,10 @@ export function getInputSelect() {
 	return cy.getByTestId('ndv-input-select').find('input');
 }
 
+export function getInputLinkRun() {
+	return getInputPanel().findChildByTestId('link-run');
+}
+
 export function getMainPanel() {
 	return cy.getByTestId('node-parameters');
 }
@@ -66,6 +70,14 @@ export function getInputTableRows() {
 
 export function getInputTbodyCell(row: number, col: number) {
 	return getInputTableRows().eq(row).find('td').eq(col);
+}
+
+export function getInputRunSelector() {
+	return getInputPanel().findChildByTestId('run-selector');
+}
+
+export function getInputPanelItemsCount() {
+	return getInputPanel().getByTestId('ndv-items-count');
 }
 
 export function getOutputPanelDataContainer() {
@@ -328,4 +340,8 @@ export function resetHoverState() {
 
 export function setInputDisplayMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary') {
 	getInputPanel().findChildByTestId('ndv-run-data-display-mode').contains(mode).click();
+}
+
+export function toggleInputRunLinking() {
+	getInputLinkRun().click();
 }
