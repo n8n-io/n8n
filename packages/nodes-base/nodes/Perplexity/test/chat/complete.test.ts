@@ -1,16 +1,14 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
+const credentials = {
+	perplexityApi: {
+		apiKey: 'test-api-key',
+		baseUrl: 'https://api.perplexity.ai',
+	},
+};
 
 describe('Perplexity Node - Chat Completions', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('complete.workflow.json'),
-	);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
 		nock.disableNetConnect();
 		nock('https://api.perplexity.ai')
@@ -59,5 +57,5 @@ describe('Perplexity Node - Chat Completions', () => {
 		nock.enableNetConnect();
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({ credentials });
 });
