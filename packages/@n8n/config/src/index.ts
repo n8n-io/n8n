@@ -96,7 +96,7 @@ export class GlobalConfig {
 
 	/** IP address n8n should listen on */
 	@Env('N8N_LISTEN_ADDRESS')
-	listen_address: string = '0.0.0.0';
+	listen_address: string = '::';
 
 	/** HTTP Protocol via which n8n can be reached */
 	@Env('N8N_PROTOCOL', protocolSchema)
