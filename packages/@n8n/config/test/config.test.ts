@@ -25,7 +25,7 @@ describe('GlobalConfig', () => {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
 		auth: {
 			cookie: {
@@ -196,7 +196,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
-				address: '0.0.0.0',
+				address: '::',
 			},
 			bull: {
 				redis: {
