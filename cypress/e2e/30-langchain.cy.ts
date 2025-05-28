@@ -29,8 +29,6 @@ import {
 	getRunDataInfoCallout,
 	getOutputPanelTable,
 	checkParameterCheckboxInputByName,
-	getOutputPanelItemsCount,
-	getInputPanelItemsCount,
 } from '../composables/ndv';
 import * as workflow from '../composables/workflow';
 import {
