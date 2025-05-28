@@ -126,7 +126,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign, trim whitespace
-		parameterValue = parameterValue.substr(1).trim();
+		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
 		const dataProxy = new WorkflowDataProxy(
@@ -327,6 +327,11 @@ export class Expression {
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
 		try {
+			// Trim expression and check if it's an object
+			// if it is, return result
+			const result = evaluateExpression(expression.trim(), data);
+			if (typeof result === 'object' && result !== null) return result;
+
 			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;

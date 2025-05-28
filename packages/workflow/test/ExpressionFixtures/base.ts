@@ -132,7 +132,7 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [{ 'dig check CF': { data: { stdout: 'testout' } } }],
-				output: 'testout',
+				output: ' testout',
 			},
 			{ type: 'transform' },
 			{ type: 'transform', forceTransform: true },
