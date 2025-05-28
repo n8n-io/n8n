@@ -463,17 +463,10 @@ describe('NDV', () => {
 			return cy.get(`[data-node-placement=${position}]`);
 		}
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with mouse', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -518,16 +511,9 @@ describe('NDV', () => {
 				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -539,7 +525,6 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('inputMain').should('exist');
 				getFloatingNodeByPosition('outputMain').should('exist');
 				ndv.actions.close();
-				// These two lines are broken in V2
 				workflowPage.getters.selectedNodes().should('have.length', 1);
 				workflowPage.getters
 					.selectedNodes()
@@ -567,7 +552,6 @@ describe('NDV', () => {
 			getFloatingNodeByPosition('inputSub').should('not.exist');
 			getFloatingNodeByPosition('outputSub').should('not.exist');
 			ndv.actions.close();
-			// These two lines are broken in V2
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters
 				.selectedNodes()
@@ -624,13 +608,7 @@ describe('NDV', () => {
 		it('should have the floating nodes in correct order', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
 			openNode('Merge');

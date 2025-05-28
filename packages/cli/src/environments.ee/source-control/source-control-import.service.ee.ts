@@ -39,9 +39,12 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableTags } from './types/exportable-tags';
 import type { ResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
 
@@ -72,6 +75,7 @@ export class SourceControlImportService {
 		private readonly tagService: TagService,
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
+		private readonly sourceControlScopedService: SourceControlScopedService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -81,19 +85,41 @@ export class SourceControlImportService {
 		);
 	}
 
-	async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
+	async getRemoteVersionIdsFromFiles(
+		context: SourceControlContext,
+	): Promise<SourceControlWorkflowVersionId[]> {
 		const remoteWorkflowFiles = await glob('*.json', {
 			cwd: this.workflowExportFolder,
 			absolute: true,
 		});
-		const remoteWorkflowFilesParsed = await Promise.all(
+
+		const accessibleProjects =
+			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+
+		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
 				this.logger.debug(`Parsing workflow file ${file}`);
-				const remote = jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
+				return jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
+			}),
+		);
 
+		const remoteWorkflowFilesParsed = remoteWorkflowsRead
+			.filter((remote) => {
 				if (!remote?.id) {
-					return undefined;
+					return false;
 				}
+				if (Array.isArray(accessibleProjects)) {
+					const owner = remote.owner;
+					// The workflow `remote` belongs not to a project, that the context has access to
+					return (
+						typeof owner === 'object' &&
+						owner?.type === 'team' &&
+						accessibleProjects.some((project) => project.id === owner.teamId)
+					);
+				}
+				return true;
+			})
+			.map((remote) => {
 				return {
 					id: remote.id,
 					versionId: remote.versionId,
@@ -102,14 +128,12 @@ export class SourceControlImportService {
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 				} as SourceControlWorkflowVersionId;
-			}),
-		);
-		return remoteWorkflowFilesParsed.filter(
-			(e): e is SourceControlWorkflowVersionId => e !== undefined,
-		);
+			});
+
+		return remoteWorkflowFilesParsed;
 	}
 
-	async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
+	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
 		const localWorkflows = await this.workflowRepository.find({
 			relations: ['parentFolder'],
 			select: {
@@ -147,36 +171,105 @@ export class SourceControlImportService {
 		}) as SourceControlWorkflowVersionId[];
 	}
 
-	async getRemoteCredentialsFromFiles(): Promise<
-		Array<ExportableCredential & { filename: string }>
-	> {
+	async getLocalVersionIdsFromDb(
+		context: SourceControlContext,
+	): Promise<SourceControlWorkflowVersionId[]> {
+		const localWorkflows = await this.workflowRepository.find({
+			relations: {
+				parentFolder: true,
+			},
+			select: {
+				id: true,
+				versionId: true,
+				name: true,
+				updatedAt: true,
+				parentFolder: {
+					id: true,
+				},
+			},
+			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
+		});
+		return localWorkflows.map((local) => {
+			let updatedAt: Date;
+			if (local.updatedAt instanceof Date) {
+				updatedAt = local.updatedAt;
+			} else {
+				this.errorReporter.warn('updatedAt is not a Date', {
+					extra: {
+						type: typeof local.updatedAt,
+						value: local.updatedAt,
+					},
+				});
+				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+			}
+			return {
+				id: local.id,
+				versionId: local.versionId,
+				name: local.name,
+				localId: local.id,
+				parentFolderId: local.parentFolder?.id ?? null,
+				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+				updatedAt: updatedAt.toISOString(),
+			};
+		}) as SourceControlWorkflowVersionId[];
+	}
+
+	async getRemoteCredentialsFromFiles(
+		context: SourceControlContext,
+	): Promise<Array<ExportableCredential & { filename: string }>> {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
 		});
-		const remoteCredentialFilesParsed = await Promise.all(
+
+		const accessibleProjects =
+			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+
+		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
 				const remote = jsonParse<ExportableCredential>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
+				return remote;
+			}),
+		);
+
+		const remoteCredentialFilesParsed = remoteCredentialFilesRead
+			.filter((remote) => {
 				if (!remote?.id) {
-					return undefined;
+					return false;
 				}
+				if (Array.isArray(accessibleProjects)) {
+					const owner = remote.ownedBy;
+					// The credential `remote` belongs not to a project, that the context has access to
+					return (
+						typeof owner === 'object' &&
+						owner?.type === 'team' &&
+						accessibleProjects.some((project) => project.id === owner.teamId)
+					);
+				}
+				return true;
+			})
+			.map((remote) => {
 				return {
 					...remote,
 					filename: getCredentialExportPath(remote.id, this.credentialExportFolder),
 				};
-			}),
-		);
+			});
+
 		return remoteCredentialFilesParsed.filter((e) => e !== undefined) as Array<
 			ExportableCredential & { filename: string }
 		>;
 	}
 
-	async getLocalCredentialsFromDb(): Promise<Array<ExportableCredential & { filename: string }>> {
+	async getLocalCredentialsFromDb(
+		context: SourceControlContext,
+	): Promise<Array<ExportableCredential & { filename: string }>> {
 		const localCredentials = await this.credentialsRepository.find({
 			select: ['id', 'name', 'type'],
+			where:
+				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 		return localCredentials.map((local) => ({
 			id: local.id,
@@ -204,7 +297,7 @@ export class SourceControlImportService {
 		return await this.variablesService.getAllCached();
 	}
 
-	async getRemoteFoldersAndMappingsFromFile(): Promise<{
+	async getRemoteFoldersAndMappingsFromFile(context: SourceControlContext): Promise<{
 		folders: ExportableFolder[];
 	}> {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
@@ -218,12 +311,22 @@ export class SourceControlImportService {
 			}>(await fsReadFile(foldersFile[0], { encoding: 'utf8' }), {
 				fallbackValue: { folders: [] },
 			});
+
+			const accessibleProjects =
+				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+
+			if (Array.isArray(accessibleProjects)) {
+				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
+					accessibleProjects.some((project) => project.id === folder.homeProjectId),
+				);
+			}
+
 			return mappedFolders;
 		}
 		return { folders: [] };
 	}
 
-	async getLocalFoldersAndMappingsFromDb(): Promise<{
+	async getLocalFoldersAndMappingsFromDb(context: SourceControlContext): Promise<{
 		folders: ExportableFolder[];
 	}> {
 		const localFolders = await this.folderRepository.find({
@@ -236,6 +339,7 @@ export class SourceControlImportService {
 				parentFolder: { id: true },
 				homeProject: { id: true },
 			},
+			where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
 		});
 
 		return {
@@ -250,26 +354,33 @@ export class SourceControlImportService {
 		};
 	}
 
-	async getRemoteTagsAndMappingsFromFile(): Promise<{
-		tags: TagEntity[];
-		mappings: WorkflowTagMapping[];
-	}> {
+	async getRemoteTagsAndMappingsFromFile(context: SourceControlContext): Promise<ExportableTags> {
 		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
 		if (tagsFile.length > 0) {
 			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
-			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+			const mappedTags = jsonParse<ExportableTags>(
 				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
 			);
+
+			const accessibleWorkflows =
+				await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context);
+
+			if (accessibleWorkflows) {
+				mappedTags.mappings = mappedTags.mappings.filter((mapping) =>
+					accessibleWorkflows.some((workflow) => workflow.id === mapping.workflowId),
+				);
+			}
+
 			return mappedTags;
 		}
 		return { tags: [], mappings: [] };
 	}
 
-	async getLocalTagsAndMappingsFromDb(): Promise<{
+	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<{
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
@@ -278,6 +389,10 @@ export class SourceControlImportService {
 		});
 		const localMappings = await this.workflowTagMappingRepository.find({
 			select: ['workflowId', 'tagId'],
+			where:
+				this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
+					context,
+				),
 		});
 		return { tags: localTags, mappings: localMappings };
 	}
