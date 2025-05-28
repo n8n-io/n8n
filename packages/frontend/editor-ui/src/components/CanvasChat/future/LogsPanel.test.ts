@@ -23,6 +23,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/stores/logs.store';
+import { useUIStore } from '@/stores/ui.store';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -33,6 +34,7 @@ describe('LogsPanel', () => {
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	function render() {
 		return renderComponent(LogsPanel, {
@@ -66,6 +68,8 @@ describe('LogsPanel', () => {
 		nodeTypeStore.setNodeTypes(nodeTypes);
 
 		ndvStore = mockedStore(useNDVStore);
+
+		uiStore = mockedStore(useUIStore);
 
 		Object.defineProperty(document.body, 'offsetHeight', {
 			configurable: true,
@@ -374,18 +378,59 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
 	});
 
-	it('should allow to select previous and next row via keyboard shortcut', async () => {
-		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
-		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+	describe('selection', () => {
+		beforeEach(() => {
+			logsStore.toggleOpen(true);
+			workflowsStore.setWorkflow(aiChatWorkflow);
+			workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+		});
 
-		const rendered = render();
-		const overview = rendered.getByTestId('logs-overview');
+		it('should allow to select previous and next row via keyboard shortcut', async () => {
+			const { getByTestId, findByRole } = render();
+			const overview = getByTestId('logs-overview');
 
-		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
-		await fireEvent.keyDown(overview, { key: 'K' });
-		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
-		await fireEvent.keyDown(overview, { key: 'J' });
-		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			await fireEvent.keyDown(overview, { key: 'K' });
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+			await fireEvent.keyDown(overview, { key: 'J' });
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should not select a log for the selected node on canvas if sync is disabled', async () => {
+			logsStore.toggleLogSelectionSync(false);
+
+			const { findByRole, rerender } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			uiStore.lastSelectedNode = 'AI Agent';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should automatically select a log for the selected node on canvas if sync is enabled', async () => {
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			uiStore.lastSelectedNode = 'AI Agent';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+		});
+
+		it('should automatically expand and select a log for the selected node on canvas if the log entry is collapsed', async () => {
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole, getByLabelText, findByText, queryByText } = render();
+
+			await fireEvent.click(await findByText('AI Agent'));
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+			await fireEvent.click(getByLabelText('Toggle row'));
+			await rerender({});
+			expect(queryByText(/AI Model/)).not.toBeInTheDocument();
+			uiStore.lastSelectedNode = 'AI Model';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
 	});
 });

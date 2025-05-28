@@ -19,6 +19,13 @@ import type {
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/types';
+import {
+	getRectOfNodes,
+	type Dimensions,
+	type GraphNode,
+	type Rect,
+	type ViewportTransform,
+} from '@vue-flow/core';
 
 /*
  * Canvas constants and functions
@@ -530,3 +537,66 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 	}
 	return null;
 };
+
+export function getBounds(
+	{ x, y, zoom }: ViewportTransform,
+	{ width, height }: Dimensions,
+): ViewportBoundaries {
+	const xMin = -x / zoom;
+	const yMin = -y / zoom;
+	const xMax = (width - x) / zoom;
+	const yMax = (height - y) / zoom;
+
+	return { xMin, yMin, xMax, yMax };
+}
+
+function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
+	return {
+		x: x - amount,
+		y: y - amount,
+		width: width + amount * 2,
+		height: height + amount * 2,
+	};
+}
+
+export function updateViewportToContainNodes(
+	viewport: ViewportTransform,
+	dimensions: Dimensions,
+	nodes: GraphNode[],
+	padding: number,
+): ViewportTransform {
+	function computeDelta(start: number, end: number, min: number, max: number) {
+		if (start >= min && end <= max) {
+			// Both ends are already in the range, no need for adjustment
+			return 0;
+		}
+
+		if (start < min) {
+			if (end > max) {
+				// Neither end is in the range, in this case we don't make
+				// any adjustment (for now; we could adjust zoom to fit in viewport)
+				return 0;
+			}
+
+			return min - start;
+		}
+
+		return max - end;
+	}
+
+	if (nodes.length === 0) {
+		return viewport;
+	}
+
+	const zoom = viewport.zoom;
+	const rect = addPadding(getRectOfNodes(nodes), padding / zoom);
+	const { xMax, xMin, yMax, yMin } = getBounds(viewport, dimensions);
+	const dx = computeDelta(rect.x, rect.x + rect.width, xMin, xMax);
+	const dy = computeDelta(rect.y, rect.y + rect.height, yMin, yMax);
+
+	return {
+		x: viewport.x + dx * zoom,
+		y: viewport.y + dy * zoom,
+		zoom,
+	};
+}

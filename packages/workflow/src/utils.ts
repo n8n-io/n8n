@@ -7,9 +7,9 @@ import {
 import FormData from 'form-data';
 import { merge } from 'lodash';
 
-import { ALPHABET } from './Constants';
+import { ALPHABET } from './constants';
 import { ApplicationError } from './errors/application.error';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -282,4 +282,31 @@ export function randomString(minLength: number, maxLength?: number): string {
  */
 export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is Record<T, unknown> {
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
+}
+
+const unsafeObjectProperties = new Set(['__proto__', 'prototype', 'constructor', 'getPrototypeOf']);
+
+/**
+ * Checks if a property key is safe to use on an object, preventing prototype pollution.
+ * setting untrusted properties can alter the object's prototype chain and introduce vulnerabilities.
+ *
+ * @see setSafeObjectProperty
+ */
+export function isSafeObjectProperty(property: string) {
+	return !unsafeObjectProperties.has(property);
+}
+
+/**
+ * Safely sets a property on an object, preventing prototype pollution.
+ *
+ * @see isSafeObjectProperty
+ */
+export function setSafeObjectProperty(
+	target: Record<string, unknown>,
+	property: string,
+	value: unknown,
+) {
+	if (isSafeObjectProperty(property)) {
+		target[property] = value;
+	}
 }

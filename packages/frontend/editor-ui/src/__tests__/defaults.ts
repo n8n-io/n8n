@@ -160,4 +160,7 @@ export const defaultSettings: FrontendSettings = {
 	logsView: {
 		enabled: false,
 	},
+	evaluation: {
+		quota: 0,
+	},
 };

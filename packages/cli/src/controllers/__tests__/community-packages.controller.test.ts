@@ -1,7 +1,6 @@
-import type { CommunityNodeAttributes } from '@n8n/api-types';
+import type { CommunityNodeType } from '@n8n/api-types';
 import type { InstalledPackages } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { CommunityPackagesController } from '@/controllers/community-packages.controller';
 import type { NodeRequest } from '@/requests';
@@ -46,7 +45,7 @@ describe('CommunityPackagesController', () => {
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
 			communityNodeTypesService.findVetted.mockReturnValue(
-				mock<CommunityNodeAttributes & { nodeDescription: INodeTypeDescription }>({
+				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),
 			);
