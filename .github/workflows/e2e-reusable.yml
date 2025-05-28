@@ -94,7 +94,7 @@ jobs:
 
       - name: Cypress build
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        uses: cypress-io/github-action@0ee1130f05f69098ab5c560bd198fecf5a14d75b # v6.9.0
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           # Disable running of tests within install job
           runTests: false
@@ -136,7 +136,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@0ee1130f05f69098ab5c560bd198fecf5a14d75b # v6.9.0
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           working-directory: cypress
           install: false

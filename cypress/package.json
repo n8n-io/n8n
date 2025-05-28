@@ -23,11 +23,11 @@
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
-    "@ngneat/falso": "^7.2.0",
+    "@ngneat/falso": "^7.3.0",
     "@sinonjs/fake-timers": "^13.0.2",
-    "cypress": "^13.14.2",
+    "cypress": "^14.4.0",
     "cypress-otp": "^1.0.3",
-    "cypress-real-events": "^1.13.0",
+    "cypress-real-events": "^1.14.0",
     "flatted": "catalog:",
     "lodash": "catalog:",
     "nanoid": "catalog:",

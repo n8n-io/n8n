@@ -46,7 +46,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.4]
+        node-version: [20.x, 22.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}

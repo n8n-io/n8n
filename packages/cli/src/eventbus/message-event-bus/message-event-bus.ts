@@ -61,7 +61,7 @@ export class MessageEventBus extends EventEmitter {
 		[key: string]: MessageEventBusDestination;
 	} = {};
 
-	private pushIntervalTimer: NodeJS.Timer;
+	private pushIntervalTimer: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,

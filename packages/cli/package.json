@@ -44,7 +44,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=18.17 <= 22"
+    "node": ">=20.19 <= 22.x"
   },
   "files": [
     "bin",
@@ -69,7 +69,7 @@
     "@types/psl": "^1.1.0",
     "@types/replacestream": "^4.0.1",
     "@types/shelljs": "^0.8.11",
-    "@types/sshpk": "^1.17.1",
+    "@types/sshpk": "^1.17.4",
     "@types/superagent": "^8.1.9",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/syslog-client": "^1.1.2",
@@ -170,7 +170,7 @@
     "simple-git": "3.17.0",
     "source-map-support": "0.5.21",
     "sqlite3": "5.1.7",
-    "sshpk": "1.17.0",
+    "sshpk": "1.18.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",
     "uuid": "catalog:",

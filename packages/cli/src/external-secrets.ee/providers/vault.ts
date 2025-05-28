@@ -230,7 +230,7 @@ export class VaultProvider extends SecretsProvider {
 
 	#http: AxiosInstance;
 
-	private refreshTimeout: NodeJS.Timer | null;
+	private refreshTimeout: NodeJS.Timeout | null;
 
 	private refreshAbort = new AbortController();
 

@@ -65,11 +65,6 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 // More details: https://github.com/nodejs/node/issues/48145
 require('net').setDefaultAutoSelectFamily?.(false);
 
-// WebCrypto Polyfill for older versions of Node.js 18
-if (!globalThis.crypto?.getRandomValues) {
-	globalThis.crypto = require('node:crypto').webcrypto;
-}
-
 (async () => {
 	const oclif = await import('@oclif/core');
 	await oclif.execute({ dir: __dirname });

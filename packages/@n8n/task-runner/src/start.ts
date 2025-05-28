@@ -1,4 +1,3 @@
-import './polyfills';
 import { Container } from '@n8n/di';
 import { ensureError, setGlobalState } from 'n8n-workflow';
 
