@@ -354,11 +354,13 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
 					? false
 					: {
 							useDefaults: false,
+							reportOnly: cspReportOnly,
 							directives: {
 								...cspDirectives,
 							},

@@ -272,6 +272,7 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
+			contentSecurityPolicyReportOnly: false,
 		},
 		executions: {
 			pruneData: true,
