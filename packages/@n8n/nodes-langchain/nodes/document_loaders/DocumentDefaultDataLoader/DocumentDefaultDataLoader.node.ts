@@ -332,20 +332,13 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
-		const processor = this.createDataLoader(dataType, textSplitter, binaryDataKey);
+		const processor =
+			dataType === 'binary'
+				? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
+				: new N8nJsonLoader(this, 'options.', textSplitter);
 
 		return {
 			response: logWrapper(processor, this),
 		};
-	}
-
-	private createDataLoader(
-		dataType: 'json' | 'binary',
-		textSplitter: TextSplitter | undefined,
-		binaryDataKey: string,
-	) {
-		return dataType === 'binary'
-			? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
-			: new N8nJsonLoader(this, 'options.', textSplitter);
 	}
 }
