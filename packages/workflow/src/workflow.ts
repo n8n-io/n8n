@@ -938,7 +938,7 @@ export class Workflow {
 			for (const type of Object.keys(this.connectionsBySourceNode[source] ?? {})) {
 				for (const sourceIndex of Object.keys(this.connectionsBySourceNode[source][type])) {
 					for (const connectionIndex of Object.keys(
-						this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)] || [],
+						this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)] ?? [],
 					)) {
 						const targetConnectionData =
 							this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)]?.[

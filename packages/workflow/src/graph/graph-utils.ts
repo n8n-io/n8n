@@ -214,6 +214,7 @@ export function parseExtractableSubgraphSelection(
 
 	// 0-1 Input nodes
 	const inputEdges = getInputEdges(graphIds, adjacencyList);
+	// This filters out e.g. sub-nodes, which are technically parents
 	const inputNodes = new Set(inputEdges.filter((x) => x[1].type === 'main').map((x) => x[1].node));
 	let rootNodes = getRootNodes(graphIds, adjacencyList);
 
