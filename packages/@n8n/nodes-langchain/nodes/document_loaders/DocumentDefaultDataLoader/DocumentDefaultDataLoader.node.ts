@@ -26,8 +26,6 @@ import 'pdf-parse'; // for pdf
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
 
-	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
-	// always add the output parser input
 	const textSplittingMode = parameters?.textSplittingMode;
 	if (textSplittingMode === 'custom') {
 		inputs.push({
