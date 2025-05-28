@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
-import { EvaluationTrigger, startingRow } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
+import { EvaluationTrigger } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
 import * as utils from '../utils/evaluationTriggerUtils';
 
 describe('Evaluation Trigger Node', () => {
@@ -87,8 +87,108 @@ describe('Evaluation Trigger Node', () => {
 					},
 				],
 			]);
+		});
 
-			expect(startingRow).toBe(3);
+		test('should return the next row from google sheet', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						row_number: 2,
+						Header1: 'Value1',
+						Header2: 'Value2',
+						_rowsLeft: 1,
+					},
+					pairedItem: {
+						item: 0,
+						input: undefined,
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						options: {},
+						'filtersUI.values': [],
+						combineFilters: 'AND',
+						documentId: {
+							mode: 'id',
+							value: spreadsheetId,
+						},
+						sheetName,
+						sheetMode: 'id',
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
+
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							row_number: 3,
+							Header1: 'Value3',
+							Header2: 'Value4',
+							_rowsLeft: 0,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					},
+				],
+			]);
+		});
+
+		test('should return the first row from google sheet if no rows left', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						row_number: 3,
+						Header1: 'Value3',
+						Header2: 'Value4',
+						_rowsLeft: 0,
+					},
+					pairedItem: {
+						item: 0,
+						input: undefined,
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						options: {},
+						'filtersUI.values': [],
+						combineFilters: 'AND',
+						documentId: {
+							mode: 'id',
+							value: spreadsheetId,
+						},
+						sheetName,
+						sheetMode: 'id',
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
+
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							row_number: 2,
+							Header1: 'Value1',
+							Header2: 'Value2',
+							_rowsLeft: 2,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					},
+				],
+			]);
 		});
 
 		test('should return a single row from google sheet with limit', async () => {
@@ -111,7 +211,7 @@ describe('Evaluation Trigger Node', () => {
 				},
 			);
 
-			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 2);
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([
 				[
@@ -128,8 +228,6 @@ describe('Evaluation Trigger Node', () => {
 					},
 				],
 			]);
-
-			expect(startingRow).toBe(2);
 		});
 
 		test('should return the sheet with limits applied when test runner is enabled', async () => {
@@ -154,7 +252,7 @@ describe('Evaluation Trigger Node', () => {
 				},
 			);
 
-			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 2);
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([
 				[
@@ -180,8 +278,6 @@ describe('Evaluation Trigger Node', () => {
 					},
 				],
 			]);
-
-			expect(startingRow).toBe(2);
 		});
 	});
 
@@ -240,7 +336,7 @@ describe('Evaluation Trigger Node', () => {
 
 			const evaluationTrigger = new EvaluationTrigger();
 
-			const result = await evaluationTrigger.execute.call(mockExecuteFunctions, 1);
+			const result = await evaluationTrigger.execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([
 				[
@@ -299,7 +395,7 @@ describe('Evaluation Trigger Node', () => {
 
 			const evaluationTrigger = new EvaluationTrigger();
 
-			const result = await evaluationTrigger.execute.call(mockExecuteFunctions, 1);
+			const result = await evaluationTrigger.execute.call(mockExecuteFunctions);
 
 			expect(result).toEqual([
 				[
