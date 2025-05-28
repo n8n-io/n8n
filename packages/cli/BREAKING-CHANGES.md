@@ -2,6 +2,37 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.94.0
+
+### What changed?
+Support for the Jira "Get All" operation on self-hosted Jira instances was unintentionally removed.
+
+### When is action necessary?
+If your workflows rely on the "Get All" operation with a self-hosted Jira instance, they may no longer function as expected.
+Upgrade to version 1.95.2 or later to restore this functionality.
+
+## 1.92.0
+
+### What changed?
+
+Support for credential-only Microsoft SharePoint was unintentionally removed.
+
+### When is action necessary?
+
+If your workflows use a credential-only Microsoft SharePoint node, they may fail or behave unexpectedly.
+Consider replacing the node with a full Microsoft SharePoint node or upgrading to version 1.94.2 to restore credential-only support.
+
+## 1.86.0
+
+### What changed?
+
+Field names generated from dot notation in the Summarize Node were unintentionally changed. Previously, a field like object.field was transformed to appended_object_field. It is now transformed to appended_objectfield — the underscore has been removed.
+
+### When is action necessary?
+
+If your workflows rely on the previous underscore-based field names, they may break or behave unexpectedly.
+Upgrade to version 1.95.0 or later to restore the original behavior.
+
 ## 1.83.0
 
 ### What changed?
