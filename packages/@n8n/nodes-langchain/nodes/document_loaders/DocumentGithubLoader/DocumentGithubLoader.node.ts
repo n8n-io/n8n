@@ -1,16 +1,33 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
-import type { CharacterTextSplitter } from '@langchain/textsplitters';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	const textSplittingMode = parameters?.textSplittingMode;
+	if (textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+		});
+	}
+	return inputs;
+}
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,15 +59,7 @@ export class DocumentGithubLoader implements INodeType {
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			{
-				displayName: 'Text Splitter',
-				maxConnections: 1,
-				type: NodeConnectionTypes.AiTextSplitter,
-			},
-		],
-		inputNames: ['Text Splitter'],
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
@@ -67,6 +76,25 @@ export class DocumentGithubLoader implements INodeType {
 				name: 'branch',
 				type: 'string',
 				default: 'main',
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Uses Recursive Character Text Splitter with default options',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a text splitter of your choice',
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -105,10 +133,16 @@ export class DocumentGithubLoader implements INodeType {
 			ignorePaths: string;
 		};
 
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiTextSplitter,
-			0,
-		)) as CharacterTextSplitter | undefined;
+		const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+			| 'simple'
+			| 'custom';
+
+		const textSplitter: TextSplitter | undefined =
+			textSplittingMode === 'simple'
+				? new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 })
+				: ((await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+						| TextSplitter
+						| undefined);
 
 		const { index } = this.addInputData(NodeConnectionTypes.AiDocument, [
 			[{ json: { repository, branch, ignorePaths, recursive } }],

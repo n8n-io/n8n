@@ -1,11 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
@@ -19,6 +22,24 @@ import { metadataFilterField } from '@utils/sharedFields';
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
+
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
+	// always add the output parser input
+	const textSplittingMode = parameters?.textSplittingMode;
+	if (textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+			required: true,
+		});
+	}
+
+	return inputs;
+}
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,14 +66,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			{
-				displayName: 'Text Splitter',
-				maxConnections: 1,
-				type: NodeConnectionTypes.AiTextSplitter,
-				required: true,
-			},
-		],
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
@@ -63,6 +77,25 @@ export class DocumentDefaultDataLoader implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Uses Recursive Character Text Splitter with default options',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a text splitter of your choice',
+					},
+				],
 			},
 			{
 				displayName: 'Type of Data',
@@ -206,7 +239,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				default: 'data',
 				required: true,
 				description:
-					'The name of the field in the agent or chain’s input that contains the binary file to be processed',
+					"The name of the field in the agent or chain's input that contains the binary file to be processed",
 				displayOptions: {
 					show: {
 						dataType: ['binary'],
@@ -285,19 +318,33 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+		const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+			| 'simple'
+			| 'custom';
+
+		const textSplitter: TextSplitter | undefined =
+			textSplittingMode === 'simple'
+				? new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 })
+				: ((await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+						| TextSplitter
+						| undefined);
+
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
-		const processor =
-			dataType === 'binary'
-				? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
-				: new N8nJsonLoader(this, 'options.', textSplitter);
+		const processor = this.createDataLoader(dataType, textSplitter, binaryDataKey);
 
 		return {
 			response: logWrapper(processor, this),
 		};
+	}
+
+	private createDataLoader(
+		dataType: 'json' | 'binary',
+		textSplitter: TextSplitter | undefined,
+		binaryDataKey: string,
+	) {
+		return dataType === 'binary'
+			? new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter)
+			: new N8nJsonLoader(this, 'options.', textSplitter);
 	}
 }
