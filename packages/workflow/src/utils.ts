@@ -7,9 +7,9 @@ import {
 import FormData from 'form-data';
 import { merge } from 'lodash';
 
-import { ALPHABET } from './Constants';
+import { ALPHABET } from './constants';
 import { ApplicationError } from './errors/application.error';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 

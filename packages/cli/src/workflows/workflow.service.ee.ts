@@ -1,5 +1,6 @@
 import type {
 	CredentialsEntity,
+	CredentialUsedByWorkflow,
 	User,
 	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
@@ -348,6 +349,29 @@ export class EnterpriseWorkflowService {
 		}
 
 		return;
+	}
+
+	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
+		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+
+		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+
+		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
+
+		for (const workflow of workflows) {
+			const workflowWithMetaData = this.addOwnerAndSharings(workflow as unknown as WorkflowEntity);
+			await this.addCredentialsToWorkflow(workflowWithMetaData, user);
+			for (const credential of workflowWithMetaData?.usedCredentials ?? []) {
+				usedCredentials.set(credential.id, credential);
+			}
+		}
+
+		return [...usedCredentials.values()];
 	}
 
 	async transferFolder(

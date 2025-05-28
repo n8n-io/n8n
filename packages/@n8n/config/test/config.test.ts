@@ -71,6 +71,7 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
+			isLegacySqlite: true,
 		},
 		credentials: {
 			defaultName: 'My credentials',
@@ -309,7 +310,10 @@ describe('GlobalConfig', () => {
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual(defaultConfig);
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(defaultConfig).toMatchObject(config);
+		expect(config).toMatchObject(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -365,7 +369,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual({
+		const expected = {
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,
@@ -374,7 +378,11 @@ describe('GlobalConfig', () => {
 					password: 'password-from-file',
 				},
 			},
-		});
+		};
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(config).toMatchObject(expected);
+		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
