@@ -251,6 +251,17 @@ export class WorkflowDataProxy {
 	 *
 	 * @private
 	 * @param {string} nodeName The name of the node to query data from
+	 */
+	private nodeOutputConnectionsGetter(nodeName: string) {
+		const connections = this.workflow.connectionsBySourceNode[nodeName] ?? {};
+		return connections;
+	}
+
+	/**
+	 * Returns a proxy which allows to query parameter data of a given node
+	 *
+	 * @private
+	 * @param {string} nodeName The name of the node to query data from
 	 * @param {boolean} [resolveValue=true] If the expression value should get resolved
 	 */
 	private nodeParameterGetter(nodeName: string, resolveValue = true) {
@@ -1432,6 +1443,7 @@ export class WorkflowDataProxy {
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
+			$outputConnections: this.nodeOutputConnectionsGetter(this.activeNodeName),
 			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
 			$rawParameter: this.nodeParameterGetter(this.activeNodeName, false),

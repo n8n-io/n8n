@@ -6,7 +6,8 @@ export function isTool(node: INode, nodeTypes: INodeTypes) {
 	// Check if node is a vector store in retrieve-as-tool mode
 	if (node.type.includes('vectorStore')) {
 		const mode = node.parameters?.mode;
-		return mode === 'retrieve-as-tool';
+		const operationMode = node.parameters?.operationMode;
+		return mode === 'retrieve-as-tool' || operationMode === 'retrieve-as-tool';
 	}
 
 	// Check for other tool nodes

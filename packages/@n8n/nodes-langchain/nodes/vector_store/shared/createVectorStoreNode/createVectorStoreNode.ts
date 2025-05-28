@@ -44,7 +44,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			// 1.2 has changes to VectorStoreInMemory node.
-			version: [1, 1.1, 1.2],
+			version: [1, 1.1, 1.2, 1.3],
 			defaults: {
 				name: args.meta.displayName,
 			},
@@ -84,18 +84,26 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			})($parameter)
 		}}`,
 			outputs: `={{
-			((parameters) => {
-				const mode = parameters?.mode ?? 'retrieve';
+			((parameters, outputConnections) => {
+				const mode = parameters?.mode ?? "retrieve";
 
-				if (mode === 'retrieve-as-tool') {
+				if ("${NodeConnectionTypes.AiTool}" in outputConnections && outputConnections["${NodeConnectionTypes.AiTool}"][0]?.length > 0) {
 					return [{ displayName: "Tool", type: "${NodeConnectionTypes.AiTool}"}]
 				}
 
-				if (mode === 'retrieve') {
+				if ("${NodeConnectionTypes.AiVectorStore}" in outputConnections && outputConnections["${NodeConnectionTypes.AiVectorStore}"][0]?.length > 0) {
 					return [{ displayName: "Vector Store", type: "${NodeConnectionTypes.AiVectorStore}"}]
 				}
+
+				if (mode === "retrieve-as-tool" || mode === "retrieve") {
+					return [
+						{ displayName: "Tool", type: "${NodeConnectionTypes.AiTool}"},
+						{ displayName: "Vector Store", type: "${NodeConnectionTypes.AiVectorStore}"},
+					]
+				}
+
 				return [{ displayName: "", type: "${NodeConnectionTypes.Main}"}]
-			})($parameter)
+			})($parameter, $outputConnections)
 		}}`,
 			properties: [
 				{
@@ -125,7 +133,8 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					validateType: 'string-alphanumeric',
 					displayOptions: {
 						show: {
-							mode: ['retrieve-as-tool'],
+							mode: ['retrieve'],
+							retrieveMode: ['retrieve-as-tool'],
 						},
 					},
 				},
@@ -141,7 +150,8 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					placeholder: `e.g. ${args.meta.description}`,
 					displayOptions: {
 						show: {
-							mode: ['retrieve-as-tool'],
+							mode: ['retrieve'],
+							retrieveMode: ['retrieve-as-tool'],
 						},
 					},
 				},
@@ -183,7 +193,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					description: 'Number of top results to fetch from vector store',
 					displayOptions: {
 						show: {
-							mode: ['load', 'retrieve-as-tool'],
+							retrieveMode: ['load', 'retrieve-as-tool'],
 						},
 					},
 				},
@@ -195,7 +205,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					description: 'Whether or not to include document metadata',
 					displayOptions: {
 						show: {
-							mode: ['load', 'retrieve-as-tool'],
+							retrieveMode: ['load', 'retrieve-as-tool'],
 						},
 					},
 				},
@@ -219,6 +229,32 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				]),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
+				{
+					displayName: 'Retrieve Mode (Internal)',
+					name: 'retrieveMode',
+					type: 'string',
+					// TODO: This field can't be hidden, or else the expression on default value doesn't get evaluated,
+					// at least on the UI.
+					// displayOptions: {
+					// 	hide: {
+					// 		'@version': [{ _cnd: { gte: 1.0 } }],
+					// 	},
+					// },
+					disabledOptions: {
+						show: {
+							mode: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
+						},
+					},
+					default: `={{
+						((outputConnections) => {
+							if ("${NodeConnectionTypes.AiTool}" in outputConnections && outputConnections["${NodeConnectionTypes.AiTool}"][0]?.length > 0) {
+								return "retrieve-as-tool";
+							}
+
+							return "retrieve";
+						})($outputConnections)
+					}}`,
+				},
 			],
 		};
 
@@ -272,6 +308,16 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 */
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+			const retrieveMode = this.getNodeParameter('retrieveMode', 0) as NodeOperationMode;
+
+			// TODO: support old versions of the node here, using mode instead of retrieveMode
+
+			if (mode !== 'retrieve') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
+				);
+			}
 
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
@@ -280,17 +326,17 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			)) as Embeddings;
 
 			// Handle each supply data operation mode with dedicated modules
-			if (mode === 'retrieve') {
+			if (retrieveMode === 'retrieve') {
 				return await handleRetrieveOperation(this, args, embeddings, itemIndex);
 			}
 
-			if (mode === 'retrieve-as-tool') {
+			if (retrieveMode === 'retrieve-as-tool') {
 				return await handleRetrieveAsToolOperation(this, args, embeddings, itemIndex);
 			}
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
+				'Only the "retrieve" operation mode is supported to supply data',
 			);
 		}
 	};

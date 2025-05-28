@@ -24,18 +24,10 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		action: 'Add documents to vector store',
 	},
 	{
-		name: 'Retrieve Documents (As Vector Store for Chain/Tool)',
+		name: 'Retrieve Documents',
 		value: 'retrieve',
-		description: 'Retrieve documents from vector store to be used as vector store with AI nodes',
-		action: 'Retrieve documents for Chain/Tool as Vector Store',
-		outputConnectionType: NodeConnectionTypes.AiVectorStore,
-	},
-	{
-		name: 'Retrieve Documents (As Tool for AI Agent)',
-		value: 'retrieve-as-tool',
-		description: 'Retrieve documents from vector store to be used as tool with AI nodes',
-		action: 'Retrieve documents for AI Agent as Tool',
-		outputConnectionType: NodeConnectionTypes.AiTool,
+		description: 'Retrieve documents from vector store',
+		action: 'Retrieve documents from vector store',
 	},
 	{
 		name: 'Update Documents',

@@ -97,6 +97,8 @@ export function needsAgentInput(node: Pick<INodeUi, 'parameters' | 'type'>) {
 	return (
 		collectedArgs.length > 0 ||
 		nodeTypesNeedModal.includes(node.type) ||
-		(node.type.includes('vectorStore') && node.parameters?.mode === 'retrieve-as-tool')
+		(node.type.includes('vectorStore') &&
+			(node.parameters?.mode === 'retrieve-as-tool' ||
+				node.parameters?.operationMode === 'retrieve-as-tool'))
 	);
 }
