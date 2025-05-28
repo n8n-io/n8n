@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -10,6 +11,8 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
+import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 
@@ -19,12 +22,18 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from '@/environments.ee/source-control/constants';
+import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
+import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
+import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
 import type { ExportableWorkflow } from '@/environments.ee/source-control/types/exportable-workflow';
 import type { ResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -33,15 +42,6 @@ import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../shared/test-db';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Cipher } from 'n8n-core';
-import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
-import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
-import { EventService } from '@/events/event.service';
-import { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
-import { mock } from 'jest-mock-extended';
-import { update } from 'lodash';
 
 jest.mock('fast-glob');
 
@@ -797,6 +797,28 @@ describe('SourceControlService', () => {
 	});
 
 	describe('pushWorkfolder', () => {
+		const updatedFiles: Record<string, string> = {};
+		beforeAll(async () => {
+			// Reset the git service mock for tags
+			gitFiles['tags.json'] = {
+				tags: [],
+				mappings: [],
+			};
+		});
+
+		beforeEach(() => {
+			fsWriteFile.mockImplementation(async (path, data) => {
+				updatedFiles[path as string] = data as string;
+			});
+		});
+
+		afterEach(() => {
+			fsWriteFile.mockReset();
+			for (const key in updatedFiles) {
+				delete updatedFiles[key];
+			}
+		});
+
 		describe('on readonly instance', () => {
 			beforeAll(async () => {
 				await sourceControlPreferencesService.setPreferences({
@@ -815,234 +837,233 @@ describe('SourceControlService', () => {
 			});
 
 			it('should fail with BadRequest', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
+				let allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
-				});
+				})) as SourceControlledFile[];
 
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					await expect(
-						service.pushWorkfolder(globalMember, {
-							fileNames: allChanges,
-							commitMessage: 'Test',
-						}),
-					).rejects.toThrowError(BadRequestError);
-				}
+				await expect(
+					service.pushWorkfolder(globalMember, {
+						fileNames: allChanges,
+						commitMessage: 'Test',
+					}),
+				).rejects.toThrowError(BadRequestError);
 			});
 		});
 
 		describe('global:admin user', () => {
-			it('should update all workflows', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
+			it('should update all workflows, credentials, tags and folder', async () => {
+				let allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
+				})) as SourceControlledFile[];
+
+				const result = await service.pushWorkfolder(globalAdmin, {
+					fileNames: allChanges,
+					commitMessage: 'Test',
+					force: true,
 				});
 
-				const updatedFiles: string[] = [];
+				const workflowFiles = result.statusResult
+					.filter((change) => change.type === 'workflow' && change.status !== 'deleted')
+					.map((change) => change.file);
+				const credentialFiles = result.statusResult
+					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
+					.map((change) => change.file);
+				expect(workflowFiles).toHaveLength(8);
+				expect(credentialFiles).toHaveLength(2);
 
-				fsWriteFile.mockImplementation(async (path) => {
-					updatedFiles.push(`${path}`);
-				});
-
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					const result = await service.pushWorkfolder(globalAdmin, {
-						fileNames: allChanges,
-						commitMessage: 'Test',
-						force: true,
-					});
-
-					const filesToWrite =
-						result.statusResult.filter(
-							(change) =>
-								(change.type === 'workflow' || change.type === 'credential') &&
-								change.status !== 'deleted',
-						).length +
-						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
-						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
-
-					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
-
-					allChanges.forEach((change) => {
-						if (change.type === 'workflow' && change.status !== 'deleted') {
-							expect(updatedFiles.includes(change.file)).toBe(true);
-						}
-					});
-				}
-			});
-
-			it('should update all credentials', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
-					direction: 'push',
-					preferLocalVersion: true,
-					verbose: false,
-				});
-
-				const updatedFiles: string[] = [];
-
-				fsWriteFile.mockReset();
-
-				fsWriteFile.mockImplementation(async (path) => {
-					updatedFiles.push(`${path}`);
-				});
-
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					const result = await service.pushWorkfolder(globalAdmin, {
-						fileNames: allChanges,
-						commitMessage: 'Test',
-						force: true,
-					});
-
-					const filesToWrite =
-						result.statusResult.filter(
-							(change) =>
-								(change.type === 'workflow' || change.type === 'credential') &&
-								change.status !== 'deleted',
-						).length +
-						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
-						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
-
-					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
-
-					allChanges.forEach((change) => {
-						if (change.type === 'credential' && change.status !== 'deleted') {
-							expect(updatedFiles.includes(change.file)).toBe(true);
-						}
-					});
-				}
+				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
+				);
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
+				);
 			});
 
 			it('should update all workflows and credentials without arguments', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
+				let allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
+				})) as SourceControlledFile[];
+
+				const result = await service.pushWorkfolder(globalAdmin, {
+					fileNames: [],
+					commitMessage: 'Test',
+					force: true,
 				});
 
-				const updatedFiles: string[] = [];
+				const workflowFiles = result.statusResult
+					.filter((change) => change.type === 'workflow' && change.status !== 'deleted')
+					.map((change) => change.file);
+				const credentialFiles = result.statusResult
+					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
+					.map((change) => change.file);
+				expect(workflowFiles).toHaveLength(8);
+				expect(credentialFiles).toHaveLength(2);
+				const numberFilesToWrite = workflowFiles.length + credentialFiles.length + 2; // folders + tags
 
-				fsWriteFile.mockReset();
+				const filesToWrite =
+					allChanges.filter(
+						(change) =>
+							(change.type === 'workflow' || change.type === 'credential') &&
+							change.status !== 'deleted',
+					).length + 2; // folders + tags
 
-				fsWriteFile.mockImplementation(async (path) => {
-					updatedFiles.push(`${path}`);
+				expect(numberFilesToWrite).toBe(filesToWrite);
+				expect(fsWriteFile).toBeCalledTimes(filesToWrite);
+
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
+				);
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
+				);
+			});
+		});
+
+		describe('project:admin', () => {
+			it('should update selected workflows, credentials, tags and folders', async () => {
+				let allChanges = (await service.getStatus(projectAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+				console.log('allChanges', allChanges);
+
+				const result = await service.pushWorkfolder(projectAdmin, {
+					fileNames: allChanges,
+					commitMessage: 'Test',
+					force: true,
 				});
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					const result = await service.pushWorkfolder(globalAdmin, {
-						fileNames: [],
+
+				const workflowFiles = result.statusResult
+					.filter((change) => change.type === 'workflow' && change.status !== 'deleted')
+					.map((change) => change.file);
+				const credentialFiles = result.statusResult
+					.filter((change) => change.type === 'credential' && change.status !== 'deleted')
+					.map((change) => change.file);
+
+				expect(workflowFiles).toHaveLength(2);
+				expect(credentialFiles).toHaveLength(1);
+
+				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
+				);
+				expect(Object.keys(updatedFiles)).toEqual(
+					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
+				);
+			});
+
+			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {
+				let allChanges = (await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+
+				const workflowOutOfScope = allChanges.find(
+					(wf) => !projectAdminScope.workflows.some((w) => w.id === wf.id),
+				);
+
+				await expect(
+					service.pushWorkfolder(projectAdmin, {
+						fileNames: [workflowOutOfScope!],
 						commitMessage: 'Test',
 						force: true,
-					});
-
-					const filesToWriteFromResult =
-						result.statusResult.filter(
-							(change) =>
-								(change.type === 'workflow' || change.type === 'credential') &&
-								change.status !== 'deleted',
-						).length +
-						(result.statusResult.some((change) => change.type === 'folders') ? 1 : 0) +
-						(result.statusResult.some((change) => change.type === 'tags') ? 1 : 0);
-
-					const filesToWrite =
-						allChanges.filter(
-							(change) =>
-								(change.type === 'workflow' || change.type === 'credential') &&
-								change.status !== 'deleted',
-						).length +
-						(allChanges.some((change) => change.type === 'folders') ? 1 : 0) +
-						(allChanges.some((change) => change.type === 'tags') ? 1 : 0);
-
-					expect(filesToWriteFromResult).toBe(filesToWrite);
-					expect(fsWriteFile).toBeCalledTimes(filesToWrite);
-
-					allChanges.forEach((change) => {
-						if (change.type === 'credential' && change.status !== 'deleted') {
-							expect(updatedFiles.includes(change.file)).toBe(true);
-						}
-					});
-
-					allChanges.forEach((change) => {
-						if (change.type === 'workflow' && change.status !== 'deleted') {
-							expect(updatedFiles.includes(change.file)).toBe(true);
-						}
-					});
-				}
+					}),
+				).rejects.toThrowError(ForbiddenError);
 			});
 
-			it('should update all tags and mappings', async () => {
-				// TODO
+			it('should throw ForbiddenError when trying to push credentials out of scope', async () => {
+				let allChanges = (await service.getStatus(globalAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+
+				const credentialOutOfScope = allChanges.find(
+					(cred) =>
+						cred.type === 'credential' &&
+						!projectAdminScope.credentials.some((c) => c.id === cred.id),
+				);
+
+				await expect(
+					service.pushWorkfolder(projectAdmin, {
+						fileNames: [credentialOutOfScope!],
+						commitMessage: 'Test',
+						force: true,
+					}),
+				).rejects.toThrowError(ForbiddenError);
 			});
-			it('should update all folders', async () => {
+
+			it('should update tag mappings in scope and keep out of scope ones', async () => {
+				let allChanges = (await service.getStatus(projectAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+				const tagsFile = allChanges.find((file) =>
+					file.file.includes(SOURCE_CONTROL_TAGS_EXPORT_FILE),
+				);
+				expect(tagsFile).toBeDefined();
+
+				const result = await service.pushWorkfolder(projectAdmin, {
+					fileNames: [tagsFile!],
+					commitMessage: 'Test',
+					force: true,
+				});
+				expect(result.statusResult).toHaveLength(1);
+				expect(result.statusResult[0].type).toBe('tags');
+				expect(result.statusResult[0].status).toBe('created');
+				expect(result.statusResult[0].file).toContain(SOURCE_CONTROL_TAGS_EXPORT_FILE);
+				console.log(updatedFiles[result.statusResult[0].file]);
+			});
+			it('should update folders in scope and keep out of scope ones', async () => {
 				// TODO
 			});
 		});
 
 		describe('global:member', () => {
 			it('should deny all changes', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
+				let allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
-				});
+				})) as SourceControlledFile[];
 
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					await expect(
-						service.pushWorkfolder(globalMember, {
-							fileNames: allChanges,
-							commitMessage: 'Test',
-						}),
-					).rejects.toThrowError(ForbiddenError);
-				}
+				await expect(
+					service.pushWorkfolder(globalMember, {
+						fileNames: allChanges,
+						commitMessage: 'Test',
+					}),
+				).rejects.toThrowError(ForbiddenError);
 			});
 
 			it('should deny any changes', async () => {
-				let allChanges = await service.getStatus(globalAdmin, {
+				let allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
-				});
+				})) as SourceControlledFile[];
 
-				if (!Array.isArray(allChanges)) {
-					expect(Array.isArray(allChanges)).toBe(true);
-				} else {
-					await expect(
-						service.pushWorkfolder(globalMember, {
-							fileNames: [allChanges[0]],
-							commitMessage: 'Test',
-						}),
-					).rejects.toThrowError(ForbiddenError);
-				}
-			});
-		});
-
-		describe('project:admin', () => {
-			it('should update selected workflows', async () => {
-				// TODO
-			});
-			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {
-				// TODO
-			});
-			it('should update selected credentials', async () => {
-				// TODO
-			});
-			it('should throw ForbiddenError when trying to push credentials out of scope', async () => {
-				// TODO
-			});
-			it('should update tag mappings in scope and keep out of scope ones', async () => {
-				// TODO
-			});
-			it('should update folders in scope and keep out of scope ones', async () => {
-				// TODO
+				await expect(
+					service.pushWorkfolder(globalMember, {
+						fileNames: [allChanges[0]],
+						commitMessage: 'Test',
+					}),
+				).rejects.toThrowError(ForbiddenError);
 			});
 		});
 	});

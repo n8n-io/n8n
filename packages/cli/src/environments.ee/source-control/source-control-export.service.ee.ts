@@ -36,13 +36,13 @@ import {
 	sourceControlFoldersExistCheck,
 	stringContainsExpression,
 } from './source-control-helper.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { ResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../variables/variables.service.ee';
-import { SourceControlContext } from './types/source-control-context';
-import { SourceControlScopedService } from './source-control-scoped.service';
 
 @Service()
 export class SourceControlExportService {
@@ -311,7 +311,7 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const mappings = await this.workflowTagMappingRepository.find({
+			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
 						context,
@@ -325,20 +325,19 @@ export class SourceControlExportService {
 			// read the existing git file
 			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
 			// keep all mappings that are not accessible by the current user
-			const newMappings = existingTagsAndMapping.mappings.filter((mapping) => {
+			const mappingsOfOtherWorkflows = existingTagsAndMapping.mappings.filter((mapping) => {
 				return !allowedWorkflows.some(
 					(allowedWorkflow) => allowedWorkflow.id === mapping.workflowId,
 				);
 			});
-			// add mappings the user has access too
-			newMappings.push(...mappings);
+
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
 					{
 						// overwrite all tags
 						tags: tags.map((tag) => ({ id: tag.id, name: tag.name })),
-						mappings: newMappings,
+						mappings: mappingsOfOtherWorkflows.concat(mappingsOfAllowedWorkflows),
 					},
 					null,
 					2,

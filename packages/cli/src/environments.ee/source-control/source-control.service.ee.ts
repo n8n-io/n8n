@@ -235,7 +235,7 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		const filesToPush = options.fileNames.map((file) => {
+		let filesToPush = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -253,33 +253,33 @@ export class SourceControlService {
 			preferLocalVersion: true,
 		})) as SourceControlledFile[];
 
-		// only determine file status if not provided by the frontend
-		let statusResult: SourceControlledFile[] = filesToPush;
-		if (statusResult.length === 0) {
-			// In this case we already use the functionality in getStatus to receive
-			// all resources we are allowed to change
-			statusResult = allowedResources;
-		} else {
-			// In this case we need to make sure that each requested
-			// change is also in the allowed resources
-			if (
-				statusResult.some((requested) => {
-					return !allowedResources.some((allowed) => {
-						return allowed.id === requested.id && allowed.type === requested.type;
-					});
-				})
-			) {
-				throw new ForbiddenError('You are not allowed to push these changes');
-			}
+		// Fallback to all allowed resources if no fileNames are provided
+		if (!filesToPush.length) {
+			filesToPush = allowedResources;
 		}
 
+		// If fileNames are provided, we need to check if they are allowed
+		if (
+			filesToPush !== allowedResources &&
+			filesToPush.some(
+				(file) =>
+					!allowedResources.some((allowed) => {
+						return allowed.id === file.id && allowed.type === file.type;
+					}),
+			)
+		) {
+			throw new ForbiddenError('You are not allowed to push these changes');
+		}
+
+		let statusResult: SourceControlledFile[] = filesToPush;
+
 		if (!options.force) {
-			const possibleConflicts = statusResult?.filter((file) => file.conflict);
+			const possibleConflicts = filesToPush?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0) {
 				return {
 					statusCode: 409,
 					pushResult: undefined,
-					statusResult,
+					statusResult: filesToPush,
 				};
 			}
 		}
@@ -342,12 +342,8 @@ export class SourceControlService {
 
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
-		for (let i = 0; i < statusResult.length; i++) {
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			if (filesToPush.find((file) => file.file === statusResult[i].file)) {
-				statusResult[i].pushed = true;
-			}
-		}
+		// Set all results as pushed
+		statusResult.forEach((result) => (result.pushed = true));
 
 		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 
