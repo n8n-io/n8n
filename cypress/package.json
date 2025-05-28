@@ -6,7 +6,6 @@
     "cypress:install": "cypress install",
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
-    "test:e2e:dev:v1": "scripts/run-e2e.js dev:v1",
     "test:e2e:all": "scripts/run-e2e.js all",
     "test:flaky": "scripts/run-e2e.js debugFlaky",
     "format": "biome format --write .",

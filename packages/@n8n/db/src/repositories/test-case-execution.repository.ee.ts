@@ -32,6 +32,12 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		super(TestCaseExecution, dataSource.manager);
 	}
 
+	async createTestCaseExecution(testCaseExecutionProps: DeepPartial<TestCaseExecution>) {
+		const testCaseExecution = this.create(testCaseExecutionProps);
+
+		return await this.save(testCaseExecution);
+	}
+
 	async createBatch(testRunId: string, testCases: string[]) {
 		const mappings = this.create(
 			testCases.map<DeepPartial<TestCaseExecution>>(() => ({
