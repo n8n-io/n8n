@@ -26,7 +26,7 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
-import { ProjectTypes } from '@/types/projects.types';
+import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
 
@@ -62,7 +62,14 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
-	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
+	'action:move-to-folder': [
+		value: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
+	];
 }>();
 
 const toast = useToast();
@@ -140,17 +147,15 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.update && showFolders.value && !props.readOnly) {
+	if (
+		((workflowPermissions.value.update && !props.readOnly) ||
+			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
+		showFolders.value &&
+		route.name !== VIEWS.SHARED_WORKFLOWS
+	) {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
-		});
-	}
-
-	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
-		items.push({
-			label: locale.baseText('workflows.item.changeOwner'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
 
@@ -263,6 +268,7 @@ async function onAction(action: string) {
 				id: props.data.id,
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
+				sharedWithProjects: props.data.sharedWithProjects,
 			});
 			break;
 	}

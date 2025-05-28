@@ -373,7 +373,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -387,11 +386,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
