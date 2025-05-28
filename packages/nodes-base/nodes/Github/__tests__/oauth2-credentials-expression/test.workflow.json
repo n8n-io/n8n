@@ -1,12 +1,12 @@
 {
-	"name": "My workflow 245",
+	"name": "My workflow 255",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-320, 260],
-			"id": "0a1b09d1-8825-4eee-826c-c0c127a943a9",
+			"position": [-300, 160],
+			"id": "ab490d05-67aa-4061-b01d-4478e9984c75",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -15,7 +15,7 @@
 					"assignments": [
 						{
 							"id": "13c9caa1-e4e6-4365-8282-747dd318abce",
-							"name": "url",
+							"name": "server",
 							"value": "https://github.example.com/api/v3",
 							"type": "string"
 						}
@@ -25,8 +25,8 @@
 			},
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [-60, 260],
-			"id": "8aaca2d5-6d85-48f1-922d-e22a974f6e45",
+			"position": [-40, 160],
+			"id": "562791a3-7ff5-4f29-901b-5b1061cc2da2",
 			"name": "Edit Fields"
 		},
 		{
@@ -36,13 +36,13 @@
 						{
 							"id": "13c9caa1-e4e6-4365-8282-747dd318abce",
 							"name": "authUrl",
-							"value": "={{$json[\"url\"] === \"https://api.github.com\" ? \"https://github.com\" : \"https://\" + $json[\"url\"].replace(\"https://\", \"\").split(\"/\")[0]}}/login/oauth/access_token",
+							"value": "={{$json[\"server\"] === \"https://api.github.com\" ? \"https://github.com\" : $json[\"server\"].split(\"://\")[0] + \"://\" + $json[\"server\"].split(\"://\")[1].split(\"/\")[0]}}/login/oauth/authorize",
 							"type": "string"
 						},
 						{
 							"id": "02bd6a24-1375-490e-9683-7faedea36e20",
 							"name": "accessTokenUrl",
-							"value": "={{$json[\"url\"] === \"https://api.github.com\" ? \"https://github.com\" : \"https://\" + $json[\"url\"].replace(\"https://\", \"\").split(\"/\")[0]}}/login/oauth/access_token",
+							"value": "={{$json[\"server\"] === \"https://api.github.com\" ? \"https://github.com\" : $json[\"server\"].split(\"://\")[0] + \"://\" + $json[\"server\"].split(\"://\")[1].split(\"/\")[0]}}/login/oauth/access_token",
 							"type": "string"
 						}
 					]
@@ -51,8 +51,8 @@
 			},
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [180, 260],
-			"id": "413773f4-eeda-4b40-98a2-6058afe0c2e5",
+			"position": [200, 160],
+			"id": "73059a97-269e-4c1a-b034-b114f3f5e671",
 			"name": "Edit Fields1"
 		}
 	],
@@ -60,7 +60,7 @@
 		"Edit Fields1": [
 			{
 				"json": {
-					"authUrl": "https://github.example.com/login/oauth/access_token",
+					"authUrl": "https://github.example.com/login/oauth/authorize",
 					"accessTokenUrl": "https://github.example.com/login/oauth/access_token"
 				}
 			}
@@ -94,11 +94,10 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "ad01dd77-b6f5-46ae-8bac-92275000db52",
+	"versionId": "2acb676c-cdfb-4f4d-9000-decf4e2fdb93",
 	"meta": {
-		"templateCredsSetupCompleted": true,
 		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
 	},
-	"id": "2uXWkLJXM1VYdvE2",
+	"id": "s9LDuRXe2e5LF5jP",
 	"tags": []
 }
