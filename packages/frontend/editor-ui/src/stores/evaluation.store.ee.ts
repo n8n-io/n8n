@@ -30,7 +30,7 @@ export const useEvaluationStore = defineStore(
 
 		// Computed
 
-		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`
+		// Enable with `window.featureFlags.override('032_evaluation_mvp', true)`
 		const isFeatureEnabled = computed(() =>
 			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
 		);
