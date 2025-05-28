@@ -13,7 +13,7 @@ describe('Google Sheet - Update', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockGoogleSheet = mock<GoogleSheet>();
 
-		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.6 }));
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.5 }));
 
 		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
 	});
@@ -203,6 +203,24 @@ describe('Google Sheet - Update', () => {
 			],
 			'USER_ENTERED',
 		);
+	});
+});
+
+describe('Google Sheet - Update 4.7', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	let mockGoogleSheet: MockProxy<GoogleSheet>;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockGoogleSheet = mock<GoogleSheet>();
+
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.7 }));
+
+		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
+	});
+
+	afterEach(() => {
+		jest.resetAllMocks();
 	});
 
 	describe('row_number input error', () => {
