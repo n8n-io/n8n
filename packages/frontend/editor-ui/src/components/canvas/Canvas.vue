@@ -315,7 +315,7 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
-		shift_ctrl_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 	};
 	return fullKeymap;

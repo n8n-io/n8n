@@ -169,7 +169,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'extract_sub_workflow',
 				divided: true,
 				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
-				shortcut: { shiftKey: true, metaKey: true, keys: ['X'] },
+				shortcut: { altKey: true, keys: ['X'] },
 				disabled: isReadOnly.value,
 			},
 		];
