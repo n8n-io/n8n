@@ -511,6 +511,77 @@ describe('useRunWorkflow({ router })', () => {
 						name: triggerNode,
 						data: nodeData,
 					},
+					startNodes: [],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from child node if triggerNode and nodeData are passed in', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [
+						{
+							name: {
+								name: 'Child node',
+								type: 'nodes.child',
+							},
+							sourceData: null,
+						},
+					],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from trigger node if rerunTriggerNode is set', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData, rerunTriggerNode: true });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [],
 				}),
 			);
 		});
