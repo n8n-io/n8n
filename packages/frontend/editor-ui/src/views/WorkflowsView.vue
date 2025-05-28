@@ -1338,7 +1338,7 @@ const onWorkflowTransferred = async (payload: {
 					void router.push({
 						name: VIEWS.PROJECTS_FOLDERS,
 						params: {
-							projectId: route.params.projectId,
+							projectId: payload.projectId,
 							folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 						},
 					});
