@@ -3,7 +3,7 @@ import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
 	clickCreateNewCredential,
 	getNdvContainer,
-	selectResourceLocatorItem,
+	selectResourceLocatorAddResourceItem,
 } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
@@ -299,9 +299,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
+			// This mock fails when running with `test:e2e:dev` but works with `test:e2e:ui`,
+			// at least on macOS at version 1.94.0. ¯\_(ツ)_/¯
 			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
 
-			selectResourceLocatorItem('workflowId', 0, 'Create a');
+			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 			// Need to wait for the trigger node to auto-open after a delay
 			getNdvContainer().should('be.visible');
 			cy.get('body').type('{esc}');

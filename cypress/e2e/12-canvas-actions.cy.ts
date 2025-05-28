@@ -184,21 +184,11 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{leftArrow}');
-		const selectedCanvasNodes = () =>
-			cy.ifCanvasVersion(
-				() => WorkflowPage.getters.canvasNodes(),
-				() => WorkflowPage.getters.canvasNodes().parent(),
-			);
+		const selectedCanvasNodes = () => WorkflowPage.getters.canvasNodes().parent();
 
-		cy.ifCanvasVersion(
-			() => selectedCanvasNodes().first().should('have.class', 'jtk-drag-selected'),
-			() => selectedCanvasNodes().first().should('have.class', 'selected'),
-		);
+		selectedCanvasNodes().first().should('have.class', 'selected');
 		cy.get('body').type('{rightArrow}');
-		cy.ifCanvasVersion(
-			() => selectedCanvasNodes().last().should('have.class', 'jtk-drag-selected'),
-			() => selectedCanvasNodes().last().should('have.class', 'selected'),
-		);
+		selectedCanvasNodes().last().should('have.class', 'selected');
 	});
 
 	it('should select nodes using shift and arrow keys', () => {
