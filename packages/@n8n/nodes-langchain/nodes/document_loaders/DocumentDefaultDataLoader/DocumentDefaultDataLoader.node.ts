@@ -84,6 +84,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				type: 'options',
 				default: 'simple',
 				required: true,
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Simple',
