@@ -29,6 +29,8 @@ import {
 	getRunDataInfoCallout,
 	getOutputPanelTable,
 	checkParameterCheckboxInputByName,
+	getOutputPanelItemsCount,
+	getInputPanelItemsCount,
 } from '../composables/ndv';
 import * as workflow from '../composables/workflow';
 import {
@@ -389,6 +391,10 @@ describe('Langchain Integration', () => {
 		};
 
 		workflowPage.actions.openNode('Character Text Splitter');
+
+		// Wait for the input panel to switch to Debugging mode
+		ndv.getInputPanelItemsCount().should('not.exist');
+
 		ndv.getOutputRunSelector().should('exist');
 		ndv.getInputRunSelector().should('exist');
 		ndv.getInputRunSelector().find('input').should('include.value', '3 of 3');

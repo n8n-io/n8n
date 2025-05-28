@@ -76,6 +76,10 @@ export function getInputRunSelector() {
 	return getInputPanel().findChildByTestId('run-selector');
 }
 
+export function getInputPanelItemsCount() {
+	return getInputPanel().getByTestId('ndv-items-count');
+}
+
 export function getOutputPanelDataContainer() {
 	return getOutputPanel().findChildByTestId('ndv-data-container');
 }
