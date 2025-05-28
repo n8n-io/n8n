@@ -29,7 +29,7 @@ export class Perplexity implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL: 'https://api.perplexity.ai',
 			ignoreHttpStatusErrors: true,
 		},
 		properties: [
