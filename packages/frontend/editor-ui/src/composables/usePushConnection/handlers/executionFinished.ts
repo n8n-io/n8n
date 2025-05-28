@@ -142,9 +142,7 @@ function triggerEvaluationLoop(
 	if (rowsLeft && rowsLeft > 0) {
 		const { runWorkflow } = useRunWorkflow({ router });
 		void runWorkflow({
-			source: 'evaluation-loop',
 			triggerNode: evaluationTrigger.name,
-			nodeData: triggerRunData[0],
 		});
 	}
 }
