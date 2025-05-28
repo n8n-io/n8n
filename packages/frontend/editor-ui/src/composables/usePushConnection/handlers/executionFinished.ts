@@ -116,7 +116,7 @@ export async function executionFinished(
  * @param execution
  * @param router
  */
-function continueEvaluationLoop(
+export function continueEvaluationLoop(
 	execution: SimplifiedExecution,
 	router: ReturnType<typeof useRouter>,
 ) {
