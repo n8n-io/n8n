@@ -108,7 +108,7 @@ export async function executionFinished(
 
 	setRunExecutionData(execution, runExecutionData);
 
-	triggerEvaluationLoop(execution, options.router);
+	continueEvaluationLoop(execution, options.router);
 }
 
 /**
@@ -116,7 +116,7 @@ export async function executionFinished(
  * @param execution
  * @param router
  */
-function triggerEvaluationLoop(
+function continueEvaluationLoop(
 	execution: SimplifiedExecution,
 	router: ReturnType<typeof useRouter>,
 ) {
