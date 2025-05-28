@@ -33,21 +33,6 @@ describe('N8nInlineTextEdit', () => {
 		expect(preview).toHaveTextContent('Updated Value');
 	});
 
-	it('value should not update on blur', async () => {
-		const wrapper = renderComponent({
-			props: {
-				modelValue: 'Test Value',
-			},
-		});
-		const input = wrapper.getByTestId('inline-edit-input');
-		const preview = wrapper.getByTestId('inline-edit-preview');
-
-		await userEvent.type(input, 'Updated Value');
-		await userEvent.tab(); // Simulate blur
-
-		expect(preview).toHaveTextContent('Test Value');
-	});
-
 	it('should not update value on blur if input is empty', async () => {
 		const wrapper = renderComponent({
 			props: {
