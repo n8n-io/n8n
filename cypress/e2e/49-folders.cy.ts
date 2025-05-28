@@ -465,7 +465,7 @@ describe('Folders', () => {
 			goToPersonalProject();
 			createFolderFromProjectHeader('Test parent');
 			createFolderInsideFolder('Move me to root', 'Test parent');
-			moveFolderFromFolderCardActions('Move me to root', 'Personal');
+			moveFolderFromFolderCardActions('Move me to root', 'No folder (project root)');
 			// Parent folder should be empty
 			getFolderEmptyState().should('exist');
 			// Child folder should be in the root
