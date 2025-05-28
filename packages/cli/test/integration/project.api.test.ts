@@ -50,6 +50,11 @@ const testServer = utils.setupTestServer({
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
 mockInstance(ActiveWorkflowManager);
 
+// Initialize DB once for all tests
+beforeAll(async () => {
+	await testDb.init();
+});
+
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);
 });
