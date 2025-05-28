@@ -4,6 +4,7 @@ export interface IPost {
 	title?: string;
 	content?: string;
 	slug?: string;
+	excerpt?: string;
 	password?: string;
 	status?: string;
 	comment_status?: string;

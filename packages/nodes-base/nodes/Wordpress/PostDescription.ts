@@ -91,6 +91,13 @@ export const postFields: INodeProperties[] = [
 				description: 'The content for the post',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -370,6 +377,13 @@ export const postFields: INodeProperties[] = [
 				description: 'The content for the post',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -413,6 +427,20 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 				description: 'A named status for the post',
 			},
+			// 			{
+			//   displayName: 'Scheduled Date/Time',
+			//   name: 'dateTime',
+			//   type: 'dateTime',
+			//   default: '',
+			//   displayOptions: {
+			//     show: {
+			//       resource: ['post'],
+			//       operation: ['create', 'update'],
+			//       'additionalFields.status': ['future'],
+			//     },
+			//   },
+			//   description: 'When to publish this post (required if status is “future”).',
+			// },
 			{
 				displayName: 'Comment Status',
 				name: 'commentStatus',

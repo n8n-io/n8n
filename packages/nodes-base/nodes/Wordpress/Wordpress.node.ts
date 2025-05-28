@@ -153,6 +153,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.content) {
 							body.content = additionalFields.content as string;
 						}
+						if (additionalFields.excerpt) {
+							body.excerpt = additionalFields.excerpt as string;
+						}
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
@@ -204,6 +207,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.content) {
 							body.content = updateFields.content as string;
+						}
+						if (updateFields.excerpt) {
+							body.excerpt = updateFields.excerpt as string;
 						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
