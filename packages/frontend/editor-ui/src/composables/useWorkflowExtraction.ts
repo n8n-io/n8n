@@ -243,7 +243,7 @@ export function useWorkflowExtraction() {
 		};
 	}
 
-	function computeAveragePosition(nodes: INode[]) {
+	function computeAveragePosition(nodes: INode[]): [number, number] {
 		const summedUp = nodes.reduce(
 			(acc, v) => [acc[0] + v.position[0], acc[1] + v.position[1], acc[2] + 1],
 			[0, 0, 0],
