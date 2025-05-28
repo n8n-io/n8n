@@ -30,6 +30,7 @@ import {
 	getOutputPanelTable,
 	checkParameterCheckboxInputByName,
 } from '../composables/ndv';
+import * as workflow from '../composables/workflow';
 import {
 	addLanguageModelNodeToParent,
 	addMemoryNodeToParent,
@@ -380,6 +381,7 @@ describe('Langchain Integration', () => {
 		workflowPage.actions.deselectAll();
 
 		workflowPage.actions.executeNode('Populate VS');
+		workflow.getNodesWithSpinner().should('not.exist');
 
 		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
 			ndv.getOutputPanel().contains(text).should(assertion);
