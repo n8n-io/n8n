@@ -548,7 +548,7 @@ describe('Node Creator', () => {
 	});
 
 	it('should add node directly for sub-connection as tool', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		clickGetBackToCanvas();
 

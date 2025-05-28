@@ -132,7 +132,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should be able to open and execute Basic LLM Chain node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(BASIC_LLM_CHAIN_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(
@@ -171,7 +171,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should be able to open and execute Agent node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(
@@ -211,7 +211,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should add and use Manual Chat Trigger node together with Agent node', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(
@@ -362,7 +362,7 @@ describe('Langchain Integration', () => {
 		getNodes().should('have.length', 3);
 	});
 	it('should not auto-add nodes if ChatTrigger is already present', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addNodeToCanvas(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, true);
@@ -424,7 +424,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should show tool info notice if no existing tools were used during execution', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
 		addLanguageModelNodeToParent(
@@ -469,7 +469,7 @@ describe('Langchain Integration', () => {
 	});
 
 	it('should not show tool info notice if tools were used during execution', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		getRunDataInfoCallout().should('not.exist');
 		clickGetBackToCanvas();
