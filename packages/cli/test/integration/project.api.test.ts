@@ -440,7 +440,7 @@ describe('POST /projects/', () => {
 	if (!globalConfig.database.isLegacySqlite) {
 		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
 			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-			const maxTeamProjects = 0;
+			const maxTeamProjects = 3;
 			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
 			const ownerUser = await createOwner();
 			const ownerAgent = testServer.authAgentFor(ownerUser);
