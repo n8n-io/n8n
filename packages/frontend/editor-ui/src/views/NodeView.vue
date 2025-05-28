@@ -66,6 +66,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -1379,7 +1380,10 @@ function onRunWorkflowButtonMouseLeave() {
  */
 
 const chatTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+	return editableWorkflow.value.nodes.find(
+		(node) =>
+			node.type === CHAT_TRIGGER_NODE_TYPE || node.type === INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+	);
 });
 
 const containsChatTriggerNodes = computed(() => {
@@ -1387,14 +1391,22 @@ const containsChatTriggerNodes = computed(() => {
 		!isExecutionWaitingForWebhook.value &&
 		!!editableWorkflow.value.nodes.find(
 			(node) =>
-				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
-				node.disabled !== true,
+				[
+					MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					CHAT_TRIGGER_NODE_TYPE,
+					INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+				].includes(node.type) && node.disabled !== true,
 		)
 	);
 });
 
 const isOnlyChatTriggerNodeActive = computed(() => {
-	return triggerNodes.value.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE);
+	return triggerNodes.value.every(
+		(node) =>
+			node.disabled ||
+			node.type === CHAT_TRIGGER_NODE_TYPE ||
+			node.type === INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+	);
 });
 
 const chatTriggerNodePinnedData = computed(() => {

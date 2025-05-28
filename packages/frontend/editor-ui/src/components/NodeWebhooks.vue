@@ -7,6 +7,7 @@ import {
 	MCP_TRIGGER_NODE_TYPE,
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -72,7 +73,7 @@ const webhooksNode = computed(() => {
 const baseText = computed(() => {
 	const nodeType = props.nodeTypeDescription?.name;
 	switch (nodeType) {
-		case CHAT_TRIGGER_NODE_TYPE:
+		case CHAT_TRIGGER_NODE_TYPE || INMO_APP_EVENT_TRIGGER_NODE_TYPE:
 			return {
 				toggleTitle: i18n.baseText('nodeWebhooks.webhookUrls.chatTrigger'),
 				clickToDisplay: i18n.baseText('nodeWebhooks.clickToDisplayWebhookUrls.formTrigger'),

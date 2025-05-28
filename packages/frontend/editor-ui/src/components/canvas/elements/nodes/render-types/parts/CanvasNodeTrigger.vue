@@ -3,8 +3,8 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';
+import { CHAT_TRIGGER_NODE_TYPE, INMO_APP_EVENT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';
@@ -55,7 +55,9 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 			</div>
 
 			<template v-if="!readOnly">
-				<template v-if="type === CHAT_TRIGGER_NODE_TYPE">
+				<template
+					v-if="type === CHAT_TRIGGER_NODE_TYPE || type === INMO_APP_EVENT_TRIGGER_NODE_TYPE"
+				>
 					<N8nButton
 						v-if="isChatOpen"
 						type="secondary"

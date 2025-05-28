@@ -1,4 +1,8 @@
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import { type IExecutionResponse, type INodeUi, type IWorkflowDb } from '@/Interface';
 import { type ChatMessage } from '@n8n/chat/types';
 import { get, isEmpty } from 'lodash-es';
@@ -6,14 +10,18 @@ import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n
 import { v4 as uuid } from 'uuid';
 
 export function isChatNode(node: INodeUi) {
-	return [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type);
+	return [
+		CHAT_TRIGGER_NODE_TYPE,
+		MANUAL_CHAT_TRIGGER_NODE_TYPE,
+		INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+	].includes(node.type);
 }
 
 export function getInputKey(node: INodeUi): string {
 	if (node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.typeVersion < 1.1) {
 		return 'input';
 	}
-	if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+	if (isChatNode(node)) {
 		return 'chatInput';
 	}
 

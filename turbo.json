@@ -7,7 +7,7 @@
 			"cache": false
 		},
 		"build:backend": {
-			"dependsOn": ["n8n#build"]
+			"dependsOn": ["n8n#build", "@n8n/extension-sdk#build"]
 		},
 		"build:frontend": {
 			"dependsOn": ["n8n-editor-ui#build"]

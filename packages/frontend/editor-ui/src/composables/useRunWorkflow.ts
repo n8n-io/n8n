@@ -24,6 +24,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
 	IN_PROGRESS_EXECUTION_ID,
 	SINGLE_WEBHOOK_TRIGGERS,
 } from '@/constants';
@@ -44,6 +45,10 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+
+const isChatTriggerNode = (node: INode) => {
+	return [CHAT_TRIGGER_NODE_TYPE, INMO_APP_EVENT_TRIGGER_NODE_TYPE].includes(node.type);
+};
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -194,11 +199,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
-					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
+					destinationNodeType === CHAT_TRIGGER_NODE_TYPE ||
+					destinationNodeType === INMO_APP_EVENT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage'
 			) {
 				const startNode = workflow.getStartNode(options.destinationNode);
-				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
+				if (startNode && isChatTriggerNode(startNode)) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =
 						nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
@@ -225,14 +231,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if (
 				!options.destinationNode &&
 				options.source !== 'RunData.ManualChatMessage' &&
-				workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
+				workflowData.nodes.some((node) => isChatTriggerNode(node))
 			) {
-				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
+				const otherTriggers = triggers.filter((node) => !isChatTriggerNode(node));
 
 				if (otherTriggers.length) {
-					const chatTriggerNode = workflowData.nodes.find(
-						(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-					);
+					const chatTriggerNode = workflowData.nodes.find((node) => isChatTriggerNode(node));
 					if (chatTriggerNode) {
 						chatTriggerNode.disabled = true;
 					}

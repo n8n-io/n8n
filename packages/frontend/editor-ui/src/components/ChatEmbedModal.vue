@@ -3,8 +3,13 @@ import { computed, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
-import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	CHAT_EMBED_MODAL_KEY,
+	CHAT_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+} from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
@@ -47,13 +52,22 @@ const tabs = ref<ChatEmbedModalTab[]>([
 	},
 ]);
 const currentTab = ref<ChatEmbedModalTabValue>('cdn');
-
+const isChatTriggerNode = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === CHAT_TRIGGER_NODE_TYPE || node.type === INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+	);
+});
 const webhookNode = computed(() => {
-	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
+	for (const type of [
+		CHAT_TRIGGER_NODE_TYPE,
+		WEBHOOK_NODE_TYPE,
+		INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+	]) {
 		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
 		if (node) {
 			// This has to be kept up-to-date with the mode in the Chat-Trigger node
-			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {
+			if (isChatTriggerNode && !node.parameters.public) {
 				continue;
 			}
 
@@ -72,7 +86,10 @@ const webhookUrl = computed(() => {
 		webhookNode.value ? `/${webhookNode.value.node.webhookId}` : ''
 	}`;
 
-	return webhookNode.value?.type === CHAT_TRIGGER_NODE_TYPE ? `${url}/chat` : url;
+	return webhookNode.value?.type === CHAT_TRIGGER_NODE_TYPE ||
+		webhookNode.value?.type === INMO_APP_EVENT_TRIGGER_NODE_TYPE
+		? `${url}/chat`
+		: url;
 });
 
 function indentLines(code: string, indent: string = '	') {

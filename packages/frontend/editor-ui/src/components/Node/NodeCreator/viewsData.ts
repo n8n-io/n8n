@@ -48,6 +48,7 @@ import {
 	IF_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
+	INMO_TRIGGER_SUBCATEGORY,
 	HELPERS_SUBCATEGORY,
 	HITL_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
@@ -57,6 +58,7 @@ import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -477,12 +479,40 @@ export function TriggerView() {
 			},
 			...(evaluationTriggerNode ? [evaluationTriggerNode] : []),
 			{
+				key: INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText(
+						'nodeCreator.triggerHelperPanel.inmoAppEventTriggerDisplayName',
+					),
+					description: i18n.baseText(
+						'nodeCreator.triggerHelperPanel.inmoAppEventTriggerDescription',
+					),
+					iconData: {
+						type: 'file',
+						fileBuffer: '/static/inmoAppEventIcon.svg',
+					},
+				},
+			},
+			{
 				type: 'subcategory',
 				key: OTHER_TRIGGER_NODES_SUBCATEGORY,
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: OTHER_TRIGGER_NODES_SUBCATEGORY,
 					icon: 'folder-open',
+				},
+			},
+			{
+				key: INMO_TRIGGER_SUBCATEGORY,
+				type: 'subcategory',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					title: INMO_TRIGGER_SUBCATEGORY,
+					icon: 'file:inmo-superapp.svg',
 				},
 			},
 		],

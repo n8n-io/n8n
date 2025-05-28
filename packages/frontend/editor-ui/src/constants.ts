@@ -155,6 +155,7 @@ export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+export const INMO_APP_EVENT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.inmoAppEventTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
@@ -262,7 +263,10 @@ export const SINGLE_WEBHOOK_TRIGGERS = [
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
-export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [
+	CHAT_TRIGGER_NODE_TYPE,
+	INMO_APP_EVENT_TRIGGER_NODE_TYPE,
+];
 
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<
@@ -292,6 +296,7 @@ export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
+export const INMO_TRIGGER_SUBCATEGORY = 'INMO Triggers';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';

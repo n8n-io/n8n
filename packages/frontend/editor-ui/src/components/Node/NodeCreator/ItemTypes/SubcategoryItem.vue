@@ -12,6 +12,14 @@ export interface Props {
 const props = defineProps<Props>();
 const i18n = useI18n();
 const subcategoryName = computed(() => camelCase(props.item.subcategory || props.item.title));
+
+const shouldResolveToFile = computed(() => props.item.icon?.split(':')[0] === 'file');
+const fileSrc = computed(() => {
+	if (shouldResolveToFile.value) {
+		return `/static/${props.item.icon?.split(':')[1]}`;
+	}
+	return undefined;
+});
 </script>
 
 <template>
@@ -26,10 +34,11 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 	>
 		<template #icon>
 			<n8n-node-icon
-				type="icon"
+				:type="shouldResolveToFile ? 'file' : 'icon'"
 				:name="item.icon"
 				:circle="false"
 				:show-tooltip="false"
+				:src="shouldResolveToFile ? fileSrc : undefined"
 				v-bind="item.iconProps"
 			/>
 		</template>
