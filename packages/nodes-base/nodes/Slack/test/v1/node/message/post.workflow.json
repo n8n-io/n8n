@@ -1,0 +1,110 @@
+{
+	"name": "slack tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "post",
+				"channel": "C08514ZPKB8",
+				"text": "test message",
+				"otherOptions": {
+					"icon_emoji": "😁",
+					"link_names": true,
+					"mrkdwn": true,
+					"unfurl_links": true,
+					"unfurl_media": true
+				},
+				"jsonParameters": false
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"ok": true,
+					"channel": "C08514ZPKB8",
+					"message": {
+						"user": "U0362BXQYJW",
+						"type": "message",
+						"ts": "1734322671.726339",
+						"bot_id": "B0382SHFM46",
+						"app_id": "A037UTP0Z39",
+						"text": "test message",
+						"team": "T0364MSFHV2",
+						"bot_profile": {
+							"id": "B0382SHFM46",
+							"app_id": "A037UTP0Z39",
+							"name": "blocks-test",
+							"icons": {
+								"image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
+								"image_48": "https://a.slack-edge.com/80588/img/plugins/app/bot_48.png",
+								"image_72": "https://a.slack-edge.com/80588/img/plugins/app/service_72.png"
+							},
+							"deleted": false,
+							"updated": 1648028754,
+							"team_id": "T0364MSFHV2"
+						}
+					},
+					"message_timestamp": "1734322671.726339"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

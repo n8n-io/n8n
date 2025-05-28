@@ -84,6 +84,7 @@
       "esbuild": "^0.24.0",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
+      "tar-fs": "2.1.2",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.8.2",
