@@ -627,6 +627,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	ARCHIVE = 'archive',
 	UNARCHIVE = 'unarchive',
 	RENAME = 'rename',
+	CHANGE_OWNER = 'change-owner',
 }
 
 /**
