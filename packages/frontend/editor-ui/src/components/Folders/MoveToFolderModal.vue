@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { truncate } from '@n8n/utils/string/truncate';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { EnterpriseEditionFeature, MOVE_FOLDER_MODAL_KEY } from '@/constants';
 import { useFoldersStore } from '@/stores/folders.store';
@@ -21,7 +20,7 @@ import type {
 } from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
-import { ResourceType, splitName } from '@/utils/projects.utils';
+import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 /**
@@ -173,8 +172,7 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 };
 
 const targetProjectName = computed(() => {
-	const { name, email } = splitName(selectedProject.value?.name ?? '');
-	return truncate(name ?? email ?? '', 25);
+	return getTruncatedProjectName(selectedProject.value?.name);
 });
 
 const onSubmit = () => {
