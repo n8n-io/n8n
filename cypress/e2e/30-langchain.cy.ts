@@ -21,6 +21,7 @@ import {
 	sendManualChatMessage,
 } from '../composables/modals/chat-modal';
 import { setCredentialValues } from '../composables/modals/credential-modal';
+import * as ndv from '../composables/ndv';
 import {
 	clickCreateNewCredential,
 	clickExecuteNode,
@@ -29,6 +30,7 @@ import {
 	getOutputPanelTable,
 	checkParameterCheckboxInputByName,
 } from '../composables/ndv';
+import * as workflow from '../composables/workflow';
 import {
 	addLanguageModelNodeToParent,
 	addMemoryNodeToParent,
@@ -44,7 +46,7 @@ import {
 	disableNode,
 	getExecuteWorkflowButton,
 } from '../composables/workflow';
-import { NDV, WorkflowPage } from '../pages';
+import { WorkflowPage } from '../pages';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 
 describe('Langchain Integration', () => {
@@ -373,7 +375,6 @@ describe('Langchain Integration', () => {
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it.skip('should render runItems for sub-nodes and allow switching between them', () => {
 		const workflowPage = new WorkflowPage();
-		const ndv = new NDV();
 
 		cy.visit(workflowPage.url);
 		cy.createFixtureWorkflow('In_memory_vector_store_fake_embeddings.json');
@@ -381,44 +382,49 @@ describe('Langchain Integration', () => {
 		workflowPage.actions.deselectAll();
 
 		workflowPage.actions.executeNode('Populate VS');
+		workflow.getNodesWithSpinner().should('not.exist');
 
 		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
-			ndv.getters.outputPanel().contains(text).should(assertion);
-			ndv.getters.inputPanel().contains(text).should(assertion);
+			ndv.getOutputPanel().contains(text).should(assertion);
+			ndv.getOutputPanel().contains(text).should(assertion);
 		};
 
 		workflowPage.actions.openNode('Character Text Splitter');
-		ndv.getters.outputRunSelector().should('exist');
-		ndv.getters.inputRunSelector().should('exist');
-		ndv.getters.inputRunSelector().find('input').should('include.value', '3 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '3 of 3');
+
+		// Wait for the input panel to switch to Debugging mode
+		ndv.getInputPanelItemsCount().should('not.exist');
+
+		ndv.getOutputRunSelector().should('exist');
+		ndv.getInputRunSelector().should('exist');
+		ndv.getInputRunSelector().find('input').should('include.value', '3 of 3');
+		ndv.getOutputRunSelector().find('input').should('include.value', '3 of 3');
 		assertInputOutputText('Kyiv', 'exist');
 		assertInputOutputText('Berlin', 'not.exist');
 		assertInputOutputText('Prague', 'not.exist');
 
-		ndv.actions.changeOutputRunSelector('2 of 3');
+		ndv.changeOutputRunSelector('2 of 3');
 		assertInputOutputText('Berlin', 'exist');
 		assertInputOutputText('Kyiv', 'not.exist');
 		assertInputOutputText('Prague', 'not.exist');
 
-		ndv.actions.changeOutputRunSelector('1 of 3');
+		ndv.changeOutputRunSelector('1 of 3');
 		assertInputOutputText('Prague', 'exist');
 		assertInputOutputText('Berlin', 'not.exist');
 		assertInputOutputText('Kyiv', 'not.exist');
 
-		ndv.actions.toggleInputRunLinking();
-		ndv.actions.changeOutputRunSelector('2 of 3');
-		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '2 of 3');
-		ndv.getters.inputPanel().contains('Prague').should('exist');
-		ndv.getters.inputPanel().contains('Berlin').should('not.exist');
+		ndv.toggleInputRunLinking();
+		ndv.changeOutputRunSelector('2 of 3');
+		ndv.getInputRunSelector().find('input').should('include.value', '1 of 3');
+		ndv.getOutputRunSelector().find('input').should('include.value', '2 of 3');
+		ndv.getInputPanel().contains('Prague').should('exist');
+		ndv.getInputPanel().contains('Berlin').should('not.exist');
 
-		ndv.getters.outputPanel().contains('Berlin').should('exist');
-		ndv.getters.outputPanel().contains('Prague').should('not.exist');
+		ndv.getOutputPanel().contains('Berlin').should('exist');
+		ndv.getOutputPanel().contains('Prague').should('not.exist');
 
-		ndv.actions.toggleInputRunLinking();
-		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '1 of 3');
+		ndv.toggleInputRunLinking();
+		ndv.getInputRunSelector().find('input').should('include.value', '1 of 3');
+		ndv.getOutputRunSelector().find('input').should('include.value', '1 of 3');
 		assertInputOutputText('Prague', 'exist');
 		assertInputOutputText('Berlin', 'not.exist');
 		assertInputOutputText('Kyiv', 'not.exist');
@@ -524,7 +530,6 @@ describe('Langchain Integration', () => {
 
 	it('should execute up to Node 1 when using partial execution', () => {
 		const workflowPage = new WorkflowPage();
-		const ndv = new NDV();
 
 		cy.visit(workflowPage.url);
 		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
@@ -532,7 +537,7 @@ describe('Langchain Integration', () => {
 
 		getManualChatModal().find('main').should('not.exist');
 		openNode('Node 1');
-		ndv.actions.execute();
+		ndv.clickExecuteNode();
 
 		getManualChatModal().find('main').should('exist');
 		sendManualChatMessage('Test');
