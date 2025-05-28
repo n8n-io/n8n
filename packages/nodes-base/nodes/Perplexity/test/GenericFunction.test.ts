@@ -1,12 +1,11 @@
 import type {
 	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { sendErrorPostReceive, getModels } from '../GenericFunctions';
+import { sendErrorPostReceive } from '../GenericFunctions';
 
 // Mock implementation for `this` in `sendErrorPostReceive`
 const mockExecuteSingleFunctions = {
@@ -201,37 +200,6 @@ describe('Generic Functions', () => {
 					message: 'Error with item [Item 2].',
 				}),
 			);
-		});
-	});
-
-	describe('getModels', () => {
-		it('should return all models if no filter is provided', async () => {
-			const result = await getModels.call({} as ILoadOptionsFunctions);
-			expect(result.results.length).toBeGreaterThan(0);
-			expect(result.results).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ name: 'R1-1776', value: 'r1-1776' }),
-					expect.objectContaining({ name: 'Sonar', value: 'sonar' }),
-				]),
-			);
-		});
-
-		it('should return filtered models if a filter is provided', async () => {
-			const filter = 'sonar';
-			const result = await getModels.call({} as ILoadOptionsFunctions, filter);
-			expect(result.results.length).toBeGreaterThan(0);
-			expect(result.results).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ name: 'Sonar', value: 'sonar' }),
-					expect.objectContaining({ name: 'Sonar Deep Research', value: 'sonar-deep-research' }),
-				]),
-			);
-		});
-
-		it('should return an empty array if no models match the filter', async () => {
-			const filter = 'nonexistent';
-			const result = await getModels.call({} as ILoadOptionsFunctions, filter);
-			expect(result.results).toEqual([]);
 		});
 	});
 });
