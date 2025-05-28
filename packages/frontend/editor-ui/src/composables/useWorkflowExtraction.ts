@@ -152,6 +152,8 @@ export function useWorkflowExtraction() {
 			lastNode.position[1],
 		];
 
+		const shouldInsertReturnNode = selectionChildrenVariables.size > 0;
+
 		const startNodeConnection = startNodeTarget
 			? ({
 					[startNodeName]: {
@@ -168,47 +170,47 @@ export function useWorkflowExtraction() {
 				} satisfies IConnections)
 			: {};
 
-		const endNodeConnection = endNodeTarget
-			? ({
-					[endNodeTarget.name]: {
-						main: [
-							[
-								{
-									node: returnNodeName,
-									type: 'main',
-									index: 0,
-								},
+		const endNodeConnection =
+			endNodeTarget && shouldInsertReturnNode
+				? ({
+						[endNodeTarget.name]: {
+							main: [
+								[
+									{
+										node: returnNodeName,
+										type: 'main',
+										index: 0,
+									},
+								],
 							],
-						],
-					},
-				} satisfies IConnections)
-			: {};
+						},
+					} satisfies IConnections)
+				: {};
 
-		const returnNode =
-			selectionChildrenVariables.size === 0
-				? []
-				: [
-						{
-							parameters: {
-								assignments: {
-									assignments: [
-										...selectionChildrenVariables.entries().map((x) => ({
-											id: uuidv4(),
-											name: x[0],
-											value: `={{ ${x[1]} }}`,
-											type: 'string',
-										})),
-									],
-								},
-								options: {},
+		const returnNode = shouldInsertReturnNode
+			? [
+					{
+						parameters: {
+							assignments: {
+								assignments: [
+									...selectionChildrenVariables.entries().map((x) => ({
+										id: uuidv4(),
+										name: x[0],
+										value: `={{ ${x[1]} }}`,
+										type: 'string',
+									})),
+								],
 							},
-							type: 'n8n-nodes-base.set',
-							typeVersion: 3.4,
-							position: endNodePosition,
-							id: uuidv4(),
-							name: returnNodeName,
-						} satisfies INode,
-					];
+							options: {},
+						},
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: endNodePosition,
+						id: uuidv4(),
+						name: returnNodeName,
+					} satisfies INode,
+				]
+			: [];
 		const triggerParameters =
 			selectionVariables.size > 0
 				? {
