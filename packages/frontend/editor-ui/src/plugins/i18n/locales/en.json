@@ -644,7 +644,7 @@
 	"credentials.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create credentials",
 	"credentials.item.open": "Open",
 	"credentials.item.delete": "Delete",
-	"credentials.item.move": "Move",
+	"credentials.item.move": "Change owner",
 	"credentials.item.updated": "Last updated",
 	"credentials.item.created": "Created",
 	"credentials.item.owner": "Owner",
