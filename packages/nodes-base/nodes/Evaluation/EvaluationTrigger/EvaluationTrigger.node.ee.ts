@@ -114,10 +114,13 @@ export class EvaluationTrigger implements INodeType {
 			? (this.getNodeParameter('maxRows', 0) as number) + 1
 			: MAX_ROWS;
 
-		// todo handle errors
-		// todo handle 0 rows left
-		const previousRun = inputData?.[0]?.json?.row_number;
-		const firstDataRow = typeof previousRun === 'number' ? previousRun + 1 : DEFAULT_STARTING_ROW;
+		const previousRunRowNumber = inputData?.[0]?.json?.row_number;
+		const previousRunRowsLeft = inputData?.[0]?.json?._rowsLeft;
+
+		const firstDataRow =
+			typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
+				? previousRunRowNumber + 1
+				: DEFAULT_STARTING_ROW;
 		const rangeOptions = {
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,

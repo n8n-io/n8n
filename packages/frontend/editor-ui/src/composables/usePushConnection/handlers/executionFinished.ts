@@ -143,6 +143,7 @@ function triggerEvaluationLoop(
 		const { runWorkflow } = useRunWorkflow({ router });
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,
+			// pass output of previous node run to trigger next run
 			nodeData: triggerRunData[0],
 			rerunTriggerNode: true,
 		});
