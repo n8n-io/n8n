@@ -206,6 +206,14 @@ export function getMoveToFolderInput() {
 	return getMoveToFolderDropdown().find('input');
 }
 
+export function getProjectSharingInput() {
+	return cy.getByTestId('project-sharing-select');
+}
+
+export function getProjectSharingOption(name: string) {
+	return cy.getByTestId('project-sharing-info').contains(name);
+}
+
 export function getEmptyFolderDropdownMessage(text: string) {
 	return cy.get('.el-select-dropdown__empty').contains(text);
 }
@@ -518,4 +526,28 @@ function moveFolder(folderName: string, destinationName: string) {
 	getMoveToFolderOption(destinationName).should('be.visible').click();
 	getMoveFolderConfirmButton().should('be.enabled').click();
 	cy.wait('@moveFolder');
+}
+
+export function transferWorkflow(
+	workflowName: string,
+	projectName: string,
+	destinationFolder?: string,
+) {
+	getMoveFolderModal().should('be.visible');
+	getMoveFolderModal().find('h1').first().contains(`Move workflow ${workflowName}`);
+
+	cy.wait(500);
+
+	getProjectSharingInput().should('be.visible').click();
+	cy.focused().type(projectName, { delay: 50 });
+	getProjectSharingOption(projectName).should('be.visible').click();
+
+	if (destinationFolder) {
+		getMoveToFolderInput().click();
+		// Select destination folder
+		cy.focused().type(destinationFolder, { delay: 50 });
+		getMoveToFolderOption(destinationFolder).should('be.visible').click();
+	}
+
+	getMoveFolderConfirmButton().should('be.enabled').click();
 }
