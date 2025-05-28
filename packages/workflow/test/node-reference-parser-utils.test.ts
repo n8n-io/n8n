@@ -646,9 +646,6 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
-		/**
-		 *
-		 */
 		it('should handle assignments format of Set node correctly', () => {
 			nodes = [
 				{

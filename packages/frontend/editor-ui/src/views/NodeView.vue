@@ -128,6 +128,7 @@ import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionB
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';

@@ -265,22 +265,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			value: newParameters,
 		});
 
-		// for (const k of Object.keys(currentParameters)) {
-		// 	if (!(k in newParameters)) {
-		// 		// We need to explicitly remove these to correctly support undo/redo
-		// 		// @ts-expect-error invariant
-		// 		delete node[k];
-		// 	}
-		// }
-
-		// const nodeIndex = workflowsStore.workflow.nodes.findIndex((x) => x.name === node.name);
-		// for (const [k, v] of Object.entries(newParameters)) {
-		// 	workflowsStore.setNodeValueByIndex(nodeIndex, {
-		// 		name: node.name,
-		// 		key: k,
-		// 		value: v,
-		// 	});
-		// }
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(
 				new ReplaceNodeParametersCommand(nodeId, currentParameters, newParameters, Date.now()),

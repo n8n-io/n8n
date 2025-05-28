@@ -26,7 +26,6 @@ import { useTelemetry } from './useTelemetry';
 import { isEqual } from 'lodash-es';
 import { v4 as uuidv4 } from 'uuid';
 
-export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
 	trackHistory: true,
@@ -49,13 +48,8 @@ export function useWorkflowExtraction() {
 			type: 'error',
 			message,
 			title: i18n.baseText('workflowExtraction.error.failure'),
-			duration: 0,
+			duration: 15 * 1000,
 		});
-	}
-
-	// An array indicates a list of errors, preventing extraction
-	function getExtractableSelection(nodeNameSet: Set<string>) {
-		return parseExtractableSubgraphSelection(nodeNameSet, adjacencyList.value);
 	}
 
 	function extractableErrorResultToMessage(result: ExtractableErrorResult) {
@@ -110,7 +104,7 @@ export function useWorkflowExtraction() {
 							display: true,
 							canBeUsedToMatch: true,
 							removed: false,
-							// no type implicitly uses our `any` type
+							// omitted type implicitly uses our `any` type
 						})),
 					],
 					attemptToConvertTypes: false,
@@ -139,16 +133,13 @@ export function useWorkflowExtraction() {
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
 		);
 		if (end) {
-			// this is necessary because the new workflow crashes looking for the
+			// this is necessary because the new workflow may crash looking for the
 			// nodes in these connections
-			newConnections[end] = {};
 			delete newConnections[end];
 		}
 
 		const startNodeTarget = nodes.find((x) => x.name === start);
-
 		const firstNode = startNodeTarget ?? nodes.sort((a, b) => a.position[1] - b.position[1])[0];
-
 		const startNodePosition: [number, number] = [
 			firstNode.position[0] - PUSH_NODES_OFFSET,
 			firstNode.position[1],
@@ -156,7 +147,6 @@ export function useWorkflowExtraction() {
 
 		const endNodeTarget = nodes.find((x) => x.name === end);
 		const lastNode = endNodeTarget ?? nodes.sort((a, b) => b.position[1] - a.position[1])[0];
-
 		const endNodePosition: [number, number] = [
 			lastNode.position[0] + PUSH_NODES_OFFSET,
 			lastNode.position[1],
@@ -206,7 +196,7 @@ export function useWorkflowExtraction() {
 											id: uuidv4(),
 											name: x[0],
 											value: `={{ ${x[1]} }}`,
-											type: 'string', // todo infer from execution data?
+											type: 'string',
 										})),
 									],
 								},
@@ -229,8 +219,9 @@ export function useWorkflowExtraction() {
 				: {
 						inputSource: 'passthrough',
 					};
+
 		const triggerNode: INode = {
-			id: SUBWORKFLOW_TRIGGER_ID,
+			id: uuidv4(),
 			typeVersion: 1.1,
 			name: startNodeName,
 			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -253,15 +244,11 @@ export function useWorkflowExtraction() {
 	}
 
 	function computeAveragePosition(nodes: INode[]) {
-		const applyAverage = ([a, b, c]: [number, number, number]): [number, number] => [a / c, b / c];
-		const averagePosition = (n: INode[]) =>
-			applyAverage(
-				n.reduce(
-					(acc, v) => [acc[0] + v.position[0], acc[1] + v.position[1], acc[2] + 1],
-					[0, 0, 0],
-				),
-			);
-		return averagePosition(nodes);
+		const summedUp = nodes.reduce(
+			(acc, v) => [acc[0] + v.position[0], acc[1] + v.position[1], acc[2] + 1],
+			[0, 0, 0],
+		);
+		return [summedUp[0] / summedUp[2], summedUp[1] / summedUp[2]];
 	}
 
 	async function tryCreateWorkflow(workflowData: IWorkflowDataCreate): Promise<IWorkflowDb | null> {
@@ -291,7 +278,7 @@ export function useWorkflowExtraction() {
 	}
 
 	function checkExtractableSelectionValidity(
-		selection: ReturnType<typeof getExtractableSelection>,
+		selection: ReturnType<typeof parseExtractableSubgraphSelection>,
 	): selection is ExtractableSubgraphData {
 		if (Array.isArray(selection)) {
 			showError(
@@ -354,10 +341,12 @@ export function useWorkflowExtraction() {
 		selectionChildNodes: INode[],
 	) {
 		historyStore.startRecordingUndo();
+
 		// In most cases we're about to move the selection anyway
 		// One remarkable edge case is when a single node is right-clicked on
 		// This allows extraction, but does not necessarily select the node
 		uiStore.resetLastInteractedWith();
+
 		const executeWorkflowNode = (
 			await canvasOperations.addNodes([executeWorkflowNodeData], {
 				...CANVAS_HISTORY_OPTIONS,
@@ -384,7 +373,9 @@ export function useWorkflowExtraction() {
 
 		for (const node of selectionChildNodes) {
 			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+
 			if (isEqual(node, currentNode)) continue;
+
 			canvasOperations.replaceNodeParameters(
 				node.id,
 				{ ...currentNode?.parameters },
@@ -398,9 +389,7 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const subGraph = nodeIds
-			.map(workflowsStore.getNodeById)
-			.filter((x) => x !== undefined && x !== null);
+		const subGraph = nodeIds.map(workflowsStore.getNodeById).filter((x) => x !== undefined);
 
 		const triggers = subGraph.filter((x) =>
 			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
@@ -414,7 +403,10 @@ export function useWorkflowExtraction() {
 			return false;
 		}
 
-		const selection = getExtractableSelection(new Set(subGraph.map((x) => x.name)));
+		const selection = parseExtractableSubgraphSelection(
+			new Set(subGraph.map((x) => x.name)),
+			adjacencyList.value,
+		);
 
 		if (!checkExtractableSelectionValidity(selection)) return false;
 
@@ -549,7 +541,6 @@ export function useWorkflowExtraction() {
 	return {
 		adjacencyList,
 		extractWorkflow,
-		getExtractableSelection,
 		tryExtractNodesIntoSubworkflow,
 		extractNodesIntoSubworkflow,
 	};
