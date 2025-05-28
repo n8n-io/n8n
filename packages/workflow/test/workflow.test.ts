@@ -2522,7 +2522,7 @@ describe('Workflow', () => {
 						parameters: {},
 					},
 					{
-						id: 'TargetNode1',
+						id: 'TargetNode2',
 						name: 'TargetNode2',
 						type: 'test.set',
 						typeVersion: 1,
