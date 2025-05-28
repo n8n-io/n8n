@@ -14,7 +14,7 @@ mockInstance(AuthIdentityRepository);
 describe('sso/saml/samlHelpers', () => {
 	describe('updateUserFromSamlAttributes', () => {
 		// We need to use `save` so that that the subscriber in
-		// packages/cli/src/databases/entities/Project.ts receives the full user.
+		// packages/@n8n/db/src/entities/Project.ts receives the full user.
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		test('does not user `Repository.update`, but `Repository.save` instead', async () => {

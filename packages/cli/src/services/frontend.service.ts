@@ -256,6 +256,9 @@ export class FrontendService {
 			logsView: {
 				enabled: false,
 			},
+			evaluation: {
+				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+			},
 		};
 	}
 
@@ -394,6 +397,9 @@ export class FrontendService {
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		this.settings.logsView.enabled = config.get('logs_view.enabled');
+
+		// Refresh evaluation settings
+		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
 
 		return this.settings;
 	}
