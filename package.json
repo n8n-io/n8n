@@ -101,5 +101,8 @@
       "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch"
     }
+  },
+  "dependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.41.1"
   }
 }

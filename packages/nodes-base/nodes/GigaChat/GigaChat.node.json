@@ -1,0 +1,23 @@
+{
+	"node": "n8n-nodes-base.gigaChat",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Utility"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/gigaChat/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gigaChat/"
+			}
+		]
+	},
+	"alias": ["GigaChat"],
+	"icon": {
+		"light": "file:ac21ee8f_GC-api-black-green-sphere.svg",
+		"dark": "file:ac21ee8f_GC-api-black-green-sphere.svg"
+	}
+}

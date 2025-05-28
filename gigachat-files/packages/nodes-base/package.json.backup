@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.94.0",
+  "version": "1.93.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -894,7 +894,6 @@
     "fflate": "0.7.4",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",
-    "gigachat": "^0.0.14",
     "gm": "1.25.1",
     "html-to-text": "9.0.5",
     "iconv-lite": "catalog:",
@@ -905,7 +904,6 @@
     "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
     "kafkajs": "2.2.4",
-    "langchain-gigachat": "^0.0.11",
     "ldapts": "4.2.6",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
@@ -943,6 +941,9 @@
     "uuid": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
-    "xmlhttprequest-ssl": "3.1.0"
+    "xmlhttprequest-ssl": "3.1.0",
+    "axios": "^1.9.0",
+    "gigachat": "^0.0.14",
+    "langchain-gigachat": "^0.0.11"
   }
 }

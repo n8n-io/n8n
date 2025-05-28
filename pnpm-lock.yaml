@@ -204,6 +204,10 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@rollup/rollup-win32-x64-msvc':
+        specifier: ^4.41.1
+        version: 4.41.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.0
@@ -867,6 +871,9 @@ importers:
       langchain:
         specifier: 0.3.11
         version: 0.3.11(9b9a451e446ad3ea9ebac049587c5a34)
+      langchain-gigachat:
+        specifier: ^0.0.11
+        version: 0.0.11(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -2338,6 +2345,9 @@ importers:
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
+      gigachat:
+        specifier: ^0.0.14
+        version: 0.0.14
       gm:
         specifier: 1.25.1
         version: 1.25.1
@@ -2368,6 +2378,9 @@ importers:
       kafkajs:
         specifier: 2.2.4
         version: 2.2.4
+      langchain-gigachat:
+        specifier: ^0.0.11
+        version: 0.0.11(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -5533,6 +5546,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@rollup/rollup-win32-x64-msvc@4.41.1':
+    resolution: {integrity: sha512-Wq2zpapRYLfi4aKxf2Xff0tN+7slj2d4R87WEzqw7ZLsVvO5zwYCIuEGSZYiK41+GlwUo1HiR+GdkLEJnCKTCw==}
+    cpu: [x64]
+    os: [win32]
+
   '@rudderstack/rudder-sdk-node@2.1.4':
     resolution: {integrity: sha512-Y/WJRcIYss+gCipzCMYcbJ3WPkj4SxsqNcb/HYjKhaLjdfjCmuWVSsJFEajfpA8EpkKRh3OamerBO5kftwXLxQ==}
     peerDependencies:
@@ -7025,11 +7043,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  acorn@8.14.1:
-    resolution: {integrity: sha512-OvQ/2pUDKmgfCg++xsTX1wGxfTaszcHVcTctW4UJB4hibJx2HXxxO5UmVgyjMa+ZDsiaf5wWLXYpRWMmBI0QHg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   adm-zip@0.5.10:
     resolution: {integrity: sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ==}
     engines: {node: '>=6.0'}
@@ -8340,10 +8353,6 @@ packages:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
-  detect-libc@2.0.1:
-    resolution: {integrity: sha512-463v3ZeIrcWtdgIg6vI6XUncguvr2TnGl4SzDXinkt9mSLpBJKXT3mW6xT3VQdDN11+WVs29pgvivTc4Lp8v+w==}
-    engines: {node: '>=8'}
-
   detect-libc@2.0.4:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
@@ -9333,6 +9342,9 @@ packages:
 
   getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
+
+  gigachat@0.0.14:
+    resolution: {integrity: sha512-BwXDecDxF6aKJT+juuoATrBnFLDBg5Vho1dxYRsgM18zgZ55q5SwNiOgC05/J7rhGY66Pj6Wsnvk3FC6K4IMQw==}
 
   github-buttons@2.29.1:
     resolution: {integrity: sha512-TV3YgAKda5hPz75n7QXmGCsSzgVya1vvmBieebg3EB5ScmashTZ0FldViG1aU2d4V5rcAGrtQ7k5uAaCo0A4PA==}
@@ -10340,6 +10352,12 @@ packages:
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
+  langchain-gigachat@0.0.11:
+    resolution: {integrity: sha512-2hYES1Dt0U/p/h+F+/1lDfmaYTWQyuHG5KAAIQGYygursAUGDDoyKQlGywbJ4JgmENy4u5fv7keVC9+k0X8tbQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': '>=0.2.21 <0.4.0'
+
   langchain@0.3.11:
     resolution: {integrity: sha512-PgAG4ZLeuSRkKsyf98cmWGdwKv3I1hOFC8a4fr7e+bm7E+F6Fx6xUkgbuC78ff0N/Cjs5BBryZIFMrqoKPqsvg==}
     engines: {node: '>=18'}
@@ -11167,6 +11185,7 @@ packages:
   multer@1.4.5-lts.1:
     resolution: {integrity: sha512-ywPWvcDMeH+z9gQq5qYHCCy+ethsk4goepZ45GLD63fOu0YcNecQxi64nDs3qluZB+murG3/D4dJ7+dGctcCQQ==}
     engines: {node: '>= 6.0.0'}
+    deprecated: Multer 1.x is impacted by a number of vulnerabilities, which have been patched in 2.x. You should upgrade to the latest 2.x version.
 
   mustache@4.2.0:
     resolution: {integrity: sha512-71ippSywq5Yb7/tVYyGbkBggbU8H3u5Rz56fH60jGFgr8uHwxs+aSKeqmluIVzM0m0kB7xQjKS6qPfd0b2ZoqQ==}
@@ -11209,10 +11228,6 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  negotiator@0.6.3:
-    resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
-    engines: {node: '>= 0.6'}
 
   negotiator@0.6.4:
     resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
@@ -12073,9 +12088,6 @@ packages:
     resolution: {integrity: sha512-0VnamPPYHl4uaU/nSFeZZpR21QAWRz+sRv4iW9+v/GS/J5U5iZB5BNN6J0RMoOvdx2gWM2+ZFMIm58q24e4UYA==}
     engines: {node: '>= 0.10'}
     hasBin: true
-
-  psl@1.15.0:
-    resolution: {integrity: sha512-JZd3gMVBAVQkSs6HdNZo9Sdo0LNcQeMNP3CozBJb3JYC/QUYZTnKxP+f8oWRX4rHP5EurWxqAHTSwUCjlNKa1w==}
 
   psl@1.9.0:
     resolution: {integrity: sha512-E/ZsdU4HLs/68gYzgGTkMicWTLPdAftJLfJFlLUAAKZGkStNU72sZjT66SnMDVOfOWY/YAoiD7Jxa9iHvngcag==}
@@ -13731,6 +13743,10 @@ packages:
 
   uuid@11.0.2:
     resolution: {integrity: sha512-14FfcOJmqdjbBPdDjFQyk/SdT4NySW4eM0zcG+HqbHP5jzuH56xO3J1DGhgs/cEMCfwYi3HQI1gnTO62iaG+tQ==}
+    hasBin: true
+
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
   uuid@8.3.2:
@@ -15527,7 +15543,7 @@ snapshots:
       '@babel/helper-validator-option': 7.25.9
       browserslist: 4.24.4
       lru-cache: 5.1.1
-      semver: 7.6.0
+      semver: 7.7.2
 
   '@babel/helper-create-class-features-plugin@7.26.9(@babel/core@7.26.10)':
     dependencies:
@@ -15538,7 +15554,7 @@ snapshots:
       '@babel/helper-replace-supers': 7.26.5(@babel/core@7.26.10)
       '@babel/helper-skip-transparent-expression-wrappers': 7.25.9
       '@babel/traverse': 7.26.10
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -15547,7 +15563,7 @@ snapshots:
       '@babel/core': 7.26.10
       '@babel/helper-annotate-as-pure': 7.25.9
       regexpu-core: 6.2.0
-      semver: 7.6.0
+      semver: 7.7.2
 
   '@babel/helper-define-polyfill-provider@0.6.3(@babel/core@7.26.10)':
     dependencies:
@@ -17623,7 +17639,7 @@ snapshots:
   '@npmcli/fs@1.1.1':
     dependencies:
       '@gar/promisify': 1.1.3
-      semver: 7.6.0
+      semver: 7.7.2
     optional: true
 
   '@npmcli/move-file@1.1.2':
@@ -17897,7 +17913,7 @@ snapshots:
       '@types/shimmer': 1.2.0
       import-in-the-middle: 1.11.3
       require-in-the-middle: 7.4.0
-      semver: 7.6.0
+      semver: 7.7.2
       shimmer: 1.2.1
     transitivePeerDependencies:
       - supports-color
@@ -18207,9 +18223,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.35.0':
     optional: true
 
+  '@rollup/rollup-win32-x64-msvc@4.41.1': {}
+
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       axios-retry: 4.5.0(axios@1.8.3)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -18236,7 +18254,7 @@ snapshots:
       import-lazy: 4.0.0
       jju: 1.4.0
       resolve: 1.22.8
-      semver: 7.6.0
+      semver: 7.7.2
     optionalDependencies:
       '@types/node': 18.19.103
 
@@ -19763,7 +19781,7 @@ snapshots:
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
-      semver: 7.6.0
+      semver: 7.7.2
       ts-api-utils: 1.0.1(typescript@5.8.2)
     optionalDependencies:
       typescript: 5.8.2
@@ -20223,8 +20241,6 @@ snapshots:
 
   acorn@8.14.0: {}
 
-  acorn@8.14.1: {}
-
   adm-zip@0.5.10: {}
 
   agent-base@5.1.1: {}
@@ -20454,7 +20470,7 @@ snapshots:
       define-properties: 1.2.1
       es-abstract: 1.23.3
       es-errors: 1.3.0
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
       is-array-buffer: 3.0.4
       is-shared-array-buffer: 1.0.3
 
@@ -20550,16 +20566,8 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       is-retry-allowed: 2.2.0
-
-  axios@1.8.3:
-    dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.8.3(debug@4.3.6):
     dependencies:
@@ -20580,7 +20588,7 @@ snapshots:
   axios@1.9.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.1)
-      form-data: 4.0.0
+      form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -20620,7 +20628,7 @@ snapshots:
       '@babel/compat-data': 7.26.8
       '@babel/core': 7.26.10
       '@babel/helper-define-polyfill-provider': 0.6.3(@babel/core@7.26.10)
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -21714,8 +21722,6 @@ snapshots:
 
   dequal@2.0.3: {}
 
-  detect-libc@2.0.1: {}
-
   detect-libc@2.0.4: {}
 
   detect-newline@3.1.0: {}
@@ -21861,7 +21867,7 @@ snapshots:
       '@one-ini/wasm': 0.1.1
       commander: 10.0.1
       minimatch: 9.0.1
-      semver: 7.6.0
+      semver: 7.7.2
 
   ee-first@1.1.1: {}
 
@@ -22062,7 +22068,7 @@ snapshots:
 
   es-define-property@1.0.0:
     dependencies:
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
 
   es-define-property@1.0.1: {}
 
@@ -22092,7 +22098,7 @@ snapshots:
 
   es-set-tostringtag@2.0.3:
     dependencies:
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
       has-tostringtag: 1.0.2
       hasown: 2.0.2
 
@@ -22211,7 +22217,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22236,7 +22242,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -22256,7 +22262,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22984,7 +22990,7 @@ snapshots:
     dependencies:
       call-bind: 1.0.7
       es-errors: 1.3.0
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
 
   get-system-fonts@2.0.2: {}
 
@@ -23001,6 +23007,13 @@ snapshots:
   getpass@0.1.7:
     dependencies:
       assert-plus: 1.0.0
+
+  gigachat@0.0.14:
+    dependencies:
+      axios: 1.9.0(debug@4.4.1)
+      uuid: 11.1.0
+    transitivePeerDependencies:
+      - debug
 
   github-buttons@2.29.1: {}
 
@@ -23090,7 +23103,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23145,7 +23158,7 @@ snapshots:
 
   gopd@1.0.1:
     dependencies:
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
 
   gopd@1.2.0: {}
 
@@ -23211,7 +23224,7 @@ snapshots:
 
   has-tostringtag@1.0.2:
     dependencies:
-      has-symbols: 1.0.3
+      has-symbols: 1.1.0
 
   has-unicode@2.0.1:
     optional: true
@@ -23320,7 +23333,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -23459,7 +23472,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -23712,7 +23725,7 @@ snapshots:
       '@babel/parser': 7.26.10
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -24079,7 +24092,7 @@ snapshots:
       jest-util: 29.6.2
       natural-compare: 1.4.0
       pretty-format: 29.7.0
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -24387,6 +24400,16 @@ snapshots:
   kolorist@1.8.0: {}
 
   kuler@2.0.0: {}
+
+  langchain-gigachat@0.0.11(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))):
+    dependencies:
+      '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      gigachat: 0.0.14
+      uuid: 11.1.0
+      zod: 3.24.1
+      zod-to-json-schema: 3.24.5(zod@3.24.1)
+    transitivePeerDependencies:
+      - debug
 
   langchain@0.3.11(9b9a451e446ad3ea9ebac049587c5a34):
     dependencies:
@@ -24731,13 +24754,13 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.6.0
+      semver: 7.7.2
 
   make-error@1.3.6: {}
 
   make-fetch-happen@9.1.0:
     dependencies:
-      agentkeepalive: 4.2.1
+      agentkeepalive: 4.6.0
       cacache: 15.3.0
       http-cache-semantics: 4.1.1
       http-proxy-agent: 4.0.1
@@ -24749,7 +24772,7 @@ snapshots:
       minipass-fetch: 1.4.1
       minipass-flush: 1.0.5
       minipass-pipeline: 1.2.4
-      negotiator: 0.6.3
+      negotiator: 0.6.4
       promise-retry: 2.0.1
       socks-proxy-agent: 6.2.1
       ssri: 8.0.1
@@ -25434,9 +25457,6 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  negotiator@0.6.3:
-    optional: true
-
   negotiator@0.6.4: {}
 
   negotiator@1.0.0: {}
@@ -25460,7 +25480,7 @@ snapshots:
 
   node-abi@3.54.0:
     dependencies:
-      semver: 7.6.0
+      semver: 7.7.2
 
   node-abort-controller@3.1.1: {}
 
@@ -25500,7 +25520,7 @@ snapshots:
       nopt: 5.0.0
       npmlog: 6.0.2
       rimraf: 3.0.2
-      semver: 7.6.0
+      semver: 7.7.2
       tar: 6.2.1
       which: 2.0.2
     transitivePeerDependencies:
@@ -25572,7 +25592,7 @@ snapshots:
     dependencies:
       hosted-git-info: 2.8.9
       resolve: 1.22.8
-      semver: 7.6.0
+      semver: 7.7.2
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}
@@ -25953,7 +25973,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26179,14 +26199,14 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
 
   prebuild-install@7.1.1:
     dependencies:
-      detect-libc: 2.0.1
+      detect-libc: 2.0.4
       expand-template: 2.0.3
       github-from-package: 0.0.0
       minimist: 1.2.8
@@ -26324,10 +26344,6 @@ snapshots:
   ps-tree@1.2.0:
     dependencies:
       event-stream: 3.3.4
-
-  psl@1.15.0:
-    dependencies:
-      punycode: 2.3.1
 
   psl@1.9.0: {}
 
@@ -26796,7 +26812,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26890,8 +26906,8 @@ snapshots:
   safe-array-concat@1.1.2:
     dependencies:
       call-bind: 1.0.7
-      get-intrinsic: 1.2.4
-      has-symbols: 1.0.3
+      get-intrinsic: 1.3.0
+      has-symbols: 1.1.0
       isarray: 2.0.5
 
   safe-buffer@5.1.2: {}
@@ -27010,7 +27026,7 @@ snapshots:
       define-data-property: 1.1.4
       es-errors: 1.3.0
       function-bind: 1.1.2
-      get-intrinsic: 1.2.4
+      get-intrinsic: 1.3.0
       gopd: 1.0.1
       has-property-descriptors: 1.0.2
 
@@ -27231,7 +27247,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.8.3
+      axios: 1.8.3(debug@4.3.6)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -27265,7 +27281,7 @@ snapshots:
   socks-proxy-agent@6.2.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
@@ -27744,7 +27760,7 @@ snapshots:
   terser@5.16.1:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.1
+      acorn: 8.14.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -27851,7 +27867,7 @@ snapshots:
 
   tough-cookie@4.1.4:
     dependencies:
-      psl: 1.15.0
+      psl: 1.9.0
       punycode: 2.3.1
       universalify: 0.2.0
       url-parse: 1.5.10
@@ -27944,7 +27960,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 18.16.16
-      acorn: 8.14.1
+      acorn: 8.14.0
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -27963,7 +27979,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 18.19.103
-      acorn: 8.14.1
+      acorn: 8.14.0
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -28184,7 +28200,7 @@ snapshots:
     dependencies:
       call-bind: 1.0.7
       has-bigints: 1.0.2
-      has-symbols: 1.0.3
+      has-symbols: 1.1.0
       which-boxed-primitive: 1.0.2
 
   undefsafe@2.0.5: {}
@@ -28328,6 +28344,8 @@ snapshots:
   uuid@10.0.0: {}
 
   uuid@11.0.2: {}
+
+  uuid@11.1.0: {}
 
   uuid@8.3.2: {}
 
