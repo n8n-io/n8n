@@ -218,12 +218,13 @@ export function addNodeToCanvas(
 	});
 
 	if (!preventNdvClose) {
-		cy.get('body').type('{esc}');
+		clickGetBackToCanvas();
 	}
 }
 
 export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {
 	cy.visit(ROUTES.NEW_WORKFLOW_PAGE);
+	cy.getByTestId('node-creator-plus-button').should('be.visible');
 	cy.waitForLoad();
 	cy.window().then((win) => {
 		win.preventNodeViewBeforeUnload = preventNodeViewUnload;
