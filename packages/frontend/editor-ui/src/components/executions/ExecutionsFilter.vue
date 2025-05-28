@@ -56,7 +56,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
-	metadata: [{ key: '', value: '' }],
+	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
 });
 const filter = reactive(getDefaultFilter());
@@ -116,11 +116,16 @@ const countSelectedFilterProps = computed(() => {
 
 // vModel.metadata is a text input and needs a debounced emit to avoid too many requests
 // We use the :value and @input combo instead of v-model with this event listener
-const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, value: string) => {
+const onFilterMetaChange = <K extends keyof ExecutionFilterMetadata>(
+	index: number,
+	prop: K,
+	value: ExecutionFilterMetadata[K],
+) => {
 	if (!filter.metadata[index]) {
 		filter.metadata[index] = {
 			key: '',
 			value: '',
+			exactMatch: false,
 		};
 	}
 	filter.metadata[index][prop] = value;
@@ -327,6 +332,27 @@ onBeforeMount(() => {
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
 					</n8n-tooltip>
+					<div class="mt-s">
+						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+							<template #content>
+								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+									<template #link>
+										<a href="#" @click.prevent="goToUpgrade">{{
+											locale.baseText('executionsFilter.customData.inputTooltip.link')
+										}}</a>
+									</template>
+								</i18n-t>
+							</template>
+							<n8n-checkbox
+								label-size="small"
+								:label="locale.baseText('executionsFilter.savedDataExactMatch')"
+								:model-value="filter.metadata[0]?.exactMatch"
+								:disabled="!isAdvancedExecutionFilterEnabled"
+								data-test-id="execution-filter-saved-data-exact-match-checkbox"
+								@update:model-value="onFilterMetaChange(0, 'exactMatch', $event)"
+							/>
+						</n8n-tooltip>
+					</div>
 					<label for="execution-filter-saved-data-value">{{
 						locale.baseText('executionsFilter.savedDataValue')
 					}}</label>
@@ -373,6 +399,7 @@ onBeforeMount(() => {
 		display: inline-block;
 		font-size: var(--font-size-2xs);
 		margin: var(--spacing-s) 0 var(--spacing-3xs);
+		color: var(--color-text-dark);
 	}
 }
 
