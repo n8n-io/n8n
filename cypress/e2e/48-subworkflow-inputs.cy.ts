@@ -70,7 +70,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
 		// Close NDV before opening the node creator
-		cy.get('body').type('{esc}');
+		clickGetBackToCanvas();
 		openNode('When Executed by Another Workflow');
 	});
 
