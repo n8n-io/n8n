@@ -3,7 +3,7 @@
 exports[`InputPanel > should render 1`] = `
 <div>
   <div
-    class="run-data container"
+    class="run-data container runData"
     data-test-id="ndv-input-panel"
     data-v-2e5cd75c=""
   >
@@ -13,51 +13,60 @@ exports[`InputPanel > should render 1`] = `
       class="header"
       data-v-2e5cd75c=""
     >
-      
       <div
-        class="titleSection"
+        class="title"
+        data-v-2e5cd75c=""
       >
-        <span
-          class="title"
-        >
-          Input
-        </span>
+        
         <div
-          class="n8n-radio-buttons radioGroup"
-          data-test-id="input-panel-mode"
-          role="radiogroup"
+          class="titleSection"
         >
-          
-          <label
-            aria-checked="true"
-            class="n8n-radio-button container hoverable"
-            role="radio"
-            tabindex="-1"
+          <span
+            class="title"
           >
-            <div
-              class="button active medium"
-              data-test-id="radio-button-mapping"
-            >
-              Mapping
-            </div>
-          </label>
-          <label
-            aria-checked="false"
-            class="n8n-radio-button container hoverable"
-            role="radio"
-            tabindex="-1"
+            Input
+          </span>
+          <div
+            class="n8n-radio-buttons radioGroup"
+            data-test-id="input-panel-mode"
+            role="radiogroup"
           >
-            <div
-              class="button medium"
-              data-test-id="radio-button-debugging"
+            
+            <label
+              aria-checked="true"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
             >
-              Debugging
-            </div>
-          </label>
-          
+              <div
+                class="button active medium"
+                data-test-id="radio-button-mapping"
+              >
+                
+                Mapping
+                
+              </div>
+            </label>
+            <label
+              aria-checked="false"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
+            >
+              <div
+                class="button medium"
+                data-test-id="radio-button-debugging"
+              >
+                
+                Debugging
+                
+              </div>
+            </label>
+            
+          </div>
         </div>
+        
       </div>
-      
       <div
         class="displayModes"
         data-test-id="run-data-pane-header"
@@ -65,7 +74,7 @@ exports[`InputPanel > should render 1`] = `
       >
         <!---->
         <div
-          class="n8n-radio-buttons radioGroup"
+          class="n8n-radio-buttons radioGroup displayModeSelect"
           data-test-id="ndv-run-data-display-mode"
           data-v-2e5cd75c=""
           role="radiogroup"
@@ -81,7 +90,9 @@ exports[`InputPanel > should render 1`] = `
               class="button active medium"
               data-test-id="radio-button-schema"
             >
+              
               Schema
+              
             </div>
           </label>
           <label
@@ -94,7 +105,9 @@ exports[`InputPanel > should render 1`] = `
               class="button medium"
               data-test-id="radio-button-table"
             >
+              
               Table
+              
             </div>
           </label>
           <label
@@ -107,11 +120,14 @@ exports[`InputPanel > should render 1`] = `
               class="button medium"
               data-test-id="radio-button-json"
             >
+              
               JSON
+              
             </div>
           </label>
           
         </div>
+        <!--v-if-->
         <!--v-if-->
         <!--v-if-->
         <div
@@ -126,9 +142,7 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Cancel
-              
             </span>
           </button>
           <button
@@ -138,9 +152,7 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Save
-              
             </span>
           </button>
         </div>

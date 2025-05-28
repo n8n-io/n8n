@@ -166,11 +166,17 @@ onBeforeMount(() => {
 				square
 				:active="!!countSelectedFilterProps"
 				data-test-id="executions-filter-button"
+				:class="$style.filterButton"
 			>
 				<template v-if="!!countSelectedFilterProps" #default>
-					<n8n-badge theme="primary" class="mr-4xs" data-test-id="execution-filter-badge">{{
-						countSelectedFilterProps
-					}}</n8n-badge>
+					<n8n-badge
+						theme="primary"
+						class="mr-4xs"
+						data-test-id="execution-filter-badge"
+						:class="$style.filterBadge"
+					>
+						{{ countSelectedFilterProps }}
+					</n8n-badge>
 				</template>
 			</n8n-button>
 		</template>
@@ -400,6 +406,17 @@ onBeforeMount(() => {
 
 .tooltipIcon {
 	color: var(--color-text-light);
+}
+
+.filterButton {
+	position: relative;
+
+	.filterBadge {
+		position: absolute;
+		top: 0;
+		right: -4px;
+		transform: translate(50%, -50%);
+	}
 }
 </style>
 

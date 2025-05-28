@@ -7,7 +7,11 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
+      - packages/@n8n/db/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -40,7 +44,7 @@ jobs:
         uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Build Backend
-        run: pnpm build:backend
+        run: pnpm build
 
       - name: Cache build artifacts
         uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
@@ -122,7 +126,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 30000
+        run: pnpm test:mariadb --testTimeout 60000
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
@@ -166,7 +170,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 30000
+        run: pnpm test:mysql --testTimeout 60000
 
   postgres:
     name: Postgres

@@ -8,7 +8,7 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useCodeEditor } from '@/composables/useCodeEditor';
 import { useI18n } from '@/composables/useI18n';

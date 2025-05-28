@@ -98,8 +98,11 @@ const blur = () => {
 const focusOnInput = () => {
 	if (!innerSelect.value) return;
 
-	const inputRef = innerSelect.value.$refs.input as HTMLInputElement | undefined;
-	inputRef?.focus();
+	const inputRef = innerSelect.value.$refs.selectWrapper as HTMLInputElement;
+
+	const inputElement = inputRef?.querySelector('input');
+	if (inputElement) inputElement.focus();
+	else inputRef?.focus();
 };
 
 defineExpose({

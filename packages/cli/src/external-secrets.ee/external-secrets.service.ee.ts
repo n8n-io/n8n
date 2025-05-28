@@ -3,20 +3,15 @@ import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
-import type { SecretsProvider } from '@/interfaces';
-import type { ExternalSecretsRequest } from '@/requests';
 
 import { ExternalSecretsManager } from './external-secrets-manager.ee';
+import type { ExternalSecretsRequest, SecretsProvider } from './types';
 
 @Service()
 export class ExternalSecretsService {
 	getProvider(providerName: string): ExternalSecretsRequest.GetProviderResponse | null {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
-		if (!providerAndSettings) {
-			throw new ExternalSecretsProviderNotFoundError(providerName);
-		}
 		const { provider, settings } = providerAndSettings;
 		return {
 			displayName: provider.displayName,
@@ -106,20 +101,12 @@ export class ExternalSecretsService {
 	async saveProviderSettings(providerName: string, data: IDataObject, userId: string) {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
-		if (!providerAndSettings) {
-			throw new ExternalSecretsProviderNotFoundError(providerName);
-		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
 		await Container.get(ExternalSecretsManager).setProviderSettings(providerName, newData, userId);
 	}
 
 	async saveProviderConnected(providerName: string, connected: boolean) {
-		const providerAndSettings =
-			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
-		if (!providerAndSettings) {
-			throw new ExternalSecretsProviderNotFoundError(providerName);
-		}
 		await Container.get(ExternalSecretsManager).setProviderConnected(providerName, connected);
 		return this.getProvider(providerName);
 	}
@@ -131,20 +118,12 @@ export class ExternalSecretsService {
 	async testProviderSettings(providerName: string, data: IDataObject) {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
-		if (!providerAndSettings) {
-			throw new ExternalSecretsProviderNotFoundError(providerName);
-		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
 		return await Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
 	}
 
 	async updateProvider(providerName: string) {
-		const providerAndSettings =
-			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
-		if (!providerAndSettings) {
-			throw new ExternalSecretsProviderNotFoundError(providerName);
-		}
 		return await Container.get(ExternalSecretsManager).updateProvider(providerName);
 	}
 }

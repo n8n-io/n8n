@@ -1,19 +1,17 @@
-import type { ProjectRole } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import type { GlobalRole } from '@/databases/entities/user';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { RoleService } from '@/services/role.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -392,7 +390,7 @@ describe('POST /projects/', () => {
 			await findProject(respProject.id);
 		}).not.toThrow();
 		expect(resp.body.data.role).toBe('project:admin');
-		for (const scope of Container.get(RoleService).getRoleScopes('project:admin')) {
+		for (const scope of getRoleScopes('project:admin')) {
 			expect(resp.body.data.scopes).toContain(scope);
 		}
 	});
@@ -435,6 +433,34 @@ describe('POST /projects/', () => {
 
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
+
+	const globalConfig = Container.get(GlobalConfig);
+	// Preventing this relies on transactions and we can't use them with the
+	// sqlite legacy driver due to data loss risks.
+	if (!globalConfig.database.isLegacySqlite) {
+		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			testServer.license.setQuota('quota:maxTeamProjects', 3);
+			const ownerUser = await createOwner();
+			const ownerAgent = testServer.authAgentFor(ownerUser);
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(0);
+
+			await Promise.all([
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+			]);
+
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(3);
+		});
+	}
 });
 
 describe('PATCH /projects/:projectId', () => {

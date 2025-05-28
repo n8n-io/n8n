@@ -28,7 +28,7 @@
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "url": {
+                                            "user_id": {
                                                 "type": "string"
                                             }
                                         }
@@ -83,8 +83,14 @@
                 },
                 "updated": {
                     "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
+        },
+        "client_msg_id": {
+            "type": "string"
         },
         "team": {
             "type": "string"
@@ -102,5 +108,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

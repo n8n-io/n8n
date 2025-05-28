@@ -21,6 +21,8 @@ export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 
+export const IN_PROGRESS_EXECUTION_ID = '__IN_PROGRESS__';
+
 // parameter input
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
@@ -49,6 +51,7 @@ export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
+export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
@@ -76,6 +79,9 @@ export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
 export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
 export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
+export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
+	'workflowActivationConflictingWebhook';
+export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -118,6 +124,8 @@ export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
+export const AI_MCP_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const WIKIPEDIA_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWikipedia';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
@@ -134,6 +142,7 @@ export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const HTTP_REQUEST_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
 export const INTERVAL_NODE_TYPE = 'n8n-nodes-base.interval';
@@ -143,6 +152,7 @@ export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
@@ -206,6 +216,7 @@ export const GITHUB_NODE_TYPE = 'n8n-nodes-base.github';
 export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
+export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -239,6 +250,7 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 ];
 
 export const SINGLE_WEBHOOK_TRIGGERS = [
@@ -266,6 +278,8 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
+	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
+	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -296,6 +310,8 @@ export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
+export const AI_CATEGORY_MCP_NODES = 'Model Context Protocol';
+export const AI_EVALUATION = 'Evaluation';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
@@ -469,7 +485,10 @@ export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
-export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
+export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION';
+export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
+export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
 	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
@@ -530,11 +549,9 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
-	TEST_DEFINITION = 'TestDefinition',
-	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
-	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
-	NEW_TEST_DEFINITION = 'NewTestDefinition',
+	EVALUATION = 'Evaluation',
+	EVALUATION_EDIT = 'EvaluationEdit',
+	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -552,9 +569,13 @@ export const enum VIEWS {
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
+	SHARED_WITH_ME = 'SharedWithMe',
+	SHARED_WORKFLOWS = 'SharedWorkflows',
+	SHARED_CREDENTIALS = 'SharedCredentials',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const TEST_PIN_DATA = [
 	{
@@ -603,7 +624,9 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
-	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
+	ARCHIVE = 'archive',
+	UNARCHIVE = 'unarchive',
+	RENAME = 'rename',
 }
 
 /**
@@ -626,6 +649,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkflowHistory: 'workflowHistory',
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
+	ApiKeyScopes: 'apiKeyScopes',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
@@ -634,7 +658,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
-	TEST_DEFINITION = 'testDefinition',
+	EVALUATION = 'evaluation',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -669,38 +693,6 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export const enum STORES {
-	COMMUNITY_NODES = 'communityNodes',
-	ROOT = 'root',
-	SETTINGS = 'settings',
-	UI = 'ui',
-	USERS = 'users',
-	WORKFLOWS = 'workflows',
-	WORKFLOWS_V2 = 'workflowsV2',
-	WORKFLOWS_EE = 'workflowsEE',
-	EXECUTIONS = 'executions',
-	NDV = 'ndv',
-	TEMPLATES = 'templates',
-	NODE_TYPES = 'nodeTypes',
-	CREDENTIALS = 'credentials',
-	TAGS = 'tags',
-	ANNOTATION_TAGS = 'annotationTags',
-	VERSIONS = 'versions',
-	NODE_CREATOR = 'nodeCreator',
-	WEBHOOKS = 'webhooks',
-	HISTORY = 'history',
-	CLOUD_PLAN = 'cloudPlan',
-	RBAC = 'rbac',
-	PUSH = 'push',
-	COLLABORATION = 'collaboration',
-	ASSISTANT = 'assistant',
-	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
-	PROJECTS = 'projects',
-	API_KEYS = 'apiKeys',
-	TEST_DEFINITION = 'testDefinition',
-	FOLDERS = 'folders',
-}
-
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
@@ -714,6 +706,7 @@ export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	DISCORD_NODE_TYPE,
@@ -722,26 +715,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
-
-export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
-
-export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
-	name: '20_canvas_auto_add_manual_trigger',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const AI_ASSISTANT_EXPERIMENT = {
-	name: '021_ai_debug_helper',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const CREDENTIAL_DOCS_EXPERIMENT = {
-	name: '024_credential_docs',
-	control: 'control',
-	variant: 'variant',
-};
 
 export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	name: '026_easy_ai_workflow',
@@ -755,23 +728,19 @@ export const AI_CREDITS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const SCHEMA_PREVIEW_EXPERIMENT = {
-	name: '028_schema_preview',
+export const WORKFLOW_BUILDER_EXPERIMENT = {
+	name: '30_workflow_builder',
 	control: 'control',
 	variant: 'variant',
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
-	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
-	AI_ASSISTANT_EXPERIMENT.name,
-	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
-	SCHEMA_PREVIEW_EXPERIMENT.name,
+	WORKFLOW_BUILDER_EXPERIMENT.name,
 ];
 
-export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
+export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
@@ -790,6 +759,7 @@ export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
 	FILTER_NODE_TYPE,
 	SWITCH_NODE_TYPE,
 	REMOVE_DUPLICATES_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
 ];
 
 type ClearOutgoingConnectonsEvents = {
@@ -829,10 +799,6 @@ export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';
 
-export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
-
-export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
-
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
@@ -842,6 +808,7 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+export const ASK_AI_SLIDE_OUT_DURATION_MS = 200;
 
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 

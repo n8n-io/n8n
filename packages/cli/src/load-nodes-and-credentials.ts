@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -29,13 +30,7 @@ import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
 
 @Service()
@@ -94,11 +89,13 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
+		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+			// Load nodes from any other `n8n-nodes-*` packages in the download directory
+			// This includes the community nodes
+			await this.loadNodesFromNodeModules(
+				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+			);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -400,6 +397,13 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
+	}
+
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;
@@ -480,7 +484,6 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
 				};
 
 				item.description.properties.unshift(descProp);

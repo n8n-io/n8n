@@ -102,4 +102,22 @@ describe('N8nDataTableServer', () => {
 		]);
 		expect(emitted('update:options')[2]).toStrictEqual([expect.objectContaining({ page: 1 })]);
 	});
+
+	it('should not show the pagination if there are no items', async () => {
+		const { queryByTestId } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: [], headers, itemsLength: 0 },
+		});
+
+		expect(queryByTestId('pagination')).not.toBeInTheDocument();
+	});
+
+	it('should not show the pagination if there are less items than the smallest page size value', async () => {
+		const { queryByTestId } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 3), headers, itemsLength: 3 },
+		});
+
+		expect(queryByTestId('pagination')).not.toBeInTheDocument();
+	});
 });

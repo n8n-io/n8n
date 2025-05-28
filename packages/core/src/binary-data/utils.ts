@@ -1,4 +1,4 @@
-import concatStream from 'concat-stream';
+import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 
@@ -33,16 +33,22 @@ export async function doesNotExist(dir: string) {
 	}
 }
 
+/** Converts a readable stream to a buffer */
+export async function streamToBuffer(stream: Readable) {
+	return await new Promise<Buffer>((resolve, reject) => {
+		const chunks: Buffer[] = [];
+		stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+		stream.on('end', () => resolve(Buffer.concat(chunks)));
+		stream.once('error', (cause) => {
+			if ('code' in cause && cause.code === 'Z_DATA_ERROR')
+				reject(new UnexpectedError('Failed to decompress response', { cause }));
+			else reject(cause);
+		});
+	});
+}
+
 /** Converts a buffer or a readable stream to a buffer */
 export async function binaryToBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
-	return await new Promise<Buffer>((resolve, reject) => {
-		body
-			.once('error', (cause) => {
-				if ('code' in cause && cause.code === 'Z_DATA_ERROR')
-					reject(new Error('Failed to decompress response', { cause }));
-				else reject(cause);
-			})
-			.pipe(concatStream(resolve));
-	});
+	return await streamToBuffer(body);
 }

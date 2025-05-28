@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
+import { computed, useAttrs, useCssModule, watchEffect } from 'vue';
 
 import type { ButtonProps } from '@n8n/design-system/types/button';
 
@@ -71,9 +71,8 @@ const classes = computed(() => {
 			<N8nSpinner v-if="loading" :size="iconSize" />
 			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
 		</span>
-		<span v-if="label || $slots.default">
-			<slot>{{ label }}</slot>
-		</span>
+		<span v-if="label">{{ label }}</span>
+		<template v-else-if="$slots.default"><slot /></template>
 	</component>
 </template>
 

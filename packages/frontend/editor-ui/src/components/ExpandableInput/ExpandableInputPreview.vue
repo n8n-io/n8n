@@ -10,18 +10,18 @@ defineProps<Props>();
 
 <template>
 	<ExpandableInputBase :model-value="modelValue" :static-size="true">
-		<input
-			:class="{ 'el-input__inner': true, clickable: true }"
-			:value="modelValue"
-			:disabled="true"
-			size="4"
-		/>
+		<input class="clickable preview" :value="modelValue" :disabled="true" size="4" />
 	</ExpandableInputBase>
 </template>
 
 <style lang="scss" scoped>
-input,
-input:hover {
+input.preview {
+	padding: var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
+}
+
+.preview,
+.preview:hover {
 	background-color: unset;
 	transition: unset;
 	pointer-events: none; // fix firefox bug

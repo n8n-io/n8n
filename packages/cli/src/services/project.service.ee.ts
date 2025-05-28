@@ -1,27 +1,29 @@
-import type { CreateProjectDto, ProjectRole, ProjectType, UpdateProjectDto } from '@n8n/api-types';
+import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { DatabaseConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import {
+	Project,
+	ProjectRelation,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { type Scope } from '@n8n/permissions';
+import { hasGlobalScope, rolesWithScope, type Scope, type ProjectRole } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
-import { Project } from '@/databases/entities/project';
-import { ProjectRelation } from '@/databases/entities/project-relation';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
 
 import { CacheService } from './cache/cache.service';
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -43,19 +45,21 @@ export class ProjectService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
+		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	private get workflowService() {
+		// eslint-disable-next-line import/no-cycle
 		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
+		// eslint-disable-next-line import/no-cycle
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
@@ -119,7 +123,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId);
+				await workflowService.delete(user, sharedWorkflow.workflowId, true);
 			}
 		}
 
@@ -169,7 +173,7 @@ export class ProjectService {
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
-		if (user.hasGlobalScope('project:read')) {
+		if (hasGlobalScope(user, 'project:read')) {
 			return await this.projectRepository.find();
 		}
 		return await this.projectRepository.getAccessibleProjects(user.id);
@@ -179,23 +183,46 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		const limit = this.license.getTeamProjectLimit();
-		if (
-			limit !== UNLIMITED_LICENSE_QUOTA &&
-			limit <= (await this.projectRepository.count({ where: { type: 'team' } }))
-		) {
-			throw new TeamProjectOverQuotaError(limit);
+	private async createTeamProjectWithEntityManager(
+		adminUser: User,
+		data: CreateProjectDto,
+		trx: EntityManager,
+	) {
+		const limit = this.licenseState.getMaxTeamProjects();
+		if (limit !== UNLIMITED_LICENSE_QUOTA) {
+			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
+			if (teamProjectCount >= limit) {
+				throw new TeamProjectOverQuotaError(limit);
+			}
 		}
 
-		const project = await this.projectRepository.save(
+		const project = await trx.save(
+			Project,
 			this.projectRepository.create({ ...data, type: 'team' }),
 		);
 
 		// Link admin
-		await this.addUser(project.id, adminUser.id, 'project:admin');
+		await this.addUser(project.id, adminUser.id, 'project:admin', trx);
 
 		return project;
+	}
+
+	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
+		if (this.databaseConfig.isLegacySqlite) {
+			// Using transaction in the sqlite legacy driver can cause data loss, so
+			// we avoid this here.
+			return await this.createTeamProjectWithEntityManager(
+				adminUser,
+				data,
+				this.projectRepository.manager,
+			);
+		} else {
+			// This needs to be SERIALIZABLE otherwise the count would not block a
+			// concurrent transaction and we could insert multiple projects.
+			return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
+				return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+			});
+		}
 	}
 
 	async updateProject(
@@ -235,7 +262,7 @@ export class ProjectService {
 			const existing = project.projectRelations.find((pr) => pr.userId === r.userId);
 			// We don't throw an error if the user already exists with that role so
 			// existing projects continue working as is.
-			if (existing?.role !== r.role && !this.roleService.isRoleLicensed(r.role)) {
+			if (existing?.role !== r.role && !this.isProjectRoleLicensed(r.role)) {
 				throw new UnlicensedProjectRoleError(r.role);
 			}
 		}
@@ -245,6 +272,19 @@ export class ProjectService {
 			await this.addManyRelations(em, project, relations);
 		});
 		await this.clearCredentialCanUseExternalSecretsCache(projectId);
+	}
+
+	private isProjectRoleLicensed(role: ProjectRole) {
+		switch (role) {
+			case 'project:admin':
+				return this.licenseState.isProjectRoleAdminLicensed();
+			case 'project:editor':
+				return this.licenseState.isProjectRoleEditorLicensed();
+			case 'project:viewer':
+				return this.licenseState.isProjectRoleViewerLicensed();
+			default:
+				return true;
+		}
 	}
 
 	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
@@ -294,8 +334,8 @@ export class ProjectService {
 			id: projectId,
 		};
 
-		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
-			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = rolesWithScope('project', scopes);
 
 			where = {
 				...where,
@@ -311,8 +351,9 @@ export class ProjectService {
 		});
 	}
 
-	async addUser(projectId: string, userId: string, role: ProjectRole) {
-		return await this.projectRelationRepository.save({
+	async addUser(projectId: string, userId: string, role: ProjectRole, trx?: EntityManager) {
+		trx = trx ?? this.projectRelationRepository.manager;
+		return await trx.save(ProjectRelation, {
 			projectId,
 			userId,
 			role,

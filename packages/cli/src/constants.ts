@@ -4,10 +4,7 @@ import type { ITaskDataConnections } from 'n8n-workflow';
 import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
-const { NODE_ENV, E2E_TESTS } = process.env;
-export const inProduction = NODE_ENV === 'production';
-export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-export const inTest = NODE_ENV === 'test';
+const { E2E_TESTS } = process.env;
 export const inE2ETests = E2E_TESTS === 'true';
 
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
@@ -28,6 +25,8 @@ export const STARTING_NODES = [
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
 ];
+
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -69,43 +68,6 @@ export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
-
-export const LICENSE_FEATURES = {
-	SHARING: 'feat:sharing',
-	LDAP: 'feat:ldap',
-	SAML: 'feat:saml',
-	LOG_STREAMING: 'feat:logStreaming',
-	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
-	VARIABLES: 'feat:variables',
-	SOURCE_CONTROL: 'feat:sourceControl',
-	API_DISABLED: 'feat:apiDisabled',
-	EXTERNAL_SECRETS: 'feat:externalSecrets',
-	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
-	WORKFLOW_HISTORY: 'feat:workflowHistory',
-	DEBUG_IN_EDITOR: 'feat:debugInEditor',
-	BINARY_DATA_S3: 'feat:binaryDataS3',
-	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
-	WORKER_VIEW: 'feat:workerView',
-	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
-	PROJECT_ROLE_ADMIN: 'feat:projectRole:admin',
-	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
-	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
-	AI_ASSISTANT: 'feat:aiAssistant',
-	ASK_AI: 'feat:askAi',
-	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
-	AI_CREDITS: 'feat:aiCredits',
-	FOLDERS: 'feat:folders',
-} as const;
-
-export const LICENSE_QUOTAS = {
-	TRIGGER_LIMIT: 'quota:activeWorkflows',
-	VARIABLES_LIMIT: 'quota:maxVariables',
-	USERS_LIMIT: 'quota:users',
-	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
-	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
-	AI_CREDITS: 'quota:aiCredits',
-} as const;
-export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
 
@@ -195,5 +157,3 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
-
-export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

@@ -194,7 +194,65 @@ describe('SettingsSso View', () => {
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
 
-	it('PAY-1812: allows user to disable SSO even if config request failed', async () => {
+	it('should validate the url before setting the saml config', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.isEnterpriseSamlEnabled = true;
+
+		const { getByTestId } = renderView({ pinia });
+
+		const saveButton = getByTestId('sso-save');
+		expect(saveButton).toBeDisabled();
+
+		const urlinput = getByTestId('sso-provider-url');
+
+		expect(urlinput).toBeVisible();
+		await userEvent.type(urlinput, samlConfig.metadata!);
+
+		expect(saveButton).not.toBeDisabled();
+		await userEvent.click(saveButton);
+
+		expect(showError).toHaveBeenCalled();
+		expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+
+		expect(ssoStore.testSamlConfig).not.toHaveBeenCalled();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+	});
+
+	it('should ensure the url does not support invalid protocols like mailto', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.isEnterpriseSamlEnabled = true;
+
+		const { getByTestId } = renderView({ pinia });
+
+		const saveButton = getByTestId('sso-save');
+		expect(saveButton).toBeDisabled();
+
+		const urlinput = getByTestId('sso-provider-url');
+
+		expect(urlinput).toBeVisible();
+		await userEvent.type(urlinput, 'mailto://test@example.com');
+
+		expect(saveButton).not.toBeDisabled();
+		await userEvent.click(saveButton);
+
+		expect(showError).toHaveBeenCalled();
+		expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+
+		expect(ssoStore.testSamlConfig).not.toHaveBeenCalled();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+	});
+
+	it('allows user to disable SSO even if config request failed', async () => {
 		const pinia = createTestingPinia();
 
 		const ssoStore = mockedStore(useSSOStore);

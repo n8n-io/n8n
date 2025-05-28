@@ -7,11 +7,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
-import { VIEWS } from '@/constants';
+import { VIEWS, VISIBLE_LOGS_VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useLogsStore } from '@/stores/logs.store';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
@@ -31,26 +32,32 @@ export function useToast() {
 	const i18n = useI18n();
 	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
-	const canvasStore = useCanvasStore();
+	const logsStore = useLogsStore();
+	const ndvStore = useNDVStore();
 
-	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-		dangerouslyUseHTMLString: true,
-		position: 'bottom-right',
-		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-		offset:
-			settingsStore.isAiAssistantEnabled ||
-			workflowsStore.chatPanelState === LOGS_PANEL_STATE.ATTACHED
-				? 64
-				: 0,
-		appendTo: '#app-grid',
-		customClass: 'content-toast',
-	};
+	function determineToastOffset() {
+		const assistantOffset = settingsStore.isAiAssistantEnabled ? 64 : 0;
+		const logsOffset =
+			VISIBLE_LOGS_VIEWS.includes(uiStore.currentView as VIEWS) &&
+			ndvStore.activeNode === null &&
+			logsStore.state !== LOGS_PANEL_STATE.FLOATING
+				? logsStore.height
+				: 0;
+
+		return assistantOffset + logsOffset;
+	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
+			dangerouslyUseHTMLString: true,
+			position: 'bottom-right',
+			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
+			offset: determineToastOffset(),
+			appendTo: '#app-grid',
+			customClass: 'content-toast',
+		};
 		const { message, title } = messageData;
 		const params = { ...messageDefaults, ...messageData };
-
-		params.offset = +canvasStore.panelHeight;
 
 		if (typeof message === 'string') {
 			params.message = sanitizeHtml(message);
@@ -207,5 +214,6 @@ export function useToast() {
 		showError,
 		clearAllStickyNotifications,
 		showNotificationForViews,
+		determineToastOffset,
 	};
 }

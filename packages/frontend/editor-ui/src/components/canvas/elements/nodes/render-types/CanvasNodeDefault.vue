@@ -12,7 +12,7 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 }>();
 
 const { initialized, viewport } = useCanvas();
@@ -130,8 +130,8 @@ function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 
-function onActivate() {
-	emit('activate', id.value);
+function onActivate(event: MouseEvent) {
+	emit('activate', id.value, event);
 }
 </script>
 

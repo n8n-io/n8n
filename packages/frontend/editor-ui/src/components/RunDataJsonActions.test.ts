@@ -68,8 +68,9 @@ async function createPiniaWithActiveNode() {
 				runData: {
 					[node.name]: [
 						{
-							startTime: new Date().getTime(),
-							executionTime: new Date().getTime(),
+							startTime: Date.now(),
+							executionIndex: 0,
+							executionTime: 1,
 							data: {
 								main: [
 									[
@@ -91,8 +92,9 @@ async function createPiniaWithActiveNode() {
 							source: [null],
 						},
 						{
-							startTime: new Date().getTime(),
-							executionTime: new Date().getTime(),
+							startTime: Date.now(),
+							executionIndex: 1,
+							executionTime: 1,
 							data: {
 								main: [
 									[

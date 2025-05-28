@@ -11,12 +11,11 @@ import CanvasChat from './CanvasChat.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCanvasStore } from '@/stores/canvas.store';
 import * as useChatMessaging from './composables/useChatMessaging';
 import * as useChatTrigger from './composables/useChatTrigger';
 import { useToast } from '@/composables/useToast';
@@ -25,6 +24,7 @@ import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { LOGS_PANEL_STATE } from './types/logs';
+import { useLogsStore } from '@/stores/logs.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -139,7 +139,7 @@ describe('CanvasChat', () => {
 	});
 
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let canvasStore: ReturnType<typeof mockedStore<typeof useCanvasStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
@@ -160,7 +160,7 @@ describe('CanvasChat', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		canvasStore = mockedStore(useCanvasStore);
+		logsStore = mockedStore(useLogsStore);
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 
 		// Setup default mocks
@@ -175,10 +175,11 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
-		workflowsStore.isLogsPanelOpen = true;
+		logsStore.isOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
+
+		logsStore.state = LOGS_PANEL_STATE.ATTACHED;
 
 		nodeTypeStore.getNodeType = vi.fn().mockImplementation((nodeTypeName) => {
 			return mockNodeTypes.find((node) => node.name === nodeTypeName) ?? null;
@@ -198,7 +199,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			logsStore.state = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -256,6 +257,7 @@ describe('CanvasChat', () => {
 									],
 								],
 							},
+							executionIndex: 0,
 							executionStatus: 'success',
 							executionTime: 0,
 							source: [null],
@@ -310,7 +312,6 @@ describe('CanvasChat', () => {
 				id: '1',
 				text: 'Existing message',
 				sender: 'user',
-				createdAt: new Date().toISOString(),
 			},
 		];
 
@@ -320,7 +321,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: vi.fn(),
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -364,7 +364,7 @@ describe('CanvasChat', () => {
 				{ coords: { clientX: 0, clientY: 100 } },
 			]);
 
-			expect(canvasStore.setPanelHeight).toHaveBeenCalled();
+			expect(logsStore.setHeight).toHaveBeenCalled();
 		});
 
 		it('should persist resize dimensions', () => {
@@ -385,12 +385,11 @@ describe('CanvasChat', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
 				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+			logsStore.state = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -471,13 +470,11 @@ describe('CanvasChat', () => {
 					id: '1',
 					text: 'Original message',
 					sender: 'user',
-					createdAt: new Date().toISOString(),
 				},
 				{
 					id: '2',
 					text: 'AI response',
 					sender: 'bot',
-					createdAt: new Date().toISOString(),
 				},
 			];
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
@@ -485,7 +482,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: sendMessageSpy,
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -549,15 +545,15 @@ describe('CanvasChat', () => {
 			renderComponent();
 
 			// Toggle logs panel
-			workflowsStore.isLogsPanelOpen = true;
+			logsStore.isOpen = true;
 			await waitFor(() => {
-				expect(canvasStore.setPanelHeight).toHaveBeenCalled();
+				expect(logsStore.setHeight).toHaveBeenCalled();
 			});
 
 			// Close chat panel
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			logsStore.state = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
-				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
+				expect(logsStore.setHeight).toHaveBeenCalledWith(0);
 			});
 		});
 
@@ -565,15 +561,15 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
-			workflowsStore.isLogsPanelOpen = true;
+			logsStore.state = LOGS_PANEL_STATE.ATTACHED;
+			logsStore.isOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.chatPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
-			expect(workflowsStore.isLogsPanelOpen).toBe(true);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(logsStore.isOpen).toBe(true);
 		});
 	});
 

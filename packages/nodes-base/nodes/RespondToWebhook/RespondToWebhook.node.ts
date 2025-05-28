@@ -6,6 +6,7 @@ import type {
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -21,7 +22,58 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { configuredOutputs } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+
+const respondWithProperty: INodeProperties = {
+	displayName: 'Respond With',
+	name: 'respondWith',
+	type: 'options',
+	options: [
+		{
+			name: 'All Incoming Items',
+			value: 'allIncomingItems',
+			description: 'Respond with all input JSON items',
+		},
+		{
+			name: 'Binary File',
+			value: 'binary',
+			description: 'Respond with incoming file binary data',
+		},
+		{
+			name: 'First Incoming Item',
+			value: 'firstIncomingItem',
+			description: 'Respond with the first input JSON item',
+		},
+		{
+			name: 'JSON',
+			value: 'json',
+			description: 'Respond with a custom JSON body',
+		},
+		{
+			name: 'JWT Token',
+			value: 'jwt',
+			description: 'Respond with a JWT token',
+		},
+		{
+			name: 'No Data',
+			value: 'noData',
+			description: 'Respond with an empty body',
+		},
+		{
+			name: 'Redirect',
+			value: 'redirect',
+			description: 'Respond with a redirect to a given URL',
+		},
+		{
+			name: 'Text',
+			value: 'text',
+			description: 'Respond with a simple text message body',
+		},
+	],
+	default: 'firstIncomingItem',
+	description: 'The data that should be returned',
+};
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,13 +81,13 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${configuredOutputs})($nodeVersion)}}`,
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -56,53 +108,13 @@ export class RespondToWebhook implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Respond With',
-				name: 'respondWith',
-				type: 'options',
-				options: [
-					{
-						name: 'All Incoming Items',
-						value: 'allIncomingItems',
-						description: 'Respond with all input JSON items',
-					},
-					{
-						name: 'Binary File',
-						value: 'binary',
-						description: 'Respond with incoming file binary data',
-					},
-					{
-						name: 'First Incoming Item',
-						value: 'firstIncomingItem',
-						description: 'Respond with the first input JSON item',
-					},
-					{
-						name: 'JSON',
-						value: 'json',
-						description: 'Respond with a custom JSON body',
-					},
-					{
-						name: 'JWT Token',
-						value: 'jwt',
-						description: 'Respond with a JWT token',
-					},
-					{
-						name: 'No Data',
-						value: 'noData',
-						description: 'Respond with an empty body',
-					},
-					{
-						name: 'Redirect',
-						value: 'redirect',
-						description: 'Respond with a redirect to a given URL',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-						description: 'Respond with a simple text message body',
-					},
-				],
-				default: 'firstIncomingItem',
-				description: 'The data that should be returned',
+				...respondWithProperty,
+				displayOptions: { show: { '@version': [1, 1.1] } },
+			},
+			{
+				...respondWithProperty,
+				noDataExpression: true,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 			},
 			{
 				displayName: 'Credentials',
@@ -307,6 +319,8 @@ export class RespondToWebhook implements INodeType {
 			WAIT_NODE_TYPE,
 		];
 
+		let response: IN8nHttpFullResponse;
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
@@ -434,7 +448,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const response: IN8nHttpFullResponse = {
+			response = {
 				body: responseBody,
 				headers,
 				statusCode,
@@ -452,6 +466,10 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			throw error;
+		}
+
+		if (nodeVersion >= 1.3) {
+			return [items, [{ json: { response } }]];
 		}
 
 		return [items];
