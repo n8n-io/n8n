@@ -6,11 +6,12 @@ import { InstalledNodesRepository } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile, rm, access, constants } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { Logger, InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'node:path';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -53,29 +54,11 @@ describe('CommunityPackagesService', () => {
 		},
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
-
-	const nodeName = randomName();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
-	installedNodesRepository.create.mockImplementation(() => {
-		return Object.assign(new InstalledNodes(), {
-			name: nodeName,
-			type: nodeName,
-			latestVersion: COMMUNITY_NODE_VERSION.CURRENT.toString(),
-			packageName: 'test',
-		});
-	});
-
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
-	installedPackageRepository.create.mockImplementation(() => {
-		return Object.assign(new InstalledPackages(), {
-			packageName: mockPackageName(),
-			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
-		});
-	});
 
-	const instanceSettings = mock<InstanceSettings>({
-		nodesDownloadDir: '/tmp/n8n-jest-global-downloads',
-	});
+	const nodesDownloadDir = '/tmp/n8n-jest-global-downloads';
+	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
@@ -89,6 +72,26 @@ describe('CommunityPackagesService', () => {
 		license,
 		globalConfig,
 	);
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+		const nodeName = randomName();
+		installedNodesRepository.create.mockImplementation(() => {
+			return Object.assign(new InstalledNodes(), {
+				name: nodeName,
+				type: nodeName,
+				latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
+			});
+		});
+		installedPackageRepository.create.mockImplementation(() => {
+			return Object.assign(new InstalledPackages(), {
+				packageName: mockPackageName(),
+				installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
+			});
+		});
+	});
 
 	describe('parseNpmPackageName()', () => {
 		test('should fail with empty package name', () => {
@@ -139,9 +142,6 @@ describe('CommunityPackagesService', () => {
 
 	describe('executeCommand()', () => {
 		beforeEach(() => {
-			mocked(fsMkdir).mockReset();
-			mocked(fsMkdir).mockResolvedValue(undefined);
-			mocked(exec).mockReset();
 			mocked(exec).mockImplementation(execMock);
 		});
 
@@ -159,7 +159,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 
@@ -168,7 +167,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 
@@ -185,7 +183,6 @@ describe('CommunityPackagesService', () => {
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 	});
@@ -410,7 +407,6 @@ describe('CommunityPackagesService', () => {
 
 			mocked(exec).mockImplementation(execMockForThisBlock as typeof exec);
 
-			mocked(fsMkdir).mockResolvedValue(undefined);
 			mocked(readFile).mockResolvedValue(
 				JSON.stringify({
 					name: PACKAGE_NAME,
@@ -446,43 +442,33 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			expect(exec).toHaveBeenCalledTimes(5);
+			expect(rm).toHaveBeenCalledTimes(2);
+			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
+			expect(rm).toHaveBeenNthCalledWith(2, `${nodesDownloadDir}/n8n-nodes-test-latest.tgz`);
 
+			expect(exec).toHaveBeenCalledTimes(3);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`rm -rf ${testBlockPackageDir}`,
-				expect.any(Function),
-			);
-
-			expect(exec).toHaveBeenNthCalledWith(
-				2,
 				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				3,
+				2,
 				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
 			expect(exec).toHaveBeenNthCalledWith(
-				4,
+				3,
 				`npm install ${testBlockNpmInstallArgs}`,
 				{ cwd: testBlockPackageDir },
 				expect.any(Function),
 			);
 
-			expect(exec).toHaveBeenNthCalledWith(
-				5,
-				`rm ${testBlockTarballName}`,
-				{ cwd: testBlockDownloadDir },
-				expect.any(Function),
-			);
-
-			expect(fsMkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
+			expect(mkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
 			expect(readFile).toHaveBeenCalledWith(`${testBlockPackageDir}/package.json`, 'utf-8');
 			expect(writeFile).toHaveBeenCalledWith(
 				`${testBlockPackageDir}/package.json`,
@@ -535,6 +521,173 @@ describe('CommunityPackagesService', () => {
 			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
+			);
+		});
+	});
+
+	describe('ensurePackageJson', () => {
+		const packageJsonPath = join(nodesDownloadDir, 'package.json');
+
+		test('should not create package.json if it already exists', async () => {
+			mocked(access).mockResolvedValue(undefined);
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).not.toHaveBeenCalled();
+			expect(writeFile).not.toHaveBeenCalled();
+		});
+
+		test('should create package.json if it does not exist', async () => {
+			mocked(access).mockRejectedValue(new Error('ENOENT'));
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
+			expect(writeFile).toHaveBeenCalledWith(
+				packageJsonPath,
+				JSON.stringify(
+					{
+						name: 'installed-nodes',
+						private: true,
+						dependencies: {},
+					},
+					null,
+					2,
+				),
+				'utf-8',
+			);
+		});
+	});
+
+	describe('checkForMissingPackages', () => {
+		const installedPackage1 = mock<InstalledPackages>({
+			packageName: 'package-1',
+			installedVersion: '1.0.0',
+			installedNodes: [{ type: 'node-type-1' }],
+		});
+		const installedPackage2 = mock<InstalledPackages>({
+			packageName: 'package-2',
+			installedVersion: '2.0.0',
+			installedNodes: [{ type: 'node-type-2' }],
+		});
+
+		beforeEach(() => {
+			jest
+				.spyOn(communityPackagesService, 'installPackage')
+				.mockResolvedValue({} as InstalledPackages);
+		});
+
+		test('should set missingPackages to empty array when no packages are missing', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.missingPackages).toEqual([]);
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+		});
+
+		test('should identify missing packages without reinstalling when reinstallMissing is false', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockImplementation(
+				(nodeType) => nodeType === 'node-type-2',
+			);
+			globalConfig.nodes.communityPackages.reinstallMissing = false;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test('should reinstall missing packages when reinstallMissing is true', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+			expect(communityPackagesService.missingPackages).toEqual([]);
+			expect(logger.info).toHaveBeenCalledWith(
+				'Packages reinstalled successfully. Resuming regular initialization.',
+			);
+		});
+
+		test('should handle failed reinstallations and record missing packages', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+			communityPackagesService.installPackage = jest
+				.fn()
+				.mockRejectedValue(new Error('Installation failed'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
+			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
+		});
+
+		test('should handle multiple missing packages and stop reinstalling after first failure', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+
+			// First installation succeeds, second fails
+			communityPackagesService.installPackage = jest
+				.fn()
+				.mockResolvedValueOnce({} as InstalledPackages)
+				.mockRejectedValueOnce(new Error('Installation failed'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-2', '2.0.0');
+			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
+			expect(communityPackagesService.missingPackages).toEqual(['package-2@2.0.0']);
+		});
+	});
+
+	describe('updatePackageJsonDependency', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+		});
+
+		test('should update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			expect(writeFile).toHaveBeenCalledWith(
+				`${nodesDownloadDir}/package.json`,
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
+			);
+		});
+
+		test('should create file and update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			expect(writeFile).toHaveBeenCalledWith(
+				`${nodesDownloadDir}/package.json`,
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
 			);
 		});
 	});

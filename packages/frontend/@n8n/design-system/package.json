@@ -1,6 +1,6 @@
 {
   "name": "@n8n/design-system",
-  "version": "1.82.0",
+  "version": "1.83.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {

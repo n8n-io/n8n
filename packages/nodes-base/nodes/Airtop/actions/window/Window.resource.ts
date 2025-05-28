@@ -69,4 +69,5 @@ export const description: INodeProperties[] = [
 	},
 	...create.description,
 	...load.description,
+	...takeScreenshot.description,
 ];
