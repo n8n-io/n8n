@@ -218,7 +218,7 @@ export function addNodeToCanvas(
 	});
 
 	if (!preventNdvClose) {
-		clickGetBackToCanvas();
+		cy.get('body').type('{esc}');
 	}
 }
 
