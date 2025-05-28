@@ -191,16 +191,16 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 	max-width: 90%;
 	overflow: hidden;
 	white-space: nowrap;
+
+	li {
+		padding: var(--spacing-4xs) var(--spacing-5xs) var(--spacing-5xs);
+	}
 }
 
 .list {
 	display: flex;
 	list-style: none;
 	align-items: center;
-}
-
-li {
-	padding: var(--spacing-4xs) var(--spacing-5xs) var(--spacing-5xs);
 }
 
 .item,
