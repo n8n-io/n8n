@@ -1,5 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
 	JSONRPCMessage,
@@ -11,7 +12,9 @@ import {
 	ListToolsRequestSchema,
 	CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { randomUUID } from 'crypto';
 import type * as express from 'express';
+import type { IncomingMessage } from 'http';
 import { OperationalError, type Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -63,7 +66,8 @@ export class McpServerManager {
 
 	servers: { [sessionId: string]: Server } = {};
 
-	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
+	transports: { [sessionId: string]: FlushingSSEServerTransport | StreamableHTTPServerTransport } =
+		{};
 
 	private tools: { [sessionId: string]: Tool[] } = {};
 
@@ -85,24 +89,28 @@ export class McpServerManager {
 		return McpServerManager.#instance;
 	}
 
-	async createServerAndTransport(
+	async createServerWithSSETransport(
 		serverName: string,
 		postUrl: string,
 		resp: CompressionResponse,
 	): Promise<void> {
-		const transport = new FlushingSSEServerTransport(postUrl, resp);
 		const server = new Server(
 			{
 				name: serverName,
 				version: '0.1.0',
 			},
 			{
-				capabilities: { tools: {} },
+				capabilities: {
+					tools: {},
+				},
 			},
 		);
 
+		const transport = new FlushingSSEServerTransport(postUrl, resp);
+
 		this.setUpHandlers(server);
-		const { sessionId } = transport;
+
+		const sessionId = transport.sessionId;
 		this.transports[sessionId] = transport;
 		this.servers[sessionId] = server;
 
@@ -112,7 +120,6 @@ export class McpServerManager {
 			delete this.transports[sessionId];
 			delete this.servers[sessionId];
 		});
-
 		await server.connect(transport);
 
 		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
@@ -121,8 +128,52 @@ export class McpServerManager {
 		}
 	}
 
+	async createServerWithStreamableHTTPTransport(
+		serverName: string,
+		resp: CompressionResponse,
+		req?: express.Request,
+	): Promise<void> {
+		const server = new Server(
+			{
+				name: serverName,
+				version: '0.1.0',
+			},
+			{
+				capabilities: {
+					tools: {},
+				},
+			},
+		);
+
+		const transport = new StreamableHTTPServerTransport({
+			sessionIdGenerator: () => randomUUID(),
+			onsessioninitialized: (sessionId) => {
+				this.logger.debug(`New session initialized: ${sessionId}`);
+				transport.onclose = () => {
+					this.logger.debug(`Deleting transport for ${sessionId}`);
+					delete this.tools[sessionId];
+					delete this.transports[sessionId];
+					delete this.servers[sessionId];
+				};
+				this.transports[sessionId] = transport;
+				this.servers[sessionId] = server;
+			},
+		});
+
+		this.setUpHandlers(server);
+
+		await server.connect(transport);
+
+		await transport.handleRequest(req as IncomingMessage, resp, req?.body);
+		if (resp.flush) {
+			resp.flush();
+		}
+	}
+
 	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
-		const sessionId = req.query.sessionId as string;
+		// Session ID can be passed either as a query parameter (SSE transport)
+		// or as a header (StreamableHTTP transport).
+		const sessionId = (req.query.sessionId ?? req.headers['mcp-session-id']) as string;
 		const transport = this.transports[sessionId];
 		if (transport) {
 			// We need to add a promise here because the `handlePostMessage` will send something to the
@@ -138,7 +189,13 @@ export class McpServerManager {
 			try {
 				await new Promise(async (resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					await transport.handlePostMessage(req, resp, bodyString);
+					if (transport instanceof FlushingSSEServerTransport) {
+						await transport.handlePostMessage(req, resp, bodyString);
+					} else if (transport instanceof StreamableHTTPServerTransport) {
+						// For StreamableHTTPServerTransport, use handleRequest method
+						const message = JSON.parse(bodyString) as IncomingMessage;
+						await transport.handleRequest(req, resp, message);
+					}
 				});
 			} finally {
 				delete this.resolveFunctions[callId];

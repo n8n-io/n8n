@@ -39,7 +39,7 @@ describe('McpServer', () => {
 		const postUrl = '/post-url';
 
 		it('should set up a transport and server', async () => {
-			await mcpServerManager.createServerAndTransport('mcpServer', postUrl, mockResponse);
+			await mcpServerManager.createServerWithSSETransport('mcpServer', postUrl, mockResponse);
 
 			// Check that FlushingSSEServerTransport was initialized with correct params
 			expect(FlushingSSEServerTransport).toHaveBeenCalledWith(postUrl, mockResponse);
@@ -59,7 +59,7 @@ describe('McpServer', () => {
 		});
 
 		it('should set up close handler that cleans up resources', async () => {
-			await mcpServerManager.createServerAndTransport('mcpServer', postUrl, mockResponse);
+			await mcpServerManager.createServerWithSSETransport('mcpServer', postUrl, mockResponse);
 
 			// Get the close callback and execute it
 			const closeCallbackCaptor = captor<() => Promise<void>>();

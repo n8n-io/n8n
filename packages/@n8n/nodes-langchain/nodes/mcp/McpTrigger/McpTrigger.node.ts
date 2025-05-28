@@ -10,6 +10,7 @@ import { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
+const MCP_STREAMABLE_PATH = 'streamable';
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
@@ -124,6 +125,16 @@ export class McpTrigger extends Node {
 				ndvHideMethod: true,
 				ndvHideUrl: true,
 			},
+			{
+				name: 'streamable',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				isFullPath: true,
+				path: `={{$parameter["path"]}}/${MCP_STREAMABLE_PATH}`,
+				nodeType: 'mcp',
+				ndvHideMethod: true,
+				ndvHideUrl: false,
+			},
 		],
 	};
 
@@ -155,7 +166,7 @@ export class McpTrigger extends Node {
 				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
 				`/${MCP_SSE_MESSAGES_PATH}`,
 			);
-			await mcpServerManager.createServerAndTransport(serverName, postUrl, resp);
+			await mcpServerManager.createServerWithSSETransport(serverName, postUrl, resp);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
@@ -163,6 +174,21 @@ export class McpTrigger extends Node {
 			// sends the response back through the long-lived connection setup in the
 			// 'setup' call
 			const connectedTools = await getConnectedTools(context, true);
+
+			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
+
+			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+			return { noWebhookResponse: true };
+		} else if (webhookName === 'streamable') {
+			// Handle StreamableHTTPServerTransport - this endpoint handles both setup and messages
+			const connectedTools = await getConnectedTools(context, true);
+
+			// Check if this is the first request to set up the transport
+			const sessionId = req.headers['mcp-session-id'] as string;
+			if (!mcpServerManager.transports[sessionId]) {
+				await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+				return { noWebhookResponse: true };
+			}
 
 			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
 

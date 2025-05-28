@@ -47,7 +47,7 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that the connectTransport method was called with correct URL
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'McpTrigger',
 				'/custom-path/messages',
 				mockResponse,
@@ -105,7 +105,7 @@ describe('McpTrigger Node', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the sanitized server name
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
 				'/custom-path/messages',
 				mockResponse,
@@ -123,7 +123,7 @@ describe('McpTrigger Node', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the default server name
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
 				'/custom-path/messages',
 				mockResponse,
