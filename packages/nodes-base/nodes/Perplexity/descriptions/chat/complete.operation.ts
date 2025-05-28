@@ -5,28 +5,16 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		type: 'options',
+		default: 'r1-1776',
 		required: true,
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getModels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. sonar-deep-research',
-			},
+		options: [
+			{ name: 'R1-1776', value: 'r1-1776' },
+			{ name: 'Sonar', value: 'sonar' },
+			{ name: 'Sonar Deep Research', value: 'sonar-deep-research' },
+			{ name: 'Sonar Pro', value: 'sonar-pro' },
+			{ name: 'Sonar Reasoning', value: 'sonar-reasoning' },
+			{ name: 'Sonar Reasoning Pro', value: 'sonar-reasoning-pro' },
 		],
 		description: 'The model which will generate the completion',
 		routing: {

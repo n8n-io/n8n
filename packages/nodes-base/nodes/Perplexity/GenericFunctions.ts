@@ -1,10 +1,7 @@
 import type {
 	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
-	INodeListSearchResult,
-	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -41,44 +38,4 @@ export async function sendErrorPostReceive(
 		});
 	}
 	return data;
-}
-
-export async function getModels(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
-	let models: INodePropertyOptions[] = [
-		{
-			name: 'R1-1776',
-			value: 'r1-1776',
-		},
-		{
-			name: 'Sonar',
-			value: 'sonar',
-		},
-		{
-			name: 'Sonar Deep Research',
-			value: 'sonar-deep-research',
-		},
-		{
-			name: 'Sonar Pro',
-			value: 'sonar-pro',
-		},
-		{
-			name: 'Sonar Reasoning',
-			value: 'sonar-reasoning',
-		},
-		{
-			name: 'Sonar Reasoning Pro',
-			value: 'sonar-reasoning-pro',
-		},
-	];
-
-	if (filter) {
-		models = models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()));
-	}
-
-	return {
-		results: models,
-	};
 }
