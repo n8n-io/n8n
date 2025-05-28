@@ -964,7 +964,7 @@
 	"folders.move.modal.folder.count": "{count} folder | {count} folders",
 	"folders.move.modal.workflow.count": "{count} workflow | {count} workflows",
 	"folders.move.modal.title": "Move {resourceTypeLabel} {folderName}",
-	"folders.move.modal.description": "This will also move {folders} {workflows}.",
+	"folders.move.modal.description": "This will also move{folders}{workflows}.",
 	"folders.move.modal.confirm": "Move {resourceTypeLabel}",
 	"folders.move.modal.project.label": "Project or user",
 	"folders.move.modal.project.placeholder": "Select a project or user",

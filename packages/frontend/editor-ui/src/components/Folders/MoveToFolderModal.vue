@@ -260,10 +260,11 @@ const descriptionMessage = computed(() => {
 	if (subFolderCount.value > 0 && workflowCount.value > 0) {
 		folderText += ` ${i18n.baseText('folder.and.workflow.separator')} `;
 	}
+
 	return i18n.baseText('folders.move.modal.description', {
 		interpolate: {
-			folders: folderText,
-			workflows: workflowText,
+			folders: folderText ? ` ${folderText}` : '',
+			workflows: workflowText ? ` ${workflowText}` : '',
 		},
 	});
 });
