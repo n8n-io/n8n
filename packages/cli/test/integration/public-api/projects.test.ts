@@ -562,13 +562,22 @@ describe('Projects in Public API', () => {
 				expect(projectBefore[0].userId).toEqual(owner.id);
 
 				expect(projectAfter.length).toEqual(3);
-				expect(projectAfter[0]).toEqual(
+				const adminRelation = projectAfter.find(
+					(relation) => relation.userId === owner.id && relation.role === 'project:admin',
+				);
+				expect(adminRelation).toEqual(
 					expect.objectContaining({ userId: owner.id, role: 'project:admin' }),
 				);
-				expect(projectAfter[1]).toEqual(
+				const viewerRelation = projectAfter.find(
+					(relation) => relation.userId === member.id && relation.role === 'project:viewer',
+				);
+				expect(viewerRelation).toEqual(
 					expect.objectContaining({ userId: member.id, role: 'project:viewer' }),
 				);
-				expect(projectAfter[2]).toEqual(
+				const editorRelation = projectAfter.find(
+					(relation) => relation.userId === member2.id && relation.role === 'project:editor',
+				);
+				expect(editorRelation).toEqual(
 					expect.objectContaining({ userId: member2.id, role: 'project:editor' }),
 				);
 			});
@@ -787,8 +796,8 @@ describe('Projects in Public API', () => {
 
 				expect(response.status).toBe(204);
 				expect(projectBefore.length).toEqual(2);
-				expect(projectBefore[0].userId).toEqual(owner.id);
-				expect(projectBefore[1].userId).toEqual(member.id);
+				expect(projectBefore.find((p) => p.role === 'project:admin')?.userId).toEqual(owner.id);
+				expect(projectBefore.find((p) => p.role === 'project:viewer')?.userId).toEqual(member.id);
 
 				expect(projectAfter.length).toEqual(1);
 				expect(projectAfter[0].userId).toEqual(owner.id);
