@@ -1,4 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
+import type { DatabaseConfig } from '@n8n/config';
 import type {
 	Project,
 	ProjectRepository,
@@ -28,6 +29,7 @@ describe('ProjectService', () => {
 		sharedCredentialsRepository,
 		cacheService,
 		mock(),
+		mock<DatabaseConfig>({ type: 'postgresdb' }),
 	);
 
 	describe('addUsersToProject', () => {

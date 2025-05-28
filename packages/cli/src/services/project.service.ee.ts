@@ -219,7 +219,7 @@ export class ProjectService {
 		);
 
 		// Link admin
-		await this.addUser(project.id, { userId: adminUser.id, role: 'project:admin' });
+		await this.addUser(project.id, { userId: adminUser.id, role: 'project:admin' }, trx);
 
 		return project;
 	}
@@ -424,8 +424,9 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUser(projectId: string, { userId, role }: Relation) {
-		return await this.projectRelationRepository.save({
+	async addUser(projectId: string, { userId, role }: Relation, trx?: EntityManager) {
+		trx = trx ?? this.projectRelationRepository.manager;
+		return await trx.save(ProjectRelation, {
 			projectId,
 			userId,
 			role,
