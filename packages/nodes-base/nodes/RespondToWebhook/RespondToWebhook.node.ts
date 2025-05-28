@@ -101,12 +101,12 @@ export class RespondToWebhook implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Enable Response Output',
+				displayName: 'Enable Response Output Branch',
 				name: 'enableResponseOutput',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to enable additional output with the response data sended to the webhook',
+					'Whether to provide an additional output branch with the response sent to the webhook',
 				isNodeSetting: true,
 				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
