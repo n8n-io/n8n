@@ -1,5 +1,3 @@
-import type { IConnection, IConnections, NodeConnectionType } from '@/index';
-
 import {
 	getInputEdges,
 	getOutputEdges,
@@ -8,7 +6,8 @@ import {
 	parseExtractableSubgraphSelection,
 	hasPath,
 	buildAdjacencyList,
-} from '@graph-utils/graph-utils';
+} from '@/graph/graph-utils';
+import type { IConnection, IConnections, NodeConnectionType } from '@/index';
 
 function makeConnection(
 	node: string,
