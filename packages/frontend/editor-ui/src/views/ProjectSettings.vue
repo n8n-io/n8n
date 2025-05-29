@@ -230,8 +230,6 @@ const onDelete = async () => {
 		);
 	}
 
-	console.log('Current project empty:', isCurrentProjectEmpty.value);
-
 	dialogVisible.value = true;
 };
 
