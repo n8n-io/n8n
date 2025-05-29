@@ -17,7 +17,6 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
-import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -497,19 +496,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				toast.showError(error, i18n.baseText('nodeView.showError.stopExecution.title'));
 			}
 		} finally {
-			// Wait for websocket event to update the execution status to 'canceled'
-			await retry(
-				async () => {
-					if (workflowsStore.workflowExecutionData?.status !== 'running') {
-						workflowsStore.markExecutionAsStopped();
-						return true;
-					}
-
-					return false;
-				},
-				250,
-				10,
-			);
+			workflowsStore.markExecutionAsStopped();
 		}
 	}
 
