@@ -322,6 +322,10 @@ export function useCanvasMapping({
 
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
+			if (node.name === 'Code') {
+				acc[node.id] = false;
+				return acc;
+			}
 			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
@@ -613,12 +617,33 @@ export function useCanvasMapping({
 				const label = getConnectionLabel(connection);
 				const data = getConnectionData(connection);
 
+				// console.log(
+				// 	`Mapping connection: ${connection.source} -> ${connection.target}, type: ${type}, label: ${label}, status: ${data.status}`,
+				// );
+
+				console.log(
+					nodeExecutionStatusById.value[connection.source],
+					nodeExecutionRunningById.value[connection.target],
+					nodeExecutionStatusById.value[connection.target],
+				);
+
+				// Set edge as animated if source node is finished and target node is not finished
+				let animated = false;
+				if (
+					nodeExecutionStatusById.value[connection.source] === 'success' &&
+					nodeExecutionStatusById.value[connection.target] === 'new' &&
+					!nodeExecutionRunningById.value[connection.target]
+				) {
+					animated = true;
+				}
+
 				return {
 					...connection,
 					data,
 					type,
 					label,
 					markerEnd: MarkerType.ArrowClosed,
+					animated,
 				};
 			},
 		);
