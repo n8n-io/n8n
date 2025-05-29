@@ -62,7 +62,7 @@ function onStateChange(state: string) {
 
 // Resize logic
 const newValue = ref(props.modelValue);
-const temp = ref(props.modelValue);
+const temp = ref(props.modelValue || props.placeholder);
 
 const measureSpan = useTemplateRef('measureSpan');
 const { width: measuredWidth } = useElementSize(measureSpan);
