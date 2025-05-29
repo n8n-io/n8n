@@ -24,3 +24,9 @@ export const primary = Template.bind({});
 primary.args = {
 	modelValue: 'Test',
 };
+
+export const placeholder = Template.bind({});
+placeholder.args = {
+	modelValue: '',
+	placeholder: 'Enter workflow name',
+};

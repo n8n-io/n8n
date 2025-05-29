@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -9,13 +9,15 @@ type Props = {
 	maxLength?: number;
 	maxWidth?: number;
 	minWidth?: number;
+	placeholder?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 	maxLength: 100,
 	maxWidth: 200,
-	minWidth: 90,
+	minWidth: 64,
+	placeholder: 'Enter text...',
 });
 
 const emit = defineEmits<{
@@ -50,7 +52,6 @@ function onSubmit() {
 
 function onInput(value: string) {
 	newValue.value = value;
-	measureText.value = value || 'A';
 }
 
 function onStateChange(state: string) {
@@ -62,35 +63,24 @@ function onStateChange(state: string) {
 // Resize logic
 const newValue = ref(props.modelValue);
 const temp = ref(props.modelValue);
-const measureText = ref(props.modelValue || 'A');
 
 const measureSpan = useTemplateRef('measureSpan');
 const { width: measuredWidth } = useElementSize(measureSpan);
 
 const inputWidth = computed(() => {
-	return Math.max(props.minWidth, Math.min(measuredWidth.value, props.maxWidth));
+	return Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth));
 });
-
-watch(
-	[newValue, temp],
-	([newVal, tempVal]) => {
-		// Use the longer of the two values for measurement
-		const textToMeasure = tempVal.length > newVal.length ? tempVal : newVal;
-		measureText.value = textToMeasure || 'A';
-	},
-	{ immediate: true },
-);
 
 function onChange(e: string) {
 	const processedValue = e.replace(/\s/g, '.');
-	temp.value = processedValue;
-	measureText.value = processedValue || 'A';
+	temp.value = processedValue.trim() !== '' ? processedValue : props.placeholder;
 }
 </script>
 
 <template>
 	<EditableRoot
 		ref="editableRoot"
+		:placeholder="props.placeholder"
 		:model-value="newValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
@@ -150,7 +140,7 @@ function onChange(e: string) {
 	&[data-focused],
 	&:hover {
 		&::after {
-			border: 1px solid var(--color-foreground-dark);
+			border: 1px solid var(--color-foreground-base);
 			opacity: 1;
 		}
 	}
