@@ -40,10 +40,6 @@ Access the editor at http://localhost:5678
 - 👥 [Community Forum](https://community.n8n.io)
 - 📖 [Community Tutorials](https://community.n8n.io/c/tutorials/28)
 
-## Support
-
-Need help? Our community forum is the place to get support and connect with other users:
-[community.n8n.io](https://community.n8n.io)
 
 ## License
 
