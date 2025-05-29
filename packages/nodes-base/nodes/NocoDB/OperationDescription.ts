@@ -171,10 +171,36 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get', 'getAll'],
+			},
+		},
+		default: false,
+		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+	},
+	{
+		displayName: 'Download Fields',
+		name: 'downloadFieldNames',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['get', 'getAll'],
+				downloadAttachments: [true],
+			},
+		},
+		default: '',
+		description:
+			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
+	},
 	// ----------------------------------
 	//         delete
 	// ----------------------------------
-
 	// ----------------------------------
 	//         getAll
 	// ----------------------------------
@@ -206,33 +232,6 @@ export const operationFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
-	},
-	{
-		displayName: 'Download Fields',
-		name: 'downloadFieldNames',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				downloadAttachments: [true],
-			},
-		},
-		default: '',
-		description:
-			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
 	},
 	{
 		displayName: 'Options',
@@ -327,33 +326,6 @@ export const operationFields: INodeProperties[] = [
 	// ----------------------------------
 	//         get
 	// ----------------------------------
-	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-			},
-		},
-		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
-	},
-	{
-		displayName: 'Download Fields',
-		name: 'downloadFieldNames',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				downloadAttachments: [true],
-			},
-		},
-		default: '',
-		description:
-			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
-	},
 	// ----------------------------------
 	//         update
 	// ----------------------------------
