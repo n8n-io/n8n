@@ -672,6 +672,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 						<N8nInlineTextEdit
 							ref="renameInput"
 							:key="id"
+							placeholder="Workflow name"
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
