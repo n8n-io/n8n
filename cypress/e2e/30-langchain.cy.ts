@@ -372,7 +372,7 @@ describe('Langchain Integration', () => {
 		getNodes().should('have.length', 3);
 	});
 
-	it.only('should render runItems for sub-nodes and allow switching between them', () => {
+	it('should render runItems for sub-nodes and allow switching between them', () => {
 		const workflowPage = new WorkflowPage();
 
 		cy.visit(workflowPage.url);
@@ -389,15 +389,6 @@ describe('Langchain Integration', () => {
 		};
 
 		workflowPage.actions.openNode('Character Text Splitter');
-
-		// Wait for the input panel to switch to Debugging mode
-		// ndv
-		// 	.getInputPanel()
-		// 	.find('[data-test-id="input-panel-mode"] label')
-		// 	.contains('Debugging')
-		// 	.parent()
-		// 	.should('have.a.property', 'aria-checked', 'true');
-		// ndv.getInputPanelItemsCount().should('not.exist');
 
 		ndv.getOutputRunSelector().should('exist');
 		ndv.getInputRunSelector().should('exist');
