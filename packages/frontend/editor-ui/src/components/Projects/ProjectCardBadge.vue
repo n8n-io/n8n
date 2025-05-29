@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { ResourceType } from '@/utils/projects.utils';
-import { splitName } from '@/utils/projects.utils';
+import { ResourceType, splitName } from '@/utils/projects.utils';
 import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type {
@@ -36,6 +35,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 
+const isShared = computed(() => {
+	return 'sharedWithProjects' in props.resource && props.resource.sharedWithProjects?.length;
+});
+
 const projectState = computed(() => {
 	if (
 		(props.resource.homeProject &&
@@ -43,17 +46,17 @@ const projectState = computed(() => {
 			props.resource.homeProject.id === props.personalProject.id) ||
 		!props.resource.homeProject
 	) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedOwned;
 		}
 		return ProjectState.Owned;
 	} else if (props.resource.homeProject?.type !== ProjectTypes.Team) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedPersonal;
 		}
 		return ProjectState.Personal;
 	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedTeam;
 		}
 		return ProjectState.Team;
@@ -61,8 +64,8 @@ const projectState = computed(() => {
 	return ProjectState.Unknown;
 });
 
-const numberOfMembersInHomeTeamProject = computed(
-	() => props.resource.sharedWithProjects?.length ?? 0,
+const numberOfMembersInHomeTeamProject = computed(() =>
+	'sharedWithProjects' in props.resource ? (props.resource.sharedWithProjects?.length ?? 0) : 0,
 );
 
 const badgeText = computed(() => {
