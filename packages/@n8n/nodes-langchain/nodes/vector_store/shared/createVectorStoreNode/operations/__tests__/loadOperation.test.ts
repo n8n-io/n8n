@@ -30,6 +30,7 @@ describe('handleLoadOperation', () => {
 			prompt: 'test search query',
 			topK: 3,
 			includeDocumentMetadata: true,
+			includeDocumentId: true,
 		};
 
 		mockContext = mock<IExecuteFunctions>();
@@ -43,9 +44,18 @@ describe('handleLoadOperation', () => {
 
 		mockVectorStore = mock<VectorStore>();
 		mockVectorStore.similaritySearchVectorWithScore.mockResolvedValue([
-			[{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } } as Document, 0.95],
-			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
-			[{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } } as Document, 0.75],
+			[
+				{ pageContent: 'test content 1', metadata: { test: 'metadata 1' }, id: '0' } as Document,
+				0.95,
+			],
+			[
+				{ pageContent: 'test content 2', metadata: { test: 'metadata 2' }, id: '1' } as Document,
+				0.85,
+			],
+			[
+				{ pageContent: 'test content 3', metadata: { test: 'metadata 3' }, id: '2' } as Document,
+				0.75,
+			],
 		]);
 
 		mockArgs = {
@@ -102,6 +112,23 @@ describe('handleLoadOperation', () => {
 		expect(result[0].json?.document).not.toHaveProperty('metadata');
 		expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
 		expect(result[0].json?.score).toEqual(0.95);
+	});
+
+	it('should include document ID when includeDocumentId is true', async () => {
+		const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+		expect(result[0].json.document).toHaveProperty('id');
+		expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
+		expect((result[0].json?.document as IDataObject)?.id).toEqual('0');
+	});
+
+	it('should exclude document ID when includeDocumentId is false', async () => {
+		nodeParameters.includeDocumentId = false;
+
+		const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+		expect(result[0].json.document).not.toHaveProperty('id');
+		expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
 	});
 
 	it('should use the topK parameter to limit results', async () => {
