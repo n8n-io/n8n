@@ -1,3 +1,13 @@
+## [1.95.2](https://github.com/n8n-io/n8n/compare/n8n@1.95.1...n8n@1.95.2) (2025-05-29)
+
+
+### Bug Fixes
+
+* **editor:** Handle Insights calculations to prevent Infinity numbers ([#15727](https://github.com/n8n-io/n8n/issues/15727)) ([8b76694](https://github.com/n8n-io/n8n/commit/8b76694769302a1c388707ac80c3f03d90c4f749))
+* **Microsoft SharePoint Node:** Add back the support for cred only node ([#15806](https://github.com/n8n-io/n8n/issues/15806)) ([e16fbaa](https://github.com/n8n-io/n8n/commit/e16fbaa4a4ee975530c9ab04edfb70026249c87b))
+
+
+
 ## [1.95.1](https://github.com/n8n-io/n8n/compare/n8n@1.95.0...n8n@1.95.1) (2025-05-27)
 
 
