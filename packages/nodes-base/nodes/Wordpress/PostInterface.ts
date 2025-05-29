@@ -7,6 +7,7 @@ export interface IPost {
 	excerpt?: string;
 	password?: string;
 	status?: string;
+	date?: string;
 	comment_status?: string;
 	ping_status?: string;
 	format?: string;

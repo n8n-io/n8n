@@ -115,31 +115,60 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Post Status',
+								name: 'postStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the post',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this post (required if status is “future”).',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the post',
 			},
 			{
 				displayName: 'Comment Status',
@@ -412,46 +441,61 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Post Status',
+								name: 'postStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the post',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this post (required if status is “future”).',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the post',
 			},
-			// 			{
-			//   displayName: 'Scheduled Date/Time',
-			//   name: 'dateTime',
-			//   type: 'dateTime',
-			//   default: '',
-			//   displayOptions: {
-			//     show: {
-			//       resource: ['post'],
-			//       operation: ['create', 'update'],
-			//       'additionalFields.status': ['future'],
-			//     },
-			//   },
-			//   description: 'When to publish this post (required if status is “future”).',
-			// },
 			{
 				displayName: 'Comment Status',
 				name: 'commentStatus',

@@ -166,6 +166,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const statusCollection = additionalFields.status as IDataObject;
 						const body: IPost = {
 							title,
 						};
@@ -184,8 +185,15 @@ export class Wordpress implements INodeType {
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (additionalFields.status) {
-							body.status = additionalFields.status as string;
+						if (statusCollection.status && typeof statusCollection.status === 'object') {
+							const { postStatus, postDateTime } = statusCollection.status as {
+								postStatus: string;
+								postDateTime?: string;
+							};
+							body.status = postStatus;
+							if (postDateTime && postStatus === 'future') {
+								body.date = postDateTime;
+							}
 						}
 						if (additionalFields.commentStatus) {
 							body.comment_status = additionalFields.commentStatus as string;
@@ -221,6 +229,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const statusCollection = updateFields.status as IDataObject;
 						const body: IPost = {
 							id: parseInt(postId, 10),
 						};
@@ -242,8 +251,15 @@ export class Wordpress implements INodeType {
 						if (updateFields.password) {
 							body.password = updateFields.password as string;
 						}
-						if (updateFields.status) {
-							body.status = updateFields.status as string;
+						if (statusCollection.status && typeof statusCollection.status === 'object') {
+							const { postStatus, postDateTime } = statusCollection.status as {
+								postStatus: string;
+								postDateTime?: string;
+							};
+							body.status = postStatus;
+							if (postDateTime && postStatus === 'future') {
+								body.date = postDateTime;
+							}
 						}
 						if (updateFields.commentStatus) {
 							body.comment_status = updateFields.commentStatus as string;
