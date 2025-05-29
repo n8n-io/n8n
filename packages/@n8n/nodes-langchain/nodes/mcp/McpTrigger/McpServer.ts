@@ -15,7 +15,7 @@ import {
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
-import { OperationalError, type Logger } from 'n8n-workflow';
+import { jsonParse, OperationalError, type Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
@@ -45,9 +45,8 @@ function wasToolCall(body: string) {
  * Returns undefined if the message doesn't have an ID (for example on a tool list request)
  *
  */
-function getRequestId(body: string): string | undefined {
+function getRequestId(message: unknown): string | undefined {
 	try {
-		const message: unknown = JSON.parse(body);
 		const parsedMessage: JSONRPCMessage = JSONRPCMessageSchema.parse(message);
 		return 'id' in parsedMessage ? String(parsedMessage.id) : undefined;
 	} catch {
@@ -172,16 +171,15 @@ export class McpServerManager {
 
 	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
 		// Session ID can be passed either as a query parameter (SSE transport)
-		// or as a header (StreamableHTTP transport).
+		// or in the header (StreamableHTTP transport).
 		const sessionId = (req.query.sessionId ?? req.headers['mcp-session-id']) as string;
 		const transport = this.transports[sessionId];
 		if (transport) {
 			// We need to add a promise here because the `handlePostMessage` will send something to the
 			// MCP Server, that will run in a different context. This means that the return will happen
 			// almost immediately, and will lead to marking the sub-node as "running" in the final execution
-			const bodyString = req.rawBody.toString();
-			const messageId = getRequestId(bodyString);
-
+			const message: IncomingMessage = jsonParse(req.rawBody.toString());
+			const messageId = getRequestId(message);
 			// Use session & message ID if available, otherwise fall back to sessionId
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 			this.tools[sessionId] = connectedTools;
@@ -189,13 +187,7 @@ export class McpServerManager {
 			try {
 				await new Promise(async (resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					if (transport instanceof FlushingSSEServerTransport) {
-						await transport.handlePostMessage(req, resp, bodyString);
-					} else if (transport instanceof StreamableHTTPServerTransport) {
-						// For StreamableHTTPServerTransport, use handleRequest method
-						const message = JSON.parse(bodyString) as IncomingMessage;
-						await transport.handleRequest(req, resp, message);
-					}
+					await transport.handleRequest(req, resp, message);
 				});
 			} finally {
 				delete this.resolveFunctions[callId];

@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Request } from 'express';
