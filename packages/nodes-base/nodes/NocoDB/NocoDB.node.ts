@@ -562,6 +562,12 @@ export class NocoDB implements INodeType {
 							endPoint = `/api/v2/tables/${table}/records/${id}`;
 						}
 
+						qs = this.getNodeParameter('options', i, {});
+
+						if (qs.fields) {
+							qs.fields = (qs.fields as IDataObject[]).join(',');
+						}
+
 						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 
 						if (version === 2) {

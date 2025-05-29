@@ -326,6 +326,32 @@ export const operationFields: INodeProperties[] = [
 	// ----------------------------------
 	//         get
 	// ----------------------------------
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+			},
+		},
+		default: {},
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: [],
+				placeholder: 'Name',
+				description: 'The select fields of the returned row',
+			},
+		],
+	},
 	// ----------------------------------
 	//         update
 	// ----------------------------------
