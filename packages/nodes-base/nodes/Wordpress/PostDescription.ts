@@ -319,6 +319,17 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -618,6 +629,17 @@ export const postFields: INodeProperties[] = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

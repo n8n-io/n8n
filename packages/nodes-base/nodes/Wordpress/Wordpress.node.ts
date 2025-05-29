@@ -125,6 +125,28 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available images to display them to user so that they can
+			// select them easily
+			async getImages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const media = await wordpressApiRequestAllItems.call(
+					this,
+					'GET',
+					'/media',
+					{},
+					{ media_type: 'image' },
+				);
+				for (const mediaItem of media) {
+					const mediaName = mediaItem.title.rendered;
+					const mediaId = mediaItem.id;
+
+					returnData.push({
+						name: mediaName,
+						value: mediaId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -190,6 +212,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.format) {
 							body.format = additionalFields.format as string;
 						}
+						if (additionalFields.featuredMediaId) {
+							body.featured_media = additionalFields.featuredMediaId as number;
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
@@ -244,6 +269,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
+						}
+						if (updateFields.featuredMediaId) {
+							body.featured_media = updateFields.featuredMediaId as number;
 						}
 						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 					}
