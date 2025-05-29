@@ -1,0 +1,52 @@
+name = "tls-n8n-workers"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers Paid plan required for longer CPU time
+[env.production]
+workers_dev = false
+route = { pattern = "your-domain.com/*", zone_name = "your-domain.com" }
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "n8n-db"
+database_id = "your-database-id"
+
+# KV namespace for sessions and cache
+[[kv_namespaces]]
+binding = "KV"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+# R2 bucket for file storage
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "n8n-storage"
+
+# Durable Objects for workflow execution and WebSocket
+[[durable_objects.bindings]]
+name = "WORKFLOW_EXECUTOR"
+class_name = "WorkflowExecutor"
+
+[[durable_objects.bindings]]
+name = "WEBSOCKET_HANDLER"
+class_name = "WebSocketHandler"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["WorkflowExecutor", "WebSocketHandler"]
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+N8N_HOST = "0.0.0.0"
+N8N_PORT = "8787"
+N8N_PROTOCOL = "https"
+JWT_SECRET = "your-jwt-secret"
+ENCRYPTION_KEY = "your-encryption-key"
+
+# Limits
+[limits]
+cpu_ms = 30000  # 30 seconds for paid plan
