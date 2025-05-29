@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import type { Tool } from '@langchain/core/tools';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -6,6 +5,7 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 
+import type { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
 import type { McpServerManager } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
@@ -22,7 +22,7 @@ jest.mock('../McpServer', () => ({
 describe('McpTrigger Node', () => {
 	const sessionId = 'mock-session-id';
 	const mockContext = mock<IWebhookFunctions>();
-	const mockRequest = mock<Request>({ query: { sessionId }, path: '/custom-path/sse' });
+	const mockRequest = mock<Request>({ query: { sessionId }, path: '/custom-path' });
 	const mockResponse = mock<Response>();
 	let mcpTrigger: McpTrigger;
 
@@ -34,7 +34,7 @@ describe('McpTrigger Node', () => {
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
 		mockContext.getNode.mockReturnValue({
 			name: 'McpTrigger',
-			typeVersion: 1.1,
+			typeVersion: 2,
 		} as INode);
 	});
 
@@ -49,7 +49,7 @@ describe('McpTrigger Node', () => {
 			// Verify that the connectTransport method was called with correct URL
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'McpTrigger',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
 
@@ -61,12 +61,17 @@ describe('McpTrigger Node', () => {
 			// Configure the context for default webhook (tool execution)
 			mockContext.getWebhookName.mockReturnValue('default');
 
+			mockServerManager.transports = {
+				[sessionId]: mock<FlushingSSEServerTransport>({}),
+			};
 			// Mock that the server executes a tool and returns true
 			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
+			// Wait for async callback
+			await new Promise((resolve) => setTimeout(resolve, 10));
 			// Verify that handlePostMessage was called with request, response and tools
 			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
 				mockTool,
@@ -100,14 +105,13 @@ describe('McpTrigger Node', () => {
 				typeVersion: 1.1,
 			} as INode);
 			mockContext.getWebhookName.mockReturnValue('setup');
-
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the sanitized server name
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
 		});
@@ -125,7 +129,7 @@ describe('McpTrigger Node', () => {
 			// Verify that connectTransport was called with the default server name
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
 		});
