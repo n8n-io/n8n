@@ -406,7 +406,7 @@ export function useCanvasMapping({
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
-			} else if (node.issues) {
+			} else if (node.issues && nodeHelpers.nodeIssuesToString(node.issues, node).length) {
 				acc[node.id] = true;
 			} else {
 				const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];

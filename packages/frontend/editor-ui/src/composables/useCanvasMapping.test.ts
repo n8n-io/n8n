@@ -1144,6 +1144,27 @@ describe('useCanvasMapping', () => {
 				expect(nodeHasIssuesById.value[node3.id]).toBe(false); // No issues
 			});
 
+			it('should handle node validation issues', () => {
+				const node1 = createTestNode({
+					name: 'Node 1',
+					issues: {
+						parameters: {
+							formTitle: ['Parameter "Form Title" is required.'],
+						},
+					},
+				} as Partial<INode>);
+				const nodes = [node1];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+				const { nodeHasIssuesById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+				expect(nodeHasIssuesById.value[node1.id]).toBe(true); // Has error status
+			});
+
 			it('should handle successful executions after errors', () => {
 				const workflowsStore = mockedStore(useWorkflowsStore);
 				const node1 = createTestNode({ name: 'Node 2' });
