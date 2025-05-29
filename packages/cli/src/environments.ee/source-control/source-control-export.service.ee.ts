@@ -30,13 +30,17 @@ import {
 	getFoldersPath,
 	getVariablesPath,
 	getWorkflowExportPath,
+	readFoldersFromSourceControlFile,
+	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
 	stringContainsExpression,
 } from './source-control-helper.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { ResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../variables/variables.service.ee';
 
 @Service()
@@ -56,6 +60,7 @@ export class SourceControlExportService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
 		private readonly folderRepository: FolderRepository,
+		private readonly sourceControlScopedService: SourceControlScopedService,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -213,7 +218,7 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportFoldersToWorkFolder(): Promise<ExportResult> {
+	async exportFoldersToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const folders = await this.folderRepository.find({
@@ -230,6 +235,7 @@ export class SourceControlExportService {
 						id: true,
 					},
 				},
+				where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
 			});
 
 			if (folders.length === 0) {
@@ -240,19 +246,38 @@ export class SourceControlExportService {
 				};
 			}
 
+			const allowedProjects =
+				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+
 			const fileName = getFoldersPath(this.gitFolder);
+
+			const existingFolders = await readFoldersFromSourceControlFile(fileName);
+
+			// keep all folders that are not accessible by the current user
+			// if allowedProjects is undefined, all folders are accessible by the current user
+			const newFolders =
+				allowedProjects === undefined
+					? []
+					: existingFolders.folders.filter((folder) => {
+							return !allowedProjects.some((project) => project.id === folder.homeProjectId);
+						});
+
+			newFolders.push(
+				...folders.map((f) => ({
+					id: f.id,
+					name: f.name,
+					parentFolderId: f.parentFolder?.id ?? null,
+					homeProjectId: f.homeProject.id,
+					createdAt: f.createdAt.toISOString(),
+					updatedAt: f.updatedAt.toISOString(),
+				})),
+			);
+
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
 					{
-						folders: folders.map((f) => ({
-							id: f.id,
-							name: f.name,
-							parentFolderId: f.parentFolder?.id ?? null,
-							homeProjectId: f.homeProject.id,
-							createdAt: f.createdAt.toISOString(),
-							updatedAt: f.updatedAt.toISOString(),
-						})),
+						folders: newFolders,
 					},
 					null,
 					2,
@@ -273,7 +298,7 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportTagsToWorkFolder(): Promise<ExportResult> {
+	async exportTagsToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const tags = await this.tagRepository.find();
@@ -285,14 +310,33 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const mappings = await this.workflowTagMappingRepository.find();
+			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
+				where:
+					this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
+						context,
+					),
+			});
+			const allowedWorkflows = await this.workflowRepository.find({
+				where:
+					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
+			});
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+			// read the existing git file
+			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
+			// keep all mappings that are not accessible by the current user
+			const mappingsOfOtherWorkflows = existingTagsAndMapping.mappings.filter((mapping) => {
+				return !allowedWorkflows.some(
+					(allowedWorkflow) => allowedWorkflow.id === mapping.workflowId,
+				);
+			});
+
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
 					{
+						// overwrite all tags
 						tags: tags.map((tag) => ({ id: tag.id, name: tag.name })),
-						mappings,
+						mappings: mappingsOfOtherWorkflows.concat(mappingsOfAllowedWorkflows),
 					},
 					null,
 					2,

@@ -73,10 +73,10 @@ export class SourceControlScopedService {
 
 	getFoldersInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
-	): FindOptionsWhere<Folder> | undefined {
+	): FindOptionsWhere<Folder> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return;
+			return {};
 		}
 
 		// We build a filter to only select folder, that belong to a team project
@@ -88,10 +88,10 @@ export class SourceControlScopedService {
 
 	getWorkflowsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
-	): FindOptionsWhere<WorkflowEntity> | undefined {
+	): FindOptionsWhere<WorkflowEntity> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return;
+			return {};
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
@@ -106,10 +106,10 @@ export class SourceControlScopedService {
 
 	getCredentialsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
-	): FindOptionsWhere<CredentialsEntity> | undefined {
+	): FindOptionsWhere<CredentialsEntity> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return;
+			return {};
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
@@ -124,10 +124,10 @@ export class SourceControlScopedService {
 
 	getWorkflowTagMappingInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
-	): FindOptionsWhere<WorkflowTagMapping> | undefined {
+	): FindOptionsWhere<WorkflowTagMapping> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return;
+			return {};
 		}
 
 		// We build a filter to only select workflows, that belong to a team project

@@ -20,6 +20,7 @@ import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -164,7 +165,7 @@ export class SourceControlController {
 	}
 
 	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	@GlobalScope('sourceControl:push')
+	// @GlobalScope('sourceControl:push')
 	async pushWorkfolder(
 		req: AuthenticatedRequest,
 		res: express.Response,
