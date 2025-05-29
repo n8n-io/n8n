@@ -1,6 +1,0 @@
-{
-  "scripts": {
-    "build": "turbo run build",
-    "build:cf": "pnpm build && pnpm build:frontend"
-  }
-}
