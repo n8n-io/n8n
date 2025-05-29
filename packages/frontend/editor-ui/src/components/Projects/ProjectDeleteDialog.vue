@@ -99,6 +99,7 @@ const onDelete = () => {
 					<n8n-input-label :label="locale.baseText('projects.settings.delete.question.wipe.title')">
 						<n8n-input
 							v-model="wipeConfirmText"
+							data-test-id="project-delete-confirm-input"
 							:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
 						/>
 					</n8n-input-label>
