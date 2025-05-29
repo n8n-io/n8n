@@ -381,7 +381,7 @@ export class ExecutionService {
 	 * control, "current" means executions enqueued to start and running.
 	 */
 	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
-		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
+		const currentStatuses: ExecutionStatus[] = ['new', 'running', 'waiting'];
 
 		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
 
