@@ -1,5 +1,9 @@
 <mj-section>
 	<mj-column>
+		<mj-image src="cid:inmo-logo" height="40px" width="70px" />
 		<mj-image src="cid:n8n-logo" height="40px" width="70px" />
 	</mj-column>
+	<mj-text font-size="10px" color="#666666" align="center" padding-top="10px"
+		>Powered by n8n</mj-text
+	>
 </mj-section>

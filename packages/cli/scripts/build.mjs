@@ -38,6 +38,7 @@ function generateUserManagementEmailTemplates() {
 	});
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
+	shell.cp(path.resolve(sourceDir, 'inmo-logo.png'), destinationDir);
 }
 
 function copySwaggerTheme() {
