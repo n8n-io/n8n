@@ -320,6 +320,7 @@ export const operationFields: INodeProperties[] = [
 				default: '',
 				placeholder: '(name,like,example%)~or(name,eq,test)',
 				description: 'A formula used to filter rows',
+				hint: 'Check official documentation for <a href="https://nocodb.com/docs/product-docs/developer-resources/rest-apis/overview" target="_blank" rel="noreferrer">supported operators</a>.',
 			},
 			{
 				displayName: 'Shuffle',
