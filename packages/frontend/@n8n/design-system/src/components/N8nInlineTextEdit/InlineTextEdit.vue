@@ -8,12 +8,14 @@ type Props = {
 	readOnly?: boolean;
 	maxLength?: number;
 	maxWidth?: number;
+	minWidth?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 	maxLength: 100,
 	maxWidth: 200,
+	minWidth: 90,
 });
 
 const emit = defineEmits<{
@@ -66,8 +68,7 @@ const measureSpan = useTemplateRef('measureSpan');
 const { width: measuredWidth } = useElementSize(measureSpan);
 
 const inputWidth = computed(() => {
-	const minWidth = 60; // Minimum width
-	return Math.max(minWidth, Math.min(measuredWidth.value, props.maxWidth));
+	return Math.max(props.minWidth, Math.min(measuredWidth.value, props.maxWidth));
 });
 
 watch(
