@@ -1,3 +1,12 @@
+## [1.94.2](https://github.com/n8n-io/n8n/compare/n8n@1.94.1...n8n@1.94.2) (2025-05-29)
+
+
+### Bug Fixes
+
+* **Microsoft SharePoint Node:** Add back the support for cred only node ([#15806](https://github.com/n8n-io/n8n/issues/15806)) ([8c798d2](https://github.com/n8n-io/n8n/commit/8c798d21fe88aef6c2a354b96e8e7abae6dcf9e5))
+
+
+
 ## [1.94.1](https://github.com/n8n-io/n8n/compare/n8n@1.94.0...n8n@1.94.1) (2025-05-27)
 
 
