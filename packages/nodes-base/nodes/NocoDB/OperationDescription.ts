@@ -328,6 +328,13 @@ export const operationFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to shuffle the results',
 			},
+			{
+				displayName: 'Offset',
+				name: 'offset',
+				type: 'number',
+				default: '',
+				description: 'The number of rows to skip from the beginning',
+			},
 		],
 	},
 	// ----------------------------------
