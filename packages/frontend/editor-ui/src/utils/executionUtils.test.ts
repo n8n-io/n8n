@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
@@ -48,12 +49,24 @@ vi.mock('@/plugins/i18n', () => ({
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
+	let fetchMock: MockInstance;
+	const successResponse = {
+		ok: true,
+	} as unknown as Response;
+
+	beforeAll(() => {
+		fetchMock = vi.spyOn(global, 'fetch');
+	});
+
+	afterAll(() => {
+		fetchMock.mockRestore();
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should not call openPopUpWindow if node has already run or is pinned', () => {
+	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -76,7 +89,9 @@ describe('displayForm', () => {
 		const runData: IRunData = { Node1: [] };
 		const pinData: IPinData = { Node2: [{ json: { data: {} } }] };
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData,
 			pinData,
@@ -90,7 +105,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
+	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -110,7 +125,8 @@ describe('displayForm', () => {
 			},
 		];
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -124,7 +140,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
+	it('should not open pop-up if source is "RunData.ManualChatMessage"', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -138,7 +154,9 @@ describe('displayForm', () => {
 
 		getTestUrlMock.mockReturnValue('http://test-url.com');
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -162,8 +180,9 @@ describe('displayForm', () => {
 			getTestUrlMock.mockReturnValue('http://test-url.com');
 		});
 
-		it('should open pop-up if the trigger node is a form node', () => {
-			displayForm({
+		it('should open pop-up if the trigger node is a form node', async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
@@ -177,8 +196,41 @@ describe('displayForm', () => {
 			expect(windowOpenSpy).toHaveBeenCalled();
 		});
 
-		it("should not open pop-up if the trigger node is specified and it isn't a form node", () => {
-			displayForm({
+		it('should not open pop-up if the trigger node is a form node but webhook url is not live', async () => {
+			fetchMock.mockResolvedValue({ ok: false });
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not open pop-up if the trigger node is a form node but fetch of webhook url throws', async () => {
+			fetchMock.mockRejectedValue(new Error());
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it("should not open pop-up if the trigger node is specified and it isn't a form node", async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
