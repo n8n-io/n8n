@@ -1,5 +1,9 @@
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type {
+	StreamableHTTPServerTransport,
+	StreamableHTTPServerTransportOptions,
+} from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request } from 'express';
 import { captor, mock } from 'jest-mock-extended';
 
@@ -16,11 +20,26 @@ jest.mock('@modelcontextprotocol/sdk/server/index.js', () => {
 });
 
 const mockTransport = mock<FlushingSSEServerTransport>({ sessionId });
+mockTransport.handleRequest.mockImplementation(jest.fn());
+
 jest.mock('../FlushingSSEServerTransport', () => {
 	return {
 		FlushingSSEServerTransport: jest.fn().mockImplementation(() => mockTransport),
 	};
 });
+
+const mockStreamableTransport = mock<StreamableHTTPServerTransport>();
+mockStreamableTransport.onclose = jest.fn();
+
+jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
+	return {
+		StreamableHTTPServerTransport: jest.fn().mockImplementation(() => mockStreamableTransport),
+	};
+});
+
+const { StreamableHTTPServerTransport: MockedStreamableHTTPServerTransport } = jest.requireMock(
+	'@modelcontextprotocol/sdk/server/streamableHttp.js',
+);
 
 describe('McpServer', () => {
 	const mockRequest = mock<Request>({ query: { sessionId }, path: '/sse' });
@@ -72,8 +91,8 @@ describe('McpServer', () => {
 	});
 
 	describe('handlePostMessage', () => {
-		it('should call transport.handlePostMessage when transport exists', async () => {
-			mockTransport.handlePostMessage.mockImplementation(async () => {
+		it('should call transport.handleRequest when transport exists', async () => {
+			mockTransport.handleRequest.mockImplementation(async () => {
 				// @ts-expect-error private property `resolveFunctions`
 				mcpServerManager.resolveFunctions[`${sessionId}_123`]();
 			});
@@ -95,11 +114,11 @@ describe('McpServer', () => {
 				mockTool,
 			]);
 
-			// Verify that transport's handlePostMessage was called
-			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
+			// Verify that transport's handleRequest was called
+			expect(mockTransport.handleRequest).toHaveBeenCalledWith(
 				mockRequest,
 				mockResponse,
-				expect.any(String),
+				expect.any(Object),
 			);
 
 			// Verify that we check if it was a tool call
@@ -113,7 +132,7 @@ describe('McpServer', () => {
 			const firstId = 123;
 			const secondId = 456;
 
-			mockTransport.handlePostMessage.mockImplementation(async () => {
+			mockTransport.handleRequest.mockImplementation(async () => {
 				const requestKey = mockRequest.rawBody?.toString().includes(`"id":${firstId}`)
 					? `${sessionId}_${firstId}`
 					: `${sessionId}_${secondId}`;
@@ -139,10 +158,10 @@ describe('McpServer', () => {
 				mockTool,
 			]);
 			expect(firstResult).toBe(true);
-			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
+			expect(mockTransport.handleRequest).toHaveBeenCalledWith(
 				mockRequest,
 				mockResponse,
-				expect.any(String),
+				expect.any(Object),
 			);
 
 			// Second tool call with different id
@@ -161,8 +180,8 @@ describe('McpServer', () => {
 			]);
 			expect(secondResult).toBe(true);
 
-			// Verify transport's handlePostMessage was called twice
-			expect(mockTransport.handlePostMessage).toHaveBeenCalledTimes(2);
+			// Verify transport's handleRequest was called twice
+			expect(mockTransport.handleRequest).toHaveBeenCalledTimes(2);
 
 			// Verify flush was called for both requests
 			expect(mockResponse.flush).toHaveBeenCalledTimes(2);
@@ -173,6 +192,181 @@ describe('McpServer', () => {
 			const testRequest = mock<Request>({
 				query: { sessionId: 'non-existent-session' },
 				path: '/sse',
+			});
+			testRequest.rawBody = Buffer.from(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					id: 123,
+					params: { name: 'mockTool' },
+				}),
+			);
+
+			// Call without setting up transport for this sessionId
+			await mcpServerManager.handlePostMessage(testRequest, mockResponse, [mockTool]);
+
+			// Verify error status was set
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('No transport found'));
+		});
+	});
+
+	describe('createServerWithStreamableHTTPTransport', () => {
+		it('should set up a transport and server with StreamableHTTPServerTransport', async () => {
+			const mockStreamableRequest = mock<Request>({
+				headers: { 'mcp-session-id': sessionId },
+				path: '/mcp',
+				body: {},
+			});
+
+			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
+
+			await mcpServerManager.createServerWithStreamableHTTPTransport(
+				'mcpServer',
+				mockResponse,
+				mockStreamableRequest,
+			);
+
+			// Check that StreamableHTTPServerTransport was initialized with correct params
+			expect(MockedStreamableHTTPServerTransport).toHaveBeenCalledWith({
+				sessionIdGenerator: expect.any(Function),
+				onsessioninitialized: expect.any(Function),
+			});
+
+			// Check that Server was initialized
+			expect(Server).toHaveBeenCalled();
+
+			// Check that handleRequest was called
+			expect(mockStreamableTransport.handleRequest).toHaveBeenCalled();
+		});
+
+		it('should handle session initialization callback', async () => {
+			const mockStreamableRequest = mock<Request>({
+				headers: { 'mcp-session-id': sessionId },
+				path: '/mcp',
+				body: {},
+			});
+
+			// Set up the mock to simulate session initialization
+			mockStreamableTransport.onclose = jest.fn();
+			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
+
+			MockedStreamableHTTPServerTransport.mockImplementationOnce(
+				(options: StreamableHTTPServerTransportOptions) => {
+					// Simulate session initialization
+					setTimeout(() => {
+						if (options.onsessioninitialized) {
+							options.onsessioninitialized(sessionId);
+						}
+					}, 0);
+					return mockStreamableTransport;
+				},
+			);
+
+			await mcpServerManager.createServerWithStreamableHTTPTransport(
+				'mcpServer',
+				mockResponse,
+				mockStreamableRequest,
+			);
+
+			// Wait for async callback
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			// Check that transport and server are stored after session init
+			expect(mcpServerManager.transports[sessionId]).toBeDefined();
+			expect(mcpServerManager.servers[sessionId]).toBeDefined();
+		});
+
+		it('should handle transport close callback for StreamableHTTPServerTransport', async () => {
+			const mockStreamableRequest = mock<Request>({
+				headers: { 'mcp-session-id': sessionId },
+				path: '/mcp',
+				body: {},
+			});
+
+			let onCloseCallback: (() => void) | undefined;
+			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
+
+			MockedStreamableHTTPServerTransport.mockImplementationOnce(
+				(options: StreamableHTTPServerTransportOptions) => {
+					// Simulate session initialization and capture onclose callback
+					setTimeout(() => {
+						if (options.onsessioninitialized) {
+							options.onsessioninitialized(sessionId);
+							onCloseCallback = mockStreamableTransport.onclose;
+						}
+					}, 0);
+					return mockStreamableTransport;
+				},
+			);
+
+			await mcpServerManager.createServerWithStreamableHTTPTransport(
+				'mcpServer',
+				mockResponse,
+				mockStreamableRequest,
+			);
+
+			// Wait for async callback
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			// Simulate transport close
+			if (onCloseCallback) {
+				onCloseCallback();
+			}
+
+			// Check that resources were cleaned up
+			expect(mcpServerManager.transports[sessionId]).toBeUndefined();
+			expect(mcpServerManager.servers[sessionId]).toBeUndefined();
+		});
+	});
+
+	describe('handlePostMessage with StreamableHTTPServerTransport', () => {
+		it('should handle StreamableHTTPServerTransport with session ID in header', async () => {
+			const mockStreamableRequest = mock<Request>({
+				headers: { 'mcp-session-id': sessionId },
+				path: '/mcp',
+			});
+
+			mockStreamableTransport.handleRequest.mockImplementation(async () => {
+				// @ts-expect-error private property `resolveFunctions`
+				mcpServerManager.resolveFunctions[`${sessionId}_123`]();
+			});
+
+			// Add the transport directly
+			mcpServerManager.transports[sessionId] = mockStreamableTransport;
+
+			mockStreamableRequest.rawBody = Buffer.from(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					id: 123,
+					params: { name: 'mockTool' },
+				}),
+			);
+
+			// Call the method
+			const result = await mcpServerManager.handlePostMessage(mockStreamableRequest, mockResponse, [
+				mockTool,
+			]);
+
+			// Verify that transport's handleRequest was called
+			expect(mockStreamableTransport.handleRequest).toHaveBeenCalledWith(
+				mockStreamableRequest,
+				mockResponse,
+				expect.any(Object),
+			);
+
+			// Verify that we check if it was a tool call
+			expect(result).toBe(true);
+
+			// Verify flush was called
+			expect(mockResponse.flush).toHaveBeenCalled();
+		});
+
+		it('should return 401 when StreamableHTTPServerTransport does not exist', async () => {
+			const testRequest = mock<Request>({
+				headers: { 'mcp-session-id': 'non-existent-session' },
+				path: '/mcp',
 			});
 			testRequest.rawBody = Buffer.from(
 				JSON.stringify({
