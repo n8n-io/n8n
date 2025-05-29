@@ -61,10 +61,6 @@ Additional information about the license model can be found in the [docs](https:
 
 Found a bug 🐛 or have a feature idea ✨? Check our [Contributing Guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) to get started.
 
-## Join the Team
-
-Want to shape the future of automation? Check out our [job posts](https://n8n.io/careers) and join our team!
-
 ## What does n8n mean?
 
 **Short answer:** It means "nodemation" and is pronounced as n-eight-n.
