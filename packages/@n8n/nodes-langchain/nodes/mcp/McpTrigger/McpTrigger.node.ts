@@ -10,7 +10,6 @@ import { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
-const MCP_STREAMABLE_PATH = 'streamable';
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
@@ -21,7 +20,7 @@ export class McpTrigger extends Node {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 2],
 		description: 'Expose n8n tools as an MCP Server endpoint',
 		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
 		defaults: {
@@ -110,7 +109,7 @@ export class McpTrigger extends Node {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				isFullPath: true,
-				path: `={{$parameter["path"]}}/${MCP_SSE_SETUP_PATH}`,
+				path: `={{$parameter["path"]}}{{parseFloat($nodeVersion)<2 ? '/${MCP_SSE_SETUP_PATH}' : ''}}`,
 				nodeType: 'mcp',
 				ndvHideMethod: true,
 				ndvHideUrl: false,
@@ -120,20 +119,10 @@ export class McpTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				isFullPath: true,
-				path: `={{$parameter["path"]}}/${MCP_SSE_MESSAGES_PATH}`,
+				path: `={{$parameter["path"]}}{{parseFloat($nodeVersion)<2 ? '/${MCP_SSE_MESSAGES_PATH}' : ''}}`,
 				nodeType: 'mcp',
 				ndvHideMethod: true,
 				ndvHideUrl: true,
-			},
-			{
-				name: 'streamable',
-				httpMethod: 'POST',
-				responseMode: 'onReceived',
-				isFullPath: true,
-				path: `={{$parameter["path"]}}/${MCP_STREAMABLE_PATH}`,
-				nodeType: 'mcp',
-				ndvHideMethod: true,
-				ndvHideUrl: false,
 			},
 		],
 	};
@@ -162,37 +151,32 @@ export class McpTrigger extends Node {
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
 			// will stay streaming, and is the channel that sends the events
-			const postUrl = req.path.replace(
-				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
-				`/${MCP_SSE_MESSAGES_PATH}`,
-			);
+
+			// Prior to version 2.0, we use different paths for the setup and messages.
+			const postUrl =
+				node.typeVersion < 2
+					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
+					: req.path;
 			await mcpServerManager.createServerWithSSETransport(serverName, postUrl, resp);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// This is the command-channel, and is actually executing the tools. This
-			// sends the response back through the long-lived connection setup in the
-			// 'setup' call
-			const connectedTools = await getConnectedTools(context, true);
+			// Here we handle POST requests. These can be either
+			// 1) Client calls in an established session using the SSE transport, or
+			// 2) Client calls in an established session using the StreamableHTTPServerTransport
+			// 3) Session setup requests using the StreamableHTTPServerTransport
 
-			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-
-			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
-			return { noWebhookResponse: true };
-		} else if (webhookName === 'streamable') {
-			// Handle StreamableHTTPServerTransport - this endpoint handles both setup and messages
-			const connectedTools = await getConnectedTools(context, true);
-
-			// Check if this is the first request to set up the transport
-			const sessionId = req.headers['mcp-session-id'] as string;
-			if (!mcpServerManager.transports[sessionId]) {
+			// Check if there is a session and a transport is already established
+			const sessionId = (req.query.sessionId ?? req.headers['mcp-session-id']) as string;
+			if (sessionId && mcpServerManager.transports[sessionId]) {
+				const connectedTools = await getConnectedTools(context, true);
+				const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
+				if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+			} else {
+				// If no session is established, this is a setup request
+				// for the StreamableHTTPServerTransport, so we create a new transport
 				await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
-				return { noWebhookResponse: true };
 			}
-
-			const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-
-			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
 			return { noWebhookResponse: true };
 		}
 

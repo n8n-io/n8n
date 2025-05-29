@@ -1995,7 +1995,7 @@ export interface IWebhookData {
 	staticData?: Workflow['staticData'];
 }
 
-export type WebhookType = 'default' | 'setup' | 'streamable';
+export type WebhookType = 'default' | 'setup';
 
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
