@@ -3,15 +3,15 @@ name: Security - Scan Docker Image With Trivy
 on:
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: 'Image tag to scan'
+      image_ref:
+        description: 'Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest'
         required: true
-        default: 'latest'
+        default: 'ghcr.io/n8n-io/n8n:latest'
   workflow_call:
     inputs:
-      image_tag:
+      image_ref:
         type: string
-        description: 'Image tag to scan'
+        description: 'Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest'
         required: true
     secrets:
       SLACK_WEBHOOK_URL:
@@ -26,12 +26,12 @@ jobs:
 
       - name: Pull Docker image
         run: |
-          docker pull ${{ inputs.image_tag }}
+          docker pull ${{ inputs.image_ref }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
         with:
-          image-ref: ${{ inputs.image_tag }}
+          image-ref: ${{ inputs.image_ref }}
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
@@ -89,7 +89,7 @@ jobs:
             :warning: *Trivy Scan: Vulnerabilities Detected*
 
             *Repository:* `${{ github.repository }}`
-            *Image Tag:* `${{ inputs.image_tag }}`
+            *Image Ref:* `${{ inputs.image_ref }}`
 
             *Vulnerability Summary:*
             • *Critical:* ${{ steps.process_vulns.outputs.critical_count }}
@@ -116,7 +116,7 @@ jobs:
             :white_check_mark: *Trivy Scan: All Clear*
 
             *Repository:* `${{ github.repository }}`
-            *Image Tag:* `${{ inputs.image_tag }}`
+            *Image Ref:* `${{ inputs.image_ref }}`
 
             No vulnerabilities detected in the Docker image scan.
 
