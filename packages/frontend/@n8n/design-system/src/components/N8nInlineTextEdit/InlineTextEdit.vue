@@ -71,16 +71,25 @@ const inputWidth = computed(() => {
 	return Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth));
 });
 
-function onChange(e: string) {
-	const processedValue = e.replace(/\s/g, '.');
+function onChange(event: Event) {
+	const { value } = event.target as HTMLInputElement;
+	const processedValue = value.replace(/\s/g, '.');
 	temp.value = processedValue.trim() !== '' ? processedValue : props.placeholder;
 }
+
+const computedInlineStyles = computed(() => {
+	return {
+		width: `${inputWidth.value}px`,
+		maxWidth: `${props.maxWidth}px`,
+		zIndex: 1,
+	};
+});
 </script>
 
 <template>
 	<EditableRoot
 		ref="editableRoot"
-		:placeholder="props.placeholder"
+		:placeholder="placeholder"
 		:model-value="newValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
@@ -93,7 +102,7 @@ function onChange(e: string) {
 		@update:state="onStateChange"
 	>
 		<EditableArea
-			:style="{ width: `${inputWidth}px`, maxWidth: `${maxWidth}px` }"
+			:style="computedInlineStyles"
 			:class="$style.inlineRenameArea"
 			@click="forceFocus"
 		>
@@ -103,13 +112,14 @@ function onChange(e: string) {
 			<EditablePreview
 				data-test-id="inline-edit-preview"
 				:class="$style.inlineRenamePreview"
-				:style="{ maxWidth: `${maxWidth}px` }"
+				:style="computedInlineStyles"
 			/>
 			<EditableInput
 				ref="input"
+				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
-				:style="{ width: `${inputWidth}px`, maxWidth: `${maxWidth}px`, zIndex: 1 }"
-				@input="(e) => onChange(e.target.value)"
+				:style="computedInlineStyles"
+				@input="onChange"
 			/>
 		</EditableArea>
 	</EditableRoot>
@@ -120,8 +130,6 @@ function onChange(e: string) {
 	cursor: pointer;
 	width: fit-content;
 	position: relative;
-	z-index: 1;
-	// add min width
 
 	&::after {
 		content: '';
@@ -153,11 +161,6 @@ function onChange(e: string) {
 	}
 }
 
-.inlineRenameArea[data-focused],
-.inlineRenameArea:hover {
-	z-index: 1;
-}
-
 .inlineRenameArea[data-readonly] {
 	pointer-events: none;
 	&::after {
@@ -172,7 +175,6 @@ function onChange(e: string) {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	position: relative;
-	z-index: 1;
 }
 
 .measureSpan {
