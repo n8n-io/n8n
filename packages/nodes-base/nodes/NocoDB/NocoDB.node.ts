@@ -427,11 +427,6 @@ export class NocoDB implements INodeType {
 					}
 				} else if (version === 3) {
 					endPoint = `/api/v2/tables/${table}/records`;
-
-					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
-					if (primaryKey === 'custom') {
-						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
-					}
 				}
 
 				const body: IDataObject[] = [];
