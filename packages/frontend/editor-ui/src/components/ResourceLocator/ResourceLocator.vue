@@ -1050,6 +1050,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
+									@mousedown.prevent
 								>
 									<template v-if="isListMode" #suffix>
 										<i

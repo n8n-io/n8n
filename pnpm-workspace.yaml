@@ -36,8 +36,8 @@ catalog:
   xss: 1.0.15
   zod: 3.24.1
   'zod-to-json-schema': 3.23.3
-  '@langchain/core': 0.3.30
-  '@langchain/openai': 0.3.17
+  '@langchain/core': 0.3.39
+  '@langchain/openai': 0.5.0
   '@langchain/anthropic': 0.3.11
   '@langchain/community': 0.3.24
   '@n8n_io/ai-assistant-sdk': 1.14.0
