@@ -43,6 +43,7 @@ const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const isValid = ref(false);
+const isCurrentProjectEmpty = ref(true);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	name: '',
 	relations: [],
@@ -222,6 +223,15 @@ const onSubmit = async () => {
 
 const onDelete = async () => {
 	await projectsStore.getAvailableProjects();
+
+	if (projectsStore.currentProjectId) {
+		isCurrentProjectEmpty.value = await projectsStore.isProjectEmpty(
+			projectsStore.currentProjectId,
+		);
+	}
+
+	console.log('Current project empty:', isCurrentProjectEmpty.value);
+
 	dialogVisible.value = true;
 };
 
@@ -429,6 +439,7 @@ onMounted(() => {
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
+			:is-current-project-empty="isCurrentProjectEmpty"
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
