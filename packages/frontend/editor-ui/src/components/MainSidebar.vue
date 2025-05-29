@@ -24,9 +24,10 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink } from '@n8n/design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import Logo from './Logo/Logo.vue';
+import N8nLogoSection from './N8nLogoSection.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -331,7 +332,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
-		<div :class="$style.logo">
+		<div :class="$style.logoArea">
 			<Logo
 				location="sidebar"
 				:collapsed="isCollapsed"
@@ -361,62 +362,21 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					/>
 				</N8nTooltip>
 			</Logo>
-			<N8nNavigationDropdown
-				ref="createBtn"
-				data-test-id="universal-add"
+			<N8nLogoSection
+				:collapsed="isCollapsed"
 				:menu="menu"
+				:create-workflows-append-slot-name="createWorkflowsAppendSlotName"
+				:create-credentials-append-slot-name="createCredentialsAppendSlotName"
+				:create-project-append-slot-name="createProjectAppendSlotName"
+				:projects-limit-reached-message="projectsLimitReachedMessage"
+				:upgrade-label="upgradeLabel"
+				:has-permission-to-create-projects="hasPermissionToCreateProjects"
+				:source-control-branch-read-only="sourceControlStore.preferences.branchReadOnly"
+				:i18n="i18n"
+				:release-channel="settingsStore.settings.releaseChannel"
+				ref="createBtn"
 				@select="handleMenuSelect"
-			>
-				<N8nIconButton icon="plus" type="secondary" outline />
-				<template #[createWorkflowsAppendSlotName]>
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-				</template>
-				<template #[createCredentialsAppendSlotName]>
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-				</template>
-				<template #[createProjectAppendSlotName]="{ item }">
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-					<N8nTooltip
-						v-else-if="item.disabled"
-						placement="right"
-						:content="projectsLimitReachedMessage"
-					>
-						<N8nIcon
-							v-if="!hasPermissionToCreateProjects"
-							style="margin-left: auto; margin-right: 5px"
-							icon="lock"
-							size="xsmall"
-						/>
-						<N8nButton
-							v-else
-							:size="'mini'"
-							style="margin-left: auto"
-							type="tertiary"
-							@click="handleMenuSelect(item.id)"
-						>
-							{{ upgradeLabel }}
-						</N8nButton>
-					</N8nTooltip>
-				</template>
-			</N8nNavigationDropdown>
+			/>
 		</div>
 		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
@@ -625,5 +585,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	padding: 2px;
 	border-radius: var(--border-radius-small);
 	margin: 7px 12px 0 5px;
+}
+
+.logoArea {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 }
 </style>
