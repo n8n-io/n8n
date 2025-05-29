@@ -13,7 +13,12 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ProjectTypes } from '@/types/projects.types';
-import { ResourceType, splitName } from '@/utils/projects.utils';
+import {
+	getTruncatedProjectName,
+	MAX_NAME_LENGTH,
+	ResourceType,
+	splitName,
+} from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -88,10 +93,9 @@ const selectedProject = computed(() =>
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 const targetProjectName = computed(() => {
-	const { name, email } = splitName(selectedProject.value?.name ?? '');
-	return truncate(name ?? email ?? '', 25);
+	return getTruncatedProjectName(selectedProject.value?.name);
 });
-const resourceName = computed(() => truncate(props.data.resource.name, 25));
+const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -120,6 +124,7 @@ const moveResource = async () => {
 			props.data.resourceType,
 			props.data.resource.id,
 			selectedProject.value.id,
+			undefined,
 			shareUsedCredentials.value ? shareableCredentials.value.map((c) => c.id) : undefined,
 		);
 		closeModal();
