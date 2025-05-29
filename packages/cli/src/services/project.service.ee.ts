@@ -227,7 +227,7 @@ export class ProjectService {
 
 	async updateProject(
 		projectId: string,
-		data: Pick<UpdateProjectDto, 'name' | 'icon'>,
+		data: Pick<UpdateProjectDto, 'name' | 'icon' | 'description'>,
 	): Promise<Project> {
 		const result = await this.projectRepository.update({ id: projectId, type: 'team' }, data);
 
