@@ -1,0 +1,40 @@
+{
+  "name": "tls-n8n-cloudflare-workers",
+  "version": "1.0.0",
+  "description": "TLS-n8n adapted for Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc && esbuild src/index.ts --bundle --outfile=dist/worker.js --format=esm --platform=neutral --target=es2022",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "db:generate": "wrangler d1 execute n8n-db --local --file=./schema.sql",
+    "db:migrate": "wrangler d1 migrations apply n8n-db",
+    "kv:create": "wrangler kv:namespace create n8n-sessions",
+    "r2:create": "wrangler r2 bucket create n8n-storage"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.8.0",
+    "@cloudflare/workers-types": "^4.20240129.0",
+    "drizzle-orm": "^0.29.0",
+    "zod": "^3.22.0",
+    "jose": "^5.2.0",
+    "bcryptjs": "^2.4.3",
+    "nanoid": "^5.0.0",
+    "luxon": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/luxon": "^3.4.0",
+    "wrangler": "^3.28.0",
+    "typescript": "^5.3.0",
+    "esbuild": "^0.20.0",
+    "vitest": "^1.2.0",
+    "drizzle-kit": "^0.20.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
