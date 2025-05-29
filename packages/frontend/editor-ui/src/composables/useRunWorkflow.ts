@@ -508,7 +508,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					return false;
 				},
 				250,
-				10,
+				20,
 			);
 
 			if (!markedAsStopped) {
