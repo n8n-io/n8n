@@ -25,6 +25,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
 
 export class Github implements INodeType {
@@ -2250,7 +2251,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 
 						const additionalParameters = this.getNodeParameter(
 							'additionalParameters',
@@ -2326,7 +2327,7 @@ export class Github implements INodeType {
 							body.branch = (additionalParameters.branch as IDataObject).branch;
 						}
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						body.message = this.getNodeParameter('commitMessage', i) as string;
 
 						body.sha = await getFileSha.call(
@@ -2341,7 +2342,7 @@ export class Github implements INodeType {
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						const additionalParameters = this.getNodeParameter(
 							'additionalParameters',
 							i,
@@ -2354,7 +2355,7 @@ export class Github implements INodeType {
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
-						const filePath = this.getNodeParameter('filePath', i);
+						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					}
 				} else if (resource === 'issue') {

@@ -6,6 +6,7 @@ import {
 	fuzzyCompare,
 	getResolvables,
 	keysToLowercase,
+	removeTrailingSlash,
 	shuffleArray,
 	sortItemKeysByPriorityList,
 	wrapData,
@@ -310,5 +311,15 @@ describe('sortItemKeysByPriorityList', () => {
 		const result = sortItemKeysByPriorityList(data, priorityList);
 
 		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'd']);
+	});
+});
+
+describe('removeTrailingSlash', () => {
+	it('removes trailing slash', () => {
+		expect(removeTrailingSlash('https://example.com/')).toBe('https://example.com');
+	});
+
+	it('does not change a URL without trailing slash', () => {
+		expect(removeTrailingSlash('https://example.com')).toBe('https://example.com');
 	});
 });
