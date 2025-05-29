@@ -205,6 +205,14 @@ export const insertUpdateOptions: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Return Fields By Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return fields keyed by field ID instead of field name in the response',
+			},
 		],
 	},
 ];

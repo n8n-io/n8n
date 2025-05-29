@@ -109,7 +109,7 @@ describe('Test AirtableV2, update operation', () => {
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
 			'appYoLbase/tblltable',
-			{ typecast: false },
+			{ returnFieldsByFieldId: false, typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
 		);
 	});
@@ -143,7 +143,7 @@ describe('Test AirtableV2, update operation', () => {
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
 			'appYoLbase/tblltable',
-			{ typecast: false },
+			{ returnFieldsByFieldId: false, typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
 		);
 	});
