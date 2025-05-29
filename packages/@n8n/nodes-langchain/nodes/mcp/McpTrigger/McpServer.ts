@@ -178,7 +178,7 @@ export class McpServerManager {
 			// We need to add a promise here because the `handlePostMessage` will send something to the
 			// MCP Server, that will run in a different context. This means that the return will happen
 			// almost immediately, and will lead to marking the sub-node as "running" in the final execution
-			const message: IncomingMessage = jsonParse(req.rawBody.toString());
+			const message = jsonParse(req.rawBody.toString());
 			const messageId = getRequestId(message);
 			// Use session & message ID if available, otherwise fall back to sessionId
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
@@ -187,7 +187,7 @@ export class McpServerManager {
 			try {
 				await new Promise(async (resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					await transport.handleRequest(req, resp, message);
+					await transport.handleRequest(req, resp, message as IncomingMessage);
 				});
 			} finally {
 				delete this.resolveFunctions[callId];

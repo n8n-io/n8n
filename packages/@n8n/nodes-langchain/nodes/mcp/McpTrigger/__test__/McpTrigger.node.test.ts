@@ -36,6 +36,7 @@ describe('McpTrigger Node', () => {
 			name: 'McpTrigger',
 			typeVersion: 2,
 		} as INode);
+		mockServerManager.transports = {};
 	});
 
 	describe('webhook method', () => {
