@@ -217,6 +217,11 @@ export class LoadNodesAndCredentials {
 	async unloadPackage(packageName: string) {
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
+
+			if (this.loaders[packageName] instanceof PackageDirectoryLoader) {
+				this.loaders[packageName].clearNodesAndCredentialsFromRequireCache();
+			}
+
 			delete this.loaders[packageName];
 		}
 	}
