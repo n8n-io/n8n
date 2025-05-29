@@ -129,7 +129,6 @@ export async function executionFinished(
 		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
-		workflowsStore.markExecutionAsStopped();
 	} else {
 		handleExecutionFinishedWithOther(successToastAlreadyShown, options);
 	}
