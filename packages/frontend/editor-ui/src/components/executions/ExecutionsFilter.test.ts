@@ -17,7 +17,7 @@ const defaultFilterState: ExecutionFilterType = {
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
-	metadata: [{ key: '', value: '' }],
+	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
 };
 

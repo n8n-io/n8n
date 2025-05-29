@@ -175,7 +175,7 @@ export namespace ExecutionSummaries {
 		status: ExecutionStatus[];
 		workflowId: string;
 		waitTill: boolean;
-		metadata: Array<{ key: string; value: string }>;
+		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
 		annotationTags: string[]; // tag IDs
