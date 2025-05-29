@@ -321,6 +321,13 @@ export const operationFields: INodeProperties[] = [
 				placeholder: '(name,like,example%)~or(name,eq,test)',
 				description: 'A formula used to filter rows',
 			},
+			{
+				displayName: 'Shuffle',
+				name: 'shuffle',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to shuffle the results',
+			},
 		],
 	},
 	// ----------------------------------
