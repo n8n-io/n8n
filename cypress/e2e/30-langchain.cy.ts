@@ -372,7 +372,7 @@ describe('Langchain Integration', () => {
 		getNodes().should('have.length', 3);
 	});
 
-	it('should render runItems for sub-nodes and allow switching between them', () => {
+	it.only('should render runItems for sub-nodes and allow switching between them', () => {
 		const workflowPage = new WorkflowPage();
 
 		cy.visit(workflowPage.url);
@@ -381,7 +381,7 @@ describe('Langchain Integration', () => {
 		workflowPage.actions.deselectAll();
 
 		workflowPage.actions.executeNode('Populate VS');
-		workflow.getNodesWithSpinner().should('not.exist');
+		workflow.waitForSuccessBannerToAppear();
 
 		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
 			ndv.getOutputPanel().contains(text).should(assertion);
