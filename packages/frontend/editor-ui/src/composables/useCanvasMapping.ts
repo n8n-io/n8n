@@ -329,9 +329,9 @@ export function useCanvasMapping({
 
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
-			acc[node.id] =
-				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0]?.executionStatus ??
-				'new';
+			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+
+			acc[node.id] = tasks.at(-1)?.executionStatus ?? 'new';
 			return acc;
 		}, {}),
 	);
@@ -406,8 +406,12 @@ export function useCanvasMapping({
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
+			} else if (node.issues && nodeHelpers.nodeIssuesToString(node.issues, node).length) {
+				acc[node.id] = true;
 			} else {
-				acc[node.id] = nodeIssuesById.value[node.id].length > 0;
+				const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+
+				acc[node.id] = Boolean(tasks.at(-1)?.error);
 			}
 
 			return acc;
