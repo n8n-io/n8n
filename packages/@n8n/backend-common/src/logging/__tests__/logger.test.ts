@@ -181,6 +181,54 @@ describe('Logger', () => {
 				},
 			});
 		});
+
+		test('do not recurse indefinitely when `cause` contains circular references', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const parentError = new Error('Parent', { cause: 'just a string' });
+			const childError = new Error('Test', { cause: parentError });
+			parentError.cause = childError;
+			const testMetadata = { error: childError };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				metadata: {
+					error: {
+						name: childError.name,
+						message: childError.message,
+						stack: childError.stack,
+						cause: {
+							name: parentError.name,
+							message: parentError.message,
+							stack: parentError.stack,
+						},
+					},
+				},
+			});
+		});
 	});
 
 	describe('transports', () => {

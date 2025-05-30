@@ -83,14 +83,22 @@ export class Logger implements LoggerType {
 
 	private detailedErrorStringify(
 		error: unknown,
+		seen: Set<unknown> = new Set(),
 	): { name: string; message: string; stack?: string; cause: unknown } | string {
 		if (!(error instanceof Error)) return String(error);
+
+		// prevent infinite recursion
+		let cause: unknown;
+		if (error.cause && !seen.has(error.cause)) {
+			seen.add(error.cause);
+			cause = this.detailedErrorStringify(error.cause, seen);
+		}
 
 		return {
 			name: error.name,
 			message: error.message,
 			stack: error.stack,
-			cause: error.cause ? this.detailedErrorStringify(error.cause) : undefined,
+			cause,
 		};
 	}
 
