@@ -1,2 +1,2 @@
-export { BaseN8nModule, N8nModule } from './module';
+export { BaseN8nModule, N8nModule, EntityClass } from './module';
 export { ModuleMetadata } from './module-metadata';

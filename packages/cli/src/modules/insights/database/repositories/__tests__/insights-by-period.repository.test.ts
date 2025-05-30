@@ -5,12 +5,14 @@ import { InsightsConfig } from '@/modules/insights/insights.config';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
+import * as testModules from '@test-integration/test-modules';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
+		await testModules.load(['insights']);
 		await testDb.init();
 	});
 

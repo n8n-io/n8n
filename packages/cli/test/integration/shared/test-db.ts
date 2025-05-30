@@ -7,6 +7,7 @@ import { randomString } from 'n8n-workflow';
 
 import { DbConnection } from '@/databases/db-connection';
 import { DbConnectionOptions } from '@/databases/db-connection-options';
+import { ModuleRegistry } from '@/modules/module-registry';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -37,6 +38,8 @@ export async function init() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	await dbConnection.migrate();
+
+	await Container.get(ModuleRegistry).initModules();
 }
 
 export function isReady() {

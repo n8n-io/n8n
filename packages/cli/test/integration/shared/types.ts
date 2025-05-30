@@ -47,10 +47,13 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights';
 
+type ModuleName = 'insights';
+
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
+	modules?: ModuleName[];
 }
 
 export type SuperAgentTest = TestAgent;
