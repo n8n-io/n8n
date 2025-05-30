@@ -6,7 +6,7 @@ import { ModuleMetadata } from './module-metadata';
 export type EntityClass = new (...args: unknown[]) => BaseEntity;
 
 export interface BaseN8nModule {
-	initialize?(): void | Promise<void>;
+	init?(): void | Promise<void>;
 	entities?(): EntityClass[];
 }
 

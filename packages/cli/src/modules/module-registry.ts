@@ -23,7 +23,7 @@ export class ModuleRegistry {
 
 	async initModules() {
 		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			await Container.get(ModuleClass).initialize?.();
+			await Container.get(ModuleClass).init?.();
 		}
 	}
 
