@@ -436,7 +436,7 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 5, 23, 59),
-					DateTime.utc(2000, 1, 11, 1, 0),
+					DateTime.utc(2000, 1, 10, 1, 0),
 				],
 				batches: [2, 1],
 			},
@@ -446,9 +446,9 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 4, 23, 59),
-					DateTime.utc(2000, 1, 11, 0, 0),
-					DateTime.utc(2000, 1, 12, 23, 59),
-					DateTime.utc(2000, 1, 18, 23, 59),
+					DateTime.utc(2000, 1, 10, 0, 0),
+					DateTime.utc(2000, 1, 11, 23, 59),
+					DateTime.utc(2000, 1, 17, 23, 59),
 				],
 				batches: [2, 2, 1],
 			},
@@ -482,7 +482,7 @@ describe('compaction', () => {
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.periodStart.getDay()).toBe(1);
+				expect(compacted.periodStart.getUTCDay()).toBe(1);
 				expect(compacted.value).toBe(batches[index]);
 			}
 		});
