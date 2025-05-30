@@ -118,6 +118,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	async function runWorkflow(options: {
 		destinationNode?: string;
 		triggerNode?: string;
+		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
@@ -171,7 +172,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if (options.triggerNode && options.nodeData) {
+			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
+				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
 					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
