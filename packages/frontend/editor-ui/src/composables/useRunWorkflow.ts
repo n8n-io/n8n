@@ -314,7 +314,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
 				if (workflow.id && nodeId && version === 2) {
-					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
+					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {

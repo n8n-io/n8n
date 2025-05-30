@@ -68,7 +68,7 @@ vi.mock('@/stores/workflows.store', () => {
 vi.mock('@/stores/parameterOverrides.store', () => {
 	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
 		agentRequests: {},
-		generateAgentRequest: vi.fn(),
+		getAgentRequest: vi.fn(),
 	};
 	return {
 		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
@@ -692,12 +692,12 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-			vi.mocked(agentRequestStore).generateAgentRequest.mockReturnValue(agentRequest);
+			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
-			expect(agentRequestStore.generateAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
+			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
 				agentRequest: {
 					query: 'query',
