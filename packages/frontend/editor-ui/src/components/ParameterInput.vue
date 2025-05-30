@@ -786,6 +786,16 @@ function onPaste(event: ClipboardEvent) {
 	}
 }
 
+function onPasteNumber(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+
+	if (shouldConvertToExpression(pastedText)) {
+		event.preventDefault();
+		valueChanged('=' + pastedText);
+		return;
+	}
+}
+
 function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
@@ -1596,7 +1606,7 @@ onUpdated(async () => {
 				@update:model-value="onUpdateTextInput"
 				@focus="setFocus"
 				@blur="onBlur"
-				@keydown.stop
+				@paste="onPasteNumber"
 			/>
 
 			<CredentialsSelect
