@@ -1,12 +1,10 @@
 import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';
 
 beforeAll(async () => {
 	await testDb.init();
-	await testModules.load(['insights']);
 });
 
 describe('Insights By Period', () => {
