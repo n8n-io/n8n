@@ -89,6 +89,7 @@
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.8.2",
       "vue-tsc": "^2.2.8",
+      "google-gax": "^4.3.7",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {

@@ -176,6 +176,7 @@ overrides:
   tsconfig-paths: ^4.2.0
   typescript: ^5.8.2
   vue-tsc: ^2.2.8
+  google-gax: ^4.3.7
   ws: '>=8.17.1'
 
 patchedDependencies:
@@ -4086,10 +4087,6 @@ packages:
   '@google/generative-ai@0.21.0':
     resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
     engines: {node: '>=18.0.0'}
-
-  '@grpc/grpc-js@1.10.8':
-    resolution: {integrity: sha512-vYVqYzHicDqyKB+NQhAc54I1QWCBLCrYG6unqOIcBTHx+7x8C9lcoLj3KVJXs2VB4lUbpWY+Kk9NipcbXYWmvg==}
-    engines: {node: '>=12.10.0'}
 
   '@grpc/grpc-js@1.13.2':
     resolution: {integrity: sha512-nnR5nmL6lxF8YBqb6gWvEgLdLh/Fn+kvAdX5hUOnt48sNSb0riz/93ASd2E5gvanPA41X6Yp25bIfGRp1SMb2g==}
@@ -8535,9 +8532,6 @@ packages:
   duplexer@0.1.2:
     resolution: {integrity: sha512-jtD6YG370ZCIi/9GTaJKQxWTZD045+4R4hTk/x1UyoqadyJ9x9CgSi1RlVDQF8U2sxLLSnFkCaMihqljHIWgMg==}
 
-  duplexify@4.1.2:
-    resolution: {integrity: sha512-fz3OjcNCHmRP12MJoZMPglx8m4rrFP8rovnk4vT8Fs+aonZoCwGg10dSsQsfP/E62eZcPTMSMP6686fu9Qlqtw==}
-
   duplexify@4.1.3:
     resolution: {integrity: sha512-M3BmBhwJRZsSx38lZyhE53Csddgzl5R7xGJNk7CVddZD6CcmwMCH8J+7AprIrQKH7TonKxaCjcv27Qmf+sQ+oA==}
 
@@ -9462,8 +9456,8 @@ packages:
     resolution: {integrity: sha512-ol+oSa5NbcGdDqA+gZ3G3mev59OHBZksBTxY/tYwjtcp1H/scAFwJfSQU9/1RALoyZ7FslNbke8j4i3ipwlyuQ==}
     engines: {node: '>=14'}
 
-  google-gax@4.3.4:
-    resolution: {integrity: sha512-upnobdflCz9+Lq9+nOv0pm9EQ+fLhWckz6lQTgLAkLAGggIH2fl+CUj0WgczdbhQDAnA0BSNfXYHglhA/dmZpw==}
+  google-gax@4.6.1:
+    resolution: {integrity: sha512-V6eky/xz2mcKfAd1Ioxyd6nmA61gao3n01C+YeuIwu3vzM9EDR6wcVzMSIbLMDXWeoi9SHYctXuKYC5uJUT3eQ==}
     engines: {node: '>=14'}
 
   google-p12-pem@4.0.1:
@@ -12111,10 +12105,6 @@ packages:
     resolution: {integrity: sha512-SAzp/O4Yh02jGdRc+uIrGoe87dkN/XtwxfZ4ZyafJHymd79ozp5VG5nyZ7ygqPM5+cpLDjjGnYFUkngonyDPOQ==}
     engines: {node: '>=14.0.0'}
 
-  protobufjs@7.3.0:
-    resolution: {integrity: sha512-YWD03n3shzV9ImZRX3ccbjqLxj7NokGN0V/ESiBV5xWqrommYHYiihuIyavq03pWSGqlyvYUFmfoMKd+1rPA/g==}
-    engines: {node: '>=12.0.0'}
-
   protobufjs@7.4.0:
     resolution: {integrity: sha512-mRUWCc3KUU4w1jU8sGxICXH/gNS94DvI1gxqDvBzhj1JpcsimQkYiOJfwsPUykUI5ZaspFbSgmBLER8IrQ3tqw==}
     engines: {node: '>=12.0.0'}
@@ -12970,9 +12960,6 @@ packages:
 
   stream-events@1.0.5:
     resolution: {integrity: sha512-E1GUzBSgvct8Jsb3v2X15pjzN1tYebtbLaMg+eBOUOAxgbLoSbT2NS91ckc5lJD1KfLjId+jXJRgo0qnV5Nerg==}
-
-  stream-shift@1.0.1:
-    resolution: {integrity: sha512-AiisoFqQ0vbGcZgQPY1cdP2I76glaVA/RauYR4G4thNFgkTqr90yXTo4LYX60Jl+sIlPNHHdGSwo01AvbKUSVQ==}
 
   stream-shift@1.0.3:
     resolution: {integrity: sha512-76ORR0DO1o1hlKwTbi/DM3EXWGf3ZJYO8cXX5RJwnul2DEg2oyoZyjLNoQM8WsvZiFKCRfC1O0J7iCvie3RZmQ==}
@@ -16666,7 +16653,7 @@ snapshots:
 
   '@google-ai/generativelanguage@2.6.0(encoding@0.1.13)':
     dependencies:
-      google-gax: 4.3.4(encoding@0.1.13)
+      google-gax: 4.6.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -16682,14 +16669,14 @@ snapshots:
 
   '@google-cloud/resource-manager@5.3.0(encoding@0.1.13)':
     dependencies:
-      google-gax: 4.3.4(encoding@0.1.13)
+      google-gax: 4.6.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
       - supports-color
 
   '@google-cloud/secret-manager@5.6.0(encoding@0.1.13)':
     dependencies:
-      google-gax: 4.3.4(encoding@0.1.13)
+      google-gax: 4.6.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -16716,11 +16703,6 @@ snapshots:
       - supports-color
 
   '@google/generative-ai@0.21.0': {}
-
-  '@grpc/grpc-js@1.10.8':
-    dependencies:
-      '@grpc/proto-loader': 0.7.13
-      '@js-sdsl/ordered-map': 4.4.2
 
   '@grpc/grpc-js@1.13.2':
     dependencies:
@@ -19642,7 +19624,7 @@ snapshots:
     dependencies:
       '@types/caseless': 0.12.5
       '@types/node': 18.19.103
-      '@types/tough-cookie': 4.0.2
+      '@types/tough-cookie': 4.0.5
       form-data: 2.5.1
 
   '@types/retry@0.12.0': {}
@@ -21924,13 +21906,6 @@ snapshots:
 
   duplexer@0.1.2: {}
 
-  duplexify@4.1.2:
-    dependencies:
-      end-of-stream: 1.4.4
-      inherits: 2.0.4
-      readable-stream: 3.6.0
-      stream-shift: 1.0.1
-
   duplexify@4.1.3:
     dependencies:
       end-of-stream: 1.4.4
@@ -22298,7 +22273,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22323,7 +22298,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -22343,7 +22318,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -23173,7 +23148,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -23204,18 +23179,18 @@ snapshots:
       - encoding
       - supports-color
 
-  google-gax@4.3.4(encoding@0.1.13):
+  google-gax@4.6.1(encoding@0.1.13):
     dependencies:
-      '@grpc/grpc-js': 1.10.8
+      '@grpc/grpc-js': 1.13.2
       '@grpc/proto-loader': 0.7.13
       '@types/long': 4.0.2
       abort-controller: 3.0.0
-      duplexify: 4.1.2
+      duplexify: 4.1.3
       google-auth-library: 9.10.0(encoding@0.1.13)
       node-fetch: 2.7.0(encoding@0.1.13)
       object-hash: 3.0.0
       proto3-json-serializer: 2.0.2
-      protobufjs: 7.3.0
+      protobufjs: 7.4.0
       retry-request: 7.0.2(encoding@0.1.13)
       uuid: 9.0.1
     transitivePeerDependencies:
@@ -26089,7 +26064,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26417,21 +26392,6 @@ snapshots:
   proto3-json-serializer@2.0.2:
     dependencies:
       protobufjs: 7.4.0
-
-  protobufjs@7.3.0:
-    dependencies:
-      '@protobufjs/aspromise': 1.1.2
-      '@protobufjs/base64': 1.1.2
-      '@protobufjs/codegen': 2.0.4
-      '@protobufjs/eventemitter': 1.1.0
-      '@protobufjs/fetch': 1.1.0
-      '@protobufjs/float': 1.0.2
-      '@protobufjs/inquire': 1.1.0
-      '@protobufjs/path': 1.1.2
-      '@protobufjs/pool': 1.1.0
-      '@protobufjs/utf8': 1.1.0
-      '@types/node': 18.19.103
-      long: 5.2.3
 
   protobufjs@7.4.0:
     dependencies:
@@ -26928,7 +26888,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -27570,8 +27530,6 @@ snapshots:
   stream-events@1.0.5:
     dependencies:
       stubs: 3.0.0
-
-  stream-shift@1.0.1: {}
 
   stream-shift@1.0.3: {}
 
