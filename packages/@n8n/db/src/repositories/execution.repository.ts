@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -22,7 +23,7 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {
 	AnnotationVote,

@@ -3,7 +3,7 @@ import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import type {
 	WorkflowHistoryActionTypes,

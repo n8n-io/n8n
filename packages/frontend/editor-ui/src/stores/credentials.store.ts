@@ -11,7 +11,7 @@ import * as credentialsApi from '@/api/credentials';
 import * as credentialsEeApi from '@/api/credentials.ee';
 import { EnterpriseEditionFeature } from '@/constants';
 import { STORES } from '@n8n/stores';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';

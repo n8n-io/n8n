@@ -14,7 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { Workflow } from 'n8n-workflow';
 
 export interface Props {
