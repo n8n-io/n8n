@@ -28,6 +28,8 @@ export { ChangePasswordRequestDto } from './password-reset/change-password-reque
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
+export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
+export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';

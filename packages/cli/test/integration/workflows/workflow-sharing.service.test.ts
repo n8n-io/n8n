@@ -72,7 +72,7 @@ describe('WorkflowSharingService', () => {
 			// ARRANGE
 			//
 			const project = await projectService.createTeamProject(member, { name: 'Team Project' });
-			await projectService.addUser(project.id, anotherMember.id, 'project:admin');
+			await projectService.addUser(project.id, { userId: anotherMember.id, role: 'project:admin' });
 			const workflow = await createWorkflow(undefined, project);
 
 			//
@@ -96,8 +96,14 @@ describe('WorkflowSharingService', () => {
 			const workflow1 = await createWorkflow(undefined, project1);
 			const project2 = await projectService.createTeamProject(member, { name: 'Team Project 2' });
 			const workflow2 = await createWorkflow(undefined, project2);
-			await projectService.addUser(project1.id, anotherMember.id, 'project:admin');
-			await projectService.addUser(project2.id, anotherMember.id, 'project:viewer');
+			await projectService.addUser(project1.id, {
+				userId: anotherMember.id,
+				role: 'project:admin',
+			});
+			await projectService.addUser(project2.id, {
+				userId: anotherMember.id,
+				role: 'project:viewer',
+			});
 
 			//
 			// ACT
