@@ -10,7 +10,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';

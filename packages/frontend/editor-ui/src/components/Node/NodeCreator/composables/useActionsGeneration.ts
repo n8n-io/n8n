@@ -15,7 +15,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';

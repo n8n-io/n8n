@@ -14,13 +14,13 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
-import { useI18n } from '@/composables/useI18n';
 import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nTooltip } from '@n8n/design-system';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
+import { useI18n } from '@n8n/i18n';
 import { isNodePreviewKey, removePreviewToken } from '../utils';
 
 export interface Props {

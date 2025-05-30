@@ -30,7 +30,7 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {

@@ -178,15 +178,6 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
-	};
-}
-
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
