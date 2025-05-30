@@ -10,10 +10,6 @@ export class InsightsInit {
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		console.log('==========================');
-		console.log('==========================');
-		console.log('==========================');
-		console.log('==========================');
 		if (this.instanceSettings.isLeader) this.insightsService.startTimers();
 	}
 }
