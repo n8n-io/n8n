@@ -98,10 +98,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 					? "DATE_FORMAT(DATE_SUB(periodStart, INTERVAL WEEKDAY(periodStart) DAY), '%Y-%m-%d 00:00:00')"
 					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00')`;
 		} else if (dbType === 'postgresdb') {
-			periodStartExpr =
-				periodUnitToCompactInto === 'week'
-					? `DATE_TRUNC('week', ${this.escapeField('periodStart')})`
-					: `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
+			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
 		return periodStartExpr;
