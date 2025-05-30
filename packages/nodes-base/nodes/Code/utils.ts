@@ -1,4 +1,9 @@
-import type { INodeExecutionData, IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import {
+	type INodeExecutionData,
+	type IDataObject,
+	type IExecuteFunctions,
+	UserError,
+} from 'n8n-workflow';
 
 export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
 	return (
@@ -53,3 +58,48 @@ export const addPostExecutionWarning = (
 		});
 	}
 };
+
+export function checkPythonCodeImports(pythonCode: string) {
+	const forbiddenImports = ['os'];
+
+	const importLines = pythonCode.match(/^\s*(import|from)\s+[^\n]+/gm) || [];
+
+	for (const line of importLines) {
+		if (line.startsWith('import ')) {
+			const modules = line
+				.replace('import', '')
+				.split(',')
+				.map((part) => part.trim().split(' ')[0]);
+
+			for (const mod of modules) {
+				const topLevel = mod.split('.')[0];
+				if (topLevel) {
+					if (forbiddenImports.includes(topLevel)) {
+						throw new UserError(`Forbidden import detected: ${topLevel}`);
+					}
+				}
+			}
+		} else if (line.startsWith('from ')) {
+			const parts = line.split(/\s+/);
+			if (parts.length >= 2) {
+				const mod = parts[1].split('.')[0];
+				if (mod) {
+					if (forbiddenImports.includes(mod)) {
+						throw new UserError(`Forbidden import detected: ${mod}`);
+					}
+				}
+			}
+		}
+	}
+
+	const dynamicImportRegex = /__import__\(\s*['"]([\w\.]+)['"]\s*\)/g;
+	let match: RegExpExecArray | null;
+	while ((match = dynamicImportRegex.exec(pythonCode)) !== null) {
+		const topLevel = match[1].split('.')[0];
+		if (topLevel) {
+			if (forbiddenImports.includes(topLevel)) {
+				throw new UserError(`Forbidden import detected: ${topLevel}`);
+			}
+		}
+	}
+}
