@@ -2418,4 +2418,227 @@ describe('Workflow', () => {
 			expect(nodes).toHaveLength(0);
 		});
 	});
+	describe('getConnectionsBetweenNodes', () => {
+		test('should return empty array if no connections exist between sources and targets', () => {
+			const result = SIMPLE_WORKFLOW.getConnectionsBetweenNodes(['Start'], ['Set1']);
+			expect(result).toEqual([]);
+		});
+
+		test('should return connections between a single source and target', () => {
+			const result = SIMPLE_WORKFLOW.getConnectionsBetweenNodes(['Start'], ['Set']);
+			expect(result).toEqual([
+				[
+					{ node: 'Start', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			]);
+		});
+
+		test('should return connections between multiple sources and a single target', () => {
+			const connections: IConnections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'Node1',
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'Node2',
+						name: 'Node2',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'TargetNode',
+						name: 'TargetNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getConnectionsBetweenNodes(['Node1', 'Node2'], ['TargetNode']);
+			expect(result).toEqual([
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 },
+				],
+				[
+					{ node: 'Node2', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			]);
+		});
+
+		test('should return connections between a single source and multiple targets', () => {
+			const connections: IConnections = {
+				Node1: {
+					main: [
+						[
+							{ node: 'TargetNode1', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'TargetNode2', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'Node1',
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'TargetNode1',
+						name: 'TargetNode1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'TargetNode2',
+						name: 'TargetNode2',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getConnectionsBetweenNodes(['Node1'], ['TargetNode1', 'TargetNode2']);
+			expect(result).toEqual([
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode1', type: NodeConnectionTypes.Main, index: 0 },
+				],
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode2', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			]);
+		});
+
+		test('should handle workflows with multiple connection types', () => {
+			const connections: IConnections = {
+				Node1: {
+					main: [
+						[
+							{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 1 },
+						],
+					],
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'TargetNode', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'Node1',
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'TargetNode',
+						name: 'TargetNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getConnectionsBetweenNodes(['Node1'], ['TargetNode']);
+			expect(result).toEqual([
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 },
+				],
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.Main },
+					{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 1 },
+				],
+				[
+					{ node: 'Node1', index: 0, type: NodeConnectionTypes.AiAgent },
+					{ node: 'TargetNode', type: NodeConnectionTypes.AiAgent, index: 0 },
+				],
+			]);
+		});
+
+		test('should handle nodes with no connections', () => {
+			const connections: IConnections = {
+				Node1: {
+					main: [[]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'Node1',
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'TargetNode',
+						name: 'TargetNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getConnectionsBetweenNodes(['Node1'], ['TargetNode']);
+			expect(result).toEqual([]);
+		});
+	});
 });
