@@ -13,7 +13,7 @@ import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const environment = process.env.NODE_ENV;

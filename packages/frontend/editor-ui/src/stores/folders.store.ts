@@ -11,7 +11,7 @@ import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
