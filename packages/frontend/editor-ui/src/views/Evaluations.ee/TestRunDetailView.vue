@@ -5,7 +5,7 @@ import TestTableBase from '@/components/Evaluations.ee/shared/TestTableBase.vue'
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
