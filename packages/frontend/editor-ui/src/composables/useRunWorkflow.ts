@@ -35,7 +35,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
@@ -118,6 +118,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	async function runWorkflow(options: {
 		destinationNode?: string;
 		triggerNode?: string;
+		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
@@ -171,7 +172,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if (options.triggerNode && options.nodeData) {
+			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
+				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
 					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
@@ -498,7 +500,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		} finally {
 			// Wait for websocket event to update the execution status to 'canceled'
-			await retry(
+			const markedAsStopped = await retry(
 				async () => {
 					if (workflowsStore.workflowExecutionData?.status !== 'running') {
 						workflowsStore.markExecutionAsStopped();
@@ -508,8 +510,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					return false;
 				},
 				250,
-				10,
+				20,
 			);
+
+			if (!markedAsStopped) {
+				workflowsStore.markExecutionAsStopped();
+			}
 		}
 	}
 

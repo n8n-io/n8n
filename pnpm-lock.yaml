@@ -154,6 +154,9 @@ catalogs:
     vue:
       specifier: ^3.5.13
       version: 3.5.13
+    vue-i18n:
+      specifier: ^11.1.2
+      version: 11.1.2
     vue-markdown-render:
       specifier: ^2.2.1
       version: 2.2.1
@@ -391,18 +394,30 @@ importers:
 
   packages/@n8n/backend-common:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:^
+        version: link:../config
       '@n8n/constants':
         specifier: workspace:^
         version: link:../constants
       '@n8n/di':
         specifier: workspace:^
         version: link:../di
+      callsites:
+        specifier: 'catalog:'
+        version: 3.1.0
       n8n-workflow:
         specifier: workspace:^
         version: link:../../workflow
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      winston:
+        specifier: 3.14.2
+        version: 3.14.2
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -415,7 +430,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -440,7 +455,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -734,7 +749,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))
+        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -761,7 +776,7 @@ importers:
         version: 0.3.2(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(9b62d544268bf8b21f905847a18f95f1)
+        version: 0.3.24(90a94ff6ee073f963f6e65dd73dfbb27)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -866,7 +881,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+        version: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1165,7 +1180,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1496,7 +1511,7 @@ importers:
         version: 8.52.1
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -1856,6 +1871,61 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
+  packages/frontend/@n8n/i18n:
+    dependencies:
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.1.2(vue@3.5.13(typescript@5.8.2))
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.0)
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.8.2))
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(vite@6.3.5(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.8.2))
+      '@vue/tsconfig':
+        specifier: catalog:frontend
+        version: 0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.13(typescript@5.8.2))
+      tsup:
+        specifier: 'catalog:'
+        version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.19.103))(jiti@1.21.0)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+      vite:
+        specifier: catalog:frontend
+        version: 6.3.5(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
+      vitest:
+        specifier: catalog:frontend
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@18.19.103)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.8.2)
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
+
   packages/frontend/@n8n/stores:
     dependencies:
       n8n-workflow:
@@ -1982,6 +2052,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../@n8n/i18n
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
@@ -2026,7 +2099,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -2124,7 +2197,7 @@ importers:
         specifier: ^3.1.3
         version: 3.1.3
       vue-i18n:
-        specifier: ^11.1.2
+        specifier: catalog:frontend
         version: 11.1.2(vue@3.5.13(typescript@5.8.2))
       vue-json-pretty:
         specifier: 2.2.4
@@ -2572,7 +2645,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.3.6)
+        version: 1.8.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -6436,9 +6509,6 @@ packages:
   '@types/minimatch@5.1.2':
     resolution: {integrity: sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==}
 
-  '@types/ms@0.7.34':
-    resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
-
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
@@ -8443,10 +8513,6 @@ packages:
     resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
     engines: {node: '>=12'}
 
-  dotenv@16.4.5:
-    resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
-    engines: {node: '>=12'}
-
   dotenv@16.5.0:
     resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
     engines: {node: '>=12'}
@@ -9114,15 +9180,6 @@ packages:
 
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
-
-  follow-redirects@1.15.6:
-    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
 
   follow-redirects@1.15.9:
     resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
@@ -10641,9 +10698,6 @@ packages:
   lossless-json@4.0.2:
     resolution: {integrity: sha512-+z0EaLi2UcWi8MZRxA5iTb6m4Ys4E80uftGY+yG5KNFJb5EceQXOhdW/pWJZ8m97s26u7yZZAYMcKWNztSZssA==}
 
-  loupe@3.1.2:
-    resolution: {integrity: sha512-23I4pFZHmAemUnz8WZXbYRSKYj801VDaNv9ETuMh7IrMc7VuVVSo+Z9iLE3ni30+U48iDWfi30d3twAXBYmnCg==}
-
   loupe@3.1.3:
     resolution: {integrity: sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug==}
 
@@ -11684,9 +11738,6 @@ packages:
 
   pathe@1.1.2:
     resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
-
-  pathe@2.0.2:
-    resolution: {integrity: sha512-15Ztpk+nov8DR524R4BF7uEuzESgzUEAV4Ah7CUMNGXdE5ELuvxElxGXndBl32vMSsWa1jpNf22Z+Er3sKwq+w==}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -14340,11 +14391,6 @@ packages:
     peerDependencies:
       zod: ^3.23.3
 
-  zod-to-json-schema@3.24.1:
-    resolution: {integrity: sha512-3h08nf3Vw3Wl3PK+q3ow/lIil81IT2Oa7YpQyUUDsEWbXveMesdfK1xBd2RhCkynwZndAxixji/7SYJJowr62w==}
-    peerDependencies:
-      zod: ^3.24.1
-
   zod-to-json-schema@3.24.5:
     resolution: {integrity: sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==}
     peerDependencies:
@@ -14365,7 +14411,7 @@ snapshots:
   '@acuminous/bitsyntax@0.1.2':
     dependencies:
       buffer-more-ints: 1.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       safe-buffer: 5.1.2
     transitivePeerDependencies:
       - supports-color
@@ -14404,16 +14450,15 @@ snapshots:
 
   '@anthropic-ai/sdk@0.32.1(encoding@0.1.13)':
     dependencies:
-      '@types/node': 18.16.16
-      '@types/node-fetch': 2.6.4
+      '@types/node': 18.19.103
+      '@types/node-fetch': 2.6.12
       abort-controller: 3.0.0
-      agentkeepalive: 4.2.1
+      agentkeepalive: 4.6.0
       form-data-encoder: 1.7.2
       formdata-node: 4.4.1
       node-fetch: 2.7.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
-      - supports-color
 
   '@apidevtools/json-schema-ref-parser@11.9.3':
     dependencies:
@@ -14431,19 +14476,19 @@ snapshots:
     dependencies:
       '@aws-crypto/util': 3.0.0
       '@aws-sdk/types': 3.804.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
       '@aws-sdk/types': 3.804.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
       '@aws-sdk/types': 3.804.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/sha1-browser@5.2.0':
     dependencies:
@@ -14452,7 +14497,7 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@aws-sdk/util-locate-window': 3.310.0
       '@smithy/util-utf8': 2.3.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/sha256-browser@5.2.0':
     dependencies:
@@ -14472,19 +14517,19 @@ snapshots:
 
   '@aws-crypto/supports-web-crypto@5.2.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/util@3.0.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@aws-sdk/util-utf8-browser': 3.259.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-crypto/util@5.2.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@smithy/util-utf8': 2.3.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/client-bedrock-agent-runtime@3.808.0':
     dependencies:
@@ -14529,7 +14574,7 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-retry': 4.0.3
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -14580,7 +14625,7 @@ snapshots:
       '@smithy/util-stream': 4.2.0
       '@smithy/util-utf8': 4.0.0
       '@types/uuid': 9.0.8
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 9.0.1
     transitivePeerDependencies:
       - aws-crt
@@ -14625,7 +14670,7 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-retry': 4.0.3
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -14670,7 +14715,7 @@ snapshots:
       '@smithy/util-retry': 4.0.3
       '@smithy/util-utf8': 4.0.0
       '@types/uuid': 9.0.8
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 9.0.1
     transitivePeerDependencies:
       - aws-crt
@@ -14778,7 +14823,7 @@ snapshots:
       '@smithy/util-utf8': 4.0.0
       '@smithy/util-waiter': 4.0.3
       '@types/uuid': 9.0.8
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 9.0.1
     transitivePeerDependencies:
       - aws-crt
@@ -14912,7 +14957,7 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-retry': 4.0.3
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -14936,7 +14981,7 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@smithy/property-provider': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -14946,7 +14991,7 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@smithy/property-provider': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/credential-provider-http@3.808.0':
     dependencies:
@@ -14959,7 +15004,7 @@ snapshots:
       '@smithy/smithy-client': 4.2.5
       '@smithy/types': 4.2.0
       '@smithy/util-stream': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/credential-provider-ini@3.808.0':
     dependencies:
@@ -14975,7 +15020,7 @@ snapshots:
       '@smithy/property-provider': 4.0.2
       '@smithy/shared-ini-file-loader': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -15003,7 +15048,7 @@ snapshots:
       '@smithy/property-provider': 4.0.2
       '@smithy/shared-ini-file-loader': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/credential-provider-sso@3.808.0':
     dependencies:
@@ -15014,7 +15059,7 @@ snapshots:
       '@smithy/property-provider': 4.0.2
       '@smithy/shared-ini-file-loader': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -15025,7 +15070,7 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@smithy/property-provider': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -15049,7 +15094,7 @@ snapshots:
       '@smithy/node-config-provider': 4.1.1
       '@smithy/property-provider': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -15058,7 +15103,7 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@smithy/eventstream-codec': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-bucket-endpoint@3.808.0':
     dependencies:
@@ -15068,21 +15113,21 @@ snapshots:
       '@smithy/protocol-http': 5.1.0
       '@smithy/types': 4.2.0
       '@smithy/util-config-provider': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-eventstream@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@smithy/protocol-http': 5.1.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-expect-continue@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@smithy/protocol-http': 5.1.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-flexible-checksums@3.808.0':
     dependencies:
@@ -15098,7 +15143,7 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-stream': 4.2.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-host-header@3.804.0':
     dependencies:
@@ -15111,7 +15156,7 @@ snapshots:
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-logger@3.804.0':
     dependencies:
@@ -15141,13 +15186,13 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-stream': 4.2.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-ssec@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/middleware-user-agent@3.808.0':
     dependencies:
@@ -15198,14 +15243,14 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-retry': 4.0.3
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
   '@aws-sdk/protocol-http@3.374.0':
     dependencies:
       '@smithy/protocol-http': 1.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/region-config-resolver@3.808.0':
     dependencies:
@@ -15223,12 +15268,12 @@ snapshots:
       '@smithy/protocol-http': 5.1.0
       '@smithy/signature-v4': 5.1.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/signature-v4@3.374.0':
     dependencies:
       '@smithy/signature-v4': 1.1.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/token-providers@3.808.0':
     dependencies:
@@ -15237,7 +15282,7 @@ snapshots:
       '@smithy/property-provider': 4.0.2
       '@smithy/shared-ini-file-loader': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
 
@@ -15248,7 +15293,7 @@ snapshots:
 
   '@aws-sdk/util-arn-parser@3.804.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/util-endpoints@3.808.0':
     dependencies:
@@ -15259,7 +15304,7 @@ snapshots:
 
   '@aws-sdk/util-locate-window@3.310.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/util-user-agent-browser@3.804.0':
     dependencies:
@@ -15278,12 +15323,12 @@ snapshots:
 
   '@aws-sdk/util-utf8-browser@3.259.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/xml-builder@3.804.0':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@azure/abort-controller@1.1.0':
     dependencies:
@@ -15291,11 +15336,11 @@ snapshots:
 
   '@azure/abort-controller@2.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@azure/abort-controller@2.1.2':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@azure/core-auth@1.6.0':
     dependencies:
@@ -15368,7 +15413,7 @@ snapshots:
       '@azure/core-tracing': 1.0.1
       '@azure/core-util': 1.7.0
       '@azure/logger': 1.0.3
-      form-data: 4.0.0
+      form-data: 4.0.2
       http-proxy-agent: 5.0.0
       https-proxy-agent: 5.0.1
       tslib: 2.6.2
@@ -15400,7 +15445,7 @@ snapshots:
   '@azure/core-xml@1.4.5':
     dependencies:
       fast-xml-parser: 5.2.3
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@azure/identity@4.3.0':
     dependencies:
@@ -15433,7 +15478,7 @@ snapshots:
       '@azure/core-tracing': 1.2.0
       '@azure/core-util': 1.12.0
       '@azure/logger': 1.0.3
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
 
@@ -15483,7 +15528,7 @@ snapshots:
       '@azure/core-xml': 1.4.5
       '@azure/logger': 1.0.3
       events: 3.3.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
 
@@ -15508,7 +15553,7 @@ snapshots:
       '@babel/traverse': 7.26.10
       '@babel/types': 7.26.10
       convert-source-map: 2.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.6.0
@@ -15519,7 +15564,7 @@ snapshots:
     dependencies:
       '@babel/parser': 7.26.10
       '@babel/types': 7.26.10
-      '@jridgewell/gen-mapping': 0.3.5
+      '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
       jsesc: 3.0.2
 
@@ -15544,7 +15589,7 @@ snapshots:
       '@babel/helper-replace-supers': 7.26.5(@babel/core@7.26.10)
       '@babel/helper-skip-transparent-expression-wrappers': 7.25.9
       '@babel/traverse': 7.26.10
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -15553,14 +15598,14 @@ snapshots:
       '@babel/core': 7.26.10
       '@babel/helper-annotate-as-pure': 7.25.9
       regexpu-core: 6.2.0
-      semver: 7.6.0
+      semver: 7.7.2
 
   '@babel/helper-define-polyfill-provider@0.6.3(@babel/core@7.26.10)':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-compilation-targets': 7.26.5
       '@babel/helper-plugin-utils': 7.26.5
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -16191,7 +16236,7 @@ snapshots:
       '@babel/parser': 7.26.10
       '@babel/template': 7.26.9
       '@babel/types': 7.26.10
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -16600,7 +16645,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16609,7 +16654,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+      langchain: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
     transitivePeerDependencies:
       - encoding
 
@@ -16742,7 +16787,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.10
       '@iconify/types': 2.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       kolorist: 1.8.0
       local-pkg: 0.5.0
       mlly: 1.7.1
@@ -17087,7 +17132,7 @@ snapshots:
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -17102,7 +17147,6 @@ snapshots:
       zod-to-json-schema: 3.23.3(zod@3.24.1)
     transitivePeerDependencies:
       - encoding
-      - supports-color
 
   '@langchain/anthropic@0.3.11(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)':
     dependencies:
@@ -17113,7 +17157,6 @@ snapshots:
       zod-to-json-schema: 3.23.3(zod@3.24.1)
     transitivePeerDependencies:
       - encoding
-      - supports-color
 
   '@langchain/aws@0.1.3(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))':
     dependencies:
@@ -17138,7 +17181,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(9b62d544268bf8b21f905847a18f95f1)':
+  '@langchain/community@0.3.24(90a94ff6ee073f963f6e65dd73dfbb27)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17149,7 +17192,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+      langchain: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17164,7 +17207,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -17508,7 +17551,7 @@ snapshots:
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
       raw-body: 3.0.0
       zod: 3.24.1
-      zod-to-json-schema: 3.24.1(zod@3.24.1)
+      zod-to-json-schema: 3.24.5(zod@3.24.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -17558,7 +17601,7 @@ snapshots:
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.9.0(debug@4.3.6)
       debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -17585,14 +17628,14 @@ snapshots:
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
-      debug: 4.4.0(supports-color@8.1.1)
-      dotenv: 16.4.5
+      debug: 4.4.1
+      dotenv: 16.5.0
       glob: 10.4.5
       mkdirp: 2.1.3
       reflect-metadata: 0.2.2
       sha.js: 2.4.11
       tarn: 3.0.2
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 9.0.1
       yargs: 17.7.2
     optionalDependencies:
@@ -17617,14 +17660,14 @@ snapshots:
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
-      debug: 4.4.0(supports-color@8.1.1)
-      dotenv: 16.4.5
+      debug: 4.4.1
+      dotenv: 16.5.0
       glob: 10.4.5
       mkdirp: 2.1.3
       reflect-metadata: 0.2.2
       sha.js: 2.4.11
       tarn: 3.0.2
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 9.0.1
       yargs: 17.7.2
     optionalDependencies:
@@ -17679,7 +17722,7 @@ snapshots:
   '@npmcli/fs@1.1.1':
     dependencies:
       '@gar/promisify': 1.1.3
-      semver: 7.6.0
+      semver: 7.7.2
     optional: true
 
   '@npmcli/move-file@1.1.2':
@@ -17820,7 +17863,7 @@ snapshots:
       '@opentelemetry/instrumentation': 0.56.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.28.0
       forwarded-parse: 2.1.2
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -17953,7 +17996,7 @@ snapshots:
       '@types/shimmer': 1.2.0
       import-in-the-middle: 1.11.3
       require-in-the-middle: 7.4.0
-      semver: 7.6.0
+      semver: 7.7.2
       shimmer: 1.2.1
     transitivePeerDependencies:
       - supports-color
@@ -17965,7 +18008,7 @@ snapshots:
       '@types/shimmer': 1.2.0
       import-in-the-middle: 1.11.3
       require-in-the-middle: 7.4.0
-      semver: 7.6.0
+      semver: 7.7.2
       shimmer: 1.2.1
     transitivePeerDependencies:
       - supports-color
@@ -18148,7 +18191,7 @@ snapshots:
       chokidar: 4.0.1
       colorette: 1.4.0
       core-js: 3.40.0
-      form-data: 4.0.0
+      form-data: 4.0.2
       get-port-please: 3.1.2
       glob: 7.2.3
       handlebars: 4.7.8
@@ -18265,7 +18308,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.8.3
       axios-retry: 4.5.0(axios@1.8.3)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -18292,7 +18335,7 @@ snapshots:
       import-lazy: 4.0.0
       jju: 1.4.0
       resolve: 1.22.8
-      semver: 7.6.0
+      semver: 7.7.2
     optionalDependencies:
       '@types/node': 18.19.103
 
@@ -18461,16 +18504,16 @@ snapshots:
   '@smithy/abort-controller@4.0.2':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/chunked-blob-reader-native@4.0.0':
     dependencies:
       '@smithy/util-base64': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/chunked-blob-reader@5.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/config-resolver@4.1.2':
     dependencies:
@@ -18497,14 +18540,14 @@ snapshots:
       '@smithy/property-provider': 4.0.2
       '@smithy/types': 4.2.0
       '@smithy/url-parser': 4.0.2
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-codec@1.1.0':
     dependencies:
       '@aws-crypto/crc32': 3.0.0
       '@smithy/types': 1.2.0
       '@smithy/util-hex-encoding': 1.1.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-codec@2.2.0':
     dependencies:
@@ -18519,30 +18562,30 @@ snapshots:
       '@aws-crypto/crc32': 5.2.0
       '@smithy/types': 4.2.0
       '@smithy/util-hex-encoding': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-serde-browser@4.0.2':
     dependencies:
       '@smithy/eventstream-serde-universal': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-serde-config-resolver@4.1.0':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-serde-node@4.0.2':
     dependencies:
       '@smithy/eventstream-serde-universal': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/eventstream-serde-universal@4.0.2':
     dependencies:
       '@smithy/eventstream-codec': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/fetch-http-handler@5.0.2':
     dependencies:
@@ -18557,7 +18600,7 @@ snapshots:
       '@smithy/chunked-blob-reader': 5.0.0
       '@smithy/chunked-blob-reader-native': 4.0.0
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/hash-node@4.0.2':
     dependencies:
@@ -18570,7 +18613,7 @@ snapshots:
     dependencies:
       '@smithy/types': 4.2.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/invalid-dependency@4.0.2':
     dependencies:
@@ -18579,21 +18622,21 @@ snapshots:
 
   '@smithy/is-array-buffer@1.1.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/is-array-buffer@2.2.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/is-array-buffer@4.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/md5-js@4.0.2':
     dependencies:
       '@smithy/types': 4.2.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/middleware-content-length@4.0.2':
     dependencies:
@@ -18653,12 +18696,12 @@ snapshots:
   '@smithy/property-provider@4.0.2':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/protocol-http@1.2.0':
     dependencies:
       '@smithy/types': 1.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/protocol-http@3.3.0':
     dependencies:
@@ -18675,12 +18718,12 @@ snapshots:
     dependencies:
       '@smithy/types': 4.2.0
       '@smithy/util-uri-escape': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/querystring-parser@4.0.2':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/service-error-classification@4.0.3':
     dependencies:
@@ -18689,7 +18732,7 @@ snapshots:
   '@smithy/shared-ini-file-loader@4.0.2':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/signature-v4@1.1.0':
     dependencies:
@@ -18700,7 +18743,7 @@ snapshots:
       '@smithy/util-middleware': 1.1.0
       '@smithy/util-uri-escape': 1.1.0
       '@smithy/util-utf8': 1.1.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/signature-v4@2.2.1':
     dependencies:
@@ -18722,7 +18765,7 @@ snapshots:
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-uri-escape': 4.0.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/smithy-client@4.2.5':
     dependencies:
@@ -18736,7 +18779,7 @@ snapshots:
 
   '@smithy/types@1.2.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/types@2.12.0':
     dependencies:
@@ -18770,21 +18813,21 @@ snapshots:
   '@smithy/util-buffer-from@1.1.0':
     dependencies:
       '@smithy/is-array-buffer': 1.1.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-buffer-from@2.2.0':
     dependencies:
       '@smithy/is-array-buffer': 2.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-buffer-from@4.0.0':
     dependencies:
       '@smithy/is-array-buffer': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-config-provider@4.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-defaults-mode-browser@4.0.13':
     dependencies:
@@ -18812,7 +18855,7 @@ snapshots:
 
   '@smithy/util-hex-encoding@1.1.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-hex-encoding@2.2.0':
     dependencies:
@@ -18821,11 +18864,11 @@ snapshots:
 
   '@smithy/util-hex-encoding@4.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-middleware@1.1.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-middleware@2.2.0':
     dependencies:
@@ -18853,11 +18896,11 @@ snapshots:
       '@smithy/util-buffer-from': 4.0.0
       '@smithy/util-hex-encoding': 4.0.0
       '@smithy/util-utf8': 4.0.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-uri-escape@1.1.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-uri-escape@2.2.0':
     dependencies:
@@ -18866,17 +18909,17 @@ snapshots:
 
   '@smithy/util-uri-escape@4.0.0':
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-utf8@1.1.0':
     dependencies:
       '@smithy/util-buffer-from': 1.1.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-utf8@2.3.0':
     dependencies:
       '@smithy/util-buffer-from': 2.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@smithy/util-utf8@4.0.0':
     dependencies:
@@ -18887,7 +18930,7 @@ snapshots:
     dependencies:
       '@smithy/abort-controller': 4.0.2
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@sqltools/formatter@1.2.5': {}
 
@@ -19297,7 +19340,7 @@ snapshots:
 
   '@types/basic-auth@1.1.3':
     dependencies:
-      '@types/node': 18.16.16
+      '@types/node': 18.19.103
 
   '@types/bcryptjs@2.4.2': {}
 
@@ -19306,7 +19349,7 @@ snapshots:
   '@types/body-parser@1.19.2':
     dependencies:
       '@types/connect': 3.4.36
-      '@types/node': 18.16.16
+      '@types/node': 18.19.103
 
   '@types/caseless@0.12.5': {}
 
@@ -19353,7 +19396,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)':
     dependencies:
-      '@types/node': 18.16.16
+      '@types/node': 18.19.103
       '@types/qs': 6.9.15
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.4
@@ -19452,8 +19495,8 @@ snapshots:
 
   '@types/jsonwebtoken@9.0.9':
     dependencies:
-      '@types/ms': 0.7.34
-      '@types/node': 18.16.16
+      '@types/ms': 2.1.0
+      '@types/node': 18.19.103
 
   '@types/k6@0.52.0': {}
 
@@ -19506,8 +19549,6 @@ snapshots:
   '@types/mime@3.0.1': {}
 
   '@types/minimatch@5.1.2': {}
-
-  '@types/ms@0.7.34': {}
 
   '@types/ms@2.1.0': {}
 
@@ -19663,7 +19704,7 @@ snapshots:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
       '@types/node': 18.16.16
-      form-data: 4.0.0
+      form-data: 4.0.2
 
   '@types/supertest@6.0.3':
     dependencies:
@@ -19737,7 +19778,7 @@ snapshots:
 
   '@types/xml2js@0.4.14':
     dependencies:
-      '@types/node': 18.16.16
+      '@types/node': 18.19.103
 
   '@types/yamljs@0.2.31': {}
 
@@ -19815,11 +19856,11 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 6.21.0
       '@typescript-eslint/visitor-keys': 6.21.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
-      semver: 7.6.0
+      semver: 7.7.2
       ts-api-utils: 1.0.1(typescript@5.8.2)
     optionalDependencies:
       typescript: 5.8.2
@@ -19890,7 +19931,7 @@ snapshots:
     dependencies:
       http-proxy-agent: 7.0.0
       https-proxy-agent: 7.0.6
-      tslib: 2.6.2
+      tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
 
@@ -19920,7 +19961,7 @@ snapshots:
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
       istanbul-lib-source-maps: 5.0.6
@@ -19991,13 +20032,13 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 2.0.5
       estree-walker: 3.0.3
-      loupe: 3.1.2
+      loupe: 3.1.3
       tinyrainbow: 1.2.0
 
   '@vitest/utils@2.1.8':
     dependencies:
       '@vitest/pretty-format': 2.1.8
-      loupe: 3.1.2
+      loupe: 3.1.3
       tinyrainbow: 1.2.0
 
   '@vitest/utils@3.1.3':
@@ -20285,13 +20326,13 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
   agent-base@7.1.0:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -20558,13 +20599,13 @@ snapshots:
 
   ast-types@0.16.1:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   astral-regex@2.0.0: {}
 
   async-mutex@0.5.0:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   async-retry@1.3.3:
     dependencies:
@@ -20604,28 +20645,36 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.8.3
       is-retry-allowed: 2.2.0
 
-  axios@1.8.3(debug@4.3.6):
+  axios@1.8.3:
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
-      form-data: 4.0.0
+      follow-redirects: 1.15.9(debug@4.3.6)
+      form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
 
-  axios@1.8.3(debug@4.4.0):
+  axios@1.9.0(debug@4.3.6):
     dependencies:
-      follow-redirects: 1.15.6(debug@4.4.0)
-      form-data: 4.0.0
+      follow-redirects: 1.15.9(debug@4.3.6)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0(debug@4.4.0):
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.4.0)
+      form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
 
   axios@1.9.0(debug@4.4.1):
     dependencies:
-      follow-redirects: 1.15.9(debug@4.4.1)
+      follow-redirects: 1.15.9(debug@4.3.6)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -20961,7 +21010,7 @@ snapshots:
       assertion-error: 2.0.1
       check-error: 2.1.1
       deep-eql: 5.0.2
-      loupe: 3.1.2
+      loupe: 3.1.3
       pathval: 2.0.0
 
   chai@5.2.0:
@@ -21166,7 +21215,7 @@ snapshots:
       '@aws-sdk/credential-providers': 3.808.0
       '@aws-sdk/protocol-http': 3.374.0
       '@aws-sdk/signature-v4': 3.374.0
-      form-data: 4.0.0
+      form-data: 4.0.2
       form-data-encoder: 4.0.2
       formdata-node: 6.0.3
       js-base64: 3.7.2
@@ -21855,8 +21904,6 @@ snapshots:
 
   dotenv@16.3.1: {}
 
-  dotenv@16.4.5: {}
-
   dotenv@16.5.0: {}
 
   dotenv@8.6.0: {}
@@ -21907,7 +21954,7 @@ snapshots:
       '@one-ini/wasm': 0.1.1
       commander: 10.0.1
       minimatch: 9.0.1
-      semver: 7.6.0
+      semver: 7.7.2
 
   ee-first@1.1.1: {}
 
@@ -22161,7 +22208,7 @@ snapshots:
 
   esbuild-register@3.5.0(esbuild@0.24.0):
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       esbuild: 0.24.0
     transitivePeerDependencies:
       - supports-color
@@ -22251,7 +22298,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22276,7 +22323,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -22296,7 +22343,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22677,7 +22724,7 @@ snapshots:
   fast-unique-numbers@8.0.13:
     dependencies:
       '@babel/runtime': 7.26.10
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   fast-uri@3.0.1: {}
 
@@ -22797,17 +22844,13 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.15.6(debug@4.3.6):
+  follow-redirects@1.15.9(debug@4.3.6):
     optionalDependencies:
       debug: 4.3.6(supports-color@8.1.1)
 
-  follow-redirects@1.15.6(debug@4.4.0):
+  follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0(supports-color@8.1.1)
-
-  follow-redirects@1.15.9(debug@4.4.1):
-    optionalDependencies:
-      debug: 4.4.1
 
   for-each@0.3.3:
     dependencies:
@@ -23130,7 +23173,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23195,7 +23238,7 @@ snapshots:
 
   groq-sdk@0.5.0(encoding@0.1.13):
     dependencies:
-      '@types/node': 18.16.16
+      '@types/node': 18.19.103
       '@types/node-fetch': 2.6.4
       abort-controller: 3.0.0
       agentkeepalive: 4.2.1
@@ -23360,7 +23403,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -23369,14 +23412,14 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
   http-proxy-agent@7.0.0:
     dependencies:
       agent-base: 7.1.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -23391,14 +23434,14 @@ snapshots:
   https-proxy-agent@4.0.0:
     dependencies:
       agent-base: 5.1.1
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -23434,7 +23477,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0)
+      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -23499,7 +23542,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.9.0(debug@4.4.1)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -23752,7 +23795,7 @@ snapshots:
       '@babel/parser': 7.26.10
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -23764,7 +23807,7 @@ snapshots:
 
   istanbul-lib-source-maps@4.0.1:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -23773,7 +23816,7 @@ snapshots:
   istanbul-lib-source-maps@5.0.6:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       istanbul-lib-coverage: 3.2.2
     transitivePeerDependencies:
       - supports-color
@@ -24150,7 +24193,7 @@ snapshots:
       jest-util: 29.6.2
       natural-compare: 1.4.0
       pretty-format: 29.7.0
-      semver: 7.6.0
+      semver: 7.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -24310,7 +24353,7 @@ snapshots:
       cssstyle: 3.0.0
       data-urls: 5.0.0
       decimal.js: 10.4.3
-      form-data: 4.0.0
+      form-data: 4.0.2
       html-encoding-sniffer: 4.0.0
       http-proxy-agent: 7.0.0
       https-proxy-agent: 7.0.6
@@ -24394,7 +24437,7 @@ snapshots:
       lodash.isstring: 4.0.1
       lodash.once: 4.1.1
       ms: 2.1.3
-      semver: 7.6.0
+      semver: 7.7.2
 
   jsprim@2.0.2:
     dependencies:
@@ -24459,7 +24502,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(d71d1df33a22803bba4e47303d410a51):
+  langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da):
     dependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -24497,7 +24540,7 @@ snapshots:
       commander: 10.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
-      semver: 7.6.0
+      semver: 7.7.2
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.24.1)
@@ -24508,7 +24551,7 @@ snapshots:
       commander: 10.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
-      semver: 7.6.0
+      semver: 7.7.2
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
@@ -24743,15 +24786,13 @@ snapshots:
 
   lossless-json@4.0.2: {}
 
-  loupe@3.1.2: {}
-
   loupe@3.1.3: {}
 
   lower-case@1.1.4: {}
 
   lower-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   lru-cache@10.2.2: {}
 
@@ -24813,7 +24854,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.6.0
+      semver: 7.7.2
 
   make-error@1.3.6: {}
 
@@ -25354,7 +25395,7 @@ snapshots:
   mlly@1.7.4:
     dependencies:
       acorn: 8.14.0
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.5.4
 
@@ -25402,7 +25443,7 @@ snapshots:
   mqtt-packet@9.0.0:
     dependencies:
       bl: 6.0.12
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       process-nextick-args: 2.0.1
     transitivePeerDependencies:
       - supports-color
@@ -25654,7 +25695,7 @@ snapshots:
     dependencies:
       hosted-git-info: 2.8.9
       resolve: 1.22.8
-      semver: 7.6.0
+      semver: 7.7.2
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}
@@ -25696,7 +25737,7 @@ snapshots:
 
   number-allocator@1.0.14:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       js-sdsl: 4.3.0
     transitivePeerDependencies:
       - supports-color
@@ -26038,8 +26079,6 @@ snapshots:
 
   pathe@1.1.2: {}
 
-  pathe@2.0.2: {}
-
   pathe@2.0.3: {}
 
   pathval@2.0.0: {}
@@ -26050,7 +26089,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26276,7 +26315,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.9.0(debug@4.4.1)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26676,7 +26715,7 @@ snapshots:
       ast-types: 0.15.2
       esprima: 4.0.1
       source-map: 0.6.1
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   recast@0.23.6:
     dependencies:
@@ -26684,7 +26723,7 @@ snapshots:
       esprima: 4.0.1
       source-map: 0.6.1
       tiny-invariant: 1.3.3
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   rechoir@0.6.2:
     dependencies:
@@ -26831,7 +26870,7 @@ snapshots:
 
   require-in-the-middle@7.4.0:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       module-details-from-path: 1.0.3
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -26862,7 +26901,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0):
+  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
     dependencies:
       axios: 1.9.0(debug@4.4.1)
 
@@ -26889,7 +26928,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26974,11 +27013,11 @@ snapshots:
 
   rxjs@6.6.7:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   rxjs@7.8.1:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   safe-array-concat@1.1.2:
     dependencies:
@@ -27276,7 +27315,7 @@ snapshots:
 
   simple-websocket@9.1.0:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       queue-microtask: 1.2.3
       randombytes: 2.1.0
       readable-stream: 3.6.0
@@ -27324,7 +27363,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.9.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -27358,7 +27397,7 @@ snapshots:
   socks-proxy-agent@6.2.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
@@ -27655,13 +27694,13 @@ snapshots:
       react-dom: 18.2.0(react@18.2.0)
       shallowequal: 1.1.0
       stylis: 4.3.1
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   stylis@4.3.1: {}
 
   sucrase@3.35.0:
     dependencies:
-      '@jridgewell/gen-mapping': 0.3.5
+      '@jridgewell/gen-mapping': 0.3.8
       commander: 4.1.1
       glob: 10.4.5
       lines-and-columns: 1.2.4
@@ -27673,7 +27712,7 @@ snapshots:
     dependencies:
       component-emitter: 1.3.0
       cookiejar: 2.1.4
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       fast-safe-stringify: 2.1.1
       form-data: 4.0.2
       formidable: 3.5.4
@@ -28073,7 +28112,7 @@ snapshots:
     dependencies:
       '@types/node': 18.19.103
       ts-toolbelt: 9.6.0
-      tslib: 2.6.2
+      tslib: 2.8.1
       typedarray-dts: 1.0.0
 
   tsc-alias@1.8.10:
@@ -28111,7 +28150,7 @@ snapshots:
       cac: 6.7.14
       chokidar: 4.0.1
       consola: 3.4.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       esbuild: 0.24.0
       joycon: 3.1.1
       picocolors: 1.1.1
@@ -28369,13 +28408,13 @@ snapshots:
 
   upper-case-first@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   upper-case@1.1.3: {}
 
   upper-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   uri-js-replace@1.0.1: {}
 
@@ -28457,7 +28496,7 @@ snapshots:
   vite-node@3.1.3(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 6.3.5(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
@@ -28539,7 +28578,7 @@ snapshots:
       '@vitest/spy': 3.1.3
       '@vitest/utils': 3.1.3
       chai: 5.2.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.1
       expect-type: 1.2.1
       magic-string: 0.30.17
       pathe: 2.0.3
@@ -28713,7 +28752,7 @@ snapshots:
 
   wait-on@8.0.2(debug@4.4.0):
     dependencies:
-      axios: 1.8.3(debug@4.4.0)
+      axios: 1.9.0(debug@4.4.0)
       joi: 17.13.3
       lodash: 4.17.21
       minimist: 1.2.8
@@ -28884,18 +28923,18 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.26.10
       fast-unique-numbers: 8.0.13
-      tslib: 2.6.2
+      tslib: 2.8.1
       worker-timers-worker: 7.0.71
 
   worker-timers-worker@7.0.71:
     dependencies:
       '@babel/runtime': 7.26.10
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   worker-timers@7.1.8:
     dependencies:
       '@babel/runtime': 7.26.10
-      tslib: 2.6.2
+      tslib: 2.8.1
       worker-timers-broker: 6.1.8
       worker-timers-worker: 7.0.71
 
@@ -29064,10 +29103,6 @@ snapshots:
       zod: 3.24.1
 
   zod-to-json-schema@3.23.3(zod@3.24.1):
-    dependencies:
-      zod: 3.24.1
-
-  zod-to-json-schema@3.24.1(zod@3.24.1):
     dependencies:
       zod: 3.24.1
 

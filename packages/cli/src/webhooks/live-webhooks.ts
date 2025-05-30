@@ -1,7 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Logger } from 'n8n-core';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 

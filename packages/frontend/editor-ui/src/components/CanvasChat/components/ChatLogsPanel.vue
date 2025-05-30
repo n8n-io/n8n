@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	node: INode | null;
