@@ -11,7 +11,7 @@ export function useClipboard({
 } = {}) {
 	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 	const { copy, copied, isSupported, text } = useClipboardCore({
-		navigator: pipWindow.value?.navigator ?? window.navigator,
+		navigator: pipWindow?.value?.navigator ?? window.navigator,
 		legacy: true,
 	});
 
