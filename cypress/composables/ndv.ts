@@ -73,7 +73,7 @@ export function getInputTbodyCell(row: number, col: number) {
 }
 
 export function getInputRunSelector() {
-	return getInputPanel().findChildByTestId('run-selector');
+	return cy.get('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
 }
 
 export function getInputPanelItemsCount() {
@@ -105,7 +105,7 @@ export function getOutputTbodyCell(row: number, col: number) {
 }
 
 export function getOutputRunSelector() {
-	return getOutputPanel().findChildByTestId('run-selector');
+	return cy.get('[data-test-id="output-panel"] [data-test-id="run-selector"]');
 }
 
 export function getOutputRunSelectorInput() {
