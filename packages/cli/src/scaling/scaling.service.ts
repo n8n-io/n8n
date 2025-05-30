@@ -305,6 +305,7 @@ export class ScalingService {
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
+					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
