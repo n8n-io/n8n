@@ -9,7 +9,7 @@ import * as nodeTypesApi from '@/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
-import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
+import { addHeaders, addNodeTranslation } from '@n8n/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
 	INode,

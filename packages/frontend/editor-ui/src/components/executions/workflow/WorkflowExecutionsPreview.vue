@@ -4,7 +4,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@/permissions';

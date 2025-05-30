@@ -12,7 +12,7 @@ import { useToast } from '@/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 // ---------------------------------------------------------------------------
 // #region Reactive properties
