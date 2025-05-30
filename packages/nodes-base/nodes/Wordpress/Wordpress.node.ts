@@ -16,7 +16,6 @@ import { postFields, postOperations } from './PostDescription';
 import type { IPost } from './PostInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
-import { update } from 'lodash';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
