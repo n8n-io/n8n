@@ -1,7 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, Logger, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,

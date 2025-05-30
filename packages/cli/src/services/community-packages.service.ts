@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstalledPackages } from '@n8n/db';
@@ -7,7 +8,7 @@ import axios from 'axios';
 import { exec } from 'child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
 import { join } from 'path';
 import { promisify } from 'util';

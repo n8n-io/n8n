@@ -3,10 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Logger, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,

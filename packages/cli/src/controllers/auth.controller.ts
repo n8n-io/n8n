@@ -1,10 +1,10 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
-import { Logger } from 'n8n-core';
 
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { AuthService } from '@/auth/auth.service';

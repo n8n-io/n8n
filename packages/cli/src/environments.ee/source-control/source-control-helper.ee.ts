@@ -1,8 +1,8 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
