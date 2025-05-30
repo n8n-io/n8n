@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
 
 let coreInitialized = false;

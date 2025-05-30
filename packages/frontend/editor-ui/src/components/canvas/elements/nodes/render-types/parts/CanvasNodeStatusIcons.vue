@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 

@@ -1,6 +1,6 @@
 import type { RunWorkflowChatPayload } from '@/features/logs/composables/useChatMessaging';
 import { useChatMessaging } from '@/features/logs/composables/useChatMessaging';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';

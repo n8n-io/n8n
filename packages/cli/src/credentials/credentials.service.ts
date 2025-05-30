@@ -1,4 +1,5 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -17,7 +18,7 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
-import { CredentialDataError, Credentials, ErrorReporter, Logger } from 'n8n-core';
+import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -37,6 +38,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
+// eslint-disable-next-line import/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 

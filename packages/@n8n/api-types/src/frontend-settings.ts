@@ -192,4 +192,7 @@ export interface FrontendSettings {
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
 	};
+	evaluation: {
+		quota: number;
+	};
 }

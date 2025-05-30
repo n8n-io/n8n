@@ -157,4 +157,7 @@ export const defaultSettings: FrontendSettings = {
 			{ key: 'year', licensed: false, granularity: 'week' },
 		],
 	},
+	evaluation: {
+		quota: 0,
+	},
 };

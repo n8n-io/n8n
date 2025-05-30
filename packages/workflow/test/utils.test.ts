@@ -1,4 +1,4 @@
-import { ALPHABET } from '@/Constants';
+import { ALPHABET } from '@/constants';
 import { ApplicationError } from '@/errors/application.error';
 import {
 	jsonParse,

@@ -1,4 +1,5 @@
 import type { LicenseProvider } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	LICENSE_FEATURES,
@@ -10,9 +11,9 @@ import {
 import { SettingsRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
+import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
@@ -66,7 +67,10 @@ export class License implements LicenseProvider {
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
 		const onFeatureChange = isMainInstance
-			? async (features: TFeatures) => await this.onFeatureChange(features)
+			? async () => await this.onFeatureChange()
+			: async () => {};
+		const onLicenseRenewed = isMainInstance
+			? async () => await this.onLicenseRenewed()
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
 			? async () => await this.licenseMetricsService.collectUsageMetrics()
@@ -102,6 +106,7 @@ export class License implements LicenseProvider {
 				collectUsageMetrics,
 				collectPassthroughData,
 				onFeatureChange,
+				onLicenseRenewed,
 			});
 
 			await this.manager.initialize();
@@ -129,24 +134,16 @@ export class License implements LicenseProvider {
 		return databaseSettings?.value ?? '';
 	}
 
-	async onFeatureChange(_features: TFeatures): Promise<void> {
-		const { isMultiMain, isLeader } = this.instanceSettings;
+	private async onFeatureChange() {
+		void this.broadcastReloadLicenseCommand();
+	}
 
-		if (Object.keys(_features).length === 0) {
-			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
-			return;
-		}
+	private async onLicenseRenewed() {
+		void this.broadcastReloadLicenseCommand();
+	}
 
-		this.logger.debug('License feature change detected', _features);
-
-		if (isMultiMain && !isLeader) {
-			this.logger
-				.scoped(['scaling', 'multi-main-setup', 'license'])
-				.debug('Instance is not leader, skipping sending of "reload-license" command...');
-			return;
-		}
-
-		if (config.getEnv('executions.mode') === 'queue') {
+	private async broadcastReloadLicenseCommand() {
+		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}

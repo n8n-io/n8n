@@ -1,6 +1,6 @@
+import type { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 
 import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';

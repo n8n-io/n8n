@@ -5,7 +5,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS, VISIBLE_LOGS_VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
