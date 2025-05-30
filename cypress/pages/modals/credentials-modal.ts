@@ -43,7 +43,7 @@ export class CredentialsModal extends BasePage {
 			getVisibleSelect().contains(email.toLowerCase()).click();
 		},
 		setName: (name: string) => {
-			this.getters.name().click();
+			this.getters.name().getByTestId('inline-edit-preview').click();
 			this.getters.nameInput().clear().type(name);
 		},
 		save: (test = false) => {

@@ -1089,6 +1089,7 @@ const { width } = useElementSize(credNameRef);
 					<div ref="credNameRef" :class="$style.credName">
 						<N8nInlineTextEdit
 							v-if="credentialName"
+							data-test-id="credential-name"
 							:model-value="credentialName"
 							:max-width="width - 10"
 							:readonly="
