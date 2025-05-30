@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const executionsStore = useExecutionsStore();
 
