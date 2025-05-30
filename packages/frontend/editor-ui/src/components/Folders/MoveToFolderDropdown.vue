@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { N8nSelect } from '@n8n/design-system';

@@ -15,7 +15,7 @@ import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';

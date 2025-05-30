@@ -11,7 +11,7 @@ import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useCodeEditor } from '@/composables/useCodeEditor';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';

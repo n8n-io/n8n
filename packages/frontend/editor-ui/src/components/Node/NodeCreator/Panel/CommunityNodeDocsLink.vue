@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { N8nText, N8nLink } from '@n8n/design-system';
 

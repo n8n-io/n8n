@@ -41,7 +41,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { get } from 'lodash-es';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';

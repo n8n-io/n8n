@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ResourceType, splitName } from '@/utils/projects.utils';
 import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';

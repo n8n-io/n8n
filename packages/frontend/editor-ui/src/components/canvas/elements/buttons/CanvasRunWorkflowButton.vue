@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 defineEmits<{

@@ -13,7 +13,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
@@ -285,7 +285,10 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 export function getExecutionErrorMessage({
 	error,
 	lastNodeExecuted,
-}: { error?: ExecutionError; lastNodeExecuted?: string }): string {
+}: {
+	error?: ExecutionError;
+	lastNodeExecuted?: string;
+}): string {
 	let errorMessage: string;
 
 	if (lastNodeExecuted && error) {
@@ -320,7 +323,10 @@ export function getExecutionErrorMessage({
 export function getExecutionErrorToastConfiguration({
 	error,
 	lastNodeExecuted,
-}: { error: ExecutionError; lastNodeExecuted?: string }) {
+}: {
+	error: ExecutionError;
+	lastNodeExecuted?: string;
+}) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
 	if (error.name === 'SubworkflowOperationError') {
