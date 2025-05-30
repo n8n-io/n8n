@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: 'Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest'
+        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
         required: true
         default: 'ghcr.io/n8n-io/n8n:latest'
   workflow_call:
     inputs:
       image_ref:
         type: string
-        description: 'Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest'
+        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
         required: true
     secrets:
       SLACK_WEBHOOK_URL:
@@ -36,7 +36,7 @@ jobs:
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           vuln-type: 'os,library'
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: '0'
 
       - name: Process vulnerability results
