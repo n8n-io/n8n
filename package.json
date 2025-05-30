@@ -69,7 +69,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.3.3",
+    "turbo": "2.5.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },

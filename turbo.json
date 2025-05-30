@@ -1,6 +1,11 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"ui": "stream",
+	"remoteCache": {
+		"enabled": true,
+		"timeout": 90,
+		"uploadTimeout": 90
+	},
 	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
 		"clean": {
@@ -26,6 +31,7 @@
 		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
+				"^build",
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
 				"@n8n/decorators#lint",
@@ -46,6 +52,7 @@
 		},
 		"lint:frontend": {
 			"dependsOn": [
+				"^build",
 				"@n8n/chat#lint",
 				"@n8n/codemirror-lang#lint",
 				"@n8n/storybook#lint",
@@ -57,12 +64,15 @@
 		},
 		"lint:nodes": {
 			"dependsOn": [
+				"^build",
 				"n8n-nodes-base#lint",
 				"@n8n/n8n-nodes-langchain#lint",
 				"@n8n/json-schema-to-zod#lint"
 			]
 		},
-		"lint": {},
+		"lint": {
+			"dependsOn": ["^build"]
+		},
 		"lintfix": {},
 		"test:backend": {
 			"dependsOn": [
@@ -79,8 +89,8 @@
 				"n8n-core#test",
 				"n8n#test"
 			],
-			"outputs": ["coverage/**"],
-			"inputs": ["jest.config.js"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
 		"test:frontend": {
 			"dependsOn": [
@@ -90,8 +100,8 @@
 				"@n8n/design-system#test",
 				"n8n-editor-ui#test"
 			],
-			"outputs": ["coverage/**"],
-			"inputs": ["jest.config.js"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
 		"test:nodes": {
 			"dependsOn": [
@@ -99,10 +109,12 @@
 				"@n8n/n8n-nodes-langchain#test",
 				"@n8n/json-schema-to-zod#test"
 			],
-			"outputs": ["coverage/**"],
-			"inputs": ["jest.config.js"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
-		"test": {},
+		"test": {
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"]
+		},
 		"watch": {
 			"cache": false,
 			"persistent": true
