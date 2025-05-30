@@ -7,7 +7,7 @@ import { InstanceSettings } from 'n8n-core';
 import { InsightsByPeriod } from './database/entities/insights-by-period';
 import { InsightsMetadata } from './database/entities/insights-metadata';
 import { InsightsRaw } from './database/entities/insights-raw';
-// import { InsightsInit } from './insights.init';
+import { InsightsInit } from './insights.init';
 
 @N8nModule()
 export class InsightsModule implements BaseN8nModule {
@@ -19,7 +19,7 @@ export class InsightsModule implements BaseN8nModule {
 		 * only they are informed of finished workflow executions.
 		 */
 		if (instanceType === 'main' || instanceType === 'webhook') {
-			// Container.get(InsightsInit); // @TODO
+			Container.get(InsightsInit);
 		}
 	}
 

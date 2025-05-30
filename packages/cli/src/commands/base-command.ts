@@ -84,8 +84,6 @@ export abstract class BaseCommand extends Command {
 
 		this.moduleRegistry.addEntities();
 
-		await Container.get(ModuleRegistry).initModules();
-
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
@@ -117,6 +115,9 @@ export abstract class BaseCommand extends Command {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error initializing DB', error),
 			);
+
+		// init modules after DB init so module-specific entities are registered first
+		await Container.get(ModuleRegistry).initModules();
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
