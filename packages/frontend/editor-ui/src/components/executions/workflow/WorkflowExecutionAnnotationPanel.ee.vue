@@ -1,22 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
 
 const executionsStore = useExecutionsStore();
 
-const { showError } = useToast();
 const i18n = useI18n();
-const telemetry = useTelemetry();
-
-const tagsEventBus = createEventBus();
-const isTagsEditEnabled = ref(false);
-const appliedTagIds = ref<string[]>([]);
-const tagsSaving = ref(false);
 
 const activeExecution = computed(() => {
 	return executionsStore.activeExecution as ExecutionSummary & {
