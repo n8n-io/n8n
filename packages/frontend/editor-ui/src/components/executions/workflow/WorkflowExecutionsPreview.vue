@@ -263,6 +263,7 @@ const onTagsEditEsc = () => {
 					}}</N8nText
 					><VoteButtons
 						v-if="isAnnotationEnabled && execution"
+						data-test-id="execution-preview-vote-buttons"
 						:vote="vote"
 						:class="$style.voteButtons"
 						@vote-click="onVoteClick"

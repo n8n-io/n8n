@@ -2,7 +2,7 @@ import { describe, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
-import { randomInt, type ExecutionSummary } from 'n8n-workflow';
+import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
@@ -12,6 +12,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
+import { STORES } from '@n8n/stores';
+import { nextTick } from 'vue';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -82,7 +84,20 @@ describe('WorkflowExecutionsPreview.vue', () => {
 	const executionData: ExecutionSummary = executionDataFactory();
 
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
 	});
 
 	test.each([
@@ -120,5 +135,384 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('displays annotated tags', async () => {
+		const executionWithTags = {
+			...executionData,
+			annotation: {
+				tags: [
+					{ id: 'tag1', name: 'Test Tag 1' },
+					{ id: 'tag2', name: 'Test Tag 2' },
+				],
+				vote: 'up' as AnnotationVote,
+			},
+		};
+
+		// Set up the test with the execution having tags
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithTags,
+				},
+			},
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { execution: executionWithTags },
+			pinia,
+		});
+
+		await nextTick();
+
+		// Should show annotation tags container
+		expect(getByTestId('annotation-tags-container')).toBeInTheDocument();
+		// Should show existing tags (not the dropdown)
+		expect(getByTestId('execution-annotation-tags')).toBeInTheDocument();
+		// Should not show the dropdown when tags exist
+		expect(queryByTestId('workflow-tags-dropdown')).not.toBeInTheDocument();
+	});
+
+	it('should be able to add a tag', async () => {
+		const executionWithoutTags = {
+			...executionData,
+			annotation: { tags: [], vote: 'up' as AnnotationVote },
+		};
+
+		// Set up the test with the execution having no tags
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithoutTags,
+				},
+			},
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { execution: executionData },
+			pinia,
+		});
+
+		await nextTick();
+
+		// Should show the add tag button when no tags exist
+		const addTagButton = getByTestId('new-tag-link');
+		expect(addTagButton).toBeInTheDocument();
+
+		// Should not show the dropdown initially
+		expect(queryByTestId('workflow-tags-dropdown')).not.toBeInTheDocument();
+
+		// Click the add tag button
+		await userEvent.click(addTagButton);
+
+		// Should show the dropdown after clicking
+		expect(getByTestId('workflow-tags-dropdown')).toBeInTheDocument();
+	});
+
+	it('should display vote buttons when annotation is enabled', async () => {
+		// Set up the test with annotation enabled
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionData },
+			pinia,
+		});
+
+		await nextTick();
+
+		// Should show vote buttons container
+		const voteButtons = getByTestId('execution-preview-vote-buttons');
+		expect(voteButtons).toBeInTheDocument();
+
+		// Should contain two button elements (thumbs up and thumbs down)
+		const buttons = voteButtons.querySelectorAll('button');
+		expect(buttons).toHaveLength(2);
+	});
+
+	it('should handle vote button clicks', async () => {
+		// Set up the test with annotation enabled
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionData },
+			pinia,
+		});
+
+		await nextTick();
+
+		const voteButtons = getByTestId('execution-preview-vote-buttons');
+		const buttons = voteButtons.querySelectorAll('button');
+
+		expect(buttons).toHaveLength(2);
+
+		// Click the first button (thumbs up)
+		await userEvent.click(buttons[0]);
+		// Click the second button (thumbs down)
+		await userEvent.click(buttons[1]);
+
+		// The buttons should still be present after clicking
+		expect(buttons[0]).toBeInTheDocument();
+		expect(buttons[1]).toBeInTheDocument();
+	});
+
+	it('should show active vote state', async () => {
+		const executionWithUpVote = {
+			...executionData,
+			annotation: {
+				tags: [],
+				vote: 'up' as AnnotationVote,
+			},
+		};
+
+		// Set up the test with an up vote
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithUpVote,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionWithUpVote },
+			pinia,
+		});
+
+		await nextTick();
+
+		const voteButtons = getByTestId('execution-preview-vote-buttons');
+		expect(voteButtons).toBeInTheDocument();
+
+		// Should have two buttons for voting
+		const buttons = voteButtons.querySelectorAll('button');
+		expect(buttons).toHaveLength(2);
+	});
+
+	it('should display highlighted data dropdown when custom data exists', async () => {
+		const executionWithCustomData = {
+			...executionData,
+			customData: { key1: 'value1', key2: 'value2' },
+		};
+
+		// Set up the test with custom data
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithCustomData,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionWithCustomData },
+			pinia,
+		});
+
+		await nextTick();
+
+		const ellipsisButton = getByTestId('execution-preview-ellipsis-button');
+		expect(ellipsisButton).toBeInTheDocument();
+
+		// Should show badge with custom data count
+		const badge = ellipsisButton.querySelector('.badge');
+		expect(badge).toBeInTheDocument();
+		expect(badge?.textContent).toBe('2');
+	});
+
+	it('should not show badge when no custom data exists', async () => {
+		// Set up the test without custom data
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionData },
+			pinia,
+		});
+
+		await nextTick();
+
+		const ellipsisButton = getByTestId('execution-preview-ellipsis-button');
+		expect(ellipsisButton).toBeInTheDocument();
+
+		// Should not show badge when no custom data
+		const badge = ellipsisButton.querySelector('.badge');
+		expect(badge).not.toBeInTheDocument();
+	});
+
+	it('should show add tag button when no tags exist', async () => {
+		const executionWithoutTags = {
+			...executionData,
+			annotation: {
+				tags: [],
+				vote: 'up' as AnnotationVote,
+			},
+		};
+
+		// Set up the test with no tags
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithoutTags,
+				},
+			},
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { execution: executionWithoutTags },
+			pinia,
+		});
+
+		await nextTick();
+
+		// Should show the add tag button
+		expect(getByTestId('new-tag-link')).toBeInTheDocument();
+		// Should not show existing tags container
+		expect(queryByTestId('execution-annotation-tags')).not.toBeInTheDocument();
+	});
+
+	it('should show existing tags with add button when tags exist', async () => {
+		const executionWithTags = {
+			...executionData,
+			annotation: {
+				tags: [{ id: 'tag1', name: 'Test Tag 1' }],
+				vote: 'up' as AnnotationVote,
+			},
+		};
+
+		// Set up the test with existing tags
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionWithTags,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { execution: executionWithTags },
+			pinia,
+		});
+
+		await nextTick();
+
+		// Should show existing tags container
+		expect(getByTestId('execution-annotation-tags')).toBeInTheDocument();
+		// Should also show add tag button for adding more tags
+		expect(getByTestId('new-tag-link')).toBeInTheDocument();
+	});
+
+	it('should not show vote buttons when annotation is disabled', async () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = {
+			...settingsStore.settings.enterprise,
+			[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
+		} as FrontendSettings['enterprise'];
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: executionData },
+		});
+
+		await nextTick();
+
+		// Should not show vote buttons when annotation is disabled
+		expect(queryByTestId('execution-preview-vote-buttons')).not.toBeInTheDocument();
+	});
+
+	it('should not show annotation features when annotation is disabled', async () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = {
+			...settingsStore.settings.enterprise,
+			[EnterpriseEditionFeature.AdvancedExecutionFilters]: false,
+		} as FrontendSettings['enterprise'];
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: executionData },
+		});
+
+		await nextTick();
+
+		// Should not show annotation-related elements
+		expect(queryByTestId('annotation-tags-container')).not.toBeInTheDocument();
+		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
 	});
 });
