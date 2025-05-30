@@ -2,14 +2,20 @@
 import { useSSOStore } from '@/stores/sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const toast = useToast();
+const settingsStore = useSettingsStore();
 
 const onSSOLogin = async () => {
+	const redirectUrl = ssoStore.isDefaultAuthenticationSaml
+		? await ssoStore.getSSORedirectUrl()
+		: settingsStore.settings.sso.oidc.loginUrl;
+
 	try {
-		window.location.href = await ssoStore.getSSORedirectUrl();
+		window.location.href = redirectUrl;
 	} catch (error) {
 		toast.showError(error, 'Error', error.message);
 	}

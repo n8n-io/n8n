@@ -150,6 +150,16 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// OIDC
+		// ----------------------------------------
+
+		if (this.licenseState.isOidcLicensed()) {
+			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+			await Container.get(OidcService).init();
+			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
+		}
+
+		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
 

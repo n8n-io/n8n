@@ -95,7 +95,7 @@ export class LdapService {
 			throw new UnexpectedError(message);
 		}
 
-		if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
+		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
 			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
 		}
 

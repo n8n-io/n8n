@@ -14,6 +14,7 @@ import { PasswordUtility } from '@/services/password.utility';
 import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
 import type { SamlAttributeMapping, SamlUserAttributes } from './types';
+import { OIDC_LOGIN_ENABLED } from '../oidc/constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
@@ -30,6 +31,10 @@ export function isSamlLoginEnabled(): boolean {
 
 export function getSamlLoginLabel(): string {
 	return config.getEnv(SAML_LOGIN_LABEL);
+}
+
+export function isOidcLoginEnabled(): boolean {
+	return config.getEnv(OIDC_LOGIN_ENABLED);
 }
 
 // can only toggle between email and saml, not directly to e.g. ldap
