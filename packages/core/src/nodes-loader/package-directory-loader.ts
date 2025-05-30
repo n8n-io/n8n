@@ -56,6 +56,25 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		});
 	}
 
+	clearNodesAndCredentialsFromRequireCache() {
+		const { n8n } = this.packageJson;
+		if (!n8n) return;
+
+		const { nodes, credentials } = n8n;
+
+		if (Array.isArray(nodes)) {
+			for (const nodePath of nodes) {
+				delete require.cache[this.directory + '/' + nodePath];
+			}
+		}
+
+		if (Array.isArray(credentials)) {
+			for (const credentialPath of credentials) {
+				delete require.cache[this.directory + '/' + credentialPath];
+			}
+		}
+	}
+
 	private inferSupportedNodes() {
 		const knownCredentials = this.known.credentials;
 		for (const { type: credentialType } of Object.values(this.credentialTypes)) {
