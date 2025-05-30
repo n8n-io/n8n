@@ -154,6 +154,10 @@ export class NocoDB implements INodeType {
 						name: 'Row',
 						value: 'row',
 					},
+					{
+						name: 'Link',
+						value: 'link',
+					},
 				],
 				default: 'row',
 			},
@@ -200,6 +204,38 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'get',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['link'],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add link/s between rows in two tables',
+						action: 'Link rows',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete link/s between rows in two tables',
+						action: 'Unlink rows',
+					},
+					{
+						name: 'Get Many',
+						value: 'getAll',
+						description: 'Get rows linked to a row in a table',
+						action: 'Get linked rows',
+					},
+				],
+				default: 'getAll',
 			},
 			...operationFields,
 		],
@@ -274,6 +310,27 @@ export class NocoDB implements INodeType {
 							level: 'warning',
 						},
 					);
+				}
+			},
+			async getLinkFields(this: ILoadOptionsFunctions) {
+				const tableId = this.getNodeParameter('table', 0) as string;
+				if (tableId) {
+					try {
+						const requestMethod = 'GET';
+						const endpoint = `/api/v2/meta/tables/${tableId}`;
+						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+						return responseData.columns
+							.filter((i: IDataObject) => i.uidt === 'Links')
+							.map((i: IDataObject) => ({ name: i.title, value: i.id }));
+					} catch (e) {
+						throw new NodeOperationError(
+							this.getNode(),
+							new Error('Error while fetching fields!', { cause: e }),
+							{ level: 'warning' },
+						);
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), 'No base selected!', { level: 'warning' });
 				}
 			},
 		},
@@ -771,6 +828,130 @@ export class NocoDB implements INodeType {
 				}
 			}
 		}
+
+		if (resource === 'link') {
+			if (operation === 'add') {
+				const field = this.getNodeParameter('field', 0) as string;
+				const id = this.getNodeParameter('id', 0) as string;
+
+				requestMethod = 'POST';
+				endPoint = `/api/v2/tables/${table}/links/${field}/records/${id}`;
+
+				const body: IDataObject[] = [];
+
+				for (let i = 0; i < items.length; i++) {
+					const links = String(this.getNodeParameter('links', i, '')).split(',');
+					body.push(...links.map((link) => ({ Id: link.trim() })));
+				}
+
+				try {
+					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+					returnData.push({ result: responseData });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw new NodeApiError(this.getNode(), error as JsonObject);
+				}
+			}
+
+			if (operation === 'delete') {
+				const field = this.getNodeParameter('field', 0) as string;
+				const id = this.getNodeParameter('id', 0) as string;
+
+				requestMethod = 'DELETE';
+				endPoint = `/api/v2/tables/${table}/links/${field}/records/${id}`;
+
+				const body: IDataObject[] = [];
+
+				for (let i = 0; i < items.length; i++) {
+					const links = String(this.getNodeParameter('links', i, '')).split(',');
+					body.push(...links.map((link) => ({ Id: link.trim() })));
+				}
+
+				try {
+					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+					returnData.push({ result: responseData });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw new NodeApiError(this.getNode(), error as JsonObject);
+				}
+			}
+
+			if (operation === 'getAll') {
+				const data = [];
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+
+				try {
+					for (let i = 0; i < items.length; i++) {
+						const field = this.getNodeParameter('field', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'GET';
+						endPoint = `/api/v2/tables/${table}/links/${field}/records/${id}`;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+						qs = this.getNodeParameter('options', i, {});
+
+						if (qs.sort) {
+							const properties = (qs.sort as IDataObject).property as Array<{
+								field: string;
+								direction: string;
+							}>;
+							qs.sort = properties
+								.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
+								.join(',');
+						}
+
+						if (qs.fields) {
+							qs.fields = (qs.fields as IDataObject[]).join(',');
+						}
+
+						if (returnAll) {
+							responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0);
+							const response = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+							responseData = response.list;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+
+						if (downloadAttachments) {
+							const downloadFieldNames = (
+								this.getNodeParameter('downloadFieldNames', 0) as string
+							).split(',');
+							const response = await downloadRecordAttachments.call(
+								this,
+								responseData as IDataObject[],
+								downloadFieldNames,
+								[{ item: i }],
+							);
+							data.push(...response);
+						}
+					}
+
+					if (downloadAttachments) {
+						return [data];
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ json: { error: error.toString() } });
+					} else {
+						throw error;
+					}
+				}
+
+				return [returnData as INodeExecutionData[]];
+			}
+		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
