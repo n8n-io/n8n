@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { get, set, unset } from 'lodash-es';
 import type {
 	IDataObject,
@@ -36,7 +36,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import type { BaseTextKey } from '@/plugins/i18n';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -47,6 +46,8 @@ import {
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
+import { useElementSize } from '@vueuse/core';
+import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -351,6 +352,9 @@ function callEventBus(event: string, data: unknown) {
 		eventBus.emit(event, data);
 	}
 }
+
+const defNameRef = useTemplateRef('defNameRef');
+const { width } = useElementSize(defNameRef);
 </script>
 
 <template>
@@ -375,15 +379,16 @@ function callEventBus(event: string, data: unknown) {
 			</template>
 			<template v-else>
 				<div :class="$style.header">
-					<div :class="$style.destinationInfo">
-						<InlineNameEdit
+					<div ref="defNameRef" :class="$style.destinationInfo">
+						<N8nInlineTextEdit
+							:max-width="width - 10"
 							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
-							type="Credential"
-							data-test-id="subtitle-showing-type"
 							@update:model-value="onLabelChange"
 						/>
+						<N8nText size="small" tag="p" color="text-light">{{
+							!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
+						}}</N8nText>
 					</div>
 					<div :class="$style.destinationActions">
 						<n8n-button
@@ -585,10 +590,11 @@ function callEventBus(event: string, data: unknown) {
 }
 
 .destinationInfo {
-	display: flex;
-	align-items: center;
-	flex-direction: row;
 	flex-grow: 1;
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 	margin-bottom: var(--spacing-l);
 }
 

@@ -128,8 +128,7 @@ describe('WorkflowDetails', () => {
 			},
 		});
 
-		const workflowName = getByTestId('workflow-name-input');
-		const workflowNameInput = workflowName.querySelector('input');
+		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
 		expect(getByText('tag1')).toBeInTheDocument();
