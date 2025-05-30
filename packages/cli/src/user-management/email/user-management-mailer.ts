@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -6,7 +6,6 @@ import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
-import { Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 

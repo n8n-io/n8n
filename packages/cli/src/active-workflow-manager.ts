@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -9,7 +10,6 @@ import {
 	ActiveWorkflows,
 	ErrorReporter,
 	InstanceSettings,
-	Logger,
 	PollContext,
 	TriggerContext,
 	type IGetExecutePollFunctions,

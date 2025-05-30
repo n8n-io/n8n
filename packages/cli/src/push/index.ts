@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -7,7 +7,7 @@ import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import { pick } from 'lodash';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
