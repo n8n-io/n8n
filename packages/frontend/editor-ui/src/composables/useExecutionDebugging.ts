@@ -1,6 +1,6 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import {

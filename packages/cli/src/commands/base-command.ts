@@ -160,7 +160,7 @@ export abstract class BaseCommand extends Command {
 		const { communityPackages } = this.globalConfig.nodes;
 		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/community-packages.service');
-			await Container.get(CommunityPackagesService).checkForMissingPackages();
+			await Container.get(CommunityPackagesService).init();
 		}
 
 		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {

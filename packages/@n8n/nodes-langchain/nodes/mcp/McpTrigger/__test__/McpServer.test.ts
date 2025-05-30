@@ -6,7 +6,7 @@ import { captor, mock } from 'jest-mock-extended';
 
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
-import { McpServer } from '../McpServer';
+import { McpServerManager } from '../McpServer';
 
 const sessionId = 'mock-session-id';
 const mockServer = mock<Server>();
@@ -28,20 +28,18 @@ describe('McpServer', () => {
 	const mockResponse = mock<CompressionResponse>();
 	const mockTool = mock<Tool>({ name: 'mockTool' });
 
-	let mcpServer: McpServer;
+	const mcpServerManager = McpServerManager.instance(mock());
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
-
-		mcpServer = new McpServer(mock());
 	});
 
 	describe('connectTransport', () => {
 		const postUrl = '/post-url';
 
 		it('should set up a transport and server', async () => {
-			await mcpServer.connectTransport(postUrl, mockResponse);
+			await mcpServerManager.createServerAndTransport('mcpServer', postUrl, mockResponse);
 
 			// Check that FlushingSSEServerTransport was initialized with correct params
 			expect(FlushingSSEServerTransport).toHaveBeenCalledWith(postUrl, mockResponse);
@@ -50,18 +48,18 @@ describe('McpServer', () => {
 			expect(Server).toHaveBeenCalled();
 
 			// Check that transport and server are stored
-			expect(mcpServer.transports[sessionId]).toBeDefined();
-			expect(mcpServer.servers[sessionId]).toBeDefined();
+			expect(mcpServerManager.transports[sessionId]).toBeDefined();
+			expect(mcpServerManager.servers[sessionId]).toBeDefined();
 
 			// Check that connect was called on the server
-			expect(mcpServer.servers[sessionId].connect).toHaveBeenCalled();
+			expect(mcpServerManager.servers[sessionId].connect).toHaveBeenCalled();
 
 			// Check that flush was called if available
 			expect(mockResponse.flush).toHaveBeenCalled();
 		});
 
 		it('should set up close handler that cleans up resources', async () => {
-			await mcpServer.connectTransport(postUrl, mockResponse);
+			await mcpServerManager.createServerAndTransport('mcpServer', postUrl, mockResponse);
 
 			// Get the close callback and execute it
 			const closeCallbackCaptor = captor<() => Promise<void>>();
@@ -69,8 +67,8 @@ describe('McpServer', () => {
 			await closeCallbackCaptor.value();
 
 			// Check that resources were cleaned up
-			expect(mcpServer.transports[sessionId]).toBeUndefined();
-			expect(mcpServer.servers[sessionId]).toBeUndefined();
+			expect(mcpServerManager.transports[sessionId]).toBeUndefined();
+			expect(mcpServerManager.servers[sessionId]).toBeUndefined();
 		});
 	});
 
@@ -78,11 +76,11 @@ describe('McpServer', () => {
 		it('should call transport.handlePostMessage when transport exists', async () => {
 			mockTransport.handlePostMessage.mockImplementation(async () => {
 				// @ts-expect-error private property `resolveFunctions`
-				mcpServer.resolveFunctions[`${sessionId}_123`]();
+				mcpServerManager.resolveFunctions[`${sessionId}_123`]();
 			});
 
 			// Add the transport directly
-			mcpServer.transports[sessionId] = mockTransport;
+			mcpServerManager.transports[sessionId] = mockTransport;
 
 			mockRequest.rawBody = Buffer.from(
 				JSON.stringify({
@@ -94,7 +92,9 @@ describe('McpServer', () => {
 			);
 
 			// Call the method
-			const result = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const result = await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [
+				mockTool,
+			]);
 
 			// Verify that transport's handlePostMessage was called
 			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
@@ -119,11 +119,11 @@ describe('McpServer', () => {
 					? `${sessionId}_${firstId}`
 					: `${sessionId}_${secondId}`;
 				// @ts-expect-error private property `resolveFunctions`
-				mcpServer.resolveFunctions[requestKey]();
+				mcpServerManager.resolveFunctions[requestKey]();
 			});
 
 			// Add the transport directly
-			mcpServer.transports[sessionId] = mockTransport;
+			mcpServerManager.transports[sessionId] = mockTransport;
 
 			// First tool call
 			mockRequest.rawBody = Buffer.from(
@@ -136,7 +136,9 @@ describe('McpServer', () => {
 			);
 
 			// Handle first tool call
-			const firstResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const firstResult = await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [
+				mockTool,
+			]);
 			expect(firstResult).toBe(true);
 			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
 				mockRequest,
@@ -155,7 +157,9 @@ describe('McpServer', () => {
 			);
 
 			// Handle second tool call
-			const secondResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const secondResult = await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [
+				mockTool,
+			]);
 			expect(secondResult).toBe(true);
 
 			// Verify transport's handlePostMessage was called twice
@@ -166,8 +170,22 @@ describe('McpServer', () => {
 		});
 
 		it('should return 401 when transport does not exist', async () => {
-			// Call without setting up transport
-			await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			// Set up request with rawBody and ensure sessionId is properly set
+			const testRequest = mock<Request>({
+				query: { sessionId: 'non-existent-session' },
+				path: '/sse',
+			});
+			testRequest.rawBody = Buffer.from(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					id: 123,
+					params: { name: 'mockTool' },
+				}),
+			);
+
+			// Call without setting up transport for this sessionId
+			await mcpServerManager.handlePostMessage(testRequest, mockResponse, [mockTool]);
 
 			// Verify error status was set
 			expect(mockResponse.status).toHaveBeenCalledWith(401);
