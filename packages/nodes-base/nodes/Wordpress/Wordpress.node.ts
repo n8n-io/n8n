@@ -16,6 +16,7 @@ import { postFields, postOperations } from './PostDescription';
 import type { IPost } from './PostInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
+import { update } from 'lodash';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -371,6 +372,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const statusCollection = additionalFields.status as IDataObject;
 						const body: IPage = {
 							title,
 						};
@@ -380,14 +382,24 @@ export class Wordpress implements INodeType {
 						if (additionalFields.content) {
 							body.content = additionalFields.content as string;
 						}
+						if (additionalFields.excerpt) {
+							body.excerpt = additionalFields.excerpt as string;
+						}
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (additionalFields.status) {
-							body.status = additionalFields.status as string;
+						if (statusCollection.status && typeof statusCollection.status === 'object') {
+							const { pageStatus, pageDateTime } = statusCollection.status as {
+								pageStatus: string;
+								pageDateTime?: string;
+							};
+							body.status = pageStatus;
+							if (pageDateTime && pageStatus === 'future') {
+								body.date = pageDateTime;
+							}
 						}
 						if (additionalFields.commentStatus) {
 							body.comment_status = additionalFields.commentStatus as string;
@@ -417,6 +429,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const pageId = this.getNodeParameter('pageId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const statusCollection = updateFields.status as IDataObject;
 						const body: IPage = {
 							id: parseInt(pageId, 10),
 						};
@@ -429,6 +442,9 @@ export class Wordpress implements INodeType {
 						if (updateFields.content) {
 							body.content = updateFields.content as string;
 						}
+						if (updateFields.excerpt) {
+							body.excerpt = updateFields.excerpt as string;
+						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
@@ -438,8 +454,15 @@ export class Wordpress implements INodeType {
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
 						}
-						if (updateFields.commentStatus) {
-							body.comment_status = updateFields.commentStatus as string;
+						if (statusCollection.status && typeof statusCollection.status === 'object') {
+							const { pageStatus, pageDateTime } = statusCollection.status as {
+								pageStatus: string;
+								pageDateTime?: string;
+							};
+							body.status = pageStatus;
+							if (pageDateTime && pageStatus === 'future') {
+								body.date = pageDateTime;
+							}
 						}
 						if (updateFields.pingStatus) {
 							body.ping_status = updateFields.pingStatus as string;

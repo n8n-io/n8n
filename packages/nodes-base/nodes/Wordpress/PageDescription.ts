@@ -98,6 +98,13 @@ export const pageFields: INodeProperties[] = [
 				description: 'The content for the page',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the page',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -115,31 +122,60 @@ export const pageFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Page Status',
+								name: 'pageStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the page',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this page (required if status is “future”)',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the page',
 			},
 			{
 				displayName: 'Comment Status',
@@ -249,11 +285,15 @@ export const pageFields: INodeProperties[] = [
 				description: 'The order of the page in relation to other pages',
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured Media Name or ID',
 				name: 'featuredMediaId',
-				type: 'number',
+				type: 'options',
 				default: '',
-				description: 'The ID of the featured media for the page',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the page. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -320,6 +360,13 @@ export const pageFields: INodeProperties[] = [
 				description: 'The content for the page',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the page',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -337,31 +384,60 @@ export const pageFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Page Status',
+								name: 'pageStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the page',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this page (required if status is “future”)',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the page',
 			},
 			{
 				displayName: 'Comment Status',
@@ -488,11 +564,15 @@ export const pageFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the page',
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured Media Name or ID',
 				name: 'featuredMediaId',
-				type: 'number',
+				type: 'options',
 				default: '',
-				description: 'The ID of the featured media for the page',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the page. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
