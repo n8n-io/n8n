@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
+import { Logger } from '@n8n/backend-common';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -65,7 +66,6 @@ import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
 import type { IResponseError } from '@/interfaces';
-import { Logger } from '@/logging/logger';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';

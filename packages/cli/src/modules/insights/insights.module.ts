@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type { BaseN8nModule } from '@n8n/decorators';
 import { N8nModule, OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { InsightsService } from './insights.service';
 

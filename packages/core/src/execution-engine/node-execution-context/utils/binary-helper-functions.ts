@@ -4,6 +4,7 @@ import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
 import { extension, lookup } from 'mime-types';
+import type { StringValue as TimeUnitValue } from 'ms';
 import type {
 	BinaryHelperFunctions,
 	IBinaryData,
@@ -279,7 +280,7 @@ export const getBinaryHelperFunctions = (
 	getBinaryMetadata,
 	binaryToBuffer,
 	binaryToString,
-	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string) {
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: TimeUnitValue) {
 		const token = Container.get(BinaryDataService).createSignedToken(binaryData, expiresIn);
 		return `${restApiUrl}/binary-data/signed?token=${token}`;
 	},
