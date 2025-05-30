@@ -169,15 +169,26 @@ const maybeCreateCredential = () => {
 	}
 };
 
-const maybeEditCredential = () => {
+const maybeEditCredential = async () => {
 	if (!!props.credentialId && props.credentialId !== 'create') {
 		const credential = credentialsStore.getCredentialById(props.credentialId);
 		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
-			uiStore.openExistingCredential(props.credentialId);
-		} else {
-			void router.replace({ name: VIEWS.HOMEPAGE });
+		if (!credential) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'credential' },
+			});
 		}
+
+		if (credentialPermissions.update || credentialPermissions.read) {
+			uiStore.openExistingCredential(props.credentialId);
+			return;
+		}
+
+		return await router.replace({
+			name: VIEWS.ENTITY_UN_AUTHORISED,
+			params: { entityType: 'credential' },
+		});
 	}
 };
 
@@ -200,7 +211,7 @@ const initialize = async () => {
 
 	await Promise.all(loadPromises);
 	maybeCreateCredential();
-	maybeEditCredential();
+	await maybeEditCredential();
 	loading.value = false;
 };
 

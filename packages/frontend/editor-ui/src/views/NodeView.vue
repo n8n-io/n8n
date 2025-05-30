@@ -1,55 +1,29 @@
 <script setup lang="ts">
-import {
-	computed,
-	defineAsyncComponent,
-	nextTick,
-	onActivated,
-	onBeforeMount,
-	onDeactivated,
-	onMounted,
-	ref,
-	useCssModule,
-	watch,
-	h,
-	onBeforeUnmount,
-} from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
+import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
-import { useI18n } from '@/composables/useI18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
+import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { useClipboard } from '@/composables/useClipboard';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
-import type {
-	AddedNodesAndConnections,
-	IExecutionResponse,
-	INodeUi,
-	IUpdateInformation,
-	IWorkflowDataUpdate,
-	IWorkflowDb,
-	IWorkflowTemplate,
-	NodeCreatorOpenSource,
-	NodeFilterType,
-	ToggleNodeCreatorOptions,
-	WorkflowDataWithTemplateId,
-	XYPosition,
-} from '@/Interface';
-import type {
-	Connection,
-	Dimensions,
-	ViewportTransform,
-	XYPosition as VueFlowXYPosition,
-} from '@vue-flow/core';
-import type {
-	CanvasConnectionCreateData,
-	CanvasNode,
-	CanvasNodeMoveEvent,
-	ConnectStartEvent,
-	ViewportBoundaries,
-} from '@/types';
-import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import type { PinDataSource } from '@/composables/usePinnedData';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -67,66 +41,92 @@ import {
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import {
-	NodeConnectionTypes,
-	jsonParse,
-	EVALUATION_TRIGGER_NODE_TYPE,
-	EVALUATION_NODE_TYPE,
-} from 'n8n-workflow';
-import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
-import { useSettingsStore } from '@/stores/settings.store';
+import { nodeViewEventBus } from '@/event-bus';
+import { canvasEventBus } from '@/event-bus/canvas';
+import { sourceControlEventBus } from '@/event-bus/source-control';
+import type {
+	AddedNodesAndConnections,
+	IExecutionResponse,
+	INodeUi,
+	IUpdateInformation,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
+	IWorkflowTemplate,
+	NodeCreatorOpenSource,
+	NodeFilterType,
+	ToggleNodeCreatorOptions,
+	WorkflowDataWithTemplateId,
+	XYPosition,
+} from '@/Interface';
+import { historyBus } from '@/models/history';
+import { getResourcePermissions } from '@/permissions';
+import { useBuilderStore } from '@/stores/builder.store';
+import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { historyBus } from '@/models/history';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useMessage } from '@/composables/useMessage';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useHistoryStore } from '@/stores/history.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useUsersStore } from '@/stores/users.store';
-import { sourceControlEventBus } from '@/event-bus/source-control';
-import { useTagsStore } from '@/stores/tags.store';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
-import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
-import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
-import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
-import { nodeViewEventBus } from '@/event-bus';
-import { tryToParseNumber } from '@/utils/typesUtils';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { N8nCallout } from '@n8n/design-system';
-import type { PinDataSource } from '@/composables/usePinnedData';
-import { useClipboard } from '@/composables/useClipboard';
-import { useBeforeUnload } from '@/composables/useBeforeUnload';
-import { getResourcePermissions } from '@/permissions';
-import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
-import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { useBuilderStore } from '@/stores/builder.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useFoldersStore } from '@/stores/folders.store';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
-import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
+import { useHistoryStore } from '@/stores/history.store';
 import { useLogsStore } from '@/stores/logs.store';
-import { canvasEventBus } from '@/event-bus/canvas';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type {
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+	ViewportBoundaries,
+} from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
+import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { tryToParseNumber } from '@/utils/typesUtils';
+import { N8nCallout } from '@n8n/design-system';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type {
+	Connection,
+	Dimensions,
+	ViewportTransform,
+	XYPosition as VueFlowXYPosition,
+} from '@vue-flow/core';
+import type { ExecutionSummary, IConnection, IDataObject, NodeConnectionType } from 'n8n-workflow';
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	jsonParse,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
+import {
+	computed,
+	defineAsyncComponent,
+	h,
+	nextTick,
+	onActivated,
+	onBeforeMount,
+	onBeforeUnmount,
+	onDeactivated,
+	onMounted,
+	ref,
+	useCssModule,
+	watch,
+} from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 
 defineOptions({
 	name: 'NodeView',
@@ -459,8 +459,20 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+		if (error.httpStatusCode === 404) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'workflow' },
+			});
+		}
+		if (error.httpStatusCode === 403) {
+			return await router.replace({
+				name: VIEWS.ENTITY_UN_AUTHORISED,
+				params: { entityType: 'workflow' },
+			});
+		}
 
+		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
 		});

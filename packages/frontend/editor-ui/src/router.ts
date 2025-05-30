@@ -24,6 +24,8 @@ import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
+const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
+const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
@@ -722,6 +724,24 @@ export const routes: RouteRecordRaw[] = [
 	...projectsRoutes,
 	...insightsRoutes,
 	{
+		path: '/entity-not-found/:entityType',
+		props: true,
+		name: VIEWS.ENTITY_NOT_FOUND,
+		components: {
+			default: EntityNotFound,
+			sidebar: MainSidebar,
+		},
+	},
+	{
+		path: '/entity-not-authorised/:entityType',
+		props: true,
+		name: VIEWS.ENTITY_UN_AUTHORISED,
+		components: {
+			default: EntityUnAuthorised,
+			sidebar: MainSidebar,
+		},
+	},
+	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
 		component: ErrorView,
@@ -766,6 +786,7 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
+	console.log(`Navigating to: ${to.fullPath} from: ${from.fullPath}`);
 	try {
 		/**
 		 * Initialize application core
@@ -812,6 +833,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 		return next();
 	} catch (failure) {
+		console.error(failure);
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
 		} else {
