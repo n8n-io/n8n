@@ -32,7 +32,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: 'credentials/:credentialId?',
+		path: 'credentials/:credentialId?/:credentialAction?',
 		props: true,
 		components: {
 			default: CredentialsView,

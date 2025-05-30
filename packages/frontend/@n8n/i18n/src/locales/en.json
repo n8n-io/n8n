@@ -645,6 +645,7 @@
 	"credentials.item.open": "Open",
 	"credentials.item.delete": "Delete",
 	"credentials.item.move": "Move",
+	"credentials.item.share": "Share",
 	"credentials.item.updated": "Last updated",
 	"credentials.item.created": "Created",
 	"credentials.item.owner": "Owner",
