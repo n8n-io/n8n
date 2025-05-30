@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Toolkit } from 'langchain/agents';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
@@ -155,26 +156,46 @@ export async function connectMcpClient({
 			return createResultError({ type: 'invalid_url', error: endpoint.error });
 		}
 
-		const transport = new SSEClientTransport(endpoint.result, {
-			eventSourceInit: {
-				fetch: async (url, init) =>
-					await fetch(url, {
-						...init,
-						headers: {
-							...headers,
-							Accept: 'text/event-stream',
-						},
-					}),
-			},
-			requestInit: { headers },
-		});
-
 		const client = new Client(
 			{ name, version: version.toString() },
 			{ capabilities: { tools: {} } },
 		);
 
-		await client.connect(transport);
+		try {
+			const transport = new StreamableHTTPClientTransport(endpoint.result, {
+				eventSourceInit: {
+					fetch: async (url, init) =>
+						await fetch(url, {
+							...init,
+							headers: {
+								...headers,
+								Accept: 'text/event-stream',
+							},
+						}),
+				},
+				requestInit: { headers },
+			});
+			await client.connect(transport);
+			console.log('Connected using Streamable HTTP transport');
+		} catch (error) {
+			// If that fails with a 4xx error, try the older SSE transport
+			console.log('Streamable HTTP connection failed, falling back to SSE transport');
+			const sseTransport = new SSEClientTransport(endpoint.result, {
+				eventSourceInit: {
+					fetch: async (url, init) =>
+						await fetch(url, {
+							...init,
+							headers: {
+								...headers,
+								Accept: 'text/event-stream',
+							},
+						}),
+				},
+				requestInit: { headers },
+			});
+			await client.connect(sseTransport);
+			console.log('Connected using SSE transport');
+		}
 		return createResultOk(client);
 	} catch (error) {
 		return createResultError({ type: 'connection', error });
