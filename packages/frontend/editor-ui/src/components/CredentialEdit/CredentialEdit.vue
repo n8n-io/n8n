@@ -329,11 +329,7 @@ const showSaveButton = computed(() => {
 	);
 });
 
-const showSharingContent = computed(
-	() =>
-		(activeTab.value === 'sharing' || route.params.credentialAction === 'share') &&
-		!!credentialType.value,
-);
+const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
 const homeProject = computed(() => {
 	const { currentProject, personalProject } = projectsStore;
