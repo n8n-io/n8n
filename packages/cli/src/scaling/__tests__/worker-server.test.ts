@@ -48,7 +48,7 @@ describe('WorkerServer', () => {
 	beforeEach(() => {
 		globalConfig = mock<GlobalConfig>({
 			queue: {
-				health: { active: true, port: 5678, address: '0.0.0.0' },
+				health: { active: true, port: 5678, address: '::' },
 			},
 			credentials: {
 				overwrite: { endpoint: '' },

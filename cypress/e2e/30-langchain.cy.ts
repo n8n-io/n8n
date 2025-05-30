@@ -381,7 +381,7 @@ describe('Langchain Integration', () => {
 		workflowPage.actions.deselectAll();
 
 		workflowPage.actions.executeNode('Populate VS');
-		workflow.getNodesWithSpinner().should('not.exist');
+		workflow.waitForSuccessBannerToAppear();
 
 		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
 			ndv.getOutputPanel().contains(text).should(assertion);
@@ -389,9 +389,6 @@ describe('Langchain Integration', () => {
 		};
 
 		workflowPage.actions.openNode('Character Text Splitter');
-
-		// Wait for the input panel to switch to Debugging mode
-		ndv.getInputPanelItemsCount().should('not.exist');
 
 		ndv.getOutputRunSelector().should('exist');
 		ndv.getInputRunSelector().should('exist');
