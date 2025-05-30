@@ -132,6 +132,7 @@ export class Logger implements LoggerType {
 			winston.format.timestamp(),
 			winston.format.metadata(),
 			winston.format.json(),
+			this.scopeFilter(),
 		);
 	}
 
