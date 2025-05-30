@@ -31,6 +31,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:list',
 	'folder:move',
+	'sourceControl:push',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
