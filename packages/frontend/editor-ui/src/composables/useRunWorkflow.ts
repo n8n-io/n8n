@@ -498,7 +498,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		} finally {
 			// Wait for websocket event to update the execution status to 'canceled'
-			await retry(
+			const markedAsStopped = await retry(
 				async () => {
 					if (workflowsStore.workflowExecutionData?.status !== 'running') {
 						workflowsStore.markExecutionAsStopped();
@@ -508,8 +508,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					return false;
 				},
 				250,
-				10,
+				20,
 			);
+
+			if (!markedAsStopped) {
+				workflowsStore.markExecutionAsStopped();
+			}
 		}
 	}
 
