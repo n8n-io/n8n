@@ -4,8 +4,9 @@ jest.mock('n8n-workflow', () => ({
 }));
 
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock, captor } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
+import winston from 'winston';
 
 import { Logger } from '../logger';
 
@@ -37,6 +38,10 @@ describe('Logger', () => {
 	});
 
 	describe('transports', () => {
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
 		test('if `console` selected, should set console transport', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
@@ -57,29 +62,93 @@ describe('Logger', () => {
 			expect(transport.constructor.name).toBe('Console');
 		});
 
-		test('if `file` selected, should set file transport', () => {
-			const globalConfig = mock<GlobalConfig>({
-				logging: {
-					level: 'info',
-					outputs: ['file'],
-					scopes: [],
-					file: {
-						fileSizeMax: 100,
-						fileCountMax: 16,
-						location: 'logs/n8n.log',
+		describe('`file`', () => {
+			test('should set file transport', () => {
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: {
+							fileSizeMax: 100,
+							fileCountMax: 16,
+							location: 'logs/n8n.log',
+						},
 					},
-				},
+				});
+
+				const logger = new Logger(
+					globalConfig,
+					mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }),
+				);
+
+				const { transports } = logger.getInternalLogger();
+
+				expect(transports).toHaveLength(1);
+
+				const [transport] = transports;
+
+				expect(transport.constructor.name).toBe('File');
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
+			test('should accept absolute paths', () => {
+				// ARRANGE
+				const location = '/tmp/n8n.log';
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: { fileSizeMax: 100, fileCountMax: 16, location },
+					},
+				});
+				const OriginalFile = winston.transports.File;
+				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+					return new OriginalFile(...args);
+				});
 
-			const { transports } = logger.getInternalLogger();
+				// ACT
+				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
 
-			expect(transports).toHaveLength(1);
+				// ASSERT
+				const fileOptionsCaptor = captor<string>();
 
-			const [transport] = transports;
+				expect(FileSpy).toHaveBeenCalledTimes(1);
+				expect(FileSpy).toHaveBeenCalledWith(fileOptionsCaptor);
+				expect(fileOptionsCaptor.value).toMatchObject({ filename: location });
+			});
 
-			expect(transport.constructor.name).toBe('File');
+			test('should accept relative paths', () => {
+				// ARRANGE
+				const location = 'tmp/n8n.log';
+				const n8nFolder = '/tmp/n8n';
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: {
+							fileSizeMax: 100,
+							fileCountMax: 16,
+							location,
+						},
+					},
+				});
+				const OriginalFile = winston.transports.File;
+				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+					return new OriginalFile(...args);
+				});
+
+				// ACT
+				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder }));
+
+				// ASSERT
+				const fileOptionsCaptor = captor<string>();
+
+				expect(FileSpy).toHaveBeenCalledTimes(1);
+				expect(FileSpy).toHaveBeenCalledWith(fileOptionsCaptor);
+				expect(fileOptionsCaptor.value).toMatchObject({ filename: `${n8nFolder}/${location}` });
+			});
 		});
 	});
 
