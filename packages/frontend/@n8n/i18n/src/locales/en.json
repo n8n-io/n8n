@@ -709,6 +709,7 @@
 	"error.pageNotFound": "Oops, couldn’t find that",
 	"executions.ExecutionStatus": "Execution status",
 	"executions.concurrency.docsLink": "https://docs.n8n.io/hosting/scaling/concurrency-control/",
+	"executionDetails.additionalActions": "Additional Actions",
 	"executionDetails.confirmMessage.confirmButtonText": "Yes, delete",
 	"executionDetails.confirmMessage.headline": "Delete Execution?",
 	"executionDetails.confirmMessage.message": "Are you sure that you want to delete the current execution?",
