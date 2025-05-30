@@ -6,7 +6,9 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_MODAL,
 } from '@/constants';
+import type { IWorkflowDb } from '@/Interface';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -59,6 +61,11 @@ const initialState = {
 			enterprise: {
 				[EnterpriseEditionFeature.Sharing]: true,
 				[EnterpriseEditionFeature.WorkflowHistory]: true,
+				projects: {
+					team: {
+						limit: -1,
+					},
+				},
 			},
 		},
 		areTagsEnabled: true,
@@ -392,6 +399,27 @@ describe('WorkflowDetails', () => {
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
+			});
+		});
+
+		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			workflowsStore.workflowsById = { [workflow.id]: workflow as IWorkflowDb };
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					scopes: ['workflow:move'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-change-owner'));
+
+			expect(openModalSpy).toHaveBeenCalledWith({
+				name: PROJECT_MOVE_RESOURCE_MODAL,
+				data: expect.objectContaining({ resource: expect.objectContaining({ id: workflow.id }) }),
 			});
 		});
 	});
