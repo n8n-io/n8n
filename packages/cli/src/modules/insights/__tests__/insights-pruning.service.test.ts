@@ -19,7 +19,7 @@ import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 
 beforeAll(async () => {
-	await testModules.init(['insights']);
+	await testModules.load(['insights']);
 	await testDb.init();
 });
 

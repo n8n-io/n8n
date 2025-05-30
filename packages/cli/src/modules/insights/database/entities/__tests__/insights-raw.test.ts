@@ -14,7 +14,7 @@ import type { TypeUnit } from '../insights-shared';
 let insightsRawRepository: InsightsRawRepository;
 
 beforeAll(async () => {
-	await testModules.init(['insights']);
+	await testModules.load(['insights']);
 	await testDb.init();
 	insightsRawRepository = Container.get(InsightsRawRepository);
 });

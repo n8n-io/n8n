@@ -29,7 +29,7 @@ import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 beforeAll(async () => {
-	await testModules.init(['insights']);
+	await testModules.load(['insights']);
 	await testDb.init();
 });
 
