@@ -321,7 +321,7 @@ export class WorkflowPage extends BasePage {
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().parent().click();
 			this.getters.workflowNameInput().should('be.enabled');
-			this.getters.workflowNameInput().type(name).type('{enter}');
+			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		clickWorkflowActivator: () => {
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
