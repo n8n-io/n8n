@@ -1,5 +1,6 @@
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
+import type { SignOptions } from 'jsonwebtoken';
 import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
@@ -54,8 +55,12 @@ export class BinaryDataService {
 			id: binaryData.id,
 		};
 
+		const signingOptions: SignOptions = {
+			expiresIn: expiresIn as SignOptions['expiresIn'],
+		};
+
 		const { signingSecret } = this.config;
-		return jwt.sign(signingPayload, signingSecret, { expiresIn });
+		return jwt.sign(signingPayload, signingSecret, signingOptions);
 	}
 
 	validateSignedToken(token: string) {
