@@ -673,10 +673,12 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							ref="renameInput"
 							:key="id"
 							placeholder="Workflow name"
+							data-test-id="workflow-name-input"
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
 						/>
 					</template>

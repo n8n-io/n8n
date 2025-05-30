@@ -10,6 +10,7 @@ type Props = {
 	maxWidth?: number;
 	minWidth?: number;
 	placeholder?: string;
+	disabled?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -93,6 +94,7 @@ const computedInlineStyles = computed(() => {
 		:model-value="newValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
+		:disabled="disabled"
 		:max-length="maxLength"
 		:readonly="readOnly"
 		select-on-focus
