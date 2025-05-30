@@ -6,7 +6,10 @@ import { DocumentGithubLoader } from '../DocumentGithubLoader.node';
 
 jest.mock('@langchain/textsplitters', () => ({
 	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
-		splitDocuments: jest.fn(async (docs) => docs.map((doc) => ({ ...doc, split: true }))),
+		splitDocuments: jest.fn(
+			async (docs: Array<{ [key: string]: unknown }>): Promise<Array<{ [key: string]: unknown }>> =>
+				docs.map((doc) => ({ ...doc, split: true })),
+		),
 	})),
 }));
 jest.mock('@langchain/community/document_loaders/web/github', () => ({
@@ -17,18 +20,29 @@ jest.mock('@langchain/community/document_loaders/web/github', () => ({
 
 const mockLogger = { debug: jest.fn() };
 
-function createMockThis(overrides: Partial<any> = {}) {
+function createMockThis(overrides: Partial<Record<string, unknown>> = {}) {
 	return {
 		logger: mockLogger,
-		getNodeParameter: jest.fn((name, idx, def) => {
-			const params = {
-				repository: 'owner/repo',
-				branch: 'main',
-				textSplittingMode: 'simple',
-				additionalOptions: { recursive: true, ignorePaths: 'docs,tests' },
-			};
-			return params[name] ?? def;
-		}),
+		getNodeParameter: jest.fn(
+			(
+				name: 'repository' | 'branch' | 'textSplittingMode' | 'additionalOptions',
+				idx: number,
+				def: unknown,
+			): unknown => {
+				const params: {
+					repository: string;
+					branch: string;
+					textSplittingMode: string;
+					additionalOptions: { recursive: boolean; ignorePaths?: string };
+				} = {
+					repository: 'owner/repo',
+					branch: 'main',
+					textSplittingMode: 'simple',
+					additionalOptions: { recursive: true, ignorePaths: 'docs,tests' },
+				};
+				return (params as Record<string, unknown>)[name] ?? def;
+			},
+		),
 		getCredentials: jest.fn(async () => ({
 			accessToken: 'token',
 			server: 'https://api.github.com',
@@ -85,15 +99,26 @@ describe('DocumentGithubLoader', () => {
 
 	it('should handle missing ignorePaths gracefully', async () => {
 		const context = createMockThis({
-			getNodeParameter: jest.fn((name, idx, def) => {
-				const params = {
-					repository: 'owner/repo',
-					branch: 'main',
-					textSplittingMode: 'simple',
-					additionalOptions: { recursive: false },
-				};
-				return params[name] ?? def;
-			}),
+			getNodeParameter: jest.fn(
+				(
+					name: 'repository' | 'branch' | 'textSplittingMode' | 'additionalOptions',
+					idx: number,
+					def: unknown,
+				): unknown => {
+					const params: {
+						repository: string;
+						branch: string;
+						textSplittingMode: string;
+						additionalOptions: { recursive: boolean; ignorePaths?: string };
+					} = {
+						repository: 'owner/repo',
+						branch: 'main',
+						textSplittingMode: 'simple',
+						additionalOptions: { recursive: false },
+					};
+					return (params as Record<typeof name, unknown>)[name] ?? def;
+				},
+			),
 		});
 		await loader.supplyData.call(context, 0);
 
