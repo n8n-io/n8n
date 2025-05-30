@@ -1,8 +1,6 @@
 import type { PushMessage, WorkerStatus } from '@n8n/api-types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
-
 export type PubSubCommandMap = {
 	// #region Lifecycle
 
@@ -79,3 +77,5 @@ export type PubSubCommandMap = {
 export type PubSubWorkerResponseMap = {
 	'response-to-get-worker-status': WorkerStatus;
 };
+
+export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;

@@ -40,6 +40,7 @@ describe('ActiveWorkflowManager', () => {
 			instanceSettings,
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 

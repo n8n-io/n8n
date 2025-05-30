@@ -1,4 +1,4 @@
-import type { InstanceType } from 'n8n-core';
+import type { InstanceType } from '@n8n/constants';
 import { ALPHABET } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 

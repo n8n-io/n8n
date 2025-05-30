@@ -1,5 +1,6 @@
+import type { InstanceType } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings, InstanceType } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { ModulePreInitContext } from '@/modules/modules.config';
 

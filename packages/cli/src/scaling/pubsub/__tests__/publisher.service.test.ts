@@ -6,8 +6,8 @@ import config from '@/config';
 import type { RedisClientService } from '@/services/redis-client.service';
 import { mockLogger } from '@test/mocking';
 
-import { Publisher } from '../pubsub/publisher.service';
-import type { PubSub } from '../pubsub/pubsub.types';
+import { Publisher } from '../publisher.service';
+import type { PubSub } from '../pubsub.types';
 
 describe('Publisher', () => {
 	beforeEach(() => {
