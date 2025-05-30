@@ -807,4 +807,28 @@ line`,
 			{ type: 'transform', forceTransform: true },
 		],
 	},
+	{
+		expression: '={{ [   "apple",   "banana",   123,   "hello world" ] }}',
+		tests: [
+			{
+				type: 'evaluation',
+				input: [],
+				output: ['apple', 'banana', 123, 'hello world'],
+			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
+		],
+	},
+	{
+		expression: '=  {{ [   "apple",   "banana",   123,   "hello world" ] }}  ',
+		tests: [
+			{
+				type: 'evaluation',
+				input: [],
+				output: ['apple', 'banana', 123, 'hello world'],
+			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
+		],
+	},
 ];
