@@ -220,7 +220,7 @@ jobs:
     needs: [mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
