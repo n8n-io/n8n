@@ -90,7 +90,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		// SQLite by default
 		let periodStartExpr =
 			periodUnitToCompactInto === 'week'
-				? "datetime(date(periodStart, '-6 days', 'weekday 1'))"
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
 				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
