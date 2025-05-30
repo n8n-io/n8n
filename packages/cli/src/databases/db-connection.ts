@@ -8,6 +8,7 @@ import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
 import { DbConnectionOptions } from './db-connection-options';
+import { PgRecover } from './pg-recover';
 
 type ConnectionState = {
 	connected: boolean;
@@ -28,6 +29,7 @@ export class DbConnection {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly connectionOptions: DbConnectionOptions,
+		private readonly pgRecover: PgRecover,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
@@ -43,6 +45,9 @@ export class DbConnection {
 		if (connectionState.connected) return;
 		try {
 			await this.dataSource.initialize();
+			if (this.options.type === 'postgres') {
+				this.pgRecover.initializeRecoverOnError();
+			}
 		} catch (e) {
 			let error = ensureError(e);
 			if (
