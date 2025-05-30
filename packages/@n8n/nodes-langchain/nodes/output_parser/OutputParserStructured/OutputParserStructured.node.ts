@@ -1,3 +1,5 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { PromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import {
 	jsonParse,
@@ -11,9 +13,14 @@ import {
 import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
-import { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import {
+	N8nOutputFixingParser,
+	N8nStructuredOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { NAIVE_FIX_PROMPT } from './prompt';
 
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,8 +50,17 @@ export class OutputParserStructured implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [],
+		inputs: `={{
+			((parameters) => {
+				if (parameters?.autoFix) {
+					return [
+						{ displayName: 'Model', maxConnections: 1, type: "${NodeConnectionTypes.AiLanguageModel}", required: true }
+					];
+				}
+
+				return [];
+			})($parameter)
+		}}`,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
@@ -116,6 +132,58 @@ export class OutputParserStructured implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Auto-Fix Format',
+				description:
+					'Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.',
+				name: 'autoFix',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Retry Prompt',
+				name: 'retryPromptType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						autoFix: [true],
+					},
+				},
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Default',
+						value: 'default',
+						description: 'Use default retry prompt',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Use a custom retry prompt',
+						action: 'Use custom retry prompt',
+					},
+				],
+				default: 'default',
+				description: 'How to specify the prompt used for retrying the output parsing',
+			},
+			{
+				displayName: 'Custom Prompt',
+				name: 'prompt',
+				type: 'string',
+				displayOptions: {
+					show: {
+						autoFix: [true],
+						retryPromptType: ['custom'],
+					},
+				},
+				default: NAIVE_FIX_PROMPT,
+				typeOptions: {
+					rows: 10,
+				},
+				hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
+				description:
+					'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
+			},
 		],
 	};
 
@@ -124,6 +192,7 @@ export class OutputParserStructured implements INodeType {
 		// We initialize these even though one of them will always be empty
 		// it makes it easer to navigate the ternary operator
 		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+
 		let inputSchema: string;
 
 		if (this.getNode().typeVersion <= 1.1) {
@@ -137,17 +206,50 @@ export class OutputParserStructured implements INodeType {
 
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
+
+		const autoFix = this.getNodeParameter('autoFix', itemIndex, false) as boolean;
+
 		try {
-			const parser = await N8nStructuredOutputParser.fromZodJsonSchema(
+			const outputParser = await N8nStructuredOutputParser.fromZodJsonSchema(
 				zodSchema,
 				nodeVersion,
 				this,
 			);
-			return {
-				response: parser,
-			};
+
+			if (!autoFix) {
+				return {
+					response: outputParser,
+				};
+			} else {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiLanguageModel,
+					itemIndex,
+				)) as BaseLanguageModel;
+
+				const prompt = this.getNodeParameter('prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
+
+				if (prompt.length === 0 || !prompt.includes('{error}')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Auto-fixing parser prompt has to contain {error} placeholder',
+					);
+				}
+				const parser = new N8nOutputFixingParser(
+					this,
+					model,
+					outputParser,
+					PromptTemplate.fromTemplate(prompt),
+				);
+
+				return {
+					response: parser,
+				};
+			}
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+			throw new NodeOperationError(
+				this.getNode(),
+				'Error during parsing of JSON Schema. Please check the schema and try again.',
+			);
 		}
 	}
 }

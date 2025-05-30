@@ -25,7 +25,7 @@ export class LmChatOpenAi implements INodeType {
 	};
 
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI Chat Model',
+		displayName: 'fr',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
