@@ -1,5 +1,11 @@
+import * as testModules from '@test-integration/test-modules';
+
 import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';
+
+beforeAll(async () => {
+	await testModules.init(['insights']);
+});
 
 describe('Insights By Period', () => {
 	test.each(['time_saved_min', 'runtime_ms', 'failure', 'success'] satisfies TypeUnit[])(

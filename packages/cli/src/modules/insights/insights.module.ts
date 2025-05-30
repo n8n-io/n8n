@@ -1,37 +1,28 @@
-import { Logger } from '@n8n/backend-common';
 import type { BaseN8nModule } from '@n8n/decorators';
-import { N8nModule, OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { N8nModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import './insights.controller';
 import { InstanceSettings } from 'n8n-core';
 
-import { InsightsService } from './insights.service';
-
-import './insights.controller';
+import { InsightsByPeriod } from './database/entities/insights-by-period';
+import { InsightsMetadata } from './database/entities/insights-metadata';
+import { InsightsRaw } from './database/entities/insights-raw';
 
 @N8nModule()
 export class InsightsModule implements BaseN8nModule {
-	constructor(
-		private readonly logger: Logger,
-		private readonly insightsService: InsightsService,
-		private readonly instanceSettings: InstanceSettings,
-	) {
-		this.logger = this.logger.scoped('insights');
-	}
+	async init() {
+		const { instanceType } = Container.get(InstanceSettings);
 
-	initialize() {
-		// We want to initialize the insights background process (schedulers) for the main leader instance
-		// to have only one main instance saving the insights data
-		if (this.instanceSettings.isLeader) {
-			this.insightsService.startTimers();
+		/**
+		 * Only main- and webhook-type instances collect insights because
+		 * only they are informed of finished workflow executions.
+		 */
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			await import('./insights.init');
 		}
 	}
 
-	@OnLeaderTakeover()
-	startBackgroundProcess() {
-		this.insightsService.startTimers();
-	}
-
-	@OnLeaderStepdown()
-	stopBackgroundProcess() {
-		this.insightsService.stopTimers();
+	entities() {
+		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
 	}
 }
