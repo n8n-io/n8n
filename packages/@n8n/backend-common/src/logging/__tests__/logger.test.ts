@@ -42,12 +42,12 @@ describe('Logger', () => {
 			jest.resetAllMocks();
 		});
 
-		test('log text, if `config.logging.format` is set to `default`', () => {
+		test('log text, if `config.logging.format` is set to `text`', () => {
 			// ARRANGE
 			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
-					format: 'default',
+					format: 'text',
 					level: 'info',
 					outputs: ['console'],
 					scopes: [],

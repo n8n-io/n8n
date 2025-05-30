@@ -74,7 +74,7 @@ export class LoggingConfig {
 	 * monitoring as well as debugging.
 	 */
 	@Env('N8N_LOG_FORMAT')
-	format: 'default' | 'json' = 'default';
+	format: 'text' | 'json' = 'text';
 
 	@Nested
 	file: FileLoggingConfig;

@@ -241,7 +241,7 @@ describe('GlobalConfig', () => {
 		},
 		logging: {
 			level: 'info',
-			format: 'default',
+			format: 'text',
 			outputs: ['console'],
 			file: {
 				fileCountMax: 100,
