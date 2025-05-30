@@ -159,7 +159,7 @@ export const postFields: INodeProperties[] = [
 								name: 'postDateTime',
 								type: 'dateTime',
 								default: '',
-								description: 'When to publish this post (required if status is “future”).',
+								description: 'When to publish this post (required if status is “future”)',
 								displayOptions: {
 									show: {
 										postStatus: ['future'],
@@ -349,7 +349,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured Media Name or ID',
 				name: 'featuredMediaId',
 				type: 'options',
 				default: '',
@@ -485,7 +485,7 @@ export const postFields: INodeProperties[] = [
 								name: 'postDateTime',
 								type: 'dateTime',
 								default: '',
-								description: 'When to publish this post (required if status is “future”).',
+								description: 'When to publish this post (required if status is “future”)',
 								displayOptions: {
 									show: {
 										postStatus: ['future'],
@@ -675,7 +675,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured Media Name or ID',
 				name: 'featuredMediaId',
 				type: 'options',
 				default: '',
