@@ -3,7 +3,9 @@ import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as projectsApi from '@/api/projects.api';
+import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
+import * as credentialsApi from '@/api/credentials';
 import * as credentialsEEApi from '@/api/credentials.ee';
 import type { Project, ProjectListItem, ProjectsCount } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
@@ -191,6 +193,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const isProjectEmpty = async (projectId: string) => {
+		const [credentials, workflows] = await Promise.all([
+			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
+			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
+		]);
+
+		return credentials.length === 0 && workflows.count === 0;
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -252,5 +263,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
+		isProjectEmpty,
 	};
 });
