@@ -170,6 +170,7 @@ export const schemaRLC: INodeProperties = {
 			type: 'list',
 			typeOptions: {
 				searchListMethod: 'schemaSearch',
+				searchable: true,
 			},
 		},
 		{
@@ -194,6 +195,7 @@ export const tableRLC: INodeProperties = {
 			type: 'list',
 			typeOptions: {
 				searchListMethod: 'tableSearch',
+				searchable: true,
 			},
 		},
 		{
