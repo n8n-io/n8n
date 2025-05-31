@@ -404,6 +404,7 @@ export class QuickChart implements INodeType {
 			qs: {
 				chart: JSON.stringify(chart),
 				...chartOptions,
+				v: chartType == 'candlestick' ? 3 : '',
 			},
 			returnFullResponse: true,
 			encoding: 'arraybuffer',
