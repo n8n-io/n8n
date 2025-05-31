@@ -177,7 +177,7 @@ export class LmChatStraico implements INodeType {
     const options = {
       temperature: rawOptions.temperature,
       topP: rawOptions.top_p,
-      maxTokens: rawOptions.max_tokens,
+      maxTokens: rawOptions.max_tokens ?? 1024,
       presencePenalty: rawOptions.presence_penalty,
       frequencyPenalty: rawOptions.frequency_penalty,
       timeout: rawOptions.timeout ?? 60000,
