@@ -185,7 +185,11 @@ export class Wordpress implements INodeType {
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (statusCollection.status && typeof statusCollection.status === 'object') {
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
 							const { postStatus, postDateTime } = statusCollection.status as {
 								postStatus: string;
 								postDateTime?: string;
@@ -251,7 +255,11 @@ export class Wordpress implements INodeType {
 						if (updateFields.password) {
 							body.password = updateFields.password as string;
 						}
-						if (statusCollection.status && typeof statusCollection.status === 'object') {
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
 							const { postStatus, postDateTime } = statusCollection.status as {
 								postStatus: string;
 								postDateTime?: string;
@@ -390,7 +398,11 @@ export class Wordpress implements INodeType {
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (statusCollection.status && typeof statusCollection.status === 'object') {
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
 							const { pageStatus, pageDateTime } = statusCollection.status as {
 								pageStatus: string;
 								pageDateTime?: string;
@@ -453,7 +465,11 @@ export class Wordpress implements INodeType {
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
 						}
-						if (statusCollection.status && typeof statusCollection.status === 'object') {
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
 							const { pageStatus, pageDateTime } = statusCollection.status as {
 								pageStatus: string;
 								pageDateTime?: string;

@@ -163,13 +163,13 @@ export const pageFields: INodeProperties[] = [
 							},
 							{
 								displayName: 'Scheduled Date/Time',
-								name: 'postDateTime',
+								name: 'pageDateTime',
 								type: 'dateTime',
 								default: '',
 								description: 'When to publish this page (required if status is “future”)',
 								displayOptions: {
 									show: {
-										postStatus: ['future'],
+										pageStatus: ['future'],
 									},
 								},
 							},
@@ -431,7 +431,7 @@ export const pageFields: INodeProperties[] = [
 								description: 'When to publish this page (required if status is “future”)',
 								displayOptions: {
 									show: {
-										postStatus: ['future'],
+										pageStatus: ['future'],
 									},
 								},
 							},
