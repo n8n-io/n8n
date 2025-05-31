@@ -1,6 +1,7 @@
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Response } from 'express';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 export type CompressionResponse = Response & {
 	/**
@@ -21,6 +22,15 @@ export class FlushingSSEServerTransport extends SSEServerTransport {
 
 	async send(message: JSONRPCMessage): Promise<void> {
 		await super.send(message);
+		this.response.flush();
+	}
+
+	async handleRequest(
+		req: IncomingMessage,
+		resp: ServerResponse,
+		message: IncomingMessage,
+	): Promise<void> {
+		await super.handlePostMessage(req, resp, message);
 		this.response.flush();
 	}
 }
