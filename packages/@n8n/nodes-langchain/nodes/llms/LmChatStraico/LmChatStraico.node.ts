@@ -36,7 +36,7 @@ export class LmChatStraico implements INodeType {
       resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatxaigrok/',
+						url: 'https://github.com/nlp-deutschland-de/n8n-docs/blob/main/docs/integrations/community-nodes/n8n-nodes-straico.md',
 					},
 				],
 			},
