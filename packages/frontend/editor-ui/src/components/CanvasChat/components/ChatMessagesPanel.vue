@@ -39,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+
 const locale = useI18n();
 const toast = useToast();
 const settingsStore = useSettingsStore();
@@ -166,7 +167,7 @@ watch(
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
+				<N8nTooltip v-if="clipboard.isSupported && !isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
