@@ -85,7 +85,8 @@
 				"updateFields": {
 					"title": "New Title",
 					"content": "Updated Content",
-					"slug": "new-slug"
+					"slug": "new-slug",
+					"excerpt": "Updated excerpt"
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -456,7 +457,7 @@
 					},
 					"excerpt": {
 						"raw": "",
-						"rendered": "<p>Updated Content</p>\n",
+						"rendered": "<p>Updated excerpt</p>\n",
 						"protected": false
 					},
 					"author": 1,

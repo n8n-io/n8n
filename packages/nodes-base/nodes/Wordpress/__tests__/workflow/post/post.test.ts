@@ -22,6 +22,7 @@ describe('Wordpress > Post Workflows', () => {
 				sticky: true,
 				categories: [1],
 				format: 'standard',
+				excerpt: 'This is an excerpt',
 			})
 			.reply(200, postCreate);
 		mock

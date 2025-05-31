@@ -422,7 +422,7 @@ export const postCreate = {
 	},
 	excerpt: {
 		raw: '',
-		rendered: '<p>This is my content</p>\n',
+		rendered: '<p>This is an excerpt</p>\n',
 		protected: false,
 	},
 	author: 1,
@@ -1027,7 +1027,7 @@ export const pageUpdate = {
 	},
 	excerpt: {
 		raw: '',
-		rendered: '<p>Updated Content</p>\n',
+		rendered: '<p>Updated excerpt</p>\n',
 		protected: false,
 	},
 	author: 1,

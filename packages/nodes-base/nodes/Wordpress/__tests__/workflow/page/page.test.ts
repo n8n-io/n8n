@@ -26,6 +26,7 @@ describe('Wordpress > Page Workflows', () => {
 				title: 'New Title',
 				content: 'Updated Content',
 				slug: 'new-slug',
+				excerpt: 'Updated excerpt',
 			})
 			.reply(200, pageUpdate);
 	});

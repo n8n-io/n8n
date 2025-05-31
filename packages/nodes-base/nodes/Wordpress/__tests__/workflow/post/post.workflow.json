@@ -113,7 +113,8 @@
 					"pingStatus": "closed",
 					"format": "standard",
 					"sticky": true,
-					"categories": [1]
+					"categories": [1],
+					"excerpt": "This is an excerpt"
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -569,7 +570,7 @@
 					},
 					"excerpt": {
 						"raw": "",
-						"rendered": "<p>This is my content</p>\n",
+						"rendered": "<p>This is an excerpt</p>\n",
 						"protected": false
 					},
 					"author": 1,
