@@ -24,7 +24,12 @@
 				"updateFields": {
 					"title": "New Title",
 					"content": "Some new content",
-					"status": "publish"
+					"status": {
+						"status": {
+							"postStatus": "publish",
+							"postDateTime": ""
+						}
+					}
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -98,7 +103,12 @@
 					"authorId": 1,
 					"content": "This is my content",
 					"slug": "new-post",
-					"status": "future",
+					"status": {
+						"status": {
+							"postStatus": "future",
+							"postDateTime": "2025-03-27T18:30:04"
+						}
+					},
 					"commentStatus": "closed",
 					"pingStatus": "closed",
 					"format": "standard",

@@ -15,7 +15,13 @@
 				"title": "A new page",
 				"additionalFields": {
 					"content": "Some content",
-					"status": "draft",
+					"status": {
+						"status": {
+							"pageStatus": "draft",
+							"pageDateTime": ""
+						}
+					},
+					"slug": "a-new-page",
 					"commentStatus": "closed",
 					"pingStatus": "closed",
 					"menuOrder": 1

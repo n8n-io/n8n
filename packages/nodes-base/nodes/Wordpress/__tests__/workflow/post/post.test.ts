@@ -16,6 +16,7 @@ describe('Wordpress > Post Workflows', () => {
 				content: 'This is my content',
 				slug: 'new-post',
 				status: 'future',
+				date: '2025-03-27T18:30:04',
 				comment_status: 'closed',
 				ping_status: 'closed',
 				sticky: true,

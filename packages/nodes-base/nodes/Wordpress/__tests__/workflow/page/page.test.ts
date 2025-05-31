@@ -11,6 +11,7 @@ describe('Wordpress > Page Workflows', () => {
 			.post('/wp-json/wp/v2/pages', {
 				title: 'A new page',
 				content: 'Some content',
+				slug: 'a-new-page',
 				status: 'draft',
 				comment_status: 'closed',
 				ping_status: 'closed',
