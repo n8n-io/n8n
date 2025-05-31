@@ -1486,6 +1486,7 @@ const onNameSubmit = async (name: string) => {
 						<N8nInlineTextEdit
 							ref="renameInput"
 							:key="currentFolder?.id"
+							data-test-id="breadcrumbs-item-current"
 							:placeholder="i18n.baseText('folders.rename.placeholder')"
 							:model-value="currentFolder.name"
 							:max-length="30"
