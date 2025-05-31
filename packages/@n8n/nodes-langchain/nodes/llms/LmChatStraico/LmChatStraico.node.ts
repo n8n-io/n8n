@@ -167,7 +167,7 @@ export class LmChatStraico implements INodeType {
 
   async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
     const credentials = await this.getCredentials<OpenAICompatibleCredential>('straicoApi');
-    console.log('Credentials:', { apiKey: '***', url: credentials.url });
+    // Credentials loaded successfully
 
     const modelName = this.getNodeParameter('model', itemIndex) as string;
     console.log('Selected Model Name:', modelName); // Log the selected model
