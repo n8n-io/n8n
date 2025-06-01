@@ -29,7 +29,8 @@
 							"postStatus": "publish",
 							"postDateTime": ""
 						}
-					}
+					},
+					"featuredMediaId": 10
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -172,7 +173,7 @@
 						"protected": false
 					},
 					"author": 1,
-					"featured_media": 0,
+					"featured_media": 10,
 					"comment_status": "open",
 					"ping_status": "open",
 					"sticky": false,

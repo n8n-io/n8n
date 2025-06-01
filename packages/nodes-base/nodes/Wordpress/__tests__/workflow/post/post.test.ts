@@ -31,6 +31,7 @@ describe('Wordpress > Post Workflows', () => {
 				title: 'New Title',
 				content: 'Some new content',
 				status: 'publish',
+				featured_media: 10,
 			})
 			.reply(200, postUpdate);
 	});

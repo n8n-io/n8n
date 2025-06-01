@@ -16,6 +16,7 @@ describe('Wordpress > Page Workflows', () => {
 				comment_status: 'closed',
 				ping_status: 'closed',
 				menu_order: 1,
+				featured_media: 10,
 			})
 			.reply(200, pageCreate);
 		mock.get('/wp-json/wp/v2/pages/2').reply(200, pageGet);
