@@ -15,7 +15,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 		this.packageName = createHash('sha256')
             .update(this.directory)
             .digest('hex')
-            .substring(0, 8);
+			.substring(0, 8);
 		
 		const nodes = await glob('**/*.node.js', {
 			cwd: this.directory,
