@@ -71,8 +71,6 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
-			// Wait for async callback
-			await new Promise((resolve) => setTimeout(resolve, 10));
 			// Verify that handlePostMessage was called with request, response and tools
 			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
 				mockTool,
