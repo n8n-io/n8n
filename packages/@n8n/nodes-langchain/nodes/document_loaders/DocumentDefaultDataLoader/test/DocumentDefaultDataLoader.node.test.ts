@@ -1,4 +1,7 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { mock } from 'jest-mock-extended';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DocumentDefaultDataLoader } from '../DocumentDefaultDataLoader.node';
 
@@ -11,32 +14,6 @@ jest.mock('@langchain/textsplitters', () => ({
 	})),
 }));
 
-const mockLogger = { debug: jest.fn() };
-
-function createMockThis(overrides: Partial<Record<string, unknown>> = {}) {
-	return {
-		logger: mockLogger,
-		getNodeParameter: jest.fn(
-			(
-				name: 'dataType' | 'textSplittingMode' | 'binaryDataKey',
-				idx: number,
-				def: string,
-			): string => {
-				const params: { dataType: string; textSplittingMode: string; binaryDataKey: string } = {
-					dataType: 'json',
-					textSplittingMode: 'simple',
-					binaryDataKey: 'data',
-				};
-				return params[name] ?? def;
-			},
-		),
-		getInputConnectionData: jest.fn(),
-		addInputData: jest.fn(() => ({ index: 0 })),
-		addOutputData: jest.fn(),
-		...overrides,
-	};
-}
-
 describe('DocumentDefaultDataLoader', () => {
 	let loader: DocumentDefaultDataLoader;
 
@@ -45,14 +22,52 @@ describe('DocumentDefaultDataLoader', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should use RecursiveCharacterTextSplitter when textSplittingMode is simple', async () => {
-		const context = createMockThis();
-		const result = await loader.supplyData.call(context, 0);
-
+	it('should supply data with recursive char text splitter', async () => {
+		await loader.supplyData.call(
+			mock<ISupplyDataFunctions>({
+				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'dataType':
+							return 'json';
+						case 'textSplittingMode':
+							return 'simple';
+						case 'binaryDataKey':
+							return 'data';
+						default:
+							return;
+					}
+				}),
+			}),
+			0,
+		);
 		expect(RecursiveCharacterTextSplitter).toHaveBeenCalledWith({
 			chunkSize: 1000,
 			chunkOverlap: 200,
 		});
-		expect(result.response).toBeDefined();
+	});
+
+	it('should supply data with custom text splitter', async () => {
+		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
+		const context = mock<ISupplyDataFunctions>({
+			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				switch (paramName) {
+					case 'dataType':
+						return 'json';
+					case 'textSplittingMode':
+						return 'custom';
+					case 'binaryDataKey':
+						return 'data';
+					default:
+						return;
+				}
+			}),
+			getInputConnectionData: jest.fn(async () => customSplitter),
+		});
+		await loader.supplyData.call(context, 0);
+
+		expect(context.getInputConnectionData).toHaveBeenCalledWith(
+			NodeConnectionTypes.AiTextSplitter,
+			0,
+		);
 	});
 });
