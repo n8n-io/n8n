@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, STORES } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { cleanupAppModals, createAppModals, mockedStore, retry } from '@/__tests__/utils';
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import { fireEvent } from '@testing-library/vue';

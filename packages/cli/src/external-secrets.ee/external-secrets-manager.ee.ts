@@ -1,7 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { Cipher, Logger } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';

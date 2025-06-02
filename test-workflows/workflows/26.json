@@ -1,0 +1,729 @@
+{
+  "createdAt": "2021-02-17T09:14:09.452Z",
+  "updatedAt": "2021-05-21T11:16:43.023Z",
+  "id": "26",
+  "name": "ClickUp:Folder:create update getAll get delete:Goal:create update getAll get delete:GoalKeyResult:create update delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "c237659f-9d24-4aa2-9869-8965d9a1591b"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "team": "4651110",
+        "space": "8716115",
+        "name": "=testFolder{{Date.now()}}"
+      },
+      "name": "ClickUp",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        460,
+        220
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "id": "5034da19-bed1-4282-a8e9-6cf18d227daf"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "update",
+        "team": "4651110",
+        "space": "8716115",
+        "folder": "={{$node[\"ClickUp\"].json[\"id\"]}}",
+        "updateFields": {
+          "name": "=testFolderUpdated{{Date.now()}}"
+        }
+      },
+      "name": "ClickUp1",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        740,
+        220
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "id": "f16090cd-67d3-41bc-b1f5-9449d3334323"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "getAll",
+        "team": "4651110",
+        "space": "8716115",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "ClickUp2",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        220
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "id": "5ecdc66a-43f2-4ee6-9139-32d43694f4b2"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "get",
+        "team": "4651110",
+        "space": "8716115",
+        "folder": "={{$node[\"ClickUp\"].json[\"id\"]}}"
+      },
+      "name": "ClickUp3",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1330,
+        220
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "id": "fb668fdb-e839-4b50-a683-1583474a2e0a"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "delete",
+        "team": "4651110",
+        "space": "8716115",
+        "folder": "={{$node[\"ClickUp\"].json[\"id\"]}}"
+      },
+      "name": "ClickUp4",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1610,
+        220
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "id": "0c7006d8-7a50-47a1-aa3d-b7d55041a95e"
+    },
+    {
+      "parameters": {
+        "resource": "goal",
+        "team": "4651110",
+        "name": "=testGoal{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "ClickUp5",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "bf9c004a-aec4-44fe-93c3-502b994deb5e"
+    },
+    {
+      "parameters": {
+        "resource": "goal",
+        "operation": "update",
+        "goal": "={{$node[\"ClickUp5\"].json[\"id\"]}}",
+        "updateFields": {
+          "name": "=testGoalUpdated{{Date.now()}}"
+        }
+      },
+      "name": "ClickUp6",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1630,
+        390
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "1612db26-06b6-4311-823a-7f333867704c"
+    },
+    {
+      "parameters": {
+        "resource": "goal",
+        "operation": "getAll",
+        "team": "4651110",
+        "limit": 1
+      },
+      "name": "ClickUp7",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1950,
+        390
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "52f593da-feb7-44e3-b4b1-480a6b3c7b80"
+    },
+    {
+      "parameters": {
+        "resource": "goal",
+        "operation": "get",
+        "goal": "={{$node[\"ClickUp5\"].json[\"id\"]}}"
+      },
+      "name": "ClickUp8",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        2230,
+        390
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "e634fee5-7272-483b-81af-2f2edb2a1568"
+    },
+    {
+      "parameters": {
+        "resource": "goal",
+        "operation": "delete",
+        "goal": "={{$node[\"ClickUp5\"].json[\"id\"]}}"
+      },
+      "name": "ClickUp9",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        2510,
+        390
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "fa8e6453-a83e-41cf-a447-25dded6c83cd"
+    },
+    {
+      "parameters": {
+        "resource": "goalKeyResult",
+        "goal": "={{$node[\"ClickUp5\"].json[\"id\"]}}",
+        "name": "=testGoalResult{{Date.now()}}",
+        "type": "boolean",
+        "additionalFields": {}
+      },
+      "name": "ClickUp10",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        730,
+        510
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "f5eca6a5-4ab4-462b-941f-5daafe6950b2"
+    },
+    {
+      "parameters": {
+        "resource": "goalKeyResult",
+        "operation": "update",
+        "keyResult": "={{$node[\"ClickUp10\"].json[\"id\"]}}",
+        "updateFields": {
+          "name": "=Updated Key result{{Date.now()}}"
+        }
+      },
+      "name": "ClickUp11",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        510
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "6c66b452-6837-4db7-bc40-407dad872c28"
+    },
+    {
+      "parameters": {
+        "resource": "goalKeyResult",
+        "operation": "delete",
+        "keyResult": "={{$node[\"ClickUp10\"].json[\"id\"]}}"
+      },
+      "name": "ClickUp12",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        510
+      ],
+      "credentials": {
+        "clickUpApi": {
+          "id": "13",
+          "name": "clickup cred"
+        }
+      },
+      "disabled": true,
+      "id": "27caaec0-7dd1-4af8-bc0a-61425c6e212f"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        590,
+        220
+      ],
+      "typeVersion": 1,
+      "id": "4617b9ef-c630-4c2f-9e38-bc8beb444063"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds1",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        890,
+        220
+      ],
+      "typeVersion": 1,
+      "id": "bd5ba78b-2492-4f5e-8c96-4cf38d7de98f"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds2",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1180,
+        220
+      ],
+      "typeVersion": 1,
+      "id": "370f5b9c-91d0-4473-b6d2-75c3b5e22d4d"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds3",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1470,
+        220
+      ],
+      "typeVersion": 1,
+      "id": "10594b96-9cfd-47a8-8195-27c04b33295c"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds4",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        580,
+        400
+      ],
+      "typeVersion": 1,
+      "id": "57f1facf-1e6b-45a2-9163-bcf5f35cd956"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds5",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        890,
+        510
+      ],
+      "typeVersion": 1,
+      "id": "abad8d7c-4ace-444f-8dd1-3d6f1d1ddc7c"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds6",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1200,
+        510
+      ],
+      "typeVersion": 1,
+      "id": "f5b4c39b-e920-4abb-8b3b-3f2b1fe6725e"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds7",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1500,
+        390
+      ],
+      "typeVersion": 1,
+      "id": "56e8b458-e6e0-4926-a5a3-62945de38f3b"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds8",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1790,
+        390
+      ],
+      "typeVersion": 1,
+      "id": "e0177c72-6a50-499d-a271-4b1a1ea60bd3"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds9",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        2090,
+        390
+      ],
+      "typeVersion": 1,
+      "id": "3127e2cf-5e3b-47d7-ad5f-79ad1a1ae8e7"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 8 Seconds10",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        2380,
+        390
+      ],
+      "typeVersion": 1,
+      "id": "e6f31f9c-ef3a-49f8-a207-c16085088c71"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "ClickUp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp1": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp2": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp3": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp5": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp6": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp7": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp8": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp10": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp11": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp12": {
+      "main": [
+        [
+          {
+            "node": "Sleep 8 Seconds7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds": {
+      "main": [
+        [
+          {
+            "node": "ClickUp1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds1": {
+      "main": [
+        [
+          {
+            "node": "ClickUp2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds2": {
+      "main": [
+        [
+          {
+            "node": "ClickUp3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds3": {
+      "main": [
+        [
+          {
+            "node": "ClickUp4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds4": {
+      "main": [
+        [
+          {
+            "node": "ClickUp10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds5": {
+      "main": [
+        [
+          {
+            "node": "ClickUp11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds6": {
+      "main": [
+        [
+          {
+            "node": "ClickUp12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds7": {
+      "main": [
+        [
+          {
+            "node": "ClickUp6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds8": {
+      "main": [
+        [
+          {
+            "node": "ClickUp7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds9": {
+      "main": [
+        [
+          {
+            "node": "ClickUp8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 8 Seconds10": {
+      "main": [
+        [
+          {
+            "node": "ClickUp9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

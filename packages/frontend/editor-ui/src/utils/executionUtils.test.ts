@@ -1,15 +1,23 @@
+import type { MockInstance } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { displayForm, executionFilterToQueryFilter, waitingNodeTooltip } from './executionUtils';
-import type { INode, IRunData, IPinData } from 'n8n-workflow';
+import {
+	displayForm,
+	executionFilterToQueryFilter,
+	waitingNodeTooltip,
+	getExecutionErrorMessage,
+	getExecutionErrorToastConfiguration,
+} from './executionUtils';
+import type { INode, IRunData, IPinData, ExecutionError } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
 import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
+import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
 
 const windowOpenSpy = vi.spyOn(window, 'open');
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		formWaitingUrl: 'http://localhost:5678/form-waiting',
 		webhookWaitingUrl: 'http://localhost:5678/webhook-waiting',
@@ -22,15 +30,17 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	i18n: {
-		baseText: (key: string) => {
+		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaitingForFormSubmission': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaitingForWebhook': 'Waiting for webhook call: ',
+				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
+				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
+				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
 				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
 				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
+				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
+				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
 			};
 			return texts[key] || key;
 		},
@@ -39,12 +49,24 @@ vi.mock('@/plugins/i18n', () => ({
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
+	let fetchMock: MockInstance;
+	const successResponse = {
+		ok: true,
+	} as unknown as Response;
+
+	beforeAll(() => {
+		fetchMock = vi.spyOn(global, 'fetch');
+	});
+
+	afterAll(() => {
+		fetchMock.mockRestore();
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should not call openPopUpWindow if node has already run or is pinned', () => {
+	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -67,7 +89,9 @@ describe('displayForm', () => {
 		const runData: IRunData = { Node1: [] };
 		const pinData: IPinData = { Node2: [{ json: { data: {} } }] };
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData,
 			pinData,
@@ -81,7 +105,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
+	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -101,7 +125,8 @@ describe('displayForm', () => {
 			},
 		];
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -115,7 +140,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
+	it('should not open pop-up if source is "RunData.ManualChatMessage"', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -129,7 +154,9 @@ describe('displayForm', () => {
 
 		getTestUrlMock.mockReturnValue('http://test-url.com');
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -153,8 +180,9 @@ describe('displayForm', () => {
 			getTestUrlMock.mockReturnValue('http://test-url.com');
 		});
 
-		it('should open pop-up if the trigger node is a form node', () => {
-			displayForm({
+		it('should open pop-up if the trigger node is a form node', async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
@@ -168,8 +196,41 @@ describe('displayForm', () => {
 			expect(windowOpenSpy).toHaveBeenCalled();
 		});
 
-		it("should not open pop-up if the trigger node is specified and it isn't a form node", () => {
-			displayForm({
+		it('should not open pop-up if the trigger node is a form node but webhook url is not live', async () => {
+			fetchMock.mockResolvedValue({ ok: false });
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not open pop-up if the trigger node is a form node but fetch of webhook url throws', async () => {
+			fetchMock.mockRejectedValue(new Error());
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it("should not open pop-up if the trigger node is specified and it isn't a form node", async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
@@ -321,5 +382,125 @@ describe('waitingNodeTooltip', () => {
 		expect(waitingNodeTooltip(node)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
+	});
+});
+
+const executionErrorFactory = (error: Record<string, unknown>) =>
+	error as unknown as ExecutionError;
+
+describe('getExecutionErrorMessage', () => {
+	it('returns error.message when lastNodeExecuted and error are present', () => {
+		const result = getExecutionErrorMessage({
+			error: executionErrorFactory({ message: 'Node failed' }),
+			lastNodeExecuted: 'Node1',
+		});
+		expect(result).toBe('Node failed');
+	});
+
+	it('uses fallback translation when only error.message is provided', () => {
+		const result = getExecutionErrorMessage({
+			error: executionErrorFactory({ message: 'Something went wrong' }),
+		});
+		expect(result).toBe('Execution error.Details: Something went wrong');
+	});
+
+	it('includes node name if error.node is a string', () => {
+		const result = getExecutionErrorMessage({
+			error: executionErrorFactory({ message: 'Failed', node: 'MyNode' }),
+		});
+		expect(result).toBe('Execution error.Details: MyNode: Failed');
+	});
+
+	it('includes node.name if error.node is an object', () => {
+		const result = getExecutionErrorMessage({
+			error: executionErrorFactory({ message: 'Crashed', node: { name: 'Step1' } }),
+		});
+		expect(result).toBe('Execution error.Details: Step1: Crashed');
+	});
+
+	it('uses default fallback when no error or lastNodeExecuted', () => {
+		const result = getExecutionErrorMessage({});
+		expect(result).toBe('Execution error!');
+	});
+});
+
+describe('getExecutionErrorToastConfiguration', () => {
+	it('returns config for SubworkflowOperationError', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'SubworkflowOperationError',
+				message: 'Subworkflow failed',
+				description: 'Workflow XYZ failed',
+			}),
+			lastNodeExecuted: 'NodeA',
+		});
+
+		expect(result).toEqual({
+			title: 'Subworkflow failed',
+			message: 'Workflow XYZ failed',
+		});
+	});
+
+	it('returns config for configuration-node error with node name', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'NodeOperationError',
+				message: 'Node failed',
+				description: 'Bad configuration',
+				functionality: 'configuration-node',
+				node: { name: 'TestNode' },
+			}),
+		});
+		expect(result.title).toBe('Error in sub-node ‘TestNode‘');
+		expect((result.message as VNode).props).toEqual({
+			errorMessage: 'Bad configuration',
+			nodeName: 'TestNode',
+		});
+	});
+
+	it('returns config for configuration-node error without node name', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'NodeApiError',
+				message: 'API failed',
+				description: 'Missing credentials',
+				functionality: 'configuration-node',
+				node: {},
+			}),
+		});
+
+		expect(result.title).toBe('Problem executing workflow');
+		expect((result.message as VNode).props).toEqual({
+			errorMessage: 'Missing credentials',
+			nodeName: '',
+		});
+	});
+
+	it('returns generic config when error type is not special', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'UnknownError',
+				message: 'Something broke',
+			}),
+			lastNodeExecuted: 'NodeX',
+		});
+
+		expect(result).toEqual({
+			title: 'Problem in node ‘NodeX‘',
+			message: 'Something broke',
+		});
+	});
+
+	it('returns generic config without lastNodeExecuted', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'UnknownError',
+				message: 'Something broke',
+			}),
+		});
+		expect(result).toEqual({
+			title: 'Problem executing workflow',
+			message: 'Execution error.Details: Something broke',
+		});
 	});
 });

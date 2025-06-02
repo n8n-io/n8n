@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { STORES, TEMPLATES_URLS } from '@/constants';
+import { TEMPLATES_URLS } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	INodeUi,
 	ITemplatesCategory,
@@ -13,7 +14,7 @@ import type {
 import { useSettingsStore } from './settings.store';
 import * as templatesApi from '@/api/templates';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';

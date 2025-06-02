@@ -4,12 +4,12 @@ import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/co
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
-import { useRootStore } from '@/stores/root.store';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';

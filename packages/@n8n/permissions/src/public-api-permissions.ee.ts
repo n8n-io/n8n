@@ -15,6 +15,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'variable:create',
 	'variable:delete',
 	'variable:list',
+	'variable:update',
 	'tag:create',
 	'tag:read',
 	'tag:update',

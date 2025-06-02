@@ -10,7 +10,7 @@ import { faker } from '@faker-js/faker';
 import AskAssistantBuild from './AskAssistantBuild.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import { mockedStore } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {
@@ -27,7 +27,8 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 // Mock i18n
-vi.mock('@/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),

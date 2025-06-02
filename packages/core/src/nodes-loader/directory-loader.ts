@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -20,7 +21,6 @@ import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
-import { Logger } from '@/logging/logger';
 
 import {
 	commonCORSParameters,

@@ -23,7 +23,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -51,9 +51,9 @@ import type {
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { ProjectTypes } from '@/types/projects.types';
@@ -679,7 +679,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					@item-selected="onBreadcrumbsItemSelected"
 				>
 					<template #append>
-						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
+						<span
+							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
+							:class="$style['path-separator']"
+							>/</span
+						>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 							<template #default="{ shortenedName }">
 								<InlineTextEdit

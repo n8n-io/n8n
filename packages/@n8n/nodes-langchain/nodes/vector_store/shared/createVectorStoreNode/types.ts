@@ -10,6 +10,8 @@ import type {
 	Icon,
 	ISupplyDataFunctions,
 	ThemeIconColor,
+	IDataObject,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
@@ -34,6 +36,12 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 				filter?: string,
 				paginationToken?: string,
 			) => Promise<INodeListSearchResult>;
+		};
+		actionHandler?: {
+			[functionName: string]: (
+				this: ILoadOptionsFunctions,
+				payload: IDataObject | string | undefined,
+			) => Promise<NodeParameterValueType>;
 		};
 	};
 

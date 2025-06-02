@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -13,7 +13,6 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
-	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -484,7 +483,6 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
 				};
 
 				item.description.properties.unshift(descProp);
