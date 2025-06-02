@@ -143,11 +143,11 @@ export class LoadNodesAndCredentials {
 		for (const packagePath of installedPackagePaths) {
 			const fullPackagePath = path.join(nodeModulesDir, packagePath);
 
-			if (nodeModulesDir === path.join(this.instanceSettings.nodesDownloadDir, 'node_modules')) {
-				await this.generateLazyLoadingFiles(fullPackagePath);
-			}
-
 			try {
+				if (nodeModulesDir === path.join(this.instanceSettings.nodesDownloadDir, 'node_modules')) {
+					await this.generateLazyLoadingFiles(fullPackagePath);
+				}
+
 				await this.runDirectoryLoader(LazyPackageDirectoryLoader, fullPackagePath);
 			} catch (error) {
 				this.logger.error((error as Error).message);
@@ -232,7 +232,9 @@ export class LoadNodesAndCredentials {
 		try {
 			await fsPromises.access(knownNodesPath);
 			return;
-		} catch {}
+		} catch {
+			// absent so generate
+		}
 
 		const loader = new PackageDirectoryLoader(packagePath);
 		await loader.loadAll();
