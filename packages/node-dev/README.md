@@ -104,7 +104,7 @@ export class MyNode implements INodeType {
 		let item: INodeExecutionData;
 		let myString: string;
 
-		// Itterates over all input items and add the key "myString" with the
+		// Iterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -153,7 +153,7 @@ Method is called when webhook gets called.
 
 Property overview
 
-- **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
+- **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` below.
 - **execute** [optional]: Method is called when the workflow gets executed (once).
 - **hooks** [optional]: The hook methods.
 - **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
@@ -201,7 +201,7 @@ The following properties can be set in the node properties:
 
 The following properties can be set in the node property options:
 
-All properties are optional. However, most only work when the node-property is of a specfic type.
+All properties are optional. However, most only work when the node-property is of a specific type.
 
 - **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property
 - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
