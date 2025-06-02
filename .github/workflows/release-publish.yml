@@ -120,6 +120,15 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
             ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
 
+  security-scan:
+    name: Security Scan Release Image
+    needs: [publish-to-npm, publish-to-docker-hub]
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   create-github-release:
     name: Create a GitHub Release
     needs: [publish-to-npm, publish-to-docker-hub]
