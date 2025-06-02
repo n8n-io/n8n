@@ -1,9 +1,9 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { mock } from 'jest-mock-extended';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { DocumentDefaultDataLoader } from '../DocumentDefaultDataLoader.node';
+import { DocumentDefaultDataLoaderV2 } from '../V2/DocumentDefaultDataLoaderV2.node';
 
 jest.mock('@langchain/textsplitters', () => ({
 	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
@@ -14,11 +14,33 @@ jest.mock('@langchain/textsplitters', () => ({
 	})),
 }));
 
+const mockNodeTypeBaseDescription: INodeTypeBaseDescription = {
+	displayName: 'Default Data Loader',
+	name: 'documentDefaultDataLoader',
+	icon: 'file:binary.svg',
+	group: ['transform'],
+	description: 'Load data from previous step in the workflow',
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Document Loaders'],
+		},
+		resources: {
+			primaryDocumentation: [
+				{
+					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/',
+				},
+			],
+		},
+	},
+	defaultVersion: 2,
+};
+
 describe('DocumentDefaultDataLoader', () => {
-	let loader: DocumentDefaultDataLoader;
+	let loader: DocumentDefaultDataLoaderV2;
 
 	beforeEach(() => {
-		loader = new DocumentDefaultDataLoader();
+		loader = new DocumentDefaultDataLoaderV2(mockNodeTypeBaseDescription);
 		jest.clearAllMocks();
 	});
 
