@@ -141,11 +141,14 @@ export class LoadNodesAndCredentials {
 				];
 
 		for (const packagePath of installedPackagePaths) {
+			const fullPackagePath = path.join(nodeModulesDir, packagePath);
+
+			if (nodeModulesDir === path.join(this.instanceSettings.nodesDownloadDir, 'node_modules')) {
+				await this.generateLazyLoadingFiles(fullPackagePath);
+			}
+
 			try {
-				await this.runDirectoryLoader(
-					LazyPackageDirectoryLoader,
-					path.join(nodeModulesDir, packagePath),
-				);
+				await this.runDirectoryLoader(LazyPackageDirectoryLoader, fullPackagePath);
 			} catch (error) {
 				this.logger.error((error as Error).message);
 				this.errorReporter.error(error);
@@ -210,7 +213,60 @@ export class LoadNodesAndCredentials {
 			'node_modules',
 			packageName,
 		);
-		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+
+		return await this.runDirectoryLoader(LazyPackageDirectoryLoader, finalNodeUnpackedPath);
+	}
+
+	/**
+	 * Generate lazyloading files to load node and credential types on demand.
+	 * This reduces memory usage and startup time.
+	 *
+	 * - For built-in packages `nodes-base` and `@n8n/nodes-langchain`, we generate
+	 *   these files at build time via `core/bin/generate-metadata`.
+	 * - For community packages, we generate these files during bootup from
+	 *   each dir at `~/.n8n/nodes/node_modules/n8n-nodes-{pkg}`.
+	 */
+	private async generateLazyLoadingFiles(packagePath: string) {
+		const knownNodesPath = path.join(packagePath, 'dist/known/nodes.json');
+
+		try {
+			await fsPromises.access(knownNodesPath);
+			return;
+		} catch {}
+
+		const loader = new PackageDirectoryLoader(packagePath);
+		await loader.loadAll();
+
+		await fsPromises.mkdir(path.join(packagePath, 'dist/known'), { recursive: true });
+		await fsPromises.mkdir(path.join(packagePath, 'dist/types'), { recursive: true });
+
+		const nodeTypes = Object.values(loader.nodeTypes)
+			.map(({ type }) => type)
+			.flatMap((nodeType) =>
+				loader.getVersionedNodeTypeAll(nodeType).map((item) => {
+					const { __loadOptionsMethods, ...rest } = item.description;
+					return rest;
+				}),
+			);
+
+		const credentialTypes = Object.values(loader.credentialTypes).map(({ type }) => type);
+
+		const files = [
+			{ filePath: 'known/nodes.json', data: loader.known.nodes },
+			{ filePath: 'known/credentials.json', data: loader.known.credentials },
+			{ filePath: 'types/nodes.json', data: nodeTypes },
+			{ filePath: 'types/credentials.json', data: credentialTypes },
+		];
+
+		await Promise.all(
+			files.map(
+				async ({ filePath, data }) =>
+					await fsPromises.writeFile(
+						path.join(packagePath, 'dist', filePath),
+						JSON.stringify(data, null, 2),
+					),
+			),
+		);
 	}
 
 	async unloadPackage(packageName: string) {
