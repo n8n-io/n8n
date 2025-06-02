@@ -70,8 +70,7 @@ export class LoggingConfig {
 	 * What format the logs should have.
 	 * `text` is only printing the human readable messages.
 	 * `json` is printing one JSON object per line containing the message, level,
-	 * timestamp and all the metadata. This is very useful for production
-	 * monitoring as well as debugging.
+	 * timestamp and all the metadata.
 	 */
 	@Env('N8N_LOG_FORMAT')
 	format: 'text' | 'json' = 'text';
