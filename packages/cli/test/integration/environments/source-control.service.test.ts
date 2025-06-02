@@ -13,7 +13,6 @@ import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
-import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 
@@ -186,7 +185,6 @@ describe('SourceControlService', () => {
 	>;
 	const fsReadFile = jest.spyOn(fsp, 'readFile');
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
-	const fsRmSync = jest.spyOn(fs, 'rmSync');
 
 	beforeAll(async () => {
 		await testDb.init();

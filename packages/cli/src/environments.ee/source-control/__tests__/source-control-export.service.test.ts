@@ -23,12 +23,6 @@ const globalAdminContext = new SourceControlContext(
 	}),
 );
 
-const globalMemberContext = new SourceControlContext(
-	Object.assign(new User(), {
-		role: 'global:member',
-	}),
-);
-
 describe('SourceControlExportService', () => {
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
