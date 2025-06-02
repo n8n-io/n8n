@@ -234,7 +234,11 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+			// Allow sending file if the file path contains a dot (which is the case for npx n8n - file is under .npm/_npx folder)
+			// See: https://github.com/pillarjs/send/blob/1.1.0/index.js#L469
+			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
+		);
 
 		// ----------------------------------------
 		// Settings
