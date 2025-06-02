@@ -20,14 +20,13 @@ export interface InternalPool extends Pool {
 @Service()
 export class PgRecover {
 	constructor(
-		private readonly dataSource: DataSource,
 		private readonly errorReporter: ErrorReporter,
 		private readonly logger: Logger,
 	) {}
 
-	initializeRecoverOnError() {
-		const pgDriver = this.dataSource.driver;
-		if (!(pgDriver instanceof PostgresDriver) || !this.dataSource.isInitialized) return;
+	initializeRecoverOnError(dataSource: DataSource): void {
+		const pgDriver = dataSource.driver;
+		if (!(pgDriver instanceof PostgresDriver) || !dataSource.isInitialized) return;
 
 		const pgPool = pgDriver.master as Pool;
 		pgPool.on('error', async (error) => {
@@ -37,7 +36,7 @@ export class PgRecover {
 				`Recovering connection pool. Total: ${pgPool.totalCount}, Idle: ${pgPool.idleCount}, Waiting: ${pgPool.waitingCount}`,
 			);
 			// Attempt to recover the connection pool
-			const recoveryAttempted = await this.recoverConnectionPool(pgPool);
+			const recoveryAttempted = await this.recoverConnectionPool(dataSource, pgPool);
 			if (recoveryAttempted) {
 				this.logger.debug('Connection pool recovery attempted');
 			} else {
@@ -51,8 +50,8 @@ export class PgRecover {
 	 * This method will try to release any stalled connections and create new ones
 	 * @returns True if recovery was attempted, false otherwise
 	 */
-	private async recoverConnectionPool(pgPool: Pool): Promise<boolean> {
-		if (!this.dataSource.isInitialized) {
+	private async recoverConnectionPool(dataSource: DataSource, pgPool: Pool): Promise<boolean> {
+		if (!dataSource.isInitialized) {
 			return false;
 		}
 

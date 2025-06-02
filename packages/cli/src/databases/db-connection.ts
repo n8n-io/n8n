@@ -50,7 +50,7 @@ export class DbConnection {
 		try {
 			await this.dataSource.initialize();
 			if (this.options.type === 'postgres') {
-				this.pgRecover.initializeRecoverOnError();
+				this.pgRecover.initializeRecoverOnError(this.dataSource);
 			}
 		} catch (e) {
 			let error = ensureError(e);
