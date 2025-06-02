@@ -144,20 +144,25 @@ export class Workflow {
 
 	/** This method removes any ghost connections/nodes */
 	getConnectionsBySourceNode(connections: IConnections) {
-		const returnConnection: IConnections = {};
-		for (const sourceNode in connections) {
-			if (sourceNode in this.nodes) {
-				returnConnection[sourceNode] = connections[sourceNode];
-				for (const inputConnections of Object.values(returnConnection[sourceNode])) {
-					inputConnections.forEach((innerConnections, index) => {
-						if (innerConnections?.length) {
-							inputConnections[index] = innerConnections.filter(({ node }) => node in this.nodes);
-						}
-					});
+		return Object.fromEntries(
+			Object.entries(connections).flatMap(([sourceNode, connectionsForSource]) => {
+				if (!(sourceNode in this.nodes)) {
+					return [];
 				}
-			}
-		}
-		return returnConnection;
+
+				const nodeConnections = Object.fromEntries(
+					Object.entries(connectionsForSource).map(([type, connectionsForType]) => [
+						type,
+						connectionsForType.map(
+							(inputConnections) =>
+								inputConnections?.filter(({ node }) => node in this.nodes) ?? null,
+						),
+					]),
+				);
+
+				return [[sourceNode, nodeConnections]];
+			}),
+		);
 	}
 
 	/**
