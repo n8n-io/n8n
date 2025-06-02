@@ -15,7 +15,7 @@ import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
-import { basename } from 'node:path';
+import { basename, isAbsolute } from 'node:path';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -526,7 +526,7 @@ describe('SourceControlService', () => {
 		});
 
 		fsReadFile.mockImplementation(async (path: string) => {
-			const pathWithoutCwd = path.startsWith('/tmp') ? basename(path) : path;
+			const pathWithoutCwd = isAbsolute(path) ? basename(path) : path;
 			return JSON.stringify(gitFiles[pathWithoutCwd]);
 		});
 	});
@@ -1066,7 +1066,39 @@ describe('SourceControlService', () => {
 			});
 
 			it('should update folders in scope and keep out of scope ones', async () => {
-				// TODO
+				let allChanges = (await service.getStatus(projectAdmin, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				})) as SourceControlledFile[];
+				const foldersFile = allChanges.find((file) =>
+					file.file.includes(SOURCE_CONTROL_FOLDERS_EXPORT_FILE),
+				);
+				expect(foldersFile).toBeDefined();
+
+				const result = await service.pushWorkfolder(projectAdmin, {
+					fileNames: [foldersFile!],
+					commitMessage: 'Test',
+					force: true,
+				});
+				expect(result.statusResult).toHaveLength(1);
+				expect(result.statusResult[0].type).toBe('folders');
+				expect(result.statusResult[0].status).toBe('created');
+				expect(result.statusResult[0].file).toContain(SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+
+				const foldersFileContent = JSON.parse(updatedFiles[result.statusResult[0].file]);
+				expect(foldersFileContent.folders).toHaveLength(4);
+
+				// We make sure that we still hold the folder that belongs to project B
+				// to which this user doesn't have access
+				expect(
+					foldersFileContent.folders.find((t: any) => t.homeProjectId === projectB.id).id,
+				).toBe(projectBScope.folders[0].id);
+
+				// Ensure that all folders from project A are written to the git file
+				expect(foldersFileContent.folders.map((f: any) => f.id)).toEqual(
+					expect.arrayContaining(projectAScope.folders.map((f) => f.id)),
+				);
 			});
 		});
 
