@@ -21,7 +21,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { nodeNameToToolName } from '@utils/helpers';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
@@ -277,7 +277,7 @@ export class ToolCode implements INodeType {
 				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
 				const jsonSchema =
 					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
+						? generateSchemaFromExample(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
 				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);

@@ -6,10 +6,10 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { z } from 'zod';
 
-export function generateSchema(schemaString: string): JSONSchema7 {
-	const parsedSchema = jsonParse<SchemaObject>(schemaString);
+export function generateSchemaFromExample(exampleJsonString: string): JSONSchema7 {
+	const parsedExample = jsonParse<SchemaObject>(exampleJsonString);
 
-	return generateJsonSchema(parsedSchema) as JSONSchema7;
+	return generateJsonSchema(parsedExample) as JSONSchema7;
 }
 
 export function convertJsonSchemaToZod<T extends z.ZodTypeAny = z.ZodTypeAny>(schema: JSONSchema7) {

@@ -17,7 +17,7 @@ import {
 	N8nOutputFixingParser,
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
@@ -189,7 +189,9 @@ export class OutputParserStructured implements INodeType {
 		}
 
 		const jsonSchema =
-			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
+			schemaType === 'fromJson'
+				? generateSchemaFromExample(jsonExample)
+				: jsonParse<JSONSchema7>(inputSchema);
 
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;

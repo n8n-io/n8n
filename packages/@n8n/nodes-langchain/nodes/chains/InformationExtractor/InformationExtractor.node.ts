@@ -12,7 +12,7 @@ import type {
 import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getBatchingOptionFields } from '@utils/sharedFields';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
@@ -254,7 +254,7 @@ export class InformationExtractor implements INodeType {
 
 			if (schemaType === 'fromJson') {
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as string;
-				jsonSchema = generateSchema(jsonExample);
+				jsonSchema = generateSchemaFromExample(jsonExample);
 			} else {
 				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as string;
 				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
