@@ -21,6 +21,8 @@ export class CredentialsModal extends BasePage {
 		connectionParameter: (fieldName: string) =>
 			this.getters.credentialInputs().find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
+		namePreview: () =>
+			cy.getByTestId('credential-name').find('span[data-test-id=inline-edit-preview]'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		deleteButton: () => cy.getByTestId('credential-delete-button'),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
@@ -93,7 +95,7 @@ export class CredentialsModal extends BasePage {
 			this.actions.fillCredentialsForm(closeModal);
 		},
 		renameCredential: (newName: string) => {
-			this.getters.nameInput().type('{selectall}');
+			this.getters.namePreview().click();
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
 		},
