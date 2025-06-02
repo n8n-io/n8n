@@ -59,7 +59,7 @@ describe('PubSubRegistry', () => {
 		logger = mockLogger();
 	});
 
-	it('should call decorated methods when events are emitted', async () => {
+	it('should call decorated methods when events are emitted', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
 		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
@@ -76,7 +76,7 @@ describe('PubSubRegistry', () => {
 		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('should respect instance type filtering when handling events', async () => {
+	it('should respect instance type filtering when handling events', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
 		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
@@ -114,7 +114,7 @@ describe('PubSubRegistry', () => {
 		expect(onWorkerInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('should respect instance role filtering when handling events', async () => {
+	it('should respect instance role filtering when handling events', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
 		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
@@ -161,7 +161,7 @@ describe('PubSubRegistry', () => {
 		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('should handle both instance type and role filtering together', async () => {
+	it('should handle both instance type and role filtering together', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
 		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
@@ -179,7 +179,7 @@ describe('PubSubRegistry', () => {
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('should handle dynamic role changes at runtime', async () => {
+	it('should handle dynamic role changes at runtime', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
 		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
