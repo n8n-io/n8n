@@ -332,7 +332,7 @@ onBeforeMount(() => {
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
 					</n8n-tooltip>
-					<div class="mt-s">
+					<div :class="$style.checkboxWrapper">
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
 								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
@@ -344,7 +344,6 @@ onBeforeMount(() => {
 								</i18n-t>
 							</template>
 							<n8n-checkbox
-								label-size="small"
 								:label="locale.baseText('executionsFilter.savedDataExactMatch')"
 								:model-value="filter.metadata[0]?.exactMatch"
 								:disabled="!isAdvancedExecutionFilterEnabled"
@@ -410,6 +409,15 @@ onBeforeMount(() => {
 	.label {
 		font-size: var(--font-size-3xs);
 		margin: var(--spacing-4xs) 0 var(--spacing-4xs);
+	}
+
+	.checkboxWrapper {
+		margin-top: var(--spacing-s);
+		margin-bottom: var(--spacing-2xs);
+
+		label {
+			margin: 0;
+		}
 	}
 }
 
