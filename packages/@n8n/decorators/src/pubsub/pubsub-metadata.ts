@@ -20,12 +20,12 @@ export type PubSubEventName =
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event';
 
-export type PubSubTriggerFilter = {
+export type PubSubEventFilter = {
 	instanceType?: InstanceType;
 	instanceRole?: InstanceRole;
 };
 
-type PubSubEventHandler = EventHandler<PubSubEventName> & { filter?: PubSubTriggerFilter };
+type PubSubEventHandler = EventHandler<PubSubEventName> & { filter?: PubSubEventFilter };
 
 @Service()
 export class PubSubMetadata {

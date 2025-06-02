@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { PubSubMetadata } from './pubsub-metadata';
-import type { PubSubEventName, PubSubTriggerFilter } from './pubsub-metadata';
+import type { PubSubEventName, PubSubEventFilter } from './pubsub-metadata';
 import { NonMethodError } from '../errors';
 import type { EventHandlerClass } from '../types';
 
@@ -25,7 +25,7 @@ import type { EventHandlerClass } from '../types';
  * ```
  */
 export const OnPubSubEvent =
-	(eventName: PubSubEventName, filter?: PubSubTriggerFilter): MethodDecorator =>
+	(eventName: PubSubEventName, filter?: PubSubEventFilter): MethodDecorator =>
 	(prototype, propertyKey, descriptor) => {
 		const eventHandlerClass = prototype.constructor as EventHandlerClass;
 		const methodName = String(propertyKey);
