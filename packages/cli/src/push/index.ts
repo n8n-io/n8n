@@ -1,12 +1,13 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { pick } from 'lodash';
+import { InstanceSettings } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
@@ -89,7 +90,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		}
 	}
 
-	/** Sets up the push endppoint that the frontend connects to. */
+	/** Sets up the push endpoint that the frontend connects to. */
 	setupPushHandler(restEndpoint: string, app: Application) {
 		app.use(
 			`/${restEndpoint}/push`,
@@ -98,35 +99,6 @@ export class Push extends TypedEmitter<PushEvents> {
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
 				this.handleRequest(req, res),
 		);
-	}
-
-	/**
-	 * Construct the expected origin out of the host and forward headers.
-	 * If `x-forwarded-host` and `x-forwarded-proto` are both defined they take
-	 * precedence over `host`.
-	 * If they are not both defined then `host` is used and the protocol is
-	 * inferred from `origin`.
-	 */
-	private constructExpectedOrigin(req: SSEPushRequest | WebSocketPushRequest) {
-		const headers = req.headers;
-
-		if (headers.origin) {
-			const forwardedHost =
-				typeof headers['x-forwarded-host'] === 'string' ? headers['x-forwarded-host'] : undefined;
-			const forwardedProto =
-				typeof headers['x-forwarded-proto'] === 'string' ? headers['x-forwarded-proto'] : undefined;
-			const allForwardHeadersAreDefined = forwardedHost && forwardedProto;
-			const host = allForwardHeadersAreDefined ? forwardedHost : headers.host;
-			const proto = allForwardHeadersAreDefined
-				? forwardedProto
-				: headers.origin?.toLowerCase().startsWith('https://')
-					? 'https'
-					: 'http';
-
-			return { success: true, expectedOrigin: `${proto}://${host}` } as const;
-		} else {
-			return { success: false } as const;
-		}
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -139,31 +111,27 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		let connectionError = '';
 
-		const expectedOriginResult = this.constructExpectedOrigin(req);
+		// Extract host domain from origin
+		const originHost = headers.origin?.replace(/^https?:\/\//, '');
 
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (!expectedOriginResult.success) {
+		} else if (!originHost) {
 			this.logger.warn('Origin header is missing');
 
 			connectionError = 'Invalid origin!';
-		} else if (
-			inProduction &&
-			headers.origin?.toLowerCase() !== expectedOriginResult.expectedOrigin.toLowerCase()
-		) {
-			this.logger.warn(
-				`Origin header does NOT match the expected origin. (Origin: "${headers.origin}", Expected: "${expectedOriginResult.expectedOrigin}")`,
-				{
-					expectedOrigin: expectedOriginResult.expectedOrigin,
-					headers: {
-						host: req.headers.host,
-						origin: req.headers.origin,
-						['x-forwarded-proto']: req.headers['x-forwarded-proto'],
-						['x-forwarded-host']: req.headers['x-forwarded-host'],
-					},
-				},
-			);
-			connectionError = 'Invalid origin!';
+		} else if (inProduction) {
+			const expectedHost =
+				typeof headers['x-forwarded-host'] === 'string'
+					? headers['x-forwarded-host']
+					: headers.host;
+			if (expectedHost !== originHost) {
+				this.logger.warn(
+					`Origin header does NOT match the expected origin. (Origin: "${originHost}", Expected: "${expectedHost}")`,
+					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
+				);
+				connectionError = 'Invalid origin!';
+			}
 		}
 
 		if (connectionError) {

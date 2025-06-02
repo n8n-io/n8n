@@ -13,7 +13,7 @@ describe('UserService', () => {
 		host: 'localhost',
 		path: '/',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
 	});
 	const urlService = new UrlService(globalConfig);
@@ -80,7 +80,7 @@ describe('UserService', () => {
 
 	describe('update', () => {
 		// We need to use `save` so that that the subscriber in
-		// packages/cli/src/databases/entities/Project.ts receives the full user.
+		// packages/@n8n/db/src/entities/Project.ts receives the full user.
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		it('should use `save` instead of `update`', async () => {

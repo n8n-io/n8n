@@ -2,7 +2,7 @@
 import VariablesForm from '@/components/VariablesForm.vue';
 import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';

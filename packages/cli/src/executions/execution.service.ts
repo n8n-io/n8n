@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -14,7 +15,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { Logger } from 'n8n-core';
 import type {
 	ExecutionError,
 	ExecutionStatus,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { type ParsedAiContent } from '@/utils/aiUtils';
 import { N8nIconButton } from '@n8n/design-system';

@@ -139,7 +139,7 @@ function createRunDataWithError(inputMessage: string) {
 function setupTestWorkflow(chatTrigger: boolean = false) {
 	// Setup test workflow with AI Agent, Postgres Memory Node (source of error), Calculator Tool, and OpenAI Chat Model
 	if (chatTrigger) {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 	} else {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 	}

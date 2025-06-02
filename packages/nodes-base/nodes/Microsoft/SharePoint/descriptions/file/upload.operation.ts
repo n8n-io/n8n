@@ -31,8 +31,8 @@ const properties: INodeProperties[] = [
 		name: 'fileContents',
 		default: '',
 		description:
-			'Find the name of input field containing the binary data to upload the file in the Input panel on the left, in the Binary tab',
-		hint: 'The name of the input field containing the binary file data to update the file',
+			'Find the name of input field containing the binary data to upload in the Input panel on the left, in the Binary tab',
+		hint: 'The name of the input field containing the binary file data to upload',
 		placeholder: 'data',
 		required: true,
 		routing: {

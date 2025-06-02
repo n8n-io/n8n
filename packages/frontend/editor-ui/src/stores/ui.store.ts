@@ -71,6 +71,7 @@ import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -454,7 +455,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openMoveToFolderModal = (
 		resourceType: 'folder' | 'workflow',
-		resource: { id: string; name: string; parentFolderId?: string },
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
 		workflowListEventBus: EventBus,
 	) => {
 		openModalWithData({
