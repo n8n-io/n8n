@@ -2016,9 +2016,10 @@ onBeforeUnmount(() => {
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
+				:trigger-nodes="triggerNodes"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="runEntireWorkflow('main')"
+				@click="runEntireWorkflow('main', $event)"
 			/>
 			<template v-if="containsChatTriggerNodes">
 				<CanvasChatButton
