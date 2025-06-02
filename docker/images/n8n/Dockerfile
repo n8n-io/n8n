@@ -7,7 +7,7 @@ FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
 WORKDIR /src
 COPY . /src
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
-RUN pnpm build
+RUN TURBO_TELEMETRY_DISABLED=1 pnpm build
 
 # Delete all dev dependencies
 RUN node .github/scripts/trim-fe-packageJson.js
