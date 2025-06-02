@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import { PubSubMetadata } from './pub-sub-metadata';
-import type { PubSubEventName, PubSubTriggerFilter } from './pub-sub-metadata';
+import { PubSubMetadata } from './pubsub-metadata';
+import type { PubSubEventName, PubSubTriggerFilter } from './pubsub-metadata';
 import { NonMethodError } from '../errors';
 import type { EventHandlerClass } from '../types';
 

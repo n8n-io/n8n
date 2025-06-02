@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { PubSubMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 

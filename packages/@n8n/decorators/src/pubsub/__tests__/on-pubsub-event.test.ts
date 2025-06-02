@@ -2,8 +2,8 @@ import { Container } from '@n8n/di';
 import { Service } from '@n8n/di';
 
 import { NonMethodError } from '../../errors';
-import { OnPubSubEvent } from '../on-pub-sub-event';
-import { PubSubMetadata } from '../pub-sub-metadata';
+import { OnPubSubEvent } from '../on-pubsub-event';
+import { PubSubMetadata } from '../pubsub-metadata';
 
 describe('@OnPubSubEvent', () => {
 	let metadata: PubSubMetadata;
