@@ -14,9 +14,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDebounce } from '@vueuse/core';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
@@ -58,11 +60,15 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 
 const { editableWorkflow } = useCanvasOperations({ router: useRouter() });
 
-const vf = useVueFlow({ id: editableWorkflow.value.id });
-const rawZoom = computed(() => vf.viewport.value.zoom);
-const zoom = useDebounce(rawZoom, 100);
+const viewFlow = useVueFlow({ id: editableWorkflow.value.id });
+const zoom = computed(() => viewFlow.viewport.value.zoom);
+const debouncedZoom = useDebounce(zoom, 100);
 
-const isZoomedIn = computed(() => zoom.value > 1.6);
+const shouldRenderNodeSettings = computed(
+	() =>
+		settingsStore.experimental__minZoomNodeSettingsInCanvas > 0 &&
+		debouncedZoom.value > settingsStore.experimental__minZoomNodeSettingsInCanvas,
+);
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -77,7 +83,7 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		[$style.isZoomedIn]: isZoomedIn.value,
+		[$style.settingsView]: shouldRenderNodeSettings.value,
 	};
 });
 
@@ -95,7 +101,10 @@ const styles = computed(() => {
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
-	stylesObject['--zoom'] = zoom.value;
+	if (shouldRenderNodeSettings.value) {
+		stylesObject['--zoom'] = debouncedZoom.value;
+	}
+
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
 
@@ -171,20 +180,19 @@ const activeNodeType = computed(() => {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<div v-if="isZoomedIn">
-			<NodeSettings
-				:event-bus="settingsEventBus"
-				:dragging="false"
-				:active-node="activeNode"
-				:node-type="activeNodeType"
-				push-ref=""
-				:foreign-credentials="[]"
-				:read-only="false"
-				:block-u-i="false"
-				:executable="false"
-				:input-size="0"
-			/>
-		</div>
+		<NodeSettings
+			v-if="shouldRenderNodeSettings"
+			:event-bus="settingsEventBus"
+			:dragging="false"
+			:active-node="activeNode"
+			:node-type="activeNodeType"
+			push-ref=""
+			:foreign-credentials="[]"
+			:read-only="false"
+			:block-u-i="false"
+			:executable="false"
+			:input-size="0"
+		/>
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
@@ -237,7 +245,7 @@ const activeNodeType = computed(() => {
 			var(--border-radius-large) var(--trigger-node--border-radius);
 	}
 
-	&.isZoomedIn {
+	&.settingsView {
 		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
 		height: calc(var(--canvas-node--height) * 2.4) !important;
 		width: calc(var(--canvas-node--width) * 1.6) !important;
