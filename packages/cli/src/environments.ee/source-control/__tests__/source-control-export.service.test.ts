@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { User, type SharedCredentials } from '@n8n/db';
+import { User } from '@n8n/db';
+import type { SharedCredentials } from '@n8n/db';
 import type { SharedWorkflow } from '@n8n/db';
 import type { FolderRepository } from '@n8n/db';
 import type { TagRepository } from '@n8n/db';
@@ -17,13 +18,13 @@ import { SourceControlExportService } from '../source-control-export.service.ee'
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { SourceControlContext } from '../types/source-control-context';
 
-const globalAdminContext = new SourceControlContext(
-	Object.assign(new User(), {
-		role: 'global:admin',
-	}),
-);
-
 describe('SourceControlExportService', () => {
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), {
+			role: 'global:admin',
+		}),
+	);
+
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();

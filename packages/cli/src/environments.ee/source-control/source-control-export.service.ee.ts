@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb } from '@n8n/db';
+import type { IWorkflowDb, TagEntity, WorkflowTagMapping } from '@n8n/db';
 import {
 	FolderRepository,
 	TagRepository,
@@ -252,14 +252,31 @@ export class SourceControlExportService {
 
 			const fileName = getFoldersPath(this.gitFolder);
 
-			const existingFolders = await readFoldersFromSourceControlFile(fileName);
+			let existingFolders: {
+				folders: Array<{
+					id: string;
+					name: string;
+					parentFolderId: null | string;
+					homeProjectId: string;
+					createdAt: string;
+					updatedAt: string;
+				}>;
+			} = {
+				folders: [],
+			};
+
+			try {
+				existingFolders = await readFoldersFromSourceControlFile(fileName);
+			} catch (error) {
+				this.logger.info('Failed to read folders file from git', error);
+			}
 
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
 			const newFolders =
 				allowedProjects === undefined
 					? []
-					: existingFolders.folders.filter((folder) => {
+					: (existingFolders.folders || []).filter((folder) => {
 							return !allowedProjects.some((project) => project.id === folder.homeProjectId);
 						});
 
@@ -322,14 +339,24 @@ export class SourceControlExportService {
 					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 			});
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
-			// read the existing git file
-			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
+			let existingTagsAndMapping: {
+				tags: TagEntity[];
+				mappings: WorkflowTagMapping[];
+			} = { tags: [], mappings: [] };
+			try {
+				// read the existing git file
+				existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
+			} catch (error) {
+				this.logger.info('Failed to read tags file', error);
+			}
+
 			// keep all mappings that are not accessible by the current user
-			const mappingsOfOtherWorkflows = existingTagsAndMapping.mappings.filter((mapping) => {
-				return !allowedWorkflows.some(
-					(allowedWorkflow) => allowedWorkflow.id === mapping.workflowId,
-				);
-			});
+			const mappingsToKeep =
+				(existingTagsAndMapping?.mappings || []).filter((mapping) => {
+					return !allowedWorkflows.some(
+						(allowedWorkflow) => allowedWorkflow.id === mapping.workflowId,
+					);
+				}) ?? [];
 
 			await fsWriteFile(
 				fileName,
@@ -337,7 +364,7 @@ export class SourceControlExportService {
 					{
 						// overwrite all tags
 						tags: tags.map((tag) => ({ id: tag.id, name: tag.name })),
-						mappings: mappingsOfOtherWorkflows.concat(mappingsOfAllowedWorkflows),
+						mappings: (mappingsToKeep || []).concat(mappingsOfAllowedWorkflows),
 					},
 					null,
 					2,

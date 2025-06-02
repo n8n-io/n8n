@@ -875,6 +875,7 @@ describe('SourceControlService', () => {
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
 
+				expect(gitService.push).toBeCalled();
 				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
@@ -981,7 +982,8 @@ describe('SourceControlService', () => {
 				})) as SourceControlledFile[];
 
 				const workflowOutOfScope = allChanges.find(
-					(wf) => !projectAdminScope.workflows.some((w) => w.id === wf.id),
+					(wf) =>
+						wf.type === 'workflow' && !projectAdminScope.workflows.some((w) => w.id === wf.id),
 				);
 
 				await expect(
