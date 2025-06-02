@@ -1,4 +1,3 @@
-import { inDevelopment, inProduction, isObjectLiteral } from '@n8n/backend-common';
 import type { LogScope } from '@n8n/config';
 import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -14,6 +13,9 @@ import type {
 import path, { basename } from 'node:path';
 import pc from 'picocolors';
 import winston from 'winston';
+
+import { inDevelopment, inProduction } from '../environment';
+import { isObjectLiteral } from '../utils/is-object-literal';
 
 const noOp = () => {};
 
@@ -193,10 +195,9 @@ export class Logger implements LoggerType {
 			winston.format.json(),
 		);
 
-		const filename = path.join(
-			this.instanceSettingsConfig.n8nFolder,
-			this.globalConfig.logging.file.location,
-		);
+		const filename = path.isAbsolute(this.globalConfig.logging.file.location)
+			? this.globalConfig.logging.file.location
+			: path.join(this.instanceSettingsConfig.n8nFolder, this.globalConfig.logging.file.location);
 
 		const { fileSizeMax, fileCountMax } = this.globalConfig.logging.file;
 

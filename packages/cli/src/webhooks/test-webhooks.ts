@@ -194,7 +194,8 @@ export class TestWebhooks implements IWebhookManager {
 		if (timeout) clearTimeout(timeout);
 	}
 
-	async getWebhookMethods(path: string) {
+	async getWebhookMethods(rawPath: string) {
+		const path = removeTrailingSlash(rawPath);
 		const allKeys = await this.registrations.getAllKeys();
 
 		const webhookMethods = allKeys

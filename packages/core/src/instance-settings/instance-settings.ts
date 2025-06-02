@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { InstanceSettingsConfig } from '@n8n/config';
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
@@ -8,8 +8,6 @@ import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
-
-import { Logger } from '@/logging/logger';
 
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 

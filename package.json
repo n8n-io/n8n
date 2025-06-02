@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.95.0",
+  "version": "1.97.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -89,6 +89,7 @@
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.8.2",
       "vue-tsc": "^2.2.8",
+      "google-gax": "^4.3.7",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {
