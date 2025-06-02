@@ -1,5 +1,4 @@
 import { reactive } from 'vue';
-import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -228,10 +227,7 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
-	let route: ReturnType<typeof useRoute>;
-
 	beforeEach(() => {
-		route = useRoute();
 		createAppModals();
 	});
 
