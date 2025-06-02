@@ -11,7 +11,6 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/ldap.ee/helpers.ee';
-import { LdapService } from '@/ldap.ee/ldap.service.ee';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -19,6 +18,7 @@ export const handleLdapLogin = async (
 ): Promise<User | undefined> => {
 	if (!isLdapEnabled()) return undefined;
 
+	const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
 	const ldapService = Container.get(LdapService);
 
 	if (!ldapService.config.loginEnabled) return undefined;
