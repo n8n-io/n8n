@@ -99,6 +99,7 @@ workflow_success_total{workflow_id="1234"} 1"
 		await prometheusMetricsService.init(app);
 
 		// ASSERT
+		// native metric from promClient
 		const eventLoopLagMetric = await promClient.register.getSingleMetricAsString(
 			`${customPrefix}nodejs_eventloop_lag_seconds`,
 		);
@@ -106,6 +107,15 @@ workflow_success_total{workflow_id="1234"} 1"
 			'# HELP custom_nodejs_eventloop_lag_seconds Lag of event loop in seconds.',
 			'# TYPE custom_nodejs_eventloop_lag_seconds gauge',
 			expect.stringMatching('custom_nodejs_eventloop_lag_seconds .*'),
+		]);
+		// custom metric
+		const versionMetric = await promClient.register.getSingleMetricAsString(
+			`${customPrefix}version_info`,
+		);
+		expect(versionMetric.split('\n')).toMatchObject([
+			'# HELP custom_version_info n8n version info.',
+			'# TYPE custom_version_info gauge',
+			expect.stringMatching('custom_version_info.*'),
 		]);
 	});
 });
