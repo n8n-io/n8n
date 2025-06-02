@@ -47,7 +47,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const hasCloudPlan = computed(() => {
+	const hasCloudPlan = computed((): boolean => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
 	});
@@ -189,6 +189,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
+		hasCloudPlan,
 		generateCloudDashboardAutoLoginLink,
 		initialize,
 		getOwnerCurrentPlan,
