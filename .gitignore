@@ -25,3 +25,4 @@ build-storybook.log
 *.junit.xml
 junit.xml
 test-results.json
+*.0x

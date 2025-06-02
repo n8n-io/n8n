@@ -1,7 +1,8 @@
 import type { RunningJobSummary } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute, Logger } from 'n8n-core';
+import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,

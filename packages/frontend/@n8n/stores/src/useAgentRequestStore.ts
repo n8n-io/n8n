@@ -74,8 +74,9 @@ export const useAgentRequestStore = defineStore('agentRequest', () => {
 		}
 	};
 
-	const getAgentRequest = (workflowId: string, nodeId: string): IAgentRequest => {
-		return agentRequests.value[workflowId][nodeId];
+	const getAgentRequest = (workflowId: string, nodeId: string): IAgentRequest | undefined => {
+		if (agentRequests.value[workflowId]) return agentRequests.value[workflowId]?.[nodeId];
+		return undefined;
 	};
 
 	return {
