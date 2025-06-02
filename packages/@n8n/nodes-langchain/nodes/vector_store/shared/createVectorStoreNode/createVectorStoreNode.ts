@@ -49,9 +49,10 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				name: args.meta.displayName,
 			},
 			codex: {
-				categories: ['AI'],
-				subcategories: {
+				categories: args.meta.categories ?? ['AI'],
+				subcategories: args.meta.subcategories ?? {
 					AI: ['Vector Stores', 'Tools', 'Root Nodes'],
+					'Vector Stores': ['Other Vector Stores'],
 					Tools: ['Other Tools'],
 				},
 				resources: {
