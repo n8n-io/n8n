@@ -1,4 +1,5 @@
-import type { LlmTokenUsageData } from '@/Interface';
+import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import type { INodeUi, LlmTokenUsageData } from '@/Interface';
 import type { IDataObject, INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -272,4 +273,8 @@ export function formatTokenUsageCount(
 				: usage.promptTokens;
 
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
+}
+
+export function isChatNode(node: INodeUi) {
+	return [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type);
 }

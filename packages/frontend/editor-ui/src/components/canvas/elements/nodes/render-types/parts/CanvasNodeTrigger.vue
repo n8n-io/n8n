@@ -4,7 +4,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { useLogsStore } from '@/features/logs/logs.store';
+import { useLogsStore } from '@/stores/logs.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';

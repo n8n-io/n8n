@@ -1,11 +1,11 @@
 import { computed, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
-import { useLogsStore } from '@/features/logs/logs.store';
+import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
-import { LOGS_PANEL_STATE } from '../logs.constants';
 import { usePiPWindow } from '@/features/logs/composables/usePiPWindow';
 import {
+	LOGS_PANEL_STATE,
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,

@@ -107,8 +107,8 @@ import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { useLogsStore } from '@/features/logs/logs.store';
-import { isChatNode } from '@/features/logs/logs.utils';
+import { useLogsStore } from '@/stores/logs.store';
+import { isChatNode } from '@/utils/aiUtils';
 import { cloneDeep } from 'lodash-es';
 
 type AddNodeData = Partial<INodeUi> & {

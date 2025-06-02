@@ -12,9 +12,10 @@ import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useLogsStore } from '@/features/logs/logs.store';
-import { isChatNode, restoreChatHistory } from '@/features/logs/logs.utils';
+import { useLogsStore } from '@/stores/logs.store';
+import { restoreChatHistory } from '@/features/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
+import { isChatNode } from '@/utils/aiUtils';
 
 interface ChatState {
 	currentSessionId: Ref<string>;

@@ -21,7 +21,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useNDVStore } from '@/stores/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
-import { useLogsStore } from '@/features/logs/logs.store';
+import { useLogsStore } from '@/stores/logs.store';
 import { useUIStore } from '@/stores/ui.store';
 import { LOGS_PANEL_STATE } from '../logs.constants';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';

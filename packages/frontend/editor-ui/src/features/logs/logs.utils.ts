@@ -1,5 +1,5 @@
 import type { IExecutionResponse, INodeUi, LlmTokenUsageData, IWorkflowDb } from '@/Interface';
-import { addTokenUsageData, emptyTokenUsageData } from '@/utils/aiUtils';
+import { addTokenUsageData, emptyTokenUsageData, isChatNode } from '@/utils/aiUtils';
 import {
 	NodeConnectionTypes,
 	type IDataObject,
@@ -425,10 +425,6 @@ export function getDepth(entry: LogEntry): number {
 	}
 
 	return depth;
-}
-
-export function isChatNode(node: INodeUi) {
-	return [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type);
 }
 
 export function getInputKey(node: INodeUi): string {

@@ -7,7 +7,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/constants';
-import { useLogsStore } from '@/features/logs/logs.store';
+import { useLogsStore } from '@/stores/logs.store';
 
 describe('useToast', () => {
 	let toast: ReturnType<typeof useToast>;
