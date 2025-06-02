@@ -1,8 +1,9 @@
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
-import { assert } from '@n8n/utils/assert';
+import { assert } from '@n8n/utils/dist/assert';
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
 
@@ -283,6 +284,6 @@ export async function streamRequest<T extends object>(
 		}
 	} catch (e: unknown) {
 		assert(e instanceof Error);
-		onError?.(e);
+		onError?.(e as Error);
 	}
 }

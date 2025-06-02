@@ -4,7 +4,7 @@
 		"baseUrl": ".",
 		"rootDir": ".",
 		"outDir": "dist",
-		"moduleResolution": "bundler",
+		"useUnknownInCatchVariables": false,
 		"types": ["vite/client", "vitest/globals"],
 		"isolatedModules": true
 	},
