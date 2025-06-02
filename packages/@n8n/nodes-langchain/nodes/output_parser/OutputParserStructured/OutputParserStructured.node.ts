@@ -29,8 +29,8 @@ export class OutputParserStructured implements INodeType {
 		icon: 'fa:code',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
@@ -73,6 +73,28 @@ export class OutputParserStructured implements INodeType {
 	"state": "California",
 	"cities": ["Los Angeles", "San Francisco", "San Diego"]
 }`,
+			},
+			{
+				displayName: 'All Fields Are',
+				name: 'exampleFieldsOptionality',
+				type: 'options',
+				options: [
+					{
+						name: 'Required',
+						value: 'required',
+					},
+					{
+						name: 'Optional',
+						value: 'optional',
+					},
+				],
+				default: 'required',
+				description: 'If all fields in the JSON example are required or optional',
+				displayOptions: {
+					show: {
+						schemaType: ['fromJson'],
+					},
+				},
 			},
 			{
 				...inputSchemaField,
@@ -182,6 +204,10 @@ export class OutputParserStructured implements INodeType {
 
 		let inputSchema: string;
 
+		const jsonExampleAllFieldsRequired =
+			this.getNode().typeVersion >= 1.3 &&
+			this.getNodeParameter('exampleFieldsOptionality', itemIndex, 'required') === 'required';
+
 		if (this.getNode().typeVersion <= 1.1) {
 			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as string;
 		} else {
@@ -190,7 +216,7 @@ export class OutputParserStructured implements INodeType {
 
 		const jsonSchema =
 			schemaType === 'fromJson'
-				? generateSchemaFromExample(jsonExample)
+				? generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired)
 				: jsonParse<JSONSchema7>(inputSchema);
 
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
