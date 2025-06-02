@@ -15,6 +15,7 @@ import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import { basename } from 'node:path';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -37,7 +38,7 @@ import { EventService } from '@/events/event.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTeamProject } from '@test-integration/db/projects';
-import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 
@@ -525,7 +526,8 @@ describe('SourceControlService', () => {
 		});
 
 		fsReadFile.mockImplementation(async (path: string) => {
-			return JSON.stringify(gitFiles[path]);
+			const pathWithoutCwd = path.startsWith('/tmp') ? basename(path) : path;
+			return JSON.stringify(gitFiles[pathWithoutCwd]);
 		});
 	});
 
@@ -927,6 +929,14 @@ describe('SourceControlService', () => {
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_TAGS_EXPORT_FILE)]),
 				);
+
+				const tagFile = result.statusResult.find(
+					(change) => change.type === 'tags' && change.status !== 'deleted',
+				);
+				const tagsFile = JSON.parse(updatedFiles[tagFile!.file]);
+				expect(tagsFile.mappings).toHaveLength(
+					allWorkflows.length * tags.length, // all workflows have all tags assigned
+				);
 			});
 		});
 
@@ -937,7 +947,6 @@ describe('SourceControlService', () => {
 					preferLocalVersion: true,
 					verbose: false,
 				})) as SourceControlledFile[];
-				console.log('allChanges', allChanges);
 
 				const result = await service.pushWorkfolder(projectAdmin, {
 					fileNames: allChanges,
@@ -1009,6 +1018,24 @@ describe('SourceControlService', () => {
 			});
 
 			it('should update tag mappings in scope and keep out of scope ones', async () => {
+				// Reset the git service mock for tags
+				gitFiles['tags.json'] = {
+					tags: tags.map((t) => ({
+						id: t.id,
+						name: t.name,
+					})),
+					mappings: allWorkflows.map((wf) => ({
+						workflowId: wf.id,
+						tagId: tags[0].id,
+					})),
+				};
+
+				// Update a tag name
+				await updateTag(tags[0], { name: 'updatedTag1' });
+
+				// Add a new tag to newly assigned workflow
+				await assignTagToWorkflow(tags[1], movedIntoScopeWorkflow);
+
 				let allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
@@ -1026,10 +1053,18 @@ describe('SourceControlService', () => {
 				});
 				expect(result.statusResult).toHaveLength(1);
 				expect(result.statusResult[0].type).toBe('tags');
-				expect(result.statusResult[0].status).toBe('created');
+				expect(result.statusResult[0].status).toBe('modified');
 				expect(result.statusResult[0].file).toContain(SOURCE_CONTROL_TAGS_EXPORT_FILE);
-				console.log(updatedFiles[result.statusResult[0].file]);
+
+				const tagsFileContent = JSON.parse(updatedFiles[result.statusResult[0].file]);
+				expect(tagsFileContent.tags).toHaveLength(3);
+				expect(tagsFileContent.tags.find((t: any) => t.id === tags[0].id).name).toBe('updatedTag1'); // updated tag name
+				// all workflows have all 1 tag assigned on git files
+				// + 2 new mapping for project A workflows
+				// + 1 new mapping for moved into scope workflow
+				expect(tagsFileContent.mappings).toHaveLength(allWorkflows.length + 2 * 2 + 1);
 			});
+
 			it('should update folders in scope and keep out of scope ones', async () => {
 				// TODO
 			});
