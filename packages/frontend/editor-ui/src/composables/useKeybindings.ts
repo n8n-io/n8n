@@ -6,7 +6,7 @@ import { computed, unref } from 'vue';
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
 /**
- * Binds a `keydown` event to `document` and calls the approriate
+ * Binds a `keydown` event to `document` and calls the appropriate
  * handlers based on the given `keymap`. The keymap is a map from
  * shortcut strings to handlers. The shortcut strings can contain
  * multiple shortcuts separated by `|`.
