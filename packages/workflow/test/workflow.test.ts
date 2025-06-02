@@ -1740,19 +1740,19 @@ describe('Workflow', () => {
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 			]);
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 				{
 					depth: 2,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 			]);
@@ -1763,7 +1763,7 @@ describe('Workflow', () => {
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1', 1)).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 			]);
@@ -1773,30 +1773,30 @@ describe('Workflow', () => {
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1', -1)).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 				{
 					depth: 2,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 			]);
 		});
 
-		test('Should return parents of nodes with all connected output indicies', () => {
+		test('Should return parents of nodes with all connected output indices', () => {
 			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Switch')).toEqual([]);
 			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set1')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Switch',
 				},
 			]);
 			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set')).toEqual([
 				{
 					depth: 1,
-					indicies: [1, 2],
+					indices: [1, 2],
 					name: 'Switch',
 				},
 			]);
@@ -1804,17 +1804,17 @@ describe('Workflow', () => {
 			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set2')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set1',
 				},
 				{
 					depth: 2,
-					indicies: [1, 2, 0],
+					indices: [1, 2, 0],
 					name: 'Switch',
 				},
 			]);
@@ -1825,51 +1825,51 @@ describe('Workflow', () => {
 			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Set')).toEqual([
 				{
 					depth: 1,
-					indicies: [0, 2],
+					indices: [0, 2],
 					name: 'Switch',
 				},
 				{
 					depth: 2,
-					indicies: [0],
+					indices: [0],
 					name: 'Set1',
 				},
 				{
 					depth: 3,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 			]);
 			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Switch')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set1',
 				},
 				{
 					depth: 2,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 				{
 					depth: 2,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 			]);
 			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Set1')).toEqual([
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Start',
 				},
 				{
 					depth: 1,
-					indicies: [0],
+					indices: [0],
 					name: 'Set',
 				},
 				{
 					depth: 2,
-					indicies: [0, 2],
+					indices: [0, 2],
 					name: 'Switch',
 				},
 			]);
