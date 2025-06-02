@@ -1,0 +1,148 @@
+/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import {
+	NodeConnectionTypes,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+	type INodeTypeBaseDescription,
+} from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+export class DocumentGithubLoaderV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			version: 2,
+			defaults: {
+				name: 'Default Data Loader',
+			},
+			credentials: [
+				{
+					name: 'githubApi',
+					required: true,
+				},
+			],
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+			inputs: [
+				{
+					displayName: 'Text Splitter',
+					maxConnections: 1,
+					type: NodeConnectionTypes.AiTextSplitter,
+				},
+			],
+			inputNames: ['Text Splitter'],
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+			outputs: [NodeConnectionTypes.AiDocument],
+			outputNames: ['Document'],
+			properties: [
+				getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
+				{
+					displayName: 'Repository Link',
+					name: 'repository',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Branch',
+					name: 'branch',
+					type: 'string',
+					default: 'main',
+				},
+				{
+					displayName: 'Text Splitting',
+					name: 'textSplittingMode',
+					type: 'options',
+					default: 'simple',
+					required: true,
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Simple',
+							value: 'simple',
+							description: 'Uses Recursive Character Text Splitter with default options',
+						},
+						{
+							name: 'Custom',
+							value: 'custom',
+							description: 'Connect a text splitter of your choice',
+						},
+					],
+				},
+				{
+					displayName: 'Options',
+					name: 'additionalOptions',
+					type: 'collection',
+					placeholder: 'Add Option',
+					default: {},
+
+					options: [
+						{
+							displayName: 'Recursive',
+							name: 'recursive',
+							type: 'boolean',
+							default: false,
+						},
+						{
+							displayName: 'Ignore Paths',
+							name: 'ignorePaths',
+							type: 'string',
+							description: 'Comma-separated list of paths to ignore, e.g. "docs, src/tests',
+							default: '',
+						},
+					],
+				},
+			],
+			...baseDescription,
+		};
+	}
+
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supplying data for Github Document Loader');
+
+		const repository = this.getNodeParameter('repository', itemIndex) as string;
+		const branch = this.getNodeParameter('branch', itemIndex) as string;
+		const credentials = await this.getCredentials('githubApi');
+		const { ignorePaths, recursive } = this.getNodeParameter('additionalOptions', 0) as {
+			recursive: boolean;
+			ignorePaths: string;
+		};
+
+		const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+			| 'simple'
+			| 'custom';
+
+		const textSplitter: TextSplitter | undefined =
+			textSplittingMode === 'simple'
+				? new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 })
+				: ((await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+						| TextSplitter
+						| undefined);
+
+		const { index } = this.addInputData(NodeConnectionTypes.AiDocument, [
+			[{ json: { repository, branch, ignorePaths, recursive } }],
+		]);
+		const docs = new GithubRepoLoader(repository, {
+			branch,
+			ignorePaths: (ignorePaths ?? '').split(',').map((p) => p.trim()),
+			recursive,
+			accessToken: (credentials.accessToken as string) || '',
+			apiUrl: credentials.server as string,
+		});
+
+		const loadedDocs = textSplitter
+			? await textSplitter.splitDocuments(await docs.load())
+			: await docs.load();
+
+		this.addOutputData(NodeConnectionTypes.AiDocument, index, [[{ json: { loadedDocs } }]]);
+		return {
+			response: logWrapper(loadedDocs, this),
+		};
+	}
+}

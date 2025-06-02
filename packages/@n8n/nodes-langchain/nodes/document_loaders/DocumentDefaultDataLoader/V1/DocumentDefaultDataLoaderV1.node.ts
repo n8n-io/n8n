@@ -26,7 +26,7 @@ export class DocumentDefaultDataLoaderV1 implements INodeType {
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
-			version: [1],
+			version: 1,
 			defaults: {
 				name: 'Default Data Loader',
 			},

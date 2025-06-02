@@ -1,168 +1,38 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
-import type { TextSplitter } from '@langchain/textsplitters';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import {
-	NodeConnectionTypes,
-	type INodeType,
-	type INodeTypeDescription,
-	type ISupplyDataFunctions,
-	type SupplyData,
-	type IDataObject,
-	type INodeInputConfiguration,
-} from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { DocumentGithubLoaderV1 } from './V1/DocumentGithubLoaderV1.node';
+import { DocumentGithubLoaderV2 } from './V2/DocumentGithubLoaderV2.node';
 
-function getInputs(parameters: IDataObject) {
-	const inputs: INodeInputConfiguration[] = [];
-
-	const textSplittingMode = parameters?.textSplittingMode;
-	if (textSplittingMode === 'custom') {
-		inputs.push({
-			displayName: 'Text Splitter',
-			maxConnections: 1,
-			type: 'ai_textSplitter',
-		});
-	}
-	return inputs;
-}
-
-export class DocumentGithubLoader implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'GitHub Document Loader',
-		name: 'documentGithubLoader',
-		icon: 'file:github.svg',
-		group: ['transform'],
-		version: 1,
-		description: 'Use GitHub data as input to this chain',
-		defaults: {
-			name: 'GitHub Document Loader',
-		},
-		codex: {
-			categories: ['AI'],
-			subcategories: {
-				AI: ['Document Loaders'],
+export class DocumentGithubLoader extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'GitHub Loader',
+			name: 'documentGithubLoader',
+			icon: 'file:github.svg',
+			group: ['transform'],
+			description: 'Load documents from a GitHub repository',
+			codex: {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Document Loaders'],
+				},
+				resources: {
+					primaryDocumentation: [
+						{
+							url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentgithubloader/',
+						},
+					],
+				},
 			},
-			resources: {
-				primaryDocumentation: [
-					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentgithubloader/',
-					},
-				],
-			},
-		},
-		credentials: [
-			{
-				name: 'githubApi',
-				required: true,
-			},
-		],
-		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionTypes.AiDocument],
-		outputNames: ['Document'],
-		properties: [
-			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
-			{
-				displayName: 'Repository Link',
-				name: 'repository',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Branch',
-				name: 'branch',
-				type: 'string',
-				default: 'main',
-			},
-			{
-				displayName: 'Text Splitting',
-				name: 'textSplittingMode',
-				type: 'options',
-				default: 'simple',
-				required: true,
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Simple',
-						value: 'simple',
-						description: 'Uses Recursive Character Text Splitter with default options',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Connect a text splitter of your choice',
-					},
-				],
-			},
-			{
-				displayName: 'Options',
-				name: 'additionalOptions',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
-
-				options: [
-					{
-						displayName: 'Recursive',
-						name: 'recursive',
-						type: 'boolean',
-						default: false,
-					},
-					{
-						displayName: 'Ignore Paths',
-						name: 'ignorePaths',
-						type: 'string',
-						description: 'Comma-separated list of paths to ignore, e.g. "docs, src/tests',
-						default: '',
-					},
-				],
-			},
-		],
-	};
-
-	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.debug('Supplying data for Github Document Loader');
-
-		const repository = this.getNodeParameter('repository', itemIndex) as string;
-		const branch = this.getNodeParameter('branch', itemIndex) as string;
-		const credentials = await this.getCredentials('githubApi');
-		const { ignorePaths, recursive } = this.getNodeParameter('additionalOptions', 0) as {
-			recursive: boolean;
-			ignorePaths: string;
+			defaultVersion: 2,
 		};
 
-		const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
-			| 'simple'
-			| 'custom';
-
-		const textSplitter: TextSplitter | undefined =
-			textSplittingMode === 'simple'
-				? new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 })
-				: ((await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
-						| TextSplitter
-						| undefined);
-
-		const { index } = this.addInputData(NodeConnectionTypes.AiDocument, [
-			[{ json: { repository, branch, ignorePaths, recursive } }],
-		]);
-		const docs = new GithubRepoLoader(repository, {
-			branch,
-			ignorePaths: (ignorePaths ?? '').split(',').map((p) => p.trim()),
-			recursive,
-			accessToken: (credentials.accessToken as string) || '',
-			apiUrl: credentials.server as string,
-		});
-
-		const loadedDocs = textSplitter
-			? await textSplitter.splitDocuments(await docs.load())
-			: await docs.load();
-
-		this.addOutputData(NodeConnectionTypes.AiDocument, index, [[{ json: { loadedDocs } }]]);
-		return {
-			response: logWrapper(loadedDocs, this),
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new DocumentGithubLoaderV1(baseDescription),
+			2: new DocumentGithubLoaderV2(baseDescription),
 		};
+
+		super(nodeVersions, baseDescription);
 	}
 }
