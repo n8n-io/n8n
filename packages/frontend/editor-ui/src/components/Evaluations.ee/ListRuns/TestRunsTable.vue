@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/evaluation.ee';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
 import type { TestTableColumn } from '../shared/TestTableBase.vue';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import TestTableBase from '../shared/TestTableBase.vue';
 import { statusDictionary } from '../shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';

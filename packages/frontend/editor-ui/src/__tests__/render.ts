@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { render } from '@testing-library/vue';
-import { i18nInstance } from '@/plugins/i18n';
+import { i18nInstance } from '@n8n/i18n';
 import { GlobalComponentsPlugin } from '@/plugins/components';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { FontAwesomePlugin } from '@/plugins/icons';

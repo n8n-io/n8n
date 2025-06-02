@@ -1,5 +1,3 @@
-import type { INodeTranslationHeaders, IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
@@ -7,6 +5,9 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
+import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { IRestApiContext } from '@/Interface';
+import type { INodeTranslationHeaders } from '@n8n/i18n';
 import axios from 'axios';
 import {
 	type INodeListSearchResult,
