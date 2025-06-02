@@ -2647,9 +2647,6 @@ importers:
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
-      deep-equal:
-        specifier: 2.2.0
-        version: 2.2.0
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -2699,9 +2696,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
-      '@types/deep-equal':
-        specifier: ^1.0.1
-        version: 1.0.1
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -6346,9 +6340,6 @@ packages:
 
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
-
-  '@types/deep-equal@1.0.1':
-    resolution: {integrity: sha512-mMUu4nWHLBlHtxXY17Fg6+ucS/MnndyOWyOe7MmwkoMYxvfQU2ajtRaEvqSUv+aVkMqH/C0NCI8UoVfRNQ10yg==}
 
   '@types/eslint@8.56.5':
     resolution: {integrity: sha512-u5/YPJHo1tvkSF2CE0USEkxon82Z5DBy2xR+qfyYNszpX9qcs4sT6uq2kBbj4BXY1+DBGDPnrhMZV3pKWGNukw==}
@@ -19359,8 +19350,6 @@ snapshots:
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 2.1.0
-
-  '@types/deep-equal@1.0.1': {}
 
   '@types/eslint@8.56.5':
     dependencies:
