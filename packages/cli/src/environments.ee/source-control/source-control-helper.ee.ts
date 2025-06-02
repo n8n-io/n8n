@@ -22,8 +22,6 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { AuthenticatedRequest } from '@/requests';
-import { hasGlobalScope } from '@n8n/permissions';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
