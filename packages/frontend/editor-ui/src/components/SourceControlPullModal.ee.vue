@@ -2,7 +2,7 @@
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';

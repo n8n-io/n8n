@@ -1,0 +1,191 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994464,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function": [
+          {
+            "startTime": 1747343994464,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "binary": {
+                      "data": {
+                        "data": "VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl",
+                        "fileExtension": "txt",
+                        "fileName": "file.txt"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Write Binary File": [
+          {
+            "startTime": 1747343994467,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Function"
+              }
+            ],
+            "hints": [],
+            "executionTime": 74,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileName": "/tmp/test_write_binary_file.txt"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "binary": {
+                      "data": {
+                        "data": "VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl",
+                        "fileExtension": "txt",
+                        "fileName": "file.txt"
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Read Binary File": [
+          {
+            "startTime": 1747343994541,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Write Binary File"
+              }
+            ],
+            "hints": [],
+            "executionTime": 18,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileName": "/tmp/test_write_binary_file.txt"
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/plain",
+                        "fileType": "text",
+                        "fileExtension": "txt",
+                        "data": "VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl",
+                        "directory": "/tmp",
+                        "fileName": "test_write_binary_file.txt",
+                        "fileSize": "27 B"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function1": [
+          {
+            "startTime": 1747343994559,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Read Binary File"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileName": "/tmp/test_write_binary_file.txt"
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/plain",
+                        "fileType": "text",
+                        "fileExtension": "txt",
+                        "data": "VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl",
+                        "directory": "/tmp",
+                        "fileName": "test_write_binary_file.txt",
+                        "fileSize": "27 B"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Function1"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.464Z",
+  "stoppedAt": "2025-05-15T21:19:54.560Z",
+  "status": "running",
+  "finished": true
+}

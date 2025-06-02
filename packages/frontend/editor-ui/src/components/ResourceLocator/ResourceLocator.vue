@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { ResourceLocatorRequestDto, ActionResultRequestDto } from '@n8n/api-types';
 import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -346,6 +347,70 @@ const showOverrideButton = computed(
 	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
+const allowNewResources = computed(() => {
+	if (!props.node) {
+		return undefined;
+	}
+
+	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource');
+
+	if (!addNewResourceOptions || typeof addNewResourceOptions !== 'object') {
+		return undefined;
+	}
+
+	return {
+		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
+			interpolate: {
+				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+			},
+		}),
+		method: addNewResourceOptions.method,
+	};
+});
+
+const handleAddResourceClick = async () => {
+	if (!props.node || !allowNewResources.value) {
+		return;
+	}
+
+	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		props.parameter,
+		currentRequestParams.value.parameters,
+	);
+
+	if (!resolvedNodeParameters || !addNewResourceMethodName) {
+		return;
+	}
+
+	const requestParams: ActionResultRequestDto = {
+		nodeTypeAndVersion: {
+			name: props.node.type,
+			version: props.node.typeVersion,
+		},
+		path: props.path,
+		currentNodeParameters: resolvedNodeParameters,
+		credentials: props.node.credentials,
+		handler: addNewResourceMethodName,
+		payload: {
+			name: searchFilter.value,
+		},
+	};
+
+	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
+		requestParams,
+	)) as NodeParameterValue;
+
+	refreshList();
+	await loadResources();
+	searchFilter.value = '';
+	onListItemSelected(newResource);
+};
+
+const onAddResourceClicked = computed(() =>
+	allowNewResources.value ? handleAddResourceClick : undefined,
+);
+
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
 		if (inputRef.value) {
@@ -453,7 +518,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined {
+): string | number | boolean | INodePropertyModeTypeOptions['allowNewResource'] | undefined {
 	return parameter.typeOptions?.[argumentName];
 }
 
@@ -838,9 +903,11 @@ function removeOverride() {
 			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
+			:allow-new-resources="allowNewResources"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
@@ -983,6 +1050,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
+									@mousedown.prevent
 								>
 									<template v-if="isListMode" #suffix>
 										<i

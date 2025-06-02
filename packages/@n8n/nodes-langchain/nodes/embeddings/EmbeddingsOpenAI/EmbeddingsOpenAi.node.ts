@@ -228,14 +228,12 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-				openAIApiKey: credentials.apiKey as string,
-				...options,
-			},
+		const embeddings = new OpenAIEmbeddings({
+			modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			openAIApiKey: credentials.apiKey as string,
+			...options,
 			configuration,
-		);
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

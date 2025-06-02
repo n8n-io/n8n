@@ -177,6 +177,96 @@ describe('Test Summarize Node, aggregateAndSplitData', () => {
 		);
 	});
 
+	test('should handle multiple split field values containing null when convertKeysToString is true', () => {
+		const data = [
+			{
+				Product: 'Widget A',
+				Warehouse: 'WH1',
+				Qty: '5',
+				_itemIndex: 0,
+			},
+			{
+				Product: null,
+				Warehouse: 'WH2',
+				Qty: '3',
+				_itemIndex: 1,
+			},
+			{
+				Product: 'Widget A',
+				Warehouse: null,
+				Qty: '2',
+				_itemIndex: 2,
+			},
+		];
+
+		const aggregations: Aggregations = [
+			{
+				aggregation: 'append',
+				field: 'Warehouse',
+				includeEmpty: true,
+			},
+		];
+
+		const result = aggregateAndSplitData({
+			splitKeys: ['Product', 'Warehouse'],
+			inputItems: data,
+			fieldsToSummarize: aggregations,
+			options: { continueIfFieldNotFound: true },
+			getValue: fieldValueGetter(),
+			convertKeysToString: true,
+		});
+
+		expect(result).toMatchSnapshot('split-field-with-spaces-result');
+		expect(flattenAggregationResultToArray(result)).toMatchSnapshot(
+			'split-field-with-spaces-array',
+		);
+	});
+
+	test('should handle multiple split field values containing null when convertKeysToString is false', () => {
+		const data = [
+			{
+				Product: 'Widget A',
+				Warehouse: 'WH1',
+				Qty: '5',
+				_itemIndex: 0,
+			},
+			{
+				Product: null,
+				Warehouse: 'WH2',
+				Qty: '3',
+				_itemIndex: 1,
+			},
+			{
+				Product: 'Widget A',
+				Warehouse: null,
+				Qty: '2',
+				_itemIndex: 2,
+			},
+		];
+
+		const aggregations: Aggregations = [
+			{
+				aggregation: 'append',
+				field: 'Warehouse',
+				includeEmpty: true,
+			},
+		];
+
+		const result = aggregateAndSplitData({
+			splitKeys: ['Product', 'Warehouse'],
+			inputItems: data,
+			fieldsToSummarize: aggregations,
+			options: { continueIfFieldNotFound: true },
+			getValue: fieldValueGetter(),
+			convertKeysToString: false,
+		});
+
+		expect(result).toMatchSnapshot('split-field-with-spaces-result');
+		expect(flattenAggregationResultToArray(result)).toMatchSnapshot(
+			'split-field-with-spaces-array',
+		);
+	});
+
 	describe('with skipEmptySplitFields=true', () => {
 		test('should skip empty split fields', () => {
 			const data = [

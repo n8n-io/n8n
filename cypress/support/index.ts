@@ -28,7 +28,6 @@ declare global {
 				selector: string,
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
-			ifCanvasVersion<T1, T2>(getterV1: () => T1, getterV2: () => T2): T1 | T2;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			/**
 			 * Creates a workflow from the given fixture and optionally renames it.
@@ -87,6 +86,8 @@ declare global {
 			>;
 			resetDatabase(): void;
 			setAppDate(targetDate: number | Date): void;
+			interceptNewTab(): Chainable<void>;
+			visitInterceptedTab(): Chainable<void>;
 		}
 	}
 }

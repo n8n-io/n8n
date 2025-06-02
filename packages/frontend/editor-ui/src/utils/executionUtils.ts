@@ -13,7 +13,7 @@ import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
@@ -103,7 +103,7 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export function displayForm({
+export async function displayForm({
 	nodes,
 	runData,
 	pinData,
@@ -137,6 +137,14 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
+
+			try {
+				const res = await fetch(testUrl, { method: 'GET' });
+				if (!res.ok) continue;
+			} catch (error) {
+				continue;
+			}
+
 			if (testUrl && source !== 'RunData.ManualChatMessage') {
 				clearPopupWindowState();
 				openFormPopupWindow(testUrl);
@@ -157,7 +165,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting');
+				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
 			}
 
 			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
@@ -168,12 +176,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 			if (resume === 'form') {
 				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
 				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
 			if (message && resumeUrl) {
@@ -182,7 +190,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 
 		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
@@ -277,7 +285,10 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 export function getExecutionErrorMessage({
 	error,
 	lastNodeExecuted,
-}: { error?: ExecutionError; lastNodeExecuted?: string }): string {
+}: {
+	error?: ExecutionError;
+	lastNodeExecuted?: string;
+}): string {
 	let errorMessage: string;
 
 	if (lastNodeExecuted && error) {
@@ -312,7 +323,10 @@ export function getExecutionErrorMessage({
 export function getExecutionErrorToastConfiguration({
 	error,
 	lastNodeExecuted,
-}: { error: ExecutionError; lastNodeExecuted?: string }) {
+}: {
+	error: ExecutionError;
+	lastNodeExecuted?: string;
+}) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
 	if (error.name === 'SubworkflowOperationError') {

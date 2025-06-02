@@ -1,7 +1,7 @@
 import type { RunWorkflowChatPayload } from '@/components/CanvasChat/composables/useChatMessaging';
 import { useChatMessaging } from '@/components/CanvasChat/composables/useChatMessaging';
 import { useChatTrigger } from '@/components/CanvasChat/composables/useChatTrigger';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';

@@ -484,21 +484,17 @@ module.exports = {
 		meta: {
 			type: 'error',
 			docs: {
-				description:
-					'Ensure `@n8n/typeorm` is imported only from within the `packages/cli/src/databases` directory.',
+				description: 'Ensure `@n8n/typeorm` is imported only from within the `@n8n/db` package.',
 				recommended: 'error',
 			},
 			messages: {
-				moveImport: 'Move this import to `packages/cli/src/databases/**/*.ts`.',
+				moveImport: 'Please move this import to `@n8n/db`.',
 			},
 		},
 		create(context) {
 			return {
 				ImportDeclaration(node) {
-					if (
-						node.source.value === '@n8n/typeorm' &&
-						!context.getFilename().includes('packages/cli/src/databases/')
-					) {
+					if (node.source.value === '@n8n/typeorm' && !context.getFilename().includes('@n8n/db')) {
 						context.report({ node, messageId: 'moveImport' });
 					}
 				},

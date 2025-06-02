@@ -8,7 +8,7 @@ import {
 	type LogDetailsPanelState,
 } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
 import {
@@ -88,6 +88,7 @@ function handleResizeEnd() {
 						:class="$style.executionSummary"
 						:status="logEntry.runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
+						:start-time="logEntry.runData.startTime"
 						:time-took="logEntry.runData.executionTime"
 					/>
 				</div>

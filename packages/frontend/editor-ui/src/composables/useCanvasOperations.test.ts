@@ -2419,6 +2419,82 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
+
+		it('should delete all connections of a node with multiple connections', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });
+
+			const sourceNode = createTestNode({ id: 'source', name: 'Source Node' });
+			const targetNode = createTestNode({ id: 'target', name: 'Target Node' });
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
+						],
+					],
+				},
+				[targetNode.name]: {
+					[NodeConnectionTypes.Main]: [],
+				},
+			};
+
+			workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
+				if (id === sourceNode.id) return sourceNode;
+				if (id === targetNode.id) return targetNode;
+				return null;
+			});
+			workflowsStore.getNodeByName = vi.fn().mockImplementation((name) => {
+				if (name === sourceNode.name) return sourceNode;
+				if (name === targetNode.name) return targetNode;
+				return null;
+			});
+
+			workflowsStore.removeConnection = vi
+				.fn()
+				.mockImplementation((data: { connection: IConnection[] }) => {
+					const sourceData = data.connection[0];
+					const destinationData = data.connection[1];
+
+					const connections =
+						workflowsStore.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
+
+					for (const index in connections) {
+						if (
+							connections[+index].node === destinationData.node &&
+							connections[+index].type === destinationData.type &&
+							connections[+index].index === destinationData.index
+						) {
+							connections.splice(parseInt(index, 10), 1);
+						}
+					}
+				});
+
+			deleteConnectionsByNodeId(targetNode.id);
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(2);
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+			});
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
+				],
+			});
+
+			expect(
+				workflowsStore.workflow.connections[sourceNode.name][NodeConnectionTypes.Main][0],
+			).toEqual([]);
+		});
 	});
 
 	describe('duplicateNodes', () => {
