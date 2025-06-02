@@ -141,30 +141,17 @@ export class OutputParserStructured implements INodeType {
 				default: false,
 			},
 			{
-				displayName: 'Retry Prompt',
-				name: 'retryPromptType',
-				type: 'options',
+				displayName: 'Customize Retry Prompt',
+				name: 'customizeRetryPrompt',
+				type: 'boolean',
 				displayOptions: {
 					show: {
 						autoFix: [true],
 					},
 				},
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Default',
-						value: 'default',
-						description: 'Use default retry prompt',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Use a custom retry prompt',
-						action: 'Use custom retry prompt',
-					},
-				],
-				default: 'default',
-				description: 'How to specify the prompt used for retrying the output parsing',
+				default: false,
+				description:
+					'Whether to customize the prompt used for retrying the output parsing. If disabled, a default prompt will be used.',
 			},
 			{
 				displayName: 'Custom Prompt',
@@ -173,7 +160,7 @@ export class OutputParserStructured implements INodeType {
 				displayOptions: {
 					show: {
 						autoFix: [true],
-						retryPromptType: ['custom'],
+						customizeRetryPrompt: [true],
 					},
 				},
 				default: NAIVE_FIX_PROMPT,
@@ -209,47 +196,48 @@ export class OutputParserStructured implements INodeType {
 
 		const autoFix = this.getNodeParameter('autoFix', itemIndex, false) as boolean;
 
+		let outputParser;
 		try {
-			const outputParser = await N8nStructuredOutputParser.fromZodJsonSchema(
+			outputParser = await N8nStructuredOutputParser.fromZodJsonSchema(
 				zodSchema,
 				nodeVersion,
 				this,
 			);
-
-			if (!autoFix) {
-				return {
-					response: outputParser,
-				};
-			} else {
-				const model = (await this.getInputConnectionData(
-					NodeConnectionTypes.AiLanguageModel,
-					itemIndex,
-				)) as BaseLanguageModel;
-
-				const prompt = this.getNodeParameter('prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
-
-				if (prompt.length === 0 || !prompt.includes('{error}')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Auto-fixing parser prompt has to contain {error} placeholder',
-					);
-				}
-				const parser = new N8nOutputFixingParser(
-					this,
-					model,
-					outputParser,
-					PromptTemplate.fromTemplate(prompt),
-				);
-
-				return {
-					response: parser,
-				};
-			}
 		} catch (error) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Error during parsing of JSON Schema. Please check the schema and try again.',
 			);
 		}
+
+		if (!autoFix) {
+			return {
+				response: outputParser,
+			};
+		}
+
+		const model = (await this.getInputConnectionData(
+			NodeConnectionTypes.AiLanguageModel,
+			itemIndex,
+		)) as BaseLanguageModel;
+
+		const prompt = this.getNodeParameter('prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
+
+		if (prompt.length === 0 || !prompt.includes('{error}')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
+			);
+		}
+		const parser = new N8nOutputFixingParser(
+			this,
+			model,
+			outputParser,
+			PromptTemplate.fromTemplate(prompt),
+		);
+
+		return {
+			response: parser,
+		};
 	}
 }
