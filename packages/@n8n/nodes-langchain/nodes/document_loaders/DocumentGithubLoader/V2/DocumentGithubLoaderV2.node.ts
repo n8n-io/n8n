@@ -9,11 +9,26 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 	type INodeTypeBaseDescription,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	const textSplittingMode = parameters?.textSplittingMode;
+	if (textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+		});
+	}
+	return inputs;
+}
 export class DocumentGithubLoaderV2 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -29,14 +44,7 @@ export class DocumentGithubLoaderV2 implements INodeType {
 					required: true,
 				},
 			],
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: [
-				{
-					displayName: 'Text Splitter',
-					maxConnections: 1,
-					type: NodeConnectionTypes.AiTextSplitter,
-				},
-			],
+			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 			inputNames: ['Text Splitter'],
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 			outputs: [NodeConnectionTypes.AiDocument],
