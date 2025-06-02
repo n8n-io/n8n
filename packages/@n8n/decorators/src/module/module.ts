@@ -3,7 +3,7 @@ import type { BaseEntity } from '@n8n/typeorm';
 
 import { ModuleMetadata } from './module-metadata';
 
-export type EntityClass = new (...args: unknown[]) => BaseEntity;
+export type EntityClass = new () => BaseEntity;
 
 export interface BaseN8nModule {
 	init?(): void | Promise<void>;
