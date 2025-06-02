@@ -9,12 +9,9 @@ import { useCanvas } from '@/composables/useCanvas';
 import { useVueFlow } from '@vue-flow/core';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useRouter } from 'vue-router';
-import NodeSettings from '@/components/NodeSettings.vue';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDebounce } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
+import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -159,17 +156,6 @@ function openContextMenu(event: MouseEvent) {
 function onActivate(event: MouseEvent) {
 	emit('activate', id.value, event);
 }
-const settingsEventBus = createEventBus();
-const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
-
-const activeNode = computed(() => workflowsStore.getNodeById(id.value));
-const activeNodeType = computed(() => {
-	if (activeNode.value) {
-		return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
-	}
-	return null;
-});
 </script>
 
 <template>
@@ -180,19 +166,7 @@ const activeNodeType = computed(() => {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<NodeSettings
-			v-if="shouldRenderNodeSettings"
-			:event-bus="settingsEventBus"
-			:dragging="false"
-			:active-node="activeNode"
-			:node-type="activeNodeType"
-			push-ref=""
-			:foreign-credentials="[]"
-			:read-only="false"
-			:block-u-i="false"
-			:executable="false"
-			:input-size="0"
-		/>
+		<CanvasNodeNodeSettings v-if="shouldRenderNodeSettings" :node-id="id" />
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
