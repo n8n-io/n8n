@@ -2,7 +2,7 @@
   "createdAt": "2021-04-30T08:31:10.410Z",
   "updatedAt": "2021-04-30T08:46:44.441Z",
   "id": "192",
-  "name": "Mattermost:Channel:create addUser members statistics delete restore:Message:post postEphemeral delete:Reaction:create getAll delete:User:create getById getByEmail getAll invite deactive",
+  "name": "Mattermost:Channel:create addUser members statistics delete restore:Message:post postEphemeral delete:Reaction:create getAll delete:User:create getById getByEmail getAll invite deactivate",
   "active": false,
   "nodes": [
     {
@@ -416,7 +416,7 @@
     {
       "parameters": {
         "resource": "user",
-        "operation": "deactive",
+        "operation": "deactivate",
         "userId": "={{$node[\"Mattermost13\"].json[\"id\"]}}"
       },
       "name": "Mattermost18",
