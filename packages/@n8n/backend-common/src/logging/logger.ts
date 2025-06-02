@@ -195,10 +195,9 @@ export class Logger implements LoggerType {
 			winston.format.json(),
 		);
 
-		const filename = path.join(
-			this.instanceSettingsConfig.n8nFolder,
-			this.globalConfig.logging.file.location,
-		);
+		const filename = path.isAbsolute(this.globalConfig.logging.file.location)
+			? this.globalConfig.logging.file.location
+			: path.join(this.instanceSettingsConfig.n8nFolder, this.globalConfig.logging.file.location);
 
 		const { fileSizeMax, fileCountMax } = this.globalConfig.logging.file;
 
