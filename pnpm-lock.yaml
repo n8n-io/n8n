@@ -1771,6 +1771,9 @@ importers:
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -1823,6 +1826,9 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.8.2))
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@types/markdown-it':
         specifier: ^13.0.9
         version: 13.0.9
@@ -2152,8 +2158,8 @@ importers:
       jsonpath:
         specifier: ^1.1.1
         version: 1.1.1
-      lodash-es:
-        specifier: ^4.17.21
+      lodash:
+        specifier: 'catalog:'
         version: 4.17.21
       luxon:
         specifier: 'catalog:'
@@ -2258,9 +2264,9 @@ importers:
       '@types/jsonpath':
         specifier: ^0.2.0
         version: 0.2.0
-      '@types/lodash-es':
-        specifier: ^4.17.6
-        version: 4.17.6
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@types/uuid':
         specifier: 'catalog:'
         version: 10.0.0
@@ -6440,11 +6446,8 @@ packages:
   '@types/linkify-it@3.0.5':
     resolution: {integrity: sha512-yg6E+u0/+Zjva+buc3EIb+29XEg4wltq7cSmd4Uc2EE/1nUVmxyzpX6gUXD0V8jIrG0r7YeOGVIbYRkxeooCtw==}
 
-  '@types/lodash-es@4.17.6':
-    resolution: {integrity: sha512-R+zTeVUKDdfoRxpAryaQNRKk3105Rrgx2CFRClIgRGaqDTdjsm8h6IYA8ir584W3ePzkZfst5xIgDwYrlh9HLg==}
-
-  '@types/lodash@4.14.195':
-    resolution: {integrity: sha512-Hwx9EUgdwf2GLarOjQp5ZH8ZmblzcbTBC2wtQWNKARBSxM9ezRIAUpeDTgoQRAFB0+8CNWXVA9+MaSOzOF3nPg==}
+  '@types/lodash-es@4.17.12':
+    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
 
   '@types/lodash@4.17.17':
     resolution: {integrity: sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ==}
@@ -19462,11 +19465,9 @@ snapshots:
 
   '@types/linkify-it@3.0.5': {}
 
-  '@types/lodash-es@4.17.6':
+  '@types/lodash-es@4.17.12':
     dependencies:
-      '@types/lodash': 4.14.195
-
-  '@types/lodash@4.14.195': {}
+      '@types/lodash': 4.17.17
 
   '@types/lodash@4.17.17': {}
 
@@ -21925,15 +21926,15 @@ snapshots:
       '@element-plus/icons-vue': 2.3.1(vue@3.5.13(typescript@5.8.2))
       '@floating-ui/dom': 1.4.5
       '@popperjs/core': '@sxzz/popperjs-es@2.11.7'
-      '@types/lodash': 4.14.195
-      '@types/lodash-es': 4.17.6
+      '@types/lodash': 4.17.17
+      '@types/lodash-es': 4.17.12
       '@vueuse/core': 9.13.0(vue@3.5.13(typescript@5.8.2))
       async-validator: 4.2.5
       dayjs: 1.11.10
       escape-html: 1.0.3
       lodash: 4.17.21
       lodash-es: 4.17.21
-      lodash-unified: 1.0.3(@types/lodash-es@4.17.6)(lodash-es@4.17.21)(lodash@4.17.21)
+      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.21)(lodash@4.17.21)
       memoize-one: 6.0.0
       normalize-wheel-es: 1.2.0
       vue: 3.5.13(typescript@5.8.2)
@@ -24660,9 +24661,9 @@ snapshots:
 
   lodash-es@4.17.21: {}
 
-  lodash-unified@1.0.3(@types/lodash-es@4.17.6)(lodash-es@4.17.21)(lodash@4.17.21):
+  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.21)(lodash@4.17.21):
     dependencies:
-      '@types/lodash-es': 4.17.6
+      '@types/lodash-es': 4.17.12
       lodash: 4.17.21
       lodash-es: 4.17.21
 

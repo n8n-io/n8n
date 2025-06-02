@@ -47,7 +47,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
