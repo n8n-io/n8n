@@ -144,15 +144,20 @@ export class Logger implements LoggerType {
 		);
 	}
 
+	private pickConsoleTransportFormat() {
+		if (this.globalConfig.logging.format === 'json') {
+			return this.jsonConsoleFormat();
+		} else if (this.level === 'debug' && inDevelopment) {
+			return this.debugDevConsoleFormat();
+		} else if (this.level === 'debug' && inProduction) {
+			return this.debugProdConsoleFormat();
+		} else {
+			return winston.format.printf(({ message }: { message: string }) => message);
+		}
+	}
+
 	private setConsoleTransport() {
-		const format =
-			this.globalConfig.logging.format === 'json'
-				? this.jsonConsoleFormat()
-				: this.level === 'debug' && inDevelopment
-					? this.debugDevConsoleFormat()
-					: this.level === 'debug' && inProduction
-						? this.debugProdConsoleFormat()
-						: winston.format.printf(({ message }: { message: string }) => message);
+		const format = this.pickConsoleTransportFormat();
 
 		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
