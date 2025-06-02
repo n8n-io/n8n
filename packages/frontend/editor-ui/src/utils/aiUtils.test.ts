@@ -1,4 +1,4 @@
-import { parseAiContent } from '@/utils/aiUtils';
+import { addTokenUsageData, parseAiContent } from '@/utils/aiUtils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe(parseAiContent, () => {
@@ -77,5 +77,39 @@ describe(parseAiContent, () => {
 				raw: expect.any(Object),
 			},
 		]);
+	});
+});
+
+describe(addTokenUsageData, () => {
+	it('should return sum of consumed tokens', () => {
+		expect(
+			addTokenUsageData(
+				{ completionTokens: 1, promptTokens: 100, totalTokens: 1000, isEstimate: false },
+				{ completionTokens: 0, promptTokens: 1, totalTokens: 2, isEstimate: false },
+			),
+		).toEqual({ completionTokens: 1, promptTokens: 101, totalTokens: 1002, isEstimate: false });
+	});
+
+	it('should set isEstimate to true if either of the arguments is an estimation', () => {
+		const usageData = { completionTokens: 0, promptTokens: 0, totalTokens: 0, isEstimate: false };
+
+		expect(addTokenUsageData(usageData, usageData)).toEqual({
+			...usageData,
+			isEstimate: false,
+		});
+		expect(addTokenUsageData({ ...usageData, isEstimate: true }, usageData)).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
+		expect(addTokenUsageData(usageData, { ...usageData, isEstimate: true })).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
+		expect(
+			addTokenUsageData({ ...usageData, isEstimate: true }, { ...usageData, isEstimate: true }),
+		).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
 	});
 });
