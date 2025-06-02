@@ -234,7 +234,9 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
+		);
 
 		// ----------------------------------------
 		// Settings
