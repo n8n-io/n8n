@@ -1,4 +1,4 @@
-import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -76,6 +76,7 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly licenseState: LicenseState,
 	) {
 		super();
 
@@ -152,15 +153,23 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
+
+		if (this.licenseState.isSourceControlLicensed()) {
+			try {
+				const { SourceControlService } = await import(
+					'@/environments.ee/source-control/source-control.service.ee'
+				);
+				await Container.get(SourceControlService).init();
+				await import('@/environments.ee/source-control/source-control.controller.ee');
+			} catch (error) {
+				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
+			}
+		}
+
 		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
 			await import('@/environments.ee/variables/variables.controller.ee');
 		} catch (error) {
-			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
+			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
 	}
 
