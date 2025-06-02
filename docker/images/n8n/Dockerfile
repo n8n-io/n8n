@@ -13,14 +13,20 @@ LABEL org.opencontainers.image.version=${N8N_VERSION}
 ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=stable
-# Install yt-dlp
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp && \
-    # Also install ffmpeg for media processing
-    apt-get update && \
-    apt-get install -y ffmpeg && \
+
+# Install yt-dlp, ffmpeg, and system dependencies for Cypress
+RUN apt-get update && \
+    apt-get install -y ffmpeg curl wget \
+    libgtk2.0-0 libgtk-3-0 libgbm-dev \
+    libnotify-dev libgconf-2-4 libnss3 \
+    libxss1 libasound2 xvfb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Cypress globally
+RUN npm install -g cypress --unsafe-perm=true
+
+# Install n8n
 RUN set -eux; \
 	npm install -g --omit=dev n8n@${N8N_VERSION} --ignore-scripts && \
 	npm rebuild --prefix=/usr/local/lib/node_modules/n8n sqlite3 && \
@@ -34,7 +40,6 @@ RUN set -eux; \
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.1.1
 COPY n8n-task-runners.json /etc/n8n-task-runners.json
-# Download, verify, then extract the launcher binary
 RUN \
 	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="amd64"; \
 	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="arm64"; fi; \
@@ -42,7 +47,6 @@ RUN \
 	cd /launcher-temp && \
 	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz && \
 	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256 && \
-	# The .sha256 does not contain the filename --> Form the correct checksum file
 	echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256 && \
 	sha256sum -c checksum.sha256 && \
 	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
@@ -54,6 +58,7 @@ COPY docker-entrypoint.sh /
 RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
+
 ENV SHELL /bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
