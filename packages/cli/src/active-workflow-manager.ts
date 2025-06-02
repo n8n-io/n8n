@@ -655,7 +655,7 @@ export class ActiveWorkflowManager {
 		instanceType: 'main',
 		instanceRole: 'leader',
 	})
-	async handleMultiMainAdd({ workflowId }: { workflowId: string }) {
+	async handleAddWebhooksTriggersAndPollers({ workflowId }: { workflowId: string }) {
 		try {
 			await this.add(workflowId, 'activate', undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
@@ -881,7 +881,7 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
-	async handleMultiMainRemove({ workflowId }: { workflowId: string }) {
+	async handleRemoveTriggersAndPollers({ workflowId }: { workflowId: string }) {
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 

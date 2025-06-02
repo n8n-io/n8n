@@ -19,6 +19,6 @@ export class OrchestrationController {
 	async getWorkersStatusAll() {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 
-		return await this.workerStatusService.requestWorkersStatus();
+		return await this.workerStatusService.requestWorkerStatus();
 	}
 }

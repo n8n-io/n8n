@@ -5,10 +5,10 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { mockLogger } from '@test/mocking';
 
-import { PubSubHandler } from '../pubsub-handler';
 import { PubSubEventBus } from '../pubsub.eventbus';
+import { PubSubRegistry } from '../pubsub.registry';
 
-describe('PubSubHandler', () => {
+describe('PubSubRegistry', () => {
 	let metadata: PubSubMetadata;
 	let pubsubEventBus: PubSubEventBus;
 	let logger: ReturnType<typeof mockLogger>;
@@ -64,13 +64,13 @@ describe('PubSubHandler', () => {
 		const testService = Container.get(TestService);
 		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
 
-		const pubSubHandler = new PubSubHandler(
+		const pubSubRegistry = new PubSubRegistry(
 			logger,
 			leaderInstanceSettings,
 			metadata,
 			pubsubEventBus,
 		);
-		pubSubHandler.init();
+		pubSubRegistry.init();
 
 		pubsubEventBus.emit('reload-external-secrets-providers');
 		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
@@ -83,13 +83,13 @@ describe('PubSubHandler', () => {
 		const onWorkerInstanceSpy = jest.spyOn(testService, 'onWorkerInstance');
 
 		// Test with main leader instance
-		const mainPubSubHandler = new PubSubHandler(
+		const mainPubSubRegistry = new PubSubRegistry(
 			logger,
 			leaderInstanceSettings,
 			metadata,
 			pubsubEventBus,
 		);
-		mainPubSubHandler.init();
+		mainPubSubRegistry.init();
 
 		pubsubEventBus.emit('reload-external-secrets-providers');
 		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
@@ -100,7 +100,7 @@ describe('PubSubHandler', () => {
 		jest.clearAllMocks();
 		pubsubEventBus.removeAllListeners();
 
-		const workerPubSub = new PubSubHandler(
+		const workerPubSub = new PubSubRegistry(
 			logger,
 			workerInstanceSettings,
 			metadata,
@@ -122,13 +122,13 @@ describe('PubSubHandler', () => {
 		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
 
 		// Test with leader instance
-		const pubSubHandler = new PubSubHandler(
+		const pubSubRegistry = new PubSubRegistry(
 			logger,
 			leaderInstanceSettings,
 			metadata,
 			pubsubEventBus,
 		);
-		pubSubHandler.init();
+		pubSubRegistry.init();
 
 		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
@@ -143,13 +143,13 @@ describe('PubSubHandler', () => {
 		jest.clearAllMocks();
 		pubsubEventBus.removeAllListeners();
 
-		const followerPubSubHandler = new PubSubHandler(
+		const followerPubSubRegistry = new PubSubRegistry(
 			logger,
 			followerInstanceSettings,
 			metadata,
 			pubsubEventBus,
 		);
-		followerPubSubHandler.init();
+		followerPubSubRegistry.init();
 
 		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
@@ -167,13 +167,13 @@ describe('PubSubHandler', () => {
 		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
 
 		// Test with main leader instance
-		const pubSubHandler = new PubSubHandler(
+		const pubSubRegistry = new PubSubRegistry(
 			logger,
 			leaderInstanceSettings,
 			metadata,
 			pubsubEventBus,
 		);
-		pubSubHandler.init();
+		pubSubRegistry.init();
 
 		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
@@ -190,8 +190,8 @@ describe('PubSubHandler', () => {
 			instanceRole: 'follower',
 		});
 
-		const pubSubHandler = new PubSubHandler(logger, instanceSettings, metadata, pubsubEventBus);
-		pubSubHandler.init();
+		const pubSubRegistry = new PubSubRegistry(logger, instanceSettings, metadata, pubsubEventBus);
+		pubSubRegistry.init();
 
 		// Initially as follower, event should be ignored
 		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');

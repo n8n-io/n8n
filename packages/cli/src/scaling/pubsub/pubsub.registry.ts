@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { PubSubEventBus } from './pubsub.eventbus';
 
 @Service()
-export class PubSubHandler {
+export class PubSubRegistry {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -22,7 +22,7 @@ export class PubSubHandler {
 		for (const { eventHandlerClass, methodName, eventName, filter } of handlers) {
 			const handlerClass = Container.get(eventHandlerClass);
 			if (!filter?.instanceType || filter.instanceType === instanceSettings.instanceType) {
-				this.logger.info(
+				this.logger.debug(
 					`Registered a "${eventName}" event handler on ${eventHandlerClass.name}#${methodName}`,
 				);
 				this.pubsubEventBus.on(eventName, async () => {
@@ -31,17 +31,7 @@ export class PubSubHandler {
 						filter?.instanceType !== 'main' ||
 						!filter.instanceRole ||
 						filter.instanceRole === instanceSettings.instanceRole;
-					if (shouldTrigger) {
-						this.logger.info(
-							`Triggered ${eventHandlerClass.name}#${methodName} on event "${eventName}"`,
-						);
-						await handlerClass[methodName]();
-					} else {
-						this.logger.info(`Skipped event "${eventName}" because instance-role did not match`, {
-							current: instanceSettings.instanceRole,
-							expected: filter.instanceRole,
-						});
-					}
+					if (shouldTrigger) await handlerClass[methodName]();
 				});
 			}
 		}

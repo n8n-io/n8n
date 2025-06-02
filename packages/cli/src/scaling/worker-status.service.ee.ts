@@ -19,14 +19,14 @@ export class WorkerStatusService {
 		private readonly push: Push,
 	) {}
 
-	async requestWorkersStatus() {
+	async requestWorkerStatus() {
 		if (this.instanceSettings.instanceType !== 'main') return;
 
 		return await this.publisher.publishCommand({ command: 'get-worker-status' });
 	}
 
 	@OnPubSubEvent('response-to-get-worker-status', { instanceType: 'main' })
-	responseWithWorkerStatus(payload: WorkerStatus) {
+	handleWorkerStatusResponse(payload: WorkerStatus) {
 		this.push.broadcast({
 			type: 'sendWorkerStatusMessage',
 			data: {
