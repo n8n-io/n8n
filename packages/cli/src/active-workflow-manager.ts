@@ -631,17 +631,17 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	async handleDisplayWorkflowActivation({ workflowId }: { workflowId: string }) {
+	handleDisplayWorkflowActivation({ workflowId }: { workflowId: string }) {
 		this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
 	}
 
 	@OnPubSubEvent('display-workflow-deactivation', { instanceType: 'main' })
-	async handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
+	handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
 		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
 	}
 
 	@OnPubSubEvent('display-workflow-activation-error', { instanceType: 'main' })
-	async handleDisplayWorkflowActivationError({
+	handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
 	}: { workflowId: string; errorMessage: string }) {

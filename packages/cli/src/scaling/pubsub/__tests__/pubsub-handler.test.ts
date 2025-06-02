@@ -1,6 +1,4 @@
-import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { OnPubSubEvent, PubSubMetadata } from '@n8n/decorators';
-import type { PubSubEventName } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -19,52 +17,39 @@ describe('PubSubHandler', () => {
 		@Service()
 		class TestService {
 			@OnPubSubEvent('reload-external-secrets-providers', { instanceType: 'main' })
-			async reloadProviders() {}
+			onMainInstance() {}
 
 			@OnPubSubEvent('restart-event-bus', { instanceType: 'worker' })
-			async restartEventBus() {}
+			onWorkerInstance() {}
 
-			@OnPubSubEvent('reload-external-secrets-providers', { instanceRole: 'leader' })
-			async leaderOnly() {}
-
-			@OnPubSubEvent('restart-event-bus', { instanceRole: 'follower' })
-			async followerOnly() {}
-
-			@OnPubSubEvent('clear-test-webhooks')
-			async noRoleFilter() {}
-
-			@OnPubSubEvent('reload-external-secrets-providers', {
+			@OnPubSubEvent('add-webhooks-triggers-and-pollers', {
 				instanceType: 'main',
 				instanceRole: 'leader',
 			})
-			async mainLeaderOnly() {}
+			onLeaderInstance() {}
+
+			@OnPubSubEvent('restart-event-bus', {
+				instanceType: 'main',
+				instanceRole: 'follower',
+			})
+			onFollowerInstance() {}
+
+			@OnPubSubEvent('clear-test-webhooks')
+			onAllInstances() {}
 		}
 
 		return TestService;
 	};
 
-	const createInstanceSettings = (
-		instanceType: InstanceType,
-		instanceRole: InstanceRole = 'leader',
-	) => mock<InstanceSettings>({ instanceType, instanceRole });
-
-	const createPubSubHandler = (instanceSettings: InstanceSettings) =>
-		new PubSubHandler(logger, instanceSettings, metadata, pubsubEventBus);
-
-	const emitAndVerify = (
-		eventName: PubSubEventName,
-		handlerMethod: jest.SpyInstance,
-		expectedCallCount: number,
-	) => {
-		pubsubEventBus.emit(eventName);
-		expect(handlerMethod).toHaveBeenCalledTimes(expectedCallCount);
-	};
-
-	// Helper function to clean up between tests
-	const cleanup = () => {
-		jest.clearAllMocks();
-		pubsubEventBus.removeAllListeners();
-	};
+	const workerInstanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
+	const leaderInstanceSettings = mock<InstanceSettings>({
+		instanceType: 'main',
+		instanceRole: 'leader',
+	});
+	const followerInstanceSettings = mock<InstanceSettings>({
+		instanceType: 'main',
+		instanceRole: 'follower',
+	});
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -77,115 +62,149 @@ describe('PubSubHandler', () => {
 	it('should call decorated methods when events are emitted', async () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const reloadProvidersSpy = jest.spyOn(testService, 'reloadProviders');
+		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
 
-		const pubSubHandler = createPubSubHandler(createInstanceSettings('main'));
+		const pubSubHandler = new PubSubHandler(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		pubSubHandler.init();
 
-		emitAndVerify('reload-external-secrets-providers', reloadProvidersSpy, 1);
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should respect instance type filtering when handling events', async () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const reloadProvidersSpy = jest.spyOn(testService, 'reloadProviders');
-		const restartEventBusSpy = jest.spyOn(testService, 'restartEventBus');
+		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
+		const onWorkerInstanceSpy = jest.spyOn(testService, 'onWorkerInstance');
 
-		// Test with main instance
-		const mainPubSubHandler = createPubSubHandler(createInstanceSettings('main'));
+		// Test with main leader instance
+		const mainPubSubHandler = new PubSubHandler(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		mainPubSubHandler.init();
 
-		emitAndVerify('reload-external-secrets-providers', reloadProvidersSpy, 1);
-		emitAndVerify('restart-event-bus', restartEventBusSpy, 0);
-
-		cleanup();
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
+		pubsubEventBus.emit('restart-event-bus');
+		expect(onWorkerInstanceSpy).not.toHaveBeenCalled();
 
 		// Test with worker instance
-		const workerPubSub = createPubSubHandler(createInstanceSettings('worker'));
+		jest.clearAllMocks();
+		pubsubEventBus.removeAllListeners();
+
+		const workerPubSub = new PubSubHandler(
+			logger,
+			workerInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		workerPubSub.init();
 
-		emitAndVerify('reload-external-secrets-providers', reloadProvidersSpy, 0);
-		emitAndVerify('restart-event-bus', restartEventBusSpy, 1);
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).not.toHaveBeenCalled();
+		pubsubEventBus.emit('restart-event-bus');
+		expect(onWorkerInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should respect instance role filtering when handling events', async () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const leaderOnlySpy = jest.spyOn(testService, 'leaderOnly');
-		const followerOnlySpy = jest.spyOn(testService, 'followerOnly');
-		const noRoleFilterSpy = jest.spyOn(testService, 'noRoleFilter');
+		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
+		const onFollowerInstanceSpy = jest.spyOn(testService, 'onFollowerInstance');
+		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
 
 		// Test with leader instance
-		const pubSubHandler = createPubSubHandler(createInstanceSettings('main', 'leader'));
+		const pubSubHandler = new PubSubHandler(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		pubSubHandler.init();
 
-		const events: Array<[PubSubEventName, jest.SpyInstance, number]> = [
-			['reload-external-secrets-providers', leaderOnlySpy, 1],
-			['restart-event-bus', followerOnlySpy, 0],
-			['clear-test-webhooks', noRoleFilterSpy, 1],
-		];
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 
-		for (const [event, spy, count] of events) {
-			emitAndVerify(event, spy, count);
-		}
+		pubsubEventBus.emit('restart-event-bus');
+		expect(onFollowerInstanceSpy).not.toHaveBeenCalled();
 
-		cleanup();
+		pubsubEventBus.emit('clear-test-webhooks');
+		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
 
 		// Test with follower instance
-		const followerPubSubHandler = createPubSubHandler(createInstanceSettings('main', 'follower'));
+		jest.clearAllMocks();
+		pubsubEventBus.removeAllListeners();
+
+		const followerPubSubHandler = new PubSubHandler(
+			logger,
+			followerInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		followerPubSubHandler.init();
 
-		const followerEvents: Array<[PubSubEventName, jest.SpyInstance, number]> = [
-			['reload-external-secrets-providers', leaderOnlySpy, 0],
-			['restart-event-bus', followerOnlySpy, 1],
-			['clear-test-webhooks', noRoleFilterSpy, 1],
-		];
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
-		for (const [event, spy, count] of followerEvents) {
-			emitAndVerify(event, spy, count);
-		}
+		pubsubEventBus.emit('restart-event-bus');
+		expect(onFollowerInstanceSpy).toHaveBeenCalledTimes(1);
+
+		pubsubEventBus.emit('clear-test-webhooks');
+		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should handle both instance type and role filtering together', async () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const mainLeaderOnlySpy = jest.spyOn(testService, 'mainLeaderOnly');
+		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
 
-		// Test with main+leader instance
-		const pubSubHandler = createPubSubHandler(createInstanceSettings('main', 'leader'));
+		// Test with main leader instance
+		const pubSubHandler = new PubSubHandler(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
 		pubSubHandler.init();
 
-		emitAndVerify('reload-external-secrets-providers', mainLeaderOnlySpy, 1);
-
-		cleanup();
-
-		// Test with worker+leader instance
-		const workerPubSubHandler = createPubSubHandler(createInstanceSettings('worker', 'leader'));
-		workerPubSubHandler.init();
-
-		emitAndVerify('reload-external-secrets-providers', mainLeaderOnlySpy, 0);
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should handle dynamic role changes at runtime', async () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const leaderOnlySpy = jest.spyOn(testService, 'leaderOnly');
+		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
 
 		// Create a mutable instance settings object to simulate role changes
-		const instanceSettings = createInstanceSettings('main', 'follower');
+		const instanceSettings = mock<InstanceSettings>({
+			instanceType: 'main',
+			instanceRole: 'follower',
+		});
 
-		const pubSubHandler = createPubSubHandler(instanceSettings);
+		const pubSubHandler = new PubSubHandler(logger, instanceSettings, metadata, pubsubEventBus);
 		pubSubHandler.init();
 
 		// Initially as follower, event should be ignored
-		emitAndVerify('reload-external-secrets-providers', leaderOnlySpy, 0);
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		// Change role to leader
 		instanceSettings.instanceRole = 'leader';
-		emitAndVerify('reload-external-secrets-providers', leaderOnlySpy, 1);
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 
 		// Change back to follower
 		instanceSettings.instanceRole = 'follower';
-		emitAndVerify('reload-external-secrets-providers', leaderOnlySpy, 1); // Still only called once
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers');
+		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1); // Still only called once
 	});
 });

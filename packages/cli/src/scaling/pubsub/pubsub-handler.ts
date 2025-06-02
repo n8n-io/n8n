@@ -27,7 +27,11 @@ export class PubSubHandler {
 				);
 				this.pubsubEventBus.on(eventName, async () => {
 					// Since the instance role can change, this check needs to be in the event listener
-					if (!filter?.instanceRole || filter.instanceRole === instanceSettings.instanceRole) {
+					const shouldTrigger =
+						filter?.instanceType !== 'main' ||
+						!filter.instanceRole ||
+						filter.instanceRole === instanceSettings.instanceRole;
+					if (shouldTrigger) {
 						this.logger.info(
 							`Triggered ${eventHandlerClass.name}#${methodName} on event "${eventName}"`,
 						);

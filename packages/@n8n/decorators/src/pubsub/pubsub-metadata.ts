@@ -20,10 +20,15 @@ export type PubSubEventName =
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event';
 
-export type PubSubEventFilter = {
-	instanceType?: InstanceType;
-	instanceRole?: Omit<InstanceRole, 'unset'>;
-};
+export type PubSubEventFilter =
+	| {
+			instanceType: 'main';
+			instanceRole?: Omit<InstanceRole, 'unset'>;
+	  }
+	| {
+			instanceType: Omit<InstanceType, 'main'>;
+			instanceRole?: never;
+	  };
 
 type PubSubEventHandler = EventHandler<PubSubEventName> & { filter?: PubSubEventFilter };
 
