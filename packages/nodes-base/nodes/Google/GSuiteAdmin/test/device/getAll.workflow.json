@@ -1,0 +1,61 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "device",
+				"operation": "getAll",
+				"filter": {
+					"orgUnitPath": "/admin-google Testing OU/Child OU"
+				},
+				"sort": {
+					"sortRules": {
+						"orderBy": "notes",
+						"sortBy": "ascending"
+					}
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [40, 1120],
+			"id": "b8a51950-2fdb-4161-9dc3-09f73de5a45b",
+			"name": "Get Many Device",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many Device",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Many Device": [
+			{
+				"json": {
+					"kind": "admin#directory#chromeosdevices",
+					"etag": "\"example\""
+				}
+			}
+		]
+	}
+}

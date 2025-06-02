@@ -43,6 +43,7 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
+	ISourceData,
 } from 'n8n-workflow';
 
 import type {
@@ -54,6 +55,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
@@ -176,19 +178,11 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
-	};
-}
-
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
+	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -214,6 +208,12 @@ export interface IStartRunData {
 	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;
+	};
+	agentRequest?: {
+		query: NodeParameterValueType;
+		tool: {
+			name: NodeParameterValueType;
+		};
 	};
 }
 
@@ -315,6 +315,7 @@ export interface IWorkflowDb {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
 	nodes: INodeUi[];
@@ -328,7 +329,13 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: { id: string; name: string };
+	parentFolder?: {
+		id: string;
+		name: string;
+		parentFolderId: string | null;
+		createdAt?: string;
+		updatedAt?: string;
+	};
 }
 
 // For workflow list we don't need the full workflow data
@@ -348,7 +355,6 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
-	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -356,21 +362,30 @@ export type BaseFolderItem = BaseResource & {
 	updatedAt: string;
 	workflowCount: number;
 	subFolderCount: number;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
+};
+
+export type ResourceParentFolder = {
+	id: string;
+	name: string;
+	parentFolderId: string | null;
 };
 
 export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -950,33 +965,6 @@ export interface WorkflowsState {
 	isInDebugMode?: boolean;
 }
 
-export interface RootState {
-	baseUrl: string;
-	restEndpoint: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointMcp: string;
-	endpointMcpTest: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: {
-		[key: string]: string | number | undefined;
-	};
-	pushRef: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-}
-
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
@@ -1086,7 +1074,8 @@ export type NodeFilterType =
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
-	| typeof AI_UNCATEGORIZED_CATEGORY;
+	| typeof AI_UNCATEGORIZED_CATEGORY
+	| typeof AI_EVALUATION;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1099,7 +1088,9 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
-	| 'add_node_button';
+	| 'add_node_button'
+	| 'add_evaluation_trigger_button'
+	| 'add_evaluation_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1234,6 +1225,7 @@ export interface ITabBarItem {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+	isArchived?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -1323,6 +1315,10 @@ export type UsageState = {
 				limit: number; // -1 for unlimited, from license
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
+			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
 			};
 		};
 		license: {
@@ -1472,7 +1468,8 @@ export type CloudUpdateLinkSourceType =
 	| 'external-secrets'
 	| 'rbac'
 	| 'debug'
-	| 'insights';
+	| 'insights'
+	| 'evaluations';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1496,7 +1493,8 @@ export type UTMCampaign =
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
-	| 'upgrade-insights';
+	| 'upgrade-insights'
+	| 'upgrade-evaluations';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1526,6 +1524,7 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
 	hasAddedNodes?: boolean;
+	connectionType?: NodeConnectionType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
@@ -1563,6 +1562,7 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;

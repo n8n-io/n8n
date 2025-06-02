@@ -10,7 +10,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
 import type { CredentialsResource } from './layouts/ResourcesListLayout.vue';
 
@@ -163,6 +163,7 @@ function moveResource() {
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
+					:show-badge-border="false"
 				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"

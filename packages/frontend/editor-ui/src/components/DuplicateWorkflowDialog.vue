@@ -11,13 +11,19 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;
-	data: { tags: string[]; id: string; name: string; externalEventBus?: EventBus };
+	data: {
+		tags: string[];
+		id: string;
+		name: string;
+		externalEventBus?: EventBus;
+		parentFolderId?: string;
+	};
 }>();
 
 const router = useRouter();
@@ -72,7 +78,7 @@ const save = async (): Promise<void> => {
 		return;
 	}
 
-	const parentFolderId = router.currentRoute.value.params.folderId as string | undefined;
+	const parentFolderId = props.data.parentFolderId;
 
 	const currentWorkflowId = props.data.id;
 	isSaving.value = true;

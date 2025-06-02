@@ -1,10 +1,11 @@
 import type {
-	ChangeLocationSearchResult,
+	ChangeLocationSearchResponseItem,
 	FolderCreateResponse,
 	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRestApiContext,
+	IUsedCredential,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
@@ -30,10 +31,8 @@ export async function getNewWorkflow(context: IRestApiContext, data?: IDataObjec
 	};
 }
 
-export async function getWorkflow(context: IRestApiContext, id: string, filter?: object) {
-	const sendData = filter ? { filter } : undefined;
-
-	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
+export async function getWorkflow(context: IRestApiContext, id: string) {
+	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`);
 }
 
 export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
@@ -49,10 +48,12 @@ export async function getWorkflowsAndFolders(
 	filter?: object,
 	options?: object,
 	includeFolders?: boolean,
+	onlySharedWithMe?: boolean,
 ) {
 	return await getFullApiResponse<WorkflowListResource[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		includeFolders,
+		onlySharedWithMe,
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
 	});
@@ -146,15 +147,33 @@ export async function getProjectFolders(
 		excludeFolderIdAndDescendants?: string;
 		name?: string;
 	},
-): Promise<ChangeLocationSearchResult[]> {
-	const res = await getFullApiResponse<ChangeLocationSearchResult[]>(
+	select?: string[],
+): Promise<{ data: ChangeLocationSearchResponseItem[]; count: number }> {
+	const res = await getFullApiResponse<ChangeLocationSearchResponseItem[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/folders`,
 		{
 			...(filter ? { filter } : {}),
 			...(options ? options : {}),
+			...(select ? { select: JSON.stringify(select) } : {}),
 		},
+	);
+	return {
+		data: res.data,
+		count: res.count,
+	};
+}
+
+export async function getFolderUsedCredentials(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<IUsedCredential[]> {
+	const res = await getFullApiResponse<IUsedCredential[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/credentials`,
 	);
 	return res.data;
 }

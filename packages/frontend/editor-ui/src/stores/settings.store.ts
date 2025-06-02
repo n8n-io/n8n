@@ -7,21 +7,22 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING, LOCAL_STORAGE_LOGS_2025_SPRING } from '@/constants';
+import { INSECURE_CONNECTION_WARNING } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { i18n } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useLocalStorage } from '@vueuse/core';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
+	const i18n = useI18n();
 	const initialized = ref(false);
 	const settings = ref<FrontendSettings>({} as FrontendSettings);
 	const userManagement = ref<IUserManagementSettings>({
@@ -157,9 +158,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
+	const isUnverifiedPackagesEnabled = computed(
+		() => settings.value.unverifiedCommunityNodesEnabled,
+	);
+
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
+	const isMultiMain = computed(() => settings.value.isMultiMain);
 
 	const isWorkerViewAvailable = computed(() => !!settings.value.enterprise?.workerView);
 
@@ -183,9 +189,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const isNewLogsEnabled = computed(
-		() => useLocalStorage(LOCAL_STORAGE_LOGS_2025_SPRING, '').value === 'true',
-	);
+	const isNewLogsEnabled = computed(() => !!settings.value.logsView?.enabled);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -257,6 +261,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
+		settings.value.unverifiedCommunityNodesEnabled =
+			fetchedSettings.unverifiedCommunityNodesEnabled;
 		setAllowedModules(fetchedSettings.allowedModules);
 		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
@@ -294,8 +300,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const { showToast } = useToast();
 		try {
 			await getSettings();
-
-			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
 
 			initialized.value = true;
 		} catch (e) {
@@ -423,8 +427,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
+		isUnverifiedPackagesEnabled,
 		allowedModules,
 		isQueueModeEnabled,
+		isMultiMain,
 		isWorkerViewAvailable,
 		isDefaultAuthenticationSaml,
 		workflowCallerPolicyDefaultOption,

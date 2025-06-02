@@ -1,8 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
+	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	VIEWS,
@@ -26,7 +25,7 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -38,6 +37,7 @@ import type {
 	IWorkflowDataCreate,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
+	NotificationOptions,
 	TargetItem,
 	WorkflowTitleStatus,
 	XYPosition,
@@ -50,27 +50,26 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { get } from 'lodash-es';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useI18n } from '@/composables/useI18n';
-import type { useRouter, NavigationGuardNext } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { findWebhook } from '../api/webhooks';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -219,16 +218,19 @@ export function resolveParameter<T = IDataObject>(
 	) {
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	let _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+	let _executeData = executeData(
+		parentNode,
+		contextNode!.name,
+		inputName,
+		runIndexCurrent,
+		runIndexParent,
+	);
 
 	if (!_executeData.source) {
 		// fallback to parent's run index for multi-output case
 		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
 	}
 
-	ExpressionEvaluatorProxy.setEvaluator(
-		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-	);
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
@@ -360,12 +362,15 @@ export function executeData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
+	parentRunIndex?: number,
 ): IExecuteData {
 	const executeData = {
 		node: {},
 		data: {},
 		source: null,
 	} as IExecuteData;
+
+	parentRunIndex = parentRunIndex ?? runIndex;
 
 	const workflowsStore = useWorkflowsStore();
 
@@ -392,15 +397,15 @@ export function executeData(
 
 		if (
 			!workflowRunData[parentNodeName] ||
-			workflowRunData[parentNodeName].length <= runIndex ||
-			!workflowRunData[parentNodeName][runIndex] ||
-			!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
-			workflowRunData[parentNodeName][runIndex].data === undefined ||
-			!workflowRunData[parentNodeName][runIndex].data.hasOwnProperty(inputName)
+			workflowRunData[parentNodeName].length <= parentRunIndex ||
+			!workflowRunData[parentNodeName][parentRunIndex] ||
+			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
+			workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
+			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
 		} else {
-			executeData.data = workflowRunData[parentNodeName][runIndex].data!;
+			executeData.data = workflowRunData[parentNodeName][parentRunIndex].data!;
 			if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
 				executeData.source = {
 					[inputName]: workflowRunData[currentNode][runIndex].source,
@@ -433,6 +438,7 @@ export function executeData(
 						{
 							previousNode: parentNodeName,
 							previousNodeOutput,
+							previousNodeRun: parentRunIndex,
 						},
 					],
 				};
@@ -808,6 +814,50 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
+	function isNodeActivatable(node: INode): boolean {
+		if (node.disabled) {
+			return false;
+		}
+
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+
+		return (
+			nodeType !== null &&
+			nodeType.group.includes('trigger') &&
+			!NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type)
+		);
+	}
+
+	async function getWorkflowDeactivationInfo(
+		workflowId: string,
+		request: IWorkflowDataUpdate,
+	): Promise<Partial<NotificationOptions> | undefined> {
+		const missingActivatableTriggerNode =
+			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
+
+		if (missingActivatableTriggerNode) {
+			// Automatically deactivate if all activatable triggers are removed
+			return {
+				title: i18n.baseText('workflows.deactivated'),
+				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
+				type: 'info',
+			};
+		}
+
+		const conflictData = await checkConflictingWebhooks(workflowId);
+
+		if (conflictData) {
+			// Workflow should not be active if there is live webhook with the same path
+			return {
+				title: 'Conflicting Webhook Path',
+				message: `Workflow set to inactive: Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
+				type: 'error',
+			};
+		}
+
+		return undefined;
+	}
+
 	async function saveCurrentWorkflow(
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
 		redirect = true,
@@ -850,6 +900,21 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			}
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
+
+			const deactivateReason = await getWorkflowDeactivationInfo(
+				currentWorkflow,
+				workflowDataRequest,
+			);
+
+			if (deactivateReason !== undefined) {
+				workflowDataRequest.active = false;
+
+				if (workflowsStore.isWorkflowActive) {
+					toast.showMessage(deactivateReason);
+
+					workflowsStore.setWorkflowInactive(currentWorkflow);
+				}
+			}
 
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
@@ -993,6 +1058,20 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				return true;
 			}
 
+			// workflow should not be active if there is live webhook with the same path
+			if (workflowData.active) {
+				const conflict = await checkConflictingWebhooks(workflowData.id);
+				if (conflict) {
+					workflowData.active = false;
+
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflict.trigger.name}'.`,
+						type: 'error',
+					});
+				}
+			}
+
 			workflowsStore.setActive(workflowData.active || false);
 			workflowsStore.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
@@ -1125,66 +1204,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function promptSaveUnsavedWorkflowChanges(
-		next: NavigationGuardNext,
-		{
-			confirm = async () => true,
-			cancel = async () => {},
-		}: {
-			confirm?: () => Promise<boolean>;
-			cancel?: () => Promise<void>;
-		} = {},
-	) {
-		if (uiStore.stateIsDirty) {
-			const npsSurveyStore = useNpsSurveyStore();
-
-			const confirmModal = await message.confirm(
-				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await saveCurrentWorkflow({}, false);
-				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
-					uiStore.stateIsDirty = false;
-					const goToNext = await confirm();
-					next(goToNext);
-				} else {
-					next(
-						router.resolve({
-							name: VIEWS.WORKFLOW,
-							params: { name: workflowsStore.workflow.id },
-						}),
-					);
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				await cancel();
-
-				uiStore.stateIsDirty = false;
-				next();
-			} else if (confirmModal === MODAL_CLOSE) {
-				// The route may have already changed due to the browser back button, so let's restore it
-				next(
-					router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: workflowsStore.workflow.id },
-					}),
-				);
-			}
-		} else {
-			next();
-		}
-	}
-
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
 			newName: workflowData.name,
@@ -1221,6 +1244,36 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
+	async function checkConflictingWebhooks(workflowId: string) {
+		let data;
+		if (uiStore.stateIsDirty) {
+			data = await getWorkflowDataToSave();
+		} else {
+			data = await workflowsStore.fetchWorkflow(workflowId);
+		}
+
+		const webhookTriggers = data.nodes.filter(
+			(node) => node.disabled !== true && node.type === WEBHOOK_NODE_TYPE,
+		);
+
+		for (const trigger of webhookTriggers) {
+			const method = (trigger.parameters.method as string) ?? 'GET';
+
+			const path = trigger.parameters.path as string;
+
+			const conflict = await findWebhook(rootStore.restApiContext, {
+				path,
+				method,
+			});
+
+			if (conflict && conflict.workflowId !== workflowId) {
+				return { trigger, conflict };
+			}
+		}
+
+		return null;
+	}
+
 	return {
 		setDocumentTitle,
 		resolveParameter,
@@ -1244,9 +1297,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
-		promptSaveUnsavedWorkflowChanges,
 		initState,
 		getNodeParametersWithResolvedExpressions,
 		containsNodeFromPackage,
+		checkConflictingWebhooks,
 	};
 }

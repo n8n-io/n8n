@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
@@ -12,7 +12,7 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 }>();
 
 const { initialized, viewport } = useCanvas();
@@ -130,8 +130,8 @@ function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 
-function onActivate() {
-	emit('activate', id.value);
+function onActivate(event: MouseEvent) {
+	emit('activate', id.value, event);
 }
 </script>
 

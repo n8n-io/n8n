@@ -1,20 +1,23 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { IWorkflowDb } from '@n8n/db';
+import {
+	FolderRepository,
+	TagRepository,
+	WorkflowTagMappingRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
-import { Credentials, InstanceSettings, Logger } from 'n8n-core';
+import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
@@ -106,6 +109,7 @@ export class SourceControlExportService {
 					versionId: e.versionId,
 					owner: owners[e.id],
 					parentFolderId: e.parentFolder?.id ?? null,
+					isArchived: e.isArchived,
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));

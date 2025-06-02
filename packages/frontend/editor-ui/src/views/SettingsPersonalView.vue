@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -151,24 +151,25 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 }
 
 async function onSubmit(form: UserBasicDetailsForm) {
-	if (!usersStore.currentUser?.mfaEnabled) {
-		await saveUserSettings(form);
-		return;
-	}
+	const emailChanged = usersStore.currentUser?.email !== form.email;
 
-	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
+		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
-	promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
-		if (!payload) {
-			// User closed the modal without submitting the form
-			return;
-		}
+		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
+			if (!payload) {
+				// User closed the modal without submitting the form
+				return;
+			}
 
-		await saveUserSettings({
-			...form,
-			mfaCode: payload.mfaCode,
+			await saveUserSettings({
+				...form,
+				mfaCode: payload.mfaCode,
+			});
 		});
-	});
+	} else {
+		await saveUserSettings(form);
+	}
 }
 
 async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {

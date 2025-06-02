@@ -25,7 +25,7 @@ describe('GlobalConfig', () => {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
 		auth: {
 			cookie: {
@@ -71,6 +71,7 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
+			isLegacySqlite: true,
 		},
 		credentials: {
 			defaultName: 'My credentials',
@@ -115,15 +116,14 @@ describe('GlobalConfig', () => {
 		externalHooks: {
 			files: [],
 		},
-		externalSecrets: {
-			preferGet: false,
-			updateInterval: 300,
-		},
 		nodes: {
 			communityPackages: {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				unverifiedEnabled: true,
+				verifiedEnabled: true,
+				preventLoading: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -142,20 +142,6 @@ describe('GlobalConfig', () => {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
-		},
-		externalStorage: {
-			s3: {
-				host: '',
-				protocol: 'https',
-				bucket: {
-					name: '',
-					region: '',
-				},
-				credentials: {
-					accessKey: '',
-					accessSecret: '',
-				},
-			},
 		},
 		workflows: {
 			defaultName: 'My workflow',
@@ -210,7 +196,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
-				address: '0.0.0.0',
+				address: '::',
 			},
 			bull: {
 				redis: {
@@ -286,6 +272,7 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
+			contentSecurityPolicyReportOnly: false,
 		},
 		executions: {
 			pruneData: true,
@@ -324,7 +311,10 @@ describe('GlobalConfig', () => {
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual(defaultConfig);
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(defaultConfig).toMatchObject(config);
+		expect(config).toMatchObject(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -380,7 +370,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual({
+		const expected = {
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,
@@ -389,7 +379,11 @@ describe('GlobalConfig', () => {
 					password: 'password-from-file',
 				},
 			},
-		});
+		};
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(config).toMatchObject(expected);
+		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 

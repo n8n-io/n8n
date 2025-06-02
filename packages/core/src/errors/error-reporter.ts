@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
@@ -8,7 +9,6 @@ import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workfl
 import { createHash } from 'node:crypto';
 
 import type { InstanceType } from '@/instance-settings';
-import { Logger } from '@/logging/logger';
 
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
@@ -132,7 +132,7 @@ export class ErrorReporter {
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-				rewriteFramesIntegration({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
 					include: {
 						cookies: false,

@@ -251,6 +251,10 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	return output;
 }
 
+/**
+ * Converts a node name to a valid tool name by replacing special characters with underscores
+ * and collapsing consecutive underscores into a single one.
+ */
 export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/ /g, '_');
+	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
 }

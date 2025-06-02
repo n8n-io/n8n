@@ -1,4 +1,4 @@
-import { renderComponent } from '@/__tests__/render';
+import { createComponentRenderer } from '@/__tests__/render';
 import ParameterInput from '@/components/ParameterInput.vue';
 import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -7,8 +7,12 @@ import { faker } from '@faker-js/faker';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import { useSettingsStore } from '@/stores/settings.store';
+import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
@@ -58,11 +62,21 @@ vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({
 			push,
+			resolve: vi.fn().mockReturnValue({
+				href: '/projects/1/folders/1',
+			}),
 		}),
 		useRoute: () => ({}),
 		RouterLink: vi.fn(),
 	};
 });
+
+const renderComponent = createComponentRenderer(ParameterInput, {
+	pinia: createTestingPinia(),
+});
+
+const settingsStore = mockedStore(useSettingsStore);
+const workflowsStore = mockedStore(useWorkflowsStore);
 
 describe('ParameterInput.vue', () => {
 	beforeEach(() => {
@@ -84,15 +98,16 @@ describe('ParameterInput.vue', () => {
 			getNodeType: vi.fn().mockReturnValue(null),
 		};
 		createAppModals();
+		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});
 
 	afterEach(() => {
 		cleanupAppModals();
+		vi.clearAllMocks();
 	});
 
 	test('should render an options parameter (select)', async () => {
-		const { container, baseElement, emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { container, baseElement, emitted } = renderComponent({
 			props: {
 				path: 'operation',
 				parameter: {
@@ -147,8 +162,7 @@ describe('ParameterInput.vue', () => {
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
 		// Test case based on the Schedule node
 		// type=options parameters shouldn't have a displayName field, but some do
-		const { container, baseElement, emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { container, baseElement, emitted } = renderComponent({
 			props: {
 				path: 'operation',
 				parameter: {
@@ -191,8 +205,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	test('should render a string parameter', async () => {
-		const { container, emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { container, emitted } = renderComponent({
 			props: {
 				path: 'tag',
 				parameter: {
@@ -211,40 +224,65 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
 	});
 
-	test('should correctly handle paste events', async () => {
-		const { container, emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
-			props: {
-				path: 'tag',
-				parameter: {
-					displayName: 'Tag',
-					name: 'tag',
-					type: 'string',
-				},
-				modelValue: '',
-			},
-		});
-		const input = container.querySelector('input') as HTMLInputElement;
-		expect(input).toBeInTheDocument();
-		await userEvent.click(input);
-
-		async function paste(text: string) {
+	describe('paste events', () => {
+		async function paste(input: HTMLInputElement, text: string) {
 			const expression = new DataTransfer();
 			expression.setData('text', text);
 			await userEvent.clear(input);
 			await userEvent.paste(expression);
 		}
 
-		await paste('foo');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+		test('should handle pasting into a string parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'tag',
+					parameter: {
+						displayName: 'Tag',
+						name: 'tag',
+						type: 'string',
+					},
+					modelValue: '',
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
 
-		await paste('={{ $json.foo }}');
-		expect(emitted('update')).toContainEqual([
-			expect.objectContaining({ value: '={{ $json.foo }}' }),
-		]);
+			await paste(input, 'foo');
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
 
-		await paste('=flDvzj%y1nP');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '==flDvzj%y1nP' })]);
+			await paste(input, '={{ $json.foo }}');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '={{ $json.foo }}' }),
+			]);
+
+			await paste(input, '=flDvzj%y1nP');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '==flDvzj%y1nP' }),
+			]);
+		});
+
+		test('should handle pasting an expression into a number parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'percentage',
+					parameter: {
+						displayName: 'Percentage',
+						name: 'percentage',
+						type: 'number',
+					},
+					modelValue: 1,
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
+
+			await paste(input, '{{ $json.foo }}');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '={{ $json.foo }}' }),
+			]);
+		});
 	});
 
 	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {
@@ -254,8 +292,7 @@ describe('ParameterInput.vue', () => {
 			{ name: 'Description', value: 'description' },
 		]);
 
-		const { emitted, container } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted, container } = renderComponent({
 			props: {
 				path: 'columns',
 				parameter: {
@@ -291,8 +328,7 @@ describe('ParameterInput.vue', () => {
 			],
 		});
 
-		const { emitted, container, getByTestId } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted, container, getByTestId } = renderComponent({
 			props: {
 				path: 'columns',
 				parameter: {
@@ -318,10 +354,114 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toBeUndefined();
 	});
 
+	test('should render workflow selector without issues when selected workflow is not archived', async () => {
+		const workflowId = faker.string.uuid();
+		const modelValue = {
+			mode: 'id',
+			value: workflowId,
+		};
+
+		workflowsStore.allWorkflows = [
+			{
+				id: workflowId,
+				name: 'Test',
+				active: false,
+				isArchived: false,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				nodes: [],
+				connections: {},
+				versionId: faker.string.uuid(),
+			},
+		];
+
+		const { emitted, container, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				path: 'columns',
+				parameter: {
+					displayName: 'Workflow',
+					name: 'workflowId',
+					type: 'workflowSelector',
+					default: '',
+				},
+				modelValue,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('resource-locator-workflowId')).toBeInTheDocument());
+
+		expect(container.querySelector('.has-issues')).not.toBeInTheDocument();
+
+		const inputs = container.querySelectorAll('input');
+		const mode = inputs[0];
+		expect(mode).toBeInTheDocument();
+		expect(mode).toHaveValue('By ID');
+
+		const value = inputs[1];
+		expect(value).toBeInTheDocument();
+		expect(value).toHaveValue(workflowId);
+
+		expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+
+		expect(emitted('update')).toBeUndefined();
+	});
+
+	test('should show error when workflow selector has archived workflow selected', async () => {
+		const workflowId = faker.string.uuid();
+		const modelValue: INodeParameterResourceLocator = {
+			__rl: true,
+			mode: 'id',
+			value: workflowId,
+		};
+
+		workflowsStore.allWorkflows = [
+			{
+				id: workflowId,
+				name: 'Test',
+				active: false,
+				isArchived: true,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				nodes: [],
+				connections: {},
+				versionId: faker.string.uuid(),
+			},
+		];
+
+		const { emitted, container, getByTestId } = renderComponent({
+			props: {
+				path: 'columns',
+				parameter: {
+					displayName: 'Workflow',
+					name: 'workflowId',
+					type: 'workflowSelector',
+					default: '',
+				},
+				modelValue,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('resource-locator-workflowId')).toBeInTheDocument());
+
+		expect(container.querySelector('.has-issues')).toBeInTheDocument();
+
+		const inputs = container.querySelectorAll('input');
+		const mode = inputs[0];
+		expect(mode).toBeInTheDocument();
+		expect(mode).toHaveValue('By ID');
+
+		const value = inputs[1];
+		expect(value).toBeInTheDocument();
+		expect(value).toHaveValue(workflowId);
+
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
+
+		expect(emitted('update')).toBeUndefined();
+	});
+
 	test('should reset bool on eventBus:removeExpression', async () => {
 		const eventBus = createEventBus();
-		const { emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted } = renderComponent({
 			props: {
 				path: 'aSwitch',
 				parameter: {
@@ -341,8 +481,7 @@ describe('ParameterInput.vue', () => {
 
 	test('should reset bool with undefined evaluation on eventBus:removeExpression', async () => {
 		const eventBus = createEventBus();
-		const { emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted } = renderComponent({
 			props: {
 				path: 'aSwitch',
 				parameter: {
@@ -362,8 +501,7 @@ describe('ParameterInput.vue', () => {
 
 	test('should reset number on eventBus:removeExpression', async () => {
 		const eventBus = createEventBus();
-		const { emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted } = renderComponent({
 			props: {
 				path: 'aNum',
 				parameter: {
@@ -383,8 +521,7 @@ describe('ParameterInput.vue', () => {
 
 	test('should reset string on eventBus:removeExpression', async () => {
 		const eventBus = createEventBus();
-		const { emitted } = renderComponent(ParameterInput, {
-			pinia: createTestingPinia(),
+		const { emitted } = renderComponent({
 			props: {
 				path: 'aStr',
 				parameter: {

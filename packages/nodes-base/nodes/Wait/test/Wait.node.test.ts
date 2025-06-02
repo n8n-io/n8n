@@ -1,12 +1,9 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
-
 import { Wait } from '../Wait.node';
-
-const workflows = getWorkflowFilenames(__dirname);
 
 describe('Execute Wait Node', () => {
 	let timer: NodeJS.Timer;
@@ -70,5 +67,5 @@ describe('Execute Wait Node', () => {
 		},
 	);
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });

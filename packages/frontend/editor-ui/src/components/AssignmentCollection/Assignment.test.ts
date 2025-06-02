@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { merge } from 'lodash-es';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
@@ -61,5 +61,12 @@ describe('Assignment.vue', () => {
 		await userEvent.click(getByTestId('assignment-remove'));
 
 		expect(emitted('remove')).toEqual([[]]);
+	});
+
+	it('should not display parameter input hint if expressionOutput is not set', () => {
+		const { getByTestId } = renderComponent();
+
+		// Check if the parameter input hint is not displayed
+		expect(() => getByTestId('parameter-input-hint')).toThrow();
 	});
 });

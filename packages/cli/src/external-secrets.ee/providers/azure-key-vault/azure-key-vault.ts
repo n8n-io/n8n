@@ -1,13 +1,12 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';
-import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
-
 import type { AzureKeyVaultContext } from './types';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
+import type { SecretsProvider, SecretsProviderState } from '../../types';
 
 export class AzureKeyVault implements SecretsProvider {
 	name = 'azureKeyVault';

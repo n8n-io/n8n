@@ -1,0 +1,563 @@
+{
+  "createdAt": "2021-03-01T10:15:48.446Z",
+  "updatedAt": "2021-06-04T14:49:07.640Z",
+  "id": "82",
+  "name": "Microsoft OneDrive:Folder:create getChildren share search delete:File:upload get share download copy delete search",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "8dd4b3f2-e8ad-481a-8a37-6fc5cad4eb8e"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "create",
+        "name": "=TestFolder{{Date.now()}}",
+        "options": {}
+      },
+      "name": "Microsoft OneDrive",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        490,
+        300
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "60b3c5f1-1a49-4961-9d3b-7a8681b882fc"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "folderId": "={{$node[\"Microsoft OneDrive\"].json[\"id\"]}}"
+      },
+      "name": "Microsoft OneDrive1",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        2410,
+        300
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "1fea4cc3-5693-470e-b04b-630bfc994fce"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "search",
+        "query": "TestFolder"
+      },
+      "name": "Microsoft OneDrive2",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        2850,
+        150
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "notes": "CAP_RESULTS_LENGTH=1",
+      "id": "d04119ed-853d-421e-a872-c02d3ab34b6d"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "folderId": "={{$node[\"Microsoft OneDrive\"].json[\"id\"]}}",
+        "type": "view",
+        "scope": "anonymous"
+      },
+      "name": "Microsoft OneDrive3",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        300
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "2fd0be17-d65a-4c47-ada6-ed83a84a8a9c"
+    },
+    {
+      "parameters": {
+        "fileName": "=FileName{{Date.now()}}",
+        "parentId": "={{$node[\"Microsoft OneDrive\"].json[\"id\"]}}",
+        "fileContent": "=Test written at {{Date()}}"
+      },
+      "name": "Microsoft OneDrive4",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        770,
+        450
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "88d28811-6fdc-4d81-8d64-225c857efe27"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "fileId": "={{$node[\"Microsoft OneDrive4\"].json[\"id\"]}}"
+      },
+      "name": "Microsoft OneDrive5",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        1070,
+        450
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "cdf9a69d-e4e0-4c8d-a154-e57910ed9c9e"
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": "={{$node[\"Microsoft OneDrive4\"].json[\"id\"]}}",
+        "type": "view",
+        "scope": "anonymous"
+      },
+      "name": "Microsoft OneDrive6",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        450
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "35ac9411-ebea-4929-a4b8-5fab696507c0"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "query": "Test"
+      },
+      "name": "Microsoft OneDrive7",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        2120,
+        450
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "d4cf2dbf-430b-4af9-a478-78f9d63c0f4e"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{$node[\"Microsoft OneDrive4\"].json[\"id\"]}}"
+      },
+      "name": "Microsoft OneDrive8",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        450
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "b22405f7-c624-4f51-b72f-2cd6fba6055c"
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": "={{$node[\"Microsoft OneDrive4\"].json[\"id\"]}}",
+        "additionalFields": {
+          "name": "=CopiedFile{{Date.now()}}"
+        },
+        "parentReference": {
+          "name": "=CopiedFile{{Date.now()}}",
+          "path": "=/drive/root:/{{$node[\"Microsoft OneDrive\"].json[\"name\"]}}"
+        }
+      },
+      "name": "Microsoft OneDrive9",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        1670,
+        450
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "0a8c8d20-cc43-4a4d-a1d4-acebd6742cdd"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileId": "={{$node[\"Microsoft OneDrive4\"].json[\"id\"]}}"
+      },
+      "name": "Microsoft OneDrive10",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        1970,
+        450
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "9cbe23a3-6e32-45a8-9e9f-60c9ed5cea4e"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "delete",
+        "folderId": "={{$node[\"Microsoft OneDrive\"].json[\"id\"]}}"
+      },
+      "name": "Microsoft OneDrive11",
+      "type": "n8n-nodes-base.microsoftOneDrive",
+      "typeVersion": 1,
+      "position": [
+        2850,
+        300
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "69",
+          "name": "Microsoft Drive OAuth2 creds"
+        }
+      },
+      "id": "c33517a8-7045-45c7-8e49-e778313d2ce7"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        2700,
+        300
+      ],
+      "typeVersion": 1,
+      "id": "47de5dd5-9705-4186-a0f4-9579467897e3"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second1",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        2280,
+        300
+      ],
+      "typeVersion": 1,
+      "id": "0987168a-7db4-4e81-bde8-4a6961f514a1"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second2",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1820,
+        450
+      ],
+      "typeVersion": 1,
+      "id": "eb7f14c0-6925-4c32-89f6-835e09498bce"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second3",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1370,
+        450
+      ],
+      "typeVersion": 1,
+      "id": "04e7f940-2bd4-4191-8157-89a3c067fdd1"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second4",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        920,
+        450
+      ],
+      "typeVersion": 1,
+      "id": "6977a587-99f4-4998-953f-7ea20768a92b"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.8 second5",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        650,
+        450
+      ],
+      "typeVersion": 1,
+      "id": "7e920caf-326c-44ad-9f49-bb11d8378d12"
+    }
+  ],
+  "connections": {
+    "Microsoft OneDrive": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive1": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive3": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive4": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive5": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive6": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive7": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive8": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive9": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.8 second2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft OneDrive10": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive11",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Microsoft OneDrive2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second1": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second2": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second3": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second4": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.8 second5": {
+      "main": [
+        [
+          {
+            "node": "Microsoft OneDrive4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

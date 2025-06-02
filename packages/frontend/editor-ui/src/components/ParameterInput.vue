@@ -23,7 +23,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -38,7 +38,6 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
 
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -51,7 +50,7 @@ import {
 
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -71,6 +70,7 @@ import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
+import { useUIStore } from '@/stores/ui.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -133,6 +133,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
@@ -397,6 +398,21 @@ const getIssues = computed<string[]>(() => {
 		issues.parameters[props.parameter.name] = [
 			`There was a problem loading the parameter options from server: "${remoteParameterOptionsLoadingIssues.value}"`,
 		];
+	} else if (props.parameter.type === 'workflowSelector') {
+		const selected = modelValueResourceLocator.value?.value;
+		if (selected) {
+			const isSelectedArchived = workflowsStore.allWorkflows.some(
+				(resource) => resource.id === selected && resource.isArchived,
+			);
+
+			if (isSelectedArchived) {
+				if (issues.parameters === undefined) {
+					issues.parameters = {};
+				}
+				const issue = i18n.baseText('parameterInput.selectedWorkflowIsArchived');
+				issues.parameters[props.parameter.name] = [issue];
+			}
+		}
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
@@ -605,20 +621,24 @@ function skipCheck(value: string | number | boolean | null) {
 
 function getPlaceholder(): string {
 	return props.isForCredential
-		? i18n.credText().placeholder(props.parameter)
-		: i18n.nodeText().placeholder(props.parameter, props.path);
+		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
+		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
 }
 
 function getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 	return props.isForCredential
-		? i18n.credText().optionsOptionDisplayName(props.parameter, option)
-		: i18n.nodeText().optionsOptionDisplayName(props.parameter, option, props.path);
+		? i18n.credText(uiStore.activeCredentialType).optionsOptionDisplayName(props.parameter, option)
+		: i18n
+				.nodeText(ndvStore.activeNode?.type)
+				.optionsOptionDisplayName(props.parameter, option, props.path);
 }
 
 function getOptionsOptionDescription(option: INodePropertyOptions): string {
 	return props.isForCredential
-		? i18n.credText().optionsOptionDescription(props.parameter, option)
-		: i18n.nodeText().optionsOptionDescription(props.parameter, option, props.path);
+		? i18n.credText(uiStore.activeCredentialType).optionsOptionDescription(props.parameter, option)
+		: i18n
+				.nodeText(ndvStore.activeNode?.type)
+				.optionsOptionDescription(props.parameter, option, props.path);
 }
 
 async function loadRemoteParameterOptions() {
@@ -763,6 +783,16 @@ function onPaste(event: ClipboardEvent) {
 		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
 
 		valueChanged(input.value);
+	}
+}
+
+function onPasteNumber(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+
+	if (shouldConvertToExpression(pastedText)) {
+		event.preventDefault();
+		valueChanged('=' + pastedText);
+		return;
 	}
 }
 
@@ -1260,7 +1290,7 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
-						.nodeText()
+						.nodeText(ndvStore.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
@@ -1576,7 +1606,7 @@ onUpdated(async () => {
 				@update:model-value="onUpdateTextInput"
 				@focus="setFocus"
 				@blur="onBlur"
-				@keydown.stop
+				@paste="onPasteNumber"
 			/>
 
 			<CredentialsSelect

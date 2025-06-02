@@ -14,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	rootNode: INodeUi;
@@ -106,7 +106,7 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
 					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
-					const stringifiedIssues = issues ? NodeHelpers.nodeIssuesToString(issues, node) : '';
+					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
 			}

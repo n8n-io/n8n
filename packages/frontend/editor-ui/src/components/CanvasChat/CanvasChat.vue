@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, useTemplateRef } from 'vue';
+import { computed, ref, watchEffect, useTemplateRef, watch } from 'vue';
 
 // Components
 import ChatMessagesPanel from './components/ChatMessagesPanel.vue';
@@ -9,16 +9,16 @@ import ChatLogsPanel from './components/ChatLogsPanel.vue';
 import { useResize } from './composables/useResize';
 
 // Types
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLogsStore } from '@/stores/logs.store';
 
 const workflowsStore = useWorkflowsStore();
-const canvasStore = useCanvasStore();
+const logsStore = useLogsStore();
 
 // Component state
 const container = ref<HTMLElement>();
@@ -28,8 +28,7 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const chatPanelState = computed(() => workflowsStore.logsPanelState);
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
+const chatPanelState = computed(() => logsStore.state);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
 const telemetry = useTelemetry();
@@ -56,7 +55,7 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPreferPoppedOutLogsView(false);
+		logsStore.setPreferPoppedOut(false);
 	},
 });
 
@@ -65,10 +64,11 @@ const {
 	messages,
 	chatTriggerNode,
 	connectedNode,
+	previousChatMessages,
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(false, onWindowResize);
+} = useChatState(false);
 
 // Expose internal state for testing
 defineExpose({
@@ -78,19 +78,31 @@ defineExpose({
 });
 
 const closePanel = () => {
-	workflowsStore.toggleLogsPanelOpen(false);
+	logsStore.toggleOpen(false);
 };
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.toggleLogsPanelOpen(true);
-	workflowsStore.setPreferPoppedOutLogsView(true);
+	logsStore.toggleOpen(true);
+	logsStore.setPreferPoppedOut(true);
 }
 
 // Watchers
 watchEffect(() => {
-	canvasStore.setPanelHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
+	logsStore.setHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
 });
+
+watch(
+	chatPanelState,
+	(state) => {
+		if (state !== LOGS_PANEL_STATE.CLOSED) {
+			setTimeout(() => {
+				onWindowResize?.();
+			}, 0);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

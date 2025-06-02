@@ -32,6 +32,14 @@ export function getInputPanel() {
 	return cy.getByTestId('ndv-input-panel');
 }
 
+export function getInputSelect() {
+	return cy.getByTestId('ndv-input-select').find('input');
+}
+
+export function getInputLinkRun() {
+	return getInputPanel().findChildByTestId('link-run');
+}
+
 export function getMainPanel() {
 	return cy.getByTestId('node-parameters');
 }
@@ -53,11 +61,27 @@ export function getResourceLocatorInput(paramName: string) {
 }
 
 export function getInputPanelDataContainer() {
-	return getInputPanel().getByTestId('ndv-data-container');
+	return getInputPanel().findChildByTestId('ndv-data-container');
+}
+
+export function getInputTableRows() {
+	return getInputPanelDataContainer().find('table tr');
+}
+
+export function getInputTbodyCell(row: number, col: number) {
+	return getInputTableRows().eq(row).find('td').eq(col);
+}
+
+export function getInputRunSelector() {
+	return cy.get('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+}
+
+export function getInputPanelItemsCount() {
+	return getInputPanel().getByTestId('ndv-items-count');
 }
 
 export function getOutputPanelDataContainer() {
-	return getOutputPanel().getByTestId('ndv-data-container');
+	return getOutputPanel().findChildByTestId('ndv-data-container');
 }
 
 export function getOutputTableRows() {
@@ -81,7 +105,7 @@ export function getOutputTbodyCell(row: number, col: number) {
 }
 
 export function getOutputRunSelector() {
-	return getOutputPanel().findChildByTestId('run-selector');
+	return cy.get('[data-test-id="output-panel"] [data-test-id="run-selector"]');
 }
 
 export function getOutputRunSelectorInput() {
@@ -196,6 +220,21 @@ export function typeIntoFixedCollectionItem(collectionName: string, index: numbe
 	);
 }
 
+export function selectResourceLocatorAddResourceItem(
+	resourceLocator: string,
+	expectedText: string,
+) {
+	clickResourceLocatorInput(resourceLocator);
+
+	// getVisiblePopper().findChildByTestId('rlc-item-add-resource').eq(0).should('exist');
+	getVisiblePopper()
+		.findChildByTestId('rlc-item-add-resource')
+		.eq(0)
+		.find('span')
+		.should('contain.text', expectedText)
+		.click();
+}
+
 export function selectResourceLocatorItem(
 	resourceLocator: string,
 	index: number,
@@ -278,7 +317,7 @@ export function assertInlineExpressionValid() {
 }
 
 export function hoverInputItemByText(text: string) {
-	return getInputPanelDataContainer().contains(text).trigger('mouseover', { force: true });
+	return getInputPanelDataContainer().contains(text).realHover();
 }
 
 export function verifyInputHoverState(expectedText: string) {
@@ -296,5 +335,13 @@ export function verifyOutputHoverState(expectedText: string) {
 }
 
 export function resetHoverState() {
-	getBackToCanvasButton().trigger('mouseover');
+	getBackToCanvasButton().realHover();
+}
+
+export function setInputDisplayMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary') {
+	getInputPanel().findChildByTestId('ndv-run-data-display-mode').contains(mode).click();
+}
+
+export function toggleInputRunLinking() {
+	getInputLinkRun().click();
 }

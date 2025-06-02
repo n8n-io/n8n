@@ -1,0 +1,260 @@
+{
+  "createdAt": "2021-03-25T15:40:17.167Z",
+  "updatedAt": "2021-03-25T15:40:17.167Z",
+  "id": "158",
+  "name": "MicrosoftSQL:insert update executeQuery",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "07cfaafd-88a2-4563-9c2d-7ecfacc4a008"
+    },
+    {
+      "parameters": {
+        "table": "TestTable",
+        "columns": "id,content"
+      },
+      "name": "Microsoft SQL",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "98",
+          "name": "Microsoft SQL"
+        }
+      },
+      "id": "e854f1b2-572c-4697-8597-aaa1cbfb06cb"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "content",
+              "value": "=Content{{(new Date()).toISOString()}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "id",
+              "value": "={{Math.round(Math.random()*10000)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "59f67b24-0711-4944-aec9-b3470e58ef3a"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "TestTable",
+        "columns": "id,content"
+      },
+      "name": "Microsoft SQL1",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "98",
+          "name": "Microsoft SQL"
+        }
+      },
+      "id": "7dd65584-a631-4365-aa97-d1eac48055dd"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "content",
+              "value": "=UpdatedContent{{(new Date()).toISOString()}}"
+            }
+          ],
+          "number": []
+        },
+        "options": {}
+      },
+      "name": "Set1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "a7177030-713f-456c-97d8-2d1eeeabacd8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT * FROM TestTable WHERE id={{$node[\"Set\"].json[\"id\"]}};"
+      },
+      "name": "Microsoft SQL2",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "98",
+          "name": "Microsoft SQL"
+        }
+      },
+      "notes": "Execute Query (SELECT one)",
+      "id": "66a5e1da-49ef-4b2a-a505-6d42985c72d3"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "table": "TestTable"
+      },
+      "name": "Microsoft SQL3",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        300
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "98",
+          "name": "Microsoft SQL"
+        }
+      },
+      "id": "43594a06-313c-40f6-b454-7bf217d8dfb8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM TestTable;"
+      },
+      "name": "Microsoft SQL4",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        300
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "98",
+          "name": "Microsoft SQL"
+        }
+      },
+      "notes": "Execute Query (SELECT All)",
+      "id": "5c833fc6-917e-445b-b4bc-d7d2090c9e1a"
+    }
+  ],
+  "connections": {
+    "Microsoft SQL": {
+      "main": [
+        [
+          {
+            "node": "Set1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set1": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft SQL1": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft SQL2": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft SQL3": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

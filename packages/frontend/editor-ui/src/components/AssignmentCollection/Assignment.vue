@@ -188,6 +188,7 @@ const onBlur = (): void => {
 							@blur="onBlur"
 						/>
 						<ParameterInputHint
+							v-if="resolvedExpressionString"
 							data-test-id="parameter-expression-preview-value"
 							:class="$style.hint"
 							:highlight="highlightHint"

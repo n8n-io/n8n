@@ -1,0 +1,574 @@
+{
+  "createdAt": "2021-02-26T09:26:39.448Z",
+  "updatedAt": "2021-02-26T10:58:10.897Z",
+  "id": "75",
+  "name": "Harvest:Client:create update getAll get delete:Invoice:create update getAll get delete:Contact:create update get getAll delete:Company:get",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        150,
+        300
+      ],
+      "id": "2e356688-aa17-4377-99a8-85bdf89f4804"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "client",
+        "accountId": 1416330,
+        "operation": "create",
+        "name": "=Client{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Harvest",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        400,
+        230
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "9dff6c6e-f6e9-4754-9dd5-b68c3adf590f"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "client",
+        "accountId": 1416330,
+        "operation": "update",
+        "id": "={{$node[\"Harvest\"].json[\"id\"]}}",
+        "updateFields": {
+          "name": "=UpdatedClient{{Date.now()}}"
+        }
+      },
+      "name": "Harvest1",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1310,
+        230
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "239a0f84-f452-4d2b-b208-3024f68e2104"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "client",
+        "accountId": 1416330,
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Harvest2",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        230
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "fb51704a-377b-4d9b-ad37-0f7dfac320c2"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "client",
+        "accountId": 1416330,
+        "operation": "get",
+        "id": "={{$node[\"Harvest\"].json[\"id\"]}}"
+      },
+      "name": "Harvest3",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1610,
+        230
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "b1c22046-82ed-41a2-961b-fc2fc864a23c"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "client",
+        "accountId": 1416330,
+        "operation": "delete",
+        "id": "={{$node[\"Harvest\"].json[\"id\"]}}"
+      },
+      "name": "Harvest4",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        230
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "5b049ab1-8091-4a1c-94b9-57b2239cfacf"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "company",
+        "accountId": 1416330
+      },
+      "name": "Harvest5",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        400,
+        440
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "7119f466-ef7a-4ced-bef5-8deefbab4c79"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "contact",
+        "accountId": 1416330,
+        "operation": "create",
+        "firstName": "=FirstName{{Date.now()}}",
+        "clientId": "={{$node[\"Harvest\"].json[\"id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Harvest6",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "51db9f70-0f68-4722-8ebc-3edf8f342f47"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "contact",
+        "accountId": 1416330,
+        "operation": "update",
+        "id": "={{$node[\"Harvest6\"].json[\"id\"]}}",
+        "updateFields": {
+          "first_name": "=FirstNameUpdated{{Date.now()}}"
+        }
+      },
+      "name": "Harvest7",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "ee3d8921-fe23-4feb-a70b-6695cb2271cb"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "contact",
+        "accountId": 1416330,
+        "operation": "get",
+        "id": "={{$node[\"Harvest6\"].json[\"id\"]}}"
+      },
+      "name": "Harvest8",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "e585c5d8-71f7-433a-ae83-70e0a24bed2d"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "contact",
+        "accountId": 1416330,
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Harvest9",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "e113e7b0-c8c2-4f11-a767-462b6a519c5c"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "contact",
+        "accountId": 1416330,
+        "operation": "delete",
+        "id": "={{$node[\"Harvest6\"].json[\"id\"]}}"
+      },
+      "name": "Harvest10",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        300
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "7820c685-f762-4f66-b602-e20e4dda437a"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "invoice",
+        "accountId": 1416330,
+        "operation": "create",
+        "clientId": "={{$node[\"Harvest\"].json[\"id\"]}}",
+        "additionalFields": {
+          "subject": "=Subject{{Date.now()}}"
+        }
+      },
+      "name": "Harvest11",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        550,
+        140
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "6ffb33ca-58ba-456b-a9ac-d33f3f2e2eee"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "invoice",
+        "accountId": 1416330,
+        "operation": "update",
+        "id": "={{$node[\"Harvest11\"].json[\"id\"]}}",
+        "updateFields": {
+          "subject": "=UpdatedSubject{{Date.now()}}"
+        }
+      },
+      "name": "Harvest12",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        700,
+        140
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "bb9bb3dc-ca74-4572-8c44-7bcaca67bd52"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "invoice",
+        "accountId": 1416330,
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Harvest13",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        140
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "fd41f71c-0899-4887-ab85-8ba208e60b55"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "invoice",
+        "accountId": 1416330,
+        "operation": "get",
+        "id": "={{$node[\"Harvest11\"].json[\"id\"]}}"
+      },
+      "name": "Harvest14",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        140
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "0b68daaf-464e-4e04-bdca-3b67ad74b33e"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "invoice",
+        "accountId": 1416330,
+        "operation": "delete",
+        "id": "={{$node[\"Harvest11\"].json[\"id\"]}}"
+      },
+      "name": "Harvest15",
+      "type": "n8n-nodes-base.harvest",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        140
+      ],
+      "credentials": {
+        "harvestOAuth2Api": {
+          "id": "64",
+          "name": "Harvest OAuth2 creds"
+        }
+      },
+      "id": "270d7f79-c97f-4e4e-a0b7-596635eabf8c"
+    }
+  ],
+  "connections": {
+    "Harvest": {
+      "main": [
+        [
+          {
+            "node": "Harvest11",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Harvest6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest1": {
+      "main": [
+        [
+          {
+            "node": "Harvest2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest2": {
+      "main": [
+        [
+          {
+            "node": "Harvest3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest3": {
+      "main": [
+        [
+          {
+            "node": "Harvest4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Harvest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Harvest5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest6": {
+      "main": [
+        [
+          {
+            "node": "Harvest7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest7": {
+      "main": [
+        [
+          {
+            "node": "Harvest8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest8": {
+      "main": [
+        [
+          {
+            "node": "Harvest9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest9": {
+      "main": [
+        [
+          {
+            "node": "Harvest10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest10": {
+      "main": [
+        [
+          {
+            "node": "Harvest1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest11": {
+      "main": [
+        [
+          {
+            "node": "Harvest12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest12": {
+      "main": [
+        [
+          {
+            "node": "Harvest13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest13": {
+      "main": [
+        [
+          {
+            "node": "Harvest14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Harvest14": {
+      "main": [
+        [
+          {
+            "node": "Harvest15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

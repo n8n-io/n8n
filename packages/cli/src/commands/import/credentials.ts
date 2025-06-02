@@ -1,3 +1,4 @@
+import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -9,12 +10,6 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import * as Db from '@/db';
 
 import { BaseCommand } from '../base-command';
 
@@ -73,7 +68,8 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		const credentials = await this.readCredentials(flags.input, flags.separate);
 
-		await Db.getConnection().transaction(async (transactionManager) => {
+		const { manager: dbManager } = Container.get(ProjectRepository);
+		await dbManager.transaction(async (transactionManager) => {
 			this.transactionManager = transactionManager;
 
 			const project = await this.getProject(flags.userId, flags.projectId);

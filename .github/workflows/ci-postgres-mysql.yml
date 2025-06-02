@@ -7,7 +7,11 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
+      - packages/@n8n/db/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -122,7 +126,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 30000
+        run: pnpm test:mariadb --testTimeout 60000
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
@@ -166,7 +170,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 30000
+        run: pnpm test:mysql --testTimeout 60000
 
   postgres:
     name: Postgres
@@ -216,7 +220,7 @@ jobs:
     needs: [mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}

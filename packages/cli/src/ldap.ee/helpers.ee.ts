@@ -1,3 +1,12 @@
+import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
+import type { AuthProviderSyncHistory } from '@n8n/db';
+import {
+	AuthIdentity,
+	User,
+	AuthIdentityRepository,
+	AuthProviderSyncHistoryRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
@@ -5,13 +14,6 @@ import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import type { AuthProviderSyncHistory } from '@/databases/entities/auth-provider-sync-history';
-import { User } from '@/databases/entities/user';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import * as Db from '@/db';
 import { License } from '@/license';
 
 import {
@@ -20,7 +22,6 @@ import {
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
-import type { ConnectionSecurity, LdapConfig } from './types';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -174,7 +175,8 @@ export const processUsers = async (
 	toDisableUsers: string[],
 ): Promise<void> => {
 	const userRepository = Container.get(UserRepository);
-	await Db.transaction(async (transactionManager) => {
+	const { manager: dbManager } = userRepository;
+	await dbManager.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
 				const { user: savedUser } = await userRepository.createUserWithProject(

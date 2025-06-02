@@ -1,29 +1,29 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, useTemplateRef } from 'vue';
+import { nextTick, computed, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import {
-	createLogEntries,
-	findLogEntryToAutoSelect,
-	type TreeNode,
-} from '@/components/RunDataAi/utils';
-import { isChatNode } from '@/components/CanvasChat/utils';
-import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
+import { useLogsPanelLayout } from '@/components/CanvasChat/future/composables/useLogsPanelLayout';
+import { useLogsExecutionData } from '@/components/CanvasChat/future/composables/useLogsExecutionData';
+import { type LogEntry } from '@/components/RunDataAi/utils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
+import { useLogsSelection } from '@/components/CanvasChat/future/composables/useLogsSelection';
+import { useLogsTreeExpand } from '@/components/CanvasChat/future/composables/useLogsTreeExpand';
+import { useLogsStore } from '@/stores/logs.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
-const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
+
+const logsStore = useLogsStore();
+const ndvStore = useNDVStore();
 
 const {
 	height,
@@ -43,65 +43,60 @@ const {
 	onChatPanelResizeEnd,
 	onOverviewPanelResize,
 	onOverviewPanelResizeEnd,
-} = useLayout(pipContainer, pipContent, container, logsContainer);
+} = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
 
-const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	props.isReadOnly,
+const {
+	currentSessionId,
+	messages,
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(props.isReadOnly);
+
+const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
+	useLogsExecutionData();
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { selected, select, selectNext, selectPrev } = useLogsSelection(
+	execution,
+	entries,
+	flatLogEntries,
+	toggleExpanded,
 );
 
-const hasChat = computed(
-	() =>
-		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
-		(!props.isReadOnly || messages.value.length > 0),
+const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
+const isLogDetailsVisuallyOpen = computed(
+	() => isLogDetailsOpen.value && !isCollapsingDetailsPanel.value,
 );
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	createLogEntries(
-		workflow.value,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
-const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-const autoSelectedLogEntry = computed(() =>
-	findLogEntryToAutoSelect(
-		executionTree.value,
-		workflowsStore.nodesByName,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
-const selectedLogEntry = computed(() =>
-	manualLogEntrySelection.value.type === 'initial' ||
-	manualLogEntrySelection.value.workflowId !== workflowsStore.workflow.id
-		? autoSelectedLogEntry.value
-		: manualLogEntrySelection.value.type === 'none'
-			? undefined
-			: manualLogEntrySelection.value.data,
-);
-const isLogDetailsOpen = computed(
-	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
-);
-const isLogDetailsOpenOrCollapsing = computed(() => selectedLogEntry.value !== undefined);
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
 	isOpen: isOpen.value,
+	isSyncSelectionEnabled: logsStore.isLogSelectionSyncedWithCanvas,
 	showToggleButton: !isPoppedOut.value,
 	showPopOutButton: canPopOut.value && !isPoppedOut.value,
 	onPopOut,
 	onToggleOpen,
+	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
-
-function handleSelectLogEntry(selected: TreeNode | undefined) {
-	manualLogEntrySelection.value =
-		selected === undefined
-			? { type: 'none', workflowId: workflowsStore.workflow.id }
-			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
-}
 
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
-		handleSelectLogEntry(undefined);
+		select(undefined);
 	}
 
 	onOverviewPanelResizeEnd();
+}
+
+async function handleOpenNdv(treeNode: LogEntry) {
+	ndvStore.setActiveNodeName(treeNode.node.name);
+
+	await nextTick(() => {
+		const source = treeNode.runData.source[0];
+		const inputBranch = source?.previousNodeOutput ?? 0;
+
+		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
+		ndvEventBus.emit('setInputBranchIndex', inputBranch);
+		ndvStore.setOutputRunIndex(treeNode.runIndex);
+	});
 }
 </script>
 
@@ -117,9 +112,20 @@ function handleResizeOverviewPanelEnd() {
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
-				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
+				<div
+					ref="container"
+					:class="$style.container"
+					tabindex="-1"
+					@keydown.esc.stop="select(undefined)"
+					@keydown.j.stop="selectNext"
+					@keydown.down.stop.prevent="selectNext"
+					@keydown.k.stop="selectPrev"
+					@keydown.up.stop.prevent="selectPrev"
+					@keydown.space.stop="selected && toggleExpanded(selected)"
+					@keydown.enter.stop="selected && handleOpenNdv(selected)"
+				>
 					<N8nResizeWrapper
-						v-if="hasChat"
+						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
 						:width="chatPanelWidth"
@@ -149,38 +155,53 @@ function handleResizeOverviewPanelEnd() {
 						<N8nResizeWrapper
 							:class="$style.overviewResizer"
 							:width="overviewPanelWidth"
-							:style="{ width: isLogDetailsOpen ? `${overviewPanelWidth}px` : '' }"
+							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
-							:is-resizing-enabled="isLogDetailsOpenOrCollapsing"
+							:is-resizing-enabled="isLogDetailsOpen"
 							:window="pipWindow"
 							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
+								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
-								:is-compact="isLogDetailsOpen"
-								:selected="selectedLogEntry"
-								:execution-tree="executionTree"
+								:is-compact="isLogDetailsVisuallyOpen"
+								:selected="selected"
+								:execution="execution"
+								:entries="entries"
+								:latest-node-info="latestNodeNameById"
+								:flat-log-entries="flatLogEntries"
 								@click-header="onToggleOpen(true)"
-								@select="handleSelectLogEntry"
+								@select="select"
+								@clear-execution-data="resetExecutionData"
+								@toggle-expanded="toggleExpanded"
+								@open-ndv="handleOpenNdv"
+								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
-									<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+									<LogsPanelActions
+										v-if="!isLogDetailsVisuallyOpen"
+										v-bind="logsPanelActionsProps"
+									/>
 								</template>
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry"
+							v-if="isLogDetailsVisuallyOpen && selected"
 							:class="$style.logDetails"
 							:is-open="isOpen"
-							:log-entry="selectedLogEntry"
+							:log-entry="selected"
 							:window="pipWindow"
+							:latest-info="latestNodeNameById[selected.id]"
+							:panels="logsStore.detailsState"
 							@click-header="onToggleOpen(true)"
+							@toggle-input-open="logsStore.toggleInputOpen"
+							@toggle-output-open="logsStore.toggleOutputOpen"
 						>
 							<template #actions>
-								<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />
 							</template>
 						</LogsDetailsPanel>
 					</div>

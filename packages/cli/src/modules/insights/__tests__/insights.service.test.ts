@@ -1,40 +1,35 @@
+import type { InsightsDateRange } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
+import type { Project } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { In, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { Logger } from 'n8n-core';
-import { type ExecutionLifecycleHooks } from 'n8n-core';
-import {
-	createDeferredPromise,
-	type ExecutionStatus,
-	type IRun,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
-import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
 import {
-	createMetadata,
-	createRawInsightsEvent,
 	createCompactedInsightsEvent,
+	createMetadata,
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { InsightsRaw } from '../database/entities/insights-raw';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsCollectionService } from '../insights-collection.service';
+import { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 // Initialize DB once for all tests
 beforeAll(async () => {
-	await testDb.init(['insights']);
+	await testDb.init();
 });
 
 beforeEach(async () => {
@@ -42,7 +37,7 @@ beforeEach(async () => {
 		'InsightsRaw',
 		'InsightsByPeriod',
 		'InsightsMetadata',
-		'Workflow',
+		'WorkflowEntity',
 		'Project',
 	]);
 });
@@ -50,1196 +45,6 @@ beforeEach(async () => {
 // Terminate DB once after all tests complete
 afterAll(async () => {
 	await testDb.terminate();
-});
-
-describe('workflowExecuteAfterHandler', () => {
-	let insightsService: InsightsService;
-	let insightsRawRepository: InsightsRawRepository;
-	let insightsMetadataRepository: InsightsMetadataRepository;
-	beforeAll(async () => {
-		insightsService = Container.get(InsightsService);
-		insightsRawRepository = Container.get(InsightsRawRepository);
-		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
-	});
-
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
-
-	beforeEach(async () => {
-		project = await createTeamProject();
-		workflow = await createWorkflow(
-			{
-				settings: {
-					timeSavedPerExecution: 3,
-				},
-			},
-			project,
-		);
-	});
-
-	test.each<{ status: ExecutionStatus; type: TypeUnit }>([
-		{ status: 'success', type: 'success' },
-		{ status: 'error', type: 'failure' },
-		{ status: 'crashed', type: 'failure' },
-	])('stores events for executions with the status `$status`', async ({ status, type }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status,
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		const now = DateTime.utc().toJSDate();
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
-
-		expect(metadata).toMatchObject({
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			projectName: project.name,
-		});
-
-		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(status === 'success' ? 3 : 2);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({ metaId: metadata.metaId, type, value: 1 }),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'runtime_ms',
-				value: stoppedAt.diff(startedAt).toMillis(),
-			}),
-		);
-		// expect timestamp to be close to workflow execution start
-		for (const insight of allInsights) {
-			const timeDiffInSeconds = Math.abs(
-				Math.round(insight.timestamp.getTime() / 1000) - Math.round(now.getTime() / 1000),
-			);
-			expect(timeDiffInSeconds).toBeLessThanOrEqual(1);
-		}
-		if (status === 'success') {
-			expect(allInsights).toContainEqual(
-				expect.objectContaining({
-					metaId: metadata.metaId,
-					type: 'time_saved_min',
-					value: 3,
-				}),
-			);
-		}
-	});
-
-	test.each<{ status: ExecutionStatus }>([
-		{ status: 'waiting' },
-		{ status: 'canceled' },
-		{ status: 'unknown' },
-		{ status: 'new' },
-		{ status: 'running' },
-	])('does not store events for executions with the status `$status`', async ({ status }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status,
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-		const allInsights = await insightsRawRepository.find();
-		expect(metadata).toBeNull();
-		expect(allInsights).toHaveLength(0);
-	});
-
-	test.each<{ mode: WorkflowExecuteMode }>([
-		{ mode: 'internal' },
-		{ mode: 'manual' },
-		{ mode: 'integrated' },
-	])('does not store events for executions with the mode `$mode`', async ({ mode }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode,
-			status: 'success',
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-		const allInsights = await insightsRawRepository.find();
-		expect(metadata).toBeNull();
-		expect(allInsights).toHaveLength(0);
-	});
-
-	test.each<{ mode: WorkflowExecuteMode }>([
-		{ mode: 'evaluation' },
-		{ mode: 'error' },
-		{ mode: 'cli' },
-		{ mode: 'retry' },
-		{ mode: 'trigger' },
-		{ mode: 'webhook' },
-	])('stores events for executions with the mode `$mode`', async ({ mode }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode,
-			status: 'success',
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
-
-		expect(metadata).toMatchObject({
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			projectName: project.name,
-		});
-
-		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(3);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({ metaId: metadata.metaId, type: 'success', value: 1 }),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'runtime_ms',
-				value: stoppedAt.diff(startedAt).toMillis(),
-			}),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'time_saved_min',
-				value: 3,
-			}),
-		);
-	});
-});
-
-describe('workflowExecuteAfterHandler - cacheMetadata', () => {
-	let insightsService: InsightsService;
-	let entityManagerMock = mock<EntityManager>();
-	const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
-		manager: entityManagerMock,
-	} as unknown as jest.Mocked<SharedWorkflowRepository>;
-	const insightsRawRepository: jest.Mocked<InsightsRawRepository> = mock<InsightsRawRepository>();
-
-	const startedAt = DateTime.utc();
-	const stoppedAt = startedAt.plus({ seconds: 5 });
-	const run = mock<IRun>({
-		mode: 'webhook',
-		status: 'success',
-		startedAt: startedAt.toJSDate(),
-		stoppedAt: stoppedAt.toJSDate(),
-	});
-
-	// Mock the transaction function
-	const trxMock = {
-		find: jest.fn(),
-		findBy: jest.fn(),
-		upsert: jest.fn(),
-		insert: jest.fn(),
-	};
-
-	entityManagerMock.transaction.mockImplementation(
-		jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
-			await runInTransaction(trxMock as unknown as EntityManager);
-		}) as unknown as EntityManager['transaction'],
-	);
-
-	beforeAll(async () => {
-		insightsService = new InsightsService(
-			sharedWorkflowRepositoryMock,
-			Container.get(InsightsByPeriodRepository),
-			insightsRawRepository,
-			mock<Logger>(),
-		);
-	});
-
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
-
-	beforeEach(async () => {
-		project = await createTeamProject();
-		workflow = await createWorkflow({}, project);
-
-		trxMock.find = jest.fn().mockResolvedValue([
-			{
-				workflow,
-				workflowId: workflow.id,
-				projectId: 'project-id',
-				project: { name: 'project-name' },
-			},
-		]);
-		trxMock.findBy = jest.fn().mockResolvedValue([
-			{
-				metaId: 'meta-id',
-				workflowId: workflow.id,
-				workflowName: workflow.name,
-				projectId: 'project-id',
-				projectName: 'project-name',
-			},
-		]);
-	});
-
-	test('reuses cached metadata for subsequent executions of the same workflow', async () => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({
-			workflowData: { ...workflow, settings: undefined },
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		expect(trxMock.find).toHaveBeenCalledWith(expect.anything(), {
-			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
-			relations: { project: true },
-		});
-		expect(trxMock.upsert).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.arrayContaining([
-				{
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-					projectId: 'project-id',
-					projectName: 'project-name',
-				},
-			]),
-			['workflowId'],
-		);
-
-		// ACT AGAIN with the same workflow
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT AGAIN
-		trxMock.find.mockClear();
-		trxMock.upsert.mockClear();
-		expect(trxMock.find).not.toHaveBeenCalled();
-		expect(trxMock.upsert).not.toHaveBeenCalled();
-	});
-
-	test('updates cached metadata if workflow details change', async () => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT
-		expect(trxMock.find).toHaveBeenCalled();
-		expect(trxMock.upsert).toHaveBeenCalled();
-
-		// Change the workflow name
-		workflow.name = 'new-workflow-name';
-
-		// ACT AGAIN with the same workflow
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await insightsService.flushEvents();
-
-		// ASSERT AGAIN
-		expect(trxMock.find).toHaveBeenCalledWith(expect.anything(), {
-			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
-			relations: { project: true },
-		});
-		expect(trxMock.upsert).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.arrayContaining([
-				{
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-					projectId: 'project-id',
-					projectName: 'project-name',
-				},
-			]),
-			['workflowId'],
-		);
-	});
-});
-
-describe('workflowExecuteAfterHandler - flushEvents', () => {
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
-	let insightsService: InsightsService;
-	let entityManagerMock = mock<EntityManager>();
-	const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
-		manager: entityManagerMock,
-	} as unknown as jest.Mocked<SharedWorkflowRepository>;
-	const logger = mock<Logger>({
-		scoped: jest.fn().mockReturnValue(
-			mock<Logger>({
-				error: jest.fn(),
-			}),
-		),
-	});
-
-	const startedAt = DateTime.utc();
-	const stoppedAt = startedAt.plus({ seconds: 5 });
-	const run = mock<IRun>({
-		mode: 'trigger',
-		status: 'success',
-		startedAt: startedAt.toJSDate(),
-		stoppedAt: stoppedAt.toJSDate(),
-	});
-
-	// Mock the transaction function
-	const trxMock = {
-		find: jest.fn(),
-		findBy: jest.fn(),
-		upsert: jest.fn(),
-		insert: jest.fn(),
-	};
-
-	entityManagerMock.transaction.mockImplementation(
-		jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
-			await runInTransaction(trxMock as unknown as EntityManager);
-		}) as unknown as EntityManager['transaction'],
-	);
-
-	beforeAll(async () => {
-		insightsService = new InsightsService(
-			sharedWorkflowRepositoryMock,
-			mock<InsightsByPeriodRepository>(),
-			mock<InsightsRawRepository>(),
-			logger,
-		);
-	});
-
-	beforeEach(async () => {
-		project = await createTeamProject();
-		workflow = await createWorkflow({}, project);
-		trxMock.find = jest.fn().mockResolvedValue([
-			{
-				workflow,
-				workflowId: workflow.id,
-				projectId: 'project-id',
-				project: { name: 'project-name' },
-			},
-		]);
-		trxMock.findBy = jest.fn().mockResolvedValue([
-			{
-				metaId: 'meta-id',
-				workflowId: workflow.id,
-				workflowName: workflow.name,
-				projectId: 'project-id',
-				projectName: 'project-name',
-			},
-		]);
-	});
-
-	test('flushes events to the database once buffer is full', async () => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		// ACT
-		for (let i = 0; i < 333; i++) {
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-		}
-		// await for the next tick to ensure the flush is called
-		await new Promise(process.nextTick);
-
-		// ASSERT
-		expect(trxMock.insert).not.toHaveBeenCalled();
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-		// ASSERT
-		// await for the next tick to ensure the flush is called
-		await new Promise(process.nextTick);
-		expect(trxMock.insert).toHaveBeenCalled();
-	});
-
-	test('flushes events to the database after a timeout', async () => {
-		// ARRANGE
-		jest.useFakeTimers();
-		trxMock.insert.mockClear();
-		insightsService.startBackgroundProcess();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		try {
-			// ACT
-			for (let i = 0; i < 33; i++) {
-				await insightsService.workflowExecuteAfterHandler(ctx, run);
-			}
-			// ASSERT
-			expect(trxMock.insert).not.toHaveBeenCalled();
-
-			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-
-			// ASSERT
-			expect(trxMock.insert).toHaveBeenCalledTimes(1);
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	test('reschedule flush on flushing end', async () => {
-		// ARRANGE
-		jest.useFakeTimers();
-		trxMock.insert.mockClear();
-		insightsService.startBackgroundProcess();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		try {
-			// ACT
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-
-			// ASSERT
-			expect(trxMock.insert).toHaveBeenCalledTimes(1);
-
-			// // ACT
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-
-			expect(trxMock.insert).toHaveBeenCalledTimes(2);
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	test('reschedule flush on no buffered insights', async () => {
-		// ARRANGE
-		jest.useFakeTimers();
-		trxMock.insert.mockClear();
-		insightsService.startBackgroundProcess();
-		const flushEventsSpy = jest.spyOn(insightsService, 'flushEvents');
-
-		try {
-			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-
-			// ASSERT
-			expect(flushEventsSpy).toHaveBeenCalledTimes(1);
-			expect(trxMock.insert).not.toHaveBeenCalled();
-
-			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-			expect(flushEventsSpy).toHaveBeenCalledTimes(2);
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	test('flushes events to the database on shutdown', async () => {
-		// ARRANGE
-		trxMock.insert.mockClear();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		// ACT
-		for (let i = 0; i < 10; i++) {
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-		}
-
-		await insightsService.shutdown();
-
-		// ASSERT
-		expect(trxMock.insert).toHaveBeenCalledTimes(1);
-		// Check that last insert call contains 30 events
-		const lastCallArgs = trxMock.insert.mock.calls.at(-1);
-		expect(lastCallArgs?.[1]).toHaveLength(30);
-	});
-
-	test('flushes events synchronously while shutting down', async () => {
-		// ARRANGE
-		// reset insights async flushing
-		insightsService.startBackgroundProcess();
-		trxMock.insert.mockClear();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		// ACT
-		for (let i = 0; i < 10; i++) {
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-		}
-
-		void insightsService.shutdown();
-		// trigger a workflow after shutdown
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-		// ASSERT
-		expect(trxMock.insert).toHaveBeenCalledTimes(2);
-		// Check that last insert call contains 3 events (the synchronous flush after shutdown)
-		let callArgs = trxMock.insert.mock.calls.at(-1);
-		expect(callArgs?.[1]).toHaveLength(3);
-
-		// ACT
-		// await for the next tick to ensure the flush is called
-		await new Promise(process.nextTick);
-
-		// Check that the one before that contains 30 events (the shutdown flush)
-		callArgs = trxMock.insert.mock.calls.at(-2);
-		expect(callArgs?.[1]).toHaveLength(30);
-	});
-
-	test('restore buffer events on flushing error', async () => {
-		// ARRANGE
-		jest.useFakeTimers();
-		trxMock.insert.mockClear();
-		trxMock.insert.mockRejectedValueOnce(new Error('Test error'));
-		insightsService.startBackgroundProcess();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		try {
-			// ACT
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
-
-			// ASSERT
-			expect(trxMock.insert).toHaveBeenCalledTimes(1);
-			const insertArgs = trxMock.insert.mock.calls.at(-1);
-
-			// ACT
-			await insightsService.flushEvents();
-
-			expect(trxMock.insert).toHaveBeenCalledTimes(2);
-			const newInsertArgs = trxMock.insert.mock.calls.at(-1);
-			// Check that last insert call contains the same 3 insights as previous failed flush
-			expect(newInsertArgs?.[1]).toHaveLength(3);
-			expect(newInsertArgs?.[1]).toEqual(insertArgs?.[1]);
-		} finally {
-			jest.useRealTimers();
-		}
-	});
-
-	test('waits for ongoing flush during shutdown', async () => {
-		// ARRANGE
-		const config = Container.get(InsightsConfig);
-		config.flushBatchSize = 10;
-		insightsService.startBackgroundProcess();
-		trxMock.insert.mockClear();
-
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-
-		// Flush will hang until we manually resolve it
-		const { resolve: flushResolve, promise: flushPromise } = createDeferredPromise();
-
-		// First flush will "hang" (simulate long save)
-		trxMock.insert.mockImplementationOnce(async () => {
-			await flushPromise;
-		});
-
-		// Each `workflowExecuteAfterHandler` adds 3 insights;
-		// we call it 4 times to exceed the flushBatchSize (10)
-		for (let i = 0; i < config.flushBatchSize / 3; i++) {
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-		}
-
-		// ACT
-		const shutdownPromise = insightsService.shutdown();
-
-		// At this point, shutdown should be waiting for ongoing flushes
-		let shutdownResolved = false;
-		void shutdownPromise.then(() => (shutdownResolved = true));
-
-		// Give shutdown a tick to reach the `await Promise.all(...)`
-		await new Promise(setImmediate);
-
-		// ASSERT
-
-		// shutdown should still be waiting for remaining flushes
-		expect(shutdownResolved).toBe(false);
-
-		// ACT
-		// Now resolve the hanging flush and await shutdown
-		flushResolve();
-		await shutdownPromise;
-
-		// ASSERT
-		expect(shutdownResolved).toBe(true);
-		expect(trxMock.insert).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('compaction', () => {
-	describe('compactRawToHour', () => {
-		type TestData = {
-			name: string;
-			timestamps: DateTime[];
-			batches: number[];
-		};
-
-		test.each<TestData>([
-			{
-				name: 'compact into 2 rows',
-				timestamps: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 0, 59),
-					DateTime.utc(2000, 1, 1, 1, 0),
-				],
-				batches: [2, 1],
-			},
-			{
-				name: 'compact into 3 rows',
-				timestamps: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 1, 0),
-					DateTime.utc(2000, 1, 1, 2, 0),
-				],
-				batches: [1, 1, 1],
-			},
-		])('$name', async ({ timestamps, batches }) => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
-			await createMetadata(workflow);
-			for (const timestamp of timestamps) {
-				await createRawInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					timestamp,
-				});
-			}
-
-			// ACT
-			const compactedRows = await insightsService.compactRawToHour();
-
-			// ASSERT
-			expect(compactedRows).toBe(timestamps.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			expect(allCompacted).toHaveLength(batches.length);
-			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.value).toBe(batches[index]);
-			}
-		});
-
-		test('batch compaction split events in hourly insight periods', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			for (let i = 0; i < batchSize; i++) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
-				// create 60 events per hour
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
-			expect(allCompacted[0].value).toBe(60);
-			expect(allCompacted[1].value).toBe(40);
-		});
-
-		test('batch compaction split events in hourly insight periods by type and workflow', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow1 = await createWorkflow({}, project);
-			const workflow2 = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow1, { type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow1, { type: 'failure', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow2, { type: 'runtime_ms', value: 1200, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow2, { type: 'time_saved_min', value: 3, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({
-				order: { metaId: 'ASC', periodStart: 'ASC' },
-			});
-
-			// Expect 2 insights for workflow 1 (for success and failure)
-			// and 3 for workflow 2 (2 period starts for runtime_ms and 1 for time_saved_min)
-			expect(allCompacted).toHaveLength(5);
-			const metaIds = allCompacted.map((event) => event.metaId);
-
-			// meta id are ordered. first 2 are for workflow 1, last 3 are for workflow 2
-			const uniqueMetaIds = [metaIds[0], metaIds[2]];
-			const workflow1Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[0]);
-			const workflow2Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[1]);
-
-			expect(workflow1Insights).toHaveLength(2);
-			expect(workflow2Insights).toHaveLength(3);
-
-			const successInsights = workflow1Insights.find((event) => event.type === 'success');
-			const failureInsights = workflow1Insights.find((event) => event.type === 'failure');
-
-			expect(successInsights).toBeTruthy();
-			expect(failureInsights).toBeTruthy();
-			// success and failure insights should have the value matching the number or raw events (because value = 1)
-			expect(successInsights!.value).toBe(25);
-			expect(failureInsights!.value).toBe(25);
-
-			const runtimeMsEvents = workflow2Insights.filter((event) => event.type === 'runtime_ms');
-			const timeSavedMinEvents = workflow2Insights.find((event) => event.type === 'time_saved_min');
-			expect(runtimeMsEvents).toHaveLength(2);
-
-			// The last 10 minutes of the first hour
-			expect(runtimeMsEvents[0].value).toBe(1200 * 10);
-
-			// The first 15 minutes of the second hour
-			expect(runtimeMsEvents[1].value).toBe(1200 * 15);
-			expect(timeSavedMinEvents).toBeTruthy();
-			expect(timeSavedMinEvents!.value).toBe(3 * 25);
-		});
-
-		test('should return the number of compacted events', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
-			for (let i = 0; i < batchSize; i++) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
-				// create 60 events per hour
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			const numberOfCompactedData = await insightsService.compactRawToHour();
-
-			// ASSERT
-			expect(numberOfCompactedData).toBe(100);
-		});
-
-		test('works with data in the compacted table', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-
-			// Create an existing compacted event for the first hour
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 10,
-				periodUnit: 'hour',
-				periodStart: timestamp,
-			});
-
-			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
-				events.push({ type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-			await createRawInsightsEvents(workflow, events);
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize + 10);
-			expect(allCompacted[0].value).toBe(70);
-			expect(allCompacted[1].value).toBe(40);
-		});
-
-		test('works with data bigger than the batch size', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			// spy on the compactRawToHour method to check if it's called multiple times
-			const rawToHourSpy = jest.spyOn(insightsService, 'compactRawToHour');
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 600;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
-				events.push({ type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-			await createRawInsightsEvents(workflow, events);
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			expect(rawToHourSpy).toHaveBeenCalledTimes(3);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
-		});
-	});
-
-	describe('compactionSchedule', () => {
-		test('compaction is running on schedule', async () => {
-			jest.useFakeTimers();
-			try {
-				// ARRANGE
-				const insightsService = Container.get(InsightsService);
-				insightsService.startBackgroundProcess();
-
-				// spy on the compactInsights method to check if it's called
-				insightsService.compactInsights = jest.fn();
-
-				// ACT
-				// advance by 1 hour and 1 minute
-				jest.advanceTimersByTime(1000 * 60 * 61);
-
-				// ASSERT
-				expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
-			} finally {
-				jest.useRealTimers();
-			}
-		});
-	});
-
-	describe('compactHourToDay', () => {
-		type TestData = {
-			name: string;
-			periodStarts: DateTime[];
-			batches: number[];
-		};
-
-		test.each<TestData>([
-			{
-				name: 'compact into 2 rows',
-				periodStarts: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 23, 59),
-					DateTime.utc(2000, 1, 2, 1, 0),
-				],
-				batches: [2, 1],
-			},
-			{
-				name: 'compact into 3 rows',
-				periodStarts: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 23, 59),
-					DateTime.utc(2000, 1, 2, 0, 0),
-					DateTime.utc(2000, 1, 2, 23, 59),
-					DateTime.utc(2000, 1, 3, 23, 59),
-				],
-				batches: [2, 2, 1],
-			},
-		])('$name', async ({ periodStarts, batches }) => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
-			await createMetadata(workflow);
-			for (const periodStart of periodStarts) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'hour',
-					periodStart,
-				});
-			}
-
-			// ACT
-			const compactedRows = await insightsService.compactHourToDay();
-
-			// ASSERT
-			expect(compactedRows).toBe(periodStarts.length);
-			const hourInsights = (await insightsByPeriodRepository.find()).filter(
-				(insight) => insight.periodUnit !== 'day',
-			);
-			expect(hourInsights).toBeEmptyArray();
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			expect(allCompacted).toHaveLength(batches.length);
-			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.value).toBe(batches[index]);
-			}
-		});
-
-		test('recent insight periods should not be compacted', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
-			await createMetadata(workflow);
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: DateTime.utc().minus({ day: 79 }).startOf('hour'),
-			});
-
-			// ACT
-			const compactedRows = await insightsService.compactHourToDay();
-
-			// ASSERT
-			expect(compactedRows).toBe(0);
-		});
-	});
-
-	describe('compactDayToWeek', () => {
-		type TestData = {
-			name: string;
-			periodStarts: DateTime[];
-			batches: number[];
-		};
-
-		test.each<TestData>([
-			{
-				name: 'compact into 2 rows',
-				periodStarts: [
-					// 2000-01-03 is a Monday
-					DateTime.utc(2000, 1, 3, 0, 0),
-					DateTime.utc(2000, 1, 5, 23, 59),
-					DateTime.utc(2000, 1, 11, 1, 0),
-				],
-				batches: [2, 1],
-			},
-			{
-				name: 'compact into 3 rows',
-				periodStarts: [
-					// 2000-01-03 is a Monday
-					DateTime.utc(2000, 1, 3, 0, 0),
-					DateTime.utc(2000, 1, 4, 23, 59),
-					DateTime.utc(2000, 1, 11, 0, 0),
-					DateTime.utc(2000, 1, 12, 23, 59),
-					DateTime.utc(2000, 1, 18, 23, 59),
-				],
-				batches: [2, 2, 1],
-			},
-		])('$name', async ({ periodStarts, batches }) => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			await createMetadata(workflow);
-			for (const periodStart of periodStarts) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'day',
-					periodStart,
-				});
-			}
-
-			// ACT
-			const compactedRows = await insightsService.compactDayToWeek();
-
-			// ASSERT
-			expect(compactedRows).toBe(periodStarts.length);
-			const hourAndDayInsights = (await insightsByPeriodRepository.find()).filter(
-				(insight) => insight.periodUnit !== 'week',
-			);
-			expect(hourAndDayInsights).toBeEmptyArray();
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			expect(allCompacted).toHaveLength(batches.length);
-			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.periodStart.getDay()).toBe(1);
-				expect(compacted.value).toBe(batches[index]);
-			}
-		});
-
-		test('recent insight periods should not be compacted', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			await createMetadata(workflow);
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ day: 179 }).startOf('day'),
-			});
-
-			// ACT
-			const compactedRows = await insightsService.compactDayToWeek();
-
-			// ASSERT
-			expect(compactedRows).toBe(0);
-		});
-	});
-
-	describe('compaction threshold configuration', () => {
-		test('insights by period older than the hourly to daily threshold are not compacted', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-			const config = Container.get(InsightsConfig);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const thresholdDays = config.compactionHourlyToDailyThresholdDays;
-
-			// Create insights by period within and beyond the threshold
-			const withinThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays - 1 });
-			const beyondThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays + 1 });
-
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: withinThresholdTimestamp,
-			});
-
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: beyondThresholdTimestamp,
-			});
-
-			// ACT
-			const compactedRows = await insightsService.compactHourToDay();
-
-			// ASSERT
-			expect(compactedRows).toBe(1); // Only the event within the threshold should be compacted
-			const insightsByPeriods = await insightsByPeriodRepository.find();
-			const dailyInsights = insightsByPeriods.filter((insight) => insight.periodUnit === 'day');
-			expect(dailyInsights).toHaveLength(1); // The event beyond the threshold should remain
-			expect(dailyInsights[0].periodStart.toISOString()).toEqual(
-				beyondThresholdTimestamp.startOf('day').toISO(),
-			);
-		});
-
-		test('insights by period older than the daily to weekly threshold are not compacted', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-			const config = Container.get(InsightsConfig);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const thresholdDays = config.compactionDailyToWeeklyThresholdDays;
-
-			// Create insights by period within and beyond the threshold
-			const withinThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays - 1 });
-			const beyondThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays + 1 });
-
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: withinThresholdTimestamp,
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: beyondThresholdTimestamp,
-			});
-
-			// ACT
-			const compactedRows = await insightsService.compactDayToWeek();
-
-			// ASSERT
-			expect(compactedRows).toBe(1); // Only the event within the threshold should be compacted
-			const insightsByPeriods = await insightsByPeriodRepository.find();
-			const weeklyInsights = insightsByPeriods.filter((insight) => insight.periodUnit === 'week');
-			expect(weeklyInsights).toHaveLength(1); // The event beyond the threshold should remain
-			expect(weeklyInsights[0].periodStart.toISOString()).toEqual(
-				beyondThresholdTimestamp.startOf('week').toISO(),
-			);
-		});
-	});
 });
 
 describe('getInsightsSummary', () => {
@@ -1692,5 +497,360 @@ describe('getInsightsByTime', () => {
 			averageRunTime: 0,
 			timeSaved: 0,
 		});
+	});
+});
+
+describe('getAvailableDateRanges', () => {
+	let insightsService: InsightsService;
+	let licenseMock: jest.Mocked<LicenseState>;
+
+	beforeAll(() => {
+		licenseMock = mock<LicenseState>();
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mock<InsightsCompactionService>(),
+			mock<InsightsCollectionService>(),
+			mock<InsightsPruningService>(),
+			licenseMock,
+			mockLogger(),
+		);
+	});
+
+	test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: '6months', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: true, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(365);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: '6months', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: true, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when hourly data is disabled and max history is 30 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(30);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: false, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: '6months', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when max history is less than 7 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(5);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: false, granularity: 'hour' },
+			{ key: 'week', licensed: false, granularity: 'day' },
+			{ key: '2weeks', licensed: false, granularity: 'day' },
+			{ key: 'month', licensed: false, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: '6months', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when max history is 90 days and hourly data is enabled', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(90);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: '6months', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
+	});
+});
+
+describe('getMaxAgeInDaysAndGranularity', () => {
+	let insightsService: InsightsService;
+	let licenseMock: jest.Mocked<LicenseState>;
+
+	beforeAll(() => {
+		licenseMock = mock<LicenseState>();
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mock<InsightsCompactionService>(),
+			mock<InsightsCollectionService>(),
+			mock<InsightsPruningService>(),
+			licenseMock,
+			mockLogger(),
+		);
+	});
+
+	test('returns correct maxAgeInDays and granularity for a valid licensed date range', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(365);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		const result = insightsService.getMaxAgeInDaysAndGranularity('month');
+
+		expect(result).toEqual({
+			key: 'month',
+			licensed: true,
+			granularity: 'day',
+			maxAgeInDays: 30,
+		});
+	});
+
+	test('throws an error if the date range is not available', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(365);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		expect(() => {
+			insightsService.getMaxAgeInDaysAndGranularity('invalidKey' as InsightsDateRange['key']);
+		}).toThrowError('The selected date range is not available');
+	});
+
+	test('throws an error if the date range is not licensed', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(30);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+		expect(() => {
+			insightsService.getMaxAgeInDaysAndGranularity('year');
+		}).toThrowError('The selected date range exceeds the maximum history allowed by your license.');
+	});
+
+	test('returns correct maxAgeInDays and granularity for a valid date range with hourly data disabled', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(90);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+		const result = insightsService.getMaxAgeInDaysAndGranularity('quarter');
+
+		expect(result).toEqual({
+			key: 'quarter',
+			licensed: true,
+			granularity: 'week',
+			maxAgeInDays: 90,
+		});
+	});
+
+	test('returns correct maxAgeInDays and granularity for a valid date range with unlimited history', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		const result = insightsService.getMaxAgeInDaysAndGranularity('day');
+
+		expect(result).toEqual({
+			key: 'day',
+			licensed: true,
+			granularity: 'hour',
+			maxAgeInDays: 1,
+		});
+	});
+});
+
+describe('shutdown', () => {
+	let insightsService: InsightsService;
+
+	const mockCollectionService = mock<InsightsCollectionService>({
+		shutdown: jest.fn().mockResolvedValue(undefined),
+		stopFlushingTimer: jest.fn(),
+	});
+
+	const mockCompactionService = mock<InsightsCompactionService>({
+		stopCompactionTimer: jest.fn(),
+	});
+
+	const mockPruningService = mock<InsightsPruningService>({
+		stopPruningTimer: jest.fn(),
+	});
+
+	beforeAll(() => {
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<LicenseState>(),
+			mockLogger(),
+		);
+	});
+
+	test('shutdown stops timers and shuts down services', async () => {
+		// ACT
+		await insightsService.shutdown();
+
+		// ASSERT
+		expect(mockCollectionService.shutdown).toHaveBeenCalled();
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+	});
+});
+
+describe('timers', () => {
+	let insightsService: InsightsService;
+
+	const mockCollectionService = mock<InsightsCollectionService>({
+		startFlushingTimer: jest.fn(),
+		stopFlushingTimer: jest.fn(),
+	});
+
+	const mockCompactionService = mock<InsightsCompactionService>({
+		startCompactionTimer: jest.fn(),
+		stopCompactionTimer: jest.fn(),
+	});
+
+	const mockPruningService = mock<InsightsPruningService>({
+		startPruningTimer: jest.fn(),
+		stopPruningTimer: jest.fn(),
+		isPruningEnabled: false,
+	});
+
+	const mockedLogger = mockLogger();
+	const mockedConfig = mock<InsightsConfig>({
+		maxAgeDays: -1,
+	});
+
+	beforeAll(() => {
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<LicenseState>(),
+			mockedLogger,
+		);
+	});
+
+	test('startTimers starts timers except pruning', () => {
+		// ACT
+		insightsService.startTimers();
+
+		// ASSERT
+		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('startTimers starts pruning timer', () => {
+		// ARRANGE
+		mockedConfig.maxAgeDays = 30;
+		Object.defineProperty(mockPruningService, 'isPruningEnabled', { value: true });
+
+		// ACT
+		insightsService.startTimers();
+
+		// ASSERT
+		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
+	});
+
+	test('stopTimers stops timers', () => {
+		// ACT
+		insightsService.stopTimers();
+
+		// ASSERT
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+	});
+});
+
+describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
+	let initialFlushBatchSize: number;
+	let insightsConfig: InsightsConfig;
+	beforeAll(() => {
+		insightsConfig = Container.get(InsightsConfig);
+		initialFlushBatchSize = insightsConfig.flushBatchSize;
+
+		insightsConfig.flushBatchSize = 50;
+	});
+
+	afterAll(() => {
+		insightsConfig.flushBatchSize = initialFlushBatchSize;
+	});
+
+	test('should handle concurrent flush and compaction without error', async () => {
+		const insightsCollectionService = Container.get(InsightsCollectionService);
+		const insightsCompactionService = Container.get(InsightsCompactionService);
+
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+		await createMetadata(workflow);
+
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const startedAt = DateTime.utc();
+		const stoppedAt = startedAt.plus({ seconds: 5 });
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: startedAt.toJSDate(),
+			stoppedAt: stoppedAt.toJSDate(),
+		});
+
+		// Create test data
+		const rawInsights = [];
+		for (let i = 0; i < 100; i++) {
+			rawInsights.push({
+				type: 'success' as InsightsRaw['type'],
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
+			});
+		}
+		// Create raw insights events to be compacted
+		await createRawInsightsEvents(workflow, rawInsights);
+
+		//
+		for (let i = 0; i < 100; i++) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
+			});
+		}
+
+		for (let i = 0; i < 100; i++) {
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		}
+
+		// ACT
+		const promises = [
+			insightsCollectionService.flushEvents(),
+			insightsCollectionService.flushEvents(),
+			insightsCompactionService.compactRawToHour(),
+			insightsCompactionService.compactHourToDay(),
+		];
+		await expect(Promise.all(promises)).resolves.toBeDefined();
 	});
 });
