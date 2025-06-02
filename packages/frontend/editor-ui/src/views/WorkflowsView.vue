@@ -1301,9 +1301,11 @@ const onCreateWorkflowClick = () => {
 
 const renameInput = useTemplateRef('renameInput');
 function onNameToggle() {
-	if (renameInput.value?.forceFocus) {
-		renameInput.value.forceFocus();
-	}
+	setTimeout(() => {
+		if (renameInput.value?.forceFocus) {
+			renameInput.value.forceFocus();
+		}
+	}, 0);
 }
 
 const onNameSubmit = async (name: string) => {
