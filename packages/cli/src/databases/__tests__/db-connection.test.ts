@@ -9,6 +9,8 @@ import { DbConnectionTimeoutError } from 'n8n-workflow';
 import { DbConnection } from '@/databases/db-connection';
 import type { DbConnectionOptions } from '@/databases/db-connection-options';
 
+import type { PgRecover } from '../pg-recover';
+
 jest.mock('@n8n/typeorm', () => ({
 	DataSource: jest.fn(),
 	...jest.requireActual('@n8n/typeorm'),
@@ -37,7 +39,12 @@ describe('DbConnection', () => {
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
 		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
 
-		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig);
+		dbConnection = new DbConnection(
+			errorReporter,
+			connectionOptions,
+			databaseConfig,
+			mock<PgRecover>(),
+		);
 	});
 
 	describe('init', () => {
@@ -187,6 +194,7 @@ describe('DbConnection', () => {
 					mock<DatabaseConfig>({
 						pingIntervalSeconds: 1,
 					}),
+					mock<PgRecover>(),
 				);
 
 				const pingSpy = jest.spyOn(dbConnection as any, 'ping');
