@@ -8,6 +8,5 @@ export * from './nodeTypes';
 export * from './npsSurvey';
 export * from './orchestration';
 export * from './roles';
-export * from './testDefinition.ee';
 export * from './ui';
 export * from './webhooks';
