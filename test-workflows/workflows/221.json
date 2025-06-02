@@ -334,7 +334,7 @@
         "projectId": "={{$node[\"Copper11\"].json[\"id\"]}}",
         "updateFields": {
           "details": "Completed Update",
-          "name": "=Upated{{$node[\"Copper12\"].json[\"name\"]}}",
+          "name": "=Updated{{$node[\"Copper12\"].json[\"name\"]}}",
           "status": "Completed"
         }
       },
