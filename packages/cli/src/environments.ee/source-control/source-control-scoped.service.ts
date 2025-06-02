@@ -8,10 +8,14 @@ import {
 	type WorkflowTagMapping,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import type { SourceControlContext } from './types/source-control-context';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { AuthenticatedRequest } from '@/requests';
+
+import { SourceControlContext } from './types/source-control-context';
 
 @Service()
 export class SourceControlScopedService {
@@ -19,6 +23,21 @@ export class SourceControlScopedService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
+
+	async ensureIsAllowedToPush(req: AuthenticatedRequest) {
+		if (hasGlobalScope(req.user, 'sourceControl:push')) {
+			return;
+		}
+
+		const ctx = new SourceControlContext(req.user);
+		const projectsWithAdminAccess = await this.getAdminProjectsFromContext(ctx);
+
+		if (Array.isArray(projectsWithAdminAccess) && projectsWithAdminAccess.length > 0) {
+			return;
+		}
+
+		throw new ForbiddenError('You are not allowed to push changes');
+	}
 
 	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[] | undefined> {
 		if (context.hasAccessToAllProjects()) {

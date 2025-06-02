@@ -256,14 +256,14 @@ export class SourceControlExportService {
 
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
-			const newFolders =
+			const foldersToKeepUnchanged =
 				allowedProjects === undefined
 					? []
 					: existingFolders.folders.filter((folder) => {
 							return !allowedProjects.some((project) => project.id === folder.homeProjectId);
 						});
 
-			newFolders.push(
+			const newFolders = foldersToKeepUnchanged.concat(
 				...folders.map((f) => ({
 					id: f.id,
 					name: f.name,

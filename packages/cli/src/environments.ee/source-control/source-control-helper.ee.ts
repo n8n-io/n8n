@@ -18,9 +18,12 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
+import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { AuthenticatedRequest } from '@/requests';
+import { hasGlobalScope } from '@n8n/permissions';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -59,26 +62,10 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	);
 }
 
-export async function readFoldersFromSourceControlFile(file: string): Promise<{
-	folders: Array<{
-		id: string;
-		name: string;
-		parentFolderId: null | string;
-		homeProjectId: string;
-		createdAt: string;
-		updatedAt: string;
-	}>;
-}> {
-	return jsonParse<{
-		folders: Array<{
-			id: string;
-			name: string;
-			parentFolderId: null | string;
-			homeProjectId: string;
-			createdAt: string;
-			updatedAt: string;
-		}>;
-	}>(await fsReadFile(file, { encoding: 'utf8' }), { fallbackValue: { folders: [] } });
+export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
+	return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
+		fallbackValue: { folders: [] },
+	});
 }
 
 export function sourceControlFoldersExistCheck(
