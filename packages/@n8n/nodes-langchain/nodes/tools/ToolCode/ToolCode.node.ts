@@ -17,7 +17,7 @@ import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow
 
 import {
 	buildInputSchemaField,
-	buildJsonSchemaExampleField,
+	buildJsonSchemaExampleFields,
 	schemaTypeField,
 } from '@utils/descriptions';
 import { nodeNameToToolName } from '@utils/helpers';
@@ -25,6 +25,12 @@ import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schema
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
+
+const [jsonSchemaExampleField, _] = buildJsonSchemaExampleFields({
+	showExtraProps: { specifyInputSchema: [true] },
+});
+
+const jsonSchemaField = buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } });
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
@@ -173,8 +179,8 @@ export class ToolCode implements INodeType {
 				default: false,
 			},
 			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
-			buildJsonSchemaExampleField({ showExtraProps: { specifyInputSchema: [true] } }),
-			buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } }),
+			jsonSchemaExampleField,
+			jsonSchemaField,
 		],
 	};
 

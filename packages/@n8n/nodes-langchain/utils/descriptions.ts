@@ -21,29 +21,60 @@ export const schemaTypeField: INodeProperties = {
 	description: 'How to specify the schema for the function',
 };
 
-export const buildJsonSchemaExampleField = (props?: {
+/**
+ * Returns a field to input a JSON example that can be used to generate the schema.
+ * The second field is a selector for whether all properties from example should be required or optional
+ * @param props
+ */
+export const buildJsonSchemaExampleFields = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
-}): INodeProperties => ({
-	displayName: 'JSON Example',
-	name: 'jsonSchemaExample',
-	type: 'json',
-	default: `{
+}): [INodeProperties, INodeProperties] => [
+	{
+		displayName: 'JSON Example',
+		name: 'jsonSchemaExample',
+		type: 'json',
+		default: `{
 	"some_input": "some_value"
 }`,
-	noDataExpression: true,
-	typeOptions: {
-		rows: 10,
+		noDataExpression: true,
+		typeOptions: {
+			rows: 10,
+		},
+		displayOptions: {
+			show: {
+				...props?.showExtraProps,
+				schemaType: ['fromJson'],
+			},
+		},
+		description: 'Example JSON object to use to generate the schema',
 	},
-	displayOptions: {
-		show: {
-			...props?.showExtraProps,
-			schemaType: ['fromJson'],
+	{
+		displayName: 'All Fields Are',
+		name: 'exampleFieldsOptionality',
+		type: 'options',
+		options: [
+			{
+				name: 'Required',
+				value: 'required',
+			},
+			{
+				name: 'Optional',
+				value: 'optional',
+			},
+		],
+		default: 'required',
+		description: 'If all fields in the JSON example are required or optional',
+		displayOptions: {
+			show: {
+				...props?.showExtraProps,
+				schemaType: ['fromJson'],
+			},
 		},
 	},
-	description: 'Example JSON object to use to generate the schema',
-});
+];
 
-export const jsonSchemaExampleField = buildJsonSchemaExampleField();
+export const [jsonSchemaExampleField, jsonSchemaPropertiesOptionalityField] =
+	buildJsonSchemaExampleFields();
 
 export const buildInputSchemaField = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;

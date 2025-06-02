@@ -12,7 +12,12 @@ import {
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import {
+	inputSchemaField,
+	jsonSchemaExampleField,
+	jsonSchemaPropertiesOptionalityField,
+	schemaTypeField,
+} from '@utils/descriptions';
 import {
 	N8nOutputFixingParser,
 	N8nStructuredOutputParser,
@@ -75,24 +80,12 @@ export class OutputParserStructured implements INodeType {
 }`,
 			},
 			{
-				displayName: 'All Fields Are',
-				name: 'exampleFieldsOptionality',
-				type: 'options',
-				options: [
-					{
-						name: 'Required',
-						value: 'required',
-					},
-					{
-						name: 'Optional',
-						value: 'optional',
-					},
-				],
-				default: 'required',
-				description: 'If all fields in the JSON example are required or optional',
+				...jsonSchemaPropertiesOptionalityField,
 				displayOptions: {
+					...jsonSchemaPropertiesOptionalityField.displayOptions,
 					show: {
-						schemaType: ['fromJson'],
+						...jsonSchemaPropertiesOptionalityField.displayOptions?.show,
+						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
 			},
