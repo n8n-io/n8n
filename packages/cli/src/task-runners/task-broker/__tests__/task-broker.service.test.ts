@@ -1,7 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { Time } from '@/constants';

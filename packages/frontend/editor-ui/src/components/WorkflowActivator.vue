@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,

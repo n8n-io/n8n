@@ -18,7 +18,7 @@ import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
