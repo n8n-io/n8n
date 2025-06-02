@@ -2,7 +2,6 @@
 import NodeIcon from '@/components/NodeIcon.vue';
 import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useElementSize } from '@vueuse/core';
-import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
