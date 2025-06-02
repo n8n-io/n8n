@@ -68,7 +68,7 @@ export interface IGetExecutionsQueryFilter {
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
+	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
 }
@@ -88,7 +88,11 @@ function parseFiltersToQueryBuilder(
 	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {
-			qb.andWhere('md.key = :key AND md.value = :value', md);
+			if (md.exactMatch) {
+				qb.andWhere('md.key = :key AND md.value = :value', md);
+			} else {
+				qb.andWhere('md.key = :key AND LOWER(md.value) LIKE LOWER(:value)', md);
+			}
 		}
 	}
 	if (filters?.startedAfter) {
