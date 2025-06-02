@@ -132,6 +132,7 @@ export class PrometheusMetricsService {
 			includePath: this.includes.labels.apiPath,
 			includeMethod: this.includes.labels.apiMethod,
 			includeStatusCode: this.includes.labels.apiStatusCode,
+			httpDurationMetricName: this.prefix + 'http_request_duration_seconds',
 		});
 
 		const activityGauge = new promClient.Gauge({
