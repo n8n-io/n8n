@@ -82,7 +82,7 @@ export const schemaGetExecutionsQueryFilter = {
 				value: { type: 'string' },
 				exactMatch: {
 					type: 'boolean',
-					default: false,
+					default: true,
 				},
 			},
 		},
