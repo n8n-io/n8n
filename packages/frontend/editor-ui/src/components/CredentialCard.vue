@@ -18,10 +18,11 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 	MOVE: 'move',
+	SHARE: 'share',
 };
 
 const emit = defineEmits<{
-	click: [credentialId: string];
+	click: [credentialId: string, credentialAction?: string];
 }>();
 
 const props = withDefaults(
@@ -55,10 +56,10 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	if (credentialPermissions.value.share) {
 		items.push({
-			label: locale.baseText('credentials.item.delete'),
-			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
+			label: locale.baseText('credentials.item.share'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.SHARE,
 		});
 	}
 
@@ -66,6 +67,13 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	if (credentialPermissions.value.delete) {
+		items.push({
+			label: locale.baseText('credentials.item.delete'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 		});
 	}
 
@@ -94,6 +102,9 @@ async function onAction(action: string) {
 			break;
 		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.SHARE:
+			emit('click', props.data.id, CREDENTIAL_LIST_ITEM_ACTIONS.SHARE);
 			break;
 	}
 }

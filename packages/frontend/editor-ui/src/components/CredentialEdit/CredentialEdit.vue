@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import type {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -60,6 +60,8 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
+
+const route = useRoute();
 
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
@@ -386,6 +388,16 @@ onMounted(async () => {
 
 	loading.value = false;
 });
+
+watch(
+	() => route.params.credentialAction,
+	() => {
+		if (route.params.credentialAction === 'share') {
+			activeTab.value = 'sharing';
+		}
+	},
+	{ immediate: true },
+);
 
 async function beforeClose() {
 	let keepEditing = false;

@@ -39,6 +39,7 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 const props = defineProps<{
 	credentialId?: string;
+	credentialAction?: string;
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -116,8 +117,8 @@ const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
 });
 
-const setRouteCredentialId = (credentialId?: string) => {
-	void router.replace({ params: { credentialId }, query: route.query });
+const setRouteCredentialId = (credentialId?: string, credentialAction?: string) => {
+	void router.replace({ params: { credentialId, credentialAction }, query: route.query });
 };
 
 const addCredential = () => {

@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,6 +9,20 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ICredentialsResponse } from '@/Interface';
 import { within } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
+
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	return {
+		...actual,
+		useRouter: () => ({}),
+		useRoute: () =>
+			reactive({
+				params: {},
+				location: {},
+				query: {},
+			}),
+	};
+});
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
