@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import type { DataSource } from '@n8n/typeorm';
 import { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
