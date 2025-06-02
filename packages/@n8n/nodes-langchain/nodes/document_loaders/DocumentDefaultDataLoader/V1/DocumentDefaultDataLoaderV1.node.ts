@@ -15,7 +15,7 @@ import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
-// here only to track where what dependency is sued
+// here only to track where what dependency is used
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub

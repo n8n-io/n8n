@@ -85,7 +85,7 @@ describe('DocumentGithubLoader', () => {
 		});
 	});
 
-	it('should supply data with custom text splitting', async () => {
+	it('should use custom text splitter when textSplittingMode is custom', async () => {
 		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
 		const context = mock<ISupplyDataFunctions>({
 			logger: mockLogger,
