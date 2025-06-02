@@ -63,7 +63,7 @@ jobs:
           echo "job_outcome=$JOB_OUTCOME" >> $GITHUB_OUTPUT
 
       - name: Create or Update PR Comment
-        if: steps.determine_outcome.outputs.should_post_comment == 'true'
+        if: steps.determine_outcome.outputs.should_post_comment == 'true' && needs.eligibility_check.outputs.should_run == 'true'
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043
         with:
           issue-number: ${{ github.event.pull_request.number }}
