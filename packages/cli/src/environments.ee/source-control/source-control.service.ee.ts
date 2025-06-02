@@ -3,6 +3,7 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	type Variables,
 	type TagEntity,
@@ -13,7 +14,6 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
-import { Logger } from 'n8n-core';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';

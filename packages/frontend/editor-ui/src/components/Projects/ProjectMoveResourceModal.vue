@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
 import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
-import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
+import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -19,6 +18,7 @@ import {
 	ResourceType,
 	splitName,
 } from '@/utils/projects.utils';
+import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { truncate } from '@n8n/utils/string/truncate';

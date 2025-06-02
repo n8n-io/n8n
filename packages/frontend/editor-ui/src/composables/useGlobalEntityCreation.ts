@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useToast } from '@/composables/useToast';
 import { useProjectsStore } from '@/stores/projects.store';

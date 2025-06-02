@@ -42,7 +42,6 @@ import type {
 	IWorkflowToShare,
 } from '@/Interface';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -50,13 +49,14 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { nodeViewEventBus } from '@/event-bus';
 import { getResourcePermissions } from '@/permissions';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { saveAs } from 'file-saver';
 import { computed, ref, useCssModule, watch } from 'vue';

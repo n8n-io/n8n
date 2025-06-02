@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import type { ProjectListItem } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	routeName: string;

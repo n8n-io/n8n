@@ -1,8 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
-import { Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { mockInstance } from '@test/mocking';

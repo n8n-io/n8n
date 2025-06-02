@@ -6,12 +6,19 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
-  run_workflow_tests_after_approval:
-    name: Run Tests on Approved PR
+  eligibility_check:
+    name: Check Eligibility for Test Run
     if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      is_pr_approved_by_maintainer: true
+
+  run_workflow_tests:
+    name: Run Tests on Approved Internal PR
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ github.event.pull_request.head.sha }}

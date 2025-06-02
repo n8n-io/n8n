@@ -1,10 +1,10 @@
 import type { LoginRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 
 import * as auth from '@/auth';
 import { AuthService } from '@/auth/auth.service';
