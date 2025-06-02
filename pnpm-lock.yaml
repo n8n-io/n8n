@@ -431,7 +431,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.8.3
+        version: 1.8.3(debug@4.3.6)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -456,7 +456,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.8.3
+        version: 1.8.3(debug@4.3.6)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -750,7 +750,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))
+        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -777,7 +777,7 @@ importers:
         version: 0.3.2(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(90a94ff6ee073f963f6e65dd73dfbb27)
+        version: 0.3.24(756ce02411dae236b41ccbeb9ba4fd6d)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -882,7 +882,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
+        version: 0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1181,7 +1181,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.8.3
+        version: 1.8.3(debug@4.3.6)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1512,7 +1512,7 @@ importers:
         version: 8.52.1
       axios:
         specifier: 'catalog:'
-        version: 1.8.3
+        version: 1.8.3(debug@4.3.6)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2100,7 +2100,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 'catalog:'
-        version: 1.8.3
+        version: 1.8.3(debug@4.3.6)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -2644,9 +2644,6 @@ importers:
       ast-types:
         specifier: 0.15.2
         version: 0.15.2
-      axios:
-        specifier: 'catalog:'
-        version: 1.8.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -7412,9 +7409,6 @@ packages:
 
   axios@1.8.3:
     resolution: {integrity: sha512-iP4DebzoNlP/YN2dpwCgb8zoCmhtkajzS48JvwmkSkXvPI3DHc7m+XYL5tGnSlJtR6nImXZmdCuN5aP8dh1d8A==}
-
-  axios@1.9.0:
-    resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
 
   babel-jest@29.6.2:
     resolution: {integrity: sha512-BYCzImLos6J3BH/+HvUCHG1dTf2MzmAB4jaVxHV+29RZLjR29XuYTmsf2sdDwkrb+FczkGo3kOhE7ga6sI0P4A==}
@@ -16635,7 +16629,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16644,7 +16638,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
+      langchain: 0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6)
     transitivePeerDependencies:
       - encoding
 
@@ -17166,7 +17160,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(90a94ff6ee073f963f6e65dd73dfbb27)':
+  '@langchain/community@0.3.24(756ce02411dae236b41ccbeb9ba4fd6d)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17177,7 +17171,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da)
+      langchain: 0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17192,7 +17186,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -17586,7 +17580,7 @@ snapshots:
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
-      axios: 1.9.0(debug@4.3.6)
+      axios: 1.8.3(debug@4.3.6)
       debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -20643,7 +20637,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.9.0(debug@4.3.6):
+  axios@1.8.3(debug@4.3.6):
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.6)
       form-data: 4.0.2
@@ -20651,7 +20645,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.9.0(debug@4.4.0):
+  axios@1.8.3(debug@4.4.0):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.0)
       form-data: 4.0.2
@@ -20659,9 +20653,9 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.9.0(debug@4.4.1):
+  axios@1.8.3(debug@4.4.1):
     dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
+      follow-redirects: 1.15.9(debug@4.4.1)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -22832,6 +22826,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.0(supports-color@8.1.1)
 
+  follow-redirects@1.15.9(debug@4.4.1):
+    optionalDependencies:
+      debug: 4.4.1
+
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -23447,7 +23445,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 18.19.103
       '@types/tough-cookie': 4.0.5
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.1
       dotenv: 16.5.0
@@ -23457,7 +23455,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.8.3)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -23522,7 +23520,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24482,7 +24480,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(a9c8f655d0ec4bd70e0f938ef73f85da):
+  langchain@0.3.11(b4536658e3cacf931fa0c1a58e3ee1f6):
     dependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -24506,7 +24504,7 @@ snapshots:
       '@langchain/groq': 0.1.3(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.0(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/ollama': 0.1.4(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -26295,7 +26293,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26866,9 +26864,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.8.3):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -27328,7 +27326,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.8.3
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -28715,7 +28713,7 @@ snapshots:
 
   wait-on@8.0.2(debug@4.4.0):
     dependencies:
-      axios: 1.9.0(debug@4.4.0)
+      axios: 1.8.3(debug@4.4.0)
       joi: 17.13.3
       lodash: 4.17.21
       minimist: 1.2.8
