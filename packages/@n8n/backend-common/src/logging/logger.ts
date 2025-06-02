@@ -81,7 +81,7 @@ export class Logger implements LoggerType {
 		return scopedLogger;
 	}
 
-	private detailedErrorStringify(
+	private serializeError(
 		error: unknown,
 		seen: Set<unknown> = new Set(),
 	): { name: string; message: string; stack?: string; cause: unknown } | string {
@@ -91,7 +91,7 @@ export class Logger implements LoggerType {
 		let cause: unknown;
 		if (error.cause && !seen.has(error.cause)) {
 			seen.add(error.cause);
-			cause = this.detailedErrorStringify(error.cause, seen);
+			cause = this.serializeError(error.cause, seen);
 		}
 
 		return {
@@ -116,7 +116,7 @@ export class Logger implements LoggerType {
 		for (const key of Object.keys(metadata)) {
 			const value = metadata[key];
 			if (value instanceof Error) {
-				metadata[key] = this.detailedErrorStringify(value);
+				metadata[key] = this.serializeError(value);
 			}
 		}
 
