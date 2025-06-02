@@ -32,6 +32,7 @@ function getInputs(parameters: IDataObject) {
 			displayName: 'Text Splitter',
 			maxConnections: 1,
 			type: 'ai_textSplitter',
+			required: true,
 		});
 	}
 
@@ -64,7 +65,7 @@ export class DocumentDefaultDataLoaderV2 implements INodeType {
 					displayName: 'Text Splitting',
 					name: 'textSplittingMode',
 					type: 'options',
-					default: 'custom',
+					default: 'simple',
 					required: true,
 					noDataExpression: true,
 					options: [
