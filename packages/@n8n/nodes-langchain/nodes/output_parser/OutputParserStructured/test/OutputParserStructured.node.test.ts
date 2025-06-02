@@ -1,15 +1,23 @@
-import { mock } from 'jest-mock-extended';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { OutputParserException } from '@langchain/core/output_parsers';
+import { mock, type MockProxy } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import {
 	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
 	type INode,
 	type ISupplyDataFunctions,
 	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
 
-import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nStructuredOutputParser';
+import {
+	N8nStructuredOutputParser,
+	type N8nOutputFixingParser,
+} from '@utils/output_parsers/N8nOutputParser';
 
 import { OutputParserStructured } from '../OutputParserStructured.node';
+import { NAIVE_FIX_PROMPT } from '../prompt';
 
 describe('OutputParserStructured', () => {
 	let outputParser: OutputParserStructured;
@@ -388,6 +396,7 @@ describe('OutputParserStructured', () => {
 					),
 				).rejects.toThrow('Required');
 			});
+
 			it('should throw on wrong type', async () => {
 				const schema = `{
 					"type": "object",
@@ -461,6 +470,190 @@ describe('OutputParserStructured', () => {
 				`);
 
 				expect(parsersOutput).toEqual(outputObject);
+			});
+		});
+	});
+
+	describe('Auto-Fix', () => {
+		const model: BaseLanguageModel = jest.fn() as unknown as BaseLanguageModel;
+
+		beforeEach(() => {
+			thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+			thisArg.getNodeParameter.calledWith('jsonSchemaExample', 0).mockReturnValueOnce(`{
+          "user": {
+            "name": "Alice"
+					}
+				}`);
+			thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
+			thisArg.getInputConnectionData
+				.calledWith(NodeConnectionTypes.AiLanguageModel, 0)
+				.mockResolvedValueOnce(model);
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		describe('Configuration', () => {
+			it('should use default prompt when none specified', async () => {
+				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
+				thisArg.getNodeParameter
+					.calledWith('prompt', 0, NAIVE_FIX_PROMPT)
+					.mockReturnValueOnce(NAIVE_FIX_PROMPT);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				expect(response).toBeDefined();
+			});
+
+			it('should use custom prompt if one is provided', async () => {
+				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
+				thisArg.getNodeParameter
+					.calledWith('prompt', 0, NAIVE_FIX_PROMPT)
+					.mockReturnValueOnce(
+						'Some prompt with "{error}", "{instructions}", and "{completion}" placeholders',
+					);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				expect(response).toBeDefined();
+			});
+
+			it('should throw error when prompt template does not contain {error} placeholder', async () => {
+				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
+				thisArg.getNodeParameter
+					.calledWith('prompt', 0, NAIVE_FIX_PROMPT)
+					.mockReturnValueOnce('Invalid prompt without error placeholder');
+
+				await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
+					new NodeOperationError(
+						thisArg.getNode(),
+						'Auto-fixing parser prompt has to contain {error} placeholder',
+					),
+				);
+			});
+
+			it('should throw error when prompt template is empty', async () => {
+				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
+				thisArg.getNodeParameter.calledWith('prompt', 0, NAIVE_FIX_PROMPT).mockReturnValueOnce('');
+
+				await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
+					new NodeOperationError(
+						thisArg.getNode(),
+						'Auto-fixing parser prompt has to contain {error} placeholder',
+					),
+				);
+			});
+		});
+
+		describe('Parsing', () => {
+			let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
+
+			beforeEach(() => {
+				mockStructuredOutputParser = mock<N8nStructuredOutputParser>();
+
+				jest
+					.spyOn(N8nStructuredOutputParser, 'fromZodJsonSchema')
+					.mockResolvedValue(mockStructuredOutputParser);
+
+				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
+				thisArg.getNodeParameter
+					.calledWith('prompt', 0, NAIVE_FIX_PROMPT)
+					.mockReturnValueOnce(NAIVE_FIX_PROMPT);
+			});
+
+			afterEach(() => {
+				jest.clearAllMocks();
+			});
+
+			function getMockedRetryChain(output: string) {
+				return jest.fn().mockReturnValue({
+					invoke: jest.fn().mockResolvedValue({
+						content: output,
+					}),
+				});
+			}
+
+			it('should successfully parse valid output without needing to fix it', async () => {
+				const validOutput = { name: 'Alice', age: 25 };
+
+				mockStructuredOutputParser.parse.mockResolvedValueOnce(validOutput);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				const result = await response.parse('{"name": "Alice", "age": 25}');
+
+				expect(result).toEqual(validOutput);
+				expect(mockStructuredOutputParser.parse.mock.calls).toHaveLength(1);
+			});
+
+			it('should not retry on non-OutputParserException errors', async () => {
+				const error = new Error('Some other error');
+				mockStructuredOutputParser.parse.mockRejectedValueOnce(error);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				await expect(response.parse('Invalid JSON string')).rejects.toThrow(error);
+				expect(mockStructuredOutputParser.parse.mock.calls).toHaveLength(1);
+			});
+
+			it('should retry on OutputParserException and succeed', async () => {
+				const validOutput = { name: 'Bob', age: 28 };
+
+				mockStructuredOutputParser.parse
+					.mockRejectedValueOnce(new OutputParserException('Invalid JSON'))
+					.mockResolvedValueOnce(validOutput);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				response.getRetryChain = getMockedRetryChain(JSON.stringify(validOutput));
+
+				const result = await response.parse('Invalid JSON string');
+
+				expect(result).toEqual(validOutput);
+				expect(mockStructuredOutputParser.parse.mock.calls).toHaveLength(2);
+			});
+
+			it('should handle failed retry attempt', async () => {
+				mockStructuredOutputParser.parse
+					.mockRejectedValueOnce(new OutputParserException('Invalid JSON'))
+					.mockRejectedValueOnce(new Error('Still invalid JSON'));
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				response.getRetryChain = getMockedRetryChain('Still not valid JSON');
+
+				await expect(response.parse('Invalid JSON string')).rejects.toThrow('Still invalid JSON');
+				expect(mockStructuredOutputParser.parse.mock.calls).toHaveLength(2);
+			});
+
+			it('should throw non-OutputParserException errors immediately without retry', async () => {
+				const customError = new Error('Database connection error');
+				const retryChainSpy = jest.fn();
+
+				mockStructuredOutputParser.parse.mockRejectedValueOnce(customError);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nOutputFixingParser;
+				};
+
+				response.getRetryChain = retryChainSpy;
+
+				await expect(response.parse('Some input')).rejects.toThrow('Database connection error');
+				expect(mockStructuredOutputParser.parse.mock.calls).toHaveLength(1);
+				expect(retryChainSpy).not.toHaveBeenCalled();
 			});
 		});
 	});
