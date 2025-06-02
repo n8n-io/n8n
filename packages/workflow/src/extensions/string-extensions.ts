@@ -1,9 +1,9 @@
+import transliterate from '@sindresorhus/transliterate';
 import { toBase64, fromBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
-import { transliterate } from 'transliteration';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { toDateTime as numberToDateTime } from './number-extensions';
@@ -332,7 +332,7 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	return transliterate(value);
 }
 
 function toSentenceCase(value: string) {
