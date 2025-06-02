@@ -22,7 +22,7 @@ export type PubSubEventName =
 
 export type PubSubEventFilter = {
 	instanceType?: InstanceType;
-	instanceRole?: InstanceRole;
+	instanceRole?: Omit<InstanceRole, 'unset'>;
 };
 
 type PubSubEventHandler = EventHandler<PubSubEventName> & { filter?: PubSubEventFilter };

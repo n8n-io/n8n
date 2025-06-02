@@ -30,9 +30,6 @@ describe('PubSubHandler', () => {
 			@OnPubSubEvent('restart-event-bus', { instanceRole: 'follower' })
 			async followerOnly() {}
 
-			@OnPubSubEvent('community-package-install')
-			async unsetRoleOnly() {}
-
 			@OnPubSubEvent('clear-test-webhooks')
 			async noRoleFilter() {}
 
@@ -41,9 +38,6 @@ describe('PubSubHandler', () => {
 				instanceRole: 'leader',
 			})
 			async mainLeaderOnly() {}
-
-			@OnPubSubEvent('reload-external-secrets-providers', { instanceRole: 'unset' })
-			async unsetRoleHandler() {}
 		}
 
 		return TestService;
@@ -51,7 +45,7 @@ describe('PubSubHandler', () => {
 
 	const createInstanceSettings = (
 		instanceType: InstanceType,
-		instanceRole: InstanceRole = 'unset',
+		instanceRole: InstanceRole = 'leader',
 	) => mock<InstanceSettings>({ instanceType, instanceRole });
 
 	const createPubSubHandler = (instanceSettings: InstanceSettings) =>
@@ -119,7 +113,6 @@ describe('PubSubHandler', () => {
 		const testService = Container.get(TestService);
 		const leaderOnlySpy = jest.spyOn(testService, 'leaderOnly');
 		const followerOnlySpy = jest.spyOn(testService, 'followerOnly');
-		const unsetRoleOnlySpy = jest.spyOn(testService, 'unsetRoleOnly');
 		const noRoleFilterSpy = jest.spyOn(testService, 'noRoleFilter');
 
 		// Test with leader instance
@@ -129,7 +122,6 @@ describe('PubSubHandler', () => {
 		const events: Array<[PubSubEventName, jest.SpyInstance, number]> = [
 			['reload-external-secrets-providers', leaderOnlySpy, 1],
 			['restart-event-bus', followerOnlySpy, 0],
-			['community-package-install', unsetRoleOnlySpy, 1],
 			['clear-test-webhooks', noRoleFilterSpy, 1],
 		];
 
@@ -146,7 +138,6 @@ describe('PubSubHandler', () => {
 		const followerEvents: Array<[PubSubEventName, jest.SpyInstance, number]> = [
 			['reload-external-secrets-providers', leaderOnlySpy, 0],
 			['restart-event-bus', followerOnlySpy, 1],
-			['community-package-install', unsetRoleOnlySpy, 1],
 			['clear-test-webhooks', noRoleFilterSpy, 1],
 		];
 
@@ -196,25 +187,5 @@ describe('PubSubHandler', () => {
 		// Change back to follower
 		instanceSettings.instanceRole = 'follower';
 		emitAndVerify('reload-external-secrets-providers', leaderOnlySpy, 1); // Still only called once
-	});
-
-	it('should handle the unset role correctly', async () => {
-		const TestService = createTestServiceClass();
-		const testService = Container.get(TestService);
-		const unsetRoleHandlerSpy = jest.spyOn(testService, 'unsetRoleHandler');
-
-		// Test with unset role instance
-		const pubSubHandler = createPubSubHandler(createInstanceSettings('main', 'unset'));
-		pubSubHandler.init();
-
-		emitAndVerify('reload-external-secrets-providers', unsetRoleHandlerSpy, 1);
-
-		cleanup();
-
-		// Test with leader role instance - should not trigger unset-only handlers
-		const leaderPubSubHandler = createPubSubHandler(createInstanceSettings('main', 'leader'));
-		leaderPubSubHandler.init();
-
-		emitAndVerify('reload-external-secrets-providers', unsetRoleHandlerSpy, 0);
 	});
 });
