@@ -1,7 +1,7 @@
 import { escapeRegExp, mapValues, isEqual, cloneDeep } from 'lodash';
 
 import { OperationalError } from './errors';
-import type { INode, NodeParameterValueType } from './interfaces';
+import type { INode, INodeParameters, NodeParameterValueType } from './interfaces';
 
 class LazyRegExp {
 	private regExp?: RegExp;
@@ -176,7 +176,6 @@ function parseExpressionMapping(
 		for (; partsIdx < parts.length; ++partsIdx) {
 			if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
 		}
-
 		return {
 			nodeNameInExpression: null,
 			originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $json.valid.until, but not ['x'] after
@@ -304,8 +303,12 @@ function parseCandidateMatch(
 
 // Handle matches of form `$json.path.to.value`, which is necessary for the selection input node
 function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeName: string) {
-	const candidate = extractExpressionCandidate(expression, match.index, match[0].length);
-	if (candidate === null) return;
+	const candidate = extractExpressionCandidate(
+		expression,
+		match.index,
+		match.index + match[0].length + 1,
+	);
+	if (candidate === null) return null;
 	return parseExpressionMapping(candidate, null, null, startNodeName);
 }
 
@@ -439,6 +442,10 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 			return parameters;
 		}
 
+		if (Array.isArray(parameters) && typeof mapping === 'object' && !Array.isArray(mapping)) {
+			return parameters.map((x, i) => applyMapping(x, mapping[i]) as INodeParameters);
+		}
+
 		return mapValues(parameters, (v, k) => applyMapping(v, mapping[k])) as NodeParameterValueType;
 	};
 
@@ -477,17 +484,16 @@ export function extractReferencesInNodeExpressions(
 	subGraph: INode[],
 	nodeNames: string[],
 	insertedStartName: string,
-	graphInputNodeName?: string,
+	graphInputNodeNames?: string[],
 ) {
 	////
 	// STEP 1 - Validate input invariants
 	////
-	if (nodeNames.includes(insertedStartName))
-		throw new OperationalError(
-			`StartNodeName ${insertedStartName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
-		);
-
 	const subGraphNames = subGraph.map((x) => x.name);
+	if (subGraphNames.includes(insertedStartName))
+		throw new OperationalError(
+			`StartNodeName ${insertedStartName} already exists in nodeNames: ${JSON.stringify(subGraphNames)}`,
+		);
 
 	if (subGraphNames.some((x) => !nodeNames.includes(x))) {
 		throw new OperationalError(
@@ -516,7 +522,8 @@ export function extractReferencesInNodeExpressions(
 	////
 
 	// This map is used to change the actual expressions once resolved
-	const recMapByNode = new Map<string, ParameterExtractMapping>();
+	// The value represents fields in the actual parameters object which require change
+	const parameterTreeMappingByNode = new Map<string, ParameterExtractMapping>();
 	// This is used to track all candidates for change, necessary for deduplication
 	const allData = [];
 
@@ -527,10 +534,10 @@ export function extractReferencesInNodeExpressions(
 				nodeRegexps,
 				nodeNames,
 				insertedStartName,
-				node.name === graphInputNodeName,
+				graphInputNodeNames?.includes(node.name) ?? false,
 			),
 		);
-		recMapByNode.set(node.name, parameterMapping);
+		parameterTreeMappingByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
 	}
 
@@ -560,8 +567,8 @@ export function extractReferencesInNodeExpressions(
 		return triggerArgumentMap.get(key);
 	};
 
-	for (const [key, value] of recMapByNode.entries()) {
-		recMapByNode.set(key, applyCanonicalMapping(value, getCanonicalData));
+	for (const [key, value] of parameterTreeMappingByNode.entries()) {
+		parameterTreeMappingByNode.set(key, applyCanonicalMapping(value, getCanonicalData));
 	}
 
 	const allUsedMappings = [];
@@ -569,7 +576,7 @@ export function extractReferencesInNodeExpressions(
 	for (const node of subGraph) {
 		const { result, usedMappings } = applyExtractMappingToNode(
 			cloneDeep(node),
-			recMapByNode.get(node.name),
+			parameterTreeMappingByNode.get(node.name),
 		);
 		allUsedMappings.push(...usedMappings);
 		output.push(result);
