@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import LogsViewConsumedTokenCountText from '@/components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type LlmTokenUsageData } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
 import { useTimestamp } from '@vueuse/core';

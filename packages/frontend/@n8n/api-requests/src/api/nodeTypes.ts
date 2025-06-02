@@ -1,13 +1,12 @@
 import type {
 	ActionResultRequestDto,
+	CommunityNodeType,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
-	CommunityNodeAttributes,
 } from '@n8n/api-types';
 import type { INodeTranslationHeaders } from '@n8n/i18n';
 import axios from 'axios';
-import { sleep } from 'n8n-workflow';
 import type {
 	INodeListSearchResult,
 	INodePropertyOptions,
@@ -16,6 +15,7 @@ import type {
 	NodeParameterValueType,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -40,14 +40,14 @@ export async function getNodeTypes(baseUrl: string) {
 
 export async function fetchCommunityNodeTypes(
 	context: IRestApiContext,
-): Promise<INodeTypeDescription[]> {
+): Promise<CommunityNodeType[]> {
 	return await makeRestApiRequest(context, 'GET', '/community-node-types');
 }
 
 export async function fetchCommunityNodeAttributes(
 	context: IRestApiContext,
 	type: string,
-): Promise<CommunityNodeAttributes | null> {
+): Promise<CommunityNodeType | null> {
 	return await makeRestApiRequest(
 		context,
 		'GET',

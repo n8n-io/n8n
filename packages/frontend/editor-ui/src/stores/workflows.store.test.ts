@@ -390,6 +390,35 @@ describe('useWorkflowsStore', () => {
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
 			expect(result).toBe(false);
 		});
+
+		it('should return true if connection is indirect within `depth`', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
+				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 2);
+			expect(result).toBe(true);
+		});
+
+		it('should return false if connection is indirect beyond `depth`', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
+				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 1);
+			expect(result).toBe(false);
+		});
+
+		it('should return false if depth is 0', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
+			expect(result).toBe(false);
+		});
 	});
 
 	describe('getPinDataSize()', () => {

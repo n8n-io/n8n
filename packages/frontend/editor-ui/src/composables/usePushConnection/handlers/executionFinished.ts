@@ -17,14 +17,15 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -106,6 +107,47 @@ export async function executionFinished(
 	}
 
 	setRunExecutionData(execution, runExecutionData);
+
+	continueEvaluationLoop(execution, options.router);
+}
+
+/**
+ * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
+ * @param execution
+ * @param router
+ */
+export function continueEvaluationLoop(
+	execution: SimplifiedExecution,
+	router: ReturnType<typeof useRouter>,
+) {
+	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
+		return;
+	}
+
+	// check if we have an evaluation trigger in our workflow and whether it has any run data
+	const evaluationTrigger = execution.workflowData.nodes.find(
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+	);
+	const triggerRunData = evaluationTrigger
+		? execution?.data?.resultData?.runData[evaluationTrigger.name]
+		: undefined;
+
+	if (!evaluationTrigger || triggerRunData === undefined) {
+		return;
+	}
+
+	const mainData = triggerRunData[0]?.data?.main[0];
+	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+	if (rowsLeft && rowsLeft > 0) {
+		const { runWorkflow } = useRunWorkflow({ router });
+		void runWorkflow({
+			triggerNode: evaluationTrigger.name,
+			// pass output of previous node run to trigger next run
+			nodeData: triggerRunData[0],
+			rerunTriggerNode: true,
+		});
+	}
 }
 
 /**

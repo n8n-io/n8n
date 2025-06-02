@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';

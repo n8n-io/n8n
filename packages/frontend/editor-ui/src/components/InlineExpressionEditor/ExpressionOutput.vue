@@ -2,7 +2,7 @@
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
