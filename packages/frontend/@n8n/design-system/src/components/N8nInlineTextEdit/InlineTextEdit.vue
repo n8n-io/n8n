@@ -94,6 +94,7 @@ const computedInlineStyles = computed(() => {
 		:model-value="newValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
+		:title="modelValue"
 		:disabled="disabled"
 		:max-length="maxLength"
 		:readonly="readOnly"
