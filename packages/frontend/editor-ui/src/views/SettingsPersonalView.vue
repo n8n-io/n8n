@@ -3,16 +3,18 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
+import type { IFormInputs, IRole, IUser, ThemeOption } from '@/Interface';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	ROLE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
@@ -55,6 +57,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const cloudPlanStore = useCloudPlanStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
@@ -81,6 +84,33 @@ const hasAnyPersonalisationChanges = computed((): boolean => {
 const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
+
+const roles = computed(
+	(): Record<IRole, string> => ({
+		[ROLE.Default]: i18n.baseText('auth.roles.default'),
+		[ROLE.Member]: i18n.baseText('auth.roles.member'),
+		[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
+		[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
+	}),
+);
+
+const roleTooltipText = computed(
+	(): Record<IRole, string> => ({
+		[ROLE.Default]: i18n.baseText('settings.personal.role.tooltip.default'),
+		[ROLE.Member]: i18n.baseText('settings.personal.role.tooltip.member'),
+		[ROLE.Admin]: i18n.baseText('settings.personal.role.tooltip.admin'),
+		[ROLE.Owner]: i18n.baseText('settings.personal.role.tooltip.owner', {
+			interpolate: {
+				cloudAccess: cloudPlanStore.hasCloudPlan
+					? i18n.baseText('settings.personal.role.tooltip.cloud')
+					: '',
+			},
+		}),
+	}),
+);
+
+const currentUserRole = computed(() => roles.value[usersStore.globalRoleName]);
+const currentUserRoleTooltip = computed(() => roleTooltipText.value[usersStore.globalRoleName]);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
@@ -260,7 +290,11 @@ onBeforeUnmount(() => {
 			}}</n8n-heading>
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
-					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
+					<n8n-text color="text-base" bold>{{ currentUser.fullName }}</n8n-text>
+					<N8nTooltip placement="bottom">
+						<template #content>{{ currentUserRoleTooltip }}</template>
+						<n8n-text :class="$style.tooltip" color="text-light">{{ currentUserRole }}</n8n-text>
+					</N8nTooltip>
 				</span>
 				<n8n-avatar
 					:first-name="currentUser.firstName"
@@ -395,14 +429,19 @@ onBeforeUnmount(() => {
 }
 
 .username {
+	display: grid;
+	grid-template-columns: 1fr;
 	margin-right: var(--spacing-s);
-	text-align: right;
 
 	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+}
+
+.tooltip {
+	justify-self: start;
 }
 
 .disableMfaButton {
