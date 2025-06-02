@@ -3,10 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { handleEmailLogin } from '@/auth';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -73,7 +74,8 @@ export class AuthController {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				user = await handleLdapLogin(emailOrLdapLoginId, password);
+				const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
 			user = await handleEmailLogin(emailOrLdapLoginId, password);
