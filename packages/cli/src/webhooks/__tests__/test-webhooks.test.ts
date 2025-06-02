@@ -56,7 +56,7 @@ describe('TestWebhooks', () => {
 	});
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		jest.resetAllMocks();
 	});
 
 	describe('needsWebhook()', () => {
