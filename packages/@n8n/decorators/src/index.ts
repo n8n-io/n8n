@@ -7,4 +7,3 @@ export * from './multi-main';
 export { Redactable } from './redactable';
 export * from './shutdown';
 export * from './module/module-metadata';
-export { EntityClass } from './module';
