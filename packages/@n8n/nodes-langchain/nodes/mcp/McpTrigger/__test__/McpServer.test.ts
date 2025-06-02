@@ -253,12 +253,12 @@ describe('McpServer', () => {
 
 			MockedStreamableHTTPServerTransport.mockImplementationOnce(
 				(options: StreamableHTTPServerTransportOptions) => {
-					// Simulate session initialization
-					setTimeout(() => {
+					// Simulate session initialization asynchronously using queueMicrotask instead of setTimeout
+					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
 							options.onsessioninitialized(sessionId);
 						}
-					}, 0);
+					});
 					return mockStreamableTransport;
 				},
 			);
@@ -269,8 +269,8 @@ describe('McpServer', () => {
 				mockStreamableRequest,
 			);
 
-			// Wait for async callback
-			await new Promise((resolve) => setTimeout(resolve, 10));
+			// Wait for microtask to complete
+			await Promise.resolve();
 
 			// Check that transport and server are stored after session init
 			expect(mcpServerManager.transports[sessionId]).toBeDefined();
@@ -289,13 +289,13 @@ describe('McpServer', () => {
 
 			MockedStreamableHTTPServerTransport.mockImplementationOnce(
 				(options: StreamableHTTPServerTransportOptions) => {
-					// Simulate session initialization and capture onclose callback
-					setTimeout(() => {
+					// Simulate session initialization and capture onclose callback asynchronously using queueMicrotask
+					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
 							options.onsessioninitialized(sessionId);
 							onCloseCallback = mockStreamableTransport.onclose;
 						}
-					}, 0);
+					});
 					return mockStreamableTransport;
 				},
 			);
@@ -306,8 +306,8 @@ describe('McpServer', () => {
 				mockStreamableRequest,
 			);
 
-			// Wait for async callback
-			await new Promise((resolve) => setTimeout(resolve, 10));
+			// Wait for microtask to complete
+			await Promise.resolve();
 
 			// Simulate transport close
 			if (onCloseCallback) {
