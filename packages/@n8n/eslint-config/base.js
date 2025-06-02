@@ -453,6 +453,7 @@ const config = (module.exports = {
 		'unicorn/no-useless-promise-resolve-reject': 'error',
 
 		'lodash/path-style': ['error', 'as-needed'],
+		'lodash/import-scope': ['error', 'method'],
 	},
 
 	overrides: [

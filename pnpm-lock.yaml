@@ -37,8 +37,8 @@ catalogs:
       specifier: ^9.0.9
       version: 9.0.9
     '@types/lodash':
-      specifier: ^4.14.195
-      version: 4.14.195
+      specifier: ^4.17.17
+      version: 4.17.17
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -326,7 +326,7 @@ importers:
         version: link:../packages/@n8n/api-types
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
       eslint-plugin-cypress:
         specifier: ^3.5.0
         version: 3.5.0(eslint@8.57.0)
@@ -559,7 +559,7 @@ importers:
         version: link:../typescript-config
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
 
   packages/@n8n/decorators:
     dependencies:
@@ -587,7 +587,7 @@ importers:
         version: 5.0.1
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
 
   packages/@n8n/di:
     dependencies:
@@ -1059,7 +1059,7 @@ importers:
         version: link:../typescript-config
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
 
   packages/@n8n/typescript-config: {}
 
@@ -1428,7 +1428,7 @@ importers:
         version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
       '@types/psl':
         specifier: ^1.1.0
         version: 1.1.0
@@ -1594,7 +1594,7 @@ importers:
         version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
       '@types/mime-types':
         specifier: ^2.1.0
         version: 2.1.1
@@ -2592,7 +2592,7 @@ importers:
         version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
       '@types/lossless-json':
         specifier: ^1.0.0
         version: 1.0.1
@@ -2713,7 +2713,7 @@ importers:
         version: 0.15.0
       '@types/lodash':
         specifier: 'catalog:'
-        version: 4.14.195
+        version: 4.17.17
       '@types/luxon':
         specifier: 3.2.0
         version: 3.2.0
@@ -6457,6 +6457,9 @@ packages:
 
   '@types/lodash@4.14.195':
     resolution: {integrity: sha512-Hwx9EUgdwf2GLarOjQp5ZH8ZmblzcbTBC2wtQWNKARBSxM9ezRIAUpeDTgoQRAFB0+8CNWXVA9+MaSOzOF3nPg==}
+
+  '@types/lodash@4.17.17':
+    resolution: {integrity: sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ==}
 
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
@@ -19490,6 +19493,8 @@ snapshots:
 
   '@types/lodash@4.14.195': {}
 
+  '@types/lodash@4.17.17': {}
+
   '@types/long@4.0.2': {}
 
   '@types/lossless-json@1.0.1': {}
@@ -29048,7 +29053,7 @@ snapshots:
   yup@0.32.11:
     dependencies:
       '@babel/runtime': 7.26.10
-      '@types/lodash': 4.14.195
+      '@types/lodash': 4.17.17
       lodash: 4.17.21
       lodash-es: 4.17.21
       nanoclone: 0.2.1
