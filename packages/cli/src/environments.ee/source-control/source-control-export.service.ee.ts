@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	FolderRepository,
@@ -12,7 +13,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
-import { Credentials, InstanceSettings, Logger } from 'n8n-core';
+import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';

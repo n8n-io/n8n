@@ -1,7 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type { User, WorkflowHistory } from '@n8n/db';
 import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 

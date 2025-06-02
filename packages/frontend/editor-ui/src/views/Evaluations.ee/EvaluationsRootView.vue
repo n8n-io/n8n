@@ -6,7 +6,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

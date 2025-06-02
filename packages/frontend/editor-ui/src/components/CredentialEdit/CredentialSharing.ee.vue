@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AllRolesMap } from '@n8n/permissions';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';

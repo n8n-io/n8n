@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
 	Workflow,
 	INode,

@@ -21,10 +21,14 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/config": "workspace:^",
     "@n8n/constants": "workspace:^",
     "@n8n/di": "workspace:^",
+    "callsites": "catalog:",
     "n8n-workflow": "workspace:^",
-    "reflect-metadata": "catalog:"
+    "picocolors": "catalog:",
+    "reflect-metadata": "catalog:",
+    "winston": "3.14.2"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"

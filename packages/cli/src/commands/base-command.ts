@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inTest, LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
@@ -8,7 +8,6 @@ import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
-	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
