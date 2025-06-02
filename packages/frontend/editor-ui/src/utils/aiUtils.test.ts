@@ -1,4 +1,5 @@
-import { addTokenUsageData, parseAiContent } from '@/utils/aiUtils';
+import type { LlmTokenUsageData } from '@/Interface';
+import { addTokenUsageData, formatTokenUsageCount, parseAiContent } from '@/utils/aiUtils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe(parseAiContent, () => {
@@ -111,5 +112,24 @@ describe(addTokenUsageData, () => {
 			...usageData,
 			isEstimate: true,
 		});
+	});
+});
+
+describe(formatTokenUsageCount, () => {
+	const usageData: LlmTokenUsageData = {
+		completionTokens: 11,
+		promptTokens: 22,
+		totalTokens: 33,
+		isEstimate: false,
+	};
+
+	it('should return the number of specified field', () => {
+		expect(formatTokenUsageCount(usageData, 'completion')).toBe('11');
+		expect(formatTokenUsageCount(usageData, 'prompt')).toBe('22');
+		expect(formatTokenUsageCount(usageData, 'total')).toBe('33');
+	});
+
+	it('should prepend "~" if the usage data is an estimation', () => {
+		expect(formatTokenUsageCount({ ...usageData, isEstimate: true }, 'total')).toBe('~33');
 	});
 });

@@ -12,7 +12,7 @@ import { ndvEventBus } from '@/event-bus';
 import { useLogsSelection } from '@/features/logs/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand';
 import { type LogEntry } from '@/features/logs/logs.types';
-import { useLogsStore } from '@/stores/logs.store
+import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
