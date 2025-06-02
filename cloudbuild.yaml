@@ -12,7 +12,50 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:latest']
 
-timeout: 1800s  # 30 minutes
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'n8n'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--timeout=3600'
+      - '--concurrency=1000'
+      - '--max-instances=10'
+      - '--set-env-vars=NODE_ENV=production,N8N_ENCRYPTION_KEY=$$N8N_ENCRYPTION_KEY'
+      - '--set-env-vars=N8N_DB_TYPE=$$N8N_DB_TYPE'
+      - '--set-env-vars=N8N_DB_MYSQL_HOST=$$N8N_DB_MYSQL_HOST'
+      - '--set-env-vars=N8N_DB_MYSQL_PORT=$$N8N_DB_MYSQL_PORT'
+      - '--set-env-vars=N8N_DB_MYSQL_DATABASE=$$N8N_DB_MYSQL_DATABASE'
+      - '--set-env-vars=N8N_DB_MYSQL_USER=$$N8N_DB_MYSQL_USER'
+      - '--set-env-vars=N8N_DB_MYSQL_PASSWORD=$$N8N_DB_MYSQL_PASSWORD'
+    secretEnv: ['N8N_ENCRYPTION_KEY', 'N8N_DB_TYPE', 'N8N_DB_MYSQL_HOST', 'N8N_DB_MYSQL_PORT', 'N8N_DB_MYSQL_DATABASE', 'N8N_DB_MYSQL_USER', 'N8N_DB_MYSQL_PASSWORD']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/n8n-encryption-key/versions/latest
+      env: 'N8N_ENCRYPTION_KEY'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-type/versions/latest
+      env: 'N8N_DB_TYPE'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-mysql-host/versions/latest
+      env: 'N8N_DB_MYSQL_HOST'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-mysql-port/versions/latest
+      env: 'N8N_DB_MYSQL_PORT'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-mysql-database/versions/latest
+      env: 'N8N_DB_MYSQL_DATABASE'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-mysql-user/versions/latest
+      env: 'N8N_DB_MYSQL_USER'
+    - versionName: projects/$PROJECT_ID/secrets/n8n-db-mysql-password/versions/latest
+      env: 'N8N_DB_MYSQL_PASSWORD'
+
+timeout: 2400s  # 40 minutes
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA'

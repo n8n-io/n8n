@@ -1,0 +1,76 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: n8n
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 1000
+      timeoutSeconds: 3600
+      serviceAccountName: n8n-service-account
+      containers:
+      - image: us-central1-docker.pkg.dev/PROJECT_ID/n8n/n8n:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: N8N_PORT
+          value: "8080"
+        - name: N8N_LISTEN_ADDRESS
+          value: "0.0.0.0"
+        - name: N8N_PROTOCOL
+          value: "http"
+        - name: N8N_HOST
+          value: "0.0.0.0"
+        - name: N8N_METRICS
+          value: "true"
+        # Health check endpoint configuration
+        - name: N8N_DISABLE_UI
+          value: "false"
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz/readiness
+            port: 8080
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+  traffic:
+  - percent: 100
+    latestRevision: true

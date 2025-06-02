@@ -24,6 +24,8 @@ RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional
 # 2. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
 ENV NODE_ENV=production
+ENV N8N_PORT=8080
+ENV N8N_LISTEN_ADDRESS=0.0.0.0
 
 ARG N8N_RELEASE_TYPE=dev
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
