@@ -151,6 +151,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
+				httpDurationMetricName: 'n8n_http_request_duration_seconds',
 				autoregister: false,
 				includeUp: false,
 				includePath: false,
