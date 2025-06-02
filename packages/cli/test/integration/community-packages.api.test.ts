@@ -3,7 +3,7 @@ import type { InstalledPackages } from '@n8n/db';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityNodesPackagesService } from '@/modules/community-nodes/community-nodes-packages.service';
 
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { createOwner } from './shared/db/users';
@@ -11,7 +11,7 @@ import type { SuperAgentTest } from './shared/types';
 import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 
-const communityPackagesService = mockInstance(CommunityPackagesService, {
+const communityPackagesService = mockInstance(CommunityNodesPackagesService, {
 	hasMissingPackages: false,
 });
 mockInstance(LoadNodesAndCredentials);

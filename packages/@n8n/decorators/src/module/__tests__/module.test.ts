@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import type { ModuleInterface } from '../module';
+import type { ModuleInterface, ModuleName } from '../module';
 import { BackendModule } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
@@ -15,7 +15,7 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@BackendModule({ name: 'test' })
+		@BackendModule({ name: 'test' as ModuleName })
 		class TestModule implements ModuleInterface {}
 
 		const registeredModules = moduleMetadata.getClasses();
@@ -25,13 +25,13 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register multiple modules', () => {
-		@BackendModule({ name: 'test-1' })
+		@BackendModule({ name: 'test-1' as ModuleName })
 		class FirstModule implements ModuleInterface {}
 
-		@BackendModule({ name: 'test-2' })
+		@BackendModule({ name: 'test-2' as ModuleName })
 		class SecondModule implements ModuleInterface {}
 
-		@BackendModule({ name: 'test-3' })
+		@BackendModule({ name: 'test-3' as ModuleName })
 		class ThirdModule implements ModuleInterface {}
 
 		const registeredModules = moduleMetadata.getClasses();
@@ -43,14 +43,14 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should apply Service decorator', () => {
-		@BackendModule({ name: 'test' })
+		@BackendModule({ name: 'test' as ModuleName })
 		class TestModule implements ModuleInterface {}
 
 		expect(Container.has(TestModule)).toBe(true);
 	});
 
 	it('stores the test name and licenseFlag flag in the metadata', () => {
-		const name = 'test';
+		const name = 'test' as ModuleName;
 		const licenseFlag = 'feat:ldap';
 
 		@BackendModule({ name, licenseFlag })

@@ -34,6 +34,7 @@ export class InstanceSettings {
 	/** The path to the folder containing custom nodes and credentials */
 	readonly customExtensionDir = path.join(this.n8nFolder, 'custom');
 
+	// TODO: move to the community-nodes module
 	/** The path to the folder containing installed nodes (like community nodes) */
 	readonly nodesDownloadDir = path.join(this.n8nFolder, 'nodes');
 

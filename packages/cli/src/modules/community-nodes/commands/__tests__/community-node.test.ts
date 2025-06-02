@@ -4,7 +4,7 @@ import { type User } from '@n8n/db';
 import { type Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 
-import { CommunityNode } from '../community-node';
+import { CommunityNode } from '../community-node.command';
 
 describe('uninstallCredential', () => {
 	const userId = '1234';

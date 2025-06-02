@@ -1,11 +1,11 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { Logger, inProduction } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ensureError, type INodeTypeDescription } from 'n8n-workflow';
 
-import { CommunityPackagesService } from './community-packages.service';
-import { getCommunityNodeTypes } from '../utils/community-node-types-utils';
+import { CommunityNodesPackagesService } from './community-nodes-packages.service';
+import { getCommunityNodeTypes } from './community-nodes-types-utils';
+import { CommunityNodesConfig } from './community-nodes.config';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
@@ -28,24 +28,21 @@ export type StrapiCommunityNodeType = {
 };
 
 @Service()
-export class CommunityNodeTypesService {
+export class CommunityNodesTypesService {
 	private communityNodeTypes: Map<string, StrapiCommunityNodeType> = new Map();
 
 	private lastUpdateTimestamp = 0;
 
 	constructor(
 		private readonly logger: Logger,
-		private globalConfig: GlobalConfig,
-		private communityPackagesService: CommunityPackagesService,
+		private readonly config: CommunityNodesConfig,
+		private readonly packagesService: CommunityNodesPackagesService,
 	) {}
 
 	private async fetchNodeTypes() {
 		try {
 			let data: StrapiCommunityNodeType[] = [];
-			if (
-				this.globalConfig.nodes.communityPackages.enabled &&
-				this.globalConfig.nodes.communityPackages.verifiedEnabled
-			) {
+			if (this.config.enabled && this.config.verifiedEnabled) {
 				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
 				const environment =
 					inProduction || process.env.ENVIRONMENT === 'production' ? 'production' : 'staging';
@@ -78,7 +75,7 @@ export class CommunityNodeTypesService {
 	}
 
 	private async createIsInstalled() {
-		const installedPackages = (await this.communityPackagesService.getAllInstalledPackages()) ?? [];
+		const installedPackages = (await this.packagesService.getAllInstalledPackages()) ?? [];
 		const installedPackageNames = new Set(installedPackages.map((p) => p.packageName));
 
 		return (nodeTypeName: string) => installedPackageNames.has(nodeTypeName.split('.')[0]);

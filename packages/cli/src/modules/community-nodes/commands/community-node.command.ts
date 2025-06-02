@@ -3,10 +3,10 @@ import { CredentialsRepository, InstalledNodesRepository, UserRepository } from 
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 
+import { BaseCommand } from '@/commands/base-command';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 
-import { BaseCommand } from './base-command';
+import { CommunityNodesPackagesService } from '../community-nodes-packages.service';
 
 export class CommunityNode extends BaseCommand {
 	static description = '\nUninstall a community node and its credentials';
@@ -34,8 +34,12 @@ export class CommunityNode extends BaseCommand {
 		}),
 	};
 
+	private packagesService: CommunityNodesPackagesService;
+
 	async init() {
 		await super.init();
+
+		this.packagesService = Container.get(CommunityNodesPackagesService);
 	}
 
 	async run() {
@@ -136,7 +140,7 @@ export class CommunityNode extends BaseCommand {
 	}
 
 	async pruneDependencies() {
-		await Container.get(CommunityPackagesService).executeNpmCommand('npm prune');
+		await this.packagesService.executeNpmCommand('npm prune');
 	}
 
 	async parseFlags() {
@@ -150,13 +154,10 @@ export class CommunityNode extends BaseCommand {
 	}
 
 	async removeCommunityPackage(packageName: string, communityPackage: InstalledPackages) {
-		return await Container.get(CommunityPackagesService).removePackage(
-			packageName,
-			communityPackage,
-		);
+		return await this.packagesService.removePackage(packageName, communityPackage);
 	}
 
 	async findCommunityPackage(packageName: string) {
-		return await Container.get(CommunityPackagesService).findInstalledPackage(packageName);
+		return await this.packagesService.findInstalledPackage(packageName);
 	}
 }

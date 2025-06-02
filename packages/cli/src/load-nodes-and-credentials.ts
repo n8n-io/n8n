@@ -30,6 +30,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { CommunityNodesConfig } from '@/modules/community-nodes/community-nodes.config';
 import { isContainedWithin } from '@/utils/path-util';
 
 @Service()
@@ -56,6 +57,7 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly communityNodesConfig: CommunityNodesConfig,
 	) {}
 
 	async init() {
@@ -88,7 +90,8 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+		// TODO: move this block to the community-nodes module
+		if (!this.communityNodesConfig.preventLoading) {
 			// Load nodes from any other `n8n-nodes-*` packages in the download directory
 			// This includes the community nodes
 			await this.loadNodesFromNodeModules(
@@ -204,6 +207,7 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	// TODO: move to the community-nodes module
 	async loadPackage(packageName: string) {
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,

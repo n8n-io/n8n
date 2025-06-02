@@ -70,9 +70,6 @@ export abstract class BaseCommand extends Command {
 	protected gracefulShutdownTimeoutInS =
 		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
-	/** Whether to init community packages (if enabled) */
-	protected needsCommunityPackages = false;
-
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
 
@@ -133,12 +130,6 @@ export abstract class BaseCommand extends Command {
 			this.logger.warn(
 				'Scaling mode is not officially supported with sqlite. Please use PostgreSQL instead.',
 			);
-		}
-
-		const { communityPackages } = this.globalConfig.nodes;
-		if (communityPackages.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import('@/services/community-packages.service');
-			await Container.get(CommunityPackagesService).init();
 		}
 
 		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {

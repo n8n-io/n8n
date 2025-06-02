@@ -117,8 +117,6 @@ export class ExecuteBatch extends BaseCommand {
 
 	static aliases = ['executeBatch'];
 
-	override needsCommunityPackages = true;
-
 	override needsTaskRunner = true;
 
 	/**

@@ -2,25 +2,25 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import type { InstalledPackages } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { CommunityPackagesController } from '@/controllers/community-packages.controller';
+import type { EventService } from '@/events/event.service';
+import type { Push } from '@/push';
 import type { NodeRequest } from '@/requests';
 
-import type { EventService } from '../../events/event.service';
-import type { Push } from '../../push';
-import type { CommunityNodeTypesService } from '../../services/community-node-types.service';
-import type { CommunityPackagesService } from '../../services/community-packages.service';
+import { CommunityNodesPackagesController } from '../community-nodes-packages.controller';
+import type { CommunityNodesPackagesService } from '../community-nodes-packages.service';
+import type { CommunityNodesTypesService } from '../community-nodes-types.service';
 
-describe('CommunityPackagesController', () => {
+describe('CommunityNodesPackagesController', () => {
 	const push = mock<Push>();
-	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
-	const communityNodeTypesService = mock<CommunityNodeTypesService>();
+	const packagesService = mock<CommunityNodesPackagesService>();
+	const typesService = mock<CommunityNodesTypesService>();
 
-	const controller = new CommunityPackagesController(
+	const controller = new CommunityNodesPackagesController(
 		push,
-		communityPackagesService,
 		eventService,
-		communityNodeTypesService,
+		packagesService,
+		typesService,
 	);
 
 	beforeEach(() => {
@@ -33,7 +33,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			typesService.findVetted.mockReturnValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
@@ -44,22 +44,22 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(
+			typesService.findVetted.mockReturnValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),
 			);
-			communityPackagesService.parseNpmPackageName.mockReturnValue({
+			packagesService.parseNpmPackageName.mockReturnValue({
 				rawString: 'n8n-nodes-test',
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
 			});
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
-			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
+			packagesService.isPackageInstalled.mockResolvedValue(false);
+			packagesService.hasPackageLoaded.mockReturnValue(false);
+			packagesService.checkNpmPackageStatus.mockResolvedValue({
 				status: 'OK',
 			});
-			communityPackagesService.installPackage.mockResolvedValue(
+			packagesService.installPackage.mockResolvedValue(
 				mock<InstalledPackages>({
 					installedNodes: [],
 				}),
@@ -67,7 +67,7 @@ describe('CommunityPackagesController', () => {
 
 			await controller.installPackage(request);
 
-			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+			expect(packagesService.installPackage).toHaveBeenCalledWith(
 				'n8n-nodes-test',
 				'1.0.0',
 				'checksum',

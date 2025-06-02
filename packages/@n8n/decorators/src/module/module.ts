@@ -30,8 +30,12 @@ export type ModuleClass = Constructable<ModuleInterface>;
 
 export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 
+export const MODULE_NAMES = ['insights', 'community-nodes', 'external-secrets'] as const;
+
+export type ModuleName = (typeof MODULE_NAMES)[number];
+
 export const BackendModule =
-	(opts: { name: string; licenseFlag?: LicenseFlag }): ClassDecorator =>
+	(opts: { name: ModuleName; licenseFlag?: LicenseFlag }): ClassDecorator =>
 	(target) => {
 		Container.get(ModuleMetadata).register(opts.name, {
 			class: target as unknown as ModuleClass,

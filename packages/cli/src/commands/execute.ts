@@ -27,8 +27,6 @@ export class Execute extends BaseCommand {
 		}),
 	};
 
-	override needsCommunityPackages = true;
-
 	override needsTaskRunner = true;
 
 	async init() {

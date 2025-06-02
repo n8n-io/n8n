@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import glob from 'fast-glob';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -10,19 +9,13 @@ import {
 	ENV_VARS_DOCS_URL,
 	NODES_REPORT,
 	COMMUNITY_NODES_RISKS_URL,
-	NPM_PACKAGE_URL,
 } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { getNodeTypes } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
-	constructor(
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly globalConfig: GlobalConfig,
-	) {}
+	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
 
 	async report(workflows: IWorkflowBase[]) {
 		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
@@ -87,21 +80,8 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!this.globalConfig.nodes.communityPackages.enabled) return [];
-
-		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
-
-		return installedPackages.reduce<Risk.CommunityNodeDetails[]>((acc, pkg) => {
-			pkg.installedNodes.forEach((node) =>
-				acc.push({
-					kind: 'community',
-					nodeType: node.type,
-					packageUrl: [NPM_PACKAGE_URL, pkg.packageName].join('/'),
-				}),
-			);
-
-			return acc;
-		}, []);
+		// TODO: implement risk reporting in modules
+		return [];
 	}
 
 	private async getCustomNodeDetails() {

@@ -21,8 +21,6 @@ export class Webhook extends BaseCommand {
 
 	protected server = Container.get(WebhookServer);
 
-	override needsCommunityPackages = true;
-
 	/**
 	 * Stops n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services

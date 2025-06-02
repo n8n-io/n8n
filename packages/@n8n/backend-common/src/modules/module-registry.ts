@@ -1,12 +1,11 @@
 import { ModuleMetadata } from '@n8n/decorators';
-import type { EntityClass, ModuleSettings } from '@n8n/decorators';
+import type { EntityClass, ModuleName, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import path from 'path';
 
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
 import { ModulesConfig } from './modules.config';
-import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
 
@@ -23,7 +22,11 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+	private readonly defaultModules: ModuleName[] = [
+		'insights',
+		'community-nodes',
+		'external-secrets',
+	];
 
 	private readonly activeModules: string[] = [];
 

@@ -2,7 +2,7 @@ import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
@@ -19,7 +19,6 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -33,8 +32,6 @@ import { UrlService } from './url.service';
 @Service()
 export class FrontendService {
 	settings: FrontendSettings;
-
-	private communityPackagesService?: CommunityPackagesService;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -56,12 +53,6 @@ export class FrontendService {
 		void this.generateTypes();
 
 		this.initSettings();
-
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
-				this.communityPackagesService = Container.get(CommunityPackagesService);
-			});
-		}
 	}
 
 	private initSettings() {
@@ -179,8 +170,9 @@ export class FrontendService {
 			executionMode: config.getEnv('executions.mode'),
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
-			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
-			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
+			// TODO: implement frontend config for modules
+			communityNodesEnabled: true,
+			unverifiedCommunityNodesEnabled: true,
 			deployment: {
 				type: this.globalConfig.deployment.type,
 			},
@@ -364,9 +356,9 @@ export class FrontendService {
 			});
 		}
 
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
-		}
+		// if (this.communityPackagesService) {
+		// 	this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
+		// }
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;

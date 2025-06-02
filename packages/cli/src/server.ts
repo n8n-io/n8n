@@ -115,11 +115,6 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/community-packages.controller');
-			await import('@/controllers/community-node-types.controller');
-		}
-
 		if (inE2ETests) {
 			await import('@/controllers/e2e.controller');
 		}

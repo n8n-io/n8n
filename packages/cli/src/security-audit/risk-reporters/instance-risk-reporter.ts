@@ -1,4 +1,4 @@
-import { inDevelopment, Logger } from '@n8n/backend-common';
+import { inDevelopment, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,6 +23,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly modulesRegistry: ModuleRegistry,
 	) {}
 
 	async report(workflows: IWorkflowBase[]) {
@@ -88,7 +89,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		const settings: Record<string, unknown> = {};
 
 		settings.features = {
-			communityPackagesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			communityPackagesEnabled: this.modulesRegistry.isActive('community-nodes'),
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),

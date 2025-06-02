@@ -38,8 +38,6 @@ export class Worker extends BaseCommand {
 
 	scalingService: ScalingService;
 
-	override needsCommunityPackages = true;
-
 	override needsTaskRunner = true;
 
 	/**

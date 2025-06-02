@@ -1,10 +1,8 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
+import type { ModuleName } from '@n8n/decorators';
+import { MODULE_NAMES } from '@n8n/decorators';
 
 import { UnknownModuleError } from './errors/unknown-module.error';
-
-export const MODULE_NAMES = ['insights', 'external-secrets'] as const;
-
-export type ModuleName = (typeof MODULE_NAMES)[number];
 
 class ModuleArray extends CommaSeparatedStringArray<ModuleName> {
 	constructor(str: string) {

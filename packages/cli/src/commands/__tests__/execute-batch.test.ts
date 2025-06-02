@@ -71,7 +71,7 @@ test('should start a task runner when task runners are enabled', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: { enabled: true },
-			nodes: { communityPackages: { enabled: false } },
+			nodes: {},
 		}),
 	);
 

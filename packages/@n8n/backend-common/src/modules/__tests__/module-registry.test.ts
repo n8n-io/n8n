@@ -1,11 +1,11 @@
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
+import { MODULE_NAMES } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
-import { MODULE_NAMES } from '../modules.config';
 
 beforeEach(() => {
 	jest.resetAllMocks();

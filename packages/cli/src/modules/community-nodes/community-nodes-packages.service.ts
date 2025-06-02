@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstalledPackages } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
@@ -22,13 +21,14 @@ import {
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
-import { verifyIntegrity } from '../utils/npm-utils';
+import { CommunityNodesConfig } from './community-nodes.config';
+import { verifyIntegrity } from './npm-utils';
+import type { AvailableUpdates, PackageStatusCheck, ParsedPackageName } from './types';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -66,7 +66,7 @@ type PackageJson = {
 };
 
 @Service()
-export class CommunityPackagesService {
+export class CommunityNodesPackagesService {
 	reinstallMissingPackages = false;
 
 	missingPackages: string[] = [];
@@ -76,13 +76,13 @@ export class CommunityPackagesService {
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	constructor(
+		private readonly config: CommunityNodesConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly publisher: Publisher,
 		private readonly license: License,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async init() {
@@ -128,7 +128,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	parseNpmPackageName(rawString?: string): CommunityPackages.ParsedPackageName {
+	parseNpmPackageName(rawString?: string): ParsedPackageName {
 		if (!rawString) throw new UnexpectedError(PACKAGE_NAME_NOT_PROVIDED);
 
 		if (INVALID_OR_SUSPICIOUS_PACKAGE_NAME.test(rawString)) {
@@ -191,10 +191,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	matchPackagesWithUpdates(
-		packages: InstalledPackages[],
-		updates?: CommunityPackages.AvailableUpdates,
-	) {
+	matchPackagesWithUpdates(packages: InstalledPackages[], updates?: AvailableUpdates) {
 		if (!updates) return packages;
 
 		return packages.reduce<PublicInstalledPackage[]>((acc, cur) => {
@@ -242,7 +239,7 @@ export class CommunityPackagesService {
 		const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 		try {
-			const response = await axios.post<CommunityPackages.PackageStatusCheck>(
+			const response = await axios.post<PackageStatusCheck>(
 				N8N_BACKEND_SERVICE_URL,
 				{ name: packageName },
 				{ method: 'POST' },
@@ -312,7 +309,7 @@ export class CommunityPackagesService {
 
 		if (missingPackages.size === 0) return;
 
-		const { reinstallMissing } = this.globalConfig.nodes.communityPackages;
+		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
 			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
 			try {
@@ -363,7 +360,7 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmRegistry() {
-		const { registry } = this.globalConfig.nodes.communityPackages;
+		const { registry } = this.config;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
@@ -379,7 +376,7 @@ export class CommunityPackagesService {
 	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
 		if (isUpdate) return;
 
-		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
+		if (!this.config.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
 	}
