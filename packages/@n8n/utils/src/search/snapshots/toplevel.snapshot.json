@@ -6787,9 +6787,9 @@
 		"properties": {
 			"displayName": "Microsoft Entra ID",
 			"defaults": {
-				"name": "Micosoft Entra ID"
+				"name": "Microsoft Entra ID"
 			},
-			"description": "Interact with Micosoft Entra ID API",
+			"description": "Interact with Microsoft Entra ID API",
 			"name": "n8n-nodes-base.microsoftEntra",
 			"group": ["transform"],
 			"iconUrl": {
