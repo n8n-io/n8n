@@ -52,18 +52,6 @@ export class DocumentGithubLoaderV2 implements INodeType {
 			properties: [
 				getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 				{
-					displayName: 'Repository Link',
-					name: 'repository',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Branch',
-					name: 'branch',
-					type: 'string',
-					default: 'main',
-				},
-				{
 					displayName: 'Text Splitting',
 					name: 'textSplittingMode',
 					type: 'options',
@@ -82,6 +70,18 @@ export class DocumentGithubLoaderV2 implements INodeType {
 							description: 'Connect a text splitter of your choice',
 						},
 					],
+				},
+				{
+					displayName: 'Repository Link',
+					name: 'repository',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Branch',
+					name: 'branch',
+					type: 'string',
+					default: 'main',
 				},
 				{
 					displayName: 'Options',

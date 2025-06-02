@@ -32,7 +32,6 @@ function getInputs(parameters: IDataObject) {
 			displayName: 'Text Splitter',
 			maxConnections: 1,
 			type: 'ai_textSplitter',
-			required: true,
 		});
 	}
 
