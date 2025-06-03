@@ -93,7 +93,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 					{
 						name: 'Simple',
 						value: 'simple',
-						description: 'Uses Recursive Character Text Splitter with default options',
+						description: 'Uses the Recursive Character Text Splitter with default options',
 					},
 					{
 						name: 'Custom',
