@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
-import * as eventsApi from '@/api/events';
+import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';

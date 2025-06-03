@@ -1639,64 +1639,6 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
-  packages/frontend/@n8n/rest-api-client:
-    dependencies:
-      '@n8n/api-types':
-        specifier: workspace:*
-        version: link:../../../@n8n/api-types
-      '@n8n/constants':
-        specifier: workspace:*
-        version: link:../../../@n8n/constants
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../../../@n8n/utils
-      axios:
-        specifier: 'catalog:'
-        version: 1.8.3
-      flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
-      js-base64:
-        specifier: 'catalog:'
-        version: 3.7.2
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
-    devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
-      '@n8n/i18n':
-        specifier: workspace:*
-        version: link:../i18n
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/typescript-config
-      '@n8n/vitest-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/vitest-config
-      '@testing-library/jest-dom':
-        specifier: catalog:frontend
-        version: 6.6.3
-      '@testing-library/user-event':
-        specifier: catalog:frontend
-        version: 14.6.1(@testing-library/dom@10.4.0)
-      tsup:
-        specifier: 'catalog:'
-        version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.19.103))(jiti@1.21.0)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)
-      typescript:
-        specifier: ^5.8.2
-        version: 5.8.2
-      vite:
-        specifier: catalog:frontend
-        version: 6.3.5(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
-      vitest:
-        specifier: catalog:frontend
-        version: 3.1.3(@types/debug@4.1.12)(@types/node@18.19.103)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
-
   packages/frontend/@n8n/chat:
     dependencies:
       '@vueuse/core':
@@ -1988,6 +1930,64 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
+  packages/frontend/@n8n/rest-api-client:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      axios:
+        specifier: 'catalog:'
+        version: 1.8.3
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
+      js-base64:
+        specifier: 'catalog:'
+        version: 3.7.2
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.0)
+      tsup:
+        specifier: 'catalog:'
+        version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.19.103))(jiti@1.21.0)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+      vite:
+        specifier: catalog:frontend
+        version: 6.3.5(@types/node@18.19.103)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
+      vitest:
+        specifier: catalog:frontend
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@18.19.103)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
+
   packages/frontend/@n8n/stores:
     dependencies:
       n8n-workflow:
@@ -2096,9 +2096,6 @@ importers:
       '@lezer/common':
         specifier: 1.1.0
         version: 1.1.0
-      '@n8n/rest-api-client':
-        specifier: workspace:*
-        version: link:../@n8n/rest-api-client
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types
@@ -2114,6 +2111,9 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../@n8n/composables
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../@n8n/constants
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
@@ -2123,6 +2123,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
+      '@n8n/rest-api-client':
+        specifier: workspace:*
+        version: link:../@n8n/rest-api-client
       '@n8n/stores':
         specifier: workspace:*
         version: link:../@n8n/stores
