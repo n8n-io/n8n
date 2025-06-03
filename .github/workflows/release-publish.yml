@@ -74,7 +74,7 @@ jobs:
     needs: [publish-to-npm]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -101,7 +101,20 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build
+      - name: Build application on linux/amd64
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
+        with:
+          context: .
+          file: docker/images/n8n/Dockerfile
+          target: builder
+          build-args: |
+            N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          outputs: type=cacheonly
+
+      - name: Package for linux/amd64 and linux/arm64
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
           DOCKER_BUILD_SUMMARY: false
@@ -111,7 +124,7 @@ jobs:
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
             N8N_RELEASE_TYPE=stable
-          cache-from: type=gha
+          cache-from: type=gha # reuse cached builder
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           provenance: false
