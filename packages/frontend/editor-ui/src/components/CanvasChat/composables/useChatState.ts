@@ -8,7 +8,7 @@ import { VIEWS } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
