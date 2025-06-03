@@ -122,7 +122,7 @@ export class OutputParserStructured implements INodeType {
 			},
 			{
 				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
+					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples. Please note that we don\'t support references (using $refs) in JSON schema.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
