@@ -2,12 +2,12 @@
 import { isChatNode } from '@/components/CanvasChat/utils';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { type INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
-import { type ActionDropdownItem, N8nActionDropdown, N8nButton } from '@n8n/design-system';
+import { type ActionDropdownItem, N8nActionDropdown, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
-import { ref, computed } from 'vue';
+import { watch, ref, computed } from 'vue';
+import { findTriggerNodeToAutoSelect } from '@/utils/executionUtils';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -20,21 +20,15 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
+	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
 
 const i18n = useI18n();
-const typeStore = useNodeTypesStore();
 
-const manuallySelectedTriggerNodeName = ref<string>();
+const selectedTriggerNode = ref<string>();
 
 const triggerNodes = computed(() => props.triggerNodes.filter((node) => !isChatNode(node)));
 const selectableTriggerNodes = computed(() => triggerNodes.value.filter((node) => !node.disabled));
-const selectedTriggerNode = computed(() =>
-	manuallySelectedTriggerNodeName.value &&
-	selectableTriggerNodes.value.some((node) => node.name === manuallySelectedTriggerNodeName.value)
-		? manuallySelectedTriggerNodeName.value
-		: getAutoSelectedTrigger()?.name,
-);
 const label = computed(() => {
 	if (!props.executing) {
 		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
@@ -69,12 +63,7 @@ function handleClickButton() {
 }
 
 function handleSelectTrigger(nodeName: string) {
-	manuallySelectedTriggerNodeName.value = nodeName;
-	emit('click', nodeName);
-}
-
-function getAutoSelectedTrigger() {
-	return selectableTriggerNodes.value.find((node) => !node.disabled);
+	selectedTriggerNode.value = nodeName;
 }
 
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
@@ -84,8 +73,34 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		return null;
 	}
 
-	return typeStore.getNodeType(node.type, node.typeVersion);
+	return props.getNodeType(node.type, node.typeVersion);
 }
+
+watch(
+	selectableTriggerNodes,
+	(newSelectable, oldSelectable) => {
+		if (
+			selectedTriggerNode.value === undefined ||
+			newSelectable.every((node) => node.name !== selectedTriggerNode.value)
+		) {
+			selectedTriggerNode.value = findTriggerNodeToAutoSelect(
+				selectableTriggerNodes.value,
+				props.getNodeType,
+			)?.name;
+			return;
+		}
+
+		const newTrigger = newSelectable?.find((node) =>
+			oldSelectable?.every((old) => old.name !== node.name),
+		);
+
+		if (newTrigger !== undefined) {
+			// Select newly added node
+			selectedTriggerNode.value = newTrigger.name;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -106,16 +121,19 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<span :class="$style.buttonContent">
 					{{ label }}
-					<span
+					<N8nText
 						v-if="selectedTriggerNode && selectableTriggerNodes.length > 1"
 						:class="$style.subText"
+						:bold="false"
 					>
 						<I18nT keypath="nodeView.runButtonText.from">
 							<template #nodeName>
-								<b>{{ truncateBeforeLast(selectedTriggerNode, 25) }}</b>
+								<N8nText bold size="mini">
+									{{ truncateBeforeLast(selectedTriggerNode, 25) }}
+								</N8nText>
 							</template>
 						</I18nT>
-					</span>
+					</N8nText>
 				</span>
 			</N8nButton>
 		</KeyboardShortcutTooltip>
@@ -136,7 +154,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						<span>
 							<I18nT keypath="nodeView.runButtonText.from">
 								<template #nodeName>
-									<b>{{ item.label }}</b>
+									<N8nText bold size="small">{{ item.label }}</N8nText>
 								</template>
 							</I18nT>
 						</span>
@@ -153,10 +171,15 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	align-items: stretch;
 }
 
-.split .button {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-	padding-block: var(--spacing-2xs);
+.button {
+	/* Disable animation of size and spacing when switching between split button and normal button */
+	transition: none;
+
+	.split & {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+		padding-block: var(--spacing-2xs);
+	}
 }
 
 .divider {

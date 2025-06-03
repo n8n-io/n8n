@@ -1,4 +1,8 @@
-import { SEND_AND_WAIT_OPERATION, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -7,10 +11,20 @@ import type {
 	IPinData,
 	IRunData,
 	ExecutionError,
+	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
+import {
+	CORE_NODES_CATEGORY,
+	ERROR_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	GITHUB_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_TRIGGER_NODE_TYPE,
+} from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
@@ -355,4 +369,42 @@ export function getExecutionErrorToastConfiguration({
 			: 'Problem executing workflow',
 		message,
 	};
+}
+
+export function findTriggerNodeToAutoSelect(
+	triggerNodes: INodeUi[],
+	getNodeType: (type: string, typeVersion: number) => INodeTypeBaseDescription | null,
+) {
+	const autoSelectPriorities: Record<string, number | undefined> = {
+		[FORM_TRIGGER_NODE_TYPE]: 10,
+		[WEBHOOK_NODE_TYPE]: 9,
+		// ..."Other apps"
+		[SCHEDULE_TRIGGER_NODE_TYPE]: 7,
+		[MANUAL_TRIGGER_NODE_TYPE]: 6,
+		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
+		[ERROR_TRIGGER_NODE_TYPE]: 4,
+	};
+
+	function isCoreNode(node: INodeUi): boolean {
+		const nodeType = getNodeType(node.type, node.typeVersion);
+
+		return nodeType?.codex?.categories?.includes(CORE_NODES_CATEGORY) ?? false;
+	}
+
+	return triggerNodes
+		.toSorted((a, b) => {
+			let aPriority = autoSelectPriorities[a.type];
+			let bPriority = autoSelectPriorities[b.type];
+
+			if (aPriority === undefined && !isCoreNode(a)) {
+				aPriority = 8;
+			}
+
+			if (bPriority === undefined && !isCoreNode(b)) {
+				bPriority = 8;
+			}
+
+			return (bPriority ?? 0) - (aPriority ?? 0);
+		})
+		.find((node) => !node.disabled);
 }

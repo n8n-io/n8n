@@ -2017,6 +2017,7 @@ onBeforeUnmount(() => {
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
 				:trigger-nodes="triggerNodes"
+				:get-node-type="nodeTypesStore.getNodeType"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="runEntireWorkflow('main', $event)"
