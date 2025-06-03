@@ -11,20 +11,31 @@ function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
 		return typeof property === 'object' && property !== null && 'type' in property;
 	}
 
-	if (!schema.properties) {
-		return schema;
-	}
-
-	const requiredProperties = Object.keys(schema.properties);
-	if (requiredProperties.length > 0) {
-		schema.required = requiredProperties;
-	}
-
-	for (const key of requiredProperties) {
-		const property = schema.properties[key];
-		if (isPropertySchema(property) && property.properties) {
-			makeAllPropertiesRequired(property);
+	// Handle object properties
+	if (schema.properties) {
+		const requiredProperties = Object.keys(schema.properties);
+		if (requiredProperties.length > 0) {
+			schema.required = requiredProperties;
 		}
+
+		for (const key of requiredProperties) {
+			const property = schema.properties[key];
+			if (isPropertySchema(property)) {
+				// Recursively handle nested objects
+				if (property.properties) {
+					makeAllPropertiesRequired(property);
+				}
+				// Handle arrays with object items
+				if (property.type === 'array' && property.items && isPropertySchema(property.items)) {
+					makeAllPropertiesRequired(property.items);
+				}
+			}
+		}
+	}
+
+	// Handle root-level arrays
+	if (schema.type === 'array' && schema.items && isPropertySchema(schema.items)) {
+		makeAllPropertiesRequired(schema.items);
 	}
 
 	return schema;

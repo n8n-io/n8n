@@ -277,6 +277,34 @@ describe('generateSchemaFromExample', () => {
 			},
 		});
 	});
+
+	it('should handle array of objects with allFieldsRequired true', () => {
+		const example = JSON.stringify([
+			{ id: 1, name: 'Item 1', metadata: { tag: 'prod' } },
+			{ id: 2, name: 'Item 2', metadata: { tag: 'dev' } },
+		]);
+
+		const schema = generateSchemaFromExample(example, true);
+
+		expect(schema).toMatchObject({
+			type: 'array',
+			items: {
+				type: 'object',
+				properties: {
+					id: { type: 'number' },
+					name: { type: 'string' },
+					metadata: {
+						type: 'object',
+						properties: {
+							tag: { type: 'string' },
+						},
+						required: ['tag'],
+					},
+				},
+				required: ['id', 'name', 'metadata'],
+			},
+		});
+	});
 });
 
 describe('convertJsonSchemaToZod', () => {
