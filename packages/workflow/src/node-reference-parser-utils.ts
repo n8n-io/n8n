@@ -1,4 +1,7 @@
-import { escapeRegExp, mapValues, isEqual, cloneDeep } from 'lodash';
+import cloneDeep from 'lodash/cloneDeep';
+import escapeRegExp from 'lodash/escapeRegExp';
+import isEqual from 'lodash/isEqual';
+import mapValues from 'lodash/mapValues';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './interfaces';

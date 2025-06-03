@@ -12,7 +12,7 @@ import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { orderBy } from 'lodash-es';
+import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
 
