@@ -30,6 +30,11 @@ type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
 	mfaCode?: string;
 };
 
+type RoleContent = {
+	name: string;
+	description: string;
+};
+
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
@@ -85,28 +90,32 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<IRole, string>>(() => ({
-	[ROLE.Default]: i18n.baseText('auth.roles.default'),
-	[ROLE.Member]: i18n.baseText('auth.roles.member'),
-	[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
-	[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
+const roles = computed<Record<IRole, RoleContent>>(() => ({
+	[ROLE.Default]: {
+		name: i18n.baseText('auth.roles.default'),
+		description: i18n.baseText('settings.personal.role.tooltip.default'),
+	},
+	[ROLE.Member]: {
+		name: i18n.baseText('auth.roles.member'),
+		description: i18n.baseText('settings.personal.role.tooltip.member'),
+	},
+	[ROLE.Admin]: {
+		name: i18n.baseText('auth.roles.admin'),
+		description: i18n.baseText('settings.personal.role.tooltip.admin'),
+	},
+	[ROLE.Owner]: {
+		name: i18n.baseText('auth.roles.owner'),
+		description: i18n.baseText('settings.personal.role.tooltip.owner', {
+			interpolate: {
+				cloudAccess: cloudPlanStore.hasCloudPlan
+					? i18n.baseText('settings.personal.role.tooltip.cloud')
+					: '',
+			},
+		}),
+	},
 }));
 
-const roleTooltipText = computed<Record<IRole, string>>(() => ({
-	[ROLE.Default]: i18n.baseText('settings.personal.role.tooltip.default'),
-	[ROLE.Member]: i18n.baseText('settings.personal.role.tooltip.member'),
-	[ROLE.Admin]: i18n.baseText('settings.personal.role.tooltip.admin'),
-	[ROLE.Owner]: i18n.baseText('settings.personal.role.tooltip.owner', {
-		interpolate: {
-			cloudAccess: cloudPlanStore.hasCloudPlan
-				? i18n.baseText('settings.personal.role.tooltip.cloud')
-				: '',
-		},
-	}),
-}));
-
-const currentUserRole = computed(() => roles.value[usersStore.globalRoleName]);
-const currentUserRoleTooltip = computed(() => roleTooltipText.value[usersStore.globalRoleName]);
+const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
@@ -288,9 +297,9 @@ onBeforeUnmount(() => {
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-base" bold>{{ currentUser.fullName }}</n8n-text>
 					<N8nTooltip placement="bottom">
-						<template #content>{{ currentUserRoleTooltip }}</template>
+						<template #content>{{ currentUserRole.description }}</template>
 						<n8n-text :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
-							currentUserRole
+							currentUserRole.name
 						}}</n8n-text>
 					</N8nTooltip>
 				</span>
