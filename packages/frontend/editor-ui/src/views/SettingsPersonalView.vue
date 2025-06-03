@@ -85,8 +85,8 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed(
-	(): Record<IRole, string> => ({
+const roles = computed<Record<IRole, string>>(
+	() => ({
 		[ROLE.Default]: i18n.baseText('auth.roles.default'),
 		[ROLE.Member]: i18n.baseText('auth.roles.member'),
 		[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
