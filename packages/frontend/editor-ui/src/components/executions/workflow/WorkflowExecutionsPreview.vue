@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from '@/components/executions/workflow/WorkflowExecutionAnnotationPanel.ee.vue';
+import WorkflowExecutionAnnotationTags from '@/components/executions/workflow/WorkflowExecutionAnnotationTags.ee.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
@@ -16,9 +17,6 @@ import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useTelemetry } from '@/composables/useTelemetry';
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -34,7 +32,6 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
-const telemetry = useTelemetry();
 const { showError } = useToast();
 
 const executionHelpers = useExecutionHelpers();
@@ -87,13 +84,6 @@ const activeExecution = computed(() => {
 });
 
 const vote = computed(() => activeExecution.value?.annotation?.vote || null);
-
-const tagIds = computed(() => activeExecution.value?.annotation?.tags.map((tag) => tag.id) ?? []);
-const tags = computed(() => activeExecution.value?.annotation?.tags);
-const tagsEventBus = createEventBus();
-const isTagsEditEnabled = ref(false);
-const appliedTagIds = ref<string[]>([]);
-const tagsSaving = ref(false);
 
 const customDataLength = computed(() => {
 	return activeExecution.value?.customData
@@ -163,62 +153,6 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	} catch (e) {
 		showError(e, 'executionAnnotationView.vote.error');
 	}
-};
-
-const tagsHasChanged = (prev: string[], curr: string[]) => {
-	if (prev.length !== curr.length) {
-		return true;
-	}
-
-	const set = new Set(prev);
-	return curr.reduce((acc, val) => acc || !set.has(val), false);
-};
-
-const onTagsEditEnable = () => {
-	appliedTagIds.value = tagIds.value;
-	isTagsEditEnabled.value = true;
-
-	tagsEventBus.emit('focus');
-};
-
-const onTagsBlur = async () => {
-	if (!activeExecution.value) {
-		return;
-	}
-
-	const currentTagIds = tagIds.value ?? [];
-	const newTagIds = appliedTagIds.value;
-
-	if (!tagsHasChanged(currentTagIds, newTagIds)) {
-		isTagsEditEnabled.value = false;
-		return;
-	}
-
-	if (tagsSaving.value) {
-		return;
-	}
-
-	tagsSaving.value = true;
-
-	try {
-		await executionsStore.annotateExecution(activeExecution.value.id, { tags: newTagIds });
-
-		if (newTagIds.length > 0) {
-			telemetry.track('User added execution annotation tag', {
-				tag_ids: newTagIds,
-				execution_id: activeExecution.value.id,
-			});
-		}
-	} catch (e) {
-		showError(e, 'executionAnnotationView.tag.error');
-	}
-
-	tagsSaving.value = false;
-	isTagsEditEnabled.value = false;
-};
-
-const onTagsEditEsc = () => {
-	isTagsEditEnabled.value = false;
 };
 </script>
 
@@ -331,63 +265,7 @@ const onTagsEditEsc = () => {
 						</RouterLink>
 					</N8nText>
 				</div>
-				<div :class="$style.executionDetailsTags" v-if="isAnnotationEnabled && execution">
-					<span :class="$style.tags" data-test-id="annotation-tags-container">
-						<AnnotationTagsDropdown
-							v-if="isTagsEditEnabled"
-							ref="dropdown"
-							v-model="appliedTagIds"
-							:create-enabled="true"
-							:event-bus="tagsEventBus"
-							:placeholder="locale.baseText('executionAnnotationView.chooseOrCreateATag')"
-							class="tags-edit"
-							data-test-id="workflow-tags-dropdown"
-							@blur="onTagsBlur"
-							@esc="onTagsEditEsc"
-						/>
-						<div v-else-if="tagIds.length === 0">
-							<N8nButton
-								:class="[$style.addTagButton, 'clickable']"
-								:label="locale.baseText('executionAnnotationView.addTag')"
-								type="secondary"
-								size="mini"
-								:outline="false"
-								:text="true"
-								@click="onTagsEditEnable"
-								data-test-id="new-tag-link"
-								icon="plus"
-							/>
-						</div>
-
-						<span
-							v-else
-							:class="[
-								'tags-container', // FIXME: There are some global styles for tags relying on this classname
-								$style.tagsContainer,
-							]"
-							data-test-id="execution-annotation-tags"
-							@click="onTagsEditEnable"
-						>
-							<span v-for="tag in tags" :key="tag.id" class="clickable">
-								<el-tag :title="tag.name" type="info" size="small" :disable-transitions="true">
-									{{ tag.name }}
-								</el-tag>
-							</span>
-							<span :class="$style.addTagWrapper">
-								<N8nButton
-									:class="[$style.addTagButton, $style.addTagButtonIconOnly, 'clickable']"
-									type="secondary"
-									size="mini"
-									:outline="false"
-									:text="true"
-									@click="onTagsEditEnable"
-									data-test-id="new-tag-link"
-									icon="plus"
-								/>
-							</span>
-						</span>
-					</span>
-				</div>
+				<WorkflowExecutionAnnotationTags v-if="isAnnotationEnabled && execution" />
 			</div>
 
 			<div :class="$style.actions">
@@ -578,61 +456,6 @@ const onTagsEditEsc = () => {
 		display: block;
 		padding: var(--button-padding-vertical, var(--spacing-xs))
 			var(--button-padding-horizontal, var(--spacing-m));
-	}
-}
-
-.tags {
-	display: block;
-	margin-top: var(--spacing-4xs);
-}
-
-.addTagButton {
-	height: 24px;
-	font-size: var(--font-size-2xs);
-	white-space: nowrap;
-	padding: var(--spacing-4xs) var(--spacing-3xs);
-	background-color: var(--color-button-secondary-background);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: var(--border-radius-base);
-	font-weight: var(--font-weight-regular);
-
-	&:hover {
-		color: $color-primary;
-		text-decoration: none;
-		background-color: var(--color-button-secondary-hover-background);
-		border: 1px solid var(--color-button-secondary-hover-active-focus-border);
-		border-radius: var(--border-radius-base);
-	}
-
-	span + span {
-		margin-left: var(--spacing-4xs);
-	}
-}
-.addTagButtonIconOnly {
-	height: 22px;
-	width: 22px;
-}
-
-.tagsContainer {
-	display: inline-flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing-4xs);
-	max-width: 360px;
-
-	:global(.el-tag) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: max-content;
-		height: var(--tag-height);
-		padding: var(--tag-padding);
-		line-height: var(--tag-line-height);
-		color: var(--tag-text-color);
-		background-color: var(--tag-background-color);
-		border: 1px solid var(--tag-border-color);
-		border-radius: var(--tag-border-radius);
-		font-size: var(--tag-font-size);
 	}
 }
 
