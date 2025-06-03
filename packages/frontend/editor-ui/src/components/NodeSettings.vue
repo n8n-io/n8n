@@ -51,6 +51,8 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useRouter } from 'vue-router';
 
 const props = withDefaults(
 	defineProps<{
@@ -93,6 +95,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const canvasOperations = useCanvasOperations({ router: useRouter() });
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -574,6 +577,17 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
 			}
+		}
+
+		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
+			// We need a timeout here to support events reacting to the valueChange based on node names
+			setTimeout(
+				async () =>
+					await canvasOperations.renameNode(
+						_node.name,
+						NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType),
+					),
+			);
 		}
 
 		for (const key of Object.keys(nodeParameters as object)) {

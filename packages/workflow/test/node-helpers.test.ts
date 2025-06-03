@@ -18,6 +18,8 @@ import {
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
+	isDefaultNodeName,
+	makeNodeName,
 } from '@/node-helpers';
 import type { Workflow } from '@/workflow';
 
@@ -5244,6 +5246,236 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('This is the default node description');
+		});
+	});
+	describe('isDefaultNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				usableAsTool: true,
+			};
+		});
+
+		it.each([
+			['Create a new user in Test Node', true],
+			['Test Node', true],
+			['Test Node1', true],
+			['Create a new user in Test Node5', true],
+			['Create a new user in Test Node 5', false],
+			['Create a new user in Test Node  5', false],
+			['Update user in Test Node', false],
+			['Update user in Test Node5', false],
+			['TestNode', false],
+		])('should detect default names for input %s', (input, expected) => {
+			// Arrange
+			const name = input;
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							action: 'Update a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			const parameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(expected);
+		});
+	});
+	describe('makeNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+		});
+
+		test('should return action-based name when action is available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create a new user in Test Node');
+		});
+
+		test('should return resource-operation-based name when action is not available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							// No action property
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
+		});
+
+		test('should return default name when resource or operation is missing', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				// No resource or operation
+			};
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should handle case where nodeTypeOperation is not found', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
+		});
+
+		test('should handle case where options are not a list of INodePropertyOptions', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					// Options are not INodePropertyOptions[]
+					options: [
+						//@ts-expect-error
+						{},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
 		});
 	});
 });

@@ -911,7 +911,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
-		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
+		const name = node.name ?? NodeHelpers.makeNodeName(node.parameters ?? {}, nodeTypeDescription);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
 		const position =

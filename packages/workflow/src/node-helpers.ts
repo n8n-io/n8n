@@ -1570,6 +1570,30 @@ export function isNodeWithWorkflowSelector(node: INode) {
 	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
 }
 
+function resolveResourceAndOperation(
+	nodeParameters: INodeParameters,
+	nodeTypeDescription: INodeTypeDescription,
+) {
+	const resource = nodeParameters.resource as string;
+	const operation = nodeParameters.operation as string;
+	const nodeTypeOperation = nodeTypeDescription.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+	);
+
+	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
+		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
+		if (foundOperation?.action) {
+			return { action: foundOperation.action };
+		}
+	}
+
+	if (resource && operation) {
+		return { operation, resource };
+	} else {
+		return {};
+	}
+}
+
 /**
  * Generates a human-readable description for a node based on its parameters and type definition.
  *
@@ -1585,28 +1609,64 @@ export function makeDescription(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
-	let description = '';
-	const resource = nodeParameters.resource as string;
-	const operation = nodeParameters.operation as string;
-	const nodeTypeOperation = nodeTypeDescription.properties.find(
-		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+	const { action, operation, resource } = resolveResourceAndOperation(
+		nodeParameters,
+		nodeTypeDescription,
 	);
 
-	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
-		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
-		if (foundOperation?.action) {
-			description = `${foundOperation.action} in ${nodeTypeDescription.defaults.name}`;
-			return description;
-		}
+	if (action) {
+		return `${action} in ${nodeTypeDescription.defaults.name}`;
 	}
 
-	if (!description && resource && operation) {
-		description = `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
-	} else {
-		description = nodeTypeDescription.description;
+	if (resource && operation) {
+		return `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
 	}
 
-	return description;
+	return nodeTypeDescription.description;
+}
+
+/**
+ * Generates a resource and operation aware node name.
+ *
+ * 1. "{action} in {displayName}" if the operation has a defined action
+ * 2. "{operation} {resource} in {displayName}" if resource and operation exist
+ * 3. The node type's defaults.name field or displayName as a fallback
+ */
+export function makeNodeName(
+	nodeParameters: INodeParameters,
+	nodeTypeDescription: INodeTypeDescription,
+): string {
+	const { action, operation, resource } = resolveResourceAndOperation(
+		nodeParameters,
+		nodeTypeDescription,
+	);
+
+	if (action) {
+		return `${action} in ${nodeTypeDescription.defaults.name}`;
+	}
+
+	if (resource && operation) {
+		return `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
+	}
+
+	return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
+}
+
+/**
+ * Returns true if the node name is of format <defaultNodeName>\d* , which includes auto-renamed nodes
+ */
+export function isDefaultNodeName(
+	name: string,
+	nodeType: INodeTypeDescription,
+	parameters: INodeParameters,
+): boolean {
+	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
+	const currentDefaultName = makeNodeName(parameters, nodeType);
+	for (const start of [legacyDefaultName, currentDefaultName]) {
+		if (name.startsWith(start) && /^\d*$/.test(name.slice(start.length))) return true;
+	}
+
+	return false;
 }
 
 /**
