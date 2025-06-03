@@ -74,7 +74,7 @@ jobs:
     needs: [publish-to-npm]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -106,15 +106,28 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./docker/images/n8n
+          context: .
+          file: docker/images/n8n/Dockerfile
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+            N8N_RELEASE_TYPE=stable
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
             ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+
+  security-scan:
+    name: Security Scan Release Image
+    needs: [publish-to-npm, publish-to-docker-hub]
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   create-github-release:
     name: Create a GitHub Release

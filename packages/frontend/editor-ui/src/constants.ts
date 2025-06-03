@@ -82,6 +82,7 @@ export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
+export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -278,6 +279,8 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
+	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
+	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -309,6 +312,7 @@ export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_CATEGORY_MCP_NODES = 'Model Context Protocol';
+export const AI_EVALUATION = 'Evaluation';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
@@ -483,6 +487,8 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION';
+export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -544,11 +550,9 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
-	TEST_DEFINITION = 'TestDefinition',
-	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
-	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
-	NEW_TEST_DEFINITION = 'NewTestDefinition',
+	EVALUATION = 'Evaluation',
+	EVALUATION_EDIT = 'EvaluationEdit',
+	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -572,6 +576,7 @@ export const enum VIEWS {
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const TEST_PIN_DATA = [
 	{
@@ -622,8 +627,8 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DELETE = 'delete',
 	ARCHIVE = 'archive',
 	UNARCHIVE = 'unarchive',
-	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
 	RENAME = 'rename',
+	CHANGE_OWNER = 'change-owner',
 }
 
 /**
@@ -655,7 +660,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
-	TEST_DEFINITION = 'testDefinition',
+	EVALUATION = 'evaluation',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -690,39 +695,6 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export const enum STORES {
-	COMMUNITY_NODES = 'communityNodes',
-	ROOT = 'root',
-	SETTINGS = 'settings',
-	UI = 'ui',
-	USERS = 'users',
-	WORKFLOWS = 'workflows',
-	WORKFLOWS_V2 = 'workflowsV2',
-	WORKFLOWS_EE = 'workflowsEE',
-	EXECUTIONS = 'executions',
-	NDV = 'ndv',
-	TEMPLATES = 'templates',
-	NODE_TYPES = 'nodeTypes',
-	CREDENTIALS = 'credentials',
-	TAGS = 'tags',
-	ANNOTATION_TAGS = 'annotationTags',
-	VERSIONS = 'versions',
-	NODE_CREATOR = 'nodeCreator',
-	WEBHOOKS = 'webhooks',
-	HISTORY = 'history',
-	CLOUD_PLAN = 'cloudPlan',
-	RBAC = 'rbac',
-	PUSH = 'push',
-	COLLABORATION = 'collaboration',
-	ASSISTANT = 'assistant',
-	BUILDER = 'builder',
-	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
-	PROJECTS = 'projects',
-	API_KEYS = 'apiKeys',
-	TEST_DEFINITION = 'testDefinition',
-	FOLDERS = 'folders',
-}
-
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
@@ -746,12 +718,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const CREDENTIAL_DOCS_EXPERIMENT = {
-	name: '024_credential_docs',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	name: '026_easy_ai_workflow',
 	control: 'control',
@@ -771,13 +737,12 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 ];
 
-export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
+export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
@@ -836,10 +801,6 @@ export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';
 
-export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
-
-export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
-
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
@@ -849,6 +810,7 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+export const ASK_AI_SLIDE_OUT_DURATION_MS = 200;
 
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 

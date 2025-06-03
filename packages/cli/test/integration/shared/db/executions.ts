@@ -32,14 +32,24 @@ export async function createExecution(
 	>,
 	workflow: IWorkflowBase,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt, metadata } =
-		attributes;
+	const {
+		data,
+		finished,
+		mode,
+		startedAt,
+		stoppedAt,
+		waitTill,
+		status,
+		deletedAt,
+		metadata,
+		createdAt,
+	} = attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
-		createdAt: new Date(),
-		startedAt: startedAt ?? new Date(),
+		createdAt: createdAt ?? new Date(),
+		startedAt: startedAt === undefined ? new Date() : startedAt,
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,

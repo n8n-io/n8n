@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import type { Project, ProjectRole } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
@@ -10,6 +11,7 @@ import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { mockInstance } from '@test/mocking';
 import {
+	createCredentials,
 	getCredentialSharings,
 	saveCredential,
 	shareCredentialWithProjects,
@@ -300,6 +302,111 @@ describe('GET /projects/:projectId/folders/:folderId/tree', () => {
 							]),
 						}),
 					]),
+				}),
+			]),
+		);
+	});
+});
+
+describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
+	test('should not get folder credentials when project does not exist', async () => {
+		await authOwnerAgent
+			.get('/projects/non-existing-id/folders/some-folder-id/credentials')
+			.expect(403);
+	});
+
+	test('should not get folder credentials when folder does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		await authOwnerAgent
+			.get(`/projects/${project.id}/folders/non-existing-folder/credentials`)
+			.expect(404);
+	});
+
+	test('should not get folder credentials if user has no access to project', async () => {
+		const project = await createTeamProject('test project', owner);
+		const folder = await createFolder(project);
+
+		await authMemberAgent
+			.get(`/projects/${project.id}/folders/${folder.id}/credentials`)
+			.expect(403);
+	});
+
+	test("should not allow getting folder credentials from another user's personal project", async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder = await createFolder(ownerPersonalProject);
+
+		await authMemberAgent
+			.get(`/projects/${ownerPersonalProject.id}/folders/${folder.id}/credentials`)
+			.expect(403);
+	});
+
+	test('should get all used credentials from workflows within the folder and subfolders', async () => {
+		const project = await createTeamProject('test', owner);
+		const rootFolder = await createFolder(project, { name: 'Root' });
+
+		const childFolder1 = await createFolder(project, {
+			name: 'Child 1',
+			parentFolder: rootFolder,
+		});
+
+		await createFolder(project, {
+			name: 'Child 2',
+			parentFolder: rootFolder,
+		});
+
+		const grandchildFolder = await createFolder(project, {
+			name: 'Grandchild',
+			parentFolder: childFolder1,
+		});
+
+		for (const folder of [rootFolder, childFolder1, grandchildFolder]) {
+			const credential = await createCredentials(
+				{
+					name: `Test credential ${folder.name}`,
+					data: '',
+					type: 'test',
+				},
+				project,
+			);
+
+			await createWorkflow(
+				{
+					name: 'Test Workflow',
+					parentFolder: folder,
+					active: false,
+					nodes: [
+						{
+							parameters: {},
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1.2,
+							position: [0, 0],
+							id: faker.string.uuid(),
+							name: 'OpenAI Chat Model',
+							credentials: {
+								openAiApi: {
+									id: credential.id,
+									name: credential.name,
+								},
+							},
+						},
+					],
+				},
+				owner,
+			);
+		}
+
+		const response = await authOwnerAgent
+			.get(`/projects/${project.id}/folders/${childFolder1.id}/credentials`)
+			.expect(200);
+
+		expect(response.body.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: expect.stringContaining('Test credential Child 1'),
+				}),
+				expect.objectContaining({
+					name: expect.stringContaining('Test credential Grandchild'),
 				}),
 			]),
 		);

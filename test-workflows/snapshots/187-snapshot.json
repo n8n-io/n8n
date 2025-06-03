@@ -1,0 +1,253 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1710331893392,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set": [
+          {
+            "startTime": 1710331893392,
+            "executionTime": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "random": 198,
+                      "test": "Entry1710331893394"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Strapi": [
+          {
+            "startTime": 1710331893394,
+            "executionTime": 444,
+            "source": [
+              {
+                "previousNode": "Set"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1285,
+                      "test": "Entry1710331893394",
+                      "random": 198,
+                      "published_at": "2024-03-13T12:11:33.766Z",
+                      "created_at": "2024-03-13T12:11:33.772Z",
+                      "updated_at": "2024-03-13T12:11:33.772Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Strapi1": [
+          {
+            "startTime": 1710331893838,
+            "executionTime": 389,
+            "source": [
+              {
+                "previousNode": "Strapi"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1285,
+                      "test": "Entry1710331893394",
+                      "random": 198,
+                      "published_at": "2024-03-13T12:11:33.766Z",
+                      "created_at": "2024-03-13T12:11:33.772Z",
+                      "updated_at": "2024-03-13T12:11:33.772Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Strapi2": [
+          {
+            "startTime": 1710331894228,
+            "executionTime": 377,
+            "source": [
+              {
+                "previousNode": "Strapi1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 2,
+                      "test": {
+                        "object": true
+                      },
+                      "random": 563,
+                      "published_at": "2021-04-29T07:56:29.555Z",
+                      "created_at": "2021-04-29T07:56:29.563Z",
+                      "updated_at": "2021-04-29T07:56:29.563Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set1": [
+          {
+            "startTime": 1710331894606,
+            "executionTime": 3,
+            "source": [
+              {
+                "previousNode": "Strapi2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1285,
+                      "test": "UpdatedEntry1710331893394"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Strapi3": [
+          {
+            "startTime": 1710331894610,
+            "executionTime": 379,
+            "source": [
+              {
+                "previousNode": "Set1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1285,
+                      "test": "UpdatedEntry1710331893394",
+                      "random": 198,
+                      "published_at": "2024-03-13T12:11:33.766Z",
+                      "created_at": "2024-03-13T12:11:33.772Z",
+                      "updated_at": "2024-03-13T12:11:34.964Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Strapi4": [
+          {
+            "startTime": 1710331894989,
+            "executionTime": 402,
+            "source": [
+              {
+                "previousNode": "Strapi3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1285,
+                      "test": "UpdatedEntry1710331893394",
+                      "random": 198,
+                      "published_at": "2024-03-13T12:11:33.766Z",
+                      "created_at": "2024-03-13T12:11:33.772Z",
+                      "updated_at": "2024-03-13T12:11:34.964Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Strapi4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-03-13T12:11:33.392Z",
+  "stoppedAt": "2024-03-13T12:11:35.392Z",
+  "status": "running",
+  "finished": true
+}

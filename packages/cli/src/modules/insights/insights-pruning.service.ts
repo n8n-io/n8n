@@ -1,7 +1,6 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { strict } from 'assert';
-import { Logger } from 'n8n-core';
 
 import { Time } from '@/constants';
 

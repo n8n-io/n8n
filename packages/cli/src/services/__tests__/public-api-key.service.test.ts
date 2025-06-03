@@ -1,7 +1,7 @@
 import { ApiKeyRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ApiKeyScope } from '@n8n/permissions';
+import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -10,7 +10,6 @@ import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import type { EventService } from '@/events/event.service';
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import type { AuthenticatedRequest } from '@/requests';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as testDb from '@test-integration/test-db';

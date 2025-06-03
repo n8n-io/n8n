@@ -289,7 +289,7 @@ export const schema = {
 	logs_view: {
 		enabled: {
 			format: Boolean,
-			default: false,
+			default: true,
 			env: 'N8N_ENABLE_LOGS_VIEW',
 			doc: 'Temporary env variable to enable logs view',
 		},

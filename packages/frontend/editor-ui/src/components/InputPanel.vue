@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CRON_NODE_TYPE,
@@ -507,7 +507,9 @@ function activatePane() {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText :bold="true" color="text-dark" size="large">
+				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
+			</N8nText>
 			<N8nText v-n8n-html="waitingMessage"></N8nText>
 		</template>
 

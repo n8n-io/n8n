@@ -1,16 +1,21 @@
 import { chatWithBuilder } from '@/api/ai';
 import type { VIEWS } from '@/constants';
-import { EDITABLE_CANVAS_VIEWS, STORES, WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
+import {
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+	WORKFLOW_BUILDER_EXPERIMENT,
+} from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
@@ -88,12 +93,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth,
 			};
-		}, 200);
+		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
 	function clearMessages() {
