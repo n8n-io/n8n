@@ -79,7 +79,7 @@ export const defaultSettings: FrontendSettings = {
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
-		oidc: { loginEnabled: false, loginUrl: '' },
+		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
 	},
 	telemetry: {
 		enabled: false,
