@@ -160,7 +160,7 @@ describe('PrometheusMetricsService', () => {
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_last_activity',
-				help: 'last instance activity (backend request) in Unix time.',
+				help: 'last instance activity (backend request) in Unix time (seconds).',
 			});
 
 			expect(app.use).toHaveBeenCalledWith(

@@ -137,7 +137,7 @@ export class PrometheusMetricsService {
 
 		const activityGauge = new promClient.Gauge({
 			name: this.prefix + 'last_activity',
-			help: 'last instance activity (backend request) in Unix time.',
+			help: 'last instance activity (backend request) in Unix time (seconds).',
 		});
 
 		activityGauge.set(DateTime.now().toUnixInteger());
