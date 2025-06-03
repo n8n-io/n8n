@@ -382,6 +382,7 @@ const { width } = useElementSize(defNameRef);
 					<div ref="defNameRef" :class="$style.destinationInfo">
 						<N8nInlineTextEdit
 							:max-width="width - 10"
+							data-test-id="subtitle-showing-type"
 							:model-value="headerLabel"
 							:readonly="isTypeAbstract"
 							@update:model-value="onLabelChange"
