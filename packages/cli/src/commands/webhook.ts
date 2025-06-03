@@ -80,7 +80,7 @@ export class Webhook extends BaseCommand {
 		await this.initExternalSecrets();
 		this.logger.debug('External secrets init complete');
 
-		await this.loadModules();
+		await this.moduleRegistry.initModules();
 	}
 
 	async run() {

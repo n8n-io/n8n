@@ -116,9 +116,6 @@ export abstract class BaseCommand extends Command {
 					await this.exitWithCrash('There was an error initializing DB', error),
 			);
 
-		// init modules after DB init so module-specific entities are registered first
-		await this.moduleRegistry.initModules();
-
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
 		if (inDevelopment || inTest) {
