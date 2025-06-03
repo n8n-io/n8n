@@ -117,6 +117,9 @@ watch(
 				size="large"
 				icon="flask"
 				type="primary"
+				data-test-id="execute-workflow-button"
+				@mouseenter="$emit('mouseenter', $event)"
+				@mouseleave="$emit('mouseleave', $event)"
 				@click="handleClickButton"
 			>
 				<span :class="$style.buttonContent">
