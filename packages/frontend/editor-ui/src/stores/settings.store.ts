@@ -46,7 +46,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const ldap = ref({ loginLabel: '', loginEnabled: false });
 	const saml = ref({ loginLabel: '', loginEnabled: false });
-	const oidc = ref({ loginEnabled: false, loginUrl: '' });
+	const oidc = ref({ loginEnabled: false, loginUrl: '', callbackUrl: '' });
 	const mfa = ref({ enabled: false });
 	const folders = ref({ enabled: false });
 
@@ -97,6 +97,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
 
 	const isOidcLoginEnabled = computed(() => oidc.value.loginEnabled);
+
+	const oidcCallBackUrl = computed(() => oidc.value.callbackUrl);
 
 	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
 
@@ -220,6 +222,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (settings.value.sso?.oidc) {
 			oidc.value.loginEnabled = settings.value.sso.oidc.loginEnabled;
 			oidc.value.loginUrl = settings.value.sso.oidc.loginUrl || '';
+			oidc.value.callbackUrl = settings.value.sso.oidc.callbackUrl || '';
 		}
 
 		mfa.value.enabled = settings.value.mfa?.enabled;
@@ -470,6 +473,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		experimental__minZoomNodeSettingsInCanvas,
+		partialExecutionVersion,
+		oidcCallBackUrl,
 		reset,
 		testLdapConnection,
 		getLdapConfig,
@@ -484,6 +489,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		partialExecutionVersion,
 	};
 });
