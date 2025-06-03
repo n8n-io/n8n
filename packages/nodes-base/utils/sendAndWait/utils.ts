@@ -286,7 +286,7 @@ export function getSendAndWaitProperties(
 					default: 'Submit',
 				},
 				{
-					displayName: 'Reponse Form Custom Styling',
+					displayName: 'Response Form Custom Styling',
 					name: 'responseFormCustomCss',
 					type: 'string',
 					typeOptions: {
