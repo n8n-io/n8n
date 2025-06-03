@@ -3,6 +3,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
@@ -137,11 +138,10 @@ export class PrometheusMetricsService {
 
 		const activityGauge = new promClient.Gauge({
 			name: this.prefix + 'last_activity',
-			help: 'last instance activity (backend request).',
-			labelNames: ['timestamp'],
+			help: 'last instance activity (backend request) in Unix time (seconds).',
 		});
 
-		activityGauge.set({ timestamp: new Date().toISOString() }, 1);
+		activityGauge.set(DateTime.now().toUnixInteger());
 
 		app.use(
 			[
@@ -155,8 +155,7 @@ export class PrometheusMetricsService {
 				`/${this.globalConfig.endpoints.formTest}/`,
 			],
 			async (req, res, next) => {
-				activityGauge.reset();
-				activityGauge.set({ timestamp: new Date().toISOString() }, 1);
+				activityGauge.set(DateTime.now().toUnixInteger());
 
 				await metricsMiddleware(req, res, next);
 			},
