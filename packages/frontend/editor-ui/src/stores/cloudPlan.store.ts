@@ -49,7 +49,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const hasCloudPlan = computed((): boolean => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
+		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && !!cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {

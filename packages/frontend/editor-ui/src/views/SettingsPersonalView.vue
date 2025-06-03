@@ -293,7 +293,9 @@ onBeforeUnmount(() => {
 					<n8n-text color="text-base" bold>{{ currentUser.fullName }}</n8n-text>
 					<N8nTooltip placement="bottom">
 						<template #content>{{ currentUserRoleTooltip }}</template>
-						<n8n-text :class="$style.tooltip" color="text-light">{{ currentUserRole }}</n8n-text>
+						<n8n-text :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
+							currentUserRole
+						}}</n8n-text>
 					</N8nTooltip>
 				</span>
 				<n8n-avatar
