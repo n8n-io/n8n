@@ -1,14 +1,4 @@
 <script lang="ts" setup>
-import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import InlineTextEdit from '@/components/InlineTextEdit.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import ShortenName from '@/components/ShortenName.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -61,21 +51,14 @@ import type {
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { nodeViewEventBus } from '@/event-bus';
-import { getResourcePermissions } from '@/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useFoldersStore } from '@/stores/folders.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { ProjectTypes } from '@/types/projects.types';
-import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { N8nInlineTextEdit } from '@n8n/design-system';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = defineProps<{
 	readOnly?: boolean;
