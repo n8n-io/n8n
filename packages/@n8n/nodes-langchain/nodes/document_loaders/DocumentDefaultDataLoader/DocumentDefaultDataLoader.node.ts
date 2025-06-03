@@ -86,7 +86,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						'@version': [1.2],
+						'@version': [1.1],
 					},
 				},
 				options: [
