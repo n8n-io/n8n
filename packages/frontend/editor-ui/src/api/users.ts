@@ -10,9 +10,9 @@ import type {
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { IRestApiContext } from '@n8n/api-requests';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
-import { makeRestApiRequest } from '@n8n/api-requests';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function loginCurrentUser(
 	context: IRestApiContext,

@@ -9,7 +9,7 @@ import type {
 	IWorkflowTemplate,
 	TemplateSearchFacet,
 } from '@/Interface';
-import { get } from '@n8n/api-requests';
+import { get } from '@n8n/rest-api-client';
 
 function stringifyArray(arr: string[]) {
 	return arr.join(',');

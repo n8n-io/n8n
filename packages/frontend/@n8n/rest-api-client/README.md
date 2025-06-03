@@ -1,4 +1,4 @@
-# @n8n/api-requests
+# @n8n/rest-api-client
 
 This package contains the REST API calls for n8n.
 

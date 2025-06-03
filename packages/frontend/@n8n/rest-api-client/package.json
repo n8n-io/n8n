@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/api-requests",
+  "name": "@n8n/rest-api-client",
   "type": "module",
   "version": "1.0.0",
   "files": [

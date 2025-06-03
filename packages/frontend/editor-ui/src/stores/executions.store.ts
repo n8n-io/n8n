@@ -12,7 +12,7 @@ import type {
 	IExecutionsStopData,
 } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { makeRestApiRequest } from '@n8n/api-requests';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { unflattenExecutionData } from '@/utils/executionUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';

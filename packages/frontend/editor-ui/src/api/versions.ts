@@ -1,6 +1,6 @@
 import type { IVersion } from '@/Interface';
 import { INSTANCE_ID_HEADER } from '@/constants';
-import { get } from '@n8n/api-requests';
+import { get } from '@n8n/rest-api-client';
 
 export async function getNextVersions(
 	endpoint: string,

@@ -1,7 +1,7 @@
 import type { CurrentUserResponse, IInviteResponse, InvitableRoleName } from '@/Interface';
-import type { IRestApiContext } from '@n8n/api-requests';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject } from 'n8n-workflow';
-import { makeRestApiRequest } from '@n8n/api-requests';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 type AcceptInvitationParams = {
 	inviterId: string;

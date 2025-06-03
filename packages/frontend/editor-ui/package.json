@@ -31,7 +31,7 @@
     "@codemirror/view": "^6.26.3",
     "@dagrejs/dagre": "^1.1.4",
     "@lezer/common": "1.1.0",
-    "@n8n/api-requests": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",

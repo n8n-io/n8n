@@ -1,5 +1,5 @@
-import type { IRestApiContext } from '@n8n/api-requests';
-import { makeRestApiRequest } from '@n8n/api-requests';
+import type { IRestApiContext } from '@n8n/rest-api-client';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from '@/types/projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 

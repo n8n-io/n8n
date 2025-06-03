@@ -1639,7 +1639,7 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
-  packages/frontend/@n8n/api-requests:
+  packages/frontend/@n8n/rest-api-client:
     dependencies:
       '@n8n/api-types':
         specifier: workspace:*
@@ -2096,9 +2096,9 @@ importers:
       '@lezer/common':
         specifier: 1.1.0
         version: 1.1.0
-      '@n8n/api-requests':
+      '@n8n/rest-api-client':
         specifier: workspace:*
-        version: link:../@n8n/api-requests
+        version: link:../@n8n/rest-api-client
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types
