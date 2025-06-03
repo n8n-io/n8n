@@ -94,8 +94,8 @@ const roles = computed<Record<IRole, string>>(
 	}),
 );
 
-const roleTooltipText = computed(
-	(): Record<IRole, string> => ({
+const roleTooltipText = computed<Record<IRole, string>>(
+	() => ({
 		[ROLE.Default]: i18n.baseText('settings.personal.role.tooltip.default'),
 		[ROLE.Member]: i18n.baseText('settings.personal.role.tooltip.member'),
 		[ROLE.Admin]: i18n.baseText('settings.personal.role.tooltip.admin'),
