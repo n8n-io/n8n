@@ -14,7 +14,7 @@ import type {
 
 @Service()
 export class ModuleRegistry {
-	entities: EntityClass[] = [];
+	readonly entities: EntityClass[] = [];
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
