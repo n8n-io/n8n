@@ -54,6 +54,11 @@ describe('PrometheusMetricsService', () => {
 		prometheusService.disableAllLabels();
 	});
 
+	afterEach(() => {
+		// Make sure fake timers aren't in effect after a test
+		jest.useRealTimers();
+	});
+
 	it('should return n8n version', async () => {
 		/**
 		 * Arrange
