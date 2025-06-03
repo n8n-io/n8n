@@ -10,6 +10,8 @@ export class InsightsInit {
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		if (this.instanceSettings.isLeader) this.insightsService.startTimers();
+		if (this.instanceSettings.isLeader || this.instanceSettings.instanceRole === 'unset') {
+			this.insightsService.startTimers();
+		}
 	}
 }
