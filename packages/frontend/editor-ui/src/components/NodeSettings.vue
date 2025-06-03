@@ -32,7 +32,9 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import { get, set, unset } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';

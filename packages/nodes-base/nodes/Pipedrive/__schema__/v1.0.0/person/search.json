@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "emails": {
             "type": "array",
             "items": {
@@ -46,5 +52,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

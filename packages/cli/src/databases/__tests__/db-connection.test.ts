@@ -1,3 +1,4 @@
+import type { DatabaseConfig } from '@n8n/config';
 import type { Migration } from '@n8n/db';
 import * as migrationHelper from '@n8n/db';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
@@ -17,6 +18,7 @@ describe('DbConnection', () => {
 	let dbConnection: DbConnection;
 	const migrations = [{ name: 'TestMigration1' }, { name: 'TestMigration2' }] as Migration[];
 	const errorReporter = mock<ErrorReporter>();
+	const databaseConfig = mock<DatabaseConfig>();
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
 	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
@@ -35,7 +37,7 @@ describe('DbConnection', () => {
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
 		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
 
-		dbConnection = new DbConnection(errorReporter, connectionOptions);
+		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig);
 	});
 
 	describe('init', () => {
@@ -173,6 +175,30 @@ describe('DbConnection', () => {
 			await dbConnection.ping();
 
 			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+
+		it('should execute ping on schedule', async () => {
+			jest.useFakeTimers();
+			try {
+				// ARRANGE
+				dbConnection = new DbConnection(
+					errorReporter,
+					connectionOptions,
+					mock<DatabaseConfig>({
+						pingIntervalSeconds: 1,
+					}),
+				);
+
+				const pingSpy = jest.spyOn(dbConnection as any, 'ping');
+
+				// @ts-expect-error private property
+				dbConnection.scheduleNextPing();
+				jest.advanceTimersByTime(1000);
+
+				expect(pingSpy).toHaveBeenCalled();
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 });

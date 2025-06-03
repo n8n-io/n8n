@@ -68,7 +68,8 @@ import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
 import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
-import { isEqual, isObject } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
+import isObject from 'lodash/isObject';
 import {
 	N8nBlockUi,
 	N8nButton,

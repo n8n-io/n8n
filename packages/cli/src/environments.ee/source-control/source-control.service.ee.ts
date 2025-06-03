@@ -233,7 +233,9 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
-		const filesToPush = options.fileNames.map((file) => {
+		const context = new SourceControlContext(user);
+
+		let filesToPush = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -245,23 +247,39 @@ export class SourceControlService {
 			};
 		});
 
-		// only determine file status if not provided by the frontend
-		let statusResult: SourceControlledFile[] = filesToPush;
-		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: true,
-			})) as SourceControlledFile[];
+		const allowedResources = (await this.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		})) as SourceControlledFile[];
+
+		// Fallback to all allowed resources if no fileNames are provided
+		if (!filesToPush.length) {
+			filesToPush = allowedResources;
 		}
 
+		// If fileNames are provided, we need to check if they are allowed
+		if (
+			filesToPush !== allowedResources &&
+			filesToPush.some(
+				(file) =>
+					!allowedResources.some((allowed) => {
+						return allowed.id === file.id && allowed.type === file.type;
+					}),
+			)
+		) {
+			throw new ForbiddenError('You are not allowed to push these changes');
+		}
+
+		let statusResult: SourceControlledFile[] = filesToPush;
+
 		if (!options.force) {
-			const possibleConflicts = statusResult?.filter((file) => file.conflict);
+			const possibleConflicts = filesToPush?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0) {
 				return {
 					statusCode: 409,
 					pushResult: undefined,
-					statusResult,
+					statusResult: filesToPush,
 				};
 			}
 		}
@@ -307,13 +325,13 @@ export class SourceControlService {
 		const tagChanges = filesToPush.find((e) => e.type === 'tags');
 		if (tagChanges) {
 			filesToBePushed.add(tagChanges.file);
-			await this.sourceControlExportService.exportTagsToWorkFolder();
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
 		}
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {
 			filesToBePushed.add(folderChanges.file);
-			await this.sourceControlExportService.exportFoldersToWorkFolder();
+			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
 		}
 
 		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
@@ -324,12 +342,8 @@ export class SourceControlService {
 
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
-		for (let i = 0; i < statusResult.length; i++) {
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			if (filesToPush.find((file) => file.file === statusResult[i].file)) {
-				statusResult[i].pushed = true;
-			}
-		}
+		// Set all results as pushed
+		statusResult.forEach((result) => (result.pushed = true));
 
 		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 

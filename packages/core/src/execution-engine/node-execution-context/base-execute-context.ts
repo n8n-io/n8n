@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	Workflow,
 	INode,

@@ -11,16 +11,12 @@ export const vitestConfig = defineVitestConfig({
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['./src/__tests__/setup.ts'],
-		...(process.env.COVERAGE_ENABLED === 'true'
-			? {
-					coverage: {
-						enabled: true,
-						provider: 'v8',
-						reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
-						all: true,
-					},
-				}
-			: {}),
+		coverage: {
+			enabled: false,
+			all: false,
+			provider: 'v8',
+			reporter: ['text-summary', 'lcov', 'html-spa'],
+		},
 		css: {
 			modules: {
 				classNameStrategy: 'non-scoped',
@@ -28,3 +24,12 @@ export const vitestConfig = defineVitestConfig({
 		},
 	},
 });
+
+if (process.env.COVERAGE_ENABLED === 'true') {
+	const { coverage } = vitestConfig.test;
+	coverage.enabled = true;
+	if (process.env.CI === 'true') {
+		coverage.all = true;
+		coverage.reporter = ['cobertura'];
+	}
+}

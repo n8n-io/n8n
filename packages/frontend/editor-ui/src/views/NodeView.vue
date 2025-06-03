@@ -76,7 +76,13 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 } from 'n8n-workflow';
-import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
+import type {
+	NodeConnectionType,
+	IDataObject,
+	ExecutionSummary,
+	IConnection,
+	INodeParameters,
+} from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -121,6 +127,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
@@ -193,6 +200,7 @@ const {
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
+	revertReplaceNodeParameters,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
@@ -228,6 +236,7 @@ const {
 	lastClickPosition,
 	startChat,
 } = useCanvasOperations({ router });
+const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 
@@ -633,6 +642,10 @@ function onTidyUp(event: CanvasLayoutEvent) {
 	tidyUp(event);
 }
 
+function onExtractWorkflow(nodeIds: string[]) {
+	void extractWorkflow(nodeIds);
+}
+
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
 }
@@ -887,6 +900,18 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+async function onRevertReplaceNodeParameters({
+	nodeId,
+	currentProperties,
+	newProperties,
+}: {
+	nodeId: string;
+	currentProperties: INodeParameters;
+	newProperties: INodeParameters;
+}) {
+	await revertReplaceNodeParameters(nodeId, currentProperties, newProperties);
 }
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -1391,6 +1416,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
+	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1401,6 +1427,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
+	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1968,6 +1995,7 @@ onBeforeUnmount(() => {
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
+		@extract-workflow="onExtractWorkflow"
 		@start-chat="startChat()"
 	>
 		<Suspense>
