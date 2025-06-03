@@ -17,4 +17,10 @@ export type CommunityNodeType = {
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
 	isInstalled: boolean;
+	nodeVersions: [
+		{
+			checksum: string;
+			npmVersion: string;
+		},
+	];
 };
