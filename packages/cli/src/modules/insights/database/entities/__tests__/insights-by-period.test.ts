@@ -7,6 +7,10 @@ beforeAll(async () => {
 	await testDb.init();
 });
 
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('Insights By Period', () => {
 	test.each(['time_saved_min', 'runtime_ms', 'failure', 'success'] satisfies TypeUnit[])(
 		'`%s` can be serialized and deserialized correctly',
