@@ -1,3 +1,12 @@
+## [1.95.3](https://github.com/n8n-io/n8n/compare/n8n@1.95.2...n8n@1.95.3) (2025-06-03)
+
+
+### Bug Fixes
+
+* **core:** Simplify Websocket origin security checks ([#15761](https://github.com/n8n-io/n8n/issues/15761)) ([8284ee9](https://github.com/n8n-io/n8n/commit/8284ee9df5e0d680329bca7f08226c1ffa609549))
+
+
+
 ## [1.95.2](https://github.com/n8n-io/n8n/compare/n8n@1.95.1...n8n@1.95.2) (2025-05-29)
 
 
