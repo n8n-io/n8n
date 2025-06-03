@@ -437,6 +437,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
+		uiStore.stateIsDirty = true;
 	}
 
 	function trackDeleteNode(id: string) {
