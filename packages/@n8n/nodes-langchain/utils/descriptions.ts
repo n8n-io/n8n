@@ -22,7 +22,8 @@ export const schemaTypeField: INodeProperties = {
 };
 
 /**
- * Returns a field to input a JSON example that can be used to generate the schema.
+ * Returns a tuple of fields to append to a node properties configuration:
+ * First field to input a JSON example that can be used to generate the schema;
  * The second field is a selector for whether all properties from example should be required or optional
  * @param props
  */
