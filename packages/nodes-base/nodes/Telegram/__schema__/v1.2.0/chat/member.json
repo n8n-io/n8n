@@ -28,9 +28,6 @@
                         "language_code": {
                             "type": "string"
                         },
-                        "last_name": {
-                            "type": "string"
-                        },
                         "username": {
                             "type": "string"
                         }
@@ -39,5 +36,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }
