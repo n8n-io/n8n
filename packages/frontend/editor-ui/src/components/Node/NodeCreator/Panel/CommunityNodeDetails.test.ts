@@ -6,7 +6,6 @@ import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 
 const fetchCredentialTypes = vi.fn();
-const getCommunityNodeAttributes = vi.fn(() => ({ npmVersion: '1.0.0' }));
 const getNodeTypes = vi.fn();
 const installPackage = vi.fn();
 const getAllNodeCreateElements = vi.fn(() => [
@@ -55,7 +54,6 @@ vi.mock('@/stores/nodeCreator.store', () => ({
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getCommunityNodeAttributes,
 		getNodeTypes,
 		communityNodeType: vi.fn(() => ({ isOfficialNode: true })),
 	})),
@@ -145,7 +143,6 @@ describe('CommunityNodeDetails', () => {
 
 		await waitFor(() => expect(removeNodeFromMergedNodes).toHaveBeenCalled());
 
-		expect(getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-preview-test.OtherNode');
 		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', true, '1.0.0');
 		expect(fetchCredentialTypes).toHaveBeenCalledWith(true);
 		expect(getAllNodeCreateElements).toHaveBeenCalled();

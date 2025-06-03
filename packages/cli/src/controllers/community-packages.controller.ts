@@ -51,11 +51,13 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
+		const vettedNode = this.communityNodeTypesService.findVetted(name);
+
 		let checksum: string | undefined = undefined;
 
 		// Get the checksum for the package if flagged to verify
 		if (verify) {
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			checksum = vettedNode?.checksum;
 			if (!checksum) {
 				throw new BadRequestError(`Package ${name} is not vetted for installation`);
 			}
@@ -98,7 +100,7 @@ export class CommunityPackagesController {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
-		const packageVersion = version ?? parsed.version;
+		const packageVersion = version ?? parsed.version ?? vettedNode?.npmVersion;
 		let installedPackage: InstalledPackages;
 		try {
 			installedPackage = await this.communityPackagesService.installPackage(

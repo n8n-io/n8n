@@ -70,16 +70,6 @@ const updateStoresAndViewStack = async (key: string) => {
 	nodeCreatorStore.removeNodeFromMergedNodes(key);
 };
 
-const getNpmVersion = async (key: string) => {
-	const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
-
-	if (communityNodeAttributes) {
-		return communityNodeAttributes.npmVersion;
-	}
-
-	return undefined;
-};
-
 const onInstall = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
@@ -87,7 +77,7 @@ const onInstall = async () => {
 		try {
 			loading.value = true;
 
-			await communityNodesStore.installPackage(packageName, true, await getNpmVersion(key));
+			await communityNodesStore.installPackage(packageName, true);
 			await updateStoresAndViewStack(key);
 
 			toast.showMessage({
