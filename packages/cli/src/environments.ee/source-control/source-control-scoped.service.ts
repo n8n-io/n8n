@@ -32,11 +32,9 @@ export class SourceControlScopedService {
 		const ctx = new SourceControlContext(req.user);
 		const projectsWithAdminAccess = await this.getAdminProjectsFromContext(ctx);
 
-		if (Array.isArray(projectsWithAdminAccess) && projectsWithAdminAccess.length > 0) {
-			return;
+		if (projectsWithAdminAccess?.length === 0) {
+			throw new ForbiddenError('You are not allowed to push changes');
 		}
-
-		throw new ForbiddenError('You are not allowed to push changes');
 	}
 
 	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[] | undefined> {
