@@ -85,29 +85,25 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<IRole, string>>(
-	() => ({
-		[ROLE.Default]: i18n.baseText('auth.roles.default'),
-		[ROLE.Member]: i18n.baseText('auth.roles.member'),
-		[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
-		[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
-	}),
-);
+const roles = computed<Record<IRole, string>>(() => ({
+	[ROLE.Default]: i18n.baseText('auth.roles.default'),
+	[ROLE.Member]: i18n.baseText('auth.roles.member'),
+	[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
+	[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
+}));
 
-const roleTooltipText = computed<Record<IRole, string>>(
-	() => ({
-		[ROLE.Default]: i18n.baseText('settings.personal.role.tooltip.default'),
-		[ROLE.Member]: i18n.baseText('settings.personal.role.tooltip.member'),
-		[ROLE.Admin]: i18n.baseText('settings.personal.role.tooltip.admin'),
-		[ROLE.Owner]: i18n.baseText('settings.personal.role.tooltip.owner', {
-			interpolate: {
-				cloudAccess: cloudPlanStore.hasCloudPlan
-					? i18n.baseText('settings.personal.role.tooltip.cloud')
-					: '',
-			},
-		}),
+const roleTooltipText = computed<Record<IRole, string>>(() => ({
+	[ROLE.Default]: i18n.baseText('settings.personal.role.tooltip.default'),
+	[ROLE.Member]: i18n.baseText('settings.personal.role.tooltip.member'),
+	[ROLE.Admin]: i18n.baseText('settings.personal.role.tooltip.admin'),
+	[ROLE.Owner]: i18n.baseText('settings.personal.role.tooltip.owner', {
+		interpolate: {
+			cloudAccess: cloudPlanStore.hasCloudPlan
+				? i18n.baseText('settings.personal.role.tooltip.cloud')
+				: '',
+		},
 	}),
-);
+}));
 
 const currentUserRole = computed(() => roles.value[usersStore.globalRoleName]);
 const currentUserRoleTooltip = computed(() => roleTooltipText.value[usersStore.globalRoleName]);
