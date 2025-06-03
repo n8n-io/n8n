@@ -35,7 +35,8 @@ import {
 	SOURCE_CONTROL_FILE_TYPE,
 	SOURCE_CONTROL_FILE_LOCATION,
 } from '@n8n/api-types';
-import { orderBy, groupBy } from 'lodash-es';
+import groupBy from 'lodash/groupBy';
+import orderBy from 'lodash/orderBy';
 import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 
