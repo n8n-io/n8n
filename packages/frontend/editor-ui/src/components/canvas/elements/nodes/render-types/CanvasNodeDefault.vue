@@ -6,16 +6,11 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
-import { useVueFlow } from '@vue-flow/core';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useRouter } from 'vue-router';
-import { useDebounce } from '@vueuse/core';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
 import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
@@ -55,17 +50,8 @@ const {
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
-const { editableWorkflow } = useCanvasOperations({ router: useRouter() });
+const nodeSettingsZoom = useNodeSettingsInCanvas();
 
-const viewFlow = useVueFlow({ id: editableWorkflow.value.id });
-const zoom = computed(() => viewFlow.viewport.value.zoom);
-const debouncedZoom = useDebounce(zoom, 100);
-
-const shouldRenderNodeSettings = computed(
-	() =>
-		settingsStore.experimental__minZoomNodeSettingsInCanvas > 0 &&
-		debouncedZoom.value > settingsStore.experimental__minZoomNodeSettingsInCanvas,
-);
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -80,7 +66,7 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		[$style.settingsView]: shouldRenderNodeSettings.value,
+		[$style.settingsView]: nodeSettingsZoom.value !== undefined,
 	};
 });
 
@@ -98,8 +84,8 @@ const styles = computed(() => {
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
-	if (shouldRenderNodeSettings.value) {
-		stylesObject['--zoom'] = debouncedZoom.value;
+	if (nodeSettingsZoom.value !== undefined) {
+		stylesObject['--zoom'] = nodeSettingsZoom.value;
 	}
 
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
@@ -166,7 +152,7 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeNodeSettings v-if="shouldRenderNodeSettings" :node-id="id" />
+		<CanvasNodeNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
