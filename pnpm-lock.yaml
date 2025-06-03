@@ -750,7 +750,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))
+        version: 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -770,14 +770,14 @@ importers:
         specifier: 'catalog:'
         version: 0.3.11(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/aws':
-        specifier: 0.1.3
-        version: 0.1.3(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
+        specifier: 0.1.10
+        version: 0.1.10(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/cohere':
         specifier: 0.3.2
         version: 0.3.2(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(9b62d544268bf8b21f905847a18f95f1)
+        version: 0.3.24(d95190b0e660e7fdb7cc6d7bc53f2815)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -882,7 +882,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+        version: 0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -8184,9 +8184,6 @@ packages:
   console-control-strings@1.1.0:
     resolution: {integrity: sha512-ty/fTekppD2fIwRvnZAVdeOiGd1c7YXEixbgJTNzqcxJWKQnjJ/V1bNEEE6hygpM3WjwHFUVK6HTjWSzV4a8sQ==}
 
-  console-table-printer@2.12.1:
-    resolution: {integrity: sha512-wKGOQRRvdnd89pCeH96e2Fn4wkbenSP6LMHfjfyNLMbGuHEFbMqQNuxXqd0oXG9caIOQ1FTvc5Uijp9/4jujnQ==}
-
   constant-case@3.0.4:
     resolution: {integrity: sha512-I2hSBi7Vvs7BEuJDr5dDHfzb/Ruj3FyvFyh7KLilAjNQw3Be+xgqUBA2W6scVEcL0hL1dwPRtIqEPVUCKkSsyQ==}
 
@@ -10640,14 +10637,6 @@ packages:
       openai:
         optional: true
 
-  langsmith@0.3.29:
-    resolution: {integrity: sha512-JPF2B339qpYy9FyuY4Yz1aWYtgPlFc/a+VTj3L/JcFLHCiMP7+Ig8I9jO+o1QwVa+JU3iugL1RS0wwc+Glw0zA==}
-    peerDependencies:
-      openai: '*'
-    peerDependenciesMeta:
-      openai:
-        optional: true
-
   lazy-ass@1.6.0:
     resolution: {integrity: sha512-cc8oEVoctTvsFZ/Oje/kGnHbpWHYBe8IAJe4C0QNc3t8uM/0Y8+erSz/7Y1ALuXTEZTMvxXwO6YbX1ey3ujiZw==}
     engines: {node: '> 0.8'}
@@ -12976,9 +12965,6 @@ packages:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
     engines: {node: '>=10'}
 
-  simple-wcswidth@1.0.1:
-    resolution: {integrity: sha512-xMO/8eNREtaROt7tJvWJqHBDTMFN4eiQ5I4JRMuilwfnFcV5W9u7RUkueNkdw0jPqGMX36iCywelS5yilTuOxg==}
-
   simple-websocket@9.1.0:
     resolution: {integrity: sha512-8MJPnjRN6A8UCp1I+H/dSFyjwJhp6wta4hsVRhjf8w9qBHRzxYt14RaOcjvQnhD1N4yKOddEjflwMnQM4VtXjQ==}
 
@@ -14837,7 +14823,7 @@ snapshots:
       '@aws-sdk/util-user-agent-node': 3.808.0
       '@smithy/config-resolver': 4.1.2
       '@smithy/core': 3.3.2
-      '@smithy/fetch-http-handler': 5.0.2
+      '@smithy/fetch-http-handler': 5.0.3
       '@smithy/hash-node': 4.0.2
       '@smithy/invalid-dependency': 4.0.2
       '@smithy/middleware-content-length': 4.0.2
@@ -14845,12 +14831,12 @@ snapshots:
       '@smithy/middleware-retry': 4.1.6
       '@smithy/middleware-serde': 4.0.4
       '@smithy/middleware-stack': 4.0.2
-      '@smithy/node-config-provider': 4.1.1
-      '@smithy/node-http-handler': 4.0.4
-      '@smithy/protocol-http': 5.1.0
-      '@smithy/smithy-client': 4.2.5
-      '@smithy/types': 4.2.0
-      '@smithy/url-parser': 4.0.2
+      '@smithy/node-config-provider': 4.1.2
+      '@smithy/node-http-handler': 4.0.5
+      '@smithy/protocol-http': 5.1.1
+      '@smithy/smithy-client': 4.3.0
+      '@smithy/types': 4.3.0
+      '@smithy/url-parser': 4.0.3
       '@smithy/util-base64': 4.0.0
       '@smithy/util-body-length-browser': 4.0.0
       '@smithy/util-body-length-node': 4.0.0
@@ -15124,7 +15110,7 @@ snapshots:
       '@aws-sdk/util-user-agent-node': 3.808.0
       '@smithy/config-resolver': 4.1.2
       '@smithy/core': 3.3.2
-      '@smithy/fetch-http-handler': 5.0.2
+      '@smithy/fetch-http-handler': 5.0.3
       '@smithy/hash-node': 4.0.2
       '@smithy/invalid-dependency': 4.0.2
       '@smithy/middleware-content-length': 4.0.2
@@ -15132,12 +15118,12 @@ snapshots:
       '@smithy/middleware-retry': 4.1.6
       '@smithy/middleware-serde': 4.0.4
       '@smithy/middleware-stack': 4.0.2
-      '@smithy/node-config-provider': 4.1.1
-      '@smithy/node-http-handler': 4.0.4
-      '@smithy/protocol-http': 5.1.0
-      '@smithy/smithy-client': 4.2.5
-      '@smithy/types': 4.2.0
-      '@smithy/url-parser': 4.0.2
+      '@smithy/node-config-provider': 4.1.2
+      '@smithy/node-http-handler': 4.0.5
+      '@smithy/protocol-http': 5.1.1
+      '@smithy/smithy-client': 4.3.0
+      '@smithy/types': 4.3.0
+      '@smithy/url-parser': 4.0.3
       '@smithy/util-base64': 4.0.0
       '@smithy/util-body-length-browser': 4.0.0
       '@smithy/util-body-length-node': 4.0.0
@@ -15226,8 +15212,8 @@ snapshots:
     dependencies:
       '@aws-sdk/client-cognito-identity': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -15236,8 +15222,8 @@ snapshots:
     dependencies:
       '@aws-sdk/core': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-env@3.816.0':
@@ -15254,10 +15240,10 @@ snapshots:
       '@aws-sdk/types': 3.804.0
       '@smithy/fetch-http-handler': 5.0.2
       '@smithy/node-http-handler': 4.0.4
-      '@smithy/property-provider': 4.0.2
+      '@smithy/property-provider': 4.0.3
       '@smithy/protocol-http': 5.1.0
       '@smithy/smithy-client': 4.2.5
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       '@smithy/util-stream': 4.2.0
       tslib: 2.8.1
 
@@ -15284,10 +15270,10 @@ snapshots:
       '@aws-sdk/credential-provider-web-identity': 3.808.0
       '@aws-sdk/nested-clients': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/credential-provider-imds': 4.0.4
-      '@smithy/property-provider': 4.0.2
-      '@smithy/shared-ini-file-loader': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/credential-provider-imds': 4.0.5
+      '@smithy/property-provider': 4.0.3
+      '@smithy/shared-ini-file-loader': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -15348,9 +15334,9 @@ snapshots:
     dependencies:
       '@aws-sdk/core': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/shared-ini-file-loader': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/shared-ini-file-loader': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-process@3.816.0':
@@ -15368,9 +15354,9 @@ snapshots:
       '@aws-sdk/core': 3.808.0
       '@aws-sdk/token-providers': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/shared-ini-file-loader': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/shared-ini-file-loader': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -15393,8 +15379,8 @@ snapshots:
       '@aws-sdk/core': 3.808.0
       '@aws-sdk/nested-clients': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -15437,8 +15423,8 @@ snapshots:
   '@aws-sdk/eventstream-handler-node@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/eventstream-codec': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/eventstream-codec': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@aws-sdk/middleware-bucket-endpoint@3.808.0':
@@ -15454,8 +15440,8 @@ snapshots:
   '@aws-sdk/middleware-eventstream@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/protocol-http': 5.1.0
-      '@smithy/types': 4.2.0
+      '@smithy/protocol-http': 5.1.1
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@aws-sdk/middleware-expect-continue@3.804.0':
@@ -15566,7 +15552,7 @@ snapshots:
       '@aws-sdk/util-user-agent-node': 3.808.0
       '@smithy/config-resolver': 4.1.2
       '@smithy/core': 3.3.2
-      '@smithy/fetch-http-handler': 5.0.2
+      '@smithy/fetch-http-handler': 5.0.3
       '@smithy/hash-node': 4.0.2
       '@smithy/invalid-dependency': 4.0.2
       '@smithy/middleware-content-length': 4.0.2
@@ -15574,12 +15560,12 @@ snapshots:
       '@smithy/middleware-retry': 4.1.6
       '@smithy/middleware-serde': 4.0.4
       '@smithy/middleware-stack': 4.0.2
-      '@smithy/node-config-provider': 4.1.1
-      '@smithy/node-http-handler': 4.0.4
-      '@smithy/protocol-http': 5.1.0
-      '@smithy/smithy-client': 4.2.5
-      '@smithy/types': 4.2.0
-      '@smithy/url-parser': 4.0.2
+      '@smithy/node-config-provider': 4.1.2
+      '@smithy/node-http-handler': 4.0.5
+      '@smithy/protocol-http': 5.1.1
+      '@smithy/smithy-client': 4.3.0
+      '@smithy/types': 4.3.0
+      '@smithy/url-parser': 4.0.3
       '@smithy/util-base64': 4.0.0
       '@smithy/util-body-length-browser': 4.0.0
       '@smithy/util-body-length-node': 4.0.0
@@ -15668,9 +15654,9 @@ snapshots:
     dependencies:
       '@aws-sdk/nested-clients': 3.808.0
       '@aws-sdk/types': 3.804.0
-      '@smithy/property-provider': 4.0.2
-      '@smithy/shared-ini-file-loader': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/shared-ini-file-loader': 4.0.3
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -17054,7 +17040,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -17063,7 +17049,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+      langchain: 0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3)
     transitivePeerDependencies:
       - encoding
 
@@ -17562,12 +17548,12 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/aws@0.1.3(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))':
+  '@langchain/aws@0.1.10(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))':
     dependencies:
-      '@aws-sdk/client-bedrock-agent-runtime': 3.808.0
-      '@aws-sdk/client-bedrock-runtime': 3.808.0
-      '@aws-sdk/client-kendra': 3.808.0
-      '@aws-sdk/credential-provider-node': 3.808.0
+      '@aws-sdk/client-bedrock-agent-runtime': 3.816.0
+      '@aws-sdk/client-bedrock-runtime': 3.816.0
+      '@aws-sdk/client-kendra': 3.816.0
+      '@aws-sdk/credential-provider-node': 3.816.0
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       zod: 3.24.1
       zod-to-json-schema: 3.23.3(zod@3.24.1)
@@ -17585,7 +17571,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(9b62d544268bf8b21f905847a18f95f1)':
+  '@langchain/community@0.3.24(d95190b0e660e7fdb7cc6d7bc53f2815)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17596,7 +17582,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(d71d1df33a22803bba4e47303d410a51)
+      langchain: 0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17611,7 +17597,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.816.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d71d1df33a22803bba4e47303d410a51))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -17688,7 +17674,7 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.12
-      langsmith: 0.3.29(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -18712,7 +18698,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.8.3
       axios-retry: 4.5.0(axios@1.8.3)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -18907,7 +18893,7 @@ snapshots:
 
   '@smithy/abort-controller@4.0.2':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@smithy/abort-controller@4.0.3':
@@ -18965,8 +18951,8 @@ snapshots:
   '@smithy/credential-provider-imds@4.0.4':
     dependencies:
       '@smithy/node-config-provider': 4.1.1
-      '@smithy/property-provider': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/property-provider': 4.0.3
+      '@smithy/types': 4.3.0
       '@smithy/url-parser': 4.0.2
       tslib: 2.8.1
 
@@ -18996,7 +18982,7 @@ snapshots:
   '@smithy/eventstream-codec@4.0.2':
     dependencies:
       '@aws-crypto/crc32': 5.2.0
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       '@smithy/util-hex-encoding': 4.0.0
       tslib: 2.8.1
 
@@ -19044,7 +19030,7 @@ snapshots:
   '@smithy/eventstream-serde-universal@4.0.2':
     dependencies:
       '@smithy/eventstream-codec': 4.0.2
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@smithy/eventstream-serde-universal@4.0.3':
@@ -19236,7 +19222,7 @@ snapshots:
 
   '@smithy/property-provider@4.0.2':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@smithy/property-provider@4.0.3':
@@ -19267,7 +19253,7 @@ snapshots:
 
   '@smithy/querystring-builder@4.0.2':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       '@smithy/util-uri-escape': 4.0.0
       tslib: 2.8.1
 
@@ -19279,7 +19265,7 @@ snapshots:
 
   '@smithy/querystring-parser@4.0.2':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@smithy/querystring-parser@4.0.3':
@@ -19289,7 +19275,7 @@ snapshots:
 
   '@smithy/service-error-classification@4.0.3':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
 
   '@smithy/service-error-classification@4.0.4':
     dependencies:
@@ -19297,7 +19283,7 @@ snapshots:
 
   '@smithy/shared-ini-file-loader@4.0.2':
     dependencies:
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       tslib: 2.8.1
 
   '@smithy/shared-ini-file-loader@4.0.3':
@@ -19331,7 +19317,7 @@ snapshots:
     dependencies:
       '@smithy/is-array-buffer': 4.0.0
       '@smithy/protocol-http': 5.1.0
-      '@smithy/types': 4.2.0
+      '@smithy/types': 4.3.0
       '@smithy/util-hex-encoding': 4.0.0
       '@smithy/util-middleware': 4.0.2
       '@smithy/util-uri-escape': 4.0.0
@@ -21293,7 +21279,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
-      axios: 1.8.3(debug@4.3.6)
+      axios: 1.8.3
       is-retry-allowed: 2.2.0
 
   axios@1.8.3:
@@ -22017,10 +22003,6 @@ snapshots:
 
   console-control-strings@1.1.0:
     optional: true
-
-  console-table-printer@2.12.1:
-    dependencies:
-      simple-wcswidth: 1.0.1
 
   constant-case@3.0.4:
     dependencies:
@@ -25160,7 +25142,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(d71d1df33a22803bba4e47303d410a51):
+  langchain@0.3.11(b9b654db7d4fcec1b167f8315e2fb9b3):
     dependencies:
       '@langchain/core': 0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -25177,7 +25159,7 @@ snapshots:
       zod-to-json-schema: 3.23.3(zod@3.24.1)
     optionalDependencies:
       '@langchain/anthropic': 0.3.11(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
-      '@langchain/aws': 0.1.3(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
+      '@langchain/aws': 0.1.10(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/cohere': 0.3.2(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/google-genai': 0.1.6(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(zod@3.24.1)
       '@langchain/google-vertexai': 0.1.8(@langchain/core@0.3.39(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(zod@3.24.1)
@@ -25207,18 +25189,6 @@ snapshots:
     dependencies:
       '@types/uuid': 10.0.0
       commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.7.2
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
-
-  langsmith@0.3.29(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      chalk: 4.1.2
-      console-table-printer: 2.12.1
       p-queue: 6.6.2
       p-retry: 4.6.2
       semver: 7.7.2
@@ -27967,8 +27937,6 @@ snapshots:
   simple-update-notifier@2.0.0:
     dependencies:
       semver: 7.7.2
-
-  simple-wcswidth@1.0.1: {}
 
   simple-websocket@9.1.0:
     dependencies:
