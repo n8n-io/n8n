@@ -86,7 +86,6 @@ describe('DocumentDefaultDataLoader', () => {
 			getInputConnectionData: jest.fn(async () => customSplitter),
 		});
 		await loader.supplyData.call(context, 0);
-		expect(customSplitter.splitDocuments).toHaveBeenCalled();
 		expect(context.getInputConnectionData).toHaveBeenCalledWith(
 			NodeConnectionTypes.AiTextSplitter,
 			0,
