@@ -3,7 +3,7 @@
   "version": "1.97.0",
   "private": true,
   "engines": {
-    "node": ">=20.15",
+    "node": ">=20",
     "pnpm": ">=10.2.1"
   },
   "packageManager": "pnpm@10.2.1",
@@ -72,6 +72,13 @@
     "turbo": "2.5.3",
     "typescript": "*",
     "zx": "^8.1.4"
+    "dependencies": {
+  "turbo": "2.3.3"
+},
+"devDependencies": {
+  ...
+}
+
   },
   "pnpm": {
     "onlyBuiltDependencies": [
