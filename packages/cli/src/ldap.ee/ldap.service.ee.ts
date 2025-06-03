@@ -154,7 +154,7 @@ export class LdapService {
 				config.set(LDAP_LOGIN_ENABLED, false);
 				await setCurrentAuthenticationMethod('email');
 			}
-		} else {
+		} else if (enabled) {
 			throw new InternalServerError(
 				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			);
