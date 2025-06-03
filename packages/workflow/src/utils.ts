@@ -5,7 +5,7 @@ import {
 	type ExpressionStatement,
 } from 'esprima-next';
 import FormData from 'form-data';
-import { merge } from 'lodash';
+import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
 import { ApplicationError } from './errors/application.error';

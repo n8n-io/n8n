@@ -22,7 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@n8n/i18n';
-import { sortBy } from 'lodash-es';
+import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';

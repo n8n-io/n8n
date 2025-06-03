@@ -62,7 +62,7 @@ import {
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
