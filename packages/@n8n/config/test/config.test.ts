@@ -62,6 +62,7 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
+				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -72,6 +73,7 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 			isLegacySqlite: true,
+			pingIntervalSeconds: 2,
 		},
 		credentials: {
 			defaultName: 'My credentials',
@@ -323,7 +325,9 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_HOST: 'some-host',
 			DB_POSTGRESDB_USER: 'n8n',
+			DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT: '10000',
 			DB_TABLE_PREFIX: 'test_',
+			DB_PING_INTERVAL_SECONDS: '2',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 			N8N_METRICS: 'TRUE',
@@ -339,10 +343,12 @@ describe('GlobalConfig', () => {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
 					user: 'n8n',
+					idleTimeoutMs: 10_000,
 				},
 				sqlite: defaultConfig.database.sqlite,
 				tablePrefix: 'test_',
 				type: 'sqlite',
+				pingIntervalSeconds: 2,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
