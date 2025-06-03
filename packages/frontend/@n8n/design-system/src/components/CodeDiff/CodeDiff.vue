@@ -207,12 +207,6 @@ const diffs = computed(() => {
 
 .actions {
 	padding: var(--spacing-2xs);
-
-	> button {
-		> span {
-			margin-right: var(--spacing-4xs);
-		}
-	}
 }
 
 .infoText {
