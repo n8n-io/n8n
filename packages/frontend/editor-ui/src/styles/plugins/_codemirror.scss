@@ -26,13 +26,6 @@
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
 
-		&:has(+ .cm-completionInfo-left) {
-			border-top-left-radius: 0;
-			border-bottom-left-radius: 0;
-			border-top-right-radius: var(--border-radius-base);
-			border-bottom-right-radius: var(--border-radius-base);
-		}
-
 		&:has(+ .cm-completionInfo) {
 			height: min(220px, 20vh);
 		}
@@ -318,17 +311,7 @@
 		display: none;
 	}
 
-	&.cm-completionInfo-left {
-		left: auto !important;
-		right: 100% !important;
-		border-bottom-right-radius: 0;
-		border-top-right-radius: 0;
-		border-top-left-radius: var(--border-radius-base);
-		border-bottom-left-radius: var(--border-radius-base);
-		border-left: var(--border-base);
-		border-right: none;
-	}
-
+	&.cm-completionInfo-left,
 	&.cm-completionInfo-right {
 		background-color: var(--color-infobox-background);
 		min-width: 200px;

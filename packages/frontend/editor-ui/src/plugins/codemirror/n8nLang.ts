@@ -29,4 +29,24 @@ export function n8nLang() {
 }
 
 export const n8nAutocompletion = () =>
-	autocompletion({ icons: false, aboveCursor: true, closeOnBlur: false });
+	autocompletion({
+		icons: false,
+		aboveCursor: true,
+		closeOnBlur: false,
+		positionInfo(view, _list, _option, _info, space) {
+			const paddingPx = 10;
+			const autocomplete = view.dom.querySelector('.cm-tooltip-autocomplete') as HTMLElement;
+			const infoBox = view.dom.querySelector('.cm-completionInfo') as HTMLElement;
+			if (!autocomplete || !infoBox) {
+				return {};
+			}
+
+			const rightmost = infoBox.getBoundingClientRect().right;
+			const overflowPx = rightmost - space.right;
+			if (overflowPx > -paddingPx) {
+				autocomplete.style.setProperty('transform', `translateX(-${overflowPx + paddingPx}px)`);
+			}
+
+			return {};
+		},
+	});
