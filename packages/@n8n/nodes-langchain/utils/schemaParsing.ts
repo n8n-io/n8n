@@ -1,41 +1,33 @@
 import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
 import { json as generateJsonSchema } from 'generate-schema';
 import type { SchemaObject } from 'generate-schema';
-import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
+import type { JSONSchema7 } from 'json-schema';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { z } from 'zod';
 
 function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
-	function isPropertySchema(property: JSONSchema7Definition): property is JSONSchema7 {
+	function isPropertySchema(property: unknown): property is JSONSchema7 {
 		return typeof property === 'object' && property !== null && 'type' in property;
 	}
 
 	// Handle object properties
-	if (schema.properties) {
+	if (schema.type === 'object' && schema.properties) {
 		const requiredProperties = Object.keys(schema.properties);
 		if (requiredProperties.length > 0) {
 			schema.required = requiredProperties;
 		}
 
 		for (const key of requiredProperties) {
-			const property = schema.properties[key];
-			if (isPropertySchema(property)) {
-				// Recursively handle nested objects
-				if (property.properties) {
-					makeAllPropertiesRequired(property);
-				}
-				// Handle arrays with object items
-				if (property.type === 'array' && property.items && isPropertySchema(property.items)) {
-					makeAllPropertiesRequired(property.items);
-				}
+			if (isPropertySchema(schema.properties[key])) {
+				makeAllPropertiesRequired(schema.properties[key]);
 			}
 		}
 	}
 
-	// Handle root-level arrays
+	// Handle arrays
 	if (schema.type === 'array' && schema.items && isPropertySchema(schema.items)) {
-		makeAllPropertiesRequired(schema.items);
+		schema.items = makeAllPropertiesRequired(schema.items);
 	}
 
 	return schema;
