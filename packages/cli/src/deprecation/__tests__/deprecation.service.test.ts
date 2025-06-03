@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { captor, mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { InstanceType } from 'n8n-core';
 
 import config from '@/config';
 import { mockInstance } from '@test/mocking';
@@ -142,6 +143,26 @@ describe('DeprecationService', () => {
 			});
 		});
 
+		describe('when executions.mode is not queue', () => {
+			test.each([['main'], ['worker'], ['webhook']])(
+				'should not warn for instanceType %s',
+				(instanceType: InstanceType) => {
+					jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+						if (key === 'executions.mode') return 'regular';
+						return;
+					});
+					process.env[envVar] = 'false';
+					const service = new DeprecationService(
+						logger,
+						globalConfig,
+						mock<InstanceSettings>({ instanceType }),
+					);
+					service.warn();
+					expect(logger.warn).not.toHaveBeenCalled();
+				},
+			);
+		});
+
 		describe('when executions.mode is queue', () => {
 			describe('when instanceType is worker', () => {
 				test.each([
@@ -204,21 +225,6 @@ describe('DeprecationService', () => {
 					expect(logger.warn).toHaveBeenCalledTimes(1);
 					const warningMessage = logger.warn.mock.calls[0][0];
 					expect(warningMessage).toContain(envVar);
-				});
-			});
-
-			describe('when executions.mode is not queue', () => {
-				test('should not warn', () => {
-					jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-						if (key === 'executions.mode') return 'regular';
-						return;
-					});
-					process.env[envVar] = 'false';
-
-					const service = new DeprecationService(logger, globalConfig, instanceSettings);
-					service.warn();
-
-					expect(logger.warn).not.toHaveBeenCalled();
 				});
 			});
 		});
