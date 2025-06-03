@@ -1,22 +1,14 @@
-import type { ISubscriptionMap } from 'mqtt';
-import type { QoS } from 'mqtt-packet';
-import type {
-	ITriggerFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	IRun,
+import {
+	type ITriggerFunctions,
+	type ITriggerResponse,
+	type INodeType,
+	type INodeTypeDescription,
+	type IDataObject,
+	type INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
-
-interface Options {
-	jsonParseBody: boolean;
-	onlyMessage: boolean;
-	parallelProcessing: boolean;
-}
+import type { QoS } from 'mqtt-packet';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,24 +17,19 @@ export class MqttTrigger implements INodeType {
 		icon: 'file:mqtt.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to MQTT events',
-		eventTriggerDescription: '',
+		description: 'Starts the workflow when an MQTT message is received',
 		defaults: {
 			name: 'MQTT Trigger',
 		},
 		triggerPanel: {
-			header: '',
+			header: 'MQTT Trigger',
 			executionsHelp: {
-				inactive:
-					"<b>While building your workflow</b>, click the 'execute step' button, then trigger an MQTT event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
-				active:
-					"<b>While building your workflow</b>, click the 'execute step' button, then trigger an MQTT event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active: 'This node will trigger when a message is received on the specified topic.',
+				inactive: 'This node will not trigger until you activate it.',
 			},
-			activationHint:
-				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'mqtt',
@@ -51,12 +38,13 @@ export class MqttTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topics',
-				name: 'topics',
+				displayName: 'Topic',
+				name: 'topic',
 				type: 'string',
+				required: true,
 				default: '',
 				description:
-					'Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2',
+					'The topic to subscribe to. Supports wildcards: + for single level and # for multiple levels',
 			},
 			{
 				displayName: 'Options',
@@ -66,26 +54,39 @@ export class MqttTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'JSON Parse Body',
-						name: 'jsonParseBody',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to try parse the message to an object',
+						displayName: 'QoS',
+						name: 'qos',
+						type: 'options',
+						options: [
+							{
+								name: 'Received at Most Once',
+								value: 0,
+							},
+							{
+								name: 'Received at Least Once',
+								value: 1,
+							},
+							{
+								name: 'Exactly Once',
+								value: 2,
+							},
+						],
+						default: 0,
+						description: 'QoS subscription level',
 					},
 					{
-						displayName: 'Only Message',
-						name: 'onlyMessage',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to return only the message property',
-					},
-					{
-						displayName: 'Parallel Processing',
-						name: 'parallelProcessing',
+						displayName: 'Parse JSON',
+						name: 'parseJson',
 						type: 'boolean',
 						default: true,
-						description:
-							'Whether to process messages in parallel or by keeping the message in order',
+						description: 'Whether to try to parse the message as JSON',
+					},
+					{
+						displayName: 'Include Topic',
+						name: 'includeTopic',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to include the topic in the output data',
 					},
 				],
 			},
@@ -93,69 +94,108 @@ export class MqttTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const topics = (this.getNodeParameter('topics') as string).split(',');
-		if (!topics?.length) {
-			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
-		}
-
-		const topicsQoS: ISubscriptionMap = {};
-		for (const data of topics) {
-			const [topic, qosString] = data.split(':');
-			let qos = qosString ? parseInt(qosString, 10) : 0;
-			if (qos < 0 || qos > 2) qos = 0;
-			topicsQoS[topic] = { qos: qos as QoS };
-		}
-
-		const options = this.getNodeParameter('options') as Options;
 		const credentials = await this.getCredentials<MqttCredential>('mqtt');
+		const topic = this.getNodeParameter('topic') as string;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const qos = ((options.qos as number) || 0) as QoS;
+		const parseJson = options.parseJson !== undefined ? options.parseJson : true;
+		const includeTopic = options.includeTopic !== undefined ? options.includeTopic : true;
+
 		const client = await createClient(credentials);
 
-		const parsePayload = (topic: string, payload: Buffer) => {
-			let message = payload.toString();
+		const self = this;
+		const triggerFunction = async (receivedTopic: string, message: Buffer) => {
+			let messageData: IDataObject = {};
 
-			if (options.jsonParseBody) {
-				try {
-					message = JSON.parse(message);
-				} catch (e) {}
+			try {
+				const messageString = message.toString();
+				if (parseJson) {
+					try {
+						messageData = JSON.parse(messageString);
+					} catch (error) {
+						messageData = { message: messageString };
+					}
+				} else {
+					messageData = { message: messageString };
+				}
+
+				if (includeTopic) {
+					messageData.topic = receivedTopic;
+				}
+
+				const executionData: INodeExecutionData[][] = [
+					[
+						{
+							json: messageData,
+						},
+					],
+				];
+				self.emit(executionData);
+			} catch (error) {
+				const errorData: INodeExecutionData[][] = [
+					[
+						{
+							json: { error: error.message },
+						},
+					],
+				];
+				self.emit(errorData);
 			}
-
-			let result: IDataObject = { message, topic };
-
-			if (options.onlyMessage) {
-				//@ts-ignore
-				result = [message];
-			}
-
-			return [this.helpers.returnJsonArray([result])];
 		};
 
-		const manualTriggerFunction = async () =>
-			await new Promise<void>(async (resolve) => {
-				client.once('message', (topic, payload) => {
-					this.emit(parsePayload(topic, payload));
-					resolve();
-				});
-				await client.subscribeAsync(topicsQoS);
-			});
+		client.on('message', triggerFunction);
 
-		if (this.getMode() === 'trigger') {
-			const donePromise = !options.parallelProcessing
-				? this.helpers.createDeferredPromise<IRun>()
-				: undefined;
-			client.on('message', async (topic, payload) => {
-				this.emit(parsePayload(topic, payload), undefined, donePromise);
-				await donePromise?.promise;
+		await new Promise<void>((resolve, reject) => {
+			client.subscribe(topic, { qos }, (error) => {
+				if (error) {
+					reject(error);
+					return;
+				}
+				resolve();
 			});
-			await client.subscribeAsync(topicsQoS);
-		}
+		});
+
+		// Handle client errors
+		client.on('error', (error) => {
+			const errorData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: error.message },
+					},
+				],
+			];
+			this.emit(errorData);
+		});
+
+		// Handle reconnection
+		client.on('reconnect', () => {
+			const statusData: INodeExecutionData[][] = [
+				[
+					{
+						json: { status: 'reconnecting' },
+					},
+				],
+			];
+			this.emit(statusData);
+		});
+
+		client.on('close', () => {
+			const statusData: INodeExecutionData[][] = [
+				[
+					{
+						json: { status: 'disconnected' },
+					},
+				],
+			];
+			this.emit(statusData);
+		});
 
 		async function closeFunction() {
-			await client.endAsync();
+			client.end();
 		}
 
 		return {
 			closeFunction,
-			manualTriggerFunction,
 		};
 	}
 }
