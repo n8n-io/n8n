@@ -8,7 +8,10 @@ import { useRouter } from 'vue-router';
 export function useNodeSettingsInCanvas(): ComputedRef<number | undefined> {
 	const settingsStore = useSettingsStore();
 
-	if (settingsStore.experimental__minZoomNodeSettingsInCanvas <= 0) {
+	if (
+		Number.isNaN(settingsStore.experimental__minZoomNodeSettingsInCanvas) ||
+		settingsStore.experimental__minZoomNodeSettingsInCanvas <= 0
+	) {
 		return computed(() => undefined);
 	}
 
