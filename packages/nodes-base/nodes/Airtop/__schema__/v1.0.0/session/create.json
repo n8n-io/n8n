@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "sessionId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
