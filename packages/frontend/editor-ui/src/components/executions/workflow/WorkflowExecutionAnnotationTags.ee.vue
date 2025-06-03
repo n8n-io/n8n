@@ -8,19 +8,17 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 
+const props = defineProps<{
+	execution: ExecutionSummary;
+}>();
+console.log('execution', props.execution);
 const locale = useI18n();
 const telemetry = useTelemetry();
 const { showError } = useToast();
 const executionsStore = useExecutionsStore();
 
-const activeExecution = computed(() => {
-	return executionsStore.activeExecution as ExecutionSummary & {
-		customData?: Record<string, string>;
-	};
-});
-
-const tagIds = computed(() => activeExecution.value?.annotation?.tags.map((tag) => tag.id) ?? []);
-const tags = computed(() => activeExecution.value?.annotation?.tags);
+const tagIds = computed(() => props.execution.annotation?.tags.map((tag) => tag.id) ?? []);
+const tags = computed(() => props.execution.annotation?.tags);
 const tagsEventBus = createEventBus();
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
@@ -43,7 +41,7 @@ const onTagsEditEnable = () => {
 };
 
 const onTagsBlur = async () => {
-	if (!activeExecution.value) {
+	if (!props.execution) {
 		return;
 	}
 
@@ -62,12 +60,12 @@ const onTagsBlur = async () => {
 	tagsSaving.value = true;
 
 	try {
-		await executionsStore.annotateExecution(activeExecution.value.id, { tags: newTagIds });
+		await executionsStore.annotateExecution(props.execution.id, { tags: newTagIds });
 
 		if (newTagIds.length > 0) {
 			telemetry.track('User added execution annotation tag', {
 				tag_ids: newTagIds,
-				execution_id: activeExecution.value.id,
+				execution_id: props.execution.id,
 			});
 		}
 	} catch (e) {
