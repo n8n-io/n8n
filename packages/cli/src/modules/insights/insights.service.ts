@@ -38,13 +38,19 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startTimers() {
-		this.compactionService.startCompactionTimer();
+	startTimers({ onlyCollection } = { onlyCollection: false }) {
 		this.collectionService.startFlushingTimer();
-		if (this.pruningService.isPruningEnabled) {
-			this.pruningService.startPruningTimer();
+		if (!onlyCollection) {
+			this.compactionService.startCompactionTimer();
+			if (this.pruningService.isPruningEnabled) {
+				this.pruningService.startPruningTimer();
+			}
 		}
-		this.logger.debug('Started compaction, flushing and pruning schedulers');
+		this.logger.debug(
+			onlyCollection
+				? 'Starting collection flushing schedulers'
+				: 'Starting compaction, flushing and pruning schedulers',
+		);
 	}
 
 	stopTimers() {

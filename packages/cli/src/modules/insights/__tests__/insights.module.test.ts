@@ -21,7 +21,17 @@ describe('InsightsModule', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
 			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
 			insightsModule.initialize();
-			expect(insightsService.startTimers).toHaveBeenCalled();
+			expect(insightsService.startTimers).toHaveBeenCalledWith();
+		});
+
+		it('should start background process if instance is webhook', () => {
+			instanceSettings = mockInstance(InstanceSettings, {
+				instanceType: 'webhook',
+				isLeader: false,
+			});
+			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
+			insightsModule.initialize();
+			expect(insightsService.startTimers).toHaveBeenCalledWith({ onlyCollection: true });
 		});
 
 		it('should not start background process if instance is main but not leader', () => {

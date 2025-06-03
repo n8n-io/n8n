@@ -47,6 +47,47 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
+describe('startTimers', () => {
+	let insightsService: InsightsService;
+	let compactionService: InsightsCompactionService;
+	let collectionService: InsightsCollectionService;
+	let pruningService: InsightsPruningService;
+
+	beforeAll(() => {
+		compactionService = mock<InsightsCompactionService>();
+		collectionService = mock<InsightsCollectionService>();
+		pruningService = mock<InsightsPruningService>({ isPruningEnabled: true });
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			compactionService,
+			collectionService,
+			pruningService,
+			mock<LicenseState>(),
+			mockLogger(),
+		);
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	test('starts compaction, flushing and pruning timers', () => {
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).toHaveBeenCalled();
+	});
+
+	test('starts only collection flushing timer when onlyCollection is true', () => {
+		insightsService.startTimers({ onlyCollection: true });
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+});
+
 describe('getInsightsSummary', () => {
 	let insightsService: InsightsService;
 	beforeAll(async () => {
