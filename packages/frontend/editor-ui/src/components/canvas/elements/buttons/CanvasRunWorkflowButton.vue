@@ -3,7 +3,7 @@ import { isChatNode } from '@/components/CanvasChat/utils';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { truncateBeforeLast } from '@/utils/formatters/textFormatter';
+import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { type ActionDropdownItem, N8nActionDropdown, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
