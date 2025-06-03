@@ -1249,21 +1249,33 @@ const onFolderTransferred = async (payload: {
 			payload.shareCredentials,
 		);
 
-		await fetchWorkflows();
-
 		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
-				projectId: payload.destination.projectId,
-				folderId: payload.destination.parentFolder.id,
+				projectId: payload.destination.canAccess
+					? payload.destination.projectId
+					: payload.source.projectId,
+				folderId: payload.destination.canAccess ? payload.source.folder.id : undefined,
 			},
 		}).href;
 
 		if (isCurrentFolder) {
-			// If we just moved the current folder, automatically navigate to the new folder
-			void router.push(newFolderURL);
+			if (payload.destination.canAccess) {
+				// If we just moved the current folder and can access the destination navigate there
+				void router.push(newFolderURL);
+			} else {
+				// Otherwise navigate to the workflows page of the source project
+				void router.push({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: {
+						projectId: payload.source.projectId,
+					},
+				});
+			}
 		} else {
+			await refreshWorkflows();
+
 			if (payload.destination.canAccess) {
 				toast.showToast({
 					title: i18n.baseText('folders.move.success.title'),
@@ -1345,7 +1357,7 @@ const onWorkflowTransferred = async (payload: {
 			payload.shareCredentials,
 		);
 
-		await fetchWorkflows();
+		await refreshWorkflows();
 
 		if (payload.destination.canAccess) {
 			toast.showToast({
