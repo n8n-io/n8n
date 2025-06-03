@@ -1,7 +1,7 @@
 import { h } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -11,7 +11,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
 
 let coreInitialized = false;

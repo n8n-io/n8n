@@ -7,20 +7,22 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
+import { INSECURE_CONNECTION_WARNING } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { i18n } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useLocalStorage } from '@vueuse/core';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
+	const i18n = useI18n();
 	const initialized = ref(false);
 	const settings = ref<FrontendSettings>({} as FrontendSettings);
 	const userManagement = ref<IUserManagementSettings>({

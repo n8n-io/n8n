@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, useCssModule } from 'vue';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -63,7 +63,7 @@ function onDelete() {
 	align-items: center;
 	gap: var(--spacing-2xs);
 	pointer-events: all;
-	padding: var(--spacing-l);
+	padding: var(--spacing-2xs);
 }
 </style>
 

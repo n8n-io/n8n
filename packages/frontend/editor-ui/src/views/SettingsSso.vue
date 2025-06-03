@@ -2,12 +2,12 @@
 import { computed, ref, onMounted } from 'vue';
 import { useSSOStore } from '@/stores/sso.store';
 import CopyInput from '@/components/CopyInput.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const IdentityProviderSettingsType = {

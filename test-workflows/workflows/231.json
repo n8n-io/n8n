@@ -1,0 +1,171 @@
+{
+  "createdAt": "2024-02-14T09:47:52.177Z",
+  "updatedAt": "2024-02-14T09:47:52.177Z",
+  "id": "231",
+  "name": "HTTP:InvalidHostHeader HTTP:CrossDomainRedirect",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3d7ec041-6d7c-4516-b7a0-b89dd41aca5a",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-180, 660]
+    },
+    {
+      "parameters": {},
+      "id": "15c4faaf-6241-4215-8919-b66cc80f90aa",
+      "name": "Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 680]
+    },
+    {
+      "parameters": {
+        "errorMessage": "Request was not sent, internal SSL error!"
+      },
+      "id": "a98994f5-ad55-4a43-8121-78286e7a85b3",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "e4bed74d-e103-4029-ab3c-77d5ff464b36",
+              "leftValue": "={{ $json.error.status }}",
+              "rightValue": 403,
+              "operator": {
+                "type": "number",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "be1eb71b-cccc-4433-95d2-4d4e7c19a2e8",
+              "leftValue": "={{ $json.error.message }}",
+              "rightValue": "ssl",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "acea7bc3-c611-432e-aa30-74b3a550db5f",
+      "name": "Internal SSL Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 660]
+    },
+    {
+      "parameters": {
+        "url": "https://n8n.io",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "internal.domain"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e3c40b1d-1d18-4dd9-9168-35a801057836",
+      "name": "Invalid Host header",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [260, 660],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/redirect-to",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "https://n8n.io"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69d69a4d-2786-4f74-bb92-6109814eb56e",
+      "name": "Cross Domain Redirect",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [260, 860]
+    }
+  ],
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Invalid Host header",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cross Domain Redirect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internal SSL Error?": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Host header": {
+      "main": [
+        [
+          {
+            "node": "Internal SSL Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "0a529bae-c8b3-416a-95fe-933383d51e59",
+  "triggerCount": 0,
+  "tags": []
+}

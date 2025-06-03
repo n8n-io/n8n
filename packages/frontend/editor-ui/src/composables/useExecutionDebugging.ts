@@ -1,6 +1,6 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import {
@@ -14,7 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { usePageRedirectionHelper } from './usePageRedirectionHelper';
@@ -147,7 +147,7 @@ export const useExecutionDebugging = () => {
 			uiStore.openModalWithData({
 				name: DEBUG_PAYWALL_MODAL_KEY,
 				data: {
-					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
+					title: i18n.baseText('executionsList.debug.paywall.title'),
 					footerButtonAction: () => {
 						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
 						void pageRedirectionHelper.goToUpgrade('debug', 'upgrade-debug');

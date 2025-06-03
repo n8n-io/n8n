@@ -51,7 +51,7 @@ import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeType } from '@/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
@@ -61,14 +61,15 @@ import { useToast } from '@/composables/useToast';
 import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
 import { searchInObject } from '@/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
-import { isEqual, isObject } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
+import isObject from 'lodash/isObject';
 import {
 	N8nBlockUi,
 	N8nButton,

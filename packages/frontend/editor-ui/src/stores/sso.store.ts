@@ -3,7 +3,7 @@ import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
 import type { SamlPreferencesExtractedData } from '@/Interface';

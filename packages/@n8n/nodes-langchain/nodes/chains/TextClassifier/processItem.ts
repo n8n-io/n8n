@@ -20,7 +20,7 @@ export async function processItem(
 ): Promise<Record<string, unknown>> {
 	const input = ctx.getNodeParameter('inputText', itemIndex) as string;
 
-	if (input === undefined || input === null) {
+	if (!input) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`Text to classify for item ${itemIndex} is not defined`,

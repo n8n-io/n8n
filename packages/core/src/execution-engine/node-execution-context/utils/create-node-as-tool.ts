@@ -1,6 +1,11 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { generateZodSchema, NodeOperationError, traverseNodeParameters } from 'n8n-workflow';
 import type { IDataObject, INode, INodeType, FromAIArgument } from 'n8n-workflow';
+import {
+	generateZodSchema,
+	NodeOperationError,
+	traverseNodeParameters,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 export type CreateNodeAsToolOptions = {
@@ -84,31 +89,6 @@ function getSchema(node: INode) {
 }
 
 /**
- * Generates a description for a node based on the provided parameters.
- * @param node The node type.
- * @param nodeParameters The parameters of the node.
- * @returns A string description for the node.
- */
-function makeDescription(node: INode, nodeType: INodeType): string {
-	if (node.parameters.descriptionType === 'auto') {
-		const resource = node.parameters.resource as string;
-		const operation = node.parameters.operation as string;
-		let description = nodeType.description.description;
-		if (resource) {
-			description += `\n Resource: ${resource}`;
-		}
-		if (operation) {
-			description += `\n Operation: ${operation}`;
-		}
-		return description.trim();
-	}
-
-	// Users can define custom descriptions when `descriptionType` is manual or not included
-	// in the node's properties, e.g. when the node has neither `operation` or `resource`
-	return (node.parameters.toolDescription as string) ?? nodeType.description.description;
-}
-
-/**
  * Converts a node name to a valid tool name by replacing special characters with underscores
  * and collapsing consecutive underscores into a single one.
  * This method is copied from `packages/@n8n/nodes-langchain/utils/helpers.ts`.
@@ -123,8 +103,9 @@ export function nodeNameToToolName(node: INode): string {
  */
 function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
+
 	const schema = getSchema(node);
-	const description = makeDescription(node, nodeType);
+	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 

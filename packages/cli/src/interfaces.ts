@@ -48,10 +48,16 @@ export interface IWorkflowResponse extends IWorkflowBase {
 
 export interface IWorkflowToImport
 	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
-	owner: {
-		type: 'personal';
-		personalEmail: string;
-	};
+	owner:
+		| {
+				type: 'personal';
+				personalEmail: string;
+		  }
+		| {
+				type: 'team';
+				teamId: string;
+				teamName: string;
+		  };
 	parentFolderId: string | null;
 }
 
@@ -193,6 +199,10 @@ export interface ILicenseReadResponse {
 			limit: number;
 			value: number;
 			warningThreshold: number;
+		};
+		workflowsHavingEvaluations: {
+			limit: number;
+			value: number;
 		};
 	};
 	license: {

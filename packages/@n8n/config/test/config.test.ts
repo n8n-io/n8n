@@ -25,7 +25,7 @@ describe('GlobalConfig', () => {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
 		auth: {
 			cookie: {
@@ -62,6 +62,7 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
+				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -71,6 +72,8 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
+			isLegacySqlite: true,
+			pingIntervalSeconds: 2,
 		},
 		credentials: {
 			defaultName: 'My credentials',
@@ -195,7 +198,7 @@ describe('GlobalConfig', () => {
 			health: {
 				active: false,
 				port: 5678,
-				address: '0.0.0.0',
+				address: '::',
 			},
 			bull: {
 				redis: {
@@ -240,6 +243,7 @@ describe('GlobalConfig', () => {
 		},
 		logging: {
 			level: 'info',
+			format: 'text',
 			outputs: ['console'],
 			file: {
 				fileCountMax: 100,
@@ -271,6 +275,7 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
+			contentSecurityPolicyReportOnly: false,
 		},
 		executions: {
 			pruneData: true,
@@ -309,7 +314,10 @@ describe('GlobalConfig', () => {
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual(defaultConfig);
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(defaultConfig).toMatchObject(config);
+		expect(config).toMatchObject(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -317,7 +325,9 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_HOST: 'some-host',
 			DB_POSTGRESDB_USER: 'n8n',
+			DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT: '10000',
 			DB_TABLE_PREFIX: 'test_',
+			DB_PING_INTERVAL_SECONDS: '2',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 			N8N_METRICS: 'TRUE',
@@ -333,10 +343,12 @@ describe('GlobalConfig', () => {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
 					user: 'n8n',
+					idleTimeoutMs: 10_000,
 				},
 				sqlite: defaultConfig.database.sqlite,
 				tablePrefix: 'test_',
 				type: 'sqlite',
+				pingIntervalSeconds: 2,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
@@ -365,7 +377,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(structuredClone(config)).toEqual({
+		const expected = {
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,
@@ -374,7 +386,11 @@ describe('GlobalConfig', () => {
 					password: 'password-from-file',
 				},
 			},
-		});
+		};
+		// Makes sure the objects are structurally equal while respecting getters,
+		// which `toEqual` and `toBe` does not do.
+		expect(config).toMatchObject(expected);
+		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 

@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -17,7 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';

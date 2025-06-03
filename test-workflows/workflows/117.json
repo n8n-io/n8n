@@ -1,0 +1,124 @@
+{
+  "createdAt": "2021-03-10T11:09:19.174Z",
+  "updatedAt": "2021-03-10T11:09:40.674Z",
+  "id": "117",
+  "name": "Gotify:Message:create getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "1d2659eb-da2b-4d7c-94f6-09d7dc99ef0d"
+    },
+    {
+      "parameters": {
+        "message": "=Message content {{Date.now()}}",
+        "additionalFields": {
+          "title": "=Title{{Date.now()}}"
+        }
+      },
+      "name": "Gotify",
+      "type": "n8n-nodes-base.gotify",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "gotifyApi": {
+          "id": "84",
+          "name": "Gotify API creds"
+        }
+      },
+      "id": "c8ae4d15-a793-4c51-a13a-5e9541079ed2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Gotify1",
+      "type": "n8n-nodes-base.gotify",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "gotifyApi": {
+          "id": "84",
+          "name": "Gotify API creds"
+        }
+      },
+      "id": "9c136007-0f4a-4e13-ba09-03cd4dccbdab"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "messageId": "={{$node[\"Gotify\"].json[\"id\"]}}"
+      },
+      "name": "Gotify2",
+      "type": "n8n-nodes-base.gotify",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ],
+      "credentials": {
+        "gotifyApi": {
+          "id": "84",
+          "name": "Gotify API creds"
+        }
+      },
+      "id": "fb795089-773b-47a5-b8f5-86c52a1863d6"
+    }
+  ],
+  "connections": {
+    "Gotify": {
+      "main": [
+        [
+          {
+            "node": "Gotify1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gotify1": {
+      "main": [
+        [
+          {
+            "node": "Gotify2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Gotify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

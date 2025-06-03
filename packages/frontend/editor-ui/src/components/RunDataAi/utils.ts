@@ -358,6 +358,8 @@ function getChildNodes(
 
 	// Get the first level of children
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
+	const isExecutionRoot =
+		treeNode.parent === undefined || treeNode.executionId !== treeNode.parent.executionId;
 
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
@@ -365,7 +367,7 @@ function getChildNodes(
 			// This prevents showing duplicate executions when a sub-node is connected to multiple parents
 			// Only filter nodes that have source information with valid previousNode references
 			const isMatched =
-				context.depth === 0 && t.source.some((source) => source !== null)
+				isExecutionRoot && t.source.some((source) => source !== null)
 					? t.source.some(
 							(source) =>
 								source?.previousNode === node.name &&
@@ -486,13 +488,16 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 	);
 }
 
-export function findLogEntryRec(id: string, entries: LogEntry[]): LogEntry | undefined {
+export function findLogEntryRec(
+	isMatched: (entry: LogEntry) => boolean,
+	entries: LogEntry[],
+): LogEntry | undefined {
 	for (const entry of entries) {
-		if (entry.id === id) {
+		if (isMatched(entry)) {
 			return entry;
 		}
 
-		const child = findLogEntryRec(id, entry.children);
+		const child = findLogEntryRec(isMatched, entry.children);
 
 		if (child) {
 			return child;
@@ -512,7 +517,7 @@ export function findSelectedLogEntry(
 		case 'none':
 			return undefined;
 		case 'selected': {
-			const entry = findLogEntryRec(selection.id, entries);
+			const entry = findLogEntryRec((e) => e.id === selection.id, entries);
 
 			if (entry) {
 				return entry;
@@ -576,6 +581,16 @@ export function flattenLogEntries(
 	}
 
 	return ret;
+}
+
+export function getEntryAtRelativeIndex(
+	entries: LogEntry[],
+	id: string,
+	relativeIndex: number,
+): LogEntry | undefined {
+	const offset = entries.findIndex((e) => e.id === id);
+
+	return offset === -1 ? undefined : entries[offset + relativeIndex];
 }
 
 function sortLogEntries<T extends { runData: ITaskData }>(a: T, b: T) {

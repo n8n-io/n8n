@@ -6,9 +6,9 @@ import {
 	CUSTOM_API_CALL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
-	STORES,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	NodeFilterType,
 	NodeCreatorOpenSource,
@@ -109,6 +109,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				setNodeCreatorState({
 					createNodeActive: true,
 					nodeCreatorView: creatorView,
+					connectionType,
 				});
 			} else if (connectionType && nodeData) {
 				openNodeCreatorForConnectingNode({
@@ -130,6 +131,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		source,
 		createNodeActive,
 		nodeCreatorView,
+		connectionType,
 	}: ToggleNodeCreatorOptions) {
 		if (!nodeCreatorView) {
 			nodeCreatorView =
@@ -148,6 +150,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		void externalHooks.run('nodeView.createNodeActiveChanged', {
 			source,
 			mode: getMode(nodeCreatorView),
+			connectionType,
 			createNodeActive,
 		});
 
@@ -155,6 +158,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			onCreatorOpened({
 				source,
 				mode: getMode(nodeCreatorView),
+				connectionType,
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -177,11 +181,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			return;
 		}
 
-		const { type, index, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
+		const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
 
 		uiStore.lastSelectedNode = sourceNode.name;
-		uiStore.lastSelectedNodeEndpointUuid = connection.sourceHandle ?? null;
-		uiStore.lastSelectedNodeOutputIndex = index;
 
 		if (isVueFlowConnection(connection)) {
 			uiStore.lastInteractedWithNodeConnection = connection;
@@ -195,6 +197,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView: isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView,
+			connectionType: type,
 		});
 
 		// TODO: The animation is a bit glitchy because we're updating view stack immediately
@@ -214,6 +217,45 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			source,
 			createNodeActive: true,
 			nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
+		});
+	}
+
+	function openNodeCreatorForActions(node: string, eventSource?: NodeCreatorOpenSource) {
+		const actionNode = allNodeCreatorNodes.value.find((i) => i.key === node);
+
+		if (!actionNode) {
+			return;
+		}
+
+		const nodeActions = actions.value[actionNode.key];
+
+		const transformedActions = nodeActions?.map((a) =>
+			transformNodeType(a, actionNode.properties.displayName, 'action'),
+		);
+
+		ndvStore.activeNodeName = null;
+		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		setNodeCreatorState({
+			source: eventSource,
+			createNodeActive: true,
+			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+		});
+
+		setTimeout(() => {
+			useViewStacks().pushViewStack(
+				{
+					subcategory: '*',
+					title: actionNode.properties.displayName,
+					nodeIcon: {
+						type: 'icon',
+						name: 'check-double',
+					},
+					rootView: 'Regular',
+					mode: 'actions',
+					items: transformedActions,
+				},
+				{ resetStacks: true },
+			);
 		});
 	}
 
@@ -264,16 +306,19 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function onCreatorOpened({
 		source,
 		mode,
+		connectionType,
 		workflow_id,
 	}: {
 		source?: string;
 		mode: string;
+		connectionType?: NodeConnectionType;
 		workflow_id?: string;
 	}) {
 		resetNodesPanelSession();
 		trackNodeCreatorEvent('User opened nodes panel', {
 			source,
 			mode,
+			connectionType,
 			workflow_id,
 		});
 	}
@@ -405,6 +450,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
+		openNodeCreatorForActions,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,

@@ -6,7 +6,8 @@ import {
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
-import { memoize, startCase } from 'lodash-es';
+import memoize from 'lodash/memoize';
+import startCase from 'lodash/startCase';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -15,10 +16,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -330,7 +332,18 @@ export function useActionsGenerator() {
 		nodeTypes: INodeTypeDescription[],
 		httpOnlyCredentials: ICredentialType[],
 	) {
-		const visibleNodeTypes = [...nodeTypes];
+		const evaluationStore = useEvaluationStore();
+
+		const visibleNodeTypes = nodeTypes.filter((node) => {
+			if (evaluationStore.isEvaluationEnabled) {
+				return true;
+			}
+			return (
+				node.name !== 'n8n-nodes-base.evaluation' &&
+				node.name !== 'n8n-nodes-base.evaluationTrigger'
+			);
+		});
+
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
 		visibleNodeTypes

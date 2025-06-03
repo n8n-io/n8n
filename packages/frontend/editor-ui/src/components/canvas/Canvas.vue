@@ -19,7 +19,7 @@ import type {
 	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -69,6 +69,10 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'update:logs-open': [open?: boolean];
+	'update:logs:input-open': [open?: boolean];
+	'update:logs:output-open': [open?: boolean];
+	'update:has-range-selection': [isActive: boolean];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -100,6 +104,8 @@ const emit = defineEmits<{
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
+	'start-chat': [];
+	'extract-workflow': [ids: string[]];
 }>();
 
 const props = withDefaults(
@@ -149,6 +155,7 @@ const {
 	viewport,
 	dimensions,
 	nodesSelectionActive,
+	userSelectionRect,
 	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
@@ -287,6 +294,9 @@ const keyMap = computed(() => {
 		ArrowRight: emitWithLastSelectedNode(selectRightNode),
 		shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
 		shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
+		l: () => emit('update:logs-open'),
+		i: () => emit('update:logs:input-open'),
+		o: () => emit('update:logs:output-open'),
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -305,6 +315,8 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
+		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
 });
@@ -394,9 +406,21 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
-function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
+function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
+
+	if (panIntoView) {
+		const nodes = ids.map(findNode).filter(isPresent);
+
+		if (nodes.length === 0) {
+			return;
+		}
+
+		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
+
+		void setViewport(newViewport, { duration: 200 });
+	}
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -673,6 +697,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'extract_sub_workflow':
+			return emit('extract-workflow', nodeIds);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
@@ -789,6 +815,10 @@ onNodesInitialized(() => {
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
+
+watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
+	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
+);
 
 /**
  * Provide

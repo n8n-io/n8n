@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { stringify } from 'flatted';
@@ -6,7 +7,6 @@ import {
 	BinaryDataService,
 	ErrorReporter,
 	InstanceSettings,
-	Logger,
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';

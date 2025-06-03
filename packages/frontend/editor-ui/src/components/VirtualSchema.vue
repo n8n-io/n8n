@@ -12,7 +12,7 @@ import {
 	type SchemaNode,
 } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -42,7 +42,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { pick } from 'lodash-es';
+import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
@@ -55,6 +55,7 @@ type Props = {
 	connectionType?: NodeConnectionType;
 	search?: string;
 	compact?: boolean;
+	outputIndex?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,6 +67,7 @@ const props = withDefaults(defineProps<Props>(), {
 	search: '',
 	mappingEnabled: false,
 	compact: false,
+	outputIndex: undefined,
 });
 
 const telemetry = useTelemetry();
@@ -113,7 +115,14 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 			runIndex: getLastRunIndexWithData(fullNode.name, outputIndex, props.connectionType),
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
-	const nodeData = connectedOutputsWithData
+
+	// If outputIndex is specified, only use data from that specific output branch
+	const filteredOutputsWithData =
+		props.outputIndex !== undefined
+			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
+			: connectedOutputsWithData;
+
+	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
 			getNodeInputData(fullNode, runIndex, outputIndex, props.paneType, props.connectionType),
 		)

@@ -17,7 +17,7 @@ import {
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -25,7 +25,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@/permissions';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const route = useRoute();

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { get, set, unset } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import type {
 	IDataObject,
 	NodeParameterValue,
@@ -30,17 +32,17 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	webhookModalDescription,

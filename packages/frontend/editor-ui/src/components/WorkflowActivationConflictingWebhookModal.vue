@@ -4,7 +4,7 @@ import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
 const modalBus = createEventBus();

@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inTest, LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
@@ -8,7 +8,6 @@ import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
-	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
@@ -22,7 +21,7 @@ import * as CrashJournal from '@/crash-journal';
 import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
@@ -160,7 +159,7 @@ export abstract class BaseCommand extends Command {
 		const { communityPackages } = this.globalConfig.nodes;
 		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/community-packages.service');
-			await Container.get(CommunityPackagesService).checkForMissingPackages();
+			await Container.get(CommunityPackagesService).init();
 		}
 
 		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
@@ -286,7 +285,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async cleanupTestRunner() {
-		await Container.get(TestRunnerService).cleanupIncompleteRuns();
+		await Container.get(TestRunCleanupService).cleanupIncompleteRuns();
 	}
 
 	async finally(error: Error | undefined) {

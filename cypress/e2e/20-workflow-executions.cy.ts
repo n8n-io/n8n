@@ -275,7 +275,7 @@ describe('Workflow Executions', () => {
 
 			cy.getByTestId('node-creator-item-name')
 				.should('be.visible')
-				.filter(':contains("Trigger")')
+				.filter(':contains("Trigger manually")')
 				.click();
 			executionsTab.actions.switchToExecutionsTab();
 			executionsTab.getters.executionsSidebar().should('be.visible');

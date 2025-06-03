@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 import { N8nNodeIcon } from '@n8n/design-system';
