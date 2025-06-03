@@ -1,14 +1,11 @@
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type {
-	StreamableHTTPServerTransport,
-	StreamableHTTPServerTransportOptions,
-} from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { StreamableHTTPServerTransportOptions } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request } from 'express';
 import { captor, mock } from 'jest-mock-extended';
 
-import type { CompressionResponse } from '../FlushingSSEServerTransport';
-import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
+import type { CompressionResponse } from '../FlushingTransport';
+import { FlushingSSEServerTransport, FlushingStreamableHTTPTransport } from '../FlushingTransport';
 import { McpServerManager } from '../McpServer';
 
 const sessionId = 'mock-session-id';
@@ -21,25 +18,15 @@ jest.mock('@modelcontextprotocol/sdk/server/index.js', () => {
 
 const mockTransport = mock<FlushingSSEServerTransport>({ sessionId });
 mockTransport.handleRequest.mockImplementation(jest.fn());
-
-jest.mock('../FlushingSSEServerTransport', () => {
-	return {
-		FlushingSSEServerTransport: jest.fn().mockImplementation(() => mockTransport),
-	};
-});
-
-const mockStreamableTransport = mock<StreamableHTTPServerTransport>();
+const mockStreamableTransport = mock<FlushingStreamableHTTPTransport>();
 mockStreamableTransport.onclose = jest.fn();
 
-jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
+jest.mock('../FlushingTransport', () => {
 	return {
-		StreamableHTTPServerTransport: jest.fn().mockImplementation(() => mockStreamableTransport),
+		FlushingSSEServerTransport: jest.fn().mockImplementation(() => mockTransport),
+		FlushingStreamableHTTPTransport: jest.fn().mockImplementation(() => mockStreamableTransport),
 	};
 });
-
-const { StreamableHTTPServerTransport: MockedStreamableHTTPServerTransport } = jest.requireMock(
-	'@modelcontextprotocol/sdk/server/streamableHttp.js',
-);
 
 describe('McpServer', () => {
 	const mockRequest = mock<Request>({ query: { sessionId }, path: '/sse' });
@@ -227,11 +214,14 @@ describe('McpServer', () => {
 				mockStreamableRequest,
 			);
 
-			// Check that StreamableHTTPServerTransport was initialized with correct params
-			expect(MockedStreamableHTTPServerTransport).toHaveBeenCalledWith({
-				sessionIdGenerator: expect.any(Function),
-				onsessioninitialized: expect.any(Function),
-			});
+			// Check that FlushingStreamableHTTPTransport was initialized with correct params
+			expect(FlushingStreamableHTTPTransport).toHaveBeenCalledWith(
+				{
+					sessionIdGenerator: expect.any(Function),
+					onsessioninitialized: expect.any(Function),
+				},
+				mockResponse,
+			);
 
 			// Check that Server was initialized
 			expect(Server).toHaveBeenCalled();
@@ -251,8 +241,9 @@ describe('McpServer', () => {
 			mockStreamableTransport.onclose = jest.fn();
 			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
 
-			MockedStreamableHTTPServerTransport.mockImplementationOnce(
-				(options: StreamableHTTPServerTransportOptions) => {
+			jest
+				.mocked(FlushingStreamableHTTPTransport)
+				.mockImplementationOnce((options: StreamableHTTPServerTransportOptions) => {
 					// Simulate session initialization asynchronously using queueMicrotask instead of setTimeout
 					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
@@ -260,8 +251,7 @@ describe('McpServer', () => {
 						}
 					});
 					return mockStreamableTransport;
-				},
-			);
+				});
 
 			await mcpServerManager.createServerWithStreamableHTTPTransport(
 				'mcpServer',
@@ -287,8 +277,9 @@ describe('McpServer', () => {
 			let onCloseCallback: (() => void) | undefined;
 			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
 
-			MockedStreamableHTTPServerTransport.mockImplementationOnce(
-				(options: StreamableHTTPServerTransportOptions) => {
+			jest
+				.mocked(FlushingStreamableHTTPTransport)
+				.mockImplementationOnce((options: StreamableHTTPServerTransportOptions) => {
 					// Simulate session initialization and capture onclose callback asynchronously using queueMicrotask
 					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
@@ -297,8 +288,7 @@ describe('McpServer', () => {
 						}
 					});
 					return mockStreamableTransport;
-				},
-			);
+				});
 
 			await mcpServerManager.createServerWithStreamableHTTPTransport(
 				'mcpServer',
@@ -443,7 +433,7 @@ describe('McpServer', () => {
 
 		it('should return correct transport when multiple transports exist', () => {
 			const mockTransport1 = mock<FlushingSSEServerTransport>();
-			const mockTransport2 = mock<StreamableHTTPServerTransport>();
+			const mockTransport2 = mock<FlushingStreamableHTTPTransport>();
 
 			mcpServerManager.transports['session-1'] = mockTransport1;
 			mcpServerManager.transports['session-2'] = mockTransport2;

@@ -5,7 +5,7 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 
-import type { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
+import type { FlushingSSEServerTransport } from '../FlushingTransport';
 import type { McpServerManager } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 

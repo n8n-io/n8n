@@ -1,6 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
 	JSONRPCMessage,
@@ -18,8 +17,8 @@ import type { IncomingMessage } from 'http';
 import { jsonParse, OperationalError, type Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
-import type { CompressionResponse } from './FlushingSSEServerTransport';
+import { FlushingSSEServerTransport, FlushingStreamableHTTPTransport } from './FlushingTransport';
+import type { CompressionResponse } from './FlushingTransport';
 
 /**
  * Parses the JSONRPC message and checks whether the method used was a tool
@@ -65,8 +64,9 @@ export class McpServerManager {
 
 	servers: { [sessionId: string]: Server } = {};
 
-	transports: { [sessionId: string]: FlushingSSEServerTransport | StreamableHTTPServerTransport } =
-		{};
+	transports: {
+		[sessionId: string]: FlushingSSEServerTransport | FlushingStreamableHTTPTransport;
+	} = {};
 
 	private tools: { [sessionId: string]: Tool[] } = {};
 
@@ -135,7 +135,7 @@ export class McpServerManager {
 
 	getTransport(
 		sessionId: string,
-	): FlushingSSEServerTransport | StreamableHTTPServerTransport | undefined {
+	): FlushingSSEServerTransport | FlushingStreamableHTTPTransport | undefined {
 		return this.transports[sessionId];
 	}
 
@@ -156,20 +156,23 @@ export class McpServerManager {
 			},
 		);
 
-		const transport = new StreamableHTTPServerTransport({
-			sessionIdGenerator: () => randomUUID(),
-			onsessioninitialized: (sessionId) => {
-				this.logger.debug(`New session initialized: ${sessionId}`);
-				transport.onclose = () => {
-					this.logger.debug(`Deleting transport for ${sessionId}`);
-					delete this.tools[sessionId];
-					delete this.transports[sessionId];
-					delete this.servers[sessionId];
-				};
-				this.transports[sessionId] = transport;
-				this.servers[sessionId] = server;
+		const transport = new FlushingStreamableHTTPTransport(
+			{
+				sessionIdGenerator: () => randomUUID(),
+				onsessioninitialized: (sessionId) => {
+					this.logger.debug(`New session initialized: ${sessionId}`);
+					transport.onclose = () => {
+						this.logger.debug(`Deleting transport for ${sessionId}`);
+						delete this.tools[sessionId];
+						delete this.transports[sessionId];
+						delete this.servers[sessionId];
+					};
+					this.transports[sessionId] = transport;
+					this.servers[sessionId] = server;
+				},
 			},
-		});
+			resp,
+		);
 
 		this.setUpHandlers(server);
 

@@ -5,7 +5,7 @@ import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
 import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
 
-import type { CompressionResponse } from './FlushingSSEServerTransport';
+import type { CompressionResponse } from './FlushingTransport';
 import { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
