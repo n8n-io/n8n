@@ -1,9 +1,8 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { mock } from 'jest-mock-extended';
-import type { ISupplyDataFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { DocumentDefaultDataLoaderV2 } from '../V2/DocumentDefaultDataLoaderV2.node';
+import { DocumentDefaultDataLoader } from '../DocumentDefaultDataLoader.node';
 
 jest.mock('@langchain/textsplitters', () => ({
 	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
@@ -14,54 +13,32 @@ jest.mock('@langchain/textsplitters', () => ({
 	})),
 }));
 
-const mockNodeTypeBaseDescription: INodeTypeBaseDescription = {
-	displayName: 'Default Data Loader',
-	name: 'documentDefaultDataLoader',
-	icon: 'file:binary.svg',
-	group: ['transform'],
-	description: 'Load data from previous step in the workflow',
-	codex: {
-		categories: ['AI'],
-		subcategories: {
-			AI: ['Document Loaders'],
-		},
-		resources: {
-			primaryDocumentation: [
-				{
-					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/',
-				},
-			],
-		},
-	},
-	defaultVersion: 2,
-};
-
 describe('DocumentDefaultDataLoader', () => {
-	let loader: DocumentDefaultDataLoaderV2;
+	let loader: DocumentDefaultDataLoader;
 
 	beforeEach(() => {
-		loader = new DocumentDefaultDataLoaderV2(mockNodeTypeBaseDescription);
+		loader = new DocumentDefaultDataLoader();
 		jest.clearAllMocks();
 	});
 
 	it('should supply data with recursive char text splitter', async () => {
-		await loader.supplyData.call(
-			mock<ISupplyDataFunctions>({
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
-					switch (paramName) {
-						case 'dataType':
-							return 'json';
-						case 'textSplittingMode':
-							return 'simple';
-						case 'binaryDataKey':
-							return 'data';
-						default:
-							return;
-					}
-				}),
+		const context = {
+			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
+			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				switch (paramName) {
+					case 'dataType':
+						return 'json';
+					case 'textSplittingMode':
+						return 'simple';
+					case 'binaryDataKey':
+						return 'data';
+					default:
+						return;
+				}
 			}),
-			0,
-		);
+		} as unknown as ISupplyDataFunctions;
+
+		await loader.supplyData.call(context, 0);
 		expect(RecursiveCharacterTextSplitter).toHaveBeenCalledWith({
 			chunkSize: 1000,
 			chunkOverlap: 200,
@@ -70,7 +47,8 @@ describe('DocumentDefaultDataLoader', () => {
 
 	it('should supply data with custom text splitter', async () => {
 		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
-		const context = mock<ISupplyDataFunctions>({
+		const context = {
+			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
 			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'dataType':
@@ -84,7 +62,7 @@ describe('DocumentDefaultDataLoader', () => {
 				}
 			}),
 			getInputConnectionData: jest.fn(async () => customSplitter),
-		});
+		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 		expect(context.getInputConnectionData).toHaveBeenCalledWith(
 			NodeConnectionTypes.AiTextSplitter,

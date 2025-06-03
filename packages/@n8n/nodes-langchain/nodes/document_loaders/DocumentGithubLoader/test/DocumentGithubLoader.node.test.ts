@@ -1,9 +1,8 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { mock } from 'jest-mock-extended';
-import type { ISupplyDataFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { DocumentGithubLoaderV2 } from '../V2/DocumentGithubLoaderV2.node';
+import { DocumentGithubLoader } from '../DocumentGithubLoader.node';
 
 jest.mock('@langchain/textsplitters', () => ({
 	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
@@ -21,40 +20,18 @@ jest.mock('@langchain/community/document_loaders/web/github', () => ({
 
 const mockLogger = { debug: jest.fn() };
 
-const mockNodeTypeBaseDescription: INodeTypeBaseDescription = {
-	displayName: 'GitHub Loader',
-	name: 'documentGithubLoader',
-	icon: 'file:github.svg',
-	group: ['transform'],
-	description: 'Load documents from a GitHub repository',
-	codex: {
-		categories: ['AI'],
-		subcategories: {
-			AI: ['Document Loaders'],
-		},
-		resources: {
-			primaryDocumentation: [
-				{
-					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentgithubloader/',
-				},
-			],
-		},
-	},
-	defaultVersion: 2,
-};
-
 describe('DocumentGithubLoader', () => {
-	let loader: DocumentGithubLoaderV2;
+	let loader: DocumentGithubLoader;
 
 	beforeEach(() => {
-		loader = new DocumentGithubLoaderV2(mockNodeTypeBaseDescription);
+		loader = new DocumentGithubLoader();
 		jest.clearAllMocks();
 	});
 
 	it('should supply data with recursive char text splitter', async () => {
-		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
-		const context = mock<ISupplyDataFunctions>({
+		const context = {
 			logger: mockLogger,
+			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
 			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'repository':
@@ -73,10 +50,9 @@ describe('DocumentGithubLoader', () => {
 				accessToken: 'token',
 				server: 'https://api.github.com',
 			}),
-			getInputConnectionData: jest.fn(async () => customSplitter),
 			addInputData: jest.fn(() => ({ index: 0 })),
 			addOutputData: jest.fn(),
-		});
+		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 
 		expect(RecursiveCharacterTextSplitter).toHaveBeenCalledWith({
@@ -87,8 +63,9 @@ describe('DocumentGithubLoader', () => {
 
 	it('should use custom text splitter when textSplittingMode is custom', async () => {
 		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
-		const context = mock<ISupplyDataFunctions>({
+		const context = {
 			logger: mockLogger,
+			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
 			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'repository':
@@ -110,7 +87,7 @@ describe('DocumentGithubLoader', () => {
 			getInputConnectionData: jest.fn(async () => customSplitter),
 			addInputData: jest.fn(() => ({ index: 0 })),
 			addOutputData: jest.fn(),
-		});
+		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 
 		expect(context.getInputConnectionData).toHaveBeenCalledWith(
