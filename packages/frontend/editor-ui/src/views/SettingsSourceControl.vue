@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onMounted } from 'vue';
-import type { Rule, RuleGroup } from '@n8n/design-system/types';
+import CopyInput from '@/components/CopyInput.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useMessage } from '@/composables/useMessage';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useToast } from '@/composables/useToast';
-import { useLoadingService } from '@/composables/useLoadingService';
-import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import CopyInput from '@/components/CopyInput.vue';
-import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { SshKeyTypes } from '@/types/sourceControl.types';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { Rule, RuleGroup } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -134,7 +134,7 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 		name: 'MATCH_REGEX',
 		config: {
 			regex:
-				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~]+(?:\/[\w\-~]+)*(?:\.git)?(?:\/.*)?$/,
+				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
 			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 		},
 	},

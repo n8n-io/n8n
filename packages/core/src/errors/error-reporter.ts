@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
-import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
 import type { ReportingOptions } from 'n8n-workflow';
@@ -70,6 +69,7 @@ export class ErrorReporter {
 
 	async shutdown(timeoutInMs = 1000) {
 		clearTimeout(this.expirationTimer);
+		const { close } = await import('@sentry/node');
 		await close(timeoutInMs);
 	}
 

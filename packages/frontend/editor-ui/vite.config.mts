@@ -49,11 +49,11 @@ const alias = [
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: `lodash-es/${name}`,
+		replacement: `lodash/${name}`,
 	})),
 	{
 		find: /^lodash\.(.+)$/,
-		replacement: 'lodash-es/$1',
+		replacement: 'lodash/$1',
 	},
 ];
 

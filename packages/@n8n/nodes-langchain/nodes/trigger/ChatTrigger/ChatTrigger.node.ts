@@ -1,5 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import { Node, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,

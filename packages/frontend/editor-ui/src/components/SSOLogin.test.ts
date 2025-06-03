@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import SSOLogin from '@/components/SSOLogin.vue';
 import { STORES } from '@n8n/stores';
 import { useSSOStore } from '@/stores/sso.store';

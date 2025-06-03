@@ -2,7 +2,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
