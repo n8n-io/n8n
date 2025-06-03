@@ -37,6 +37,200 @@ describe('Logger', () => {
 		});
 	});
 
+	describe('formats', () => {
+		afterEach(() => {
+			jest.resetAllMocks();
+		});
+
+		test('log text, if `config.logging.format` is set to `text`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'text',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(output).toEqual(`${testMessage}\n`);
+		});
+
+		test('log json, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				level: 'info',
+				metadata: {
+					...testMetadata,
+					timestamp: expect.any(String),
+				},
+			});
+		});
+
+		test('apply scope filters, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: ['push'],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const redisLogger = logger.scoped('redis');
+			const pushLogger = logger.scoped('push');
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			redisLogger.info(testMessage, testMetadata);
+			pushLogger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('log errors in metadata with stack trace, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const parentError = new Error('Parent', { cause: 'just a string' });
+			const testError = new Error('Test', { cause: parentError });
+			const testMetadata = { error: testError };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				metadata: {
+					error: {
+						name: testError.name,
+						message: testError.message,
+						stack: testError.stack,
+						cause: {
+							name: parentError.name,
+							message: parentError.message,
+							stack: parentError.stack,
+							cause: parentError.cause,
+						},
+					},
+				},
+			});
+		});
+
+		test('do not recurse indefinitely when `cause` contains circular references', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const parentError = new Error('Parent', { cause: 'just a string' });
+			const childError = new Error('Test', { cause: parentError });
+			parentError.cause = childError;
+			const testMetadata = { error: childError };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				metadata: {
+					error: {
+						name: childError.name,
+						message: childError.message,
+						stack: childError.stack,
+						cause: {
+							name: parentError.name,
+							message: parentError.message,
+							stack: parentError.stack,
+						},
+					},
+				},
+			});
+		});
+	});
+
 	describe('transports', () => {
 		afterEach(() => {
 			jest.restoreAllMocks();

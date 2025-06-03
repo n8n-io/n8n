@@ -36,7 +36,8 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
-import { get, set } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
 import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';

@@ -9,6 +9,7 @@ import {
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_TOOLS,
+	AI_CATEGORY_VECTOR_STORES,
 	AI_CODE_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -19,7 +20,7 @@ import {
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
-import difference from 'lodash-es/difference';
+import difference from 'lodash/difference';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -122,14 +123,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 
-			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
+			const groupedNodes = groupIfAiNodes(searchResults, stack.title, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
 			// as the first item is collapsable
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;
 		}
-		return extendItemsWithUUID(groupIfAiNodes(stack.baselineItems, true));
+		return extendItemsWithUUID(groupIfAiNodes(stack.baselineItems, stack.title, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -146,7 +147,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	const activeViewStackMode = computed(
-		() => activeViewStack.value.mode || TRIGGER_NODE_CREATOR_VIEW,
+		() => activeViewStack.value.mode ?? TRIGGER_NODE_CREATOR_VIEW,
 	);
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
@@ -183,7 +184,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			searchNodes(stack.search || '', filteredNodes),
 		);
 		if (isAiRootView(stack)) {
-			globalSearchResult = groupIfAiNodes(globalSearchResult);
+			globalSearchResult = groupIfAiNodes(globalSearchResult, stack.title, false);
 		}
 
 		const filteredItems = globalSearchResult.filter((item) => {
@@ -233,7 +234,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 	}
 
-	function groupIfAiNodes(items: INodeCreateElement[], sortAlphabetically = true) {
+	function groupIfAiNodes(
+		items: INodeCreateElement[],
+		stackCategory: string | undefined,
+		sortAlphabetically: boolean,
+	) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
 
@@ -247,7 +252,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				const section = subcategories[AI_SUBCATEGORY]?.[0];
 
 				if (section) {
-					const subSection = subcategories[section]?.[0];
+					// Don't show sub sections for Vector Stores if we're currently viewing a 'Tools' stack
+					const subSection =
+						section === AI_CATEGORY_VECTOR_STORES && stackCategory === AI_CATEGORY_TOOLS
+							? undefined
+							: subcategories[section]?.[0];
+
 					const sectionKey = subSection ?? section;
 					const currentItems = sectionsMap.get(sectionKey)?.items ?? [];
 					const isSubnodesSection = !(

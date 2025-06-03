@@ -5,7 +5,7 @@ import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { chunk } from 'lodash';
+import chunk from 'lodash/chunk';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -428,9 +428,7 @@ export class ActiveWorkflowManager {
 		if (dbWorkflowIds.length === 0) return;
 
 		if (this.instanceSettings.isLeader) {
-			this.logger.info(' ================================');
-			this.logger.info('   Start Active Workflows:');
-			this.logger.info(' ================================');
+			this.logger.info('Start Active Workflows:');
 		}
 
 		const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
@@ -459,23 +457,18 @@ export class ActiveWorkflowManager {
 			});
 
 			if (added.webhooks || added.triggersAndPollers) {
-				this.logger.info(`   - ${formatWorkflow(dbWorkflow)})`);
-				this.logger.info('     => Started');
-				this.logger.debug(`Activated workflow ${formatWorkflow(dbWorkflow)}`, {
+				this.logger.info(`Activated workflow ${formatWorkflow(dbWorkflow)}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
-			this.logger.info(
-				`     => ERROR: Workflow ${formatWorkflow(dbWorkflow)} could not be activated on first try, keep on trying if not an auth issue`,
-			);
-
-			this.logger.info(`               ${error.message}`);
 			this.logger.error(
 				`Issue on initial workflow activation try of ${formatWorkflow(dbWorkflow)} (startup)`,
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					error,
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				},
@@ -781,10 +774,12 @@ export class ActiveWorkflowManager {
 				}
 
 				this.logger.info(
-					` -> Activation of workflow "${workflowName}" (${workflowId}) did fail with error: "${
+					`Activation of workflow "${workflowName}" (${workflowId}) did fail with error: "${
 						error.message as string
 					}" | retry in ${Math.floor(lastTimeout / 1000)} seconds`,
 					{
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						error,
 						workflowId,
 						workflowName,
 					},
@@ -794,13 +789,10 @@ export class ActiveWorkflowManager {
 				this.queuedActivations[workflowId].timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
-			this.logger.info(
-				` -> Activation of workflow "${workflowName}" (${workflowId}) was successful!`,
-				{
-					workflowId,
-					workflowName,
-				},
-			);
+			this.logger.info(`Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
+				workflowId,
+				workflowName,
+			});
 		};
 
 		// Just to be sure that there is not chance that for any reason
