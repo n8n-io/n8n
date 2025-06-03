@@ -15,6 +15,7 @@ import {
 } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
 import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
@@ -26,6 +27,7 @@ export class SourceControlController {
 	constructor(
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
 	) {}
 
@@ -164,12 +166,13 @@ export class SourceControlController {
 	}
 
 	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	@GlobalScope('sourceControl:push')
 	async pushWorkfolder(
 		req: AuthenticatedRequest,
 		res: express.Response,
 		@Body payload: PushWorkFolderRequestDto,
 	): Promise<SourceControlledFile[]> {
+		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
+
 		try {
 			await this.sourceControlService.setGitUserDetails(
 				`${req.user.firstName} ${req.user.lastName}`,
