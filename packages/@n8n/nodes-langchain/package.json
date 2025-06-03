@@ -183,7 +183,7 @@
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "4.0.0",
     "@qdrant/js-client-rest": "1.14.1",
-    "@supabase/supabase-js": "2.45.4",
+    "@supabase/supabase-js": "2.49.9",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "basic-auth": "catalog:",
