@@ -44,7 +44,8 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			// 1.2 has changes to VectorStoreInMemory node.
-			version: [1, 1.1, 1.2],
+			// 1.3 drops `toolName` and uses node name as the tool name.
+			version: [1, 1.1, 1.2, 1.3],
 			defaults: {
 				name: args.meta.displayName,
 			},
@@ -125,6 +126,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					validateType: 'string-alphanumeric',
 					displayOptions: {
 						show: {
+							'@version': [{ _cnd: { lte: 1.2 } }],
 							mode: ['retrieve-as-tool'],
 						},
 					},
