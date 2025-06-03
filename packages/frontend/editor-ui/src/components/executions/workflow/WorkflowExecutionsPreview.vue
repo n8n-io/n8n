@@ -307,7 +307,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 				<WorkflowExecutionAnnotationPanel
 					:execution="activeExecution"
-					v-if="isAnnotationEnabled && execution"
+					v-if="isAnnotationEnabled && activeExecution"
 				/>
 
 				<N8nIconButton

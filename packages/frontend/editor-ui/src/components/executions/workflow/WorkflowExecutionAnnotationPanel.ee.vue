@@ -52,11 +52,11 @@ function onDropdownVisibleChange(visible: boolean) {
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
 			icon="tasks"
-			:class="[
-				$style.highlightDataButton,
-				customDataLength > 0 ? $style.highlightDataButtonActive : '',
-				isDropdownVisible ? $style.highlightDataButtonOpen : '',
-			]"
+			:class="{
+				[$style.highlightDataButton]: true,
+				[$style.highlightDataButtonActive]: customDataLength > 0,
+				[$style.highlightDataButtonOpen]: isDropdownVisible,
+			}"
 			size="small"
 			type="secondary"
 			data-test-id="execution-preview-ellipsis-button"
