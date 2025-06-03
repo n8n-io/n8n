@@ -62,9 +62,10 @@ describe('McpTrigger Node', () => {
 			// Configure the context for default webhook (tool execution)
 			mockContext.getWebhookName.mockReturnValue('default');
 
-			mockServerManager.transports = {
-				[sessionId]: mock<FlushingSSEServerTransport>({}),
-			};
+			// Mock the session ID retrieval and transport existence
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
+
 			// Mock that the server executes a tool and returns true
 			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
 
@@ -86,6 +87,10 @@ describe('McpTrigger Node', () => {
 		it('should handle default webhook when no tool was executed', async () => {
 			// Configure the context for default webhook
 			mockContext.getWebhookName.mockReturnValue('default');
+
+			// Mock the session ID retrieval and transport existence
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
 			// Mock that the server doesn't execute a tool and returns false
 			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);

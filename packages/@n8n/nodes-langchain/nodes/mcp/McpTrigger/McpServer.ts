@@ -127,6 +127,18 @@ export class McpServerManager {
 		}
 	}
 
+	getSessionId(req: express.Request): string | undefined {
+		// Session ID can be passed either as a query parameter (SSE transport)
+		// or in the header (StreamableHTTP transport).
+		return (req.query.sessionId ?? req.headers['mcp-session-id']) as string | undefined;
+	}
+
+	getTransport(
+		sessionId: string,
+	): FlushingSSEServerTransport | StreamableHTTPServerTransport | undefined {
+		return this.transports[sessionId];
+	}
+
 	async createServerWithStreamableHTTPTransport(
 		serverName: string,
 		resp: CompressionResponse,
@@ -172,9 +184,9 @@ export class McpServerManager {
 	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
 		// Session ID can be passed either as a query parameter (SSE transport)
 		// or in the header (StreamableHTTP transport).
-		const sessionId = (req.query.sessionId ?? req.headers['mcp-session-id']) as string;
-		const transport = this.transports[sessionId];
-		if (transport) {
+		const sessionId = this.getSessionId(req);
+		const transport = this.getTransport(sessionId as string);
+		if (sessionId && transport) {
 			// We need to add a promise here because the `handlePostMessage` will send something to the
 			// MCP Server, that will run in a different context. This means that the return will happen
 			// almost immediately, and will lead to marking the sub-node as "running" in the final execution

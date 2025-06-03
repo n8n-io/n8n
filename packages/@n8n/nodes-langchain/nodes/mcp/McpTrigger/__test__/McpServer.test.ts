@@ -385,4 +385,74 @@ describe('McpServer', () => {
 			expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('No transport found'));
 		});
 	});
+
+	describe('getSessionId', () => {
+		it('should return session ID from query parameter', () => {
+			const request = mock<Request>();
+			request.query = { sessionId: 'test-session-query' };
+			request.headers = {};
+
+			const result = mcpServerManager.getSessionId(request);
+
+			expect(result).toBe('test-session-query');
+		});
+
+		it('should return session ID from header when query is not present', () => {
+			const request = mock<Request>();
+			request.query = {};
+			request.headers = { 'mcp-session-id': 'test-session-header' };
+
+			const result = mcpServerManager.getSessionId(request);
+
+			expect(result).toBe('test-session-header');
+		});
+
+		it('should return undefined when neither query parameter nor header is present', () => {
+			const request = mock<Request>();
+			request.query = {};
+			request.headers = {};
+
+			const result = mcpServerManager.getSessionId(request);
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('getTransport', () => {
+		const testSessionId = 'test-session-transport';
+
+		beforeEach(() => {
+			// Clear transports before each test
+			mcpServerManager.transports = {};
+		});
+
+		it('should return transport when it exists for the session', () => {
+			const mockTransportInstance = mock<FlushingSSEServerTransport>();
+			mcpServerManager.transports[testSessionId] = mockTransportInstance;
+
+			const result = mcpServerManager.getTransport(testSessionId);
+
+			expect(result).toBe(mockTransportInstance);
+		});
+
+		it('should return undefined when transport does not exist for the session', () => {
+			const result = mcpServerManager.getTransport('non-existent-session');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return correct transport when multiple transports exist', () => {
+			const mockTransport1 = mock<FlushingSSEServerTransport>();
+			const mockTransport2 = mock<StreamableHTTPServerTransport>();
+
+			mcpServerManager.transports['session-1'] = mockTransport1;
+			mcpServerManager.transports['session-2'] = mockTransport2;
+
+			const result1 = mcpServerManager.getTransport('session-1');
+			const result2 = mcpServerManager.getTransport('session-2');
+
+			expect(result1).toBe(mockTransport1);
+			expect(result2).toBe(mockTransport2);
+		});
+	});
 });

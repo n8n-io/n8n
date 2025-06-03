@@ -168,8 +168,8 @@ export class McpTrigger extends Node {
 			// 3) Session setup requests using the StreamableHTTPServerTransport
 
 			// Check if there is a session and a transport is already established
-			const sessionId = (req.query.sessionId ?? req.headers['mcp-session-id']) as string;
-			if (sessionId && mcpServerManager.transports[sessionId]) {
+			const sessionId = mcpServerManager.getSessionId(req);
+			if (sessionId && mcpServerManager.getTransport(sessionId)) {
 				const connectedTools = await getConnectedTools(context, true);
 				const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
 				if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
