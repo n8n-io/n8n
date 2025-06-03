@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
 
 defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -31,7 +31,11 @@ const label = computed(() => {
 </script>
 
 <template>
-	<KeyboardShortcutTooltip :label="label" :shortcut="{ metaKey: true, keys: ['↵'] }">
+	<KeyboardShortcutTooltip
+		:label="label"
+		:shortcut="{ metaKey: true, keys: ['↵'] }"
+		:disabled="executing"
+	>
 		<N8nButton
 			:loading="executing"
 			:label="label"

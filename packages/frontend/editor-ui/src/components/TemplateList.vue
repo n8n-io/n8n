@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import TemplateCard from './TemplateCard.vue';
 import type { ITemplatesWorkflow } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	workflows?: ITemplatesWorkflow[];

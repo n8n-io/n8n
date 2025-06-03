@@ -112,7 +112,7 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	private isRoleLicensed(role: AllRoleTypes) {
+	isRoleLicensed(role: AllRoleTypes) {
 		// TODO: move this info into FrontendSettings
 		switch (role) {
 			case 'project:admin':

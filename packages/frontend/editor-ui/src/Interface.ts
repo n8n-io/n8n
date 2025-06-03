@@ -55,6 +55,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
@@ -174,15 +175,6 @@ export interface INodeTypesMaxCount {
 		exist: number;
 		max: number;
 		nodeNames: string[];
-	};
-}
-
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
 	};
 }
 
@@ -372,7 +364,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -386,11 +377,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -1079,7 +1074,8 @@ export type NodeFilterType =
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
-	| typeof AI_UNCATEGORIZED_CATEGORY;
+	| typeof AI_UNCATEGORIZED_CATEGORY
+	| typeof AI_EVALUATION;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1092,7 +1088,9 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
-	| 'add_node_button';
+	| 'add_node_button'
+	| 'add_evaluation_trigger_button'
+	| 'add_evaluation_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1318,6 +1316,10 @@ export type UsageState = {
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
 			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
+			};
 		};
 		license: {
 			planId: string; // community
@@ -1466,7 +1468,8 @@ export type CloudUpdateLinkSourceType =
 	| 'external-secrets'
 	| 'rbac'
 	| 'debug'
-	| 'insights';
+	| 'insights'
+	| 'evaluations';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1490,7 +1493,8 @@ export type UTMCampaign =
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
-	| 'upgrade-insights';
+	| 'upgrade-insights'
+	| 'upgrade-evaluations';
 
 export type N8nBanners = {
 	[key in BannerName]: {

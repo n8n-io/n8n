@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -6,7 +7,6 @@ import type {
 	RunnerMessage,
 	TaskResultData,
 } from '@n8n/task-runner';
-import { Logger } from 'n8n-core';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
