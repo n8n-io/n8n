@@ -25,13 +25,13 @@ export class PubSubRegistry {
 				this.logger.debug(
 					`Registered a "${eventName}" event handler on ${eventHandlerClass.name}#${methodName}`,
 				);
-				this.pubsubEventBus.on(eventName, async () => {
+				this.pubsubEventBus.on(eventName, async (...args: unknown[]) => {
 					// Since the instance role can change, this check needs to be in the event listener
 					const shouldTrigger =
 						filter?.instanceType !== 'main' ||
 						!filter.instanceRole ||
 						filter.instanceRole === instanceSettings.instanceRole;
-					if (shouldTrigger) await handlerClass[methodName]();
+					if (shouldTrigger) await handlerClass[methodName].call(handlerClass, ...args);
 				});
 			}
 		}
