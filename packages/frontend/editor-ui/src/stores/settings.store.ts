@@ -9,7 +9,7 @@ import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
 import {
 	INSECURE_CONNECTION_WARNING,
-	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS as LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
+	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
