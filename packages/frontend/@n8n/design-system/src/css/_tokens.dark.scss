@@ -20,12 +20,14 @@
 	--color-foreground-xlight: var(--prim-gray-820);
 
 	// Background
-	--color-background-dark: var(--prim-gray-70);
-	--color-background-medium: var(--prim-gray-540);
-	--color-background-base: var(--prim-gray-670);
-	--color-background-light-base: var(--prim-gray-780);
-	--color-background-light: var(--prim-gray-820);
-	--color-background-xlight: var(--prim-gray-740);
+	--color-background-dark: color(display-p3 0.092 0.027 0.214); // $clr-balance-100
+	--color-background-medium: color(display-p3 0.214 0.055 0.403); // $clr-balance-200
+	--color-background-base: color(display-p3 0.381 0.107 0.596); // $clr-balance-300
+	--color-background-light-base: color(display-p3 0.579 0.159 0.783); // $clr-balance-400
+	--color-background-light: color(display-p3 0.818 0.228 0.966); // $clr-balance-500
+	--color-background-xlight: color(
+		display-p3 0.818 0.228 0.966
+	); // $clr-balance-500 (same as light for extra light)
 
 	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
 	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
@@ -489,6 +491,40 @@
 	--color-menu-background: var(--prim-gray-740);
 	--color-menu-hover-background: var(--prim-gray-670);
 	--color-menu-active-background: var(--prim-gray-670);
+
+	// Core colors
+	--color-background: #0a0a0a;
+	--color-surface: #18181c;
+	--color-primary: #a259ff;
+	--color-primary-light: #c299ff;
+	--color-on-primary: #ffffff;
+	--color-text-primary: #ffffff;
+	--color-text-secondary: #b0b0b0;
+	--color-text-disabled: #666666;
+	--color-border: #23232a;
+	--color-divider: #23232a;
+	--color-shadow: rgba(162, 89, 255, 0.25);
+	--color-icon: #ffffff;
+	--color-focus: #a259ff;
+	--color-active: #a259ff;
+	--gradient-glow: radial-gradient(circle at 75% 25%, rgba(162, 89, 255, 0.35) 0%, transparent 70%);
+
+	// Map existing variables to new palette
+	--color-background-dark: var(--color-background);
+	--color-background-medium: var(--color-surface);
+	--color-background-base: var(--color-surface);
+	--color-background-light-base: var(--color-surface);
+	--color-background-light: var(--color-surface);
+	--color-background-xlight: var(--color-surface);
+	--color-text-base: var(--color-text-primary);
+	--color-text-dark: var(--color-text-primary);
+	--color-text-light: var(--color-text-secondary);
+	--color-text-lighter: var(--color-text-disabled);
+	--color-foreground-xdark: var(--color-surface);
+	--color-foreground-dark: var(--color-surface);
+	--color-foreground-base: var(--color-surface);
+	--color-foreground-light: var(--color-surface);
+	--color-foreground-xlight: var(--color-surface);
 }
 
 body[data-theme='dark'] {

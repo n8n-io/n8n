@@ -9,7 +9,7 @@
 
 	// Primary
 	--color-primary-shade-1: var(--prim-color-primary-shade-100);
-	--color-primary: var(--prim-color-primary);
+	--color-primary: #a259ff;
 	--color-primary-tint-1: var(--prim-color-primary-tint-200);
 	--color-primary-tint-2: var(--prim-color-primary-tint-250);
 	--color-primary-tint-3: var(--prim-color-primary-tint-300);
@@ -43,27 +43,29 @@
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
 	// Text
-	--color-text-dark: var(--prim-gray-740);
-	--color-text-base: var(--prim-gray-540);
-	--color-text-light: var(--prim-gray-420);
-	--color-text-lighter: var(--prim-gray-120);
+	--color-text-dark: #ffffff;
+	--color-text-base: #ffffff;
+	--color-text-light: #b0b0b0;
+	--color-text-lighter: #666666;
 	--color-text-xlight: var(--prim-gray-0);
 	--color-text-danger: var(--prim-color-alt-c);
 
 	// Foreground
-	--color-foreground-xdark: var(--prim-gray-490);
-	--color-foreground-dark: var(--prim-gray-200);
-	--color-foreground-base: var(--prim-gray-120);
-	--color-foreground-light: var(--prim-gray-70);
-	--color-foreground-xlight: var(--prim-gray-0);
+	--color-foreground-xdark: #18181c;
+	--color-foreground-dark: #18181c;
+	--color-foreground-base: #18181c;
+	--color-foreground-light: #18181c;
+	--color-foreground-xlight: #18181c;
 
 	// Background
-	--color-background-dark: var(--prim-gray-820);
-	--color-background-medium: var(--prim-gray-120);
-	--color-background-base: var(--prim-gray-40);
-	--color-background-light-base: var(--prim-gray-25);
-	--color-background-light: var(--prim-gray-10);
-	--color-background-xlight: var(--prim-gray-0);
+	--color-background: #0a0a0a;
+	--color-surface: #18181c;
+	--color-background-dark: var(--color-background);
+	--color-background-medium: var(--color-surface);
+	--color-background-base: var(--color-surface);
+	--color-background-light-base: var(--color-surface);
+	--color-background-light: var(--color-surface);
+	--color-background-xlight: var(--color-surface);
 
 	// Secondary tokens
 

@@ -246,6 +246,9 @@ body {
 	align-items: center;
 	flex-direction: column;
 	padding-top: var(--spacing-2xl);
+	background: var(--color-background);
+	background-image: var(--gradient-glow);
+	min-height: 100vh;
 
 	> * {
 		width: 352px;
@@ -259,6 +262,7 @@ body {
 .headerContainer {
 	text-align: center;
 	margin-bottom: var(--spacing-xl);
+	color: var(--color-text-primary);
 }
 
 .formError input {

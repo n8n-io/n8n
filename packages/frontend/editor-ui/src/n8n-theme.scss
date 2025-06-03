@@ -1,10 +1,50 @@
 @import '@n8n/chat/css';
 @import 'styles';
 
+// Core colors
+$color-background: #0a0a0a; // Deep black background
+$color-surface: #18181c; // Slightly lighter for surfaces/cards
+$color-primary: #a259ff; // Purple accent (sampled from the glow)
+$color-primary-light: #c299ff; // Lighter purple for hover/active states
+$color-on-primary: #ffffff; // White text/icons on primary
+
+// Text colors
+$color-text-primary: #ffffff; // Main text color (white)
+$color-text-secondary: #b0b0b0; // Secondary text (gray)
+$color-text-disabled: #666666; // Disabled text
+
+// Border and divider
+$color-border: #23232a; // Subtle border for dark theme
+$color-divider: #23232a; // Divider lines
+
+// Shadows and glow
+$color-shadow: rgba(162, 89, 255, 0.25); // Purple shadow/glow for accents
+
+// Iconography
+$color-icon: #ffffff; // White icons
+
+// Example usage for focus/active states
+$color-focus: #a259ff; // Purple for focus ring
+$color-active: #a259ff; // Active state
+
+// Gradients (for subtle purple glow)
+$gradient-glow: radial-gradient(circle at 75% 25%, rgba(162, 89, 255, 0.35) 0%, transparent 70%);
+
 :root {
 	// Using native css variable enables us to use this value in JS
 	--header-height: 65;
 	--content-container-width: 1280px;
+	font-family: InterVariable, sans-serif;
+	background: $color-background;
+	background-image: $gradient-glow;
+	color: $color-text-primary;
+}
+
+body {
+	font-family: InterVariable, sans-serif;
+	background: $color-background;
+	background-image: $gradient-glow;
+	color: $color-text-primary;
 }
 
 .clickable {
@@ -246,4 +286,34 @@
 			opacity: 1; /** Firefox */
 		}
 	}
+}
+
+// Example for card/surface
+.card,
+.el-card,
+.surface {
+	background: $color-surface;
+	color: $color-text-primary;
+	box-shadow: 0 2px 8px $color-shadow;
+	border: 1px solid $color-border;
+}
+
+// Example for buttons
+.button,
+.el-button,
+.primary-button {
+	background: $color-primary;
+	color: $color-on-primary;
+	box-shadow: 0 0 0 2px $color-shadow;
+}
+
+// Example for focus/active
+:focus {
+	outline: 2px solid $color-focus;
+}
+
+// Example for divider
+.divider,
+hr {
+	border-color: $color-divider;
 }

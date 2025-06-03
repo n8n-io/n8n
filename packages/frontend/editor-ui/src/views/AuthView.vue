@@ -72,6 +72,9 @@ body {
 	align-items: center;
 	flex-direction: column;
 	padding-top: var(--spacing-2xl);
+	background: var(--color-background);
+	background-image: var(--gradient-glow);
+	min-height: 100vh;
 
 	> * {
 		width: 352px;
@@ -80,6 +83,7 @@ body {
 
 .textContainer {
 	text-align: center;
+	color: var(--color-text-primary);
 }
 
 .formContainer {
