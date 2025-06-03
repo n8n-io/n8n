@@ -2027,6 +2027,7 @@ onBeforeUnmount(() => {
 					v-if="isLogsPanelOpen"
 					type="tertiary"
 					:label="i18n.baseText('chat.hide')"
+					:class="$style.chatButton"
 					@click="logsStore.toggleOpen(false)"
 				/>
 				<KeyboardShortcutTooltip
@@ -2037,6 +2038,7 @@ onBeforeUnmount(() => {
 					<CanvasChatButton
 						type="primary"
 						:label="i18n.baseText('chat.open')"
+						:class="$style.chatButton"
 						@click="onOpenChat"
 					/>
 				</KeyboardShortcutTooltip>
@@ -2130,6 +2132,10 @@ onBeforeUnmount(() => {
 				margin: 0;
 			}
 		}
+	}
+
+	.chatButton {
+		align-self: stretch;
 	}
 }
 
