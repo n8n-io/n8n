@@ -1,0 +1,136 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "sheetId": "{{ID_DE_TU_HOJA}}",
+        "range": "CRM!A:E",
+        "valueRenderMode": "UNFORMATTED_VALUE",
+        "dateTimeRenderOption": "FORMATTED_STRING"
+      },
+      "name": "Watch New Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "{{ID_CREDENCIALES_GOOGLE}}",
+          "name": "Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json["Estado del lead"]}}",
+              "operation": "equal",
+              "value2": "Agendado"
+            }
+          ]
+        }
+      },
+      "name": "If Estado == Agendado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://app.wati.io/api/v1/sendSessionMessage",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{\n  \"phone\": \"{{$json[\"Teléfono\"]}}\",\n  \"message\": \"Hola {{$json[\"Nombre\"]}}, gracias por tu interés. Por favor llena este formulario: https://forms.gle/xxxxx\"\n}"
+      },
+      "name": "Enviar WhatsApp WATI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "application": "airtable",
+        "operation": "create",
+        "baseId": "{{ID_DE_TU_BASE}}",
+        "tableId": "{{NOMBRE_DE_TU_TABLA}}",
+        "fields": {
+          "Nombre": "={{$json[\"Nombre\"]}}",
+          "Teléfono": "={{$json[\"Teléfono\"]}}",
+          "Estado del lead": "={{$json[\"Estado del lead\"]}}",
+          "Fecha de cambio": "={{$json[\"Fecha de cambio de estado\"]}}"
+        }
+      },
+      "name": "Crear Registro en Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "{{ID_CREDENCIALES_AIRTABLE}}",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sheetId": "{{ID_DE_TU_HOJA}}",
+        "range": "CRM!E:E",
+        "valueInputMode": "RAW",
+        "data": [
+          {
+            "range": "CRM!E{{$json["rowNumber"]}}",
+            "values": [
+              ["Enviado"]
+            ]
+          }
+        ]
+      },
+      "name": "Actualizar Sheet - Enviado",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [900, 400],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "{{ID_CREDENCIALES_GOOGLE}}",
+          "name": "Google OAuth2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Watch New Rows": {
+      "main": [
+        [
+          {
+            "node": "If Estado == Agendado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Estado == Agendado": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp WATI",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Crear Registro en Airtable",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Actualizar Sheet - Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  }
+}
