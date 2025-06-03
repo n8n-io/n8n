@@ -40,8 +40,6 @@ const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
-const annotationDropdownRef = ref<RetryDropdownRef | null>(null);
-const isDropdownVisible = ref(false);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
@@ -85,12 +83,6 @@ const activeExecution = computed(() => {
 
 const vote = computed(() => activeExecution.value?.annotation?.vote || null);
 
-const customDataLength = computed(() => {
-	return activeExecution.value?.customData
-		? Object.keys(activeExecution.value.customData).length
-		: 0;
-});
-
 async function onDeleteExecution(): Promise<void> {
 	// Prepend the message with a note about annotations if they exist
 	const confirmationText = [
@@ -128,17 +120,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 	if (retryDropdownRef.value && event.relatedTarget === null) {
 		retryDropdownRef.value.handleClose();
 	}
-}
-
-function onEllipsisButtonBlur(event: FocusEvent) {
-	// Hide dropdown when clicking outside of current document
-	if (annotationDropdownRef.value && event.relatedTarget === null) {
-		annotationDropdownRef.value.handleClose();
-	}
-}
-
-function onDropdownVisibleChange(visible: boolean) {
-	isDropdownVisible.value = visible;
 }
 
 const onVoteClick = async (voteValue: AnnotationVote) => {
@@ -265,7 +246,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						</RouterLink>
 					</N8nText>
 				</div>
-				<WorkflowExecutionAnnotationTags v-if="isAnnotationEnabled && execution" />
+				<WorkflowExecutionAnnotationTags
+					v-if="isAnnotationEnabled && execution"
+					:execution="execution"
+				/>
 			</div>
 
 			<div :class="$style.actions">
@@ -321,34 +305,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</template>
 				</ElDropdown>
 
-				<ElDropdown
-					v-if="isAnnotationEnabled && execution"
-					ref="annotationDropdownRef"
-					trigger="click"
-					@visible-change="onDropdownVisibleChange"
-				>
-					<N8nButton
-						:title="locale.baseText('executionDetails.additionalActions')"
-						:disabled="!workflowPermissions.update"
-						icon="tasks"
-						:class="[
-							$style.highlightDataButton,
-							customDataLength > 0 ? $style.highlightDataButtonActive : '',
-							isDropdownVisible ? $style.highlightDataButtonOpen : '',
-						]"
-						size="small"
-						type="secondary"
-						data-test-id="execution-preview-ellipsis-button"
-						@blur="onEllipsisButtonBlur"
-					>
-						<n8n-badge :class="$style.badge" theme="primary" v-if="customDataLength > 0">
-							{{ customDataLength.toString() }}
-						</n8n-badge>
-					</N8nButton>
-					<template #dropdown>
-						<WorkflowExecutionAnnotationPanel v-if="execution" />
-					</template>
-				</ElDropdown>
+				<WorkflowExecutionAnnotationPanel :execution="activeExecution" v-if="execution" />
 
 				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"

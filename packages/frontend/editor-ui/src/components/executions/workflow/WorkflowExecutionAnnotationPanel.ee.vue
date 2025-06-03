@@ -1,59 +1,135 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { useI18n } from '@n8n/i18n';
+import { ElDropdown } from 'element-plus';
+import { getResourcePermissions } from '@/permissions';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRoute } from 'vue-router';
 
-const executionsStore = useExecutionsStore();
-
-const i18n = useI18n();
-
-const activeExecution = computed(() => {
-	return executionsStore.activeExecution as ExecutionSummary & {
+const props = defineProps<{
+	execution: ExecutionSummary & {
 		customData?: Record<string, string>;
 	};
+}>();
+
+const workflowsStore = useWorkflowsStore();
+const route = useRoute();
+const i18n = useI18n();
+
+const annotationDropdownRef = ref<InstanceType<typeof ElDropdown> | null>(null);
+const isDropdownVisible = ref(false);
+
+const workflowId = computed(() => route.params.name as string);
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+);
+
+const customDataLength = computed(() => {
+	return props.execution?.customData ? Object.keys(props.execution?.customData).length : 0;
 });
+
+function onEllipsisButtonBlur(event: FocusEvent) {
+	// Hide dropdown when clicking outside of current document
+	if (annotationDropdownRef.value && event.relatedTarget === null) {
+		annotationDropdownRef.value.handleClose();
+	}
+}
+
+function onDropdownVisibleChange(visible: boolean) {
+	isDropdownVisible.value = visible;
+}
 </script>
 
 <template>
-	<div
-		ref="container"
-		:class="['execution-annotation-panel', $style.container]"
-		data-test-id="execution-annotation-panel"
+	<ElDropdown
+		v-if="execution"
+		ref="annotationDropdownRef"
+		trigger="click"
+		@visible-change="onDropdownVisibleChange"
 	>
-		<div :class="$style.section">
-			<div :class="$style.heading">
-				<n8n-heading tag="h3" size="small" color="text-dark">
-					{{ i18n.baseText('generic.annotationData') }}
-				</n8n-heading>
-			</div>
+		<N8nButton
+			:title="i18n.baseText('executionDetails.additionalActions')"
+			:disabled="!workflowPermissions.update"
+			icon="tasks"
+			:class="[
+				$style.highlightDataButton,
+				customDataLength > 0 ? $style.highlightDataButtonActive : '',
+				isDropdownVisible ? $style.highlightDataButtonOpen : '',
+			]"
+			size="small"
+			type="secondary"
+			data-test-id="execution-preview-ellipsis-button"
+			@blur="onEllipsisButtonBlur"
+		>
+			<n8n-badge :class="$style.badge" theme="primary" v-if="customDataLength > 0">
+				{{ customDataLength.toString() }}
+			</n8n-badge>
+		</N8nButton>
+		<template #dropdown>
 			<div
-				v-if="activeExecution?.customData && Object.keys(activeExecution?.customData).length > 0"
-				:class="$style.metadata"
+				ref="container"
+				:class="['execution-annotation-panel', $style.container]"
+				data-test-id="execution-annotation-panel"
 			>
-				<div
-					v-for="attr in Object.keys(activeExecution?.customData)"
-					:key="attr"
-					:class="$style.customDataEntry"
-				>
-					<n8n-text :class="$style.key" size="small" color="text-base">
-						{{ attr }}
-					</n8n-text>
-					<n8n-text :class="$style.value" size="small" color="text-base">
-						{{ activeExecution?.customData[attr] }}
-					</n8n-text>
+				<div :class="$style.section">
+					<div :class="$style.heading">
+						<n8n-heading tag="h3" size="small" color="text-dark">
+							{{ i18n.baseText('generic.annotationData') }}
+						</n8n-heading>
+					</div>
+					<div
+						v-if="execution?.customData && Object.keys(execution?.customData).length > 0"
+						:class="$style.metadata"
+					>
+						<div
+							v-for="attr in Object.keys(execution?.customData)"
+							:key="attr"
+							:class="$style.customDataEntry"
+						>
+							<n8n-text :class="$style.key" size="small" color="text-base">
+								{{ attr }}
+							</n8n-text>
+							<n8n-text :class="$style.value" size="small" color="text-base">
+								{{ execution?.customData[attr] }}
+							</n8n-text>
+						</div>
+					</div>
+					<div
+						v-else
+						:class="$style.noResultsContainer"
+						data-test-id="execution-annotation-data-empty"
+					>
+						<n8n-text color="text-base" size="small" align="center">
+							<span v-n8n-html="i18n.baseText('executionAnnotationView.data.notFound')" />
+						</n8n-text>
+					</div>
 				</div>
 			</div>
-			<div v-else :class="$style.noResultsContainer" data-test-id="execution-annotation-data-empty">
-				<n8n-text color="text-base" size="small" align="center">
-					<span v-n8n-html="i18n.baseText('executionAnnotationView.data.notFound')" />
-				</n8n-text>
-			</div>
-		</div>
-	</div>
+		</template>
+	</ElDropdown>
 </template>
 
 <style module lang="scss">
+.highlightDataButton {
+	height: 30px;
+	width: 30px;
+}
+
+.highlightDataButtonActive {
+	width: auto;
+}
+
+.highlightDataButtonOpen {
+	color: var(--color-primary);
+	background-color: var(--color-button-secondary-hover-background);
+	border-color: var(--color-button-secondary-hover-active-focus-border);
+}
+
+.badge {
+	border: 0;
+}
+
 .container {
 	z-index: 1;
 	max-height: calc(100vh - 250px);
