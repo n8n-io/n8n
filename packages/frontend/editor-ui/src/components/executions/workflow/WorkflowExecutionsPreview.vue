@@ -305,7 +305,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</template>
 				</ElDropdown>
 
-				<WorkflowExecutionAnnotationPanel :execution="activeExecution" v-if="execution" />
+				<WorkflowExecutionAnnotationPanel
+					:execution="activeExecution"
+					v-if="isAnnotationEnabled && execution"
+				/>
 
 				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"

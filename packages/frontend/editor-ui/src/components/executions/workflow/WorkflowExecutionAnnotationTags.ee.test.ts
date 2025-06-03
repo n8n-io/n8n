@@ -70,13 +70,13 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 						},
 					},
 				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionWithTags,
-				},
 			},
 		});
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+			props: { execution: executionWithTags },
+		});
 
 		await nextTick();
 
@@ -105,13 +105,13 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 						},
 					},
 				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionWithoutTags,
-				},
 			},
 		});
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+			props: { execution: executionWithoutTags },
+		});
 
 		await nextTick();
 
@@ -137,13 +137,13 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 						},
 					},
 				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionWithTags,
-				},
 			},
 		});
 
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { execution: executionWithTags },
+		});
 
 		await nextTick();
 
@@ -166,13 +166,13 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 						},
 					},
 				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionWithoutTags,
-				},
 			},
 		});
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+			props: { execution: executionWithoutTags },
+		});
 
 		await nextTick();
 
@@ -204,13 +204,13 @@ describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 						},
 					},
 				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionWithTags,
-				},
 			},
 		});
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+			props: { execution: executionWithTags },
+		});
 
 		await nextTick();
 

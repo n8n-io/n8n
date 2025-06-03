@@ -11,7 +11,6 @@ import { computed, ref } from 'vue';
 const props = defineProps<{
 	execution: ExecutionSummary;
 }>();
-console.log('execution', props.execution);
 const locale = useI18n();
 const telemetry = useTelemetry();
 const { showError } = useToast();
