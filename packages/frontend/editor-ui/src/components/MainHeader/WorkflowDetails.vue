@@ -1,49 +1,39 @@
 <script lang="ts" setup>
+import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import InlineTextEdit from '@/components/InlineTextEdit.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
+import SaveButton from '@/components/SaveButton.vue';
+import ShortenName from '@/components/ShortenName.vue';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	PROJECT_MOVE_RESOURCE_MODAL,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
-import ShortenName from '@/components/ShortenName.vue';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import InlineTextEdit from '@/components/InlineTextEdit.vue';
-import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import { ResourceType } from '@/utils/projects.utils';
 
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/stores/projects.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { saveAs } from 'file-saver';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { nodeViewEventBus } from '@/event-bus';
-import { hasPermission } from '@/utils/rbac/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useRoute, useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
@@ -51,14 +41,26 @@ import type {
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
-import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '@n8n/i18n';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { ProjectTypes } from '@/types/projects.types';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { nodeViewEventBus } from '@/event-bus';
+import { getResourcePermissions } from '@/permissions';
+import { useCanvasStore } from '@/stores/canvas.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { ProjectTypes } from '@/types/projects.types';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { saveAs } from 'file-saver';
+import { computed, ref, useCssModule, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -106,6 +108,7 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
+const changeOwnerEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -146,6 +149,14 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			disabled: !onWorkflowPage.value,
 		},
 	];
+
+	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
+			label: locale.baseText('workflows.item.changeOwner'),
+			disabled: isNewWorkflow.value,
+		});
+	}
 
 	if (!props.readOnly && !props.isArchived) {
 		actions.push({
@@ -607,6 +618,27 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 
 			await router.push({ name: VIEWS.WORKFLOWS });
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
+			const workflowId = getWorkflowId();
+			if (!workflowId) {
+				return;
+			}
+			changeOwnerEventBus.once(
+				'resource-moved',
+				async () => await router.push({ name: VIEWS.WORKFLOWS }),
+			);
+
+			uiStore.openModalWithData({
+				name: PROJECT_MOVE_RESOURCE_MODAL,
+				data: {
+					resource: workflowsStore.workflowsById[workflowId],
+					resourceType: ResourceType.Workflow,
+					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
+					eventBus: changeOwnerEventBus,
+				},
+			});
 			break;
 		}
 		default:
