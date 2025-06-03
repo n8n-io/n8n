@@ -60,14 +60,14 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
-const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
+const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
 const isPersonalProject = computed(() => {
 	return selectedProject.value?.type === ProjectTypes.Personal;
 });
 const isOwnPersonalProject = computed(() => {
 	return (
 		selectedProject.value?.type === ProjectTypes.Personal &&
-		selectedProject.value.id === projectsStore.personalProject?.id
+		selectedProject.value?.id === projectsStore.personalProject?.id
 	);
 });
 const isTransferringOwnership = computed(() => {
