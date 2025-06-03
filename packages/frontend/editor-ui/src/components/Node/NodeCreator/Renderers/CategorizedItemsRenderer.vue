@@ -22,7 +22,7 @@ export interface Props {
 	expanded?: boolean;
 }
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],

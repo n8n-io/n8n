@@ -1,5 +1,5 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';

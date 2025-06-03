@@ -1,4 +1,3 @@
-import { inDevelopment, inProduction, isObjectLiteral } from '@n8n/backend-common';
 import type { LogScope } from '@n8n/config';
 import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -14,6 +13,9 @@ import type {
 import path, { basename } from 'node:path';
 import pc from 'picocolors';
 import winston from 'winston';
+
+import { inDevelopment, inProduction } from '../environment';
+import { isObjectLiteral } from '../utils/is-object-literal';
 
 const noOp = () => {};
 
@@ -79,6 +81,27 @@ export class Logger implements LoggerType {
 		return scopedLogger;
 	}
 
+	private serializeError(
+		error: unknown,
+		seen: Set<unknown> = new Set(),
+	): { name: string; message: string; stack?: string; cause: unknown } | string {
+		if (!(error instanceof Error)) return String(error);
+
+		// prevent infinite recursion
+		let cause: unknown;
+		if (error.cause && !seen.has(error.cause)) {
+			seen.add(error.cause);
+			cause = this.serializeError(error.cause, seen);
+		}
+
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			cause,
+		};
+	}
+
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {
 		const location: LogLocationMetadata = {};
 
@@ -88,6 +111,13 @@ export class Logger implements LoggerType {
 			location.file = basename(caller.getFileName() ?? '');
 			const fnName = caller.getFunctionName();
 			if (fnName) location.function = fnName;
+		}
+
+		for (const key of Object.keys(metadata)) {
+			const value = metadata[key];
+			if (value instanceof Error) {
+				metadata[key] = this.serializeError(value);
+			}
 		}
 
 		this.internalLogger.log(level, message, { ...metadata, ...location });
@@ -105,13 +135,29 @@ export class Logger implements LoggerType {
 		}
 	}
 
+	private jsonConsoleFormat() {
+		return winston.format.combine(
+			winston.format.timestamp(),
+			winston.format.metadata(),
+			winston.format.json(),
+			this.scopeFilter(),
+		);
+	}
+
+	private pickConsoleTransportFormat() {
+		if (this.globalConfig.logging.format === 'json') {
+			return this.jsonConsoleFormat();
+		} else if (this.level === 'debug' && inDevelopment) {
+			return this.debugDevConsoleFormat();
+		} else if (this.level === 'debug' && inProduction) {
+			return this.debugProdConsoleFormat();
+		} else {
+			return winston.format.printf(({ message }: { message: string }) => message);
+		}
+	}
+
 	private setConsoleTransport() {
-		const format =
-			this.level === 'debug' && inDevelopment
-				? this.debugDevConsoleFormat()
-				: this.level === 'debug' && inProduction
-					? this.debugProdConsoleFormat()
-					: winston.format.printf(({ message }: { message: string }) => message);
+		const format = this.pickConsoleTransportFormat();
 
 		this.internalLogger.add(new winston.transports.Console({ format }));
 	}
@@ -187,23 +233,16 @@ export class Logger implements LoggerType {
 	}
 
 	private setFileTransport() {
-		const format = winston.format.combine(
-			winston.format.timestamp(),
-			winston.format.metadata(),
-			winston.format.json(),
-		);
-
-		const filename = path.join(
-			this.instanceSettingsConfig.n8nFolder,
-			this.globalConfig.logging.file.location,
-		);
+		const filename = path.isAbsolute(this.globalConfig.logging.file.location)
+			? this.globalConfig.logging.file.location
+			: path.join(this.instanceSettingsConfig.n8nFolder, this.globalConfig.logging.file.location);
 
 		const { fileSizeMax, fileCountMax } = this.globalConfig.logging.file;
 
 		this.internalLogger.add(
 			new winston.transports.File({
 				filename,
-				format,
+				format: this.jsonConsoleFormat(),
 				maxsize: fileSizeMax * 1_048_576, // config * 1 MiB in bytes
 				maxFiles: fileCountMax,
 			}),

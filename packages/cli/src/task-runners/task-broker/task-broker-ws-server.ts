@@ -1,7 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { Logger } from 'n8n-core';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 

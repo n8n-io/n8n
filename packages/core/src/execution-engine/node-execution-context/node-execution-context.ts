@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	FunctionsBase,
 	ICredentialDataDecryptedObject,
@@ -35,7 +36,6 @@ import {
 	HTTP_REQUEST_TOOL_NODE_TYPE,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-import { Logger } from '@/logging/logger';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';

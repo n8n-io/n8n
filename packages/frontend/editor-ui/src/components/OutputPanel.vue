@@ -17,7 +17,7 @@ import { ndvEventBus } from '@/event-bus';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';

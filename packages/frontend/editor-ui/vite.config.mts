@@ -36,6 +36,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
+		find: /^@n8n\/i18n(.+)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
+	},
+	{
 		find: /^@n8n\/stores(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
 	},
@@ -45,11 +49,11 @@ const alias = [
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: `lodash-es/${name}`,
+		replacement: `lodash/${name}`,
 	})),
 	{
 		find: /^lodash\.(.+)$/,
-		replacement: 'lodash-es/$1',
+		replacement: 'lodash/$1',
 	},
 ];
 

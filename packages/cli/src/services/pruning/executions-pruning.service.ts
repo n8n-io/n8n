@@ -1,8 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 

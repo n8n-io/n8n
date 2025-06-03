@@ -3,10 +3,9 @@ import {
 	type InsightsDateRange,
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
