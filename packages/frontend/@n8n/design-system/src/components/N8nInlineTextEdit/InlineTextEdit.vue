@@ -6,7 +6,7 @@ import {
 	EditableRoot,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
 
 import type { EditableRootEmits, EditableRootProps } from '../../reka-ui';
 
@@ -16,10 +16,8 @@ const props = withDefaults(
 		maxLength: 100,
 		placeholder: 'Enter text...',
 		selectOnFocus: true,
-		autoResize: true,
+		autoResize: false,
 		submitMode: 'both',
-		maxWidth: 200,
-		minWidth: 64,
 	},
 );
 
@@ -39,30 +37,13 @@ function forceCancel() {
 }
 
 defineExpose({ forceFocus, forceCancel });
-
-const computedInlineStyles = computed(() => {
-	return {
-		fieldSizing: 'content',
-		minWidth: `${props.minWidth}px`,
-		maxWidth: `${props.maxWidth}px`,
-	};
-});
 </script>
 
 <template>
 	<EditableRoot v-bind="forwarded" ref="editableRoot" class="inline-text-edit">
 		<EditableArea class="editable-area">
-			<EditablePreview
-				class="inline-rename-preview"
-				data-test-id="inline-edit-preview"
-				style="display: block"
-				:style="computedInlineStyles"
-			/>
-			<EditableInput
-				class="inline-rename-input"
-				data-test-id="inline-edit-input"
-				:style="computedInlineStyles"
-			/>
+			<EditablePreview class="inline-rename-preview" data-test-id="inline-edit-preview" as="div" />
+			<EditableInput class="inline-rename-input" data-test-id="inline-edit-input" />
 		</EditableArea>
 	</EditableRoot>
 </template>
@@ -73,8 +54,10 @@ const computedInlineStyles = computed(() => {
 	border-style: solid;
 	border-color: transparent;
 	border-radius: var(--border-radius-base);
+	border-color: var(--color-foreground-base);
 	padding: 4px;
-	max-width: 100%;
+	max-width: 200px;
+	min-width: 64px;
 	&:hover:not([data-focused]) {
 		border-color: var(--color-foreground-base);
 		cursor: pointer;
@@ -88,5 +71,21 @@ const computedInlineStyles = computed(() => {
 		pointer-events: none;
 		border-color: transparent;
 	}
+}
+
+.inline-rename-input {
+	field-sizing: content;
+	max-width: 100%;
+	width: 100%;
+	border: 0;
+	outline: 0;
+}
+
+.inline-rename-preview {
+	white-space: pre;
+	user-select: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding: 2px 0;
 }
 </style>
