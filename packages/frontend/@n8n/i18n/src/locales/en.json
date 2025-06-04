@@ -2377,7 +2377,7 @@
 	"workflowExtraction.error.selectionGraph.multipleInputNodes": "Multiple nodes [{nodes}] have inputs from outside the selection.",
 	"workflowExtraction.error.selectionGraph.multipleOutputNodes": "Multiple nodes [{nodes}] have outputs to outside the selection.",
 	"workflowExtraction.error.selectionGraph.noContinuousPathFromRootToLeaf": "First node '{start}' has no selected path to last node '{end}'.",
-	"workflowExtraction.error.selectionGraph.listHeader": "Selection is invalid because of these errors:<br><br>{body}<br><br><a href=\"https://docs.n8n.io/workflows/subworkflow-extraction/\" target=\"_blank\">See docs for more info.</a>",
+	"workflowExtraction.error.selectionGraph.listHeader": "Selection is invalid because of these errors:<br><br>{body}<br><br><a href=\"https://docs.n8n.io/workflows/subworkflow-conversion/\" target=\"_blank\">See docs</a> for more info.",
 	"workflowExtraction.error.inputNodeHasMultipleInputBranches": "First node '{node}' has multiple input branches, which sub-workflows do not support.",
 	"workflowExtraction.error.outputNodeHasMultipleOutputBranches": "Last node '{node}' has multiple output branches, which sub-workflows do not support.",
 	"workflowExtraction.error.triggerSelected": "Triggers cannot be extracted into a sub-workflow. Please unselect {nodes}.",
