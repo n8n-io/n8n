@@ -23,7 +23,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from './posthog.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
-import * as mfaApi from '@/api/mfa';
+import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import * as cloudApi from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';

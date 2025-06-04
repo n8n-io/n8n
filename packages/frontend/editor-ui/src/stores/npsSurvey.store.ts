@@ -11,7 +11,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
-import { updateNpsSurveyState } from '@/api/npsSurvey';
+import { updateNpsSurveyState } from '@n8n/rest-api-client/api/npsSurvey';
 import type { IN8nPrompts } from '@/Interface';
 import { getPromptsData } from '@/api/settings';
 import { assert } from '@n8n/utils/assert';
