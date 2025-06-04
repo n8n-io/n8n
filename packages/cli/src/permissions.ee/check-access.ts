@@ -51,31 +51,32 @@ export async function userHasScopes(
 	// those resource roles over the resource being checked.
 
 	if (credentialId) {
-		const credential = await Container.get(SharedCredentialsRepository).findOneBy({
+		const credentials = await Container.get(SharedCredentialsRepository).findBy({
 			credentialsId: credentialId,
 		});
-		if (!credential) {
+		if (!credentials.length) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		return (
-			userProjectIds.includes(credential.projectId) &&
-			rolesWithScope('credential', scopes).includes(credential.role)
+		return credentials.some(
+			(c) =>
+				userProjectIds.includes(c.projectId) &&
+				rolesWithScope('credential', scopes).includes(c.role),
 		);
 	}
 
 	if (workflowId) {
-		const workflow = await Container.get(SharedWorkflowRepository).findOneBy({
+		const workflows = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId,
 		});
 
-		if (!workflow) {
+		if (!workflows.length) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		return (
-			userProjectIds.includes(workflow.projectId) &&
-			rolesWithScope('workflow', scopes).includes(workflow.role)
+		return workflows.some(
+			(w) =>
+				userProjectIds.includes(w.projectId) && rolesWithScope('workflow', scopes).includes(w.role),
 		);
 	}
 

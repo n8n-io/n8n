@@ -13,21 +13,21 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '../check-access';
 
 describe('userHasScopes', () => {
-	const findByOneWorkflowMock = jest.fn();
-	const findByOneCredentialMock = jest.fn();
+	const findByWorkflowMock = jest.fn();
+	const findByCredentialMock = jest.fn();
 
 	beforeAll(() => {
 		Container.set(
 			SharedWorkflowRepository,
 			mock<SharedWorkflowRepository>({
-				findOneBy: findByOneWorkflowMock,
+				findBy: findByWorkflowMock,
 			}),
 		);
 
 		Container.set(
 			SharedCredentialsRepository,
 			mock<SharedCredentialsRepository>({
-				findOneBy: findByOneCredentialMock,
+				findBy: findByCredentialMock,
 			}),
 		);
 
@@ -45,8 +45,8 @@ describe('userHasScopes', () => {
 	});
 
 	beforeEach(() => {
-		findByOneWorkflowMock.mockReset();
-		findByOneCredentialMock.mockReset();
+		findByWorkflowMock.mockReset();
+		findByCredentialMock.mockReset();
 	});
 
 	it.each<{ type: 'workflow' | 'credential'; id: string }>([
@@ -59,8 +59,8 @@ describe('userHasScopes', () => {
 			id: 'credentialId',
 		},
 	])('should return 404 if the resource is not found', async ({ type, id }) => {
-		findByOneWorkflowMock.mockResolvedValueOnce(null);
-		findByOneCredentialMock.mockResolvedValueOnce(null);
+		findByWorkflowMock.mockResolvedValueOnce([]);
+		findByCredentialMock.mockResolvedValueOnce([]);
 
 		const user = { id: 'userId', scopes: [], role: 'global:member' } as unknown as User;
 		const scopes = ['workflow:read', 'credential:read'] as Scope[];
@@ -120,17 +120,21 @@ describe('userHasScopes', () => {
 		'should return $expected if the user has the required scopes for a $type',
 		async ({ type, id, role, scope, userScopes, expected }) => {
 			if (type === 'workflow') {
-				findByOneWorkflowMock.mockResolvedValueOnce({
-					workflowId: id,
-					projectId: 'projectId',
-					role,
-				});
+				findByWorkflowMock.mockResolvedValueOnce([
+					{
+						workflowId: id,
+						projectId: 'projectId',
+						role,
+					},
+				]);
 			} else {
-				findByOneCredentialMock.mockResolvedValueOnce({
-					credentialId: id,
-					projectId: 'projectId',
-					role,
-				});
+				findByCredentialMock.mockResolvedValueOnce([
+					{
+						credentialId: id,
+						projectId: 'projectId',
+						role,
+					},
+				]);
 			}
 
 			const user = {
