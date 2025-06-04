@@ -95,15 +95,24 @@ export class ConnectionPoolManager {
 		return value.pool as T;
 	}
 
+	private async cleanupConnection(key: string) {
+		const registration = this.map.get(key);
+
+		if (registration) {
+			this.map.delete(key);
+			await registration.cleanUpHandler(registration.pool);
+		}
+	}
+
 	/**
 	 * Removes and cleans up connection pools that haven't been used within the
 	 * TTL.
 	 */
 	private cleanupStaleConnections() {
 		const now = Date.now();
-		for (const [key, { cleanUpHandler, lastUsed, pool }] of this.map.entries()) {
+		for (const [key, { lastUsed }] of this.map.entries()) {
 			if (now - lastUsed > ttl) {
-				void cleanUpHandler(pool);
+				this.cleanupConnection(key);
 				this.map.delete(key);
 			}
 		}
