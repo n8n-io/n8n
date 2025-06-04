@@ -19,9 +19,9 @@ before(() => {
 		Object.assign(win.navigator.clipboard, {
 			writeText: async (text: string) => {
 				currentContent = text;
-				return Promise.resolve();
+				return await Promise.resolve();
 			},
-			readText: async () => Promise.resolve(currentContent),
+			readText: async () => await Promise.resolve(currentContent),
 		});
 	});
 });
