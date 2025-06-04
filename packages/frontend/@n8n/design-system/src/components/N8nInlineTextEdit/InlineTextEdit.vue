@@ -10,16 +10,13 @@ import { useTemplateRef } from 'vue';
 
 import type { EditableRootEmits, EditableRootProps } from '../../reka-ui';
 
-const props = withDefaults(
-	defineProps<EditableRootProps & { minWidth?: number; maxWidth?: number }>(),
-	{
-		maxLength: 100,
-		placeholder: 'Enter text...',
-		selectOnFocus: true,
-		autoResize: false,
-		submitMode: 'both',
-	},
-);
+const props = withDefaults(defineProps<EditableRootProps>(), {
+	maxLength: 100,
+	placeholder: 'Enter text...',
+	selectOnFocus: true,
+	autoResize: false,
+	submitMode: 'both',
+});
 
 const emit = defineEmits<EditableRootEmits>();
 const forwarded = useForwardPropsEmits(props, emit);
