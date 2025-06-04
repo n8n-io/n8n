@@ -119,56 +119,22 @@ export async function configurePostgres(
 			sshClient.on('end', close);
 			sshClient.on('error', close);
 
-			await new Promise<void>((resolve, reject) => {
-				proxy.on('error', (err) => reject(err));
-				proxy.on('connection', (localSocket) => {
-					sshClient.forwardOut(
-						LOCALHOST,
-						localSocket.remotePort!,
-						credentials.host,
-						credentials.port,
-						(err, clientChannel) => {
-							if (err) {
-								proxy.close();
-								localSocket.destroy();
-							} else {
-								localSocket.pipe(clientChannel);
-								clientChannel.pipe(localSocket);
-							}
-						},
-					);
-				});
-				resolve();
-			}).catch((err) => {
-				proxy.close();
-
-				let message = err.message;
-				let description = err.description;
-
-				if (err.message.includes('ECONNREFUSED')) {
-					message = 'Connection refused';
-					try {
-						description = err.message.split('ECONNREFUSED ')[1].trim();
-					} catch (e) {}
-				}
-
-				if (err.message.includes('ENOTFOUND')) {
-					message = 'Host not found';
-					try {
-						description = err.message.split('ENOTFOUND ')[1].trim();
-					} catch (e) {}
-				}
-
-				if (err.message.includes('ETIMEDOUT')) {
-					message = 'Connection timed out';
-					try {
-						description = err.message.split('ETIMEDOUT ')[1].trim();
-					} catch (e) {}
-				}
-
-				err.message = message;
-				err.description = description;
-				throw err;
+			proxy.on('connection', (localSocket) => {
+				sshClient.forwardOut(
+					LOCALHOST,
+					localSocket.remotePort!,
+					credentials.host,
+					credentials.port,
+					(err, clientChannel) => {
+						if (err) {
+							proxy.close();
+							localSocket.destroy();
+						} else {
+							localSocket.pipe(clientChannel);
+							clientChannel.pipe(localSocket);
+						}
+					},
+				);
 			});
 
 			const db = pgp({
