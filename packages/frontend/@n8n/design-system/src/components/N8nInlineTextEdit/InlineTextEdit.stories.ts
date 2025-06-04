@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3';
+import { ref } from 'vue';
 
 import InlineTextEdit from './InlineTextEdit.vue';
 
@@ -8,14 +9,17 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
+	setup() {
+		const model = ref(args.modelValue);
+		return { args, model };
+	},
 	props: Object.keys(argTypes),
 	components: {
 		InlineTextEdit,
 	},
 	template: `
 		<div class="story">
-			<N8nInlineTextEdit v-bind="args" />
+			<N8nInlineTextEdit v-bind="args" v-model="model"/>
 		</div>
 	`,
 });
