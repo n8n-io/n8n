@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { get, set, unset } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import type {
 	IDataObject,
 	NodeParameterValue,

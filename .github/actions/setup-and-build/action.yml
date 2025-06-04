@@ -1,22 +1,30 @@
 name: 'Setup Environment and Build Project'
-description: 'Sets up Node.js with pnpm, installs dependencies, enables Turborepo caching, and builds the project.'
+description: 'Sets up Node.js with pnpm, installs dependencies, (optional) enables Turborepo caching, and (optional) builds the project.'
 
 inputs:
   node-version:
     description: 'Node.js version to use.'
     required: false
-    default: '22.x'
+    default: '20.x'
   enable-caching:
-    description: Flag to enable/disable all caching (pnpm store, Turborepo, and dist folders).'
+    description: 'Flag to enable/disable all caching.'
     required: false
     default: 'true'
   cache-suffix:
-    description: 'Suffix to add to the dist folder cache key.'
+    description: 'Suffix to add to the cache key.'
     required: false
-    default: 'build'
+    default: 'base:build'
+  skip-build:
+    description: 'Skip the build step, useful when restoring cached artifacts.'
+    required: false
+    default: 'false'
+  cache-paths:
+    description: 'Paths to cache. Defaults to dist folders.'
+    required: false
+    default: './packages/**/dist'
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
     - name: Setup pnpm CLI
       uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
@@ -38,12 +46,13 @@ runs:
       uses: useblacksmith/caching-for-turbo@v1
 
     - name: Build packages
+      if: inputs.skip-build == 'false'
       run: pnpm build
       shell: bash
 
-    - name: Cache 'dist' folders
-      if: inputs.enable-caching == 'true'
+    - name: Cache artifacts
+      if: inputs.enable-caching == 'true' && inputs.skip-build == 'false'
       uses: useblacksmith/cache@v5
       with:
-        path: ./packages/**/dist
-        key: ${{ github.sha }}:${{ inputs.cache-suffix }}
+        path: ${{ inputs.cache-paths }}
+        key: ${{ github.sha }}-${{ inputs.cache-suffix }}

@@ -75,7 +75,7 @@
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "catalog:",
     "@types/validator": "^13.7.0",
-    "@types/ws": "^8.5.4",
+    "@types/ws": "^8.18.1",
     "@types/xml2js": "catalog:",
     "@types/yamljs": "^0.2.31",
     "@vvo/tzdb": "^6.141.0",

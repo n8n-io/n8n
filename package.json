@@ -69,7 +69,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.3.3",
+    "turbo": "2.5.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -96,7 +96,7 @@
       "bull@4.16.4": "patches/bull@4.16.4.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
-      "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
+      "@types/ws@8.18.1": "patches/@types__ws@8.18.1.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
       "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch",

@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';

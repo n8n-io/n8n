@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
@@ -10,6 +11,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
+import { useProjectsStore } from '@/stores/projects.store';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -22,6 +24,7 @@ const responseStatuses = {
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
+const projectStore = useProjectsStore();
 const toast = useToast();
 const i18n = useI18n();
 
@@ -31,10 +34,26 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
+
+// Check if the user has permission to push for at least one project
+const hasPushPermission = computed(() => {
+	return (
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } }) ||
+		projectStore.myProjects.some(
+			(project) =>
+				project.type === 'team' && getResourcePermissions(project?.scopes)?.sourceControl?.push,
+		)
+	);
+});
+
+const hasPullPermission = computed(() => {
+	return hasPermission(['rbac'], { rbac: { scope: 'sourceControl:pull' } });
+});
+
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
-		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
+		(hasPullPermission.value || hasPushPermission.value),
 );
 
 async function pushWorkfolder() {
@@ -113,17 +132,27 @@ async function pullWorkfolder() {
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+				<n8n-tooltip
+					:disabled="!isCollapsed && hasPullPermission"
+					:show-after="tooltipOpenDelay"
+					:placement="isCollapsed ? 'right' : 'top'"
+				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.pull') }}
+							{{
+								!hasPullPermission
+									? i18n.baseText('settings.sourceControl.button.pull.forbidden')
+									: i18n.baseText('settings.sourceControl.button.pull')
+							}}
 						</div>
 					</template>
 					<n8n-button
 						:class="{
 							'mr-2xs': !isCollapsed,
-							'mb-2xs': isCollapsed && !sourceControlStore.preferences.branchReadOnly,
+							'mb-2xs': isCollapsed,
 						}"
+						:disabled="!hasPullPermission"
+						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						type="tertiary"
 						size="mini"
@@ -133,19 +162,26 @@ async function pullWorkfolder() {
 					/>
 				</n8n-tooltip>
 				<n8n-tooltip
-					v-if="!sourceControlStore.preferences.branchReadOnly"
-					:disabled="!isCollapsed"
+					:disabled="
+						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
+					"
 					:show-after="tooltipOpenDelay"
-					placement="right"
+					:placement="isCollapsed ? 'right' : 'top'"
 				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.push') }}
+							{{
+								sourceControlStore.preferences.branchReadOnly || !hasPushPermission
+									? i18n.baseText('settings.sourceControl.button.push.forbidden')
+									: i18n.baseText('settings.sourceControl.button.push')
+							}}
 						</div>
 					</template>
 					<n8n-button
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
+						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"

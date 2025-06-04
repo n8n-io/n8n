@@ -14,6 +14,7 @@ import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 
 // Mock the helper functions
 jest.mock('@utils/helpers', () => ({
+	...jest.requireActual('@utils/helpers'),
 	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
 }));
 
@@ -37,6 +38,14 @@ describe('handleRetrieveAsToolOperation', () => {
 		};
 
 		mockContext = mock<ISupplyDataFunctions>();
+		mockContext.getNode.mockReturnValue({
+			id: 'testNode',
+			typeVersion: 1.3,
+			name: 'Test Knowledge Base',
+			type: 'testVectorStore',
+			parameters: nodeParameters,
+			position: [0, 0],
+		});
 		mockContext.getNodeParameter.mockImplementation((parameterName, _itemIndex, fallbackValue) => {
 			if (typeof parameterName !== 'string') return fallbackValue;
 			return nodeParameters[parameterName] ?? fallbackValue;
@@ -70,7 +79,16 @@ describe('handleRetrieveAsToolOperation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should create a dynamic tool with the correct name and description', async () => {
+	it('should create a dynamic tool with the correct name and description on version <= 1.2', async () => {
+		mockContext.getNode.mockReturnValueOnce({
+			id: 'testNode',
+			typeVersion: 1.2,
+			name: 'Test Knowledge Base',
+			type: 'testVectorStore',
+			parameters: nodeParameters,
+			position: [0, 0],
+		});
+
 		const result = (await handleRetrieveAsToolOperation(
 			mockContext,
 			mockArgs,
@@ -83,6 +101,25 @@ describe('handleRetrieveAsToolOperation', () => {
 		expect(result).toHaveProperty('response');
 		expect(result.response).toBeInstanceOf(DynamicTool);
 		expect(result.response.name).toBe('test_knowledge_base');
+		expect(result.response.description).toBe('Search the test knowledge base');
+
+		// Check logWrapper was called
+		expect(logWrapper).toHaveBeenCalledWith(expect.any(DynamicTool), mockContext);
+	});
+
+	it('should create a dynamic tool with the correct name and description on version > 1.2', async () => {
+		const result = (await handleRetrieveAsToolOperation(
+			mockContext,
+			mockArgs,
+			mockEmbeddings,
+			0,
+		)) as {
+			response: DynamicTool;
+		};
+
+		expect(result).toHaveProperty('response');
+		expect(result.response).toBeInstanceOf(DynamicTool);
+		expect(result.response.name).toBe('Test_Knowledge_Base');
 		expect(result.response.description).toBe('Search the test knowledge base');
 
 		// Check logWrapper was called

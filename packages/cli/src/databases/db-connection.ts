@@ -1,4 +1,5 @@
 import { inTest } from '@n8n/backend-common';
+import { DatabaseConfig } from '@n8n/config';
 import type { Migration } from '@n8n/db';
 import { wrapMigration } from '@n8n/db';
 import { Memoized } from '@n8n/decorators';
@@ -6,6 +7,8 @@ import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
+
+import { Time } from '@/constants';
 
 import { DbConnectionOptions } from './db-connection-options';
 
@@ -28,6 +31,7 @@ export class DbConnection {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly connectionOptions: DbConnectionOptions,
+		private readonly databaseConfig: DatabaseConfig,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
@@ -80,9 +84,12 @@ export class DbConnection {
 		}
 	}
 
-	/** Ping DB connection every 2 seconds */
+	/** Ping DB connection every `pingIntervalSeconds` seconds to check if it is still alive. */
 	private scheduleNextPing() {
-		this.pingTimer = setTimeout(async () => await this.ping(), 2000);
+		this.pingTimer = setTimeout(
+			async () => await this.ping(),
+			this.databaseConfig.pingIntervalSeconds * Time.seconds.toMilliseconds,
+		);
 	}
 
 	private async ping() {

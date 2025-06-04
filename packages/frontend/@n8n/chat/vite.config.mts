@@ -23,7 +23,6 @@ export default mergeConfig(
 			alias: {
 				'@': srcPath,
 				'@n8n/chat': srcPath,
-				lodash: 'lodash-es',
 			},
 		},
 		define: {

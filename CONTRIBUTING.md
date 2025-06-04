@@ -19,9 +19,14 @@ Great that you are here and you want to contribute to n8n
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
-		-	[Community PR Guidelines](#community-pr-guidelines)
+		- [Community PR Guidelines](#community-pr-guidelines)
+			- [**1. Change Request/Comment**](#1-change-requestcomment)
+			- [**2. General Requirements**](#2-general-requirements)
+			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
+			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
 		- [Test suite](#test-suite)
 			- [Unit tests](#unit-tests)
+			- [Code Coverage](#code-coverage)
 			- [E2E tests](#e2e-tests)
 	- [Releasing](#releasing)
 	- [Create custom nodes](#create-custom-nodes)
@@ -252,6 +257,10 @@ of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
 If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
+
+#### Code Coverage
+We track coverage for all our code on [Codecov](https://app.codecov.io/gh/n8n-io/n8n).
+But when you are working on tests locally, we recommend running your tests with env variable `COVERAGE_ENABLED` set to `true`. You can then view the code coverage in the `coverage` folder, or you can use [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) to visualize the coverage directly in VSCode.
 
 #### E2E tests
 

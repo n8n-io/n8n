@@ -4,7 +4,7 @@ import type { IUpdateInformation } from '@/Interface';
 import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
