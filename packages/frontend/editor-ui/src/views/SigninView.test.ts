@@ -124,7 +124,7 @@ describe('SigninView', () => {
 			});
 		});
 
-		it('should redirect to homepage if redirect url does not contain the origin domain', async () => {
+		it('should redirect to homepage with router if redirect url does not contain the origin domain', async () => {
 			vi.spyOn(route, 'query', 'get').mockReturnValue({
 				redirect: 'https://n8n.local.evil.com',
 			});
@@ -137,7 +137,7 @@ describe('SigninView', () => {
 			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
 
-		it('should redirect to homepage if redirect url does not contain a valid URL', async () => {
+		it('should redirect to homepage with router if redirect url does not contain a valid URL', async () => {
 			vi.spyOn(route, 'query', 'get').mockReturnValue({
 				redirect: 'not-a-valid-url',
 			});
