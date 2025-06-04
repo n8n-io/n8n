@@ -44,6 +44,11 @@ const { startChat } = useCanvasOperations({ router });
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
+
+async function handleClickExecute() {
+	workflowsStore.setSelectedTriggerNodeName(name);
+	await runEntireWorkflow('node', name);
+}
 </script>
 
 <template>
@@ -90,7 +95,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					:disabled="isExecuting"
 					:data-test-id="testId"
 					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-					@click.capture="runEntireWorkflow('node', name)"
+					@click.capture="handleClickExecute"
 				/>
 			</template>
 		</div>
