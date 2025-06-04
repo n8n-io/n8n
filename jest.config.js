@@ -31,11 +31,11 @@ const config = {
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
-	collectCoverageFrom: ['src/**/*.ts'],
 	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
+	config.collectCoverageFrom = ['src/**/*.ts'];
 	config.reporters = ['default', 'jest-junit'];
 	config.coverageReporters = ['cobertura'];
 }

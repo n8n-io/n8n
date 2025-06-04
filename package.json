@@ -3,7 +3,7 @@
   "version": "1.97.0",
   "private": true,
   "engines": {
-    "node": ">=20.15",
+    "node": ">=22.16",
     "pnpm": ">=10.2.1"
   },
   "packageManager": "pnpm@10.2.1",
@@ -79,7 +79,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
-      "@types/node": "^18.16.16",
+      "@types/node": "^20.17.50",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "pug": "^3.0.3",

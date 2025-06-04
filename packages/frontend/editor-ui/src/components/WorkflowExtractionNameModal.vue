@@ -56,7 +56,7 @@ onMounted(() => {
 		max-width="540px"
 		:title="
 			i18n.baseText('workflowExtraction.modal.description', {
-				interpolate: { nodeCount: props.data.subGraph.length },
+				adjustToNumber: props.data.subGraph.length,
 			})
 		"
 		:event-bus="modalBus"
