@@ -57,12 +57,11 @@ export async function userHasScopes(
 		if (!credential) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
-		if (
+
+		return (
 			userProjectIds.includes(credential.projectId) &&
 			rolesWithScope('credential', scopes).includes(credential.role)
-		) {
-			return true;
-		}
+		);
 	}
 
 	if (workflowId) {
@@ -74,12 +73,10 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		if (
+		return (
 			userProjectIds.includes(workflow.projectId) &&
 			rolesWithScope('workflow', scopes).includes(workflow.role)
-		) {
-			return true;
-		}
+		);
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);
