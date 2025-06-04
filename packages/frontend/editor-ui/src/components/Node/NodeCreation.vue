@@ -14,6 +14,7 @@ import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
 
 type Props = {
 	nodeViewScale: number;
@@ -37,7 +38,7 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const i18n = useI18n();
 
-const { getAddedNodesAndConnections } = useActions();
+const { getAddedNodesAndConnections } = useActions({ router: useRouter() });
 
 const wrapperRef = ref<HTMLElement | undefined>();
 const wrapperBoundingRect = ref<DOMRect | undefined>();

@@ -45,13 +45,13 @@ import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useRouter } from 'vue-router';
+import type { useRouter } from 'vue-router';
 
-export const useActions = () => {
+export const useActions = ({ router }: { router: ReturnType<typeof useRouter> }) => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
-	const canvasOperations = useCanvasOperations({ router: useRouter() });
+	const canvasOperations = useCanvasOperations({ router });
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,

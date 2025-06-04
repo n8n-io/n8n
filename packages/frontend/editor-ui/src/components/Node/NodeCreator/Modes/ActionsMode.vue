@@ -32,6 +32,7 @@ import { isNodePreviewKey } from '../utils';
 
 import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
+import { useRouter } from 'vue-router';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
@@ -48,7 +49,7 @@ const {
 	getPlaceholderTriggerActions,
 	parseCategoryActions,
 	actionsCategoryLocales,
-} = useActions();
+} = useActions({ router: useRouter() });
 
 const nodeCreatorStore = useNodeCreatorStore();
 
