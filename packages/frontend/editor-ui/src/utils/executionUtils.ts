@@ -393,18 +393,10 @@ export function findTriggerNodeToAutoSelect(
 
 	return triggerNodes
 		.toSorted((a, b) => {
-			let aPriority = autoSelectPriorities[a.type];
-			let bPriority = autoSelectPriorities[b.type];
+			const aPriority = autoSelectPriorities[a.type] ?? (isCoreNode(a) ? 0 : 8);
+			const bPriority = autoSelectPriorities[b.type] ?? (isCoreNode(b) ? 0 : 8);
 
-			if (aPriority === undefined && !isCoreNode(a)) {
-				aPriority = 8;
-			}
-
-			if (bPriority === undefined && !isCoreNode(b)) {
-				bPriority = 8;
-			}
-
-			return (bPriority ?? 0) - (aPriority ?? 0);
+			return bPriority - aPriority;
 		})
 		.find((node) => !node.disabled);
 }
