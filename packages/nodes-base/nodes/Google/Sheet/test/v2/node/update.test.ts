@@ -214,7 +214,7 @@ describe('Google Sheet - Update 4.7', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockGoogleSheet = mock<GoogleSheet>();
 
-		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.7 }));
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.6 }));
 
 		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
 	});
