@@ -22,60 +22,52 @@ export const schemaTypeField: INodeProperties = {
 };
 
 /**
- * Returns a tuple of fields to append to a node properties configuration:
- * First field to input a JSON example that can be used to generate the schema;
- * The second field is a selector for whether all properties from example should be required or optional
+ * Returns a field for inputting a JSON example that can be used to generate the schema.
  * @param props
  */
-export const buildJsonSchemaExampleFields = (props?: {
+export const buildJsonSchemaExampleField = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
-}): [INodeProperties, INodeProperties] => [
-	{
-		displayName: 'JSON Example',
-		name: 'jsonSchemaExample',
-		type: 'json',
-		default: `{
+}): INodeProperties => ({
+	displayName: 'JSON Example',
+	name: 'jsonSchemaExample',
+	type: 'json',
+	default: `{
 	"some_input": "some_value"
 }`,
-		noDataExpression: true,
-		typeOptions: {
-			rows: 10,
-		},
-		displayOptions: {
-			show: {
-				...props?.showExtraProps,
-				schemaType: ['fromJson'],
-			},
-		},
-		description: 'Example JSON object to use to generate the schema',
+	noDataExpression: true,
+	typeOptions: {
+		rows: 10,
 	},
-	{
-		displayName: 'All Fields Are',
-		name: 'exampleFieldsOptionality',
-		type: 'options',
-		options: [
-			{
-				name: 'Required',
-				value: 'required',
-			},
-			{
-				name: 'Optional',
-				value: 'optional',
-			},
-		],
-		default: 'required',
-		description: 'If all fields in the JSON example are required or optional',
-		displayOptions: {
-			show: {
-				...props?.showExtraProps,
-				schemaType: ['fromJson'],
-			},
+	displayOptions: {
+		show: {
+			...props?.showExtraProps,
+			schemaType: ['fromJson'],
 		},
 	},
-];
+	description: 'Example JSON object to use to generate the schema',
+});
 
-export const [jsonSchemaExampleField, jsonSchemaPropertiesOptionalityField] =
-	buildJsonSchemaExampleFields();
+/**
+ * Returns a notice field about the generated schema properties being required by default.
+ * @param props
+ */
+export const buildJsonSchemaExampleNotice = (props?: {
+	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
+}): INodeProperties => ({
+	displayName:
+		'All properties will be required in the generated schema. For optional properties, switch to manual schema definition.',
+	name: 'notice',
+	type: 'notice',
+	default: '',
+	displayOptions: {
+		show: {
+			...props?.showExtraProps,
+			schemaType: ['fromJson'],
+		},
+	},
+});
+
+export const jsonSchemaExampleField = buildJsonSchemaExampleField();
 
 export const buildInputSchemaField = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;

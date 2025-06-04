@@ -17,7 +17,8 @@ import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow
 
 import {
 	buildInputSchemaField,
-	buildJsonSchemaExampleFields,
+	buildJsonSchemaExampleField,
+	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
 import { nodeNameToToolName } from '@utils/helpers';
@@ -26,7 +27,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
-const [jsonSchemaExampleField, _] = buildJsonSchemaExampleFields({
+const jsonSchemaExampleField = buildJsonSchemaExampleField({
 	showExtraProps: { specifyInputSchema: [true] },
 });
 
