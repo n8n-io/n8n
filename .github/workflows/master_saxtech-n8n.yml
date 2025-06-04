@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read #This is required for actions/checkout
 
-    steps:
+    steps:     
       - uses: actions/checkout@v4
 
       - name: Set up Node.js version
@@ -23,14 +23,17 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Check Node & npm version (debug)
+      - name: Check Node & npm version BEFORE upgrade
         run: |
           node -v
           npm -v
 
       - name: Upgrade npm (for workspace support)
+        run: npm install -g npm@9
+
+      - name: Check Node & npm version AFTER upgrade
         run: |
-          npm install -g npm@9
+          node -v
           npm -v
 
       - name: npm install, build, and test
@@ -38,7 +41,7 @@ jobs:
           npm install
           npm run build --if-present
           npm run test --if-present
-
+          
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
 
