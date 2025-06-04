@@ -17,14 +17,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
 
+      - name: Check Node & npm version (debug)
+        run: |
+          node -v
+          npm -v
+
       - name: Upgrade npm (for workspace support)
-        run: npm install -g npm@9
+        run: |
+          npm install -g npm@9
+          npm -v
 
       - name: npm install, build, and test
         run: |
