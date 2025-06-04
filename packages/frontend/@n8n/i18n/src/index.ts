@@ -383,7 +383,7 @@ export async function loadLanguage(language: string) {
 		return await setLanguage(language);
 	}
 
-	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
+	const { numberFormats, ...rest } = (await import(`@n8n/i18n/locales/${language}.json`)).default;
 
 	i18nInstance.global.setLocaleMessage(language, rest);
 
