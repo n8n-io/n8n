@@ -12,7 +12,7 @@ export const schemaTypeField: INodeProperties = {
 			description: 'Generate a schema from an example JSON object',
 		},
 		{
-			name: 'Define Below',
+			name: 'Define using JSON Schema',
 			value: 'manual',
 			description: 'Define the JSON schema manually',
 		},
