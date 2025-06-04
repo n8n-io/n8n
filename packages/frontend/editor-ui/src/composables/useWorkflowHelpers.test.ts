@@ -12,11 +12,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
 import * as apiWebhooks from '../api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { nodeTypes } from '@/components/CanvasChat/__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
@@ -843,7 +842,13 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore = mockedStore(useWorkflowsStore);
 
 			nodeTypesStore = mockedStore(useNodeTypesStore);
-			nodeTypesStore.setNodeTypes(nodeTypes);
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					version: 1,
+					group: ['trigger'],
+				}),
+			]);
 		});
 
 		it('should save the current workflow', async () => {
