@@ -6,6 +6,7 @@ import { SSHClientsManager } from '../../ssh-clients-manager';
 export const getSSHTunnelFunctions = (): SSHTunnelFunctions => {
 	const sshClientsManager = Container.get(SSHClientsManager);
 	return {
-		getSSHClient: async (credentials) => await sshClientsManager.getClient(credentials),
+		getSSHClient: async (credentials, abortController) =>
+			await sshClientsManager.getClient(credentials, abortController),
 	};
 };

@@ -58,9 +58,9 @@ export async function configurePostgres(
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
 ): Promise<ConnectionsData> {
-	const poolManager = ConnectionPoolManager.getInstance();
+	const poolManager = ConnectionPoolManager.getInstance(this.logger);
 
-	const fallBackHandler = async () => {
+	const fallBackHandler = async (abortController: AbortController) => {
 		const pgp = pgPromise({
 			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
 			// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
@@ -101,23 +101,24 @@ export async function configurePostgres(
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
 				credentials.privateKey = formatPrivateKey(credentials.privateKey);
 			}
-			const sshClient = await this.helpers.getSSHClient(credentials);
+			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 			// Create a TCP proxy listening on a random available port
 			const proxy = createServer();
+			proxy.on('error', (error) => {
+				this.logger.error('TCP Proxy: Got error, calling abort controller', { error });
+				abortController.abort();
+			});
+			abortController.signal.addEventListener('abort', (reason) => {
+				this.logger.debug('Got abort signal. Closing TCP proxy server.', { reason });
+				proxy.close();
+			});
+
 			const proxyPort = await new Promise<number>((resolve) => {
 				proxy.listen(0, LOCALHOST, () => {
 					resolve((proxy.address() as AddressInfo).port);
 				});
 			});
-
-			const close = () => {
-				proxy.close();
-				sshClient.off('end', close);
-				sshClient.off('error', close);
-			};
-			sshClient.on('end', close);
-			sshClient.on('error', close);
 
 			proxy.on('connection', (localSocket) => {
 				sshClient.forwardOut(
@@ -125,10 +126,10 @@ export async function configurePostgres(
 					localSocket.remotePort!,
 					credentials.host,
 					credentials.port,
-					(err, clientChannel) => {
-						if (err) {
-							proxy.close();
-							localSocket.destroy();
+					(error, clientChannel) => {
+						if (error) {
+							this.logger.error('SSH Client: Port forwarding encountered an error', { error });
+							abortController.abort();
 						} else {
 							localSocket.pipe(clientChannel);
 							clientChannel.pipe(localSocket);
@@ -142,7 +143,20 @@ export async function configurePostgres(
 				port: proxyPort,
 				host: LOCALHOST,
 			});
-			return { db, pgp };
+
+			abortController.signal.addEventListener('abort', async () => {
+				this.logger.debug('configurePostgres: Got abort signal, closing pg connection.');
+				try {
+					if (!db.$pool.ended) await db.$pool.end();
+				} catch (error) {
+					this.logger.error('configurePostgres: Encountered error while closing the pool.', {
+						error,
+					});
+					throw error;
+				}
+			});
+
+			return { db, pgp, sshClient };
 		}
 	};
 
@@ -151,8 +165,5 @@ export async function configurePostgres(
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
 		fallBackHandler,
-		cleanUpHandler: async ({ db }) => {
-			if (!db.$pool.ended) await db.$pool.end();
-		},
 	});
 }
