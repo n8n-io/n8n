@@ -54,7 +54,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - name: Install dependencies

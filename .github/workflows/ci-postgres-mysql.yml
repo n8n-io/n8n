@@ -35,7 +35,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
@@ -43,7 +43,7 @@ jobs:
       - name: Setup build cache
         uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
-      - name: Build Backend
+      - name: Build
         run: pnpm build
 
       - name: Cache build artifacts
@@ -69,7 +69,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
@@ -103,7 +103,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
@@ -147,7 +147,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
@@ -189,7 +189,7 @@ jobs:
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
