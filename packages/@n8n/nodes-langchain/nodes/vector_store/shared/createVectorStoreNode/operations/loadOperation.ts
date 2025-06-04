@@ -45,15 +45,16 @@ export async function handleLoadOperation<T extends VectorStore = VectorStore>(
 		let docs = await vectorStore.similaritySearchVectorWithScore(embeddedPrompt, topK, filter);
 
 		// If reranker is used, rerank the documents
-		if (useReranker) {
+		if (useReranker && docs.length > 0) {
 			const reranker = (await context.getInputConnectionData(
 				NodeConnectionTypes.AiReranker,
 				0,
 			)) as BaseDocumentCompressor;
 			const documents = docs.map(([doc]) => doc);
+
 			const rerankedDocuments = await reranker.compressDocuments(documents, prompt);
 			docs = rerankedDocuments.map((doc) => {
-				const { relevanceScore, ...metadata } = doc.metadata;
+				const { relevanceScore, ...metadata } = doc.metadata || {};
 				return [{ ...doc, metadata }, relevanceScore];
 			});
 		}

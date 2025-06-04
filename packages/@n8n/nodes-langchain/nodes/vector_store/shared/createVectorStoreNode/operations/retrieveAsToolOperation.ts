@@ -60,16 +60,17 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 				);
 
 				// If reranker is used, rerank the documents
-				if (useReranker) {
+				if (useReranker && documents.length > 0) {
 					const reranker = (await context.getInputConnectionData(
 						NodeConnectionTypes.AiReranker,
 						0,
 					)) as BaseDocumentCompressor;
+
 					const docs = documents.map(([doc]) => doc);
 					const rerankedDocuments = await reranker.compressDocuments(docs, input);
 					documents = rerankedDocuments.map((doc) => {
-						const { relevanceScore } = doc.metadata;
-						return [doc, relevanceScore];
+						const { relevanceScore, ...metadata } = doc.metadata;
+						return [{ ...doc, metadata }, relevanceScore];
 					});
 				}
 
