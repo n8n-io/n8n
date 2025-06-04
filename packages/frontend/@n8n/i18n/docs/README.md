@@ -50,11 +50,11 @@ Press "o" to open in Browser.
 
 ## Base text
 
-Base text is rendered with no dependencies, i.e. base text is fixed and does not change in any circumstances. Base text is supplied by the user in one file per locale in the `/frontend/editor-ui` package.
+Base text is rendered with no dependencies, i.e. base text is fixed and does not change in any circumstances. Base text is supplied by the user in one file per locale in the `/frontend/@n8n/i18n` package.
 
 ### Locating base text
 
-The base text file for each locale is located at `/packages/frontend/editor-ui/src/plugins/i18n/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
+The base text file for each locale is located at `/packages/frontend/@n8n/i18n/src/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
 
 ```json
 {
@@ -69,7 +69,7 @@ The base text file for each locale is located at `/packages/frontend/editor-ui/s
 1. Select a new locale identifier, e.g. `de`, copy the `en` JSON base text file with a new name:
 
 ```
-cp ./packages/frontend/editor-ui/src/plugins/i18n/locales/en.json ./packages/frontend/editor-ui/src/plugins/i18n/locales/de.json
+cp ./packages/frontend/@n8n/i18n/src/locales/en.json ./packages/frontend/@n8n/i18n/src/locales/de.json
 ```
 
 2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/frontend/editor-ui` a call to `i18n.baseText(key)`, e.g. `i18n.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
