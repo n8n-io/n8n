@@ -7,9 +7,9 @@ import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
 import config from '@/config';
-import { EventService } from '@/events/event.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
+import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
 
 /**
@@ -21,9 +21,9 @@ export class Subscriber {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly redisClientService: RedisClientService,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly pubsubEventBus: PubSubEventBus,
+		private readonly redisClientService: RedisClientService,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
@@ -34,7 +34,7 @@ export class Subscriber {
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
 			const eventName = 'command' in msg ? msg.command : msg.response;
-			this.eventService.emit(eventName, msg.payload);
+			this.pubsubEventBus.emit(eventName, msg.payload);
 		};
 
 		const debouncedHandlerFn = debounce(handlerFn, 300);

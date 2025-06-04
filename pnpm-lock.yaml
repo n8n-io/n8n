@@ -1507,6 +1507,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../@n8n/constants
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../@n8n/decorators

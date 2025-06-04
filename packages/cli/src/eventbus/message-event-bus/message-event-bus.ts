@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
@@ -263,6 +264,7 @@ export class MessageEventBus extends EventEmitter {
 		this.logger.debug('EventBus shut down.');
 	}
 
+	@OnPubSubEvent('restart-event-bus')
 	async restart() {
 		await this.close();
 		await this.initialize({ skipRecoveryPass: true });
