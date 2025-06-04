@@ -206,7 +206,7 @@ describe('Google Sheet - Update', () => {
 	});
 });
 
-describe('Google Sheet - Update 4.7', () => {
+describe('Google Sheet - Update 4.6', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	let mockGoogleSheet: MockProxy<GoogleSheet>;
 
