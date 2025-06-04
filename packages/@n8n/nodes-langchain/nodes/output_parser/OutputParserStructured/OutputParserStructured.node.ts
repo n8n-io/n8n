@@ -122,7 +122,7 @@ export class OutputParserStructured implements INodeType {
 			},
 			{
 				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples. Please note that we don\'t support references (using $refs) in JSON schema.',
+					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -170,6 +170,19 @@ export class OutputParserStructured implements INodeType {
 				hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
 				description:
 					'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
+			},
+			{
+				displayName: "Please note that we don't support references (using $refs) in JSON schema.",
+				name: 'jsonSchemaRefsWarning',
+				type: 'notice',
+				noDataExpression: true,
+				default: '',
+				displayOptions: {
+					show: {
+						schemaType: ['manual'],
+						inputSchema: [{ _cnd: { includes: '"$ref"' } }],
+					},
+				},
 			},
 		],
 	};
