@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: '22.x'
 
+      - name: Upgrade npm (for workspace support)
+        run: npm install -g npm@9
+
       - name: npm install, build, and test
         run: |
           npm install
