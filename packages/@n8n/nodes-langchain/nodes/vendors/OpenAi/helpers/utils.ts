@@ -1,5 +1,5 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import type { StructuredTool } from '@langchain/core/tools';
+import type { StructuredTool, Tool } from '@langchain/core/tools';
 import type { OpenAIClient } from '@langchain/openai';
 import type { BufferWindowMemory } from 'langchain/memory';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -8,13 +8,13 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 // since these functions are not exported
 
 /**
- * Formats a `StructuredTool` instance into a format that is compatible
+ * Formats a `Tool` or `StructuredTool` instance into a format that is compatible
  * with OpenAI's ChatCompletionFunctions. It uses the `zodToJsonSchema`
- * function to convert the schema of the `StructuredTool` into a JSON
+ * function to convert the schema of the tool into a JSON
  * schema, which is then used as the parameters for the OpenAI function.
  */
 export function formatToOpenAIFunction(
-	tool: StructuredTool,
+	tool: Tool | StructuredTool,
 ): OpenAIClient.Chat.ChatCompletionCreateParams.Function {
 	return {
 		name: tool.name,
@@ -23,7 +23,9 @@ export function formatToOpenAIFunction(
 	};
 }
 
-export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.ChatCompletionTool {
+export function formatToOpenAITool(
+	tool: Tool | StructuredTool,
+): OpenAIClient.Chat.ChatCompletionTool {
 	const schema = zodToJsonSchema(tool.schema);
 	return {
 		type: 'function',
@@ -35,7 +37,9 @@ export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.Chat
 	};
 }
 
-export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.Beta.AssistantTool {
+export function formatToOpenAIAssistantTool(
+	tool: Tool | StructuredTool,
+): OpenAIClient.Beta.AssistantTool {
 	return {
 		type: 'function',
 		function: {
