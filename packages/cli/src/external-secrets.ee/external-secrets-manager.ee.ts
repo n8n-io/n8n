@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
@@ -77,6 +77,7 @@ export class ExternalSecretsManager {
 		this.logger.debug('External secrets manager shut down');
 	}
 
+	@OnPubSubEvent('reload-external-secrets-providers')
 	async reloadAllProviders(backoff?: number) {
 		this.logger.debug('Reloading all external secrets providers');
 		const providers = this.getProviderNames();
