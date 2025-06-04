@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
@@ -28,9 +28,9 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+          ~/.npm-global/bin/npm install
+          ~/.npm-global/bin/npm run build --if-present
+          ~/.npm-global/bin/npm run test --if-present
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
