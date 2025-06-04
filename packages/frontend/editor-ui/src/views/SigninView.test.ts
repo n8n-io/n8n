@@ -177,5 +177,18 @@ describe('SigninView', () => {
 			expect(hrefSpy).not.toHaveBeenCalled();
 			expect(router.push).toHaveBeenCalledWith(validLocalRedirectUrl);
 		});
+
+		it('should redirect to homepage with router if redirect url is empty', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({
+				redirect: '',
+			});
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			await signInWithValidUser();
+
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
 	});
 });
