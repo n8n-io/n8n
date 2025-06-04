@@ -5,7 +5,7 @@ inputs:
   node-version:
     description: 'Node.js version to use.'
     required: false
-    default: '20.x'
+    default: '22.x'
   enable-caching:
     description: 'Flag to enable/disable all caching.'
     required: false
