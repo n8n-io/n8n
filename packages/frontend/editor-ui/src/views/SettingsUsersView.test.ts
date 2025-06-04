@@ -8,7 +8,7 @@ import { createUser } from '@/__tests__/data/users';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingOptions } from '@pinia/testing';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@n8n/stores';

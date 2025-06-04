@@ -18,13 +18,18 @@ withDefaults(defineProps<TagProps>(), {
 
 <style lang="scss" module>
 .tag {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	min-width: max-content;
-	padding: 1px var(--spacing-4xs);
-	color: var(--color-text-base);
-	background-color: var(--color-background-base);
-	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-2xs);
-
+	height: var(--tag-height);
+	padding: var(--tag-padding);
+	line-height: var(--tag-line-height);
+	color: var(--tag-text-color);
+	background-color: var(--tag-background-color);
+	border: 1px solid var(--tag-border-color);
+	border-radius: var(--tag-border-radius);
+	font-size: var(--tag-font-size);
 	transition: background-color 0.3s ease;
 
 	&.clickable {

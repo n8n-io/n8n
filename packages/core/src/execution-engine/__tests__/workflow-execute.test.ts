@@ -15,7 +15,7 @@ process.env.N8N_RUNNERS_ENABLED = 'false';
 // PD denotes that the node has pinned data
 
 import { mock } from 'jest-mock-extended';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
 	IConnection,

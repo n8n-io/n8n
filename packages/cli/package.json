@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.95.0",
+  "version": "1.97.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -44,7 +44,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=18.17 <= 22"
+    "node": ">=20.19 <= 24.x"
   },
   "files": [
     "bin",
@@ -69,13 +69,13 @@
     "@types/psl": "^1.1.0",
     "@types/replacestream": "^4.0.1",
     "@types/shelljs": "^0.8.11",
-    "@types/sshpk": "^1.17.1",
+    "@types/sshpk": "^1.17.4",
     "@types/superagent": "^8.1.9",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "catalog:",
     "@types/validator": "^13.7.0",
-    "@types/ws": "^8.5.4",
+    "@types/ws": "^8.18.1",
     "@types/xml2js": "catalog:",
     "@types/yamljs": "^0.2.31",
     "@vvo/tzdb": "^6.141.0",
@@ -125,7 +125,7 @@
     "dotenv": "8.6.0",
     "express": "5.1.0",
     "express-handlebars": "8.0.1",
-    "express-openapi-validator": "5.4.7",
+    "express-openapi-validator": "5.5.3",
     "express-prom-bundle": "8.0.0",
     "express-rate-limit": "7.5.0",
     "fast-glob": "catalog:",
@@ -170,7 +170,7 @@
     "simple-git": "3.17.0",
     "source-map-support": "0.5.21",
     "sqlite3": "5.1.7",
-    "sshpk": "1.17.0",
+    "sshpk": "1.18.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",
     "uuid": "catalog:",

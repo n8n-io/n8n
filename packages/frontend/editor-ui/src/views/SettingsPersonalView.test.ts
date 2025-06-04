@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { createPinia } from 'pinia';
 import { waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
@@ -7,11 +8,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let uiStore: ReturnType<typeof useUIStore>;
+let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 let server: ReturnType<typeof setupServer>;
 
 const renderComponent = createComponentRenderer(SettingsPersonalView);
@@ -40,6 +43,7 @@ describe('SettingsPersonalView', () => {
 		settingsStore = useSettingsStore(pinia);
 		usersStore = useUsersStore(pinia);
 		uiStore = useUIStore(pinia);
+		cloudPlanStore = useCloudPlanStore(pinia);
 
 		usersStore.usersById[currentUser.id] = currentUser;
 		usersStore.currentUserId = currentUser.id;
@@ -142,5 +146,32 @@ describe('SettingsPersonalView', () => {
 			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
 			expect(queryByTestId('mfa-section')).not.toBeInTheDocument();
 		});
+	});
+
+	test.each([
+		['Default', ROLE.Default, false, 'Default role for new users'],
+		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
+		[
+			'Admin',
+			ROLE.Admin,
+			false,
+			'Full access to manage workflows,tags, credentials, projects, users and more',
+		],
+		['Owner', ROLE.Owner, false, 'Manage everything'],
+		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
+	])('should show %s user role information', async (label, role, hasCloudPlan, tooltipText) => {
+		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
+		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
+
+		const { queryByTestId, getByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(queryByTestId('current-user-role')).toBeVisible();
+		expect(queryByTestId('current-user-role')).toHaveTextContent(label);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		await userEvent.hover(queryByTestId('current-user-role')!);
+
+		expect(getByText(tooltipText)).toBeVisible();
 	});
 });
