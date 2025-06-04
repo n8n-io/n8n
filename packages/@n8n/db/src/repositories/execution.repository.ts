@@ -68,7 +68,7 @@ export interface IGetExecutionsQueryFilter {
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
+	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
 }
@@ -88,7 +88,11 @@ function parseFiltersToQueryBuilder(
 	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {
-			qb.andWhere('md.key = :key AND md.value = :value', md);
+			if (md.exactMatch) {
+				qb.andWhere('md.key = :key AND md.value = :value', md);
+			} else {
+				qb.andWhere('md.key = :key AND LOWER(md.value) LIKE LOWER(:value)', md);
+			}
 		}
 	}
 	if (filters?.startedAfter) {
@@ -983,16 +987,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
 		if (metadata?.length === 1) {
-			const [{ key, value }] = metadata;
+			const [{ key, value, exactMatch }] = metadata;
 
-			qb.innerJoin(
-				ExecutionMetadata,
-				'md',
-				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
-			);
+			const executionIdMatch = 'md.executionId = execution.id';
+			const keyMatch = exactMatch ? 'md.key = :key' : 'LOWER(md.key) = LOWER(:key)';
+			const valueMatch = exactMatch ? 'md.value = :value' : 'LOWER(md.value) LIKE LOWER(:value)';
+
+			const matches = [executionIdMatch, keyMatch, valueMatch];
+
+			qb.innerJoin(ExecutionMetadata, 'md', matches.join(' AND '));
 
 			qb.setParameter('key', key);
-			qb.setParameter('value', value);
+			qb.setParameter('value', exactMatch ? value : `%${value}%`);
 		}
 
 		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
