@@ -38,3 +38,5 @@ export const createVitestConfig = (options = {}) => {
 
 	return vitestConfig;
 };
+
+export const vitestConfig = createVitestConfig();
