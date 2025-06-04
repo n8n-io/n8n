@@ -1181,6 +1181,7 @@ const moveFolder = async (payload: {
 	};
 }) => {
 	if (!route.params.projectId) return;
+
 	try {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
@@ -1227,55 +1228,85 @@ const moveFolder = async (payload: {
 };
 
 const onFolderTransferred = async (payload: {
-	folder: { id: string; name: string };
-	projectId: string;
-	destinationProjectId: string;
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	source: {
+		projectId: string;
+		folder: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
 	shareCredentials?: string[];
 }) => {
-	const destinationParentFolderId =
-		payload.newParent.type === 'folder' ? payload.newParent.id : undefined;
+	try {
+		await foldersStore.moveFolderToProject(
+			payload.source.projectId,
+			payload.source.folder.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
 
-	await foldersStore.moveFolderToProject(
-		payload.projectId,
-		payload.folder.id,
-		payload.destinationProjectId,
-		destinationParentFolderId,
-		payload.shareCredentials,
-	);
-
-	const isCurrentFolder = currentFolderId.value === payload.folder.id;
-	const newFolderURL = router.resolve({
-		name: VIEWS.PROJECTS_FOLDERS,
-		params: {
-			projectId: payload.destinationProjectId,
-			folderId: destinationParentFolderId,
-		},
-	}).href;
-
-	if (isCurrentFolder) {
-		// If we just moved the current folder, automatically navigate to the new folder
-		void router.push(newFolderURL);
-	} else {
-		// Else show success message and update the list
-		toast.showToast({
-			title: i18n.baseText('folders.move.success.title'),
-			message: i18n.baseText('folders.move.success.message', {
-				interpolate: {
-					folderName: payload.folder.name,
-					newFolderName: payload.newParent.name,
-				},
-			}),
-			onClick: (event: MouseEvent | undefined) => {
-				if (event?.target instanceof HTMLAnchorElement) {
-					event.preventDefault();
-					void router.push(newFolderURL);
-				}
+		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: {
+				projectId: payload.destination.canAccess
+					? payload.destination.projectId
+					: payload.source.projectId,
+				folderId: payload.destination.canAccess ? payload.source.folder.id : undefined,
 			},
-			type: 'success',
-		});
+		}).href;
 
-		await fetchWorkflows();
+		if (isCurrentFolder) {
+			if (payload.destination.canAccess) {
+				// If we just moved the current folder and can access the destination navigate there
+				void router.push(newFolderURL);
+			} else {
+				// Otherwise navigate to the workflows page of the source project
+				void router.push({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: {
+						projectId: payload.source.projectId,
+					},
+				});
+			}
+		} else {
+			await refreshWorkflows();
+
+			if (payload.destination.canAccess) {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.message', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					onClick: (event: MouseEvent | undefined) => {
+						if (event?.target instanceof HTMLAnchorElement) {
+							event.preventDefault();
+							void router.push(newFolderURL);
+						}
+					},
+					type: 'success',
+				});
+			} else {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.messageNoAccess', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					type: 'success',
+				});
+			}
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.error.title'));
 	}
 };
 
@@ -1305,46 +1336,63 @@ const moveWorkflowToFolder = async (payload: {
 };
 
 const onWorkflowTransferred = async (payload: {
-	projectId: string;
-	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	source: {
+		projectId: string;
+		workflow: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
 	shareCredentials?: string[];
 }) => {
-	const parentFolderId = payload.newParent.type === 'folder' ? payload.newParent.id : undefined;
-
-	await projectsStore.moveResourceToProject(
-		'workflow',
-		payload.workflow.id,
-		payload.projectId,
-		parentFolderId,
-		payload.shareCredentials,
-	);
-
-	await fetchWorkflows();
-
 	try {
-		toast.showToast({
-			title: i18n.baseText('folders.move.workflow.success.title'),
-			message: i18n.baseText('folders.move.workflow.success.message', {
-				interpolate: {
-					workflowName: payload.workflow.name,
-					newFolderName: payload.newParent.name,
+		await projectsStore.moveResourceToProject(
+			'workflow',
+			payload.source.workflow.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
+
+		await refreshWorkflows();
+
+		if (payload.destination.canAccess) {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.message', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push({
+							name: VIEWS.PROJECTS_FOLDERS,
+							params: {
+								projectId: payload.destination.projectId,
+								folderId: payload.destination.parentFolder.id,
+							},
+						});
+					}
 				},
-			}),
-			onClick: (event: MouseEvent | undefined) => {
-				if (event?.target instanceof HTMLAnchorElement) {
-					event.preventDefault();
-					void router.push({
-						name: VIEWS.PROJECTS_FOLDERS,
-						params: {
-							projectId: payload.projectId,
-							folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
-						},
-					});
-				}
-			},
-			type: 'success',
-		});
+				type: 'success',
+			});
+		} else {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.messageNoAccess', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				type: 'success',
+			});
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
 	}
