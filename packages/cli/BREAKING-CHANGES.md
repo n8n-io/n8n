@@ -16,6 +16,18 @@ If you've been ingesting route metrics from your n8n instance (version 1.81.0 an
 how the `last_activity` metric has affected your Prometheus instance and potentially clean up the old data. Future
 metrics will also be served in a different format, which needs to be taken into account.
 
+### What changed?
+
+The minimum Node.js version required for n8n is now v20.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v20 or above.
+
 ## 1.83.0
 
 ### What changed?
