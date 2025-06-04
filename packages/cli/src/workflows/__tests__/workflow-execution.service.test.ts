@@ -1,4 +1,5 @@
-import type { User } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import type { Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import {
 	NodeConnectionTypes,
@@ -7,8 +8,10 @@ import {
 	type INodeType,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
+	type ExecutionError,
 } from 'n8n-workflow';
 
+import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -487,6 +490,113 @@ describe('WorkflowExecutionService', () => {
 				expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
 
 				process.env = originalEnv;
+			});
+		});
+	});
+
+	describe('executeErrorWorkflow()', () => {
+		test('should call `WorkflowRunner.run()` with correct parameters', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const globalConfig = mock<GlobalConfig>({
+				nodes: {
+					errorTriggerType,
+				},
+			});
+
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				active: false,
+				isArchived: false,
+				pinData: {},
+				nodes: [errorTriggerNode],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.findOneBy.mockResolvedValue(errorWorkflow);
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfig,
+				mock(),
+				mock(),
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
+			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
+				executionMode: 'error',
+				executionData: {
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack: [
+							{
+								node: errorTriggerNode,
+								data: {
+									main: [
+										[
+											{
+												json: workflowErrorData,
+											},
+										],
+									],
+								},
+								source: null,
+								metadata: {
+									parentExecution: {
+										executionId: 'execution-id',
+										workflowId: 'workflow-id',
+									},
+								},
+							},
+						],
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+					resultData: {
+						runData: {},
+					},
+					startData: {},
+				},
+				workflowData: errorWorkflow,
+				projectId: 'project-id',
 			});
 		});
 	});
