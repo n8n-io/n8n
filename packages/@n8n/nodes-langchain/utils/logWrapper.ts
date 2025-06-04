@@ -304,6 +304,7 @@ export function logWrapper<
 				}
 			}
 
+			// ========== Rerankers ==========
 			if (originalInstance instanceof BaseDocumentCompressor) {
 				if (prop === 'compressDocuments' && 'compressDocuments' in target) {
 					return async (documents: Document[], query: string): Promise<Document[]> => {
@@ -322,10 +323,8 @@ export function logWrapper<
 							arguments: [deepCopy(documents), query],
 						})) as Document[];
 
-						logAiEvent(executeFunctions, 'ai-document-reranked');
-						executeFunctions.addOutputData(connectionType, index, [
-							response.map((document) => ({ json: { document } })),
-						]);
+						logAiEvent(executeFunctions, 'ai-document-reranked', { query });
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}

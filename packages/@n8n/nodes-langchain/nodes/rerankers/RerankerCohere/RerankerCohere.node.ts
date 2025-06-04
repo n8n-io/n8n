@@ -17,7 +17,8 @@ export class RerankerCohere implements INodeType {
 		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		description: 'Use Cohere Reranker to rerank documents after retrieval from a vector store',
+		description:
+			'Use Cohere Reranker to reorder documents after retrieval from a vector store by relevance to the given query.',
 		defaults: {
 			name: 'Reranker Cohere',
 		},
