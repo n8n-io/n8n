@@ -1,24 +1,20 @@
 import { mock } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
-import type {
-	IDataObject,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	SecretsHelpersBase,
-} from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import type { SecretsHelper } from '@/execution-engine/secrets-helper.ee';
 
 import { getAdditionalKeys } from '../get-additional-keys';
 
 describe('getAdditionalKeys', () => {
-	const secretsHelpers = mock<SecretsHelpersBase>();
+	const secretsHelper = mock<SecretsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
 		formWaitingBaseUrl: 'https://form.test',
 		variables: { testVar: 'value' },
-		secretsHelpers,
+		secretsHelper,
 	});
 
 	const runExecutionData = mock<IRunExecutionData>({
@@ -30,11 +26,11 @@ describe('getAdditionalKeys', () => {
 
 	beforeAll(() => {
 		LoggerProxy.init(mock());
-		secretsHelpers.hasProvider.mockReturnValue(true);
-		secretsHelpers.hasSecret.mockReturnValue(true);
-		secretsHelpers.getSecret.mockReturnValue('secret-value');
-		secretsHelpers.listSecrets.mockReturnValue(['secret1']);
-		secretsHelpers.listProviders.mockReturnValue(['provider1']);
+		secretsHelper.hasProvider.mockReturnValue(true);
+		secretsHelper.hasSecret.mockReturnValue(true);
+		secretsHelper.getSecret.mockReturnValue('secret-value');
+		secretsHelper.listSecrets.mockReturnValue(['secret1']);
+		secretsHelper.listProviders.mockReturnValue(['provider1']);
 	});
 
 	it('should use placeholder execution ID when none provided', () => {

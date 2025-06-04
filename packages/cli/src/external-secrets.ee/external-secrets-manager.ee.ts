@@ -211,7 +211,7 @@ export class ExternalSecretsManager {
 		return provider in this.providers;
 	}
 
-	getProviderNames(): string[] | undefined {
+	getProviderNames(): string[] {
 		return Object.keys(this.providers);
 	}
 

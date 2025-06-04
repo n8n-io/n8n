@@ -2385,7 +2385,6 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
-	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	startRunnerTask<T, E = unknown>(
@@ -2880,17 +2879,6 @@ export interface ICheckProcessedContextData {
 }
 
 export type N8nAIProviderType = 'openai' | 'unknown';
-
-export interface SecretsHelpersBase {
-	update(): Promise<void>;
-	waitForInit(): Promise<void>;
-
-	getSecret(provider: string, name: string): unknown;
-	hasSecret(provider: string, name: string): boolean;
-	hasProvider(provider: string): boolean;
-	listProviders(): string[];
-	listSecrets(provider: string): string[];
-}
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 
