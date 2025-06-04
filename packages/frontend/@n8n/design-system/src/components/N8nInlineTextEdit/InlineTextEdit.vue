@@ -6,17 +6,22 @@ import {
 	EditableRoot,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 
 import type { EditableRootEmits, EditableRootProps } from '../../reka-ui';
 
-const props = withDefaults(defineProps<EditableRootProps>(), {
-	maxLength: 100,
-	placeholder: 'Enter text...',
-	selectOnFocus: true,
-	autoResize: true,
-	submitMode: 'both',
-});
+const props = withDefaults(
+	defineProps<EditableRootProps & { minWidth?: number; maxWidth?: number }>(),
+	{
+		maxLength: 100,
+		placeholder: 'Enter text...',
+		selectOnFocus: true,
+		autoResize: true,
+		submitMode: 'both',
+		maxWidth: 200,
+		minWidth: 64,
+	},
+);
 
 const emit = defineEmits<EditableRootEmits>();
 const forwarded = useForwardPropsEmits(props, emit);
@@ -34,13 +39,30 @@ function forceCancel() {
 }
 
 defineExpose({ forceFocus, forceCancel });
+
+const computedInlineStyles = computed(() => {
+	return {
+		fieldSizing: 'content',
+		minWidth: `${props.minWidth}px`,
+		maxWidth: `${props.maxWidth}px`,
+	};
+});
 </script>
 
 <template>
 	<EditableRoot v-bind="forwarded" ref="editableRoot" class="inline-text-edit">
 		<EditableArea class="editable-area">
-			<EditablePreview class="inline-rename-preview" data-test-id="inline-edit-preview" />
-			<EditableInput class="inline-rename-input" data-test-id="inline-edit-input" />
+			<EditablePreview
+				class="inline-rename-preview"
+				data-test-id="inline-edit-preview"
+				style="display: block"
+				:style="computedInlineStyles"
+			/>
+			<EditableInput
+				class="inline-rename-input"
+				data-test-id="inline-edit-input"
+				:style="computedInlineStyles"
+			/>
 		</EditableArea>
 	</EditableRoot>
 </template>
@@ -52,6 +74,7 @@ defineExpose({ forceFocus, forceCancel });
 	border-color: transparent;
 	border-radius: var(--border-radius-base);
 	padding: 4px;
+	max-width: 100%;
 	&:hover:not([data-focused]) {
 		border-color: var(--color-foreground-base);
 		cursor: pointer;
