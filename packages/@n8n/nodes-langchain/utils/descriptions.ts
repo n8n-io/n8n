@@ -55,7 +55,7 @@ export const buildJsonSchemaExampleNotice = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
 }): INodeProperties => ({
 	displayName:
-		'All properties will be required in the generated schema. For optional properties, switch to manual schema definition.',
+		"All properties will be required. To make them optional, use the 'JSON Schema' schema type instead",
 	name: 'notice',
 	type: 'notice',
 	default: '',
