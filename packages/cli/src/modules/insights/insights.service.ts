@@ -4,8 +4,9 @@ import {
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
@@ -33,26 +34,33 @@ export class InsightsService {
 		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startTimers({ onlyCollection } = { onlyCollection: false }) {
+	@OnLeaderTakeover()
+	startTimers() {
+		if (!this.instanceSettings.isLeader && this.instanceSettings.instanceType !== 'webhook') {
+			return;
+		}
+
 		this.collectionService.startFlushingTimer();
-		if (!onlyCollection) {
+		this.logger.debug('Started collection flushing scheduler');
+
+		// Start compaction and pruning timers for main leader instance only
+		if (this.instanceSettings.instanceType !== 'webhook') {
 			this.compactionService.startCompactionTimer();
+			this.logger.debug('Started compaction scheduler');
 			if (this.pruningService.isPruningEnabled) {
 				this.pruningService.startPruningTimer();
+				this.logger.debug('Started pruning scheduler');
 			}
 		}
-		this.logger.debug(
-			onlyCollection
-				? 'Starting collection flushing schedulers'
-				: 'Starting compaction, flushing and pruning schedulers',
-		);
 	}
 
+	@OnLeaderStepdown()
 	stopTimers() {
 		this.compactionService.stopCompactionTimer();
 		this.collectionService.stopFlushingTimer();

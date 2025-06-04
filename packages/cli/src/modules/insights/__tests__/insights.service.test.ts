@@ -5,8 +5,10 @@ import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { InstanceSettings, InstanceType } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
 import { mockLogger } from '@test/mocking';
@@ -52,17 +54,30 @@ describe('startTimers', () => {
 	let compactionService: InsightsCompactionService;
 	let collectionService: InsightsCollectionService;
 	let pruningService: InsightsPruningService;
+	let instanceSettings: MockProxy<InstanceSettings>;
+	let isLeader = jest.fn(() => true);
+	let isPruningEnabled = jest.fn(() => false);
 
 	beforeAll(() => {
 		compactionService = mock<InsightsCompactionService>();
 		collectionService = mock<InsightsCollectionService>();
-		pruningService = mock<InsightsPruningService>({ isPruningEnabled: true });
+		pruningService = mock<InsightsPruningService>();
+		Object.defineProperty(pruningService, 'isPruningEnabled', {
+			get: isPruningEnabled,
+		});
+		instanceSettings = mock<InstanceSettings>({
+			instanceType: 'main',
+		});
+		Object.defineProperty(instanceSettings, 'isLeader', {
+			get: isLeader,
+		});
 		insightsService = new InsightsService(
 			mock<InsightsByPeriodRepository>(),
 			compactionService,
 			collectionService,
 			pruningService,
 			mock<LicenseState>(),
+			instanceSettings,
 			mockLogger(),
 		);
 	});
@@ -71,7 +86,19 @@ describe('startTimers', () => {
 		jest.clearAllMocks();
 	});
 
-	test('starts compaction, flushing and pruning timers', () => {
+	test('starts compaction, flushing timers for main leader instance', () => {
+		isLeader.mockReturnValueOnce(true);
+		isPruningEnabled.mockReturnValueOnce(false);
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', () => {
+		isLeader.mockReturnValueOnce(true);
+		isPruningEnabled.mockReturnValueOnce(true);
 		insightsService.startTimers();
 
 		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
@@ -79,13 +106,28 @@ describe('startTimers', () => {
 		expect(pruningService.startPruningTimer).toHaveBeenCalled();
 	});
 
-	test('starts only collection flushing timer when onlyCollection is true', () => {
-		insightsService.startTimers({ onlyCollection: true });
+	test('starts only collection flushing timer for webhook instance', () => {
+		(instanceSettings as any).instanceType = 'webhook';
+		insightsService.startTimers();
 
 		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
 		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 	});
+
+	test.each<InstanceType>(['worker', 'main'])(
+		'do not start any timers for instance of type %s when not leader',
+		(instanceType: InstanceType) => {
+			(instanceSettings as any).instanceType = instanceType;
+			isLeader.mockReturnValue(false);
+
+			insightsService.startTimers();
+
+			expect(collectionService.startFlushingTimer).not.toHaveBeenCalled();
+			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('getInsightsSummary', () => {
@@ -553,6 +595,7 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -655,6 +698,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -743,6 +787,7 @@ describe('shutdown', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -754,74 +799,6 @@ describe('shutdown', () => {
 		// ASSERT
 		expect(mockCollectionService.shutdown).toHaveBeenCalled();
 		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-	});
-});
-
-describe('timers', () => {
-	let insightsService: InsightsService;
-
-	const mockCollectionService = mock<InsightsCollectionService>({
-		startFlushingTimer: jest.fn(),
-		stopFlushingTimer: jest.fn(),
-	});
-
-	const mockCompactionService = mock<InsightsCompactionService>({
-		startCompactionTimer: jest.fn(),
-		stopCompactionTimer: jest.fn(),
-	});
-
-	const mockPruningService = mock<InsightsPruningService>({
-		startPruningTimer: jest.fn(),
-		stopPruningTimer: jest.fn(),
-		isPruningEnabled: false,
-	});
-
-	const mockedLogger = mockLogger();
-	const mockedConfig = mock<InsightsConfig>({
-		maxAgeDays: -1,
-	});
-
-	beforeAll(() => {
-		insightsService = new InsightsService(
-			mock<InsightsByPeriodRepository>(),
-			mockCompactionService,
-			mockCollectionService,
-			mockPruningService,
-			mock<LicenseState>(),
-			mockedLogger,
-		);
-	});
-
-	test('startTimers starts timers except pruning', () => {
-		// ACT
-		insightsService.startTimers();
-
-		// ASSERT
-		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
-		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
-		expect(mockPruningService.startPruningTimer).not.toHaveBeenCalled();
-	});
-
-	test('startTimers starts pruning timer', () => {
-		// ARRANGE
-		mockedConfig.maxAgeDays = 30;
-		Object.defineProperty(mockPruningService, 'isPruningEnabled', { value: true });
-
-		// ACT
-		insightsService.startTimers();
-
-		// ASSERT
-		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
-	});
-
-	test('stopTimers stops timers', () => {
-		// ACT
-		insightsService.stopTimers();
-
-		// ASSERT
-		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 	});
 });

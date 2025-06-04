@@ -76,7 +76,6 @@ export class InsightsCollectionService {
 	startFlushingTimer() {
 		this.isAsynchronouslySavingInsights = true;
 		this.scheduleFlushing();
-		this.logger.debug('Started flushing timer');
 	}
 
 	scheduleFlushing() {
