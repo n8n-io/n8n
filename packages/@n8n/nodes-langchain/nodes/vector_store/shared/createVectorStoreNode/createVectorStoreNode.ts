@@ -25,9 +25,6 @@ import {
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
-import { result } from 'lodash';
-import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
-import { DocumentInterface } from '@langchain/core/documents';
 
 // Import operation handlers
 

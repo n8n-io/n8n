@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { Cohere, CohereRerank } from '@langchain/cohere';
+import { CohereRerank } from '@langchain/cohere';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class RerankerCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +17,7 @@ export class RerankerCohere implements INodeType {
 		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		description: 'Use Cohere Reranker',
+		description: 'Use Cohere Reranker to rerank documents after retrieval from a vector store',
 		defaults: {
 			name: 'Reranker Cohere',
 		},
@@ -45,9 +44,7 @@ export class RerankerCohere implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiReranker],
 		outputNames: ['Reranker'],
 		properties: [
@@ -56,7 +53,7 @@ export class RerankerCohere implements INodeType {
 				name: 'modelName',
 				type: 'options',
 				description:
-					'The model which will reranked the documents. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
+					'The model that should be used to rerank the documents. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
 				default: 'rerank-v3.5',
 				options: [
 					{
