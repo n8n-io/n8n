@@ -17,7 +17,7 @@ exports[`InputPanel > should render 1`] = `
         class="title"
         data-v-2e5cd75c=""
       >
-
+        
         <div
           class="titleSection"
         >
@@ -31,7 +31,7 @@ exports[`InputPanel > should render 1`] = `
             data-test-id="input-panel-mode"
             role="radiogroup"
           >
-
+            
             <label
               aria-checked="true"
               class="n8n-radio-button container hoverable"
@@ -42,9 +42,9 @@ exports[`InputPanel > should render 1`] = `
                 class="button active medium"
                 data-test-id="radio-button-mapping"
               >
-
+                
                 Mapping
-
+                
               </div>
             </label>
             <label
@@ -57,15 +57,15 @@ exports[`InputPanel > should render 1`] = `
                 class="button medium"
                 data-test-id="radio-button-debugging"
               >
-
-                Debugging
-
+                
+                From AI
+                
               </div>
             </label>
-
+            
           </div>
         </div>
-
+        
       </div>
       <div
         class="displayModes"
@@ -79,7 +79,7 @@ exports[`InputPanel > should render 1`] = `
           data-v-2e5cd75c=""
           role="radiogroup"
         >
-
+          
           <label
             aria-checked="true"
             class="n8n-radio-button container hoverable"
@@ -90,9 +90,9 @@ exports[`InputPanel > should render 1`] = `
               class="button active medium"
               data-test-id="radio-button-schema"
             >
-
+              
               Schema
-
+              
             </div>
           </label>
           <label
@@ -105,9 +105,9 @@ exports[`InputPanel > should render 1`] = `
               class="button medium"
               data-test-id="radio-button-table"
             >
-
+              
               Table
-
+              
             </div>
           </label>
           <label
@@ -120,12 +120,12 @@ exports[`InputPanel > should render 1`] = `
               class="button medium"
               data-test-id="radio-button-json"
             >
-
+              
               JSON
-
+              
             </div>
           </label>
-
+          
         </div>
         <!--v-if-->
         <!--v-if-->
@@ -162,8 +162,8 @@ exports[`InputPanel > should render 1`] = `
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
-
-
+    
+    
     <!--v-if-->
     <div
       class="dataContainer"
