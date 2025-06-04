@@ -55,6 +55,7 @@ import {
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
+	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -64,7 +65,7 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 import { PROJECT_ROOT } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
@@ -139,8 +140,6 @@ const currentSort = ref('updatedAt:desc');
 const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
-
-const isNameEditEnabled = ref(false);
 
 /**
  * Folder actions
@@ -1413,17 +1412,16 @@ const onCreateWorkflowClick = () => {
 	});
 };
 
-const onNameToggle = () => {
-	isNameEditEnabled.value = !isNameEditEnabled.value;
-};
+const renameInput = useTemplateRef('renameInput');
+function onNameToggle() {
+	setTimeout(() => {
+		if (renameInput.value?.forceFocus) {
+			renameInput.value.forceFocus();
+		}
+	}, 0);
+}
 
-const onNameSubmit = async ({
-	name,
-	onSubmit,
-}: {
-	name: string;
-	onSubmit: (saved: boolean) => void;
-}) => {
+const onNameSubmit = async (name: string) => {
 	if (!currentFolder.value || !currentProject.value) return;
 
 	const newName = name.trim();
@@ -1434,14 +1432,11 @@ const onNameSubmit = async ({
 			type: 'error',
 		});
 
-		onSubmit(false);
 		return;
 	}
 
 	if (newName === currentFolder.value.name) {
-		isNameEditEnabled.value = false;
-
-		onSubmit(true);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
@@ -1452,7 +1447,7 @@ const onNameSubmit = async ({
 			message: validationResult,
 			type: 'error',
 		});
-		onSubmit(false);
+		renameInput.value?.forceCancel();
 		return;
 	} else {
 		try {
@@ -1467,11 +1462,9 @@ const onNameSubmit = async ({
 			telemetry.track('User renamed folder', {
 				folder_id: currentFolder.value.id,
 			});
-			isNameEditEnabled.value = false;
-			onSubmit(true);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.rename.error.title'));
-			onSubmit(false);
+			renameInput.value?.forceCancel();
 		}
 	}
 };
@@ -1605,17 +1598,16 @@ const onNameSubmit = async ({
 				>
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
-						<InlineTextEdit
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="currentFolder?.id"
 							data-test-id="breadcrumbs-item-current"
-							:model-value="currentFolder.name"
-							:preview-value="currentFolder.name"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="30"
-							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
-							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
 							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
+							:model-value="currentFolder.name"
+							:max-length="30"
+							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							@update:model-value="onNameSubmit"
 						/>
 					</template>
 				</FolderBreadcrumbs>
@@ -1938,12 +1930,13 @@ const onNameSubmit = async ({
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .name {
 	color: $custom-font-dark;
 	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .pointer-disabled {
