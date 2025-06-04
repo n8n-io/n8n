@@ -13,7 +13,8 @@ import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
-import { get, isEmpty } from 'lodash-es';
+import get from 'lodash-es/get';
+import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
