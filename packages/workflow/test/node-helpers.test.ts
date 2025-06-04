@@ -5411,7 +5411,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('create user in Test Node');
+			expect(result).toBe('Create user in Test Node');
 		});
 
 		test('should return default name when resource or operation is missing', () => {
@@ -5442,7 +5442,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('create user in Test Node');
+			expect(result).toBe('Create user in Test Node');
 		});
 
 		test('should handle case where options are not a list of INodePropertyOptions', () => {
@@ -5475,7 +5475,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('create user in Test Node');
+			expect(result).toBe('Create user in Test Node');
 		});
 	});
 });

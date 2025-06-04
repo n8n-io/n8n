@@ -1646,7 +1646,8 @@ export function makeNodeName(
 	}
 
 	if (resource && operation) {
-		return `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
+		const operationProper = operation[0].toUpperCase() + operation.slice(1);
+		return `${operationProper} ${resource} in ${nodeTypeDescription.defaults.name}`;
 	}
 
 	return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
