@@ -1,0 +1,17 @@
+{
+	"node": "n8n-nodes-base.inmoSuperApp",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Transform"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.inmosuperapp/"
+			}
+		]
+	},
+	"alias": ["Media", "Image", "Resize", "Audio", "Video", "Text", "Transform"],
+	"subcategories": {
+		"Transform": ["Media"]
+	}
+}

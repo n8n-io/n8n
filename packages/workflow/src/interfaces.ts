@@ -1245,6 +1245,7 @@ export type NodePropertyTypes =
 	| 'multiOptions'
 	| 'number'
 	| 'options'
+	| 'slider'
 	| 'string'
 	| 'credentialsSelect'
 	| 'resourceLocator'
@@ -1309,6 +1310,15 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
+	// Slider specific options
+	showInput?: boolean; // Supported by: slider
+	showInputControls?: boolean; // Supported by: slider
+	showStops?: boolean; // Supported by: slider
+	showTooltip?: boolean; // Supported by: slider
+	vertical?: boolean; // Supported by: slider
+	height?: string; // Supported by: slider (when vertical)
+	marks?: Record<number, string>; // Supported by: slider
+	formatTooltip?: (value: number) => string; // Supported by: slider
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;

@@ -61,7 +61,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+	N8nSlider,
+} from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
@@ -1609,6 +1616,29 @@ onUpdated(async () => {
 				@paste="onPasteNumber"
 			/>
 
+			<N8nSlider
+				v-else-if="parameter.type === 'slider'"
+				ref="inputField"
+				:size="inputSize"
+				:model-value="Number(displayValue) || 0"
+				:min="getArgument('minValue') || 0"
+				:max="getArgument('maxValue') || 100"
+				:step="getArgument('step') || 1"
+				:disabled="isReadOnly"
+				:show-input="getArgument('showInput') !== false"
+				:show-input-controls="getArgument('showInputControls') !== false"
+				:show-stops="getArgument('showStops') || false"
+				:show-tooltip="getArgument('showTooltip') !== false"
+				:vertical="getArgument('vertical') || false"
+				:height="getArgument('height') || '200px'"
+				:marks="getArgument('marks')"
+				:format-tooltip="getArgument('formatTooltip')"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
+
 			<CredentialsSelect
 				v-else-if="parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'"
 				ref="inputField"
@@ -1714,7 +1744,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
-				active-color="#13ce66"
+				active-color="#718EBF"
 				:model-value="displayValue"
 				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
@@ -1900,6 +1930,15 @@ onUpdated(async () => {
 	.code-node-editor {
 		height: 100%;
 	}
+}
+
+.el-switch.is-checked .el-switch__core {
+	background-color: #718ebf !important;
+	border-color: #718ebf !important;
+}
+
+.el-switch.is-checked .el-switch__core::after {
+	background-color: #ffffff !important;
 }
 </style>
 

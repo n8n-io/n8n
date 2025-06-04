@@ -14,6 +14,7 @@
 			"@test-integration/*": ["../test/integration/shared/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"esModuleInterop": true,
 		// TODO: remove all options below this line
 		"strict": false,
 		"useUnknownInCatchVariables": false
