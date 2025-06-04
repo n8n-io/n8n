@@ -50,7 +50,7 @@ export class InsightsService {
 		this.logger.debug('Started collection flushing scheduler');
 
 		// Start compaction and pruning timers for main leader instance only
-		if (this.instanceSettings.instanceType !== 'webhook') {
+		if (this.instanceSettings.isLeader) {
 			this.compactionService.startCompactionTimer();
 			this.logger.debug('Started compaction scheduler');
 			if (this.pruningService.isPruningEnabled) {
