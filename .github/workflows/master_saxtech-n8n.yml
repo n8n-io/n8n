@@ -15,19 +15,22 @@ jobs:
     permissions:
       contents: read #This is required for actions/checkout
 
-    steps:          
+    steps:      
       - uses: actions/checkout@v4
 
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '22.x'
+          node-version: '20.x'
 
-      - name: Upgrade npm and build (all in one step)
+      - name: Upgrade npm (for workspace support)
         run: |
           npm install -g npm@9
           echo "npm version after upgrade:"
           npm -v
+
+      - name: npm install, build, and test
+        run: |
           npm install
           npm run build --if-present
           npm run test --if-present
