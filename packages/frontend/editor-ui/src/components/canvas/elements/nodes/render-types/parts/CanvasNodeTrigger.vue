@@ -59,6 +59,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					<N8nButton
 						v-if="isChatOpen"
 						type="secondary"
+						icon="comment"
 						size="large"
 						:disabled="isExecuting"
 						:data-test-id="testId"
@@ -72,6 +73,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					>
 						<N8nButton
 							type="primary"
+							icon="comment"
 							size="large"
 							:disabled="isExecuting"
 							:data-test-id="testId"
@@ -83,6 +85,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 				<N8nButton
 					v-else
 					type="primary"
+					icon="flask"
 					size="large"
 					:disabled="isExecuting"
 					:data-test-id="testId"

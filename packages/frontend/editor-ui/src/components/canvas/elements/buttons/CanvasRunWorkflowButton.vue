@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { isChatNode } from '@/components/CanvasChat/utils';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { type INodeUi } from '@/Interface';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
-import { type ActionDropdownItem, N8nActionDropdown, N8nButton, N8nText } from '@n8n/design-system';
+import {
+	type ActionDropdownItem,
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
-import { watch, ref, computed } from 'vue';
-import { findTriggerNodeToAutoSelect } from '@/utils/executionUtils';
+import { computed } from 'vue';
+import { isChatNode } from '@/components/CanvasChat/utils';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
 	mouseleave: [event: MouseEvent];
-	click: [triggerNodeName: string];
+	execute: [];
+	selectTriggerNode: [name: string];
 }>();
 
 const props = defineProps<{
+	selectedTriggerNodeName?: string;
 	triggerNodes: INodeUi[];
 	waitingForWebhook?: boolean;
 	executing?: boolean;
@@ -25,10 +32,9 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const selectedTriggerNode = ref<string>();
-
-const triggerNodes = computed(() => props.triggerNodes.filter((node) => !isChatNode(node)));
-const selectableTriggerNodes = computed(() => triggerNodes.value.filter((node) => !node.disabled));
+const selectableTriggerNodes = computed(() =>
+	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
+);
 const label = computed(() => {
 	if (!props.executing) {
 		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
@@ -41,7 +47,8 @@ const label = computed(() => {
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
 const actions = computed(() =>
-	triggerNodes.value
+	props.triggerNodes
+		.filter((node) => !isChatNode(node))
 		.toSorted((a, b) => {
 			const [aX, aY] = a.position;
 			const [bX, bY] = b.position;
@@ -50,24 +57,17 @@ const actions = computed(() =>
 		})
 		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 25),
-			disabled: !!node.disabled,
+			disabled: !!node.disabled || props.executing,
 			id: node.name,
-			checked: selectedTriggerNode.value === node.name,
+			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
-
-function handleClickButton() {
-	if (selectedTriggerNode.value) {
-		emit('click', selectedTriggerNode.value);
-	}
-}
-
-function handleSelectTrigger(nodeName: string) {
-	selectedTriggerNode.value = nodeName;
-}
+const isSplitButton = computed(
+	() => selectableTriggerNodes.value.length > 1 && props.selectedTriggerNodeName !== undefined,
+);
 
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
-	const node = triggerNodes.value.find((trigger) => trigger.name === name);
+	const node = props.triggerNodes.find((trigger) => trigger.name === name);
 
 	if (!node) {
 		return null;
@@ -75,40 +75,10 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 	return props.getNodeType(node.type, node.typeVersion);
 }
-
-watch(
-	selectableTriggerNodes,
-	(newSelectable, oldSelectable) => {
-		if (
-			selectedTriggerNode.value === undefined ||
-			newSelectable.every((node) => node.name !== selectedTriggerNode.value)
-		) {
-			selectedTriggerNode.value = findTriggerNodeToAutoSelect(
-				selectableTriggerNodes.value,
-				props.getNodeType,
-			)?.name;
-			return;
-		}
-
-		const newTrigger = newSelectable?.find((node) =>
-			oldSelectable?.every((old) => old.name !== node.name),
-		);
-
-		if (newTrigger !== undefined) {
-			// Select newly added node
-			selectedTriggerNode.value = newTrigger.name;
-		}
-	},
-	{ immediate: true },
-);
-
-defineExpose({
-	selectedTriggerNode: computed(() => selectedTriggerNode.value),
-});
 </script>
 
 <template>
-	<div :class="[$style.component, selectableTriggerNodes.length > 1 ? $style.split : '']">
+	<div :class="[$style.component, isSplitButton ? $style.split : '']">
 		<KeyboardShortcutTooltip
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
@@ -124,19 +94,15 @@ defineExpose({
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
-				@click="handleClickButton"
+				@click="emit('execute')"
 			>
 				<span :class="$style.buttonContent">
 					{{ label }}
-					<N8nText
-						v-if="selectedTriggerNode && selectableTriggerNodes.length > 1"
-						:class="$style.subText"
-						:bold="false"
-					>
+					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
 						<I18nT keypath="nodeView.runButtonText.from">
 							<template #nodeName>
 								<N8nText bold size="mini">
-									{{ truncateBeforeLast(selectedTriggerNode, 25) }}
+									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
 								</N8nText>
 							</template>
 						</I18nT>
@@ -144,16 +110,18 @@ defineExpose({
 				</span>
 			</N8nButton>
 		</KeyboardShortcutTooltip>
-		<template v-if="selectableTriggerNodes.length > 1">
-			<div role="presentation" :class="$style.divider" />
+		<template v-if="isSplitButton">
 			<N8nActionDropdown
 				:class="$style.menu"
 				:items="actions"
+				:disabled="disabled"
 				placement="top"
-				@select="handleSelectTrigger"
+				@select="emit('selectTriggerNode', $event)"
 			>
 				<template #activator>
-					<N8nButton size="large" :class="$style.chevron" icon="angle-down" />
+					<button :class="$style.chevron" aria-label="Select trigger node">
+						<N8nIcon icon="angle-down" size="large" />
+					</button>
 				</template>
 				<template #menuItem="item">
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
@@ -174,6 +142,7 @@ defineExpose({
 
 <style lang="scss" module>
 .component {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 }
@@ -183,21 +152,27 @@ defineExpose({
 	transition: none;
 
 	.split & {
-		border-top-right-radius: 0;
-		border-bottom-right-radius: 0;
+		padding-inline-end: var(--spacing-2xl);
 		padding-block: var(--spacing-2xs);
 	}
 }
 
-.divider {
-	width: var(--border-width-base);
-	background-color: var(--color-background-light);
-}
-
 .chevron {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	padding-inline: var(--spacing-2xs);
+	position: absolute;
+	right: var(--spacing-3xs);
+	top: var(--spacing-3xs);
+	height: calc(100% - var(--spacing-3xs) * 2);
+	border: none;
+	padding: var(--spacing-5xs);
+	border-radius: var(--border-radius-base);
+
+	color: var(--color-foreground-xlight);
+	background-color: transparent;
+	cursor: pointer;
+
+	&:hover {
+		background-color: hsl(7, 100%, 75%);
+	}
 }
 
 .menu :global(.el-dropdown) {
@@ -218,10 +193,10 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start !important;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-4xs);
 }
 
 .subText {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size-2xs);
 }
 </style>

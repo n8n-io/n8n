@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestNode } from '@/__tests__/mocks';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -65,6 +66,7 @@ describe('CanvasRunWorkflowButton', () => {
 	it('should render split button if multiple triggers are available', () => {
 		const wrapper = renderComponent({
 			props: {
+				selectedTriggerNodeName: 'A',
 				triggerNodes: [
 					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
 					createTestNode({ name: 'B', type: SCHEDULE_TRIGGER_NODE_TYPE }),
@@ -72,12 +74,30 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.container.textContent).toBe('Execute workflow from B');
+		expect(wrapper.container.textContent).toBe('Execute workflow from A');
+		expect(wrapper.queryByLabelText('Select trigger node')).toBeInTheDocument();
+	});
+
+	it('should not render split button if there is only one trigger that is not disabled nor a chat trigger', () => {
+		const wrapper = renderComponent({
+			props: {
+				selectedTriggerNodeName: 'A',
+				triggerNodes: [
+					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE, disabled: true }),
+					createTestNode({ name: 'C', type: CHAT_TRIGGER_NODE_TYPE }),
+				],
+			},
+		});
+
+		expect(wrapper.container.textContent).toBe('Execute workflow ');
+		expect(wrapper.queryByLabelText('Select trigger node')).not.toBeInTheDocument();
 	});
 
 	it('should show available triggers in the ordering of coordinate on the canvas when chevron icon is clicked', async () => {
 		const wrapper = renderComponent({
 			props: {
+				selectedTriggerNodeName: 'A',
 				triggerNodes: [
 					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE, position: [1, 1] }),
 					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE, position: [1, 0] }),
@@ -103,6 +123,7 @@ describe('CanvasRunWorkflowButton', () => {
 	it('should allow to select and execute a different trigger', async () => {
 		const wrapper = renderComponent({
 			props: {
+				selectedTriggerNodeName: 'A',
 				triggerNodes: [
 					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
 					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
@@ -111,55 +132,10 @@ describe('CanvasRunWorkflowButton', () => {
 		});
 
 		const [executeButton, chevron] = await wrapper.findAllByRole('button');
-		await fireEvent.click(executeButton);
-		expect(wrapper.emitted('click')).toEqual([['A']]);
 		await fireEvent.click(chevron);
 		const menuItems = await wrapper.findAllByRole('menuitem');
 		await fireEvent.click(menuItems[1]);
 		await fireEvent.click(executeButton);
-		expect(wrapper.emitted('click')).toEqual([['A'], ['B']]);
-	});
-
-	it('should select newly added trigger node automatically', async () => {
-		const wrapper = renderComponent({
-			props: {
-				triggerNodes: [createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE })],
-			},
-		});
-
-		expect(wrapper.container.textContent).toBe('Execute workflow ');
-
-		await wrapper.rerender({
-			triggerNodes: [
-				createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
-				createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
-			],
-		});
-
-		expect(wrapper.container.textContent).toBe('Execute workflow from B');
-	});
-
-	it('should re-select a trigger when selected trigger gets disabled', async () => {
-		const wrapper = renderComponent({
-			props: {
-				triggerNodes: [
-					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
-					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
-					createTestNode({ name: 'C', type: MANUAL_TRIGGER_NODE_TYPE }),
-				],
-			},
-		});
-
-		expect(wrapper.container.textContent).toBe('Execute workflow from A');
-
-		await wrapper.rerender({
-			triggerNodes: [
-				createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE, disabled: true }),
-				createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
-				createTestNode({ name: 'C', type: MANUAL_TRIGGER_NODE_TYPE }),
-			],
-		});
-
-		expect(wrapper.container.textContent).toBe('Execute workflow from B');
+		expect(wrapper.emitted('selectTriggerNode')).toEqual([['B']]);
 	});
 });
