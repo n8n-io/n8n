@@ -71,20 +71,22 @@ onMounted(() => {
 }
 
 .logoText {
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing-xs);
+	margin-right: var(--spacing-3xs);
+	transform: scale(1.4) translateY(-2px);
 	path {
 		fill: var(--color-text-dark);
 	}
 }
 
 .authView {
-	transform: scale(2);
+	transform: scale(0.2);
 	margin-bottom: var(--spacing-xl);
 }
 
 .logo,
 .logoText {
-	transform: scale(1.3) translateY(-2px);
+	transform: scale(1.1) translateY(-2px);
 }
 
 .logoText {
