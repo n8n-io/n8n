@@ -45,7 +45,6 @@ const updateViewStack = (key: string) => {
 		);
 
 		pushViewStack(viewStack, {
-			resetStacks: true,
 			transitionDirection: 'none',
 		});
 	} else {

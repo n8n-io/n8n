@@ -184,7 +184,6 @@ describe('CommunityNodeDetails', () => {
 				title: 'Node details',
 			},
 			{
-				resetStacks: true,
 				transitionDirection: 'none',
 			},
 		);
