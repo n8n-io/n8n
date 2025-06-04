@@ -31,7 +31,7 @@ import * as apiUtils from '@/utils/apiUtils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
-import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
@@ -1274,7 +1274,7 @@ describe('useWorkflowsStore', () => {
 		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
 
 		beforeEach(() => {
-			workflowsStore.setWorkflow(createTestWorkflow({ nodes: [n0, n1], connections: {} }));
+			workflowsStore.setNodes([n0, n1]);
 			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
 		});
 
@@ -1284,11 +1284,11 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
 		});
 
-		it('should re-select a trigger when selected trigger gets disabled', async () => {
+		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
 			workflowsStore.removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			workflowsStore.removeNode(n1);
+			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});

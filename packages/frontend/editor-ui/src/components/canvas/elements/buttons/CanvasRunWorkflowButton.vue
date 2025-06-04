@@ -25,7 +25,7 @@ const props = defineProps<{
 	selectedTriggerNodeName?: string;
 	triggerNodes: INodeUi[];
 	waitingForWebhook?: boolean;
-	executing?: boolean;
+	currentExecutionTriggerNodeName?: string;
 	disabled?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
@@ -35,8 +35,9 @@ const i18n = useI18n();
 const selectableTriggerNodes = computed(() =>
 	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
 );
+const executing = computed(() => props.currentExecutionTriggerNodeName !== undefined);
 const label = computed(() => {
-	if (!props.executing) {
+	if (!executing.value) {
 		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
 
@@ -57,13 +58,19 @@ const actions = computed(() =>
 		})
 		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 25),
-			disabled: !!node.disabled || props.executing,
+			disabled: !!node.disabled || executing.value,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
 const isSplitButton = computed(
 	() => selectableTriggerNodes.value.length > 1 && props.selectedTriggerNodeName !== undefined,
+);
+const nodeDisplayName = computed(() =>
+	truncateBeforeLast(
+		props.currentExecutionTriggerNodeName ?? props.selectedTriggerNodeName ?? '',
+		25,
+	),
 );
 
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
@@ -102,7 +109,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						<I18nT keypath="nodeView.runButtonText.from">
 							<template #nodeName>
 								<N8nText bold size="mini">
-									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
+									{{ nodeDisplayName }}
 								</N8nText>
 							</template>
 						</I18nT>
