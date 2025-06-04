@@ -270,21 +270,22 @@ describe('ExecutionService', () => {
 			]);
 		});
 
-		test('should filter executions by `metadata`', async () => {
+		test('should filter executions by `metadata` with an exact match by default', async () => {
 			const workflow = await createWorkflow();
 
-			const metadata = [{ key: 'myKey', value: 'myValue' }];
+			const key = 'myKey';
+			const value = 'myValue';
 
 			await Promise.all([
-				createExecution({ status: 'success', metadata }, workflow),
-				createExecution({ status: 'error' }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: `${value}2` }] }, workflow),
 			]);
 
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
-				metadata,
+				metadata: [{ key, value, exactMatch: true }],
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -293,6 +294,36 @@ describe('ExecutionService', () => {
 				count: 1,
 				estimated: false,
 				results: [expect.objectContaining({ status: 'success' })],
+			});
+		});
+
+		test('should filter executions by `metadata` with a partial match', async () => {
+			const workflow = await createWorkflow();
+
+			const key = 'myKey';
+
+			await Promise.all([
+				createExecution({ status: 'success', metadata: [{ key, value: 'myValue' }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: 'var' }] }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value: 'evaluation' }] }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				metadata: [{ key, value: 'val', exactMatch: false }],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 2,
+				estimated: false,
+				results: [
+					expect.objectContaining({ status: 'success' }),
+					expect.objectContaining({ status: 'success' }),
+				],
 			});
 		});
 

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
-import { capitalize } from 'lodash-es';
+import capitalize from 'lodash/capitalize';
 import { computed, ref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';

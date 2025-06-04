@@ -6,7 +6,7 @@ import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';

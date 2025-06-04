@@ -1339,6 +1339,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';

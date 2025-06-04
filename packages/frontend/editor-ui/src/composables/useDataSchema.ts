@@ -6,7 +6,7 @@ import { isObject } from '@/utils/objectUtils';
 import { isObj } from '@/utils/typeGuards';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import {
 	type IDataObject,
 	type INodeExecutionData,

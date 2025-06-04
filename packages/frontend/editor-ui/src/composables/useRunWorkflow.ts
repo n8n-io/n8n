@@ -36,7 +36,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -314,7 +314,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
 				if (workflow.id && nodeId && version === 2) {
-					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
+					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {

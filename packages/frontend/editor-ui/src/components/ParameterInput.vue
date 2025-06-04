@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 
 import type {
 	INodeUi,

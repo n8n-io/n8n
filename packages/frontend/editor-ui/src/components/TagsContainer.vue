@@ -5,7 +5,7 @@ import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 
 interface TagsContainerProps {
 	tagIds: string[];

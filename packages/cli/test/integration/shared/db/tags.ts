@@ -26,6 +26,12 @@ export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: 
 	return tag;
 }
 
+export async function updateTag(tag: TagEntity, attributes: Partial<TagEntity>) {
+	const tagRepository = Container.get(TagRepository);
+	const updatedTag = tagRepository.merge(tag, attributes);
+	return await tagRepository.save(updatedTag);
+}
+
 export async function assignTagToWorkflow(tag: TagEntity, workflow: WorkflowEntity) {
 	const mappingRepository = Container.get(WorkflowTagMappingRepository);
 
