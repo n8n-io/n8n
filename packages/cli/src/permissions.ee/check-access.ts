@@ -6,6 +6,8 @@ import { hasGlobalScope, rolesWithScope, type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 /**
  * Check if a user has the required scopes. The check can be:
  *
@@ -49,19 +51,35 @@ export async function userHasScopes(
 	// those resource roles over the resource being checked.
 
 	if (credentialId) {
-		return await Container.get(SharedCredentialsRepository).existsBy({
+		const credential = await Container.get(SharedCredentialsRepository).findOneBy({
 			credentialsId: credentialId,
-			projectId: In(userProjectIds),
-			role: In(rolesWithScope('credential', scopes)),
 		});
+		if (!credential) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
+		}
+		if (
+			userProjectIds.includes(credential.projectId) &&
+			rolesWithScope('credential', scopes).includes(credential.role)
+		) {
+			return true;
+		}
 	}
 
 	if (workflowId) {
-		return await Container.get(SharedWorkflowRepository).existsBy({
+		const workflow = await Container.get(SharedWorkflowRepository).findOneBy({
 			workflowId,
-			projectId: In(userProjectIds),
-			role: In(rolesWithScope('workflow', scopes)),
 		});
+
+		if (!workflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
+		}
+
+		if (
+			userProjectIds.includes(workflow.projectId) &&
+			rolesWithScope('workflow', scopes).includes(workflow.role)
+		) {
+			return true;
+		}
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);
