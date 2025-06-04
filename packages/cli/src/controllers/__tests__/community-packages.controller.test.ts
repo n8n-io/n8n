@@ -39,6 +39,55 @@ describe('CommunityPackagesController', () => {
 			);
 		});
 
+		it('should use vettedNode.npmVersion if version and parsed.version are not provided', async () => {
+			const request = mock<NodeRequest.Post>({
+				user: { id: 'user123' },
+				body: { name: 'n8n-nodes-test', verify: true, version: undefined },
+			});
+
+			// parsed.version is undefined
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+			});
+
+			communityNodeTypesService.findVetted.mockReturnValue(
+				mock<CommunityNodeType>({
+					checksum: 'checksum',
+					npmVersion: '1.0.0',
+				}),
+			);
+
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+			});
+			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
+			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
+				status: 'OK',
+			});
+			communityPackagesService.installPackage.mockResolvedValue(
+				mock<InstalledPackages>({
+					installedNodes: [],
+				}),
+			);
+
+			await controller.installPackage(request);
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'n8n-nodes-test',
+				'1.0.0',
+				'checksum',
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'community-package-installed',
+				expect.objectContaining({
+					packageVersion: '1.0.0',
+				}),
+			);
+		});
+
 		it('should have correct version', async () => {
 			const request = mock<NodeRequest.Post>({
 				user: { id: 'user123' },
