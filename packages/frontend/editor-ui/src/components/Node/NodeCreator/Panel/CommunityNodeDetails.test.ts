@@ -143,7 +143,7 @@ describe('CommunityNodeDetails', () => {
 
 		await waitFor(() => expect(removeNodeFromMergedNodes).toHaveBeenCalled());
 
-		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', true, '1.0.0');
+		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', true);
 		expect(fetchCredentialTypes).toHaveBeenCalledWith(true);
 		expect(getAllNodeCreateElements).toHaveBeenCalled();
 		expect(popViewStack).toHaveBeenCalled();
