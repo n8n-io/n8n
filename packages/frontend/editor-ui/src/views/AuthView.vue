@@ -86,9 +86,3 @@ body {
 	padding-bottom: var(--spacing-xl);
 }
 </style>
-
-<style lang="scss">
-.el-checkbox__label span {
-	font-size: var(--font-size-2xs) !important;
-}
-</style>
