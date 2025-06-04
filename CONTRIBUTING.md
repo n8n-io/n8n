@@ -169,6 +169,20 @@ To start n8n with tunnel:
 ./packages/cli/bin/n8n start --tunnel
 ```
 
+## First run
+
+The first time you run n8n locally you will be prompted to create an owner user.
+The owner user credentials are stored in the `n8n` database and are needed in subsequent runs to access the n8n UI.
+
+The location of the database is under $HOME/.n8n/database.sqlite (unless explicitly overridden).
+If for any reason the credentials are lost before setting up password recovery, you can either remove the database file or run the following SQL command to reset the owner user:
+
+```
+ ./packages/cli/bin/n8n user-management:reset
+```
+
+In both cases, you will need to set up the owner user again when you start n8n next time.
+
 ## Development cycle
 
 While iterating on n8n modules code, you can run `pnpm dev`. It will then
