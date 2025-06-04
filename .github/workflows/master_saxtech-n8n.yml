@@ -23,6 +23,12 @@ jobs:
         with:
           node-version: '20.x'
 
+      - name: Enable corepack and set npm
+        run: |
+          corepack enable
+          corepack prepare npm@9.9.4 --activate
+          npm -v
+
       - name: Upgrade npm (for workspace support)
         run: |
           npm install -g npm@9
