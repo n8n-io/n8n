@@ -1,7 +1,8 @@
 import { CohereRerank } from '@langchain/cohere';
-import { logWrapper } from '@utils/logWrapper';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
 
 import { RerankerCohere } from '../RerankerCohere.node';
 

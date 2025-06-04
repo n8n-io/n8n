@@ -1,11 +1,11 @@
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionTypes, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
-import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 
 /**
  * Handles the 'load' operation mode

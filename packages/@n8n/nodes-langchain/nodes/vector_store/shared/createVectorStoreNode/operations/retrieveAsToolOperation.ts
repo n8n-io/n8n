@@ -1,4 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { DynamicTool } from 'langchain/tools';
 import { NodeConnectionTypes, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
@@ -7,7 +8,6 @@ import { getMetadataFiltersValues } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
-import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 
 /**
  * Handles the 'retrieve-as-tool' operation mode
