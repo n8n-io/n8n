@@ -29,8 +29,7 @@ jobs:
           echo "NPM PATH:"
           which npm
           npm -v
-          # Make sure the new npm path is at the front of $PATH for the rest of this workflow
-          echo "::add-path::$(npm bin -g)"
+          echo "$(npm bin -g)" >> $GITHUB_PATH
 
       - name: Check Node & npm version (debug)
         run: |
