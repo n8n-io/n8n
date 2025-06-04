@@ -53,8 +53,6 @@ import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { ChatService } from './chat/chat-service';
-
 export async function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
@@ -391,9 +389,6 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		getChatConnection: (executionId: string) => {
-			return Container.get(ChatService).getConnection(executionId) as WebSocket | undefined;
-		},
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,

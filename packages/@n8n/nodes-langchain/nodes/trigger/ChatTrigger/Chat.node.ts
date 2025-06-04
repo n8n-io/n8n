@@ -73,9 +73,9 @@ export class Chat implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.sendChatMessage(this.getNodeParameter('message', 0) as string);
+		const message = this.getNodeParameter('message', 0) as string;
 
 		await this.putExecutionToWait(WAIT_INDEFINITELY);
-		return [this.getInputData()];
+		return [[{ json: {}, sendMessage: message }]];
 	}
 }

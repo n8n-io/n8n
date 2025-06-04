@@ -217,14 +217,4 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
 	}
-
-	sendChatMessage(message: string) {
-		const connection = this.additionalData.getChatConnection?.(this.additionalData.executionId);
-		if (connection) {
-			connection.send(message);
-			return;
-		}
-
-		throw new ApplicationError('Connection to chat is not available, cannot send message');
-	}
 }

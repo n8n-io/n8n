@@ -1,5 +1,13 @@
 import basicAuth from 'basic-auth';
-import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
+import pick from 'lodash/pick';
+import type {
+	ICredentialDataDecryptedObject,
+	IWebhookFunctions,
+	MultiPartFormData,
+	INodeExecutionData,
+	IBinaryData,
+	IDataObject,
+} from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from './error';
 import type { AuthenticationChatOption } from './types';
@@ -52,4 +60,66 @@ export async function validateAuth(context: IWebhookFunctions) {
 	}
 
 	return;
+}
+
+export async function handleFormData(context: IWebhookFunctions) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const { data, files } = req.body;
+
+	const returnItem: INodeExecutionData = {
+		json: data,
+	};
+
+	if (files && Object.keys(files).length) {
+		returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
+		returnItem.binary = {};
+
+		const count = 0;
+		for (const fileKey of Object.keys(files)) {
+			const processedFiles: MultiPartFormData.File[] = [];
+			if (Array.isArray(files[fileKey])) {
+				processedFiles.push(...files[fileKey]);
+			} else {
+				processedFiles.push(files[fileKey]);
+			}
+
+			let fileIndex = 0;
+			for (const file of processedFiles) {
+				let binaryPropertyName = 'data';
+
+				// Remove the '[]' suffix from the binaryPropertyName if it exists
+				if (binaryPropertyName.endsWith('[]')) {
+					binaryPropertyName = binaryPropertyName.slice(0, -2);
+				}
+				if (options.binaryPropertyName) {
+					binaryPropertyName = `${options.binaryPropertyName.toString()}${count}`;
+				}
+
+				const binaryFile = await context.nodeHelpers.copyBinaryFile(
+					file.filepath,
+					file.originalFilename ?? file.newFilename,
+					file.mimetype,
+				);
+
+				const binaryKey = `${binaryPropertyName}${fileIndex}`;
+
+				const binaryInfo = {
+					...pick(binaryFile, ['fileName', 'fileSize', 'fileType', 'mimeType', 'fileExtension']),
+					binaryKey,
+				};
+
+				returnItem.binary = Object.assign(returnItem.binary ?? {}, {
+					[`${binaryKey}`]: binaryFile,
+				});
+				returnItem.json.files = [
+					...(returnItem.json.files as Array<Omit<IBinaryData, 'data'>>),
+					binaryInfo,
+				];
+				fileIndex += 1;
+			}
+		}
+	}
+
+	return returnItem;
 }

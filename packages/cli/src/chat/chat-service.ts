@@ -27,10 +27,14 @@ type ChatRequest = Request<
 > & {
 	ws: WebSocket;
 };
+
 type Session = {
 	connection: WebSocket;
 	executionId?: string;
+	intervalId?: NodeJS.Timer;
+	sendFromNode?: string;
 };
+
 type ChatMessage = {
 	sessionId: string;
 	action: string;
@@ -55,7 +59,7 @@ export class ChatService {
 		setInterval(async () => await this.pingAll(), 60 * 1000);
 	}
 
-	private async getExecution(executionId: string) {
+	private async getExecution(executionId: string, sessionId?: string) {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
@@ -125,9 +129,6 @@ export class ChatService {
 
 		const previousSessionConnection = this.sessions.get(sessionId)?.connection;
 
-		const session: Session = { connection: ws, executionId };
-
-		this.sessions.set(sessionId, session);
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
 
@@ -137,12 +138,23 @@ export class ChatService {
 
 		const onMessage = this.messageHandler(sessionId);
 
+		const intervalId = setInterval(
+			async () => await this.handleChatIncomingMessages(sessionId),
+			3000,
+		);
+
 		ws.once('close', async () => {
 			ws.off('pong', heartbeat);
 			ws.off('message', await onMessage);
+			clearInterval(intervalId);
+			this.sessions.delete(sessionId);
 		});
 
 		ws.on('message', await onMessage);
+
+		const session: Session = { connection: ws, executionId, intervalId };
+
+		this.sessions.set(sessionId, session);
 	}
 
 	private async messageHandler(sessionId: string) {
@@ -266,17 +278,49 @@ export class ChatService {
 		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
 	}
 
-	private async pingAll() {
-		for (const { connection, executionId } of this.sessions.values()) {
-			// If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
-			if (!connection.isAlive) {
-				if (executionId) {
-					await this.cancelExecution(executionId);
-				}
-				connection.terminate();
+	private async handleChatIncomingMessages(sessionId: string) {
+		const { connection, executionId, sendFromNode } = this.sessions.get(sessionId)!;
+
+		if (!executionId) return;
+
+		const execution = await this.getExecution(executionId);
+
+		if (execution.status === 'waiting') {
+			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			if (sendFromNode === lastNodeExecuted) return;
+			const nodeExecutionData =
+				execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+			const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+
+			if (message) {
+				connection.send(message);
+				this.sessions.get(sessionId)!.sendFromNode = lastNodeExecuted;
 			}
+		}
+	}
+
+	/*
+	 *  If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
+	 */
+	private async pingAll() {
+		const sessionsToClose: string[] = [];
+
+		for (const sessionId of this.sessions.keys()) {
+			const { connection, executionId, intervalId } = this.sessions.get(sessionId)!;
+
+			if (!connection.isAlive) {
+				if (executionId) await this.cancelExecution(executionId);
+				connection.terminate();
+				clearInterval(intervalId);
+				sessionsToClose.push(sessionId);
+			}
+
 			connection.isAlive = false;
 			connection.ping();
+		}
+
+		for (const sessionId of sessionsToClose) {
+			this.sessions.delete(sessionId);
 		}
 	}
 }
