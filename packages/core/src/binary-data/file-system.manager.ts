@@ -127,10 +127,13 @@ export class FileSystemManager implements BinaryData.Manager {
 		const targetFileId = this.toFileId(workflowId, executionId);
 		const sourcePath = this.resolvePath(sourceFileId);
 		const targetPath = this.resolvePath(targetFileId);
+		const sourceMetadata = await this.getMetadata(sourceFileId);
 
 		await assertDir(path.dirname(targetPath));
 
 		await fs.copyFile(sourcePath, targetPath);
+
+		await this.storeMetadata(targetFileId, sourceMetadata);
 
 		return targetFileId;
 	}

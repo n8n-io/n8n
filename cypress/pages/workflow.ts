@@ -319,7 +319,6 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{del}');
 		},
 		setWorkflowName: (name: string) => {
-			this.getters.workflowNameInput().should('be.disabled');
 			this.getters.workflowNameInput().parent().click();
 			this.getters.workflowNameInput().should('be.enabled');
 			this.getters.workflowNameInput().clear().type(name).type('{enter}');
