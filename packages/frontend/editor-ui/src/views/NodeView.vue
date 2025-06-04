@@ -12,6 +12,7 @@ import {
 	watch,
 	h,
 	onBeforeUnmount,
+	useTemplateRef,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -245,6 +246,7 @@ useClipboard({ onPaste: onClipboardPaste });
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
+const executeButton = useTemplateRef('executeButton');
 
 const isProductionExecutionPreview = ref(false);
 const isExecutionPreview = ref(false);
@@ -1997,7 +1999,7 @@ onBeforeUnmount(() => {
 		@duplicate:nodes="onDuplicateNodes"
 		@copy:nodes="onCopyNodes"
 		@cut:nodes="onCutNodes"
-		@run:workflow="runEntireWorkflow('main')"
+		@run:workflow="runEntireWorkflow('main', executeButton?.selectedTriggerNode)"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport:change="onViewportChange"
@@ -2013,6 +2015,7 @@ onBeforeUnmount(() => {
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				v-if="isRunWorkflowButtonVisible"
+				ref="executeButton"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"

@@ -101,6 +101,10 @@ watch(
 	},
 	{ immediate: true },
 );
+
+defineExpose({
+	selectedTriggerNode: computed(() => selectedTriggerNode.value),
+});
 </script>
 
 <template>
