@@ -857,6 +857,13 @@ function onRenameNode(parameterData: IUpdateInformation) {
 async function onOpenRenameNodeModal(id: string) {
 	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
 
+	const activeElement = document.activeElement;
+
+	if (activeElement && activeElement.tagName === 'INPUT') {
+		// If an input is focused, do not open the rename modal
+		return;
+	}
+
 	if (!keyBindingsEnabled.value || document.querySelector('.rename-prompt')) return;
 
 	try {
