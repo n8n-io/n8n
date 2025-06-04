@@ -39,7 +39,7 @@ export class Subscriber {
 
 		const debouncedHandlerFn = debounce(handlerFn, 300);
 
-		this.client.on('message', (channel: PubSub.Channel, str) => {
+		this.client.on('message', (channel: PubSub.Channel, str: string) => {
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
 			if (msg.debounce) debouncedHandlerFn(msg);

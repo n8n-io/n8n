@@ -9,7 +9,6 @@ on:
         required: true
         default: '20'
         options:
-          - '18'
           - '20'
           - '22'
 
