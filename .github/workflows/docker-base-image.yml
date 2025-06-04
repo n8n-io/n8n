@@ -11,6 +11,7 @@ on:
         options:
           - '20'
           - '22'
+          - '24'
 
 jobs:
   build:
