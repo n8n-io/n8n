@@ -124,6 +124,16 @@ const author = computed(() => {
 	return communityNodeType.value?.displayName ?? displayName.value;
 });
 
+const tag = computed(() => {
+	if (props.nodeType.tag) {
+		return { text: props.nodeType.tag };
+	}
+	if (description.value.toLowerCase().includes('deprecated')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
+	}
+	return undefined;
+});
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -163,7 +173,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:is-trigger="isTrigger"
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
-		:tag="nodeType.tag"
+		:tag="tag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>
