@@ -320,6 +320,14 @@ export class WorkflowExecutionService {
 				return;
 			}
 
+			const parentExecution =
+				workflowErrorData.execution?.id && workflowErrorData.workflow?.id
+					? {
+							executionId: workflowErrorData.execution.id,
+							workflowId: workflowErrorData.workflow.id,
+						}
+					: undefined;
+
 			// Can execute without webhook so go on
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -335,6 +343,11 @@ export class WorkflowExecutionService {
 					],
 				},
 				source: null,
+				...(parentExecution && {
+					metadata: {
+						parentExecution,
+					},
+				}),
 			});
 
 			const runExecutionData: IRunExecutionData = {
