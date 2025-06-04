@@ -1341,6 +1341,7 @@
 	"nodeCreator.aiPanel.workflowTriggerDescription": "Runs the flow when called by the Execute Workflow node from a different workflow",
 	"nodeCreator.nodeItem.triggerIconTitle": "Trigger Node",
 	"nodeCreator.nodeItem.aiIconTitle": "LangChain AI Node",
+	"nodeCreator.nodeItem.deprecated": "Deprecated",
 	"nodeCredentials.createNew": "Create new credential",
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
 	"nodeCredentials.credentialsLabel": "Credential to connect with",
