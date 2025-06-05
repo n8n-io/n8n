@@ -1,8 +1,8 @@
+import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Toolkit } from 'langchain/agents';
-import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
 import {
 	createResultError,
 	createResultOk,
@@ -10,7 +10,7 @@ import {
 	type IExecuteFunctions,
 	type Result,
 } from 'n8n-workflow';
-import { type ZodTypeAny } from 'zod';
+import { z } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
@@ -99,18 +99,24 @@ export const createCallTool =
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
-) {
+): DynamicStructuredTool<z.ZodObject<any, any, any, any>> {
+	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
+
+	// Ensure we always have an object schema for structured tools
+	const objectSchema =
+		rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
+
 	return new DynamicStructuredTool({
 		name: tool.name,
 		description: tool.description ?? '',
-		schema: convertJsonSchemaToZod(tool.inputSchema),
+		schema: objectSchema,
 		func: onCallTool,
 		metadata: { isFromToolkit: true },
 	});
 }
 
 export class McpToolkit extends Toolkit {
-	constructor(public tools: Array<DynamicStructuredTool<ZodTypeAny>>) {
+	constructor(public tools: Array<DynamicStructuredTool<z.ZodObject<any, any, any, any>>>) {
 		super();
 	}
 }
