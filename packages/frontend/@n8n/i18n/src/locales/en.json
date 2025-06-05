@@ -1111,7 +1111,7 @@
 	"ndv.input.nodeDistance": "{count} node back | {count} nodes back",
 	"ndv.input.noNodesFound": "No nodes found",
 	"ndv.input.mapping": "Mapping",
-	"ndv.input.debugging": "Debugging",
+	"ndv.input.fromAI": "From AI",
 	"ndv.input.parentNodes": "Parent nodes",
 	"ndv.input.tooMuchData.title": "Display data?",
 	"ndv.input.noOutputDataInBranch": "No input data in this branch",
