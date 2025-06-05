@@ -44,10 +44,12 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useWorkflowSaving } from './useWorkflowSaving';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
-	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
+	const workflowHelpers = useWorkflowHelpers();
+	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -60,7 +62,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
-	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router });
+	const { startChat } = useCanvasOperations();
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
@@ -144,7 +146,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const runData = workflowsStore.getWorkflowRunData;
 
 			if (workflowsStore.isNewWorkflow) {
-				await workflowHelpers.saveCurrentWorkflow();
+				await workflowSaving.saveCurrentWorkflow();
 			}
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();

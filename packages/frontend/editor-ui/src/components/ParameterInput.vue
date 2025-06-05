@@ -124,8 +124,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();

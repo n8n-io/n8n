@@ -87,7 +87,6 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -125,8 +124,7 @@ let cachedWorkflow: Workflow | null = null;
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();

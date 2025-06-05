@@ -26,7 +26,7 @@ describe('useExpressionEditor', () => {
 	const mockResolveExpression = () => {
 		const mock = vi.fn();
 		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-			...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+			...workflowHelpers.useWorkflowHelpers(),
 			resolveExpression: mock,
 		});
 
