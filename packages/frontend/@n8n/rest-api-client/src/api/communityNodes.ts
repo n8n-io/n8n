@@ -1,6 +1,7 @@
-import type { IRestApiContext } from '@/Interface';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import { get, post, makeRestApiRequest } from '@/utils/apiUtils';
+
+import type { IRestApiContext } from '../types';
+import { get, post, makeRestApiRequest } from '../utils';
 
 export async function getInstalledCommunityNodes(
 	context: IRestApiContext,

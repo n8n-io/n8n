@@ -21,6 +21,10 @@ export const schemaTypeField: INodeProperties = {
 	description: 'How to specify the schema for the function',
 };
 
+/**
+ * Returns a field for inputting a JSON example that can be used to generate the schema.
+ * @param props
+ */
 export const buildJsonSchemaExampleField = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
 }): INodeProperties => ({
@@ -41,6 +45,26 @@ export const buildJsonSchemaExampleField = (props?: {
 		},
 	},
 	description: 'Example JSON object to use to generate the schema',
+});
+
+/**
+ * Returns a notice field about the generated schema properties being required by default.
+ * @param props
+ */
+export const buildJsonSchemaExampleNotice = (props?: {
+	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
+}): INodeProperties => ({
+	displayName:
+		"All properties will be required. To make them optional, use the 'JSON Schema' schema type instead",
+	name: 'notice',
+	type: 'notice',
+	default: '',
+	displayOptions: {
+		show: {
+			...props?.showExtraProps,
+			schemaType: ['fromJson'],
+		},
+	},
 });
 
 export const jsonSchemaExampleField = buildJsonSchemaExampleField();

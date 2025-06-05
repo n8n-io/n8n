@@ -8,7 +8,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
-import * as apiWebhooks from '../api/webhooks';
+import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 
 describe('useWorkflowHelpers', () => {
