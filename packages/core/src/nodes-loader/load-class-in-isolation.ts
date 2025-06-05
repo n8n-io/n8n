@@ -7,6 +7,7 @@ export const loadClassInIsolation = <T>(filePath: string, className: string) => 
 		filePath = filePath.replace(/\\/g, '/');
 	}
 
+	// Note: Skip the isolation because it breaks nock mocks in tests
 	if (inTest) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access
 		return new (require(filePath)[className])() as T;

@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
+import { PackageDirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -390,6 +391,45 @@ describe('LoadNodesAndCredentials', () => {
 					resources: {},
 				},
 			});
+		});
+	});
+
+	describe('unloadPackage', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+		});
+		it('should call reset and clear cache if loader is PackageDirectoryLoader', async () => {
+			const packageName = 'test-package';
+
+			const fakeLoader = Object.create(PackageDirectoryLoader.prototype);
+			fakeLoader.reset = jest.fn();
+			fakeLoader.clearNodesAndCredentialsFromRequireCache = jest.fn();
+
+			instance.loaders[packageName] = fakeLoader;
+
+			await instance.unloadPackage(packageName);
+
+			expect(fakeLoader.reset).toHaveBeenCalled();
+			expect(fakeLoader.clearNodesAndCredentialsFromRequireCache).toHaveBeenCalled();
+			expect(instance.loaders[packageName]).toBeUndefined();
+		});
+
+		it('should call reset but not clear cache if loader is not PackageDirectoryLoader', async () => {
+			const packageName = 'test-package';
+
+			const fakeNonPackageLoader = {
+				reset: jest.fn(),
+			};
+
+			instance.loaders[packageName] = fakeNonPackageLoader as unknown as DirectoryLoader;
+
+			await instance.unloadPackage(packageName);
+
+			expect(fakeNonPackageLoader.reset).toHaveBeenCalled();
+			expect('clearNodesAndCredentialsFromRequireCache' in fakeNonPackageLoader).toBe(false);
+			expect(instance.loaders[packageName]).toBeUndefined();
 		});
 	});
 });
