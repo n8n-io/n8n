@@ -90,6 +90,7 @@ export abstract class DirectoryLoader {
 	abstract loadAll(): Promise<void>;
 
 	reset() {
+		this.unloadAll();
 		this.loadedNodes = [];
 		this.nodeTypes = {};
 		this.credentialTypes = {};
@@ -449,5 +450,14 @@ export abstract class DirectoryLoader {
 		}
 
 		return;
+	}
+
+	private unloadAll() {
+		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
+			filePath.startsWith(this.directory),
+		);
+		filesToUnload.forEach((filePath) => {
+			delete require.cache[filePath];
+		});
 	}
 }
