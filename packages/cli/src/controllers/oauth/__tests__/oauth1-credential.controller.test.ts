@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -5,7 +6,7 @@ import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import { Cipher, type InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 

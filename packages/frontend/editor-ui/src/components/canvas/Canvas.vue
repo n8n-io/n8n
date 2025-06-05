@@ -105,6 +105,7 @@ const emit = defineEmits<{
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
+	'extract-workflow': [ids: string[]];
 }>();
 
 const props = withDefaults(
@@ -314,6 +315,7 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
+		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
@@ -695,6 +697,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'extract_sub_workflow':
+			return emit('extract-workflow', nodeIds);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from '@n8n/design-system';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectIcon, Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
@@ -43,6 +43,7 @@ const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const isValid = ref(false);
+const isCurrentProjectEmpty = ref(true);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	name: '',
 	relations: [],
@@ -191,12 +192,15 @@ const updateProject = async () => {
 		return;
 	}
 	try {
+		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
+			throw new Error('Invalid role selected for this project.');
+		}
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
-				role: r.role,
+				role: r.role as TeamProjectRole,
 			})),
 		});
 		isDirty.value = false;
@@ -222,6 +226,13 @@ const onSubmit = async () => {
 
 const onDelete = async () => {
 	await projectsStore.getAvailableProjects();
+
+	if (projectsStore.currentProjectId) {
+		isCurrentProjectEmpty.value = await projectsStore.isProjectEmpty(
+			projectsStore.currentProjectId,
+		);
+	}
+
 	dialogVisible.value = true;
 };
 
@@ -429,6 +440,7 @@ onMounted(() => {
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
+			:is-current-project-empty="isCurrentProjectEmpty"
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>

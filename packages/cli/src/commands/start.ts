@@ -22,7 +22,7 @@ import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
@@ -252,7 +252,7 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');

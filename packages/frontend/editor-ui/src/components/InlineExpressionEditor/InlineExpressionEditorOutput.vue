@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
 import { onBeforeUnmount } from 'vue';

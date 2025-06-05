@@ -1,7 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
-import { Logger } from 'n8n-core';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
@@ -230,7 +230,7 @@ export class VaultProvider extends SecretsProvider {
 
 	#http: AxiosInstance;
 
-	private refreshTimeout: NodeJS.Timer | null;
+	private refreshTimeout: NodeJS.Timeout | null;
 
 	private refreshAbort = new AbortController();
 

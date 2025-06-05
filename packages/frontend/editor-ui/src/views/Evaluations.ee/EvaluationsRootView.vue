@@ -6,7 +6,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -105,22 +105,30 @@ watch(
 	(ready) => {
 		if (ready) {
 			if (showWizard.value) {
-				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: evaluationStore.evaluationTriggerExists,
-					output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
-					metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
-					quota_reached: evaluationsQuotaExceeded.value,
-				});
+				telemetry.track(
+					'User viewed tests tab',
+					{
+						workflow_id: props.name,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: evaluationStore.evaluationTriggerExists,
+						output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
+						metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
+						quota_reached: evaluationsQuotaExceeded.value,
+					},
+					{ withPostHog: true },
+				);
 			} else {
-				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
-					test_type: 'evaluation',
-					view: 'overview',
-					run_count: runs.value.length,
-				});
+				telemetry.track(
+					'User viewed tests tab',
+					{
+						workflow_id: props.name,
+						test_type: 'evaluation',
+						view: 'overview',
+						run_count: runs.value.length,
+					},
+					{ withPostHog: true },
+				);
 			}
 		}
 	},

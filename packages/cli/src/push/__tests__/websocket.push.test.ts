@@ -1,8 +1,8 @@
 import { createHeartbeatMessage, type PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
-import { Logger } from 'n8n-core';
 import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';

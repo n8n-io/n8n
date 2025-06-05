@@ -1,5 +1,5 @@
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
@@ -9,7 +9,7 @@ import type {
 	CompletionResult,
 	CompletionSection,
 } from '@codemirror/autocomplete';
-import { uniqBy } from 'lodash-es';
+import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
 import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';

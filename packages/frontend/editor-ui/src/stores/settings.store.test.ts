@@ -17,7 +17,7 @@ vi.mock('@/api/settings', () => ({
 	getSettings,
 }));
 
-vi.mock('@/api/events', () => ({
+vi.mock('@n8n/rest-api-client/api/events', () => ({
 	sessionStarted,
 }));
 

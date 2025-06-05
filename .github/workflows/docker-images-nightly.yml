@@ -48,3 +48,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/n8n:nightly
             ${{ secrets.DOCKER_USERNAME }}/n8n:nightly
+
+  security-scan:
+    needs: build
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ghcr.io/${{ github.repository_owner }}/n8n:nightly
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

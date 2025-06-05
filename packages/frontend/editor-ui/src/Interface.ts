@@ -178,15 +178,6 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
-	};
-}
-
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
@@ -1186,11 +1177,6 @@ export interface CommunityNodesState {
 	installedPackages: CommunityPackageMap;
 }
 
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
-}
-
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;
@@ -1353,6 +1339,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';

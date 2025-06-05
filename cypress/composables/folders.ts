@@ -325,7 +325,7 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 	getListActionsToggle().click();
 	getListActionItem('rename').click();
 	getInlineEditInput().should('be.visible');
-	getInlineEditInput().type(newName, { delay: 50 });
+	getInlineEditInput().type(`${newName}{enter}`, { delay: 50 });
 	successToast().should('exist');
 }
 

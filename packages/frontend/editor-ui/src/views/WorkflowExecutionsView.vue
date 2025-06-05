@@ -2,11 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '@/components/executions/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
+import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
