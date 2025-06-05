@@ -287,10 +287,6 @@ const keyBindingsEnabled = computed(() => {
 
 const isLogsPanelOpen = computed(() => logsStore.isOpen);
 
-const currentExecutionTriggerNodeName = computed(() =>
-	isWorkflowRunning.value ? workflowsStore.workflowExecutionData?.triggerNode : undefined,
-);
-
 /**
  * Initialization
  */
@@ -2019,10 +2015,10 @@ onBeforeUnmount(() => {
 				v-if="isRunWorkflowButtonVisible"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
+				:executing="isWorkflowRunning"
 				:trigger-nodes="triggerNodes"
 				:get-node-type="nodeTypesStore.getNodeType"
 				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
-				:current-execution-trigger-node-name="currentExecutionTriggerNodeName"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@execute="runEntireWorkflow('main')"

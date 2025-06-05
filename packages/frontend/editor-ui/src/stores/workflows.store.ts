@@ -299,6 +299,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
 	);
 
+	const workflowExecutionTriggerNodeName = computed(() => {
+		if (!isWorkflowRunning.value) {
+			return undefined;
+		}
+
+		if (workflowExecutionData.value?.triggerNode) {
+			return workflowExecutionData.value.triggerNode;
+		}
+
+		// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
+		return Object.keys(workflowExecutionData.value?.data?.resultData.runData ?? {}).find((name) =>
+			workflowTriggerNodes.value.some((node) => node.name === name),
+		);
+	});
+
 	/**
 	 * Sets the active execution id
 	 *
@@ -1876,8 +1891,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	watch(
-		selectableTriggerNodes,
-		(newSelectable, oldSelectable) => {
+		[selectableTriggerNodes, workflowExecutionTriggerNodeName],
+		([newSelectable, currentTrigger], [oldSelectable]) => {
+			if (currentTrigger !== undefined) {
+				selectedTriggerNodeName.value = currentTrigger;
+				return;
+			}
+
 			if (
 				selectedTriggerNodeName.value === undefined ||
 				newSelectable.every((node) => node.name !== selectedTriggerNodeName.value)
@@ -1948,6 +1968,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowExecution,
 		getPastChatMessages,
 		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
+		workflowExecutionTriggerNodeName,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,

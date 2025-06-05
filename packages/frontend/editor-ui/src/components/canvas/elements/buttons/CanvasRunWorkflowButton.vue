@@ -2,13 +2,7 @@
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { type INodeUi } from '@/Interface';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
-import {
-	type ActionDropdownItem,
-	N8nActionDropdown,
-	N8nButton,
-	N8nIcon,
-	N8nText,
-} from '@n8n/design-system';
+import { type ActionDropdownItem, N8nActionDropdown, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -25,7 +19,7 @@ const props = defineProps<{
 	selectedTriggerNodeName?: string;
 	triggerNodes: INodeUi[];
 	waitingForWebhook?: boolean;
-	currentExecutionTriggerNodeName?: string;
+	executing?: boolean;
 	disabled?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
@@ -35,9 +29,8 @@ const i18n = useI18n();
 const selectableTriggerNodes = computed(() =>
 	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
 );
-const executing = computed(() => props.currentExecutionTriggerNodeName !== undefined);
 const label = computed(() => {
-	if (!executing.value) {
+	if (!props.executing) {
 		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
 
@@ -58,19 +51,13 @@ const actions = computed(() =>
 		})
 		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 25),
-			disabled: !!node.disabled || executing.value,
+			disabled: !!node.disabled,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
 const isSplitButton = computed(
 	() => selectableTriggerNodes.value.length > 1 && props.selectedTriggerNodeName !== undefined,
-);
-const nodeDisplayName = computed(() =>
-	truncateBeforeLast(
-		props.currentExecutionTriggerNodeName ?? props.selectedTriggerNodeName ?? '',
-		25,
-	),
 );
 
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
@@ -109,7 +96,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						<I18nT keypath="nodeView.runButtonText.from">
 							<template #nodeName>
 								<N8nText bold size="mini">
-									{{ nodeDisplayName }}
+									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
 								</N8nText>
 							</template>
 						</I18nT>
@@ -126,9 +113,14 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				@select="emit('selectTriggerNode', $event)"
 			>
 				<template #activator>
-					<button :class="$style.chevron" aria-label="Select trigger node">
-						<N8nIcon icon="angle-down" size="large" />
-					</button>
+					<N8nButton
+						type="primary"
+						size="large"
+						:disabled="disabled || executing"
+						:class="$style.chevron"
+						aria-label="Select trigger node"
+						icon="angle-down"
+					/>
 				</template>
 				<template #menuItem="item">
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
@@ -155,12 +147,10 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 }
 
 .button {
-	/* Disable animation of size and spacing when switching between split button and normal button */
-	transition: none;
-
 	.split & {
-		padding-inline-end: var(--spacing-2xl);
-		padding-block: var(--spacing-2xs);
+		padding-inline-start: var(--spacing-xs);
+		padding-inline-end: var(--spacing-xl);
+		padding-block: var(--spacing-3xs);
 	}
 }
 
@@ -168,17 +158,18 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	position: absolute;
 	right: var(--spacing-3xs);
 	top: var(--spacing-3xs);
+	width: 18px;
 	height: calc(100% - var(--spacing-3xs) * 2);
 	border: none;
-	padding: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
-
-	color: var(--color-foreground-xlight);
+	padding: 0;
 	background-color: transparent;
-	cursor: pointer;
 
-	&:hover {
-		background-color: hsl(7, 100%, 75%);
+	&:not(:disabled):hover {
+		background-color: var(--prim-color-primary-tint-100);
+	}
+
+	&:disabled {
+		background-color: transparent !important;
 	}
 }
 
