@@ -20,7 +20,7 @@ jobs:
       - name: Setup Environment and Build Project
         uses: ./.github/actions/setup-and-build
         with:
-          node-version: '20.x'
+          node-version: 22.x
           enable-caching: true
 
       - name: Run formatcheck

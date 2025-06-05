@@ -1,14 +1,4 @@
 <script lang="ts" setup>
-import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import InlineTextEdit from '@/components/InlineTextEdit.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import ShortenName from '@/components/ShortenName.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -23,6 +13,14 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
+import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import SaveButton from '@/components/SaveButton.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
@@ -34,6 +32,18 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { saveAs } from 'file-saver';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { getResourcePermissions } from '@/permissions';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { nodeViewEventBus } from '@/event-bus';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useRoute, useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
@@ -41,26 +51,14 @@ import type {
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { nodeViewEventBus } from '@/event-bus';
-import { getResourcePermissions } from '@/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
-import { hasPermission } from '@/utils/rbac/permissions';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { BaseTextKey } from '@n8n/i18n';
-import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { saveAs } from 'file-saver';
-import { computed, ref, useCssModule, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -101,7 +99,6 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
-const isNameEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
 const importFileRef = ref<HTMLInputElement | undefined>();
@@ -267,7 +264,7 @@ watch(
 	() => props.id,
 	() => {
 		isTagsEditEnabled.value = false;
-		isNameEditEnabled.value = false;
+		renameInput.value?.forceCancel();
 	},
 );
 
@@ -332,7 +329,7 @@ function onTagsEditEnable() {
 
 	setTimeout(() => {
 		// allow name update to occur before disabling name edit
-		isNameEditEnabled.value = false;
+		renameInput.value?.forceCancel();
 		tagsEventBus.emit('focus');
 	}, 0);
 }
@@ -366,24 +363,14 @@ function onTagsEditEsc() {
 	isTagsEditEnabled.value = false;
 }
 
+const renameInput = useTemplateRef('renameInput');
 function onNameToggle() {
-	isNameEditEnabled.value = !isNameEditEnabled.value;
-	if (isNameEditEnabled.value) {
-		if (isTagsEditEnabled.value) {
-			void onTagsBlur();
-		}
-
-		isTagsEditEnabled.value = false;
+	if (renameInput.value?.forceFocus) {
+		renameInput.value.forceFocus();
 	}
 }
 
-async function onNameSubmit({
-	name,
-	onSubmit,
-}: {
-	name: string;
-	onSubmit: (saved: boolean) => void;
-}) {
+async function onNameSubmit(name: string) {
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
@@ -392,14 +379,12 @@ async function onNameSubmit({
 			type: 'error',
 		});
 
-		onSubmit(false);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
 	if (newName === props.name) {
-		isNameEditEnabled.value = false;
-
-		onSubmit(true);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
@@ -407,12 +392,11 @@ async function onNameSubmit({
 	const id = getWorkflowId();
 	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
 	if (saved) {
-		isNameEditEnabled.value = false;
 		showCreateWorkflowSuccessToast(id);
 		workflowHelpers.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
-	onSubmit(saved);
+	renameInput.value?.forceCancel();
 }
 
 async function handleFileImport(): Promise<void> {
@@ -704,7 +688,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			class="name-container"
 			data-test-id="canvas-breadcrumbs"
 		>
-			<template #default="{ value }">
+			<template #default>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
@@ -716,28 +700,22 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							:class="$style['path-separator']"
 							>/</span
 						>
-						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-							<template #default="{ shortenedName }">
-								<InlineTextEdit
-									:model-value="name"
-									:preview-value="shortenedName"
-									:is-edit-enabled="isNameEditEnabled"
-									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="
-										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
-									"
-									placeholder="Enter workflow name"
-									class="name"
-									@toggle="onNameToggle"
-									@submit="onNameSubmit"
-								/>
-							</template>
-						</ShortenName>
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="id"
+							placeholder="Workflow name"
+							data-test-id="workflow-name-input"
+							class="name"
+							:model-value="name"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							@update:model-value="onNameSubmit"
+						/>
 					</template>
 				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
-
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
@@ -894,6 +872,7 @@ $--header-spacing: 20px;
 .name {
 	color: $custom-font-dark;
 	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .activator {
@@ -971,7 +950,7 @@ $--header-spacing: 20px;
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .group {

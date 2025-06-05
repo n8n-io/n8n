@@ -26,7 +26,7 @@ import { DbConnection } from '@/databases/db-connection';
 @Service()
 export class ExecutionsPruningService {
 	/** Timer for soft-deleting executions on a rolling basis. */
-	private softDeletionInterval: NodeJS.Timer | undefined;
+	private softDeletionInterval: NodeJS.Timeout | undefined;
 
 	/** Timeout for next hard-deletion of soft-deleted executions. */
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;

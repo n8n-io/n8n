@@ -14,7 +14,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
-import * as apiWebhooks from '../api/webhooks';
+import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';

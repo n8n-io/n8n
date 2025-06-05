@@ -24,7 +24,7 @@ export class OutputParserAutofixing implements INodeType {
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
-		description: 'Automatically fix the output if it is not in the correct format',
+		description: 'Deprecated, use structured output parser',
 		defaults: {
 			name: 'Auto-fixing Output Parser',
 		},

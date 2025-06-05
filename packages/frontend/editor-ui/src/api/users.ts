@@ -7,12 +7,12 @@ import type {
 import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
-	IRestApiContext,
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function loginCurrentUser(
 	context: IRestApiContext,

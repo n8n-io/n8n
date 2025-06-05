@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
@@ -203,6 +203,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		const { isWorker, isMultiMain } = this.instanceSettings;
 
 		return isWorker || (isMultiMain && !this.hasPushRef(pushRef));
+	}
+
+	@OnPubSubEvent('relay-execution-lifecycle-event', { instanceType: 'main' })
+	handleRelayExecutionLifecycleEvent({ pushRef, ...pushMsg }: PushMessage & { pushRef: string }) {
+		if (!this.hasPushRef(pushRef)) return;
+		this.send(pushMsg, pushRef);
 	}
 
 	/**

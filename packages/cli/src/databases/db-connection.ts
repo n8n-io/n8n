@@ -21,7 +21,7 @@ type ConnectionState = {
 export class DbConnection {
 	private dataSource: DataSource;
 
-	private pingTimer: NodeJS.Timer | undefined;
+	private pingTimer: NodeJS.Timeout | undefined;
 
 	readonly connectionState: ConnectionState = {
 		connected: false,
