@@ -77,7 +77,9 @@ jobs:
 
       - name: Create PR in Docs Repo
         if: steps.verify_file.outputs.file_exists == 'true'
-        uses: peter-evans/create-pull-request@v6
+
+        # Pin v7.0.8
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
