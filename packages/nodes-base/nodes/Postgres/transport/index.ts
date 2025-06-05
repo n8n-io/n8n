@@ -3,8 +3,9 @@ import type {
 	ICredentialTestFunctions,
 	ILoadOptionsFunctions,
 	ITriggerFunctions,
+	Logger,
 } from 'n8n-workflow';
-import { createServer, type AddressInfo } from 'node:net';
+import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
@@ -52,6 +53,29 @@ const getPostgresConfig = (
 
 	return dbConfig;
 };
+
+function withCleanupHandler(proxy: Server, abortController: AbortController, logger: Logger) {
+	proxy.on('error', (error) => {
+		logger.error('TCP Proxy: Got error, calling abort controller', { error });
+		abortController.abort();
+	});
+	proxy.on('close', () => {
+		logger.error('TCP Proxy: Was closed, calling abort controller');
+		abortController.abort();
+	});
+	proxy.on('drop', (dropArgument) => {
+		logger.error('TCP Proxy: Connection was dropped, calling abort controller', {
+			dropArgument,
+		});
+		abortController.abort();
+	});
+	abortController.signal.addEventListener('abort', () => {
+		logger.debug('Got abort signal. Closing TCP proxy server.');
+		proxy.close();
+	});
+
+	return proxy;
+}
 
 export async function configurePostgres(
 	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions | ITriggerFunctions,
@@ -104,15 +128,7 @@ export async function configurePostgres(
 			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 			// Create a TCP proxy listening on a random available port
-			const proxy = createServer();
-			proxy.on('error', (error) => {
-				this.logger.error('TCP Proxy: Got error, calling abort controller', { error });
-				abortController.abort();
-			});
-			abortController.signal.addEventListener('abort', (reason) => {
-				this.logger.debug('Got abort signal. Closing TCP proxy server.', { reason });
-				proxy.close();
-			});
+			const proxy = withCleanupHandler(createServer(), abortController, this.logger);
 
 			const proxyPort = await new Promise<number>((resolve) => {
 				proxy.listen(0, LOCALHOST, () => {
