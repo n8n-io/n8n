@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -24,16 +23,17 @@ describe('NodeTitle', () => {
 			},
 		});
 		expect(getByTestId('node-title-container')).toBeInTheDocument();
-		expect(getByTestId('node-rename-input')).toBeInTheDocument();
+		expect(getByTestId('inline-edit-input')).toBeInTheDocument();
 	});
 
 	it('displays the node title', () => {
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
-				modelValue: 'My Test Node',
+				modelValue: 'Test Node',
 			},
 		});
-		expect(getByText('My Test Node')).toBeInTheDocument();
+		const renamePreview = getByTestId('inline-edit-preview');
+		expect(renamePreview).toHaveTextContent('Test Node');
 	});
 
 	it('shows the edit input when clicked', async () => {
@@ -43,53 +43,37 @@ describe('NodeTitle', () => {
 			},
 		});
 		await userEvent.click(getByTestId('node-title-container'));
-		expect(getByTestId('node-rename-input')).toHaveValue('Test Node');
+		expect(getByTestId('inline-edit-input')).toHaveValue('Test Node');
 	});
 
 	it('emits update:model-value when renaming', async () => {
-		const { getByTestId, getByRole, emitted } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			props: {
 				modelValue: 'Test Node',
 			},
 		});
-		await userEvent.click(getByTestId('node-title-container'));
-		const renameInput = getByTestId('node-rename-input');
+		const renameInput = getByTestId('inline-edit-input');
 		await userEvent.clear(renameInput);
 		await userEvent.type(renameInput, 'New Node Name');
 
 		expect(renameInput).toHaveValue('New Node Name');
 
-		await userEvent.click(getByRole('button', { name: 'Rename' }));
+		await userEvent.keyboard('{enter}');
+
 		expect(emitted('update:model-value')).toEqual([['New Node Name']]);
 	});
 
-	it('cancels renaming when cancel button is clicked', async () => {
-		const { getByTestId, getByRole, emitted } = renderComponent({
+	it('should not update if user cancels', async () => {
+		const { getByTestId, emitted } = renderComponent({
 			props: {
 				modelValue: 'Test Node',
 			},
 		});
-		await userEvent.click(getByTestId('node-title-container'));
-		await userEvent.click(getByRole('button', { name: 'Cancel' }));
-		expect(emitted('update:model-value')).toBeUndefined();
-	});
-
-	it('does not call onRename when Enter is pressed on cancel button', async () => {
-		const { getByTestId, getByRole, emitted } = renderComponent({
-			props: {
-				modelValue: 'Test Node',
-			},
-		});
-		await userEvent.click(getByTestId('node-title-container'));
-		const renameInput = getByTestId('node-rename-input');
-		await userEvent.clear(renameInput);
+		const renameInput = getByTestId('inline-edit-input');
 		await userEvent.type(renameInput, 'New Node Name');
-
-		expect(renameInput).toHaveValue('New Node Name');
-
-		const cancelButton = getByRole('button', { name: 'Cancel' });
-		await fireEvent.focus(cancelButton);
-		await fireEvent.keyDown(cancelButton, { key: 'Enter' });
+		await userEvent.keyboard('{Escape}');
+		await userEvent.click(renameInput);
+		expect(renameInput).toHaveValue('Test Node');
 		expect(emitted('update:model-value')).toBeUndefined();
 	});
 });

@@ -1,20 +1,22 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from '@/components/executions/workflow/WorkflowExecutionAnnotationPanel.ee.vue';
+import WorkflowExecutionAnnotationTags from '@/components/executions/workflow/WorkflowExecutionAnnotationTags.ee.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -30,6 +32,7 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
+const { showError } = useToast();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
@@ -70,6 +73,16 @@ const hasAnnotation = computed(
 		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
 );
 
+const executionsStore = useExecutionsStore();
+
+const activeExecution = computed(() => {
+	return executionsStore.activeExecution as ExecutionSummary & {
+		customData?: Record<string, string>;
+	};
+});
+
+const vote = computed(() => activeExecution.value?.annotation?.vote || null);
+
 async function onDeleteExecution(): Promise<void> {
 	// Prepend the message with a note about annotations if they exist
 	const confirmationText = [
@@ -108,6 +121,20 @@ function onRetryButtonBlur(event: FocusEvent) {
 		retryDropdownRef.value.handleClose();
 	}
 }
+
+const onVoteClick = async (voteValue: AnnotationVote) => {
+	if (!activeExecution.value) {
+		return;
+	}
+
+	const voteToSet = voteValue === vote.value ? null : voteValue;
+
+	try {
+		await executionsStore.annotateExecution(activeExecution.value.id, { vote: voteToSet });
+	} catch (e) {
+		showError(e, 'executionAnnotationView.vote.error');
+	}
+};
 </script>
 
 <template>
@@ -142,65 +169,89 @@ function onRetryButtonBlur(event: FocusEvent) {
 			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
-			<WorkflowExecutionAnnotationPanel v-if="isAnnotationEnabled && execution" />
-			<div>
-				<N8nText size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
-					executionUIDetails?.startTime
-				}}</N8nText
-				><br />
-				<N8nSpinner
-					v-if="executionUIDetails?.name === 'running'"
-					size="small"
-					:class="[$style.spinner, 'mr-4xs']"
-				/>
-				<N8nText
-					size="medium"
-					:class="[$style.status, $style[executionUIDetails.name]]"
-					data-test-id="execution-preview-label"
-				>
-					{{ executionUIDetails.label }}
-				</N8nText>
-				{{ ' ' }}
-				<N8nText v-if="executionUIDetails?.showTimestamp === false" color="text-base" size="medium">
-					| ID#{{ execution.id }}
-				</N8nText>
-				<N8nText v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
-					{{
-						locale.baseText('executionDetails.runningTimeRunning', {
-							interpolate: { time: executionUIDetails?.runningTime },
-						})
-					}}
-					| ID#{{ execution.id }}
-				</N8nText>
-				<N8nText
-					v-else-if="executionUIDetails.name !== 'waiting'"
-					color="text-base"
-					size="medium"
-					data-test-id="execution-preview-id"
-				>
-					{{
-						locale.baseText('executionDetails.runningTimeFinished', {
-							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
-						})
-					}}
-					| ID#{{ execution.id }}
-				</N8nText>
-				<br /><N8nText v-if="execution.mode === 'retry'" color="text-base" size="medium">
-					{{ locale.baseText('executionDetails.retry') }}
-					<RouterLink
-						:class="$style.executionLink"
-						:to="{
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: {
-								workflowId: execution.workflowId,
-								executionId: execution.retryOf,
-							},
-						}"
+			<div :class="$style.executionDetailsLeft">
+				<div :class="$style.executionTitle">
+					<N8nText size="large" color="text-dark" :bold="true" data-test-id="execution-time">{{
+						executionUIDetails?.startTime
+					}}</N8nText
+					><VoteButtons
+						v-if="isAnnotationEnabled && execution"
+						data-test-id="execution-preview-vote-buttons"
+						:vote="vote"
+						:class="$style.voteButtons"
+						@vote-click="onVoteClick"
+					/>
+				</div>
+				<div :class="$style.executionDetailsInfo">
+					<N8nSpinner
+						v-if="executionUIDetails?.name === 'running'"
+						size="small"
+						:class="[$style.spinner, 'mr-4xs']"
+					/>
+					<N8nText
+						size="medium"
+						:class="[$style.status, $style[executionUIDetails.name]]"
+						data-test-id="execution-preview-label"
 					>
-						#{{ execution.retryOf }}
-					</RouterLink>
-				</N8nText>
+						{{ executionUIDetails.label }}
+					</N8nText>
+					{{ ' ' }}
+					<N8nText
+						v-if="executionUIDetails?.showTimestamp === false"
+						color="text-base"
+						size="medium"
+					>
+						| ID#{{ execution.id }}
+					</N8nText>
+					<N8nText
+						v-else-if="executionUIDetails.name === 'running'"
+						color="text-base"
+						size="medium"
+					>
+						{{
+							locale.baseText('executionDetails.runningTimeRunning', {
+								interpolate: { time: executionUIDetails?.runningTime },
+							})
+						}}
+						| ID#{{ execution.id }}
+					</N8nText>
+					<N8nText
+						v-else-if="executionUIDetails.name !== 'waiting'"
+						color="text-base"
+						size="medium"
+						data-test-id="execution-preview-id"
+					>
+						{{
+							locale.baseText('executionDetails.runningTimeFinished', {
+								interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
+							})
+						}}
+						| ID#{{ execution.id }}
+					</N8nText>
+				</div>
+				<div :class="$style.executionDetailsRetry" v-if="execution.mode === 'retry'">
+					<N8nText color="text-base" size="small">
+						{{ locale.baseText('executionDetails.retry') }}
+						<RouterLink
+							:class="$style.executionLink"
+							:to="{
+								name: VIEWS.EXECUTION_PREVIEW,
+								params: {
+									workflowId: execution.workflowId,
+									executionId: execution.retryOf,
+								},
+							}"
+						>
+							#{{ execution.retryOf }}
+						</RouterLink>
+					</N8nText>
+				</div>
+				<WorkflowExecutionAnnotationTags
+					v-if="isAnnotationEnabled && execution"
+					:execution="execution"
+				/>
 			</div>
+
 			<div :class="$style.actions">
 				<RouterLink
 					:to="{
@@ -229,7 +280,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 					v-if="isRetriable"
 					ref="retryDropdown"
 					trigger="click"
-					class="mr-xs"
 					@command="handleRetryClick"
 				>
 					<span class="retry-button">
@@ -254,6 +304,12 @@ function onRetryButtonBlur(event: FocusEvent) {
 						</ElDropdownMenu>
 					</template>
 				</ElDropdown>
+
+				<WorkflowExecutionAnnotationPanel
+					:execution="activeExecution"
+					v-if="isAnnotationEnabled && activeExecution"
+				/>
+
 				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!workflowPermissions.update"
@@ -285,11 +341,10 @@ function onRetryButtonBlur(event: FocusEvent) {
 .executionDetails {
 	position: absolute;
 	padding: var(--spacing-m);
-	padding-right: var(--spacing-xl);
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
 
@@ -301,6 +356,22 @@ function onRetryButtonBlur(event: FocusEvent) {
 	& * {
 		pointer-events: all;
 	}
+}
+
+.executionDetailsLeft {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-5xs);
+}
+
+.executionTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+}
+
+.voteButtons {
+	margin-bottom: 2px;
 }
 
 .spinner {
@@ -350,6 +421,25 @@ function onRetryButtonBlur(event: FocusEvent) {
 
 .actions {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-2xs);
+}
+
+.highlightDataButton {
+	height: 30px;
+	width: 30px;
+}
+
+.highlightDataButtonActive {
+	width: auto;
+}
+
+.highlightDataButtonOpen {
+	color: var(--color-primary);
+	background-color: var(--color-button-secondary-hover-background);
+	border-color: var(--color-button-secondary-hover-active-focus-border);
+}
+
+.badge {
+	border: 0;
 }
 </style>

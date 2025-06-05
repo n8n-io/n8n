@@ -22,6 +22,9 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "Tools": [
         "Other Tools",
       ],
+      "Vector Stores": [
+        "Other Vector Stores",
+      ],
     },
   },
   "credentials": undefined,
@@ -132,6 +135,13 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "displayName": "Name",
       "displayOptions": {
         "show": {
+          "@version": [
+            {
+              "_cnd": {
+                "lte": 1.2,
+              },
+            },
+          ],
           "mode": [
             "retrieve-as-tool",
           ],
@@ -274,6 +284,7 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
     1,
     1.1,
     1.2,
+    1.3,
   ],
 }
 `;

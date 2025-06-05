@@ -53,7 +53,7 @@ body:
     id: nodejs-version
     attributes:
       label: Node.js Version
-      placeholder: ex. 18.16.0
+      placeholder: ex. 22.16.0
     validations:
       required: true
   - type: dropdown
