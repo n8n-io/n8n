@@ -4,8 +4,9 @@ jest.mock('n8n-workflow', () => ({
 }));
 
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock, captor } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
+import winston from 'winston';
 
 import { Logger } from '../logger';
 
@@ -36,7 +37,205 @@ describe('Logger', () => {
 		});
 	});
 
+	describe('formats', () => {
+		afterEach(() => {
+			jest.resetAllMocks();
+		});
+
+		test('log text, if `config.logging.format` is set to `text`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'text',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(output).toEqual(`${testMessage}\n`);
+		});
+
+		test('log json, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				level: 'info',
+				metadata: {
+					...testMetadata,
+					timestamp: expect.any(String),
+				},
+			});
+		});
+
+		test('apply scope filters, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: ['push'],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const redisLogger = logger.scoped('redis');
+			const pushLogger = logger.scoped('push');
+			const testMessage = 'Test Message';
+			const testMetadata = { test: 1 };
+
+			// ACT
+			redisLogger.info(testMessage, testMetadata);
+			pushLogger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('log errors in metadata with stack trace, if `config.logging.format` is set to `json`', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const parentError = new Error('Parent', { cause: 'just a string' });
+			const testError = new Error('Test', { cause: parentError });
+			const testMetadata = { error: testError };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				metadata: {
+					error: {
+						name: testError.name,
+						message: testError.message,
+						stack: testError.stack,
+						cause: {
+							name: parentError.name,
+							message: parentError.message,
+							stack: parentError.stack,
+							cause: parentError.cause,
+						},
+					},
+				},
+			});
+		});
+
+		test('do not recurse indefinitely when `cause` contains circular references', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Test Message';
+			const parentError = new Error('Parent', { cause: 'just a string' });
+			const childError = new Error('Test', { cause: parentError });
+			parentError.cause = childError;
+			const testMetadata = { error: childError };
+
+			// ACT
+			logger.info(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			expect(() => JSON.parse(output)).not.toThrow();
+			const parsedOutput = JSON.parse(output);
+
+			expect(parsedOutput).toMatchObject({
+				message: testMessage,
+				metadata: {
+					error: {
+						name: childError.name,
+						message: childError.message,
+						stack: childError.stack,
+						cause: {
+							name: parentError.name,
+							message: parentError.message,
+							stack: parentError.stack,
+						},
+					},
+				},
+			});
+		});
+	});
+
 	describe('transports', () => {
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
 		test('if `console` selected, should set console transport', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
@@ -57,29 +256,93 @@ describe('Logger', () => {
 			expect(transport.constructor.name).toBe('Console');
 		});
 
-		test('if `file` selected, should set file transport', () => {
-			const globalConfig = mock<GlobalConfig>({
-				logging: {
-					level: 'info',
-					outputs: ['file'],
-					scopes: [],
-					file: {
-						fileSizeMax: 100,
-						fileCountMax: 16,
-						location: 'logs/n8n.log',
+		describe('`file`', () => {
+			test('should set file transport', () => {
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: {
+							fileSizeMax: 100,
+							fileCountMax: 16,
+							location: 'logs/n8n.log',
+						},
 					},
-				},
+				});
+
+				const logger = new Logger(
+					globalConfig,
+					mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }),
+				);
+
+				const { transports } = logger.getInternalLogger();
+
+				expect(transports).toHaveLength(1);
+
+				const [transport] = transports;
+
+				expect(transport.constructor.name).toBe('File');
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
+			test('should accept absolute paths', () => {
+				// ARRANGE
+				const location = '/tmp/n8n.log';
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: { fileSizeMax: 100, fileCountMax: 16, location },
+					},
+				});
+				const OriginalFile = winston.transports.File;
+				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+					return new OriginalFile(...args);
+				});
 
-			const { transports } = logger.getInternalLogger();
+				// ACT
+				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
 
-			expect(transports).toHaveLength(1);
+				// ASSERT
+				const fileOptionsCaptor = captor<string>();
 
-			const [transport] = transports;
+				expect(FileSpy).toHaveBeenCalledTimes(1);
+				expect(FileSpy).toHaveBeenCalledWith(fileOptionsCaptor);
+				expect(fileOptionsCaptor.value).toMatchObject({ filename: location });
+			});
 
-			expect(transport.constructor.name).toBe('File');
+			test('should accept relative paths', () => {
+				// ARRANGE
+				const location = 'tmp/n8n.log';
+				const n8nFolder = '/tmp/n8n';
+				const globalConfig = mock<GlobalConfig>({
+					logging: {
+						level: 'info',
+						outputs: ['file'],
+						scopes: [],
+						file: {
+							fileSizeMax: 100,
+							fileCountMax: 16,
+							location,
+						},
+					},
+				});
+				const OriginalFile = winston.transports.File;
+				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
+					return new OriginalFile(...args);
+				});
+
+				// ACT
+				new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder }));
+
+				// ASSERT
+				const fileOptionsCaptor = captor<string>();
+
+				expect(FileSpy).toHaveBeenCalledTimes(1);
+				expect(FileSpy).toHaveBeenCalledWith(fileOptionsCaptor);
+				expect(fileOptionsCaptor.value).toMatchObject({ filename: `${n8nFolder}/${location}` });
+			});
 		});
 	});
 

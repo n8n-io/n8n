@@ -12,7 +12,7 @@ export const schemaTypeField: INodeProperties = {
 			description: 'Generate a schema from an example JSON object',
 		},
 		{
-			name: 'Define Below',
+			name: 'Define using JSON Schema',
 			value: 'manual',
 			description: 'Define the JSON schema manually',
 		},
@@ -71,6 +71,7 @@ export const buildInputSchemaField = (props?: {
 		},
 	},
 	description: 'Schema to use for the function',
+	hint: 'Use <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format (<a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">examples</a>). $refs syntax is currently not supported.',
 });
 
 export const inputSchemaField = buildInputSchemaField();

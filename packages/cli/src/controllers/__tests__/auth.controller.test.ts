@@ -10,6 +10,7 @@ import * as auth from '@/auth';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
@@ -32,6 +33,7 @@ describe('AuthController', () => {
 	mockInstance(UserRepository);
 	mockInstance(PostHogClient);
 	mockInstance(License);
+	const ldapService = mockInstance(LdapService);
 	const controller = Container.get(AuthController);
 	const userService = Container.get(UserService);
 	const authService = Container.get(AuthService);
@@ -65,7 +67,7 @@ describe('AuthController', () => {
 
 			mockedAuth.handleEmailLogin.mockResolvedValue(member);
 
-			mockedAuth.handleLdapLogin.mockResolvedValue(member);
+			ldapService.handleLdapLogin.mockResolvedValue(member);
 
 			config.set('userManagement.authenticationMethod', 'ldap');
 
@@ -79,7 +81,8 @@ describe('AuthController', () => {
 				body.emailOrLdapLoginId,
 				body.password,
 			);
-			expect(mockedAuth.handleLdapLogin).toHaveBeenCalledWith(
+
+			expect(ldapService.handleLdapLogin).toHaveBeenCalledWith(
 				body.emailOrLdapLoginId,
 				body.password,
 			);

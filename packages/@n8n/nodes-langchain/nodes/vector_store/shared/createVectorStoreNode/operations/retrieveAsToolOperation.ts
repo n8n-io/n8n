@@ -3,7 +3,7 @@ import type { VectorStore } from '@langchain/core/vectorstores';
 import { DynamicTool } from 'langchain/tools';
 import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 
-import { getMetadataFiltersValues } from '@utils/helpers';
+import { getMetadataFiltersValues, nodeNameToToolName } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
@@ -20,7 +20,14 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 ): Promise<SupplyData> {
 	// Get the tool configuration parameters
 	const toolDescription = context.getNodeParameter('toolDescription', itemIndex) as string;
-	const toolName = context.getNodeParameter('toolName', itemIndex) as string;
+
+	const node = context.getNode();
+	const { typeVersion } = node;
+	const toolName =
+		typeVersion < 1.3
+			? (context.getNodeParameter('toolName', itemIndex) as string)
+			: nodeNameToToolName(node);
+
 	const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
 	const includeDocumentMetadata = context.getNodeParameter(
 		'includeDocumentMetadata',

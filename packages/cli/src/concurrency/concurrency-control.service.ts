@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { capitalize } from 'lodash';
+import capitalize from 'lodash/capitalize';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
 import config from '@/config';

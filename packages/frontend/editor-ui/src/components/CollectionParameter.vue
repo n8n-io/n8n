@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

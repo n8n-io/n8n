@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';

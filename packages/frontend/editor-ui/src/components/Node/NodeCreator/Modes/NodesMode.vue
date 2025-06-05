@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { computed } from 'vue';
 import type {
 	ActionTypeDescription,

@@ -8,7 +8,7 @@ import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
 import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import type { TestingPinia } from '@pinia/testing';
 
 export type RenderComponent = Parameters<typeof render>[0];
