@@ -2,12 +2,15 @@ import { computed, ref } from 'vue';
 import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
-import * as eventsApi from '@/api/events';
+import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { INSECURE_CONNECTION_WARNING } from '@/constants';
+import {
+	INSECURE_CONNECTION_WARNING,
+	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
@@ -16,7 +19,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useLocalStorage } from '@vueuse/core';
@@ -381,6 +384,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		settings.value = {} as FrontendSettings;
 	};
 
+	/**
+	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
+	 */
+	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
+		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
+		0,
+		{ writeDefaults: false },
+	);
+
 	return {
 		settings,
 		userManagement,
@@ -445,6 +457,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		isNewLogsEnabled,
+		experimental__minZoomNodeSettingsInCanvas,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

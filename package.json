@@ -3,10 +3,10 @@
   "version": "1.97.0",
   "private": true,
   "engines": {
-    "node": ">=20.15",
+    "node": ">=22.16",
     "pnpm": ">=10.2.1"
   },
-  "packageManager": "pnpm@10.2.1",
+  "packageManager": "pnpm@10.11.1",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -51,6 +51,7 @@
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
+    "babel-plugin-transform-import-meta": "^2.3.2",
     "cross-env": "^7.0.3",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
@@ -69,7 +70,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.5.3",
+    "turbo": "2.5.4",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -79,7 +80,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
-      "@types/node": "^18.16.16",
+      "@types/node": "^20.17.50",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "pug": "^3.0.3",
@@ -94,6 +95,7 @@
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
+      "pdfjs-dist@5.3.31": "patches/pdfjs-dist@5.3.31.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
       "@types/ws@8.18.1": "patches/@types__ws@8.18.1.patch",

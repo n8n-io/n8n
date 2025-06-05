@@ -45,7 +45,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 	private readonly leaderKeyTtl = this.globalConfig.multiMainSetup.ttl;
 
-	private leaderCheckInterval: NodeJS.Timer | undefined;
+	private leaderCheckInterval: NodeJS.Timeout | undefined;
 
 	async init() {
 		const prefix = config.getEnv('redis.prefix');
