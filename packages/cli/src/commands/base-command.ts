@@ -36,8 +36,6 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
-const enterpriseModules = ['external-secrets'];
-
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
@@ -88,11 +86,7 @@ export abstract class BaseCommand extends Command {
 					instance: this.instanceSettings,
 				})
 			) {
-				const resolvedModuleName = enterpriseModules.includes(moduleName)
-					? `${moduleName}.ee`
-					: moduleName;
-				const modulePath = `../modules/${resolvedModuleName}/${moduleName}.module`;
-				await import(modulePath);
+				await import(`../modules/${moduleName}/${moduleName}.module`);
 
 				this.modulesConfig.addLoadedModule(moduleName);
 				this.logger.debug(`Loaded module "${moduleName}"`);
