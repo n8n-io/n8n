@@ -25,7 +25,6 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ModuleRegistry } from '@/modules/module-registry';
@@ -87,7 +86,6 @@ export abstract class BaseCommand extends Command {
 					instance: this.instanceSettings,
 				})
 			) {
-				// register module in the registry for the dependency injection
 				await import(`../modules/${moduleName}/${moduleName}.module`);
 
 				this.modulesConfig.addLoadedModule(moduleName);
@@ -273,11 +271,6 @@ export abstract class BaseCommand extends Command {
 				this.logger.error('Could not activate license', { error });
 			}
 		}
-	}
-
-	async initExternalSecrets() {
-		const secretsManager = Container.get(ExternalSecretsManager);
-		await secretsManager.init();
 	}
 
 	initWorkflowHistory() {

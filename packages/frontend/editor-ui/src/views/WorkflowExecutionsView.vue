@@ -26,7 +26,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations({ router });
+const { initializeWorkspace } = useCanvasOperations();
 
 const loading = ref(false);
 const loadingMore = ref(false);
