@@ -250,10 +250,6 @@ export const setupTestServer = ({
 						await import('@/controllers/tags.controller');
 						break;
 
-					case 'externalSecrets':
-						await import('@/external-secrets.ee/external-secrets.controller.ee');
-						break;
-
 					case 'workflowHistory':
 						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
@@ -292,8 +288,11 @@ export const setupTestServer = ({
 					case 'folder':
 						await import('@/controllers/folder.controller');
 
+					case 'externalSecrets':
+						await import('@/modules/external-secrets.ee/external-secrets.ee.module');
+
 					case 'insights':
-						await import('@/modules/insights/insights.controller');
+						await import('@/modules/insights/insights.module');
 				}
 			}
 
