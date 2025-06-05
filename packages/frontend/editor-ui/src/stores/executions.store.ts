@@ -7,6 +7,7 @@ import type {
 	ExecutionSummaryWithScopes,
 	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
+	IExecutionMetadataKey,
 	IExecutionResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
@@ -179,6 +180,21 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	async function fetchAvailableMetadataKeys() {
+		const filter = executionsFilters.value;
+
+		const data = await makeRestApiRequest<IExecutionMetadataKey[]>(
+			rootStore.restApiContext,
+			'GET',
+			'/executions/metadata/keys',
+			{
+				...(filter ? { filter } : {}),
+			},
+		);
+
+		return data;
+	}
+
 	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
 			rootStore.restApiContext,
@@ -304,6 +320,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		activeExecution,
 		fetchExecutions,
 		fetchExecution,
+		fetchAvailableMetadataKeys,
 		autoRefresh,
 		autoRefreshTimeout,
 		startAutoRefreshInterval,

@@ -7,6 +7,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import type {
 	ExecutionFilterMetadata,
 	ExecutionFilterType,
+	IExecutionMetadataKey,
 	IWorkflowDb,
 	IWorkflowShortResponse,
 } from '@/Interface';
@@ -14,7 +15,8 @@ import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
-import { computed, onBeforeMount, reactive, ref } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -25,6 +27,7 @@ export type ExecutionFilterProps = {
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
+const executionsStore = useExecutionsStore();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
@@ -41,6 +44,9 @@ const emit = defineEmits<{
 const debouncedEmit = debounce(emit, {
 	debounceTime: 500,
 });
+
+const loadingMetadata = ref(false);
+const availableKeys = ref<IExecutionMetadataKey[]>([]);
 
 const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(
@@ -156,6 +162,30 @@ const onFilterReset = () => {
 const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
+
+const fetchAvailableKeys = async () => {
+	loadingMetadata.value = true;
+	const keys = await executionsStore.fetchAvailableMetadataKeys();
+	loadingMetadata.value = false;
+
+	availableKeys.value = keys;
+};
+
+watch(
+	() => executionsStore.executionsFilters,
+	debounce(
+		() =>
+			setTimeout(() => {
+				if (isAdvancedExecutionFilterEnabled.value) {
+					fetchAvailableKeys();
+				} else {
+					availableKeys.value = [];
+				}
+			}, 0),
+		{ debounceTime: 1000 },
+	),
+	{ immediate: true },
+);
 
 onBeforeMount(() => {
 	isCustomDataFilterTracked.value = false;
@@ -321,16 +351,27 @@ onBeforeMount(() => {
 								</template>
 							</i18n-t>
 						</template>
-						<n8n-input
-							id="execution-filter-saved-data-key"
-							name="execution-filter-saved-data-key"
-							type="text"
+						<n8n-select
+							:model-value="filter.metadata[0]?.key"
+							:loading="loadingMetadata"
 							:disabled="!isAdvancedExecutionFilterEnabled"
 							:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-							:model-value="filter.metadata[0]?.key"
+							:no-data-text="locale.baseText('executionsFilter.customData.noKeysData')"
+							filterable
+							allow-create
+							:empty-values="[null, undefined]"
 							data-test-id="execution-filter-saved-data-key-input"
+							option-label="label"
+							option-value="key"
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
-						/>
+						>
+							<el-option
+								v-for="item in availableKeys"
+								:key="item.key"
+								:label="item.label"
+								:value="item.key"
+							/>
+						</n8n-select>
 					</n8n-tooltip>
 					<div :class="$style.checkboxWrapper">
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">

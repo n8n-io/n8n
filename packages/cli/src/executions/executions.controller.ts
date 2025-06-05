@@ -75,6 +75,32 @@ export class ExecutionsController {
 		return executions;
 	}
 
+	@Get('/metadata/keys', { middlewares: [parseRangeQuery] })
+	async getMetadataKeys(req: ExecutionRequest.GetMetadataKeys) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (accessibleWorkflowIds.length === 0) return { keys: [] };
+
+		const { rangeQuery: query } = req;
+
+		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
+			return { keys: [] };
+		}
+
+		delete query.metadata;
+
+		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
+			delete query.annotationTags;
+		}
+
+		const keys = await this.executionService.findAvailableMetadataKeys(
+			query,
+			accessibleWorkflowIds,
+		);
+
+		return keys;
+	}
+
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		if (!isPositiveInteger(req.params.id)) {

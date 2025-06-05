@@ -888,6 +888,7 @@
 	"executionsFilter.customData.inputTooltip.link": "View plans",
 	"executionsFilter.customData.docsTooltip": "Filter executions by data you have saved in them using an ‘Execution Data’ node. {link}",
 	"executionsFilter.customData.docsTooltip.link": "More info",
+	"executionsFilter.customData.noKeysData": "No highlighted keys found in executions",
 	"expressionEdit.anythingInside": "Anything inside ",
 	"expressionEdit.isJavaScript": " is JavaScript.",
 	"expressionEdit.learnMore": "Learn more",

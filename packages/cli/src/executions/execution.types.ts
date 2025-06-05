@@ -43,6 +43,10 @@ export declare namespace ExecutionRequest {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
 
+	type GetMetadataKeys = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
+		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
+	};
+
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;

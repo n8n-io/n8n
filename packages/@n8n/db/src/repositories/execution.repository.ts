@@ -6,6 +6,7 @@ import type {
 	FindOneOptions,
 	FindOperator,
 	FindOptionsWhere,
+	ObjectLiteral,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import {
@@ -73,8 +74,8 @@ export interface IGetExecutionsQueryFilter {
 	startedBefore?: string;
 }
 
-function parseFiltersToQueryBuilder(
-	qb: SelectQueryBuilder<ExecutionEntity>,
+function parseFiltersToQueryBuilder<T extends ObjectLiteral>(
+	qb: SelectQueryBuilder<T>,
 	filters?: IGetExecutionsQueryFilter,
 ) {
 	if (filters?.status) {
@@ -937,6 +938,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			return -1;
 		}
+	}
+
+	async findAvailableMetadataKeys(
+		filters: IGetExecutionsQueryFilter | undefined,
+		accessibleWorkflowIds: string[],
+	): Promise<{ key: string }[]> {
+		const query = this.createQueryBuilder('execution')
+			.select('DISTINCT md.key AS key')
+			.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id')
+			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds })
+			.orderBy('md.key', 'ASC');
+
+		// Disallow filtering by metadata
+		delete filters?.metadata;
+
+		parseFiltersToQueryBuilder(query, filters);
+
+		const keys = await query.getRawMany<{ key: string }>();
+
+		return keys.map(({ key }) => ({ key, label: key === null ? 'null' : key })) ?? [];
 	}
 
 	private toQueryBuilder(query: ExecutionSummaries.Query) {

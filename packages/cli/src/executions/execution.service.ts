@@ -409,6 +409,13 @@ export class ExecutionService {
 		};
 	}
 
+	async findAvailableMetadataKeys(
+		query: ExecutionSummaries.RangeQuery,
+		accessibleWorkflowIds: string[],
+	) {
+		return await this.executionRepository.findAvailableMetadataKeys(query, accessibleWorkflowIds);
+	}
+
 	async findAllEnqueuedExecutions() {
 		return await this.executionRepository.findMultipleExecutions(
 			{

@@ -474,6 +474,11 @@ export interface IExecutionFlatted extends IExecutionBase {
 	workflowData: IWorkflowDb;
 }
 
+export interface IExecutionMetadataKey {
+	key: string;
+	label: string;
+}
+
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 }
