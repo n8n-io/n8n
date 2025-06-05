@@ -495,7 +495,6 @@ onMounted(() => {
 .project-name {
 	display: flex;
 	gap: var(--spacing-2xs);
-	align-items: center;
 
 	.project-name-input {
 		flex: 1;
