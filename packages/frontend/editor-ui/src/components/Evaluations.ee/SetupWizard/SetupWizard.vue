@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nText, N8nButton, N8nCallout } from '@n8n/design-system';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';

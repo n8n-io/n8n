@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';
@@ -39,7 +39,7 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
-const { startChat } = useCanvasOperations({ router });
+const { startChat } = useCanvasOperations();
 
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);

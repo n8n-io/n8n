@@ -64,7 +64,9 @@ import {
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
-import { findLast, pick, isEqual } from 'lodash-es';
+import findLast from 'lodash/findLast';
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';
@@ -73,11 +75,12 @@ import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
+import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
+import { unflattenExecutionData } from '@/utils/executionUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -85,7 +88,6 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -123,8 +125,7 @@ let cachedWorkflow: Workflow | null = null;
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
@@ -334,14 +335,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
 
-	function isNodeInOutgoingNodeConnections(rootNodeName: string, searchNodeName: string): boolean {
+	function isNodeInOutgoingNodeConnections(
+		rootNodeName: string,
+		searchNodeName: string,
+		depth = -1,
+	): boolean {
+		if (depth === 0) return false;
 		const firstNodeConnections = outgoingConnectionsByNodeName(rootNodeName);
 		if (!firstNodeConnections?.main?.[0]) return false;
 
 		const connections = firstNodeConnections.main[0];
 		if (connections.some((node) => node.node === searchNodeName)) return true;
 
-		return connections.some((node) => isNodeInOutgoingNodeConnections(node.node, searchNodeName));
+		return connections.some((node) =>
+			isNodeInOutgoingNodeConnections(node.node, searchNodeName, depth - 1),
+		);
 	}
 
 	function getWorkflowById(id: string): IWorkflowDb {

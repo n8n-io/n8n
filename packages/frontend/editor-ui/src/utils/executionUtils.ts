@@ -8,14 +8,21 @@ import type {
 	IRunData,
 	ExecutionError,
 } from 'n8n-workflow';
-import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
+import type {
+	ExecutionFilterType,
+	ExecutionsQueryFilter,
+	IExecutionFlattedResponse,
+	IExecutionResponse,
+	INodeUi,
+} from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import { parse } from 'flatted';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -103,7 +110,7 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export function displayForm({
+export async function displayForm({
 	nodes,
 	runData,
 	pinData,
@@ -137,6 +144,14 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
+
+			try {
+				const res = await fetch(testUrl, { method: 'GET' });
+				if (!res.ok) continue;
+			} catch (error) {
+				continue;
+			}
+
 			if (testUrl && source !== 'RunData.ManualChatMessage') {
 				clearPopupWindowState();
 				openFormPopupWindow(testUrl);
@@ -277,7 +292,10 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 export function getExecutionErrorMessage({
 	error,
 	lastNodeExecuted,
-}: { error?: ExecutionError; lastNodeExecuted?: string }): string {
+}: {
+	error?: ExecutionError;
+	lastNodeExecuted?: string;
+}): string {
 	let errorMessage: string;
 
 	if (lastNodeExecuted && error) {
@@ -312,7 +330,10 @@ export function getExecutionErrorMessage({
 export function getExecutionErrorToastConfiguration({
 	error,
 	lastNodeExecuted,
-}: { error: ExecutionError; lastNodeExecuted?: string }) {
+}: {
+	error: ExecutionError;
+	lastNodeExecuted?: string;
+}) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
 	if (error.name === 'SubworkflowOperationError') {
@@ -341,4 +362,26 @@ export function getExecutionErrorToastConfiguration({
 			: 'Problem executing workflow',
 		message,
 	};
+}
+
+/**
+ * Unflattens the Execution data.
+ *
+ * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
+ */
+export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
+	// Unflatten the data
+	const returnData: IExecutionResponse = {
+		...fullExecutionData,
+		workflowData: fullExecutionData.workflowData,
+		data: parse(fullExecutionData.data),
+	};
+
+	returnData.finished = returnData.finished ? returnData.finished : false;
+
+	if (fullExecutionData.id) {
+		returnData.id = fullExecutionData.id;
+	}
+
+	return returnData;
 }

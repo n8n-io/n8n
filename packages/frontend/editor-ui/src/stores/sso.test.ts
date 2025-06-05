@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 

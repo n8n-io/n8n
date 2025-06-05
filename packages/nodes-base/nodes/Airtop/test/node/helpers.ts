@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import type {
 	IDataObject,

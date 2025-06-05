@@ -18,7 +18,7 @@ import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
@@ -76,7 +76,13 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 } from 'n8n-workflow';
-import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
+import type {
+	NodeConnectionType,
+	IDataObject,
+	ExecutionSummary,
+	IConnection,
+	INodeParameters,
+} from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -123,6 +129,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
@@ -154,7 +161,8 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
+const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -195,6 +203,7 @@ const {
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
+	revertReplaceNodeParameters,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
@@ -229,7 +238,8 @@ const {
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
-} = useCanvasOperations({ router });
+} = useCanvasOperations();
+const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 
@@ -635,6 +645,10 @@ function onTidyUp(event: CanvasLayoutEvent) {
 	tidyUp(event);
 }
 
+function onExtractWorkflow(nodeIds: string[]) {
+	void extractWorkflow(nodeIds);
+}
+
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
 }
@@ -805,7 +819,7 @@ async function onSaveWorkflow() {
 	if (workflowIsSaved || workflowIsArchived) {
 		return;
 	}
-	const saved = await workflowHelpers.saveCurrentWorkflow();
+	const saved = await workflowSaving.saveCurrentWorkflow();
 	if (saved) {
 		canvasEventBus.emit('saved:workflow');
 	}
@@ -843,6 +857,13 @@ function onRenameNode(parameterData: IUpdateInformation) {
 
 async function onOpenRenameNodeModal(id: string) {
 	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+
+	const activeElement = document.activeElement;
+
+	if (activeElement && activeElement.tagName === 'INPUT') {
+		// If an input is focused, do not open the rename modal
+		return;
+	}
 
 	if (!keyBindingsEnabled.value || document.querySelector('.rename-prompt')) return;
 
@@ -889,6 +910,18 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+async function onRevertReplaceNodeParameters({
+	nodeId,
+	currentProperties,
+	newProperties,
+}: {
+	nodeId: string;
+	currentProperties: INodeParameters;
+	newProperties: INodeParameters;
+}) {
+	await revertReplaceNodeParameters(nodeId, currentProperties, newProperties);
 }
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -1400,6 +1433,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
+	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1410,6 +1444,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
+	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1977,6 +2012,7 @@ onBeforeUnmount(() => {
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
+		@extract-workflow="onExtractWorkflow"
 		@start-chat="startChat()"
 	>
 		<Suspense>

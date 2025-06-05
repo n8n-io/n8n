@@ -3,7 +3,7 @@ import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -35,7 +35,8 @@ import {
 	SOURCE_CONTROL_FILE_TYPE,
 	SOURCE_CONTROL_FILE_LOCATION,
 } from '@n8n/api-types';
-import { orderBy, groupBy } from 'lodash-es';
+import groupBy from 'lodash/groupBy';
+import orderBy from 'lodash/orderBy';
 import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 

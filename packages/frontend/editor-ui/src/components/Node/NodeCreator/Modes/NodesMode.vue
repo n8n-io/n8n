@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { computed } from 'vue';
 import type {
 	ActionTypeDescription,
@@ -17,7 +17,7 @@ import {
 	HITL_SUBCATEGORY,
 } from '@/constants';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
@@ -32,7 +32,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
 

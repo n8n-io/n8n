@@ -16,7 +16,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import { useFolders } from '@/composables/useFolders';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -55,6 +55,7 @@ import {
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
+	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -62,9 +63,9 @@ import {
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { PROJECT_ROOT } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
@@ -139,8 +140,6 @@ const currentSort = ref('updatedAt:desc');
 const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
-
-const isNameEditEnabled = ref(false);
 
 /**
  * Folder actions
@@ -282,7 +281,6 @@ const workflowListResources = computed<Resource[]>(() => {
 				createdAt: resource.createdAt.toString(),
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
-				sharedWithProjects: resource.sharedWithProjects,
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
@@ -435,7 +433,9 @@ onMounted(async () => {
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
+	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
 });
 
 onBeforeUnmount(() => {
@@ -443,7 +443,9 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
+	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
 });
 
 /**
@@ -1082,7 +1084,6 @@ const createFolder = async (
 							createdAt: newFolder.createdAt,
 							updatedAt: newFolder.updatedAt,
 							homeProject: projectsStore.currentProject as ProjectSharingData,
-							sharedWithProjects: [],
 							workflowCount: 0,
 							subFolderCount: 0,
 						},
@@ -1180,11 +1181,12 @@ const moveFolder = async (payload: {
 	};
 }) => {
 	if (!route.params.projectId) return;
+
 	try {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
 			payload.folder.id,
-			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
+			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
@@ -1192,7 +1194,7 @@ const moveFolder = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
@@ -1203,7 +1205,10 @@ const moveFolder = async (payload: {
 			toast.showToast({
 				title: i18n.baseText('folders.move.success.title'),
 				message: i18n.baseText('folders.move.success.message', {
-					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+					interpolate: {
+						folderName: payload.folder.name,
+						newFolderName: payload.newParent.name,
+					},
 				}),
 				onClick: (event: MouseEvent | undefined) => {
 					if (event?.target instanceof HTMLAnchorElement) {
@@ -1222,10 +1227,94 @@ const moveFolder = async (payload: {
 	}
 };
 
+const onFolderTransferred = async (payload: {
+	source: {
+		projectId: string;
+		folder: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
+	shareCredentials?: string[];
+}) => {
+	try {
+		await foldersStore.moveFolderToProject(
+			payload.source.projectId,
+			payload.source.folder.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
+
+		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: {
+				projectId: payload.destination.canAccess
+					? payload.destination.projectId
+					: payload.source.projectId,
+				folderId: payload.destination.canAccess ? payload.source.folder.id : undefined,
+			},
+		}).href;
+
+		if (isCurrentFolder) {
+			if (payload.destination.canAccess) {
+				// If we just moved the current folder and can access the destination navigate there
+				void router.push(newFolderURL);
+			} else {
+				// Otherwise navigate to the workflows page of the source project
+				void router.push({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: {
+						projectId: payload.source.projectId,
+					},
+				});
+			}
+		} else {
+			await refreshWorkflows();
+
+			if (payload.destination.canAccess) {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.message', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					onClick: (event: MouseEvent | undefined) => {
+						if (event?.target instanceof HTMLAnchorElement) {
+							event.preventDefault();
+							void router.push(newFolderURL);
+						}
+					},
+					type: 'success',
+				});
+			} else {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.messageNoAccess', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					type: 'success',
+				});
+			}
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	}
+};
+
 const moveWorkflowToFolder = async (payload: {
 	id: string;
 	name: string;
 	parentFolderId?: string;
+	sharedWithProjects?: ProjectSharingData[];
 }) => {
 	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
@@ -1236,9 +1325,77 @@ const moveWorkflowToFolder = async (payload: {
 	}
 	uiStore.openMoveToFolderModal(
 		'workflow',
-		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
+		{
+			id: payload.id,
+			name: payload.name,
+			parentFolderId: payload.parentFolderId,
+			sharedWithProjects: payload.sharedWithProjects,
+		},
 		workflowListEventBus,
 	);
+};
+
+const onWorkflowTransferred = async (payload: {
+	source: {
+		projectId: string;
+		workflow: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
+	shareCredentials?: string[];
+}) => {
+	try {
+		await projectsStore.moveResourceToProject(
+			'workflow',
+			payload.source.workflow.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
+
+		await refreshWorkflows();
+
+		if (payload.destination.canAccess) {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.message', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push({
+							name: VIEWS.PROJECTS_FOLDERS,
+							params: {
+								projectId: payload.destination.projectId,
+								folderId: payload.destination.parentFolder.id,
+							},
+						});
+					}
+				},
+				type: 'success',
+			});
+		} else {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.messageNoAccess', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	}
 };
 
 const onWorkflowMoved = async (payload: {
@@ -1254,14 +1411,14 @@ const onWorkflowMoved = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
+			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 			versionId: workflowResource?.versionId,
 		});
 		if (!payload.options?.skipFetch) {
@@ -1270,7 +1427,10 @@ const onWorkflowMoved = async (payload: {
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
-				interpolate: { workflowName: payload.workflow.name, newFolderName: payload.newParent.name },
+				interpolate: {
+					workflowName: payload.workflow.name,
+					newFolderName: payload.newParent.name,
+				},
 			}),
 			onClick: (event: MouseEvent | undefined) => {
 				if (event?.target instanceof HTMLAnchorElement) {
@@ -1300,17 +1460,16 @@ const onCreateWorkflowClick = () => {
 	});
 };
 
-const onNameToggle = () => {
-	isNameEditEnabled.value = !isNameEditEnabled.value;
-};
+const renameInput = useTemplateRef('renameInput');
+function onNameToggle() {
+	setTimeout(() => {
+		if (renameInput.value?.forceFocus) {
+			renameInput.value.forceFocus();
+		}
+	}, 0);
+}
 
-const onNameSubmit = async ({
-	name,
-	onSubmit,
-}: {
-	name: string;
-	onSubmit: (saved: boolean) => void;
-}) => {
+const onNameSubmit = async (name: string) => {
 	if (!currentFolder.value || !currentProject.value) return;
 
 	const newName = name.trim();
@@ -1321,14 +1480,11 @@ const onNameSubmit = async ({
 			type: 'error',
 		});
 
-		onSubmit(false);
 		return;
 	}
 
 	if (newName === currentFolder.value.name) {
-		isNameEditEnabled.value = false;
-
-		onSubmit(true);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
@@ -1339,7 +1495,7 @@ const onNameSubmit = async ({
 			message: validationResult,
 			type: 'error',
 		});
-		onSubmit(false);
+		renameInput.value?.forceCancel();
 		return;
 	} else {
 		try {
@@ -1354,11 +1510,9 @@ const onNameSubmit = async ({
 			telemetry.track('User renamed folder', {
 				folder_id: currentFolder.value.id,
 			});
-			isNameEditEnabled.value = false;
-			onSubmit(true);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.rename.error.title'));
-			onSubmit(false);
+			renameInput.value?.forceCancel();
 		}
 	}
 };
@@ -1492,17 +1646,16 @@ const onNameSubmit = async ({
 				>
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
-						<InlineTextEdit
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="currentFolder?.id"
 							data-test-id="breadcrumbs-item-current"
-							:model-value="currentFolder.name"
-							:preview-value="currentFolder.name"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="30"
-							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
-							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
 							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
+							:model-value="currentFolder.name"
+							:max-length="30"
+							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							@update:model-value="onNameSubmit"
 						/>
 					</template>
 				</FolderBreadcrumbs>
@@ -1825,12 +1978,13 @@ const onNameSubmit = async ({
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .name {
 	color: $custom-font-dark;
 	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .pointer-disabled {

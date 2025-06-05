@@ -11,8 +11,9 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 const props = defineProps<{
 	modalName: string;
@@ -27,7 +28,8 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowSaving = useWorkflowSaving({ router });
+const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -103,7 +105,7 @@ const save = async (): Promise<void> => {
 			);
 		}
 
-		const saved = await workflowHelpers.saveAsNewWorkflow({
+		const saved = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
 			data: workflowToUpdate,
 			tags: currentTagIds.value,

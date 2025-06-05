@@ -66,3 +66,23 @@ export const getProjectRelations = async ({
 		where: { projectId, userId, role },
 	});
 };
+
+export const getProjectRoleForUser = async (
+	projectId: string,
+	userId: string,
+): Promise<ProjectRole | undefined> => {
+	return (
+		await Container.get(ProjectRelationRepository).findOne({
+			select: ['role'],
+			where: { projectId, userId },
+		})
+	)?.role;
+};
+
+export const getAllProjectRelations = async ({
+	projectId,
+}: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
+	return await Container.get(ProjectRelationRepository).find({
+		where: { projectId },
+	});
+};

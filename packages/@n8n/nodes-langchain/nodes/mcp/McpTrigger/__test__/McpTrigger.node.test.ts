@@ -2,20 +2,20 @@ import { jest } from '@jest/globals';
 import type { Tool } from '@langchain/core/tools';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
-import type { McpServer } from '../McpServer';
+import * as helpers from '@utils/helpers';
+
+import type { McpServerManager } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
 const mockTool = mock<Tool>({ name: 'mockTool' });
-jest.mock('@utils/helpers', () => ({
-	getConnectedTools: jest.fn().mockImplementation(() => [mockTool]),
-}));
+jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mockTool]);
 
-const mockServer = mock<McpServer>();
+const mockServerManager = mock<McpServerManager>();
 jest.mock('../McpServer', () => ({
-	McpServerSingleton: {
-		instance: jest.fn().mockImplementation(() => mockServer),
+	McpServerManager: {
+		instance: jest.fn().mockImplementation(() => mockServerManager),
 	},
 }));
 
@@ -30,9 +30,12 @@ describe('McpTrigger Node', () => {
 		jest.clearAllMocks();
 
 		mcpTrigger = new McpTrigger();
-
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
+		mockContext.getNode.mockReturnValue({
+			name: 'McpTrigger',
+			typeVersion: 1.1,
+		} as INode);
 	});
 
 	describe('webhook method', () => {
@@ -44,7 +47,8 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that the connectTransport method was called with correct URL
-			expect(mockServer.connectTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+				'McpTrigger',
 				'/custom-path/messages',
 				mockResponse,
 			);
@@ -58,13 +62,13 @@ describe('McpTrigger Node', () => {
 			mockContext.getWebhookName.mockReturnValue('default');
 
 			// Mock that the server executes a tool and returns true
-			mockServer.handlePostMessage.mockResolvedValueOnce(true);
+			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that handlePostMessage was called with request, response and tools
-			expect(mockServer.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
+			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
 				mockTool,
 			]);
 
@@ -80,13 +84,50 @@ describe('McpTrigger Node', () => {
 			mockContext.getWebhookName.mockReturnValue('default');
 
 			// Mock that the server doesn't execute a tool and returns false
-			mockServer.handlePostMessage.mockResolvedValueOnce(false);
+			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify the returned result when no tool was called
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should pass the correct server name to McpServerSingleton.instance for version > 1', async () => {
+			// Configure node with version > 1 and custom name
+			mockContext.getNode.mockReturnValue({
+				name: 'My custom MCP server!',
+				typeVersion: 1.1,
+			} as INode);
+			mockContext.getWebhookName.mockReturnValue('setup');
+
+			// Call the webhook method
+			await mcpTrigger.webhook(mockContext);
+
+			// Verify that connectTransport was called with the sanitized server name
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+				'My_custom_MCP_server_',
+				'/custom-path/messages',
+				mockResponse,
+			);
+		});
+
+		it('should use default server name for version 1', async () => {
+			// Configure node with version 1
+			mockContext.getNode.mockReturnValue({
+				typeVersion: 1,
+			} as INode);
+			mockContext.getWebhookName.mockReturnValue('setup');
+
+			// Call the webhook method
+			await mcpTrigger.webhook(mockContext);
+
+			// Verify that connectTransport was called with the default server name
+			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+				'n8n-mcp-server',
+				'/custom-path/messages',
+				mockResponse,
+			);
 		});
 	});
 });

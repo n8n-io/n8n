@@ -15,7 +15,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 
@@ -505,8 +505,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
-	min-width: $sidebar-expanded-width;
-	max-width: 244px;
+	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {

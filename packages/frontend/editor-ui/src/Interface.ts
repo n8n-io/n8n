@@ -178,15 +178,6 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
-	};
-}
-
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
@@ -373,7 +364,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -387,11 +377,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -1183,11 +1177,6 @@ export interface CommunityNodesState {
 	installedPackages: CommunityPackageMap;
 }
 
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
-}
-
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;
@@ -1350,6 +1339,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';

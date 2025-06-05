@@ -7,10 +7,13 @@ import type { IDataObject } from 'n8n-workflow';
 import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { EventService } from '@/events/event.service';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
-import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';
-import type { ExternalSecretsSettings, SecretsProviderState } from '@/external-secrets.ee/types';
 import { License } from '@/license';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import type {
+	ExternalSecretsSettings,
+	SecretsProviderState,
+} from '@/modules/external-secrets.ee/types';
 
 import {
 	DummyProvider,
