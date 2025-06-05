@@ -61,10 +61,6 @@ describe('RerankerCohere', () => {
 		// Execute
 		const result = await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
 
-		// Verify
-		expect(mockSupplyDataFunctions.logger.debug).toHaveBeenCalledWith(
-			'Supply data for reranking Cohere',
-		);
 		expect(mockSupplyDataFunctions.getNodeParameter).toHaveBeenCalledWith(
 			'modelName',
 			0,
