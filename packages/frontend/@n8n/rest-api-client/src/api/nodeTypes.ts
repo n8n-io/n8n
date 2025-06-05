@@ -5,19 +5,20 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IRestApiContext } from '@/Interface';
 import type { INodeTranslationHeaders } from '@n8n/i18n';
 import axios from 'axios';
-import {
-	type INodeListSearchResult,
-	type INodePropertyOptions,
-	type INodeTypeDescription,
-	type INodeTypeNameVersion,
-	type NodeParameterValueType,
-	type ResourceMapperFields,
-	sleep,
+import type {
+	INodeListSearchResult,
+	INodePropertyOptions,
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+	NodeParameterValueType,
+	ResourceMapperFields,
 } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
+
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 
 async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {

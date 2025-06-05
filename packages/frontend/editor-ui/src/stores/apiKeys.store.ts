@@ -2,7 +2,7 @@ import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import * as publicApiApi from '@/api/api-keys';
+import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
 import { computed, ref } from 'vue';
 import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
