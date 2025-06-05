@@ -1,5 +1,6 @@
-import type { IRestApiContext, IN8nPrompts, IN8nPromptResponse } from '../Interface';
-import { makeRestApiRequest, get, post } from '@/utils/apiUtils';
+import type { IN8nPrompts, IN8nPromptResponse } from '../Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
+import { makeRestApiRequest, get, post } from '@n8n/rest-api-client';
 import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants';
 import type { FrontendSettings } from '@n8n/api-types';
 

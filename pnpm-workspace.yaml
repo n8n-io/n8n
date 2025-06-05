@@ -23,6 +23,7 @@ catalog:
   form-data: 4.0.0
   iconv-lite: 0.6.3
   jsonwebtoken: 9.0.2
+  js-base64: 3.7.2
   lodash: 4.17.21
   luxon: 3.4.4
   nanoid: 3.3.8
@@ -36,9 +37,9 @@ catalog:
   xss: 1.0.15
   zod: 3.24.1
   'zod-to-json-schema': 3.23.3
-  '@langchain/core': 0.3.39
+  '@langchain/core': 0.3.48
   '@langchain/openai': 0.5.0
-  '@langchain/anthropic': 0.3.11
+  '@langchain/anthropic': 0.3.21
   '@langchain/community': 0.3.24
   '@n8n_io/ai-assistant-sdk': 1.14.0
 

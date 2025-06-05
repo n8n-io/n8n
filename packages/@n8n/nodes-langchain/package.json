@@ -99,6 +99,7 @@
       "dist/nodes/output_parser/OutputParserAutofixing/OutputParserAutofixing.node.js",
       "dist/nodes/output_parser/OutputParserItemList/OutputParserItemList.node.js",
       "dist/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.js",
+      "dist/nodes/rerankers/RerankerCohere/RerankerCohere.node.js",
       "dist/nodes/retrievers/RetrieverContextualCompression/RetrieverContextualCompression.node.js",
       "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/retrievers/RetrieverMultiQuery/RetrieverMultiQuery.node.js",

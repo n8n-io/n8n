@@ -152,7 +152,7 @@ describe('useRunWorkflow({ router })', () => {
 		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();
-		workflowHelpers = useWorkflowHelpers({ router });
+		workflowHelpers = useWorkflowHelpers();
 	});
 
 	afterEach(() => {
@@ -236,7 +236,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',
@@ -267,7 +267,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',

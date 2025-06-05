@@ -1,11 +1,11 @@
+import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { assert } from '@n8n/utils/assert';
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
-import { parse } from 'flatted';
-import { assert } from '@n8n/utils/assert';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 
-import { BROWSER_ID_STORAGE_KEY } from '@/constants';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+import type { IRestApiContext } from './types';
 
 const getBrowserId = () => {
 	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
@@ -170,7 +170,7 @@ export async function makeRestApiRequest<T>(
 		data,
 	});
 
-	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
+	// All cli rest api endpoints return data wrapped in `data` key
 	return response.data as T;
 }
 
@@ -199,28 +199,6 @@ export async function patch(
 	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
-}
-
-/**
- * Unflattens the Execution data.
- *
- * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
- */
-export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
-	// Unflatten the data
-	const returnData: IExecutionResponse = {
-		...fullExecutionData,
-		workflowData: fullExecutionData.workflowData,
-		data: parse(fullExecutionData.data),
-	};
-
-	returnData.finished = returnData.finished ? returnData.finished : false;
-
-	if (fullExecutionData.id) {
-		returnData.id = fullExecutionData.id;
-	}
-
-	return returnData;
 }
 
 export async function streamRequest<T extends object>(
@@ -306,6 +284,6 @@ export async function streamRequest<T extends object>(
 		}
 	} catch (e: unknown) {
 		assert(e instanceof Error);
-		onError?.(e);
+		onError?.(e as Error);
 	}
 }

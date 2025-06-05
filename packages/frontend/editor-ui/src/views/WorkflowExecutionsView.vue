@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
+import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
@@ -26,7 +26,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations({ router });
+const { initializeWorkspace } = useCanvasOperations();
 
 const loading = ref(false);
 const loadingMore = ref(false);

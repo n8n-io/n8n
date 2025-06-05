@@ -28,8 +28,16 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
 	},
 	{
+		find: /^@n8n\/api-requests(.+)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
+	},
+	{
 		find: /^@n8n\/composables(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
+	},
+	{
+		find: /^@n8n\/constants(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,

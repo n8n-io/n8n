@@ -47,7 +47,7 @@
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
     "jmespath": "0.16.0",
-    "js-base64": "3.7.2",
+    "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
     "luxon": "catalog:",

@@ -5,7 +5,7 @@ import LogsPanel from '@/components/CanvasChat/future/LogsPanel.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { createRouter, createWebHistory, useRouter } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { h, nextTick } from 'vue';
 import {
@@ -281,8 +281,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should still show logs for a removed node', async () => {
-		const router = useRouter();
-		const operations = useCanvasOperations({ router });
+		const operations = useCanvasOperations();
 
 		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));

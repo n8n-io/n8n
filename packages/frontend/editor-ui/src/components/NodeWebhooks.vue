@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -21,9 +20,8 @@ const props = defineProps<{
 	nodeTypeDescription: INodeTypeDescription | null;
 }>();
 
-const router = useRouter();
 const clipboard = useClipboard();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const toast = useToast();
 const i18n = useI18n();
 const telemetry = useTelemetry();
