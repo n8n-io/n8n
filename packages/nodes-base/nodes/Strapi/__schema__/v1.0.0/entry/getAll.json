@@ -4,7 +4,16 @@
         "attributes": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "string"
+                },
                 "createdAt": {
+                    "type": "string"
+                },
+                "is_from_user": {
+                    "type": "boolean"
+                },
+                "timestamp": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -16,5 +25,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

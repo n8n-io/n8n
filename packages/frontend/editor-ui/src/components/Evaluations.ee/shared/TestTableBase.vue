@@ -2,7 +2,7 @@
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { TableInstance } from 'element-plus';
 import { ElTable, ElTableColumn } from 'element-plus';
-import { isEqual } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
 import { nextTick, ref, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 /**

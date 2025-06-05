@@ -47,7 +47,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -69,7 +69,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { findWebhook } from '../api/webhooks';
+import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;

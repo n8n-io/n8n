@@ -33,7 +33,8 @@ import {
 	type SelectionRange,
 } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import { debounce, isEqual } from 'lodash-es';
+import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '../stores/workflows.store';

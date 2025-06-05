@@ -1,4 +1,4 @@
-import * as communityNodesApi from '@/api/communityNodes';
+import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
 import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';

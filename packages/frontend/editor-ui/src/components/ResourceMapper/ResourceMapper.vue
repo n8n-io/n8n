@@ -29,7 +29,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import { N8nButton, N8nCallout, N8nNotice } from '@n8n/design-system';
-import { isEqual } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
 
 type Props = {
 	parameter: INodeProperties;

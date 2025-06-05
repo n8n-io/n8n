@@ -60,14 +60,14 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
-const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
+const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
 const isPersonalProject = computed(() => {
 	return selectedProject.value?.type === ProjectTypes.Personal;
 });
 const isOwnPersonalProject = computed(() => {
 	return (
 		selectedProject.value?.type === ProjectTypes.Personal &&
-		selectedProject.value.id === projectsStore.personalProject?.id
+		selectedProject.value?.id === projectsStore.personalProject?.id
 	);
 });
 const isTransferringOwnership = computed(() => {
@@ -196,12 +196,29 @@ const onSubmit = () => {
 			};
 
 	if (props.data.resourceType === 'folder') {
-		if (selectedProject.value?.id !== projectsStore.currentProject?.id) {
+		if (selectedProject.value.id !== projectsStore.currentProject?.id) {
 			props.data.workflowListEventBus.emit('folder-transferred', {
-				newParent,
-				folder: { id: props.data.resource.id, name: props.data.resource.name },
-				projectId: projectsStore.currentProject?.id,
-				destinationProjectId: selectedProject.value.id,
+				source: {
+					projectId: projectsStore.currentProject?.id,
+					folder: {
+						id: props.data.resource.id,
+						name: props.data.resource.name,
+					},
+				},
+				destination: {
+					projectId: selectedProject.value.id,
+					parentFolder: {
+						id:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.id
+								: undefined,
+						name:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.name
+								: targetProjectName.value,
+					},
+					canAccess: isFolderSelectable.value,
+				},
 				shareCredentials: shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined,
@@ -215,12 +232,26 @@ const onSubmit = () => {
 	} else {
 		if (isTransferringOwnership.value) {
 			props.data.workflowListEventBus.emit('workflow-transferred', {
-				newParent,
-				projectId: selectedProject.value.id,
-				workflow: {
-					id: props.data.resource.id,
-					name: props.data.resource.name,
-					oldParentId: props.data.resource.parentFolderId,
+				source: {
+					projectId: projectsStore.currentProject?.id,
+					workflow: {
+						id: props.data.resource.id,
+						name: props.data.resource.name,
+					},
+				},
+				destination: {
+					projectId: selectedProject.value.id,
+					parentFolder: {
+						id:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.id
+								: undefined,
+						name:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.name
+								: targetProjectName.value,
+					},
+					canAccess: isFolderSelectable.value,
 				},
 				shareCredentials: shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
@@ -237,6 +268,7 @@ const onSubmit = () => {
 			});
 		}
 	}
+
 	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
 };
 

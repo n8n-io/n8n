@@ -27,7 +27,7 @@ import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import * as apiUtils from '@/utils/apiUtils';
+import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
