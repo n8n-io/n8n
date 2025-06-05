@@ -125,16 +125,6 @@ describe('startTimers', () => {
 		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 	});
-
-	test('do not start any timers for worker instance', () => {
-		setupMocks('worker', false, false);
-
-		insightsService.startTimers();
-
-		expect(collectionService.startFlushingTimer).not.toHaveBeenCalled();
-		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-	});
 });
 
 describe('getInsightsSummary', () => {

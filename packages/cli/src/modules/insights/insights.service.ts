@@ -41,44 +41,37 @@ export class InsightsService {
 	}
 
 	startTimers() {
-		if (
-			this.instanceSettings.instanceType !== 'main' &&
-			this.instanceSettings.instanceType !== 'webhook'
-		) {
-			return;
-		}
-
 		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started collection flushing scheduler');
+		this.logger.debug('Started flushing timer');
 
 		// Start compaction and pruning timers for main leader instance only
 		if (this.instanceSettings.isLeader) {
-			this.startCompactionAndPruningSchedulers();
+			this.startCompactionAndPruningTimers();
 		}
 	}
 
 	@OnLeaderTakeover()
-	startCompactionAndPruningSchedulers() {
+	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		this.logger.debug('Started compaction scheduler');
+		this.logger.debug('Started compaction timer');
 		if (this.pruningService.isPruningEnabled) {
 			this.pruningService.startPruningTimer();
-			this.logger.debug('Started pruning scheduler');
+			this.logger.debug('Started pruning timer');
 		}
 	}
 
 	@OnLeaderStepdown()
-	stopTimers() {
+	stopCompactionAndPruningTimers() {
 		this.compactionService.stopCompactionTimer();
-		this.logger.debug('Stopped compaction scheduler');
+		this.logger.debug('Stopped compaction timer');
 		this.pruningService.stopPruningTimer();
-		this.logger.debug('Stopped pruning scheduler');
+		this.logger.debug('Stopped pruning timer');
 	}
 
 	@OnShutdown()
 	async shutdown() {
 		await this.collectionService.shutdown();
-		this.stopTimers();
+		this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({
