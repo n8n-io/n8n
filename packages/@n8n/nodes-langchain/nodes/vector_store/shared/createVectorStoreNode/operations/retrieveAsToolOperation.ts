@@ -1,7 +1,8 @@
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { DynamicTool } from 'langchain/tools';
-import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
+import { NodeConnectionTypes, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
 
 import { getMetadataFiltersValues, nodeNameToToolName } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
@@ -29,6 +30,7 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 			: nodeNameToToolName(node);
 
 	const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
+	const useReranker = context.getNodeParameter('useReranker', itemIndex, false) as boolean;
 	const includeDocumentMetadata = context.getNodeParameter(
 		'includeDocumentMetadata',
 		itemIndex,
@@ -58,11 +60,26 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 				const embeddedPrompt = await embeddings.embedQuery(input);
 
 				// Search for similar documents
-				const documents = await vectorStore.similaritySearchVectorWithScore(
+				let documents = await vectorStore.similaritySearchVectorWithScore(
 					embeddedPrompt,
 					topK,
 					filter,
 				);
+
+				// If reranker is used, rerank the documents
+				if (useReranker && documents.length > 0) {
+					const reranker = (await context.getInputConnectionData(
+						NodeConnectionTypes.AiReranker,
+						0,
+					)) as BaseDocumentCompressor;
+
+					const docs = documents.map(([doc]) => doc);
+					const rerankedDocuments = await reranker.compressDocuments(docs, input);
+					documents = rerankedDocuments.map((doc) => {
+						const { relevanceScore, ...metadata } = doc.metadata;
+						return [{ ...doc, metadata }, relevanceScore];
+					});
+				}
 
 				// Format the documents for the tool output
 				return documents
