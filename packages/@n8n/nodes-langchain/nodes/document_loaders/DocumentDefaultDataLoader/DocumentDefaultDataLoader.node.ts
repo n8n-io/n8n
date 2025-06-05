@@ -78,31 +78,6 @@ export class DocumentDefaultDataLoader implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Text Splitting',
-				name: 'textSplittingMode',
-				type: 'options',
-				default: 'simple',
-				required: true,
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						'@version': [1.1],
-					},
-				},
-				options: [
-					{
-						name: 'Simple',
-						value: 'simple',
-						description: 'Uses the Recursive Character Text Splitter with default options',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Connect a text splitter of your choice',
-					},
-				],
-			},
-			{
 				displayName: 'Type of Data',
 				name: 'dataType',
 				type: 'options',
@@ -253,6 +228,31 @@ export class DocumentDefaultDataLoader implements INodeType {
 						binaryMode: ['allInputData'],
 					},
 				},
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Splits every 1000 characters with a 200 character overlap',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a custom text-splitting sub-node',
+					},
+				],
 			},
 			{
 				displayName: 'Options',
