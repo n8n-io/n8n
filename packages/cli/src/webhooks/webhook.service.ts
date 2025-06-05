@@ -32,11 +32,11 @@ export class WebhookService {
 	) {}
 
 	async populateCache() {
-		const allWebhooks = await this.webhookRepository.find();
+		const staticWebhooks = await this.webhookRepository.getStaticWebhooks();
 
-		if (!allWebhooks) return;
+		if (staticWebhooks.length === 0) return;
 
-		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
+		void this.cacheService.setMany(staticWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
 	async findAll() {
