@@ -1372,7 +1372,7 @@ export type ExecutionsQueryFilter = {
 	startedBefore?: string;
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
-	nodesExecuted: string[];
+	nodesExecuted?: string[];
 };
 
 export type SamlPreferencesExtractedData = {
