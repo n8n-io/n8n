@@ -1,6 +1,7 @@
-import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IRestApiContext } from '@/Interface';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 
 type WebhookData = {
 	workflowId: string;
