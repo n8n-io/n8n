@@ -23,14 +23,6 @@ vi.mock('@/composables/useMessage', () => {
 	};
 });
 
-// vi.mock('@/composables/useWorkflowHelpers', () => {
-// 	return {
-// 		useWorkflowHelpers: () => ({
-// 			saveCurrentWorkflow: saveCurrentWorkflowSpy,
-// 		}),
-// 	};
-// });
-
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
@@ -95,6 +87,17 @@ describe('useWorkflowSaving', () => {
 
 	describe('promptSaveUnsavedWorkflowChanges', () => {
 		it('should prompt the user to save changes and proceed if confirmed', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w0',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
 			const cancel = vi.fn();
@@ -109,14 +112,22 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			const workflowSaving = useWorkflowSaving({ router });
-			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			const resolveSpy = vi.fn();
+			const resolveMarker = Symbol();
+			resolveSpy.mockReturnValue(resolveMarker);
+			const mockRouter = {
+				resolve: resolveSpy,
+				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+			};
 
-			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
+				router: mockRouter as never,
+			});
+
+			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(npsSurveyStore.fetchPromptsData).toHaveBeenCalled();
-			expect(saveCurrentWorkflowSpy).toHaveBeenCalledWith({}, false);
 			expect(uiStore.stateIsDirty).toEqual(false);
 
 			expect(confirm).toHaveBeenCalled();
@@ -246,6 +257,11 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 
+			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
+			updateWorkflowSpy.mockImplementation(() => {
+				throw new Error();
+			});
+
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -257,22 +273,24 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			const workflowSaving = useWorkflowSaving({ router });
-			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			const resolveSpy = vi.fn();
+			const resolveMarker = Symbol();
+			resolveSpy.mockReturnValue(resolveMarker);
+			const mockRouter = {
+				resolve: resolveSpy,
+				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+			};
+
+			const workflowSaving = useWorkflowSaving({ router: mockRouter as never });
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
-			expect(saveCurrentWorkflowSpy).toHaveBeenCalledWith({}, false);
+			expect(updateWorkflowSpy).toBeCalled();
 			expect(uiStore.stateIsDirty).toEqual(true);
 
 			expect(confirm).not.toHaveBeenCalled();
 			expect(cancel).not.toHaveBeenCalled();
-			expect(next).toHaveBeenCalledWith(
-				router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflow.id },
-				}),
-			);
+			expect(next).toHaveBeenCalledWith(resolveMarker);
 		});
 	});
 	describe('saveAsNewWorkflow', () => {

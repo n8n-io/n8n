@@ -79,6 +79,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		switch (response) {
 			case MODAL_CONFIRM:
 				const saved = await saveCurrentWorkflow({}, false);
+
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
 					uiStore.stateIsDirty = false;
@@ -217,7 +218,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 					workflowsStore.setWorkflowInactive(currentWorkflow);
 				}
 			}
-
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
 				workflowDataRequest,
@@ -242,7 +242,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			return true;
 		} catch (error) {
 			console.error(error);
-			throw new Error(JSON.stringify(error));
 
 			uiStore.removeActiveAction('workflowSaving');
 
