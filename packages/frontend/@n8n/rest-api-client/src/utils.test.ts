@@ -1,4 +1,4 @@
-import { ResponseError, STREAM_SEPERATOR, streamRequest } from './apiUtils';
+import { ResponseError, STREAM_SEPERATOR, streamRequest } from './utils';
 
 describe('streamRequest', () => {
 	it('should stream data from the API endpoint', async () => {

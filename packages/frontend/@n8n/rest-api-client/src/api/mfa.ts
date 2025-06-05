@@ -1,5 +1,5 @@
-import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 
 export async function canEnableMFA(context: IRestApiContext) {
 	return await makeRestApiRequest(context, 'POST', '/mfa/can-enable');
