@@ -13,12 +13,12 @@ function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
 
 	// Handle object properties
 	if (schema.type === 'object' && schema.properties) {
-		const requiredProperties = Object.keys(schema.properties);
-		if (requiredProperties.length > 0) {
-			schema.required = requiredProperties;
+		const properties = Object.keys(schema.properties);
+		if (properties.length > 0) {
+			schema.required = properties;
 		}
 
-		for (const key of requiredProperties) {
+		for (const key of properties) {
 			if (isPropertySchema(schema.properties[key])) {
 				makeAllPropertiesRequired(schema.properties[key]);
 			}
