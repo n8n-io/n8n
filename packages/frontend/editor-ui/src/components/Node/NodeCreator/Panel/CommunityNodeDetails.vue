@@ -16,7 +16,13 @@ import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../uti
 
 import { N8nText } from '@n8n/design-system';
 
-const { activeViewStack, pushViewStack, popViewStack, getAllNodeCreateElements } = useViewStacks();
+const {
+	activeViewStack,
+	pushViewStack,
+	popViewStack,
+	getAllNodeCreateElements,
+	updateCurrentViewStack,
+} = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -36,6 +42,8 @@ const updateViewStack = (key: string) => {
 		const nodeActions = nodeCreatorStore.actions?.[installedNode.key] || [];
 
 		popViewStack();
+
+		updateCurrentViewStack({ searchItems: nodeCreatorStore.mergedNodes });
 
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,
