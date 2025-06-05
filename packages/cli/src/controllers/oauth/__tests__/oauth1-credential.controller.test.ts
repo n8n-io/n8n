@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import { Cipher, type InstanceSettings, SecretsHelper } from 'n8n-core';
+import { Cipher, type InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -27,7 +27,7 @@ jest.mock('@/workflow-execute-additional-data');
 describe('OAuth1CredentialController', () => {
 	mockInstance(Logger);
 	mockInstance(ExternalHooks);
-	mockInstance(SecretsHelper);
+	mockInstance(ExternalSecretsProxy);
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});

@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { SecretsHelper, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -387,7 +387,7 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
-		secretsHelper: Container.get(SecretsHelper),
+		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,

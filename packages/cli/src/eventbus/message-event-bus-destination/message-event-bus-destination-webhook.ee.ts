@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import { Agent as HTTPSAgent } from 'https';
-import { SecretsHelper } from 'n8n-core';
+import { ExternalSecretsProxy } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -103,7 +103,7 @@ export class MessageEventBusDestinationWebhook
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
 				{
-					secretsHelper: Container.get(SecretsHelper),
+					externalSecretsProxy: Container.get(ExternalSecretsProxy),
 				} as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],

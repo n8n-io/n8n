@@ -11,7 +11,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
-	SecretsHelper,
+	ExternalSecretsProxy,
 } from 'n8n-core';
 import { ensureError, sleep, UserError } from 'n8n-workflow';
 
@@ -279,7 +279,7 @@ export abstract class BaseCommand extends Command {
 	async initExternalSecrets() {
 		const secretsManager = Container.get(ExternalSecretsManager);
 		await secretsManager.init();
-		Container.get(SecretsHelper).setManager(secretsManager);
+		Container.get(ExternalSecretsProxy).setManager(secretsManager);
 	}
 
 	initWorkflowHistory() {

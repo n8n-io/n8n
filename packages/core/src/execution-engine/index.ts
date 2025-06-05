@@ -1,10 +1,10 @@
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import type { SecretsHelper } from './secrets-helper.ee';
+import type { ExternalSecretsProxy } from './external-secrets-proxy';
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
-		secretsHelper: SecretsHelper;
+		externalSecretsProxy: ExternalSecretsProxy;
 	}
 }
 
@@ -16,4 +16,4 @@ export * from './partial-execution-utils';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-export { SecretsHelper } from './secrets-helper.ee';
+export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';

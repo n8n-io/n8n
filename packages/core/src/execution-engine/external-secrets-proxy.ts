@@ -1,19 +1,19 @@
 import { Service } from '@n8n/di';
 
-interface ISecretsManager {
+export interface IExternalSecretsManager {
 	updateSecrets(): Promise<void>;
 	hasSecret(provider: string, name: string): boolean;
 	getSecret(provider: string, name: string): unknown;
-	getSecretNames(provider: string): string[] | undefined;
+	getSecretNames(provider: string): string[];
 	hasProvider(provider: string): boolean;
 	getProviderNames(): string[];
 }
 
 @Service()
-export class SecretsHelper {
-	private manager?: ISecretsManager;
+export class ExternalSecretsProxy {
+	private manager?: IExternalSecretsManager;
 
-	setManager(manager: ISecretsManager) {
+	setManager(manager: IExternalSecretsManager) {
 		this.manager = manager;
 	}
 
