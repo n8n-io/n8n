@@ -8,7 +8,7 @@ vi.mock('@/stores/users.store', () => ({
 }));
 
 describe('Middleware', () => {
-	const ORIGIN_URL = 'http://n8n.local';
+	const ORIGIN_URL = 'https://n8n.local';
 
 	beforeEach(() => {
 		global.window = Object.create(window);
@@ -67,10 +67,10 @@ describe('Middleware', () => {
 				expect(nextMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 			});
 
-			it('should redirect to homepage if redirect is not the origin domain ', async () => {
+			it('should redirect to homepage if redirect is not the origin domain', async () => {
 				const nextMock = vi.fn();
 				const toMock = {
-					query: { redirect: 'http://n8n.local.evil.com/some-path' },
+					query: { redirect: 'https://n8n.local.evil.com/some-path' },
 				} as unknown as RouteLocationNormalized;
 
 				const fromMock = {} as RouteLocationNormalized;
