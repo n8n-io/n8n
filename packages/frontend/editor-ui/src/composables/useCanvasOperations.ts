@@ -102,7 +102,6 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
-import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
@@ -140,7 +139,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	isAutoAdd?: boolean;
 };
 
-export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
+export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
@@ -158,7 +157,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	const i18n = useI18n();
 	const toast = useToast();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();

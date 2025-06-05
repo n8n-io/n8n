@@ -37,7 +37,7 @@ export function useWorkflowExtraction() {
 	const toast = useToast();
 	const router = useRouter();
 	const historyStore = useHistoryStore();
-	const canvasOperations = useCanvasOperations({ router });
+	const canvasOperations = useCanvasOperations();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
