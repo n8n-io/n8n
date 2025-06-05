@@ -6,20 +6,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
 import * as apiWebhooks from '../api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { nodeTypes } from '@/components/CanvasChat/__test__/data';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
