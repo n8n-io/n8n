@@ -153,11 +153,17 @@ function setupWebsocketConnection() {
 				id: uuidv4(),
 				text: e.data,
 				sender: 'bot',
-				createdAt: new Date().toISOString(),
 			};
 
 			chatStore.messages.value.push(newMessage);
 			waitingForChatResponse.value = true;
+			chatStore.waitingForResponse.value = false;
+		};
+
+		chatStore.ws.onclose = () => {
+			console.log('Websocket connection closed');
+			chatStore.ws = null;
+			waitingForChatResponse.value = false;
 			chatStore.waitingForResponse.value = false;
 		};
 	}
@@ -192,7 +198,6 @@ async function respondToChat(ws: WebSocket, messageText: string) {
 		id: uuidv4(),
 		text: messageText,
 		sender: 'user',
-		createdAt: new Date().toISOString(),
 		files: files.value ? attachFiles() : undefined,
 	};
 
@@ -229,6 +234,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	await chatStore.sendMessage(messageText, attachFiles());
 	isSubmitting.value = false;
+	// chatStore.ws?.close();
+	// chatStore.ws = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {

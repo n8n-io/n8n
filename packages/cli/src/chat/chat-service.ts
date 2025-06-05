@@ -11,7 +11,6 @@ import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -32,7 +31,7 @@ type Session = {
 	connection: WebSocket;
 	executionId?: string;
 	intervalId?: NodeJS.Timer;
-	sendFromNode?: string;
+	waitingResponseFromChat: boolean;
 };
 
 type ChatMessage = {
@@ -59,26 +58,29 @@ export class ChatService {
 		setInterval(async () => await this.pingAll(), 60 * 1000);
 	}
 
-	private async getExecution(executionId: string, sessionId?: string) {
+	private async getExecution(executionId: string, sessionId: string) {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
 
-		if (!execution) {
-			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		if (
+			!execution ||
+			['error', 'canceled', 'crashed', 'success'].includes(execution.status) ||
+			execution.finished
+		) {
+			const { connection, intervalId } = this.sessions.get(sessionId) || {};
+			if (connection) {
+				connection.terminate();
+			}
+			clearInterval(intervalId);
+			this.sessions.delete(sessionId);
+			console.log('session deleted', sessionId);
+			return null;
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
-		}
-
-		if (execution.data?.resultData?.error) {
-			throw new ConflictError(`The execution "${executionId}" has finished with error.`);
-		}
-
-		if (execution.finished) {
-			throw new ConflictError(`The execution "${executionId} has finished already.`);
+			return null;
 		}
 
 		return execution;
@@ -121,6 +123,9 @@ export class ChatService {
 			query: { sessionId, executionId },
 		} = req;
 
+		console.log('startSession', sessionId, executionId);
+		console.log('opened sessions ids', this.sessions.keys());
+
 		if (!sessionId) {
 			ws.send('The query parameter "sessionId" is missing!');
 			ws.close(1008);
@@ -138,31 +143,36 @@ export class ChatService {
 
 		const onMessage = this.messageHandler(sessionId);
 
-		const intervalId = setInterval(
-			async () => await this.handleChatIncomingMessages(sessionId),
-			3000,
-		);
+		const responseToChatHandler = this.handleResponseToChat(sessionId);
+
+		const intervalId = setInterval(async () => await responseToChatHandler(), 3000);
 
 		ws.once('close', async () => {
 			ws.off('pong', heartbeat);
-			ws.off('message', await onMessage);
+			ws.off('message', onMessage);
 			clearInterval(intervalId);
 			this.sessions.delete(sessionId);
 		});
 
-		ws.on('message', await onMessage);
+		ws.on('message', onMessage);
 
-		const session: Session = { connection: ws, executionId, intervalId };
+		const session: Session = {
+			connection: ws,
+			executionId,
+			intervalId,
+			waitingResponseFromChat: false,
+		};
 
 		this.sessions.set(sessionId, session);
 	}
 
-	private async messageHandler(sessionId: string) {
+	private messageHandler(sessionId: string) {
 		return async (data: RawData) => {
 			const executionId = this.sessions.get(sessionId)?.executionId;
 
 			if (executionId) {
-				await this.resumeExecution(executionId, data);
+				await this.resumeExecution(executionId, data, sessionId);
+				this.sessions.get(sessionId)!.waitingResponseFromChat = false;
 			}
 		};
 	}
@@ -250,8 +260,8 @@ export class ChatService {
 		return runData;
 	}
 
-	private async resumeExecution(executionId: string, data: RawData) {
-		const execution = await this.getExecution(executionId ?? '');
+	private async resumeExecution(executionId: string, data: RawData, sessionId: string) {
+		const execution = (await this.getExecution(executionId ?? '', sessionId)) as IExecutionResponse;
 
 		const buffer = Array.isArray(data)
 			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
@@ -278,25 +288,32 @@ export class ChatService {
 		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
 	}
 
-	private async handleChatIncomingMessages(sessionId: string) {
-		const { connection, executionId, sendFromNode } = this.sessions.get(sessionId)!;
+	private handleResponseToChat(sessionId: string) {
+		return async () => {
+			const { connection, executionId, waitingResponseFromChat } =
+				this.sessions.get(sessionId) || {};
 
-		if (!executionId) return;
+			if (!executionId || !connection || waitingResponseFromChat) return;
 
-		const execution = await this.getExecution(executionId);
+			const execution = await this.getExecution(executionId, sessionId);
 
-		if (execution.status === 'waiting') {
-			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-			if (sendFromNode === lastNodeExecuted) return;
-			const nodeExecutionData =
-				execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
-			const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
-
-			if (message) {
-				connection.send(message);
-				this.sessions.get(sessionId)!.sendFromNode = lastNodeExecuted;
+			if (!execution) {
+				return;
 			}
-		}
+
+			if (execution?.status === 'waiting') {
+				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+				const nodeExecutionData =
+					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+				const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+
+				if (message) {
+					connection.send(message);
+					this.sessions.get(sessionId)!.waitingResponseFromChat = true;
+				}
+				return;
+			}
+		};
 	}
 
 	/*

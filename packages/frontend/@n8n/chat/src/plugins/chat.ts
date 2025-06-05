@@ -46,6 +46,10 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				options,
 			);
 
+			if (sendMessageResponse.executionStarted) {
+				return;
+			}
+
 			let textMessage =
 				sendMessageResponse.output ?? sendMessageResponse.text ?? sendMessageResponse.message ?? '';
 

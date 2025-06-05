@@ -16,4 +16,6 @@ export interface SendMessageResponse {
 	output?: string;
 	text?: string;
 	message?: string;
+	executionId?: string;
+	executionStarted?: boolean;
 }

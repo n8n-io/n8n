@@ -107,6 +107,7 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
+// eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
@@ -126,6 +127,14 @@ export function autoDetectResponseMode(
 				return 'formPage';
 			}
 		}
+	}
+
+	if (
+		workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
+		method === 'POST' &&
+		workflowStartNode.parameters.public
+	) {
+		return 'hostedChat';
 	}
 
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
@@ -390,7 +399,9 @@ export async function executeWebhook(
 		'firstEntryJson',
 	) as WebhookResponseData | string | undefined;
 
-	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
+	if (
+		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'hostedChat'].includes(responseMode)
+	) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -655,6 +666,12 @@ export async function executeWebhook(
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			process.nextTick(() => res.end());
+			didSendResponse = true;
+		}
+
+		if (responseMode === 'hostedChat' && !didSendResponse) {
+			res.send({ executionStarted: true, executionId });
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}
