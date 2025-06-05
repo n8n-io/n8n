@@ -85,8 +85,13 @@ export abstract class DirectoryLoader {
 		protected excludeNodes: string[] = [],
 		protected includeNodes: string[] = [],
 	) {
-		// If `directory` is a symlink, we resolve it to its real path
-		this.directory = realpathSync(directory);
+		// If `directory` is a symlink, we try to resolve it to its real path
+		try {
+			this.directory = realpathSync(directory);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (error.code !== 'ENOENT') throw error;
+		}
 	}
 
 	abstract packageName: string;
