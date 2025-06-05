@@ -7,6 +7,9 @@ import { setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 const modalConfirmSpy = vi.fn();
 const saveCurrentWorkflowSpy = vi.fn();
@@ -296,6 +299,66 @@ describe('useWorkflowSaving', () => {
 			// Now, expect webhookIds and paths to be different
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
+		});
+	});
+	describe('saveCurrentWorkflow', () => {
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+		beforeAll(() => {
+			setActivePinia(createTestingPinia());
+			workflowsStore = mockedStore(useWorkflowsStore);
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+
+			workflowsStore = mockedStore(useWorkflowsStore);
+		});
+
+		it('should save the current workflow', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w0',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w0' });
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w0',
+				expect.objectContaining({ id: 'w0', active: true }),
+				false,
+			);
+		});
+
+		it('should include active=false in the request if the workflow has no activatable trigger node', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w1',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w1' });
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w1',
+				expect.objectContaining({ id: 'w1', active: false }),
+				false,
+			);
+			expect(workflowsStore.setWorkflowInactive).toHaveBeenCalled();
 		});
 	});
 });
