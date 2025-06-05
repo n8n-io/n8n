@@ -46,7 +46,7 @@ describe('RetrieverVectorStore', () => {
 				0,
 			);
 			expect(mockVectorStore.asRetriever).toHaveBeenCalledWith(4);
-			expect(result.response).toBeDefined();
+			expect(result).toHaveProperty('response', { test: 'retriever' });
 		});
 
 		it('should create a retriever with custom topK parameter', async () => {
@@ -62,7 +62,7 @@ describe('RetrieverVectorStore', () => {
 			const result = await retrieverNode.supplyData.call(mockContext, 0);
 
 			expect(mockVectorStore.asRetriever).toHaveBeenCalledWith(10);
-			expect(result.response).toBeDefined();
+			expect(result).toHaveProperty('response', { test: 'retriever' });
 		});
 
 		it('should create a ContextualCompressionRetriever when input contains reranker and vectorStore', async () => {
@@ -120,15 +120,14 @@ describe('RetrieverVectorStore', () => {
 			mockVectorStore.asRetriever = jest.fn().mockReturnValue({ test: 'retriever' });
 
 			mockContext.getNodeParameter.mockImplementation((_param, _itemIndex, defaultValue) => {
-				return defaultValue; // Always return default value
+				return defaultValue;
 			});
 			mockContext.getInputConnectionData.mockResolvedValue(mockVectorStore);
 
-			const result = await retrieverNode.supplyData.call(mockContext, 0);
+			await retrieverNode.supplyData.call(mockContext, 0);
 
 			expect(mockContext.getNodeParameter).toHaveBeenCalledWith('topK', 0, 4);
 			expect(mockVectorStore.asRetriever).toHaveBeenCalledWith(4);
-			expect(result.response).toBeDefined();
 		});
 	});
 });

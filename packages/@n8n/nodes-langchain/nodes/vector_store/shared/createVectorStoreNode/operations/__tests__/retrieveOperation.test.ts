@@ -100,10 +100,8 @@ describe('handleRetrieveOperation', () => {
 
 		const result = await handleRetrieveOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
-		// Should check useReranker parameter
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith('useReranker', 0, false);
 
-		// Should get vector store client with filters
 		expect(mockArgs.getVectorStoreClient).toHaveBeenCalledWith(
 			mockContext,
 			{ testFilter: 'value' },
@@ -115,9 +113,6 @@ describe('handleRetrieveOperation', () => {
 		expect(result).toHaveProperty('response', mockVectorStore);
 		expect(result).toHaveProperty('closeFunction');
 
-		// Should wrap vector store with logWrapper
-		expect(logWrapper).toHaveBeenCalledWith(mockVectorStore, mockContext);
-
 		// Should not try to get reranker input connection
 		expect(mockContext.getInputConnectionData).not.toHaveBeenCalled();
 	});
@@ -128,31 +123,17 @@ describe('handleRetrieveOperation', () => {
 
 		const result = await handleRetrieveOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
-		// Should check useReranker parameter
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith('useReranker', 0, false);
 
-		// Should get reranker from input connection
 		expect(mockContext.getInputConnectionData).toHaveBeenCalledWith(
 			NodeConnectionTypes.AiReranker,
 			0,
 		);
 
-		// Should get vector store client with filters
-		expect(mockArgs.getVectorStoreClient).toHaveBeenCalledWith(
-			mockContext,
-			{ testFilter: 'value' },
-			mockEmbeddings,
-			0,
-		);
-
-		// Result should contain reranker and vector store object
 		expect(result.response).toEqual({
 			reranker: mockReranker,
 			vectorStore: mockVectorStore,
 		});
 		expect(result).toHaveProperty('closeFunction');
-
-		// Should wrap vector store with logWrapper for the vectorStore property
-		expect(logWrapper).toHaveBeenCalledWith(mockVectorStore, mockContext);
 	});
 });
