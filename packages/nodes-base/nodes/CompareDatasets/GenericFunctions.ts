@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash';
+import cloneDeep from 'lodash/cloneDeep';
 import difference from 'lodash/difference';
 import get from 'lodash/get';
 import intersection from 'lodash/intersection';

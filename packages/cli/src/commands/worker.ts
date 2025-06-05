@@ -8,7 +8,7 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
@@ -130,7 +130,7 @@ export class Worker extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 

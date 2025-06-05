@@ -41,6 +41,7 @@ import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -71,6 +72,7 @@ import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -196,6 +198,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				url: '',
+			},
+		},
+		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowName: '',
 			},
 		},
 	});
@@ -454,7 +462,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openMoveToFolderModal = (
 		resourceType: 'folder' | 'workflow',
-		resource: { id: string; name: string; parentFolderId?: string },
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
 		workflowListEventBus: EventBus,
 	) => {
 		openModalWithData({
