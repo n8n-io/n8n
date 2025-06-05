@@ -10,7 +10,7 @@ export class PerplexityApi implements ICredentialType {
 
 	displayName = 'Perplexity API';
 
-	documentationUrl = 'https://docs.perplexity.ai';
+	documentationUrl = 'perplexity';
 
 	properties: INodeProperties[] = [
 		{
