@@ -17,6 +17,7 @@ import type {
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
@@ -83,7 +84,10 @@ export abstract class DirectoryLoader {
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
 		protected includeNodes: string[] = [],
-	) {}
+	) {
+		// If `directory` is a symlink, we resolve it to its real path
+		this.directory = realpathSync(directory);
+	}
 
 	abstract packageName: string;
 
