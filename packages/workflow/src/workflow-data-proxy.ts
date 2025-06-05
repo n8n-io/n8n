@@ -1039,8 +1039,22 @@ export class WorkflowDataProxy {
 			}
 			const inputData =
 				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
+			let placeholdersDataInputData =
 				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			// look up the data from the parent
+			if (
+				inputData === undefined &&
+				Array.isArray(
+					that.runExecutionData?.resultData?.runData?.['AI Agent']?.[0]?.data?.main?.[0]?.[0]?.json
+						?.subNodeExecute,
+				)
+			) {
+				// @ts-ignore
+				placeholdersDataInputData =
+					that.runExecutionData?.resultData?.runData?.['AI Agent']?.[0]?.data?.main?.[0]?.[0]?.json
+						?.subNodeExecute?.[0]?.toolInput;
+			}
 
 			if (Boolean(!placeholdersDataInputData)) {
 				throw new ExpressionError('No execution data available', {

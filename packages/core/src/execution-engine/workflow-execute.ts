@@ -78,6 +78,7 @@ import {
 import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { nodeNameToToolName } from '@/execution-engine/node-execution-context/utils/create-node-as-tool';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -584,7 +585,7 @@ export class WorkflowExecute {
 
 		// Check if node has multiple inputs as then we have to wait for all input data
 		// to be present before we can add it to the node-execution-stack
-		if (workflow.connectionsByDestinationNode[connectionData.node].main.length > 1) {
+		if (workflow.connectionsByDestinationNode[connectionData.node]?.main.length > 1) {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
@@ -617,7 +618,7 @@ export class WorkflowExecute {
 					if (
 						!this.runExecutionData.executionData!.waitingExecution[connectionData.node][
 							parseInt(index)
-						].main[connectionData.index]
+						]?.main[connectionData.index]
 					) {
 						// Data for the input is missing so we can add it to the existing entry
 						createNewWaitingEntry = false;
@@ -1769,9 +1770,56 @@ export class WorkflowExecute {
 						continue;
 					}
 
+					if (nodeSuccessData?.[0]?.[0]?.json?.subNodeExecute) {
+						// tmp thing
+						const nodeToAdd = workflow.connectionsByDestinationNode[
+							executionNode.name
+						].ai_tool.filter((node) => {
+							// @ts-ignore
+							return (
+								node?.[0].node
+									.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_')
+									.replace(/_+/g, '_') ===
+								nodeSuccessData?.[0]?.[0]?.json?.subNodeExecute?.[0]?.tool
+							);
+						})[0];
+						if (nodeToAdd !== undefined && nodeToAdd !== null)
+							this.addNodeToBeExecuted(
+								workflow,
+								nodeToAdd[0],
+								0,
+								executionNode.name,
+								nodeSuccessData!,
+								runIndex,
+							);
+					}
+
 					// Add the nodes to which the current node has an output connection to that they can
 					// be executed next
 					if (workflow.connectionsBySourceNode.hasOwnProperty(executionNode.name)) {
+						if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('ai_tool')) {
+							const prevNodeName = taskData?.source?.[0]?.previousNode;
+							const nodeToAdd = workflow.connectionsBySourceNode[executionNode.name].ai_tool.find(
+								(node) => node?.[0].node == prevNodeName,
+							);
+							if (nodeToAdd !== undefined && nodeToAdd !== null)
+								this.addNodeToBeExecuted(
+									workflow,
+									nodeToAdd[0],
+									0,
+									executionNode.name,
+									[
+										[
+											{
+												json: executionData?.data?.main?.[0]?.[0]?.json ?? {},
+												aiToolOutput: nodeSuccessData!,
+											},
+										],
+									],
+									runIndex,
+								);
+						}
+
 						if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('main')) {
 							let outputIndex: string;
 							let connectionData: IConnection;

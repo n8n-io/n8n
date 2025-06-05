@@ -1178,11 +1178,13 @@ export interface INodeExecutionData {
 		| IBinaryKeyData
 		| IPairedItemData
 		| IPairedItemData[]
+		| INodeExecutionData[][]
 		| NodeApiError
 		| NodeOperationError
 		| number
 		| undefined;
 	json: IDataObject;
+	aiToolOutput?: INodeExecutionData[][];
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;

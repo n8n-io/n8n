@@ -47,6 +47,148 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const memory = await getOptionalMemory(this);
 	const model = await getChatModel(this);
 
+	// here we should check if we can find the steps from previous run-data of this item.
+	let steps = [];
+	if (items[0].aiToolOutput) {
+		// @ts-ignore
+		steps.push({
+			action: items?.[0]?.json?.subNodeExecute?.[0] ?? {},
+			observation: JSON.stringify(items[0].aiToolOutput[0]),
+		});
+	}
+
+	// disable multiple items for now
+	// TODO fix this later
+	const itemIndex = 0;
+
+	const input = getPromptInputByType({
+		ctx: this,
+		i: itemIndex,
+		inputKey: 'text',
+		promptTypeKey: 'promptType',
+	});
+	if (input === undefined) {
+		throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+	}
+
+	const options = this.getNodeParameter('options', itemIndex, {}) as {
+		systemMessage?: string;
+		maxIterations?: number;
+		returnIntermediateSteps?: boolean;
+		passthroughBinaryImages?: boolean;
+	};
+
+	// Prepare the prompt messages and prompt template.
+	const messages = await prepareMessages(this, itemIndex, {
+		systemMessage: options.systemMessage,
+		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+		outputParser,
+	});
+	const prompt: ChatPromptTemplate = preparePrompt(messages);
+
+	// Create the base agent that calls tools.
+	const agent = createToolCallingAgent({
+		llm: model,
+		tools,
+		prompt,
+		streamRunnable: false,
+	});
+	agent.streamRunnable = false;
+	// Wrap the agent with parsers and fixes.
+	const runnableAgent = RunnableSequence.from([
+		agent,
+		getAgentStepsParser(outputParser, memory),
+		fixEmptyContentMessage,
+	]);
+
+	const response = await (agent as any).invoke({
+		input,
+		steps,
+		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+		formatting_instructions:
+			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+	});
+
+	if ('returnValues' in response) {
+		console.log('Final Output:', response.returnValues);
+		console.log('Steps:', JSON.stringify(steps, null, 2));
+
+		const itemResult = {
+			json: omit(
+				response,
+				'system_message',
+				'formatting_instructions',
+				'input',
+				'chat_history',
+				'agent_scratchpad',
+			),
+			pairedItem: { item: 0 },
+		};
+		return [[itemResult]];
+	}
+
+	// else...
+	// we call the tool. How will we signal this? for now, just with a magic signal, but this should be solved properly
+	let actions = response;
+	if (!(response instanceof Array)) {
+		console.log(response);
+		actions = [response];
+	}
+
+	return [
+		[
+			{
+				json: { subNodeExecute: actions },
+			},
+		],
+	];
+
+	/*
+			const executor = AgentExecutor.fromAgentAndTools({
+				agent: runnableAgent,
+				memory,
+				tools,
+				returnIntermediateSteps: options.returnIntermediateSteps === true,
+				maxIterations: options.maxIterations ?? 10,
+			});
+
+			// Invoke the executor with the given input and system message.
+			const result = await executor.invoke(
+				{
+					input,
+					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+					formatting_instructions:
+						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+				},
+				{ signal: this.getExecutionCancelSignal() },
+			);
+
+			const response = result;
+			// If memory and outputParser are connected, parse the output.
+			if (memory && outputParser) {
+				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+					response.output as string,
+				);
+				response.output = parsedOutput?.output ?? parsedOutput;
+			}
+
+			// Omit internal keys before returning the result.
+			const itemResult = {
+				json: omit(
+					response,
+					'system_message',
+					'formatting_instructions',
+					'input',
+					'chat_history',
+					'agent_scratchpad',
+				),
+				pairedItem: { item: 0 },
+			};
+			*/
+
+	returnData.push(itemResult);
+
+	/*
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
 		const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -156,6 +298,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			await sleep(delayBetweenBatches);
 		}
 	}
+	*/
 
 	return [returnData];
 }
