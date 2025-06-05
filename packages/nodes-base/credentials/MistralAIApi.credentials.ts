@@ -5,10 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class MistralOcrApi implements ICredentialType {
-	name = 'mistralOcrApi';
+export class MistralAIApi implements ICredentialType {
+	name = 'mistralAIApi';
 
-	displayName = 'Mistral OCR';
+	displayName = 'Mistral AI';
 
 	documentationUrl = 'https://docs.mistral.ai/capabilities/document/';
 
@@ -27,7 +27,7 @@ export class MistralOcrApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: 'https://api.mistral.ai',
-			description: 'The base URL for the Mistral OCR API.',
+			description: 'The base URL for the Mistral AI API.',
 		},
 	];
 

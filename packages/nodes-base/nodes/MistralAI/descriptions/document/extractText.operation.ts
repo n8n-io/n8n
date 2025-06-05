@@ -1,23 +1,20 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { handleBinaryData } from '../../GenericFunctions';
-
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
-		options: [{ name: 'mistral-ocr-latest', value: 'mistral-ocr-latest' }],
+		options: [
+			{
+				name: 'mistral-ocr-latest',
+				value: 'mistral-ocr-latest',
+			},
+		],
 		description: 'The OCR model to use',
 		required: true,
 		default: 'mistral-ocr-latest',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'model',
-			},
-		},
 	},
 	{
 		displayName: 'Input Type',
@@ -36,13 +33,29 @@ const properties: INodeProperties[] = [
 		description: 'How the document will be provided',
 		required: true,
 		default: 'binary',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'document.type',
-				value: '={{ $value === "binary" ? "image_data" : "document_url" }}',
+		disabledOptions: {
+			hide: {
+				batch: [{ _cnd: { eq: false } }],
 			},
 		},
+	},
+	{
+		displayName: 'Document Type',
+		name: 'documentType',
+		type: 'options',
+		options: [
+			{
+				name: 'Document',
+				value: 'document_url',
+			},
+			{
+				name: 'Image',
+				value: 'image_url',
+			},
+		],
+		description: 'How the document will be provided',
+		required: true,
+		default: 'document_url',
 	},
 	{
 		displayName: 'Binary Property',
@@ -58,17 +71,12 @@ const properties: INodeProperties[] = [
 				inputType: ['binary'],
 			},
 		},
-		routing: {
-			send: {
-				preSend: [handleBinaryData],
-			},
-		},
 	},
 	{
-		displayName: 'Document URL',
-		name: 'documentUrl',
+		displayName: 'URL',
+		name: 'url',
 		type: 'string',
-		description: 'URL of the document to process',
+		description: 'URL of the document or image to process',
 		placeholder: 'e.g. https://example.com/document.pdf',
 		required: true,
 		default: '',
@@ -77,47 +85,25 @@ const properties: INodeProperties[] = [
 				inputType: ['url'],
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'document.document_url',
-			},
-		},
 	},
 	{
 		displayName: 'Enable Batch Processing',
-		name: 'enableBatchProcessing',
+		name: 'batch',
 		type: 'boolean',
 		description: 'Whether to process multiple documents in a single API call (more cost-efficient)',
 		default: false,
-		routing: {
-			send: {
-				type: 'body',
-				property: 'batch',
-				value: '={{ $value ? { size: $parameter.batchSize } : undefined }}',
-			},
-		},
 	},
 	{
 		displayName: 'Batch Size',
 		name: 'batchSize',
 		type: 'number',
 		description: 'Maximum number of documents to process in a single batch',
-		default: 25,
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
-		},
+		default: 50,
+		typeOptions: { maxValue: 2048 },
 		required: true,
 		displayOptions: {
 			show: {
-				enableBatchProcessing: [true],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'batch.size',
+				batch: [true],
 			},
 		},
 	},

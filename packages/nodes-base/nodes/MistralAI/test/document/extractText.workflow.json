@@ -1,0 +1,155 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-340, 160],
+			"id": "9e60336f-8c73-4e6c-b4bb-a37ec7db2606",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"filePath": "/Users/user/Desktop/sample3.pdf"
+			},
+			"id": "2a9c4a2f-a92e-4b52-ae54-a7bd7643c191",
+			"name": "Read Binary File1",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"position": [-140, 160],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.mistralAi",
+			"typeVersion": 1,
+			"position": [80, 160],
+			"id": "cf28ead9-712c-4cec-8f80-58021abc6101",
+			"name": "Mistral AI",
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "test",
+					"name": "Mistral Cloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File1": {
+			"main": [
+				[
+					{
+						"node": "Mistral AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Mistral AI": [
+			{
+				"pages": [
+					{
+						"index": 0,
+						"markdown": "# LÉ́ON 01. Bonjour ! \n\nCours Debutants Lecon 01 A\nTu peux traduire ces fiches PDF avec des outils comme : https://www.onlinedoctranslator.com/ ou bien sûr https://translate.google.com/\n\n## Fiche récapitulative\n\n## . Pour saluer, utilise le mot BONJOUR [bõ3ur].\n\nNote qu'en français, beaucoup de sons se forment avec deux ou même trois lettres : bonjour [bõ3ur].\n\nLa lettre $R$ se prononce un peu comme quand on fait des gargarismes : [r].\n\nFais attention ! N'écris pas Bon jour ou bonjours !\n\n## À partir de 17 heures, tu peux utiliser BONSOIR [bõswar].\n\nLà aussi, note bien ces combinaisons : ON --> [õ] et OI --> [wa].\n\n## . Dans un langage plus familier, tu peux utiliser SALUT [saly].\n\nNote qu'en français, de nombreuses lettres sont muettes, nous en reparlerons pendant le cours. Il s'agit principalement de certaines consonnes en position finale : salut [saly], beaucoup [bocu], etc. Et de la lettre E (voir leçon 4).",
+						"images": [],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					},
+					{
+						"index": 1,
+						"markdown": "# Exercices \n\n## 1. Écoute à nouveau les dialogues (fichier audio), répète-les et joue la scène à voix haute.\n\n## 2. Quelle est l'option correcte ?\n\n1) 4)\na. $\\square$ Bon jour Laurent !\na. $\\square$ Comment tu va ?\nb. $\\square$ Bonjour Laurent !\nb. $\\square$ Comment ça va ?\nc. $\\square$ Bonjours Laurent !\nc. $\\square$ Commen ça vas ?\n2)\na. $\\square$ Vous allez bien ?\nb. $\\square$ Salut Anne !\nb. $\\square$ Salut Anne !\nc. $\\square$ Tu allez bien ?\nc. $\\square$ Salute Anne !\n3)\na. $\\square$ Ça va et tu ?\nb. $\\square$ Bonsoirs Fabien !\nb. $\\square$ Bon soir Fabien !\nc. $\\square$ Ça va et toi ?\nc. $\\square$ Bonsoir Fabien !\n\n## Correction.\n\n1) 4)\nb. $\\square$ Bonjour Laurent !\nb. $\\square$ Comment ça va ?\n2)\na. $\\square$ Vous allez bien ?\n5)\nb. $\\square$ Salut Anne !\n3)\nc. $\\square$ Ça va et toi ?\n6)\nc. $\\square$ Bonsoir Fabien !",
+						"images": [],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					},
+					{
+						"index": 2,
+						"markdown": "# **3. Quelle phrase va avec quelle image ?**\n\n![img-0.jpeg](img-0.jpeg)\n\n**Image 1**\n\n**Phrase A : Salut !**\n\n![img-1.jpeg](img-1.jpeg)\n\n**Image 2**\n\n**Phrase B : Bonjour !**\n\n# **Correction.**\n\n**Image 1 --> Phrase B ; Image 2 --> Phrase A**",
+						"images": [
+							{
+								"id": "img-0.jpeg",
+								"top_left_x": 105,
+								"top_left_y": 313,
+								"bottom_right_x": 468,
+								"bottom_right_y": 666,
+								"image_base64": null,
+								"image_annotation": null
+							},
+							{
+								"id": "img-1.jpeg",
+								"top_left_x": 696,
+								"top_left_y": 327,
+								"bottom_right_x": 1035,
+								"bottom_right_y": 659,
+								"image_base64": null,
+								"image_annotation": null
+							}
+						],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					},
+					{
+						"index": 3,
+						"markdown": "# Transcription des dialogues \n\n## Dialogue 1\n\n- Bonjour. Vous allez bien?\n- Bonjour ! Très bien et vous?\n- Très bien, merci !\n\nDialogue 2\n\n- Bonsoir Michel, tu vas bien?\n- Oui, ça va et toi, comment tu vas?\n- Très bien !\n\n\n## Dialogue 3\n\n- Salut ça va ?\n- Ça va et toi, ça va ?\n- Ça va.\n\n\n## Dialogue 4\n\n- Bonjour Monsieur Hollande, comment allez-vous?\n- Bonjour Madame Dupré. Très bien, merci et vous, comment ça va ?\n- Ça va très bien, merci. Bonne journée !\n- Merci, bonne journée à vous aussi, au revoir !\n- Au revoir !",
+						"images": [],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					},
+					{
+						"index": 4,
+						"markdown": "# Transcription de la vidéo \n\n## Cours Debutants Lecon 01 B\n\n- Bonjour\n- Bonjour !\n- Et bienvenue dans ce cours de français pour débutants.\n- Alors le cours est entièrement en français. Ne t'inquiètes pas, ne stresse pas, c'est normal ! Mais tu as les soustitres en français et surtout, tu as les sous-titres dans ta langue !\n- Donc, première chose, n'oublie pas d'activer les sous-titres dans ta langue et après, tu pourras les activer en français. Voilà, c'est fait ? Bon, moi, je voulais juste te souhaiter la bienvenue et je te laisse avec le super prof Pierre. Bon cours de français !\n- Merci Noemi !\n- Au revoir !\n- Bon allez, on y va ! Dans cette première leçon, nous allons apprendre à saluer, à dire bonjour et plein d'autres choses fondamentales.\n\nBonjour ! Donc très important, juste avant de commencer. Ce cours est vraiment complet et efficace si tu t'inscris à partir du lien qui va apparaitre sur la vidéo ou dans la description de la vidéo parce que tu auras tout le cours bien organisé avec les fiches PDF, avec les fichiers audio, avec les exercices et avec un test final. Avec un examen à la fin du cours. Donc si tu ne t'es pas inscrit avec ce lien, tout de suite, commence par t'inscrire correctement, donc tu cliques sur le lien et tu vas t'inscrire et tu auras tout le matériel bien organisé, tu recevras tout cela, d'accord ? Donc vraiment, très important. Allez, on commence !\n\nBonjour. Donc ce mot, je pense que tu le connais mais on va le prononcer ensemble. \"Bonjour\", à toi. Très bien ! Donc c'est le mot principal pour saluer en français. On l'utilise le matin, l'après-midi, mais en général, on peut I'utiliser presque toujours. Nous allons maintenant voir quelques concepts fondamentaux de la prononciation et du français en général avec ce mot. J'ai mis en orange deux lettres. Ces deux lettres en fait se combinent, s'assemblent, pour faire un son. Alors nous parlerons des sons dans la leçon numéro 3, mais déjà, il faut que je t'explique des choses très importantes. En français, c'est très commun que deux lettres s'assemblent pour former un son. Ici, il s'agit de la voyelle nasale \"ON\" [3]. C'est un peu comme un \"O\" [o], mais ça vibre plus vers le nez. Je ne vais pas détailler ici, mais c'est : \"BON\" [b3]. Et surtout, tu ne dois pas dire \"ONE\" [on], non ! On n'entend pas la lettre \"N\" puisque les deux lettres forment un son, donc c'est \"BON\" [b3]. Très bien ! Bravo !\n\nAlors ensuite, la lettre \"J\", on verra les lettres dans la leçon 2, se prononce un peu comme quand tu dis \"JAZZ\", \"LE JAZZ\", mais il n'y a pas le \"D\" devant, cette partie seulement. Donc : \"BONJOUR\". Ensuite, très important, les deux lettres \"O\" et \"U\" vont aussi se combiner pour former le son \"OU\" [u]. Donc c'est le son de \"BOOTS\" en anglais par exemple. Ce son est très commun mais il est pas allongé, c'est \"OU\" [u]. Et finalement, le \"R\" final, on va l'entendre, mais le \"R\" en français se fait ici. Un peu comme quand tu fais des gargarismes, d'accord ? Et comme il est à la fin, il est très léger. On y va ? Bonjour. Oh, mais tu es très fort, hein !? Bravo ! Bravo. Donc voilà, c'est très important que tu comprennes que des fois, deux lettres se combinent pour former un seul son en français, on en reparlera. Alors fais attention, \"BONJOUR\" s'écrit en un seul mot. On n'écrit pas \"BON\" et \"JOUR\", non, \"BONJOUR\". \"BONJOUR\" ne prend pas de \"S\" à la fin, non ! Attention, ce sont des erreurs très, très communes que je rencontre donc je voulais te le dire. À partir de 5 h du soir, plus ou moins, on peut, même généralement, on utilise le mot : \"BONSOIR\". Donc, de la même manière, \"O\" et \"N\" se combinent pour former le son \"ON\" [3], \"BON\" [b3], et pas \"BONNE\" [bon], non ! \"BON\" [b3], d'accord ? Ici, la lettre \"S\", il s'agit d'un \"S\" sourd, donc c'est assez fermé, on en reparlera. Et les lettres",
+						"images": [],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					},
+					{
+						"index": 5,
+						"markdown": "\"O\" et \"I\" se combinent pour former le son \"OI\", d'accord ? Donc tu vois, ces lettres se combinent très souvent mais on en reparlera plus tard. Et le \"R\" final, \"BONSOIR\". Très bien !\n\nL'accent tonique est toujours à la fin des mots en français. Donc ce n'est pas \"BONSOIR\", non. \"BONSOIR\", d'accord. \"BONJOUR\", très bien. Alors une chose importante, c'est pareil que pour \"BONJOUR\", \"BONSOIR\" s'écrit en un seul mot et il n'y a pas de \"S\" à la fin. Nous allons voir un dernier mot très important, et après, nous verrons des exemples. Le mot \"SALUT\", c'est aussi un mot très commun pour saluer et c'est un mot plus informel, d'accord ? Donc on va l'utiliser davantage entre amis. Donc regarde ce mot, il se prononce de cette manière : \"SALUT\". Très bien ! Alors, la lettre \"U\". La lettre \"U\" ne se prononce pas \"OU\" [u], non. Elle se prononce \"U\" [y], donc tu dois faire comme si tu faisais \"OU\" mais en même temps, tu essaies de faire un \"I\" [i]. Donc \"U\" [u]. Très bien ! Et attention, la lettre \"T\" finale ne se prononce pas. Et ça, c'est très caractéristique du français. En général, les consonnes finales ne se prononcent pas et il y a beaucoup de lettres muettes en français mais nous en reparlerons. Bien, on va prononcer à nouveau les trois mots : \"BONJOUR\", \"BONSOIR\", \"SALUT\". Fantastique ! C'est très important de bien commencer. Je n'insiste pas pour que tu prononces parfaitement, mais j'insiste pour que tu comprennes des principes de base et si tu les comprends bien au début, tout sera plus facile après. Le français, on a l'impression que c'est très difficile au début parce qu'il y a des choses bizarres, mais en fait, ce n'est pas vrai ! Il s'agit juste de quelques petites choses, et si tu les comprends, tu comprends que ce n'est pas du tout difficile. Allez on continue, et maintenant, on va voir des exemples.\n\nAlors je ne vais pas tout détailler dans les exemples, la prononciation etc. Et comme tu as les sous-titres dans ta langue, tu vas avoir automatiquement les traductions donc je ne vais pas traduire tout cela. Le premier exemple, c'est un exemple formel parce qu'on voit qu'on utilise \"VOUS\", \"Bonjour vous allez bien ?\" et le \"VOUS\", c'est un pronom qui sert pour parler à des gens qu'on ne connait pas, d'une manière formelle. Allez, je te laisse écouter cet exemple. \"Bonjour ! Vous allez bien ?\" \"Bonjour, très bien, et vous ?\" \"Très bien, merci.\"\n\nD'accord ? Donc tu as pu reconnaitre Noemi, on a fait l'enregistrement ensemble. Alors deuxième exemple, cette fois-ci, on va utiliser \"TU\", \"Tu vas bien ?\". Donc là c'est informel, entre amis. Je te laisse écouter ce dialogue. \"Bonsoir Michel, tu vas bien ?\" \"Oui, ça va. Et toi, comment tu vas ?\" \"Très bien !\"\n\nD'accord, donc tu as les traductions normalement qui sortent, dans les sous-titres dans ta langue. Un autre petit dialogue informel. \"Salut, ça va ?\" \"Ça va. Et toi, ça va ? \"Ça va !\"\n\nD'accord ? Donc on utilise beaucoup \"ça va\" parce que \"ça va\", c'est pour dire : \"Tu vas bien ?\" et c'est aussi pour répondre : \"Je vais bien\". Donc \"ça va ?\" \"ça va.\" c'est très normal en français. Un dernier dialogue un peu plus long qui est formel puisqu'on va utiliser \"VOUS\", \"MONSIEUR\", \"MADAME\" etc. Je te laisse écouter le dialogue. \"Bonjour M. Hollande, comment allez-vous ?\" \"Bonjour Mme Duprès ! Très bien, merci. Et vous, comment ça va ?\" \"Ça va très bien, merci. Bonne journée !\" \"Merci, bonne journée à vous aussi. Au revoir !\" \"Au revoir !\" Voilà. Donc là c'est un petit peu plus long, alors je sais que tu ne comprends peut-être pas tout mais ne t'inquiète pas ! Comme le cours est en français, c'est excellent pour toi ! Tu t'habitues à la musique du français, à la prononciation, à reconnaitre un petit peu des mots et même si tu ne comprends pas tout, ce n'est pas grave ! J'ai préféré faire une leçon pratique pour commencer où on voit directement des choses et que tu peux mettre en pratique pour que ce soit motivant et agréable ! Dans la leçon 2 et la leçon 3, nous allons voir un petit peu de théorie. Bravo ! Tu commences très, très bien ! Maintenant, n'oublie surtout pas de faire les exercices sur ta fiche PDF et d'écouter à nouveau tous ces dialogues et l'idéal, c'est de les répéter. Tu l'écoutes et tu le répètes, d'accord ? Et presque, si tu pouvais l'apprendre, ce serait parfait ! Mais déjà, de l'écouter plusieurs fois et essayer de le répéter, eh bien c'est déjà très, très bien ! Bien, je te dis au revoir et on se retrouve dans la leçon 2.",
+						"images": [],
+						"dimensions": {
+							"dpi": 200,
+							"height": 2339,
+							"width": 1654
+						}
+					}
+				],
+				"model": "mistral-ocr-2505-completion",
+				"document_annotation": null,
+				"usage_info": {
+					"pages_processed": 6,
+					"doc_size_bytes": 983690
+				},
+				"extractedText": "# LÉ́ON 01. Bonjour ! \n\nCours Debutants Lecon 01 A\nTu peux traduire ces fiches PDF avec des outils comme : https://www.onlinedoctranslator.com/ ou bien sûr https://translate.google.com/\n\n## Fiche récapitulative\n\n## . Pour saluer, utilise le mot BONJOUR [bõ3ur].\n\nNote qu'en français, beaucoup de sons se forment avec deux ou même trois lettres : bonjour [bõ3ur].\n\nLa lettre $R$ se prononce un peu comme quand on fait des gargarismes : [r].\n\nFais attention ! N'écris pas Bon jour ou bonjours !\n\n## À partir de 17 heures, tu peux utiliser BONSOIR [bõswar].\n\nLà aussi, note bien ces combinaisons : ON --> [õ] et OI --> [wa].\n\n## . Dans un langage plus familier, tu peux utiliser SALUT [saly].\n\nNote qu'en français, de nombreuses lettres sont muettes, nous en reparlerons pendant le cours. Il s'agit principalement de certaines consonnes en position finale : salut [saly], beaucoup [bocu], etc. Et de la lettre E (voir leçon 4).\n\n# Exercices \n\n## 1. Écoute à nouveau les dialogues (fichier audio), répète-les et joue la scène à voix haute.\n\n## 2. Quelle est l'option correcte ?\n\n1) 4)\na. $\\square$ Bon jour Laurent !\na. $\\square$ Comment tu va ?\nb. $\\square$ Bonjour Laurent !\nb. $\\square$ Comment ça va ?\nc. $\\square$ Bonjours Laurent !\nc. $\\square$ Commen ça vas ?\n2)\na. $\\square$ Vous allez bien ?\nb. $\\square$ Salut Anne !\nb. $\\square$ Salut Anne !\nc. $\\square$ Tu allez bien ?\nc. $\\square$ Salute Anne !\n3)\na. $\\square$ Ça va et tu ?\nb. $\\square$ Bonsoirs Fabien !\nb. $\\square$ Bon soir Fabien !\nc. $\\square$ Ça va et toi ?\nc. $\\square$ Bonsoir Fabien !\n\n## Correction.\n\n1) 4)\nb. $\\square$ Bonjour Laurent !\nb. $\\square$ Comment ça va ?\n2)\na. $\\square$ Vous allez bien ?\n5)\nb. $\\square$ Salut Anne !\n3)\nc. $\\square$ Ça va et toi ?\n6)\nc. $\\square$ Bonsoir Fabien !\n\n# **3. Quelle phrase va avec quelle image ?**\n\n![img-0.jpeg](img-0.jpeg)\n\n**Image 1**\n\n**Phrase A : Salut !**\n\n![img-1.jpeg](img-1.jpeg)\n\n**Image 2**\n\n**Phrase B : Bonjour !**\n\n# **Correction.**\n\n**Image 1 --> Phrase B ; Image 2 --> Phrase A**\n\n# Transcription des dialogues \n\n## Dialogue 1\n\n- Bonjour. Vous allez bien?\n- Bonjour ! Très bien et vous?\n- Très bien, merci !\n\nDialogue 2\n\n- Bonsoir Michel, tu vas bien?\n- Oui, ça va et toi, comment tu vas?\n- Très bien !\n\n\n## Dialogue 3\n\n- Salut ça va ?\n- Ça va et toi, ça va ?\n- Ça va.\n\n\n## Dialogue 4\n\n- Bonjour Monsieur Hollande, comment allez-vous?\n- Bonjour Madame Dupré. Très bien, merci et vous, comment ça va ?\n- Ça va très bien, merci. Bonne journée !\n- Merci, bonne journée à vous aussi, au revoir !\n- Au revoir !\n\n# Transcription de la vidéo \n\n## Cours Debutants Lecon 01 B\n\n- Bonjour\n- Bonjour !\n- Et bienvenue dans ce cours de français pour débutants.\n- Alors le cours est entièrement en français. Ne t'inquiètes pas, ne stresse pas, c'est normal ! Mais tu as les soustitres en français et surtout, tu as les sous-titres dans ta langue !\n- Donc, première chose, n'oublie pas d'activer les sous-titres dans ta langue et après, tu pourras les activer en français. Voilà, c'est fait ? Bon, moi, je voulais juste te souhaiter la bienvenue et je te laisse avec le super prof Pierre. Bon cours de français !\n- Merci Noemi !\n- Au revoir !\n- Bon allez, on y va ! Dans cette première leçon, nous allons apprendre à saluer, à dire bonjour et plein d'autres choses fondamentales.\n\nBonjour ! Donc très important, juste avant de commencer. Ce cours est vraiment complet et efficace si tu t'inscris à partir du lien qui va apparaitre sur la vidéo ou dans la description de la vidéo parce que tu auras tout le cours bien organisé avec les fiches PDF, avec les fichiers audio, avec les exercices et avec un test final. Avec un examen à la fin du cours. Donc si tu ne t'es pas inscrit avec ce lien, tout de suite, commence par t'inscrire correctement, donc tu cliques sur le lien et tu vas t'inscrire et tu auras tout le matériel bien organisé, tu recevras tout cela, d'accord ? Donc vraiment, très important. Allez, on commence !\n\nBonjour. Donc ce mot, je pense que tu le connais mais on va le prononcer ensemble. \"Bonjour\", à toi. Très bien ! Donc c'est le mot principal pour saluer en français. On l'utilise le matin, l'après-midi, mais en général, on peut I'utiliser presque toujours. Nous allons maintenant voir quelques concepts fondamentaux de la prononciation et du français en général avec ce mot. J'ai mis en orange deux lettres. Ces deux lettres en fait se combinent, s'assemblent, pour faire un son. Alors nous parlerons des sons dans la leçon numéro 3, mais déjà, il faut que je t'explique des choses très importantes. En français, c'est très commun que deux lettres s'assemblent pour former un son. Ici, il s'agit de la voyelle nasale \"ON\" [3]. C'est un peu comme un \"O\" [o], mais ça vibre plus vers le nez. Je ne vais pas détailler ici, mais c'est : \"BON\" [b3]. Et surtout, tu ne dois pas dire \"ONE\" [on], non ! On n'entend pas la lettre \"N\" puisque les deux lettres forment un son, donc c'est \"BON\" [b3]. Très bien ! Bravo !\n\nAlors ensuite, la lettre \"J\", on verra les lettres dans la leçon 2, se prononce un peu comme quand tu dis \"JAZZ\", \"LE JAZZ\", mais il n'y a pas le \"D\" devant, cette partie seulement. Donc : \"BONJOUR\". Ensuite, très important, les deux lettres \"O\" et \"U\" vont aussi se combiner pour former le son \"OU\" [u]. Donc c'est le son de \"BOOTS\" en anglais par exemple. Ce son est très commun mais il est pas allongé, c'est \"OU\" [u]. Et finalement, le \"R\" final, on va l'entendre, mais le \"R\" en français se fait ici. Un peu comme quand tu fais des gargarismes, d'accord ? Et comme il est à la fin, il est très léger. On y va ? Bonjour. Oh, mais tu es très fort, hein !? Bravo ! Bravo. Donc voilà, c'est très important que tu comprennes que des fois, deux lettres se combinent pour former un seul son en français, on en reparlera. Alors fais attention, \"BONJOUR\" s'écrit en un seul mot. On n'écrit pas \"BON\" et \"JOUR\", non, \"BONJOUR\". \"BONJOUR\" ne prend pas de \"S\" à la fin, non ! Attention, ce sont des erreurs très, très communes que je rencontre donc je voulais te le dire. À partir de 5 h du soir, plus ou moins, on peut, même généralement, on utilise le mot : \"BONSOIR\". Donc, de la même manière, \"O\" et \"N\" se combinent pour former le son \"ON\" [3], \"BON\" [b3], et pas \"BONNE\" [bon], non ! \"BON\" [b3], d'accord ? Ici, la lettre \"S\", il s'agit d'un \"S\" sourd, donc c'est assez fermé, on en reparlera. Et les lettres\n\n\"O\" et \"I\" se combinent pour former le son \"OI\", d'accord ? Donc tu vois, ces lettres se combinent très souvent mais on en reparlera plus tard. Et le \"R\" final, \"BONSOIR\". Très bien !\n\nL'accent tonique est toujours à la fin des mots en français. Donc ce n'est pas \"BONSOIR\", non. \"BONSOIR\", d'accord. \"BONJOUR\", très bien. Alors une chose importante, c'est pareil que pour \"BONJOUR\", \"BONSOIR\" s'écrit en un seul mot et il n'y a pas de \"S\" à la fin. Nous allons voir un dernier mot très important, et après, nous verrons des exemples. Le mot \"SALUT\", c'est aussi un mot très commun pour saluer et c'est un mot plus informel, d'accord ? Donc on va l'utiliser davantage entre amis. Donc regarde ce mot, il se prononce de cette manière : \"SALUT\". Très bien ! Alors, la lettre \"U\". La lettre \"U\" ne se prononce pas \"OU\" [u], non. Elle se prononce \"U\" [y], donc tu dois faire comme si tu faisais \"OU\" mais en même temps, tu essaies de faire un \"I\" [i]. Donc \"U\" [u]. Très bien ! Et attention, la lettre \"T\" finale ne se prononce pas. Et ça, c'est très caractéristique du français. En général, les consonnes finales ne se prononcent pas et il y a beaucoup de lettres muettes en français mais nous en reparlerons. Bien, on va prononcer à nouveau les trois mots : \"BONJOUR\", \"BONSOIR\", \"SALUT\". Fantastique ! C'est très important de bien commencer. Je n'insiste pas pour que tu prononces parfaitement, mais j'insiste pour que tu comprennes des principes de base et si tu les comprends bien au début, tout sera plus facile après. Le français, on a l'impression que c'est très difficile au début parce qu'il y a des choses bizarres, mais en fait, ce n'est pas vrai ! Il s'agit juste de quelques petites choses, et si tu les comprends, tu comprends que ce n'est pas du tout difficile. Allez on continue, et maintenant, on va voir des exemples.\n\nAlors je ne vais pas tout détailler dans les exemples, la prononciation etc. Et comme tu as les sous-titres dans ta langue, tu vas avoir automatiquement les traductions donc je ne vais pas traduire tout cela. Le premier exemple, c'est un exemple formel parce qu'on voit qu'on utilise \"VOUS\", \"Bonjour vous allez bien ?\" et le \"VOUS\", c'est un pronom qui sert pour parler à des gens qu'on ne connait pas, d'une manière formelle. Allez, je te laisse écouter cet exemple. \"Bonjour ! Vous allez bien ?\" \"Bonjour, très bien, et vous ?\" \"Très bien, merci.\"\n\nD'accord ? Donc tu as pu reconnaitre Noemi, on a fait l'enregistrement ensemble. Alors deuxième exemple, cette fois-ci, on va utiliser \"TU\", \"Tu vas bien ?\". Donc là c'est informel, entre amis. Je te laisse écouter ce dialogue. \"Bonsoir Michel, tu vas bien ?\" \"Oui, ça va. Et toi, comment tu vas ?\" \"Très bien !\"\n\nD'accord, donc tu as les traductions normalement qui sortent, dans les sous-titres dans ta langue. Un autre petit dialogue informel. \"Salut, ça va ?\" \"Ça va. Et toi, ça va ? \"Ça va !\"\n\nD'accord ? Donc on utilise beaucoup \"ça va\" parce que \"ça va\", c'est pour dire : \"Tu vas bien ?\" et c'est aussi pour répondre : \"Je vais bien\". Donc \"ça va ?\" \"ça va.\" c'est très normal en français. Un dernier dialogue un peu plus long qui est formel puisqu'on va utiliser \"VOUS\", \"MONSIEUR\", \"MADAME\" etc. Je te laisse écouter le dialogue. \"Bonjour M. Hollande, comment allez-vous ?\" \"Bonjour Mme Duprès ! Très bien, merci. Et vous, comment ça va ?\" \"Ça va très bien, merci. Bonne journée !\" \"Merci, bonne journée à vous aussi. Au revoir !\" \"Au revoir !\" Voilà. Donc là c'est un petit peu plus long, alors je sais que tu ne comprends peut-être pas tout mais ne t'inquiète pas ! Comme le cours est en français, c'est excellent pour toi ! Tu t'habitues à la musique du français, à la prononciation, à reconnaitre un petit peu des mots et même si tu ne comprends pas tout, ce n'est pas grave ! J'ai préféré faire une leçon pratique pour commencer où on voit directement des choses et que tu peux mettre en pratique pour que ce soit motivant et agréable ! Dans la leçon 2 et la leçon 3, nous allons voir un petit peu de théorie. Bravo ! Tu commences très, très bien ! Maintenant, n'oublie surtout pas de faire les exercices sur ta fiche PDF et d'écouter à nouveau tous ces dialogues et l'idéal, c'est de les répéter. Tu l'écoutes et tu le répètes, d'accord ? Et presque, si tu pouvais l'apprendre, ce serait parfait ! Mais déjà, de l'écouter plusieurs fois et essayer de le répéter, eh bien c'est déjà très, très bien ! Bien, je te dis au revoir et on se retrouve dans la leçon 2.",
+				"pageCount": 6
+			}
+		]
+	}
+}

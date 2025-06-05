@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.mistralOcr",
+	"node": "n8n-nodes-base.mistralAi",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Utility"],
