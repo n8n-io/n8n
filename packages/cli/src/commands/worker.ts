@@ -94,8 +94,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
 		await this.initScalingService();
