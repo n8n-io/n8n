@@ -83,7 +83,7 @@ const draggableHintShown = ref(false);
 const mappedNode = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
-	{ value: 'debugging', label: i18n.baseText('ndv.input.debugging') },
+	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
 const nodeTypesStore = useNodeTypesStore();
