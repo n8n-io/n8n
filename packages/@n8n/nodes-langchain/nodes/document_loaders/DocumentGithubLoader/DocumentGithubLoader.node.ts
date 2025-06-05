@@ -72,6 +72,18 @@ export class DocumentGithubLoader implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
+				displayName: 'Repository Link',
+				name: 'repository',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Branch',
+				name: 'branch',
+				type: 'string',
+				default: 'main',
+			},
+			{
 				displayName: 'Text Splitting',
 				name: 'textSplittingMode',
 				type: 'options',
@@ -87,26 +99,14 @@ export class DocumentGithubLoader implements INodeType {
 					{
 						name: 'Simple',
 						value: 'simple',
-						description: 'Uses Recursive Character Text Splitter with default options',
+						description: 'Splits every 1000 characters with a 200 character overlap',
 					},
 					{
 						name: 'Custom',
 						value: 'custom',
-						description: 'Connect a text splitter of your choice',
+						description: 'Connect a custom text-splitting sub-node',
 					},
 				],
-			},
-			{
-				displayName: 'Repository Link',
-				name: 'repository',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Branch',
-				name: 'branch',
-				type: 'string',
-				default: 'main',
 			},
 			{
 				displayName: 'Options',
