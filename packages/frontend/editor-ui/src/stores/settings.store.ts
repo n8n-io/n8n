@@ -7,7 +7,10 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { INSECURE_CONNECTION_WARNING } from '@/constants';
+import {
+	INSECURE_CONNECTION_WARNING,
+	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
@@ -381,6 +384,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		settings.value = {} as FrontendSettings;
 	};
 
+	/**
+	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
+	 */
+	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
+		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
+		0,
+		{ writeDefaults: false },
+	);
+
 	return {
 		settings,
 		userManagement,
@@ -445,6 +457,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		isNewLogsEnabled,
+		experimental__minZoomNodeSettingsInCanvas,
 		reset,
 		testLdapConnection,
 		getLdapConfig,
