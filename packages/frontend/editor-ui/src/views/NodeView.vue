@@ -132,6 +132,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
+import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 
 defineOptions({
 	name: 'NodeView',
