@@ -65,6 +65,7 @@ const props = withDefaults(
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
+		activeNode?: INodeUi;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -129,7 +130,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 

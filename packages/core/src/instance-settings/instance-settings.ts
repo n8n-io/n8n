@@ -1,5 +1,6 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { InstanceSettingsConfig } from '@n8n/config';
+import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
@@ -21,10 +22,6 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
-
-type InstanceRole = 'unset' | 'leader' | 'follower';
-
-export type InstanceType = 'main' | 'webhook' | 'worker';
 
 @Service()
 export class InstanceSettings {
@@ -60,10 +57,8 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2];
-		this.instanceType = ['webhook', 'worker'].includes(command)
-			? (command as InstanceType)
-			: 'main';
+		const command = process.argv[2] as InstanceType;
+		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${nanoid()}`;
 		this.settings = this.loadOrCreate();
