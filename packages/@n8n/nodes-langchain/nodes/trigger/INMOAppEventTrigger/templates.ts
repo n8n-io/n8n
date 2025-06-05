@@ -9,8 +9,8 @@ export function createPage({
 	i18n: { en },
 	initialMessages,
 	authentication,
-	allowFileUploads,
-	allowedFilesMimeTypes,
+	allowFileUploads = true,
+	allowedFilesMimeTypes = 'image/*,video/*,audio/*',
 	customCss,
 }: {
 	instanceId: string;

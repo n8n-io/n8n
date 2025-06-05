@@ -22,17 +22,26 @@ const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
 	type: 'boolean',
-	default: false,
+	default: true,
 	description: 'Whether to allow file uploads in the chat',
+	displayOptions: {
+		show: {
+			'/mode': ['hostedChat'],
+		},
+	},
 };
 const allowedFileMimeTypeOption: INodeProperties = {
 	displayName: 'Allowed File Mime Types',
 	name: 'allowedFilesMimeTypes',
 	type: 'string',
-	default: '*',
-	placeholder: 'e.g. image/*, text/*, application/pdf',
+	default: 'image/*,video/*,audio/*',
 	description:
 		'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
+	displayOptions: {
+		show: {
+			'/mode': ['hostedChat'],
+		},
+	},
 };
 
 export class INMOAppEventTrigger extends Node {
@@ -115,7 +124,7 @@ export class INMOAppEventTrigger extends Node {
 				displayName: 'Make Chat Publicly Available',
 				name: 'public',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
 					'Whether the chat should be publicly available or only accessible through the manual chat interface',
 			},
@@ -213,20 +222,8 @@ export class INMOAppEventTrigger extends Node {
 				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				displayOptions: {
-					show: {
-						public: [false],
-						'@version': [{ _cnd: { gte: 1.1 } }],
-					},
-				},
-				placeholder: 'Add Field',
-				default: {},
-				options: [allowFileUploadsOption, allowedFileMimeTypeOption],
-			},
+			allowFileUploadsOption,
+			allowedFileMimeTypeOption,
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -251,22 +248,6 @@ export class INMOAppEventTrigger extends Node {
 						displayOptions: {
 							show: {
 								'/mode': ['hostedChat', 'webhook'],
-							},
-						},
-					},
-					{
-						...allowFileUploadsOption,
-						displayOptions: {
-							show: {
-								'/mode': ['hostedChat'],
-							},
-						},
-					},
-					{
-						...allowedFileMimeTypeOption,
-						displayOptions: {
-							show: {
-								'/mode': ['hostedChat'],
 							},
 						},
 					},
@@ -487,8 +468,6 @@ ${cssVariables}
 			showWelcomeScreen?: boolean;
 			subtitle?: string;
 			title?: string;
-			allowFileUploads?: boolean;
-			allowedFilesMimeTypes?: string;
 			customCss?: string;
 		};
 
@@ -539,8 +518,6 @@ ${cssVariables}
 					mode,
 					instanceId,
 					authentication,
-					allowFileUploads: options.allowFileUploads,
-					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
 				});
 

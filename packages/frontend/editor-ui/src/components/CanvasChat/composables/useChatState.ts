@@ -9,9 +9,10 @@ import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
+import { NodePropertiesSymbol } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import { type INode } from 'n8n-workflow';
+import { type INode, type IDataObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
@@ -110,6 +111,24 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		isDisabled: computed(() => isReadOnly),
 		allowFileUploads,
 		locale,
+	});
+
+	// provide node properties
+	provide(NodePropertiesSymbol, {
+		allowFileUploads: computed(() => {
+			const params = chatTriggerNode.value?.parameters;
+			return (
+				(params?.options as IDataObject)?.allowFileUploads ?? params?.allowFileUploads ?? false
+			);
+		}),
+		allowedFilesMimeTypes: computed(() => {
+			const params = chatTriggerNode.value?.parameters;
+			return (
+				(params?.options as IDataObject)?.allowedFilesMimeTypes ??
+				params?.allowedFilesMimeTypes ??
+				''
+			).toString();
+		}),
 	});
 
 	const restoredChatMessages = computed(() =>

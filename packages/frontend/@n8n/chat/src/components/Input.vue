@@ -4,7 +4,7 @@ import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
-import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
+import { useI18n, useChat, useOptions, useNodeProperties } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import ChatFile from './ChatFile.vue';
@@ -28,6 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const { options } = useOptions();
+const { properties } = useNodeProperties();
 const chatStore = useChat();
 const { waitingForResponse } = chatStore;
 
@@ -45,8 +46,12 @@ const isInputDisabled = computed(() => options.disabled?.value === true);
 const isFileUploadDisabled = computed(
 	() => isFileUploadAllowed.value && unref(waitingForResponse) && !options.disabled?.value,
 );
-const isFileUploadAllowed = computed(() => unref(options.allowFileUploads) === true);
-const allowedFileTypes = computed(() => unref(options.allowedFilesMimeTypes));
+const isFileUploadAllowed = computed(() => {
+	return unref(properties.allowFileUploads);
+});
+const allowedFileTypes = computed(() => {
+	return unref(properties.allowedFilesMimeTypes);
+});
 
 const styleVars = computed(() => {
 	const controlsCount = isFileUploadAllowed.value ? 2 : 1;
