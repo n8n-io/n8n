@@ -45,13 +45,12 @@ import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import type { useRouter } from 'vue-router';
 
-export const useActions = ({ router }: { router: ReturnType<typeof useRouter> }) => {
+export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
-	const canvasOperations = useCanvasOperations({ router });
+	const canvasOperations = useCanvasOperations();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -326,6 +325,8 @@ export const useActions = ({ router }: { router: ReturnType<typeof useRouter> })
 						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
 
 					setLastNodeParameters(action);
+
+					// We update the default name here based on the chosen resource and operation
 					if (isDefaultName) {
 						// setTimeout to allow remaining events trigger by node addition to finish
 						setTimeout(

@@ -22,7 +22,6 @@ import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useI18n } from '@n8n/i18n';
 import { isNodePreviewKey, removePreviewToken } from '../utils';
-import { useRouter } from 'vue-router';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -39,7 +38,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getAddedNodesAndConnections } = useActions({ router: useRouter() });
+const { getAddedNodesAndConnections } = useActions();
 const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,

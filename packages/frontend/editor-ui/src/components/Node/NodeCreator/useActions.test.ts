@@ -43,7 +43,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
 				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
@@ -69,7 +69,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -83,7 +83,7 @@ describe('useActions', () => {
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([]);
 			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([]);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [
@@ -113,7 +113,7 @@ describe('useActions', () => {
 				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
 			]);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [
@@ -145,7 +145,7 @@ describe('useActions', () => {
 				{ type: HTTP_REQUEST_NODE_TYPE } as never,
 			]);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -163,7 +163,7 @@ describe('useActions', () => {
 				{ type: CHAT_TRIGGER_NODE_TYPE } as never,
 			]);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -181,7 +181,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: SPLIT_IN_BATCHES_NODE_TYPE }])).toEqual({
 				connections: [
@@ -224,7 +224,7 @@ describe('useActions', () => {
 					},
 				},
 			};
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(
 				getAddedNodesAndConnections([
@@ -264,7 +264,7 @@ describe('useActions', () => {
 					},
 				},
 			};
-			const { getAddedNodesAndConnections } = useActions({ router });
+			const { getAddedNodesAndConnections } = useActions();
 
 			expect(
 				getAddedNodesAndConnections([

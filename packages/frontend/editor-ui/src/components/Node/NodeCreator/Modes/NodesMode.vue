@@ -41,7 +41,6 @@ import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRouter } from 'vue-router';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -55,7 +54,7 @@ const i18n = useI18n();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
-const { setAddedNodeActionParameters } = useActions({ router: useRouter() });
+const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 

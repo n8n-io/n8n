@@ -1625,11 +1625,32 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+function isTool(nodeTypeDescription: INodeTypeDescription, parameters: INodeParameters) {
+	// Check if node is a vector store in retrieve-as-tool mode
+	if (nodeTypeDescription.name.includes('vectorStore')) {
+		const mode = parameters.mode;
+		return mode === 'retrieve-as-tool';
+	}
+
+	// Check for other tool nodes
+	for (const output of nodeTypeDescription.outputs) {
+		if (typeof output === 'string') {
+			return output === NodeConnectionTypes.AiTool;
+		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /**
  * Generates a resource and operation aware node name.
  *
- * 1. "{action} in {displayName}" if the operation has a defined action
- * 2. "{operation} {resource} in {displayName}" if resource and operation exist
+ * Appends `in {nodeTypeDisplayName}` if nodeType is a tool
+ *
+ * 1. "{action}" if the operation has a defined action
+ * 2. "{operation} {resource}" if resource and operation exist
  * 3. The node type's defaults.name field or displayName as a fallback
  */
 export function makeNodeName(
@@ -1641,13 +1662,17 @@ export function makeNodeName(
 		nodeTypeDescription,
 	);
 
+	const postfix = isTool(nodeTypeDescription, nodeParameters)
+		? ` in ${nodeTypeDescription.defaults.name}`
+		: '';
+
 	if (action) {
-		return `${action} in ${nodeTypeDescription.defaults.name}`;
+		return `${action}${postfix}`;
 	}
 
 	if (resource && operation) {
 		const operationProper = operation[0].toUpperCase() + operation.slice(1);
-		return `${operationProper} ${resource} in ${nodeTypeDescription.defaults.name}`;
+		return `${operationProper} ${resource}${postfix}`;
 	}
 
 	return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;

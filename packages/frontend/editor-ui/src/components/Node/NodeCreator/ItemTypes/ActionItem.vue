@@ -9,7 +9,6 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRouter } from 'vue-router';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -19,9 +18,7 @@ export interface Props {
 const props = defineProps<Props>();
 const telemetry = useTelemetry();
 
-const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions({
-	router: useRouter(),
-});
+const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({
