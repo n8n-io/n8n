@@ -352,10 +352,10 @@ describe('External Secrets Manager', () => {
 			expect(manager.getSecretNames('dummy')).toEqual(['test1', 'test2']);
 		});
 
-		test('should return undefined when provider does not exist', async () => {
+		test('should return an empty array when provider does not exist', async () => {
 			await manager.init();
 
-			expect(manager.getSecretNames('nonexistent')).toBeUndefined();
+			expect(manager.getSecretNames('nonexistent')).toBeEmptyArray();
 		});
 	});
 
