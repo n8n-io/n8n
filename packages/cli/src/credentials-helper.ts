@@ -327,8 +327,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		await additionalData?.secretsHelpers?.waitForInit();
-
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
