@@ -1545,7 +1545,7 @@
 	"contextMenu.addSticky": "Add sticky note",
 	"contextMenu.editSticky": "Edit sticky note",
 	"contextMenu.changeColor": "Change color",
-	"contextMenu.FilterExecutionsBy": "Filter Executions by",
+	"contextMenu.filterExecutionsBy": "Filter Executions by",
 	"nodeWebhooks.clickToCopyWebhookUrls": "Click to copy webhook URLs",
 	"nodeWebhooks.clickToCopyWebhookUrls.formTrigger": "Click to copy Form URL",
 	"nodeWebhooks.clickToCopyWebhookUrls.chatTrigger": "Click to copy Chat URL",

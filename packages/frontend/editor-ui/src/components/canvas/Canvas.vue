@@ -110,7 +110,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
-	filter_executions_by: [ids: string[]];
+	'filter-executions-by': [ids: string[]];
 }>();
 
 const props = withDefaults(
