@@ -124,7 +124,7 @@ describe('Mistral OCR Generic Functions', () => {
 				body: { message: 'Error fetching file from URL' },
 			};
 
-			context.getNodeParameter.mockImplementation((param) =>
+			context.getNodeParameter.mockImplementation((param: string) =>
 				param === 'inputType'
 					? 'url'
 					: param === 'documentUrl'
