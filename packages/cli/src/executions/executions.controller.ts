@@ -48,6 +48,16 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
+		if (query.nodesExecuted) {
+			if (typeof query.nodesExecuted === 'string') {
+				query.nodesExecuted = [query.nodesExecuted];
+			} else if (Array.isArray(query.nodesExecuted)) {
+				query.nodesExecuted = query.nodesExecuted.filter((n) => typeof n === 'string');
+			} else {
+				query.nodesExecuted = [];
+			}
+		}
+
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {

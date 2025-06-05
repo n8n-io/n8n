@@ -961,6 +961,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
 			.innerJoin('execution.workflow', 'workflow')
+			// Add join to execution_data in the query builder
+			// TODO: This should be handled better in the future, as it is not needed for all queries
+			.innerJoin('execution_data', 'execution_data', 'execution.id = execution_data.executionId')
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
@@ -1029,6 +1032,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
 				.andWhere('sw.projectId = :projectId', { projectId });
+		}
+
+		if (query.nodesExecuted && query.nodesExecuted.length > 0) {
+			const idConditions: string[] = [];
+			query.nodesExecuted.forEach((node, idx) => {
+				idConditions.push(
+					`json_type(json_extract(execution_data.data, '$[4].' || :nodeName${idx})) IS NOT NULL`,
+				);
+				qb.setParameter(`nodeName${idx}`, node);
+			});
+			qb.andWhere('(' + idConditions.join(' OR ') + ')');
 		}
 
 		return qb;
