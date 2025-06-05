@@ -195,7 +195,7 @@ const onSelect = (action: string) => {
 						projectName
 					}}</N8nHeading>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
-						<slot name="subtitle">{{ sectionDescription }}</slot>
+						{{ sectionDescription }}
 					</N8nText>
 					<template v-else-if="projectDescription">
 						<N8nText
@@ -203,7 +203,7 @@ const onSelect = (action: string) => {
 							color="text-light"
 							data-test-id="project-subtitle"
 						>
-							<slot name="subtitle">{{ projectDescription }}</slot>
+							{{ projectDescription }}
 						</N8nText>
 						<div v-else :class="$style.projectDescriptionWrapper">
 							<N8nTooltip :content="projectDescription" placement="bottom-end">
@@ -212,7 +212,7 @@ const onSelect = (action: string) => {
 									color="text-light"
 									data-test-id="project-subtitle"
 								>
-									<slot name="subtitle">{{ projectDescription }}</slot>
+									{{ projectDescription }}
 								</N8nText></N8nTooltip
 							>
 						</div>
