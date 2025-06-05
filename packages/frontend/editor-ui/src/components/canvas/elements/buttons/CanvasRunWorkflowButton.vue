@@ -148,9 +148,11 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .button {
 	.split & {
+		height: var(--spacing-2xl);
+
 		padding-inline-start: var(--spacing-xs);
 		padding-inline-end: var(--spacing-xl);
-		padding-block: var(--spacing-3xs);
+		padding-block: 0;
 	}
 }
 
@@ -191,7 +193,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start !important;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing-5xs);
 }
 
 .subText {
