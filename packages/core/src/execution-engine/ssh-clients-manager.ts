@@ -28,6 +28,8 @@ type Registration = {
 export class SSHClientsManager {
 	readonly clients = new Map<string, Registration>();
 
+	readonly clientsReversed = new WeakMap<Client, string>();
+
 	constructor(
 		private readonly config: SSHClientsConfig,
 		private readonly logger: Logger,
@@ -41,6 +43,18 @@ export class SSHClientsManager {
 		setInterval(() => this.cleanupStaleConnections(), 60 * 1000);
 
 		this.logger = logger.scoped('ssh-client');
+	}
+
+	updateLastUsed(client: Client) {
+		const key = this.clientsReversed.get(client);
+
+		if (key) {
+			const registration = this.clients.get(key);
+
+			if (registration) {
+				registration.lastUsed = new Date();
+			}
+		}
 	}
 
 	async getClient(credentials: SSHCredentials, abortController?: AbortController): Promise<Client> {
@@ -77,6 +91,7 @@ export class SSHClientsManager {
 					lastUsed: new Date(),
 					abortController,
 				});
+				this.clientsReversed.set(sshClient, clientHash);
 				resolve(sshClient);
 			});
 			sshClient.connect(sshConfig);

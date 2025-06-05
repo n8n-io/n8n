@@ -830,6 +830,7 @@ export type SSHCredentials = {
 
 export interface SSHTunnelFunctions {
 	getSSHClient(credentials: SSHCredentials, abortController?: AbortController): Promise<SSHClient>;
+	updateLastUsed(client: SSHClient): void;
 }
 
 type CronUnit = number | '*' | `*/${number}`;

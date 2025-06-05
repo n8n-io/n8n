@@ -165,5 +165,10 @@ export async function configurePostgres(
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
 		fallBackHandler,
+		wasUsed: ({ sshClient }) => {
+			if (sshClient) {
+				this.helpers.updateLastUsed(sshClient);
+			}
+		},
 	});
 }

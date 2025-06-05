@@ -23,6 +23,8 @@ type GetConnectionOption<Pool> = RegistrationOptions & {
 	 * and re-used until it goes stale.
 	 */
 	fallBackHandler: (abortController: AbortController) => Promise<Pool>;
+
+	wasUsed: (pool: Pool) => void;
 };
 
 type Registration<Pool> = {
@@ -30,6 +32,8 @@ type Registration<Pool> = {
 	pool: Pool;
 
 	abortController: AbortController;
+
+	wasUsed: (pool: Pool) => void;
 
 	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
 	lastUsed: number;
@@ -92,6 +96,7 @@ export class ConnectionPoolManager {
 
 		if (value) {
 			value.lastUsed = Date.now();
+			value.wasUsed(value.pool);
 			return value.pool as T;
 		}
 
@@ -99,6 +104,7 @@ export class ConnectionPoolManager {
 		value = {
 			pool: await options.fallBackHandler(abortController),
 			abortController,
+			wasUsed: options.wasUsed,
 		} as Registration<unknown>;
 
 		// It's possible that `options.fallBackHandler` already called the abort
