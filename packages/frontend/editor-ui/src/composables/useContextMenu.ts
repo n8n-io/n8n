@@ -244,7 +244,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				},
 				{
 					id: 'filter_executions_by',
-					label: i18n.baseText('contextMenu.FilterExecutionsBy'),
+					label: i18n.baseText('contextMenu.filterExecutionsBy'),
 					disabled: false,
 				},
 			].filter(Boolean) as ActionDropdownItem[];

@@ -656,7 +656,10 @@ function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, '
 async function onFilterExecutionBy(input: { ids: string[] }) {
 	const workflowId = route.params.name as string;
 	if (!workflowId || !input || !input.ids || input.ids.length === 0) return;
-	const customFilter = nodeDataById.value[input.ids[0]]?.name;
+	const customFilter = nodeDataById.value[input.ids[0]]?.name || undefined;
+
+	emit('filter-executions-by', input.ids);
+
 	router.push({
 		path: `/workflow/${workflowId}/executions/`,
 		query: { custom_filter: customFilter },
@@ -715,8 +718,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
 		case 'filter_executions_by':
-			onFilterExecutionBy({ ids: nodeIds });
-			return emit('filter_executions_by', nodeIds);
+			return await onFilterExecutionBy({ ids: nodeIds });
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
