@@ -121,18 +121,6 @@ export class OutputParserStructured implements INodeType {
 				},
 			},
 			{
-				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					hide: {
-						schemaType: ['fromJson'],
-					},
-				},
-			},
-			{
 				displayName: 'Auto-Fix Format',
 				description:
 					'Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.',
@@ -170,6 +158,17 @@ export class OutputParserStructured implements INodeType {
 				hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
 				description:
 					'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
+			},
+		],
+		hints: [
+			{
+				message:
+					'Fields that use $refs might have the wrong type, since this syntax is not currently supported',
+				type: 'warning',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+				displayCondition:
+					'={{ $parameter["schemaType"] === "manual" && $parameter["inputSchema"]?.includes("$ref") }}',
 			},
 		],
 	};
