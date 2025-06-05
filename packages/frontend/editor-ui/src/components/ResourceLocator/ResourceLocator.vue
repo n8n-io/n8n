@@ -43,7 +43,6 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
@@ -124,8 +123,7 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 }>();
 
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();
