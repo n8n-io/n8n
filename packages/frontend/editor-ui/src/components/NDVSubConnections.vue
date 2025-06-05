@@ -15,6 +15,7 @@ import type {
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
 
 interface Props {
 	rootNode: INodeUi;
@@ -47,7 +48,7 @@ const nodeType = computed(() =>
 );
 
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
-
+const ndvStore = useNDVStore();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 const nodeInputIssues = computed(() => {
@@ -175,7 +176,7 @@ function showNodeInputsIssues() {
 }
 
 watch(
-	nodeData,
+	[nodeData, ndvStore.activeNode],
 	debounce(
 		() =>
 			setTimeout(() => {
