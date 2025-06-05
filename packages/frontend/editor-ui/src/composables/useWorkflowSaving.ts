@@ -187,7 +187,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			uiStore.addActiveAction('workflowSaving');
 
 			const workflowDataRequest: IWorkflowDataUpdate = await getWorkflowDataToSave();
-
 			// This can happen if the user has another workflow in the browser history and navigates
 			// via the browser back button, encountering our warning dialog with the new route already set
 			if (workflowDataRequest.id !== currentWorkflow) {
@@ -243,6 +242,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			return true;
 		} catch (error) {
 			console.error(error);
+			throw new Error(JSON.stringify(error));
 
 			uiStore.removeActiveAction('workflowSaving');
 

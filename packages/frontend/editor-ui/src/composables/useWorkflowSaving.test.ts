@@ -10,9 +10,10 @@ import type { IWorkflowDataUpdate } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { nodeTypes } from '@/components/CanvasChat/__test__/data';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const modalConfirmSpy = vi.fn();
-const saveCurrentWorkflowSpy = vi.fn();
 
 vi.mock('@/composables/useMessage', () => {
 	return {
@@ -22,13 +23,13 @@ vi.mock('@/composables/useMessage', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowHelpers', () => {
-	return {
-		useWorkflowHelpers: () => ({
-			saveCurrentWorkflow: saveCurrentWorkflowSpy,
-		}),
-	};
-});
+// vi.mock('@/composables/useWorkflowHelpers', () => {
+// 	return {
+// 		useWorkflowHelpers: () => ({
+// 			saveCurrentWorkflow: saveCurrentWorkflowSpy,
+// 		}),
+// 	};
+// });
 
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -77,17 +78,23 @@ const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 });
 
 describe('useWorkflowSaving', () => {
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.setNodeTypes(nodeTypes);
+	});
+
 	describe('promptSaveUnsavedWorkflowChanges', () => {
-		beforeAll(() => {
-			setActivePinia(createTestingPinia());
-		});
-
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
 		it('should prompt the user to save changes and proceed if confirmed', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
 			const cancel = vi.fn();
@@ -99,12 +106,13 @@ describe('useWorkflowSaving', () => {
 			const npsSurveyStore = useNpsSurveyStore();
 			vi.spyOn(npsSurveyStore, 'fetchPromptsData').mockResolvedValue();
 
-			saveCurrentWorkflowSpy.mockResolvedValue(true);
-
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(npsSurveyStore.fetchPromptsData).toHaveBeenCalled();
@@ -117,7 +125,6 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should not proceed if the user cancels the confirmation modal', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -129,7 +136,10 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CANCEL);
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(saveCurrentWorkflowSpy).not.toHaveBeenCalled();
@@ -141,7 +151,6 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should restore the route if the modal is closed and the workflow is not new', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -157,7 +166,9 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(saveCurrentWorkflowSpy).not.toHaveBeenCalled();
@@ -174,7 +185,6 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should close modal if workflow is not new', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -189,7 +199,9 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(saveCurrentWorkflowSpy).not.toHaveBeenCalled();
@@ -201,7 +213,6 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should proceed without prompting if there are no unsaved changes', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -210,7 +221,9 @@ describe('useWorkflowSaving', () => {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = false;
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).not.toHaveBeenCalled();
 			expect(saveCurrentWorkflowSpy).not.toHaveBeenCalled();
@@ -222,7 +235,17 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should handle save failure and restore the route', async () => {
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
+			const workflow = createTestWorkflow({
+				id: 'w0',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
 			const next = vi.fn();
 			const confirm = vi.fn();
 			const cancel = vi.fn();
@@ -231,16 +254,12 @@ describe('useWorkflowSaving', () => {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			const workflowStore = useWorkflowsStore();
-			const MOCK_ID = 'existing-workflow-id';
-			workflowStore.workflow.id = MOCK_ID;
-
-			saveCurrentWorkflowSpy.mockResolvedValue(false);
-
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+			const workflowSaving = useWorkflowSaving({ router });
+			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
+			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
 			expect(saveCurrentWorkflowSpy).toHaveBeenCalledWith({}, false);
@@ -251,7 +270,7 @@ describe('useWorkflowSaving', () => {
 			expect(next).toHaveBeenCalledWith(
 				router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: MOCK_ID },
+					params: { name: workflow.id },
 				}),
 			);
 		});
@@ -302,22 +321,6 @@ describe('useWorkflowSaving', () => {
 		});
 	});
 	describe('saveCurrentWorkflow', () => {
-		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-
-		beforeAll(() => {
-			setActivePinia(createTestingPinia());
-			workflowsStore = mockedStore(useWorkflowsStore);
-		});
-
-		afterEach(() => {
-			vi.clearAllMocks();
-		});
-		beforeEach(() => {
-			setActivePinia(createTestingPinia({ stubActions: false }));
-
-			workflowsStore = mockedStore(useWorkflowsStore);
-		});
-
 		it('should save the current workflow', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w0',
