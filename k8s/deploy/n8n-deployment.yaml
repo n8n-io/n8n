@@ -61,7 +61,7 @@ spec:
               value: "http://192.168.68.120:30567"
             - name: NODE_FUNCTION_ALLOW_EXTERNAL
               value: "node-fetch"
-          image: ghcr.io/ozlevka/n8n:v0.0.3
+          image: ghcr.io/ozlevka/n8n:0.0.4
           name: n8n
           ports:
             - containerPort: 5678
