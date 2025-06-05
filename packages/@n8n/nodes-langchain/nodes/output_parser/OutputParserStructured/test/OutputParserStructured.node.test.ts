@@ -478,7 +478,7 @@ describe('OutputParserStructured', () => {
 				thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.3 }));
 			});
 
-			describe('exampleFieldsOptionality: required', () => {
+			describe('schema from JSON example', () => {
 				it('should make all fields required when generating schema from JSON example', async () => {
 					const jsonExample = `{
             "user": {
@@ -495,9 +495,6 @@ describe('OutputParserStructured', () => {
 					thisArg.getNodeParameter
 						.calledWith('jsonSchemaExample', 0)
 						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('required');
 
 					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
 						response: N8nStructuredOutputParser;
@@ -536,9 +533,6 @@ describe('OutputParserStructured', () => {
 					thisArg.getNodeParameter
 						.calledWith('jsonSchemaExample', 0)
 						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('required');
 
 					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
 						response: N8nStructuredOutputParser;
@@ -582,9 +576,6 @@ describe('OutputParserStructured', () => {
 					thisArg.getNodeParameter
 						.calledWith('jsonSchemaExample', 0)
 						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('required');
 
 					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
 						response: N8nStructuredOutputParser;
@@ -616,138 +607,6 @@ describe('OutputParserStructured', () => {
 							(e) => e,
 						),
 					).rejects.toThrow('Required');
-				});
-			});
-
-			describe('exampleFieldsOptionality: optional', () => {
-				it('should make all fields optional when generating schema from JSON example', async () => {
-					const jsonExample = `{
-            "user": {
-              "name": "Alice",
-              "email": "alice@example.com",
-              "profile": {
-                "age": 30,
-                "city": "New York"
-              }
-            },
-            "tags": ["work", "important"]
-          }`;
-					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
-					thisArg.getNodeParameter
-						.calledWith('jsonSchemaExample', 0)
-						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('optional');
-
-					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
-						response: N8nStructuredOutputParser;
-					};
-
-					const partialOutput = {
-						output: {
-							user: {
-								name: 'Bob',
-								// Missing email and profile
-							},
-							// Missing tags
-						},
-					};
-
-					const parsersOutput = await response.parse(`Here's the partial output:
-            \`\`\`json
-            ${JSON.stringify(partialOutput)}
-            \`\`\`
-          `);
-
-					expect(parsersOutput).toEqual(partialOutput);
-				});
-
-				it('should accept incomplete array items when fields are optional', async () => {
-					const jsonExample = `{
-            "products": [
-              {
-                "id": 1,
-                "name": "Product A",
-                "price": 29.99,
-                "category": "Electronics"
-              }
-            ]
-          }`;
-					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
-					thisArg.getNodeParameter
-						.calledWith('jsonSchemaExample', 0)
-						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('optional');
-
-					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
-						response: N8nStructuredOutputParser;
-					};
-
-					const partialArrayOutput = {
-						output: {
-							products: [
-								{
-									id: 2,
-									name: 'Product B',
-									// Missing price and category
-								},
-								{
-									id: 3,
-									price: 49.99,
-									// Missing name and category
-								},
-							],
-						},
-					};
-
-					const parsersOutput = await response.parse(`Here's the partial array output:
-            \`\`\`json
-            ${JSON.stringify(partialArrayOutput)}
-            \`\`\`
-          `);
-
-					expect(parsersOutput).toEqual(partialArrayOutput);
-				});
-
-				it('should handle empty objects when fields are optional', async () => {
-					const jsonExample = `{
-            "config": {
-              "theme": "dark",
-              "notifications": true
-            },
-            "user": {
-              "name": "Alice"
-            }
-          }`;
-					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
-					thisArg.getNodeParameter
-						.calledWith('jsonSchemaExample', 0)
-						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('optional');
-
-					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
-						response: N8nStructuredOutputParser;
-					};
-
-					const emptyObjectOutput = {
-						output: {
-							config: {},
-							user: {},
-						},
-					};
-
-					const parsersOutput = await response.parse(`Here's the empty object output:
-            \`\`\`json
-            ${JSON.stringify(emptyObjectOutput)}
-            \`\`\`
-          `);
-
-					expect(parsersOutput).toEqual(emptyObjectOutput);
 				});
 			});
 
@@ -806,46 +665,6 @@ describe('OutputParserStructured', () => {
 				});
 			});
 
-			describe('default behavior', () => {
-				it('should default to required fields when exampleFieldsOptionality is not specified', async () => {
-					const jsonExample = `{
-            "name": "Alice",
-            "age": 30
-          }`;
-					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
-					thisArg.getNodeParameter
-						.calledWith('jsonSchemaExample', 0)
-						.mockReturnValueOnce(jsonExample);
-					// Mock the default parameter behavior
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('required');
-
-					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
-						response: N8nStructuredOutputParser;
-					};
-
-					const incompleteOutput = {
-						output: {
-							name: 'Bob',
-							// Missing age field
-						},
-					};
-
-					await expect(
-						response.parse(
-							`Here's the incomplete output:
-              \`\`\`json
-              ${JSON.stringify(incompleteOutput)}
-              \`\`\`
-            `,
-							undefined,
-							(e) => e,
-						),
-					).rejects.toThrow('Required');
-				});
-			});
-
 			describe('complex nested structures', () => {
 				it('should handle deeply nested objects with required fields', async () => {
 					const jsonExample = `{
@@ -874,9 +693,6 @@ describe('OutputParserStructured', () => {
 					thisArg.getNodeParameter
 						.calledWith('jsonSchemaExample', 0)
 						.mockReturnValueOnce(jsonExample);
-					thisArg.getNodeParameter
-						.calledWith('exampleFieldsOptionality', 0, 'required')
-						.mockReturnValueOnce('required');
 
 					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
 						response: N8nStructuredOutputParser;
