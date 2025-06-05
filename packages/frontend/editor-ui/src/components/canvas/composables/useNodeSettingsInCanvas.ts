@@ -3,7 +3,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useVueFlow } from '@vue-flow/core';
 import { useDebounce } from '@vueuse/core';
 import { computed, type ComputedRef } from 'vue';
-import { useRouter } from 'vue-router';
 
 export function useNodeSettingsInCanvas(): ComputedRef<number | undefined> {
 	const settingsStore = useSettingsStore();
@@ -15,8 +14,7 @@ export function useNodeSettingsInCanvas(): ComputedRef<number | undefined> {
 		return computed(() => undefined);
 	}
 
-	const router = useRouter();
-	const { editableWorkflow } = useCanvasOperations({ router });
+	const { editableWorkflow } = useCanvasOperations();
 	const viewFlow = useVueFlow({ id: editableWorkflow.value.id });
 	const zoom = computed(() => viewFlow.viewport.value.zoom);
 	const debouncedZoom = useDebounce(zoom, 100);
