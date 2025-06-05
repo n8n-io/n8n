@@ -90,7 +90,7 @@ describe('CanvasEdge', () => {
 		await user.unhover(getByTestId('edge-label'));
 		expect(getByTestId('canvas-edge-toolbar')).toBeInTheDocument();
 
-		await vi.advanceTimersByTimeAsync(300);
+		await vi.advanceTimersByTimeAsync(600);
 
 		expect(queryByTestId('canvas-edge-toolbar')).not.toBeInTheDocument();
 	});

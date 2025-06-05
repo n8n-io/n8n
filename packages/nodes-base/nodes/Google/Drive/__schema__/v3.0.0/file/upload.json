@@ -290,6 +290,9 @@
         "starred": {
             "type": "boolean"
         },
+        "thumbnailLink": {
+            "type": "string"
+        },
         "thumbnailVersion": {
             "type": "string"
         },
@@ -315,5 +318,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

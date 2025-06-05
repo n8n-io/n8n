@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as projectsApi from '@/api/projects.api';
+import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
+import * as credentialsApi from '@/api/credentials';
 import * as credentialsEEApi from '@/api/credentials.ee';
 import type { Project, ProjectListItem, ProjectsCount } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
@@ -11,7 +13,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
@@ -148,9 +150,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const setProjectNavActiveIdByWorkflowHomeProject = async (
 		homeProject?: IWorkflowDb['homeProject'],
 	) => {
+		// Handle personal projects
 		if (homeProject?.type === ProjectTypes.Personal) {
-			projectNavActiveId.value = 'home';
+			const isOwnPersonalProject = personalProject.value?.id === homeProject?.id;
+			// If it's current user's personal project, set it as current project
+			if (isOwnPersonalProject) {
+				projectNavActiveId.value = homeProject?.id ?? null;
+				currentProject.value = personalProject.value;
+			} else {
+				// Else default to overview page
+				projectNavActiveId.value = 'home';
+			}
 		} else {
+			// Handle team projects
 			projectNavActiveId.value = homeProject?.id ?? null;
 			if (homeProject?.id && !currentProjectId.value) {
 				await getProject(homeProject?.id);
@@ -162,11 +174,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		resourceType: 'workflow' | 'credential',
 		resourceId: string,
 		projectId: string,
+		parentFolderId?: string,
 		shareCredentials?: string[],
 	) => {
 		if (resourceType === 'workflow') {
 			await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, {
 				destinationProjectId: projectId,
+				destinationParentFolderId: parentFolderId,
 				shareCredentials,
 			});
 		} else {
@@ -179,6 +193,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const isProjectEmpty = async (projectId: string) => {
+		const [credentials, workflows] = await Promise.all([
+			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
+			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
+		]);
+
+		return credentials.length === 0 && workflows.count === 0;
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -186,6 +209,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 			if (newRoute?.path?.includes('home')) {
 				projectNavActiveId.value = 'home';
+				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('shared')) {
+				projectNavActiveId.value = 'shared';
 				setCurrentProject(null);
 			}
 
@@ -235,5 +263,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
+		isProjectEmpty,
 	};
 });

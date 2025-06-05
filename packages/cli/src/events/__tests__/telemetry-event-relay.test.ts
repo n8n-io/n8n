@@ -1,20 +1,20 @@
 import type { GlobalConfig } from '@n8n/config';
+import type { CredentialsEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
+import type { CredentialsRepository } from '@n8n/db';
+import type { ProjectRelationRepository } from '@n8n/db';
+import type { SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
@@ -697,6 +697,50 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+			});
+		});
+
+		it('should track on `workflow-archived` event', () => {
+			const event: RelayEventMap['workflow-archived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:owner',
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-archived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User archived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+			});
+		});
+
+		it('should track on `workflow-unarchived` event', () => {
+			const event: RelayEventMap['workflow-unarchived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:owner',
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-unarchived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User unarchived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
 			});
 		});
 

@@ -1,0 +1,61 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"name": "Test",
+				"email": "NewOnes22@example.com",
+				"additionalFields": {
+					"description": "test"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [60, 1140],
+			"id": "54a9e564-bff5-4d86-b684-e5cf5b34b48c",
+			"name": "Create Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Create Group": [
+			{
+				"json": {
+					"kind": "admin#directory#group",
+					"id": "03mzq4wv15cepg2",
+					"etag": "\"example\"",
+					"email": "NewOnes22@example.com",
+					"name": "Test",
+					"description": "test",
+					"adminCreated": true
+				}
+			}
+		]
+	}
+}

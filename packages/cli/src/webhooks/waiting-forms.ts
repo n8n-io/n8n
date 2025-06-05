@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
@@ -10,7 +11,6 @@ import {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
@@ -136,12 +136,6 @@ export class WaitingForms extends WaitingWebhooks {
 				lastNodeExecuted = completionPage;
 			}
 		}
-
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
 
 		return await this.getWebhookExecutionData({
 			execution,

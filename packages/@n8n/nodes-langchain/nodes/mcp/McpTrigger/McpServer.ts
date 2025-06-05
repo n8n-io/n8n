@@ -1,7 +1,11 @@
 import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type {
+	JSONRPCMessage,
+	ServerRequest,
+	ServerNotification,
+} from '@modelcontextprotocol/sdk/types.js';
 import {
 	JSONRPCMessageSchema,
 	ListToolsRequestSchema,
@@ -33,25 +37,71 @@ function wasToolCall(body: string) {
 	}
 }
 
-export class McpServer {
+/**
+ * Extracts the request ID from a JSONRPC message (for example for tool calls).
+ * Returns undefined if the message doesn't have an ID (for example on a tool list request)
+ *
+ */
+function getRequestId(body: string): string | undefined {
+	try {
+		const message: unknown = JSON.parse(body);
+		const parsedMessage: JSONRPCMessage = JSONRPCMessageSchema.parse(message);
+		return 'id' in parsedMessage ? String(parsedMessage.id) : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * This singleton is shared across the instance, making sure it is the one
+ * keeping account of MCP servers.
+ * It needs to stay in memory to keep track of the long-lived connections.
+ * It requires a logger at first creation to set everything up.
+ */
+export class McpServerManager {
+	static #instance: McpServerManager;
+
 	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
-	logger: Logger;
-
 	private tools: { [sessionId: string]: Tool[] } = {};
 
-	private resolveFunctions: { [sessionId: string]: CallableFunction } = {};
+	private resolveFunctions: { [callId: string]: CallableFunction } = {};
 
-	constructor(logger: Logger) {
+	logger: Logger;
+
+	private constructor(logger: Logger) {
 		this.logger = logger;
 		this.logger.debug('MCP Server created');
 	}
 
-	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
+	static instance(logger: Logger): McpServerManager {
+		if (!McpServerManager.#instance) {
+			McpServerManager.#instance = new McpServerManager(logger);
+			logger.debug('Created singleton MCP manager');
+		}
+
+		return McpServerManager.#instance;
+	}
+
+	async createServerAndTransport(
+		serverName: string,
+		postUrl: string,
+		resp: CompressionResponse,
+	): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
-		const server = this.setUpServer();
+		const server = new Server(
+			{
+				name: serverName,
+				version: '0.1.0',
+			},
+			{
+				capabilities: { tools: {} },
+			},
+		);
+
+		this.setUpHandlers(server);
 		const { sessionId } = transport;
 		this.transports[sessionId] = transport;
 		this.servers[sessionId] = server;
@@ -59,7 +109,6 @@ export class McpServer {
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
 			delete this.tools[sessionId];
-			delete this.resolveFunctions[sessionId];
 			delete this.transports[sessionId];
 			delete this.servers[sessionId];
 		});
@@ -75,16 +124,25 @@ export class McpServer {
 	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
 		const sessionId = req.query.sessionId as string;
 		const transport = this.transports[sessionId];
-		this.tools[sessionId] = connectedTools;
 		if (transport) {
 			// We need to add a promise here because the `handlePostMessage` will send something to the
 			// MCP Server, that will run in a different context. This means that the return will happen
 			// almost immediately, and will lead to marking the sub-node as "running" in the final execution
-			await new Promise(async (resolve) => {
-				this.resolveFunctions[sessionId] = resolve;
-				await transport.handlePostMessage(req, resp, req.rawBody.toString());
-			});
-			delete this.resolveFunctions[sessionId];
+			const bodyString = req.rawBody.toString();
+			const messageId = getRequestId(bodyString);
+
+			// Use session & message ID if available, otherwise fall back to sessionId
+			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+			this.tools[sessionId] = connectedTools;
+
+			try {
+				await new Promise(async (resolve) => {
+					this.resolveFunctions[callId] = resolve;
+					await transport.handlePostMessage(req, resp, bodyString);
+				});
+			} finally {
+				delete this.resolveFunctions[callId];
+			}
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
 			resp.status(401).send('No transport found for sessionId');
@@ -94,73 +152,72 @@ export class McpServer {
 			resp.flush();
 		}
 
-		delete this.tools[sessionId]; // Clean up to avoid keeping all tools in memory
-
 		return wasToolCall(req.rawBody.toString());
 	}
 
-	setUpServer(): Server {
-		const server = new Server(
-			{
-				name: 'n8n-mcp-server',
-				version: '0.1.0',
-			},
-			{
-				capabilities: { tools: {} },
+	setUpHandlers(server: Server) {
+		server.setRequestHandler(
+			ListToolsRequestSchema,
+			async (_, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
+				if (!extra.sessionId) {
+					throw new OperationalError('Require a sessionId for the listing of tools');
+				}
+
+				return {
+					tools: this.tools[extra.sessionId].map((tool) => {
+						return {
+							name: tool.name,
+							description: tool.description,
+							// Allow additional properties on tool call input
+							inputSchema: zodToJsonSchema(tool.schema, { removeAdditionalStrategy: 'strict' }),
+						};
+					}),
+				};
 			},
 		);
 
-		server.setRequestHandler(ListToolsRequestSchema, async (_, extra: RequestHandlerExtra) => {
-			if (!extra.sessionId) {
-				throw new OperationalError('Require a sessionId for the listing of tools');
-			}
-
-			return {
-				tools: this.tools[extra.sessionId].map((tool) => {
-					return {
-						name: tool.name,
-						description: tool.description,
-						// Allow additional properties on tool call input
-						inputSchema: zodToJsonSchema(tool.schema, { removeAdditionalStrategy: 'strict' }),
-					};
-				}),
-			};
-		});
-
-		server.setRequestHandler(CallToolRequestSchema, async (request, extra: RequestHandlerExtra) => {
-			if (!request.params?.name || !request.params?.arguments) {
-				throw new OperationalError('Require a name and arguments for the tool call');
-			}
-			if (!extra.sessionId) {
-				throw new OperationalError('Require a sessionId for the tool call');
-			}
-
-			const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
-				(tool) => tool.name === request.params.name,
-			);
-			if (!requestedTool) {
-				throw new OperationalError('Tool not found');
-			}
-
-			try {
-				const result = await requestedTool.invoke(request.params.arguments);
-
-				this.resolveFunctions[extra.sessionId]();
-
-				this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
-
-				if (typeof result === 'object') {
-					return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+		server.setRequestHandler(
+			CallToolRequestSchema,
+			async (request, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
+				if (!request.params?.name || !request.params?.arguments) {
+					throw new OperationalError('Require a name and arguments for the tool call');
 				}
-				if (typeof result === 'string') {
-					return { content: [{ type: 'text', text: result }] };
+				if (!extra.sessionId) {
+					throw new OperationalError('Require a sessionId for the tool call');
 				}
-				return { content: [{ type: 'text', text: String(result) }] };
-			} catch (error) {
-				this.logger.error(`Error while executing Tool ${requestedTool.name}: ${error}`);
-				return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
-			}
-		});
+
+				const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
+
+				const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
+					(tool) => tool.name === request.params.name,
+				);
+				if (!requestedTool) {
+					throw new OperationalError('Tool not found');
+				}
+
+				try {
+					const result = await requestedTool.invoke(request.params.arguments);
+					if (this.resolveFunctions[callId]) {
+						this.resolveFunctions[callId]();
+					} else {
+						this.logger.warn(`No resolve function found for ${callId}`);
+					}
+
+					this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
+
+					if (typeof result === 'object') {
+						return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+					}
+					if (typeof result === 'string') {
+						return { content: [{ type: 'text', text: result }] };
+					}
+					return { content: [{ type: 'text', text: String(result) }] };
+				} catch (error) {
+					this.logger.error(`Error while executing Tool ${requestedTool.name}: ${error}`);
+					return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
+				}
+			},
+		);
 
 		server.onclose = () => {
 			this.logger.debug('Closing MCP Server');
@@ -168,34 +225,5 @@ export class McpServer {
 		server.onerror = (error: unknown) => {
 			this.logger.error(`MCP Error: ${error}`);
 		};
-		return server;
-	}
-}
-
-/**
- * This singleton is shared across the instance, making sure we only have one server to worry about.
- * It needs to stay in memory to keep track of the long-lived connections.
- * It requires a logger at first creation to set everything up.
- */
-export class McpServerSingleton {
-	static #instance: McpServerSingleton;
-
-	private _serverData: McpServer;
-
-	private constructor(logger: Logger) {
-		this._serverData = new McpServer(logger);
-	}
-
-	static instance(logger: Logger): McpServer {
-		if (!McpServerSingleton.#instance) {
-			McpServerSingleton.#instance = new McpServerSingleton(logger);
-			logger.debug('Created singleton for MCP Servers');
-		}
-
-		return McpServerSingleton.#instance.serverData;
-	}
-
-	get serverData() {
-		return this._serverData;
 	}
 }

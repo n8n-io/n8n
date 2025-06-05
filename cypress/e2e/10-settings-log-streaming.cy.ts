@@ -57,9 +57,9 @@ describe('Log Streaming Settings', () => {
 
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()
-			.find('input')
-			.clear()
-			.type('Destination 0');
+			.find('span[data-test-id=inline-edit-preview]')
+			.click();
+		cy.getByTestId('inline-edit-input').type('Destination 0');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);
 		getVisibleModalOverlay().click(1, 1);
@@ -84,9 +84,9 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters.getDestinationNameInput().click();
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()
-			.find('input')
-			.clear()
-			.type('Destination 1');
+			.find('span[data-test-id=inline-edit-preview]')
+			.click();
+		cy.getByTestId('inline-edit-input').type('Destination 1');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.have.attr', 'disabled');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);

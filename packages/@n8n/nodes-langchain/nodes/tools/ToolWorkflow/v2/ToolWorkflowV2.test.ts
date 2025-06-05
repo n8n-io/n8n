@@ -13,6 +13,10 @@ import { WorkflowToolService } from './utils/WorkflowToolService';
 
 // Mock ISupplyDataFunctions interface
 function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
+	let runIndex = 0;
+	const getNextRunIndex = jest.fn(() => {
+		return runIndex++;
+	});
 	return {
 		runIndex: 0,
 		getNodeParameter: jest.fn(),
@@ -26,6 +30,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		getInputData: jest.fn(),
 		getMode: jest.fn(),
 		getRestApiUrl: jest.fn(),
+		getNextRunIndex,
 		getTimezone: jest.fn(),
 		getWorkflow: jest.fn(),
 		getWorkflowStaticData: jest.fn(),
@@ -56,6 +61,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 	describe('createTool', () => {
 		it('should create a basic dynamic tool when schema is not used', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,
@@ -70,6 +76,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should create a tool that can handle successful execution', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,
@@ -112,6 +119,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should handle errors during tool execution', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,

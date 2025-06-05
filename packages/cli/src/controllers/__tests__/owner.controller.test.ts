@@ -1,18 +1,18 @@
 import type { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import type { PublicUser, SettingsRepository } from '@n8n/db';
+import type { UserRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 
 import type { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
-import type { User } from '@/databases/entities/user';
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
-import type { PublicUser } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
+import type { BannerService } from '@/services/banner.service';
 import type { PasswordUtility } from '@/services/password.utility';
 import type { UserService } from '@/services/user.service';
 
@@ -23,6 +23,7 @@ describe('OwnerController', () => {
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	const authService = mock<AuthService>();
+	const bannerService = mock<BannerService>();
 	const userService = mock<UserService>();
 	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
@@ -33,6 +34,7 @@ describe('OwnerController', () => {
 		eventService,
 		settingsRepository,
 		authService,
+		bannerService,
 		userService,
 		passwordUtility,
 		mock(),
@@ -100,7 +102,7 @@ describe('OwnerController', () => {
 
 			const result = await controller.dismissBanner(mock(), mock(), payload);
 
-			expect(settingsRepository.dismissBanner).not.toHaveBeenCalled();
+			expect(bannerService.dismissBanner).not.toHaveBeenCalled();
 			expect(result).toBeUndefined();
 		});
 
@@ -109,7 +111,7 @@ describe('OwnerController', () => {
 
 			await controller.dismissBanner(mock(), mock(), payload);
 
-			expect(settingsRepository.dismissBanner).toHaveBeenCalledWith({ bannerName: 'TRIAL' });
+			expect(bannerService.dismissBanner).toHaveBeenCalledWith('TRIAL');
 		});
 	});
 });

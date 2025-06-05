@@ -13,7 +13,7 @@ import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Inter
 import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 type Props = {
 	nodeViewScale: number;
@@ -88,14 +88,20 @@ function nodeTypeSelected(nodeTypes: string[]) {
 	closeNodeCreator(true);
 }
 
-onMounted(() => {
+function setWrapperRect() {
 	wrapperBoundingRect.value = wrapperRef.value?.getBoundingClientRect();
+}
+
+onMounted(() => {
+	setWrapperRect();
 
 	document.addEventListener('mousemove', onMouseMove);
+	window.addEventListener('resize', setWrapperRect);
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('mousemove', onMouseMove);
+	window.removeEventListener('resize', setWrapperRect);
 });
 </script>
 

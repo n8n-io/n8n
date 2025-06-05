@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type {
@@ -14,7 +15,6 @@ import type {
 	StatusResult,
 } from 'simple-git';
 
-import type { User } from '@/databases/entities/user';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {

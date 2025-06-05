@@ -1,9 +1,7 @@
-import { type TreeNode } from '@/components/RunDataAi/utils';
-
 export type LogEntrySelection =
 	| { type: 'initial' }
-	| { type: 'selected'; workflowId: string; data: TreeNode }
-	| { type: 'none'; workflowId: string };
+	| { type: 'selected'; id: string }
+	| { type: 'none' };
 
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',
@@ -12,3 +10,12 @@ export const LOGS_PANEL_STATE = {
 } as const;
 
 export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_STATE];
+
+export const LOG_DETAILS_PANEL_STATE = {
+	INPUT: 'input',
+	OUTPUT: 'output',
+	BOTH: 'both',
+} as const;
+
+export type LogDetailsPanelState =
+	(typeof LOG_DETAILS_PANEL_STATE)[keyof typeof LOG_DETAILS_PANEL_STATE];

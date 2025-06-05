@@ -1,0 +1,60 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "removeFromGroup",
+				"userId": {
+					"__rl": true,
+					"value": "114393134535981252528",
+					"mode": "list",
+					"cachedResultName": "New User"
+				},
+				"groupId": {
+					"__rl": true,
+					"value": "01302m922pmp3e4",
+					"mode": "list",
+					"cachedResultName": "new2"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [140, 1100],
+			"id": "9a323b95-1495-487f-ba27-2df737bd5bdf",
+			"name": "Remove From Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Remove From Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Remove From Group": [
+			{
+				"json": { "removed": true }
+			}
+		]
+	}
+}

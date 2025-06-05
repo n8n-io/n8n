@@ -1,13 +1,7 @@
-/**
- * Canvas V2 Only
- * @TODO Remove this notice when Canvas V2 is the only one in use
- */
-
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasNodeData } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
-import { refThrottled } from '@vueuse/core';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -59,7 +53,6 @@ export function useCanvasNode() {
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
 	const executionRunning = computed(() => data.value.execution.running);
-	const executionRunningThrottled = refThrottled(executionRunning, 300);
 
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
 	const runDataIterations = computed(() => data.value.runData.iterations);
@@ -91,7 +84,6 @@ export function useCanvasNode() {
 		executionStatus,
 		executionWaiting,
 		executionRunning,
-		executionRunningThrottled,
 		render,
 		eventBus,
 	};

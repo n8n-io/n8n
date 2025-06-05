@@ -2,7 +2,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
@@ -25,7 +25,7 @@ export function useResolvedExpression({
 	const router = useRouter();
 	const { resolveExpression } = useWorkflowHelpers({ router });
 
-	const resolvedExpression = ref<unknown>();
+	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
 
 	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
@@ -76,9 +76,14 @@ export function useResolvedExpression({
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
 	function updateExpression() {
-		const resolved = resolve();
-		resolvedExpression.value = resolved.ok ? resolved.result : null;
-		resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+		if (isExpression.value) {
+			const resolved = resolve();
+			resolvedExpression.value = resolved.ok ? resolved.result : null;
+			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+		} else {
+			resolvedExpression.value = null;
+			resolvedExpressionString.value = '';
+		}
 	}
 
 	watch(

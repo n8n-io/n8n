@@ -5,7 +5,7 @@ import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 
@@ -240,10 +240,10 @@ onClickOutside(
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-if="allTags.length > 0">{{
+				<span v-else-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</N8nOption>
 
 			<N8nOption
@@ -282,7 +282,7 @@ onClickOutside(
 
 	.el-tag {
 		padding: var(--spacing-5xs) var(--spacing-4xs);
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		background-color: var(--color-background-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-2xs);

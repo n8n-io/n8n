@@ -1,23 +1,26 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import type { InstalledPackages } from '@n8n/db';
+import { InstalledPackagesRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
-import { InstanceSettings, Logger } from 'n8n-core';
-import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'path';
 import { promisify } from 'util';
 
 import {
-	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
@@ -25,7 +28,16 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
+import { verifyIntegrity } from '../utils/npm-utils';
+
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
+const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
+const NPM_INSTALL_ARGS = [
+	'--bin-links=false',
+	'--install-strategy=shallow',
+	'--ignore-scripts=true',
+	'--package-lock=false',
+];
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -47,11 +59,21 @@ const asyncExec = promisify(exec);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
+type PackageJson = {
+	name: 'installed-nodes';
+	private: true;
+	dependencies: Record<string, string>;
+};
+
 @Service()
 export class CommunityPackagesService {
 	reinstallMissingPackages = false;
 
 	missingPackages: string[] = [];
+
+	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
+
+	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -62,6 +84,11 @@ export class CommunityPackagesService {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	async init() {
+		await this.ensurePackageJson();
+		await this.checkForMissingPackages();
+	}
 
 	get hasMissingPackages() {
 		return this.missingPackages.length > 0;
@@ -125,26 +152,17 @@ export class CommunityPackagesService {
 		return { packageName, scope, version, rawString };
 	}
 
+	/** @deprecated */
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
-
 		const execOptions = {
-			cwd: downloadFolder,
+			cwd: this.downloadFolder,
 			env: {
 				NODE_PATH: process.env.NODE_PATH,
 				PATH: process.env.PATH,
 				APPDATA: process.env.APPDATA,
+				NODE_ENV: 'production',
 			},
 		};
-
-		try {
-			await fsAccess(downloadFolder);
-		} catch {
-			await fsMkdir(downloadFolder);
-			// Also init the folder since some versions
-			// of npm complain if the folder is empty
-			await asyncExec('npm init -y', execOptions);
-		}
 
 		try {
 			const commandResult = await asyncExec(command, execOptions);
@@ -260,6 +278,20 @@ export class CommunityPackagesService {
 		}
 	}
 
+	async ensurePackageJson() {
+		try {
+			await access(this.packageJsonPath, constants.F_OK);
+		} catch {
+			await mkdir(this.downloadFolder, { recursive: true });
+			const packageJson: PackageJson = {
+				name: 'installed-nodes',
+				private: true,
+				dependencies: {},
+			};
+			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+		}
+	}
+
 	async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
@@ -306,8 +338,12 @@ export class CommunityPackagesService {
 		);
 	}
 
-	async installPackage(packageName: string, version?: string): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { version });
+	async installPackage(
+		packageName: string,
+		version?: string,
+		checksum?: string,
+	): Promise<InstalledPackages> {
+		return await this.installOrUpdatePackage(packageName, { version, checksum });
 	}
 
 	async updatePackage(
@@ -334,16 +370,36 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
+	private getNpmInstallArgs() {
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`].join(
+			' ',
+		);
+	}
+
+	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
+		if (isUpdate) return;
+
+		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
+			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
+		}
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string } | { installedPackage: InstalledPackages },
+		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
+
+		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
+		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
+
+		if (!isUpdate && options.checksum) {
+			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+		}
 
 		try {
-			await this.executeNpmCommand(command);
+			await this.downloadPackage(packageName, packageVersion);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -358,7 +414,7 @@ export class CommunityPackagesService {
 		} catch (error) {
 			// Remove this package since loading it failed
 			try {
-				await this.executeNpmCommand(`npm remove ${packageName}`);
+				await this.deletePackageDirectory(packageName);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -386,25 +442,102 @@ export class CommunityPackagesService {
 		} else {
 			// Remove this package since it contains no loadable nodes
 			try {
-				await this.executeNpmCommand(`npm remove ${packageName}`);
+				await this.deletePackageDirectory(packageName);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
 
-	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.executeNpmCommand(
-			`npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`,
-		);
+	@OnPubSubEvent('community-package-install')
+	@OnPubSubEvent('community-package-update')
+	async handleInstallEvent({
+		packageName,
+		packageVersion,
+	}: { packageName: string; packageVersion: string }) {
+		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+	}
+
+	@OnPubSubEvent('community-package-uninstall')
+	async handleUninstallEvent({ packageName }: { packageName: string }) {
+		await this.removeNpmPackage(packageName);
+	}
+
+	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
+		await this.downloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
-	async removeNpmPackage(packageName: string) {
-		await this.executeNpmCommand(`npm remove ${packageName}`);
+	private async removeNpmPackage(packageName: string) {
+		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package uninstalled: ${packageName}`);
+	}
+
+	private resolvePackageDirectory(packageName: string) {
+		return `${this.downloadFolder}/node_modules/${packageName}`;
+	}
+
+	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
+		const registry = this.getNpmRegistry();
+		const packageDirectory = this.resolvePackageDirectory(packageName);
+
+		// (Re)create the packageDir
+		await this.deletePackageDirectory(packageName);
+		await mkdir(packageDirectory, { recursive: true });
+
+		// TODO: make sure that this works for scoped packages as well
+		// if (packageName.startsWith('@') && packageName.includes('/')) {}
+
+		const { stdout: tarOutput } = await asyncExec(
+			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
+			{ cwd: this.downloadFolder },
+		);
+
+		const tarballName = tarOutput?.trim();
+
+		try {
+			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
+				cwd: this.downloadFolder,
+			});
+
+			// Strip dev, optional, and peer dependencies before running `npm install`
+			const packageJsonPath = `${packageDirectory}/package.json`;
+			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const {
+				devDependencies,
+				peerDependencies,
+				optionalDependencies,
+				...packageJson
+			}: {
+				version: string;
+				devDependencies: Record<string, string>;
+				peerDependencies: Record<string, string>;
+				optionalDependencies: Record<string, string>;
+			} = JSON.parse(packageJsonContent);
+			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+
+			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await this.updatePackageJsonDependency(packageName, packageJson.version);
+		} finally {
+			await rm(join(this.downloadFolder, tarballName));
+		}
+
+		return packageDirectory;
+	}
+
+	private async deletePackageDirectory(packageName: string) {
+		const packageDirectory = this.resolvePackageDirectory(packageName);
+		await rm(packageDirectory, { recursive: true, force: true });
+	}
+
+	async updatePackageJsonDependency(packageName: string, version: string) {
+		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+		const packageJson = jsonParse<PackageJson>(existingContent);
+		packageJson.dependencies[packageName] = version;
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 }
