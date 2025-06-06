@@ -462,7 +462,7 @@ Example of `fixedCollection` parameter:
 
 ## Base text
 
-When translating a base text file at `/packages/frontend/editor-ui/src/plugins/i18n/locales/{localeIdentifier}.json`:
+When translating a base text file at `/packages/frontend/@n8n/i18n/src/locales/{localeIdentifier}.json`:
 
 1. Open a terminal:
 
