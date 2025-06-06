@@ -23,4 +23,17 @@ describe('getSSHTunnelFunctions', () => {
 			expect(sshClientsManager.getClient).toHaveBeenCalledWith(credentials, abortController);
 		});
 	});
+
+	describe('updateLastUsed', () => {
+		it('should invoke sshClientsManager.updateLastUsed', async () => {
+			// ARRANGE
+			const client = await sshTunnelFunctions.getSSHClient(credentials, abortController);
+
+			// ACT
+			sshTunnelFunctions.updateLastUsed(client);
+
+			// ASSERT
+			expect(sshClientsManager.updateLastUsed).toHaveBeenCalledWith(client);
+		});
+	});
 });
