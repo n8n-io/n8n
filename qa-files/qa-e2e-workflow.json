@@ -1,0 +1,900 @@
+{
+  "name": "QA E2E Telegram to Cypress",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "options": {
+          "parseMode": "Markdown",
+          "updates": [
+            "message"
+          ],
+          "allowedUpdates": [
+            "message"
+          ]
+        }
+      },
+      "id": "3f9b0a7c-1e2d-4c5b-8a1f-0b9e8d7c6a5b",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "placeholder-webhook-id",
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// qa-automation/functions/parse-gherkin.js\n// This function is intended to be pasted into an n8n Function node.\n// It parses Gherkin syntax from Telegram messages, validates format,\n// extracts test components, and prepares data for the DeepSeek API conversion.\n\n// Input: items[0].json.message.text (Gherkin text from Telegram)\n//        items[0].json.message.chat.id\n//        items[0].json.message.message_id\n//        items[0].json.message.from (user info)\n// Output: [{ json: { success: boolean, gherkin?: string, error?: string, metadata?: object, components?: object, chatInfo: object } }]\n\nconst inputItem = items[0].json; // Standard n8n input\n\n// Ensure message and chat objects exist\nif (!inputItem || !inputItem.message || !inputItem.message.chat || !inputItem.message.from) {\n  console.error('Error: Missing critical input data (message, chat, or from object).');\n  return [{\n    json: {\n      success: false,\n      error: 'Critical input data missing from Telegram trigger.',\n      errorType: 'MISSING_INPUT_STRUCTURE',\n      chatInfo: { // Attempt to provide some chat info if possible, otherwise null\n        chatId: inputItem?.message?.chat?.id || null,\n        messageId: inputItem?.message?.message_id || null\n      }\n    }\n  }];\n}\n\nconst lines = inputItem.message.text ? inputItem.message.text.trim() : '';\n\n// Store chat info for later responses\nconst chatInfo = {\n  chatId: inputItem.message.chat.id,\n  messageId: inputItem.message.message_id,\n  firstName: inputItem.message.from.first_name || '',\n  lastName: inputItem.message.from.last_name || '',\n  username: inputItem.message.from.username || ''\n};\n\nif (!lines) {\n  console.log('No message text found in Telegram input for chat:', chatInfo.chatId);\n  return [{\n    json: {\n      success: false,\n      error: 'No Gherkin text provided. Please send your test specification.',\n      errorType: 'MISSING_TEXT',\n      chatInfo: chatInfo\n    }\n  }];\n}\n\n// Define Gherkin keywords for validation\nconst GHERKIN_KEYWORDS = {\n  feature: ['Feature:'],\n  scenario: ['Scenario:', 'Scenario Outline:'],\n  background: ['Background:'],\n  steps: ['Given ', 'When ', 'Then ', 'And ', 'But '],\n  examples: ['Examples:', 'Scenarios:']\n};\n\n// Helper function to log with timestamp (n8n's console already timestamps)\nfunction log(message, level = 'info') {\n  const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : 'INFO';\n  console.log(`[ParseGherkin] ${prefix}: ${message}`);\n}\n\n// Helper function to validate Gherkin syntax\nfunction validateGherkin(textLines) {\n  const errors = [];\n  let hasFeature = false;\n  let hasScenario = false;\n  let hasSteps = false;\n\n  if (!textLines || textLines.length === 0) {\n    errors.push('No Gherkin content provided after trimming.');\n    return { valid: false, errors };\n  }\n\n  for (let i = 0; i < textLines.length; i++) {\n    const line = textLines[i].trim();\n\n    if (line === '' || line.startsWith('#')) continue;\n\n    if (GHERKIN_KEYWORDS.feature.some(kw => line.startsWith(kw))) {\n      hasFeature = true;\n      continue;\n    }\n    if (GHERKIN_KEYWORDS.scenario.some(kw => line.startsWith(kw))) {\n      hasScenario = true;\n      continue;\n    }\n    if (GHERKIN_KEYWORDS.steps.some(kw => line.startsWith(kw))) {\n      hasSteps = true;\n      continue;\n    }\n  }\n\n  if (!hasFeature) errors.push('Missing \"Feature:\" definition.');\n  if (!hasScenario) errors.push('Missing \"Scenario:\" or \"Scenario Outline:\" definition.');\n  if (!hasSteps) errors.push('Missing Gherkin steps (Given/When/Then/And/But).');\n\n  return {\n    valid: errors.length === 0,\n    errors\n  };\n}\n\n// Helper function to extract components from Gherkin\nfunction extractGherkinComponents(textLines) {\n  const components = {\n    feature: '',\n    scenarios: [],\n    currentScenario: null,\n    background: null\n  };\n\n  for (let i = 0; i < textLines.length; i++) {\n    const line = textLines[i].trim();\n\n    if (line === '' || line.startsWith('#')) continue;\n\n    if (GHERKIN_KEYWORDS.feature.some(kw => line.startsWith(kw))) {\n      components.feature = line;\n      continue;\n    }\n\n    if (GHERKIN_KEYWORDS.background.some(kw => line.startsWith(kw))) {\n      components.background = {\n        name: line,\n        steps: []\n      };\n      while (i + 1 < textLines.length) {\n        const nextLine = textLines[i + 1].trim();\n        if (nextLine === '' || nextLine.startsWith('#')) {\n          i++;\n          continue;\n        }\n        if (GHERKIN_KEYWORDS.steps.some(kw => nextLine.startsWith(kw))) {\n          components.background.steps.push(nextLine);\n          i++;\n        } else {\n          break;\n        }\n      }\n      continue;\n    }\n\n    if (GHERKIN_KEYWORDS.scenario.some(kw => line.startsWith(kw))) {\n      components.currentScenario = {\n        name: line,\n        steps: [],\n        examples: [] // Initialize examples array\n      };\n      components.scenarios.push(components.currentScenario);\n      continue;\n    }\n\n    if (components.currentScenario && GHERKIN_KEYWORDS.examples.some(kw => line.startsWith(kw))) {\n      const exampleRows = [];\n      // Look for the header row first\n      if (i + 1 < textLines.length && textLines[i+1].includes('|')) {\n          exampleRows.push(textLines[i+1].trim()); // Add header\n          i++; // Move past header\n          while (i + 1 < textLines.length) {\n            const nextLine = textLines[i + 1].trim();\n            if (nextLine === '' || nextLine.startsWith('#')) {\n              i++;\n              continue;\n            }\n            if (nextLine.includes('|')) {\n              exampleRows.push(nextLine);\n              i++;\n            } else {\n              break;\n            }\n          }\n      }\n      if (exampleRows.length > 0) {\n        components.currentScenario.examples = exampleRows;\n      }\n      continue;\n    }\n\n    if (components.currentScenario && GHERKIN_KEYWORDS.steps.some(kw => line.startsWith(kw))) {\n      components.currentScenario.steps.push(line);\n      continue;\n    }\n  }\n  return components;\n}\n\n// Helper function to format Gherkin for DeepSeek\nfunction formatForDeepSeek(components) {\n  let formatted = components.feature + '\\n\\n';\n\n  if (components.background) {\n    formatted += components.background.name + '\\n';\n    components.background.steps.forEach(step => {\n      formatted += '  ' + step + '\\n';\n    });\n    formatted += '\\n';\n  }\n\n  components.scenarios.forEach(scenario => {\n    formatted += scenario.name + '\\n';\n    scenario.steps.forEach(step => {\n      formatted += '  ' + step + '\\n';\n    });\n    if (scenario.examples && scenario.examples.length > 0) {\n      formatted += '\\n  Examples:\\n'; // Ensure \"Examples:\" keyword is present\n      scenario.examples.forEach(example => {\n        formatted += '    ' + example + '\\n';\n      });\n    }\n    formatted += '\\n';\n  });\n  return formatted.trim();\n}\n\n// Main processing logic\ntry {\n  const lineArray = lines.split('\\n')\n    .map(line => line.trim()) // Trim each line individually\n    .filter(line => line.length > 0 || line.includes('|')); // Keep lines with content or example table pipes\n\n  const validation = validateGherkin(lineArray);\n\n  if (!validation.valid) {\n    log(`Validation failed for chat ${chatInfo.chatId}: ${validation.errors.join(', ')}`, 'error');\n    return [{\n      json: {\n        success: false,\n        error: `Invalid Gherkin format: ${validation.errors.join(', ')}`,\n        errorType: 'INVALID_GHERKIN',\n        rawText: lines,\n        chatInfo: chatInfo\n      }\n    }];\n  }\n\n  const components = extractGherkinComponents(lineArray);\n  const formattedGherkin = formatForDeepSeek(components);\n\n  const featureName = components.feature.replace(/Feature:\\s*/i, '').trim();\n  const scenarioCount = components.scenarios.length;\n  const stepCount = components.scenarios.reduce((count, scenario) =>\n    count + scenario.steps.length, 0) + (components.background ? components.background.steps.length : 0);\n\n  log(`Successfully parsed Gherkin for chat ${chatInfo.chatId}: Feature \"${featureName}\" with ${scenarioCount} scenarios and ${stepCount} steps`);\n\n  return [{\n    json: {\n      success: true,\n      gherkin: formattedGherkin,\n      rawText: lines, // Original raw text for reference\n      metadata: {\n        featureName,\n        scenarioCount,\n        stepCount,\n        hasBackground: !!components.background,\n        hasExamples: components.scenarios.some(s => s.examples && s.examples.length > 0)\n      },\n      components, // Full component breakdown\n      chatInfo: chatInfo\n    }\n  }];\n\n} catch (error) {\n  log(`Error processing Gherkin for chat ${chatInfo.chatId}: ${error.message}\\nStack: ${error.stack}`, 'error');\n  return [{\n    json: {\n      success: false,\n      error: `An unexpected error occurred while processing Gherkin: ${error.message}`,\n      errorType: 'PROCESSING_ERROR',\n      stack: error.stack,\n      chatInfo: chatInfo\n    }\n  }];\n}"
+      },
+      "id": "a8d2f6b9-e1c3-4d5b-9a0a-f7a8f39a3e8b",
+      "name": "Parse Gherkin",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "c7e9d4a8-b3f2-4c1a-8a0a-f7a8f39a3e8b",
+      "name": "Gherkin Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "text": "=❌ *Error: Invalid Gherkin Format*\n\n{{$json.error}}\n\nPlease provide a valid Gherkin specification with Feature, Scenario, and steps (Given/When/Then).\n\nExample:\n```gherkin\nFeature: Login Functionality\n\nScenario: Successful Login\n  Given I am on the login page\n  When I enter valid credentials\n  And I click the login button\n  Then I should be logged in successfully\n```",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true,
+          "reply_to_message_id": "={{$json.chatInfo.messageId}}"
+        }
+      },
+      "id": "j0k1l2m3-n4o5-p6q7-8a0a-f7a8f39a3e8b",
+      "name": "Send Gherkin Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        800,
+        420
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// qa-automation/functions/deepseek-prompt.js\n// This function is intended to be pasted into an n8n Function node.\n// It takes parsed Gherkin data and creates optimized prompts\n// for the DeepSeek API to generate Cypress test code. It includes\n// best practices, proper structure guidelines, and instructs DeepSeek\n// on how to use {{LOCATOR_n}} placeholders for elements that will\n// require dynamic locator extraction later.\n\n// Input: items[0].json (from Parse Gherkin node - contains 'gherkin', 'metadata', 'components', 'chatInfo')\n// Output: [{ json: { success: boolean, prompt?: string, error?: string, metadata?: object, chatInfo: object } }]\n\nconst inputData = items[0].json;\n\nif (!inputData || !inputData.success || !inputData.gherkin || !inputData.metadata || !inputData.components || !inputData.chatInfo) {\n  console.error('Error: Invalid input data. Missing gherkin, metadata, components, or chatInfo from previous node.');\n  return [{\n    json: {\n      success: false,\n      error: 'Invalid input: Missing or unsuccessful Gherkin parsing data.',\n      errorType: 'INVALID_INPUT_DATA',\n      chatInfo: inputData?.chatInfo || {}\n    }\n  }];\n}\n\nconst { gherkin, metadata, components, chatInfo } = inputData;\n\nfunction log(message, level = 'info') {\n  const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : 'INFO';\n  console.log(`[DeepSeekPrompt] ${prefix}: ${message}`);\n}\n\n// Cypress best practices to include in prompts\nconst CYPRESS_BEST_PRACTICES = `\n- Use 'data-testid', 'data-cy', or other specific test attributes for selectors whenever possible.\n- For elements without test-specific attributes, use the placeholder format {{LOCATOR_N}} (e.g., {{LOCATOR_1}}, {{LOCATOR_2}}).\n- Implement robust waiting strategies: use cy.intercept() for network requests, and .should() assertions for DOM element visibility, state, or content.\n- Avoid cy.wait(hardcoded_number) for DOM changes; prefer actionability checks or assertions.\n- Use .should('exist') or .should('be.visible') before interacting with elements.\n- Group related tests within 'describe' blocks and individual test cases within 'it' blocks.\n- Use 'beforeEach' or 'before' hooks for setup tasks like cy.visit() or logging in, if applicable across multiple tests.\n- Write clear and descriptive names for 'describe' and 'it' blocks.\n- Ensure assertions are specific and meaningful (e.g., .should('contain.text', 'Expected Text') instead of just .should('exist')).\n- For complex or repeated sequences of actions, consider creating Cypress Custom Commands (though for this Gherkin-to-code, direct steps are fine).\n- If dealing with forms, ensure fields are correctly targeted and filled, and submission is verified.\n- If the Gherkin implies checking for multiple elements, use .each() or other appropriate Cypress iteration methods.\n`;\n\n// Instructions for using locator placeholders\nconst LOCATOR_INSTRUCTIONS = `\nIMPORTANT FOR LOCATORS:\n- For any UI element that needs to be interacted with (clicked, typed into, selected, asserted upon) AND does NOT have an obvious, stable selector like a 'data-testid' or unique ID that you can infer from the Gherkin, YOU MUST use a placeholder in the format {{LOCATOR_N}}.\n- Replace N with a sequential number for each unique placeholder (e.g., {{LOCATOR_1}}, {{LOCATOR_2}}, {{LOCATOR_3}}).\n- Add a brief JavaScript comment next to the placeholder describing the element it represents, based on the Gherkin step.\n  Example: cy.get({{LOCATOR_1}}) /* The main login button */ .click();\n           cy.get({{LOCATOR_2}}) /* Username input field */ .type('testuser');\n- If a Gherkin step clearly indicates an element by its visible text (e.g., \"click the 'Submit' button\"), you CAN use cy.contains('button', 'Submit').click(); directly.\n- If an element has a clear, unique ID mentioned or implied by the Gherkin (e.g., \"the input field with ID 'user-email'\"), you CAN use cy.get('#user-email').\n- Otherwise, for generic descriptions like \"the first input field\" or \"the confirmation message\", USE {{LOCATOR_N}}.\n`;\n\n// Test structure template\nconst TEST_STRUCTURE_TEMPLATE = `\n// Cypress Test File\n// Feature: {{FEATURE_NAME}}\n\ndescribe('{{FEATURE_NAME_ESCAPED}}', () => {\n  {{GLOBAL_BEFORE_EACH}} // For cy.visit() or global setup\n\n  {{BACKGROUND_SETUP}} // From Gherkin Background\n\n  {{SCENARIOS_CODE}} // Each scenario as an 'it' block\n});\n`;\n\n// Function to generate the system message/persona for DeepSeek\nfunction generateSystemPersona() {\n  return `You are an expert QA Automation Engineer specializing in writing Cypress E2E tests from Gherkin specifications. Your primary goal is to produce clean, robust, and correct Cypress code. Pay close attention to selector strategies and Gherkin step interpretation.`;\n}\n\n// Function to generate code for Gherkin steps, adding hints for locators\nfunction generateStepCodeWithHints(gherkinStepsArray) {\n  if (!gherkinStepsArray || gherkinStepsArray.length === 0) return '// No steps provided.';\n\n  // Keywords that often involve UI interaction and might need locators\n  const interactionKeywords = ['click', 'type', 'select', 'enter', 'fill', 'choose', 'navigate', 'verify', 'see', 'check', 'assert', 'validate', 'ensure', 'confirm', 'hover', 'drag', 'upload', 'submit'];\n  let locatorHintCounter = 1; // This is a local counter for hints within this function, not the final {{LOCATOR_N}}\n\n  return gherkinStepsArray.map(step => {\n    let stepLine = `    // ${step}`;\n    // Check if the step implies interaction that might need a dynamic locator\n    if (interactionKeywords.some(keyword => step.toLowerCase().includes(keyword))) {\n      // Add a generic hint. The LLM will decide if a {{LOCATOR_N}} is needed.\n      // This helps the LLM focus on elements that might need placeholders.\n      // We don't assign {{LOCATOR_N}} here directly, but hint that it might be one.\n      stepLine += ` /* Consider if a {{LOCATOR_X}} placeholder is needed for elements in this step. */`;\n    }\n    return stepLine;\n  }).join('\\n');\n}\n\n\n// Function to generate Cypress 'it' block for a simple scenario\nfunction generateSimpleScenarioCode(scenarioComponent) {\n  const scenarioName = (scenarioComponent.name || 'Unnamed Scenario').replace(/^Scenario:\\s*/i, '').trim();\n  const stepImplementations = generateStepCodeWithHints(scenarioComponent.steps);\n  return `\n  it('${scenarioName.replace(/'/g, \"\\\\'\")}', () => {\n${stepImplementations}\n  });\n`;\n}\n\n// Function to generate Cypress code for a scenario outline with examples\nfunction generateScenarioOutlineCode(scenarioComponent) {\n  const scenarioOutlineName = (scenarioComponent.name || 'Unnamed Scenario Outline').replace(/^Scenario Outline:\\s*/i, '').trim();\n  const exampleHeader = scenarioComponent.examples[0].split('|').map(h => h.trim()).filter(h => h);\n  const exampleRows = scenarioComponent.examples.slice(1);\n\n  let examplesArrayCode = 'const examples = [\\n';\n  exampleRows.forEach(row => {\n    const values = row.split('|').map(v => v.trim()).filter(v => v);\n    if (values.length === exampleHeader.length) {\n      let obj = '    { ';\n      exampleHeader.forEach((header, index) => {\n        obj += `'${header.replace(/'/g, \"\\\\'\")}': '${values[index].replace(/'/g, \"\\\\'\")}'${index < header.length - 1 ? ', ' : ''}`;\n      });\n      obj += ' },\\n';\n      examplesArrayCode += obj;\n    }\n  });\n  examplesArrayCode += '  ];\\n\\n';\n\n  const stepImplementations = generateStepCodeWithHints(scenarioComponent.steps);\n\n  // Replace <header> placeholders in steps with example[header]\n  let templatedSteps = stepImplementations;\n  exampleHeader.forEach(header => {\n    const regex = new RegExp(`<${header}>`, 'g');\n    templatedSteps = templatedSteps.replace(regex, `\\${example['${header.replace(/'/g, \"\\\\'\")}']}`);\n  });\n\n  return `\n  describe('${scenarioOutlineName.replace(/'/g, \"\\\\'\")}', () => {\n    ${examplesArrayCode}\n    examples.forEach((example) => {\n      it(\`should handle: ${scenarioOutlineName.replace(/'/g, \"\\\\'\")} - \\${Object.values(example).join(' | ')}\`, () => {\n        // Steps to be implemented using 'example' object properties\n${templatedSteps}\n      });\n    });\n  });\n`;\n}\n\n// Function to generate 'beforeEach' for Gherkin Background\nfunction generateBackgroundCode(backgroundComponent) {\n  if (!backgroundComponent || !backgroundComponent.steps || backgroundComponent.steps.length === 0) {\n    return '// No Background steps defined.';\n  }\n  const stepImplementations = generateStepCodeWithHints(backgroundComponent.steps);\n  return `\n  beforeEach('Background', () => {\n${stepImplementations}\n  });\n`;\n}\n\n// Main function to generate the full DeepSeek prompt\ntry {\n  log(`Generating DeepSeek prompt for feature: \"${metadata.featureName}\"`);\n\n  const systemPersona = generateSystemPersona();\n\n  let scenariosCode = '';\n  components.scenarios.forEach(scenario => {\n    if (scenario.name.toLowerCase().includes('outline') && scenario.examples && scenario.examples.length > 1) {\n      scenariosCode += generateScenarioOutlineCode(scenario);\n    } else {\n      scenariosCode += generateSimpleScenarioCode(scenario);\n    }\n  });\n\n  const backgroundCode = generateBackgroundCode(components.background);\n  \n  // Determine a global beforeEach for cy.visit() if not explicitly in background\n  // This assumes CYPRESS_BASE_URL is set or a URL is found in Gherkin.\n  // The actual URL for cy.visit() will be determined by the 'Process Code' node later.\n  // For now, the prompt can suggest a generic visit or rely on LLM to infer from Gherkin.\n  let globalBeforeEach = '';\n  if (!gherkin.toLowerCase().includes('i am on the page') && !gherkin.toLowerCase().includes('i navigate to')) {\n      globalBeforeEach = `\n  beforeEach(() => {\n    // Assuming the base URL is set in cypress.json or via an environment variable\n    // Or, if a specific URL is mentioned in the first 'Given' step, use that.\n    // For now, let's prompt for a generic visit or let the LLM decide.\n    // Example: cy.visit('/'); // Or infer from first Gherkin step\n    // LLM should determine the correct URL or use a base URL.\n    cy.visit(Cypress.config('baseUrl') || '/'); /* TODO: LLM to confirm or use specific URL from Gherkin */\n  });\n`;\n  }\n\n\n  const finalPromptStructure = TEST_STRUCTURE_TEMPLATE\n    .replace('{{FEATURE_NAME}}', metadata.featureName || 'Untitled Feature')\n    .replace('{{FEATURE_NAME_ESCAPED}}', (metadata.featureName || 'Untitled Feature').replace(/'/g, \"\\\\'\"))\n    .replace('{{GLOBAL_BEFORE_EACH}}', globalBeforeEach)\n    .replace('{{BACKGROUND_SETUP}}', backgroundCode)\n    .replace('{{SCENARIOS_CODE}}', scenariosCode);\n\n  const fullPrompt = `\n${systemPersona}\n\nYou will be provided with a Gherkin specification. Your task is to convert this Gherkin into a complete, executable Cypress test file written in JavaScript.\n\nFollow these instructions carefully:\n\n# GHERKIN SPECIFICATION TO CONVERT:\n\`\`\`gherkin\n${gherkin}\n\`\`\`\n\n# CYPRESS BEST PRACTICES TO FOLLOW:\n${CYPRESS_BEST_PRACTICES}\n\n# LOCATOR STRATEGY (VERY IMPORTANT):\n${LOCATOR_INSTRUCTIONS}\n\n# REQUIRED TEST STRUCTURE:\nYour final output MUST strictly follow this structure. Do NOT add any explanations before or after the code block.\n\`\`\`javascript\n${finalPromptStructure}\n\`\`\`\n\n# FINAL OUTPUT REQUIREMENTS:\n- Provide ONLY the JavaScript code for the Cypress test file.\n- Do NOT include any markdown formatting (like \`\`\`javascript) around the code.\n- The code must be a single, complete file content.\n- Ensure all necessary Cypress commands (cy.visit, cy.get, cy.click, cy.type, .should, etc.) are used correctly based on the Gherkin steps.\n- If a Gherkin step implies visiting a page, ensure a cy.visit() command is generated, typically in a beforeEach or at the start of a test.\n- Implement all Gherkin steps as corresponding Cypress actions and assertions.\n- Use the {{LOCATOR_N}} placeholder syntax as described above for elements that will require dynamic lookup.\n`;\n\n  log(`Prompt generated successfully. Length: ${fullPrompt.length}`);\n\n  return [{\n    json: {\n      success: true,\n      prompt: fullPrompt,\n      metadata: { // Pass along metadata which might be useful for the API call node\n        ...metadata,\n        promptLength: fullPrompt.length,\n        estimatedTokens: Math.ceil(fullPrompt.length / 3.5) // Rough estimate\n      },\n      chatInfo: chatInfo // Pass chatInfo through\n    }\n  }];\n\n} catch (error) {\n  log(`Error generating DeepSeek prompt: ${error.message}\\nStack: ${error.stack}`, 'error');\n  return [{\n    json: {\n      success: false,\n      error: `Error generating DeepSeek prompt: ${error.message}`,\n      errorType: 'PROMPT_GENERATION_ERROR',\n      stack: error.stack,\n      chatInfo: chatInfo\n    }\n  }];\n}"
+      },
+      "id": "b1c0d9e8-f7g6-h5i4-j3k2-l1m0n9o8p7",
+      "name": "DeepSeek Prompt Gen",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        800,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions'}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{$env.DEEPSEEK_MODEL || 'deepseek-coder'}}"
+            },
+            {
+              "name": "messages",
+              "value": [
+                {
+                  "role": "user",
+                  "content": "={{$json.prompt}}"
+                }
+              ]
+            },
+            {
+              "name": "temperature",
+              "value": "={{parseFloat($env.DEEPSEEK_TEMPERATURE) || 0.2}}"
+            },
+            {
+              "name": "max_tokens",
+              "value": 4096
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "fullResponse": false,
+            "responseFormat": "json"
+          },
+          "timeout": 120000,
+          "includeInputData": true
+        }
+      },
+      "id": "f1e0d2c3-a4b5-6c7d-8a0a-f7a8f39a3e8b",
+      "name": "DeepSeek API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        180
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "DeepSeek API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract the code from DeepSeek API response\nconst apiResponse = $input.item.json; // This is the direct output from HTTP Request\nconst originalInput = $input.item.json.inputData?.json || {}; // Access original input data passed through\nconst chatInfo = originalInput.chatInfo || {};\n\nif (!apiResponse || !apiResponse.choices || apiResponse.choices.length === 0 || !apiResponse.choices[0].message || !apiResponse.choices[0].message.content) {\n  return [{\n    json: {\n      success: false,\n      error: 'Invalid or empty response from DeepSeek API. Full response: ' + JSON.stringify(apiResponse),\n      errorType: 'API_ERROR',\n      chatInfo\n    }\n  }];\n}\n\n// Extract the generated code\nconst generatedCode = apiResponse.choices[0].message.content || '';\n\n// Clean up the code (remove markdown code blocks if present)\nlet cleanCode = generatedCode;\nif (generatedCode.trim().startsWith('```') && generatedCode.trim().endsWith('```')) {\n  const codeBlockRegex = /^```(?:javascript|js|cypress)?\\n([\\s\\S]+?)\\n```$/;\n  const match = generatedCode.trim().match(codeBlockRegex);\n  if (match && match[1]) {\n    cleanCode = match[1];\n  } else {\n    // Fallback for cases where language is not specified or regex fails\n    cleanCode = generatedCode.replace(/^```[\\w\\W]*?\\n/, '').replace(/\\n```$/, '').trim();\n  }\n}\n\n// Validate the code has Cypress-specific content\nif (!cleanCode.includes('cy.') || !cleanCode.includes('describe(')) {\n  return [{\n    json: {\n      success: false,\n      error: 'Generated code does not appear to be valid Cypress test code. Code: ' + cleanCode.substring(0, 200),\n      errorType: 'INVALID_CODE',\n      code: cleanCode,\n      chatInfo\n    }\n  }];\n}\n\n// Extract the target URL from the code if available (cy.visit call)\nlet targetUrl = '';\nconst urlRegex = /cy\\.visit\\((?:'([^']*)'|\"([^\\\"]*)\"|`([^`]*)`)\\)/;\nconst urlMatch = cleanCode.match(urlRegex);\nif (urlMatch) {\n  targetUrl = urlMatch[1] || urlMatch[2] || urlMatch[3]; // Check single, double, or backtick quotes\n}\n\n// If no cy.visit() found, or URL is relative, use CYPRESS_BASE_URL or a default\nif (!targetUrl || targetUrl.startsWith('/')) {\n    const baseUrl = $env.CYPRESS_BASE_URL || 'https://example.com';\n    if (targetUrl.startsWith('/')) {\n        targetUrl = baseUrl.replace(/\\/$/, '') + targetUrl; // Append relative path to base URL\n    } else {\n        targetUrl = baseUrl; // Use base URL if no visit command\n    }\n    // Add the visit command if not present and a base URL exists\n    if (!cleanCode.includes('cy.visit') && $env.CYPRESS_BASE_URL) {\n        const describeRegex = /(describe\\([^)]*\\)\\s*=>\\s*{)/;\n        const describeMatchResult = cleanCode.match(describeRegex);\n        if (describeMatchResult) {\n            const replacement = describeMatchResult[1] + `\\n  beforeEach(() => {\\n    cy.visit('${targetUrl.replace(/'/g, \"\\\\'\")}');\\n  });\\n`;\n            cleanCode = cleanCode.replace(describeRegex, replacement);\n        } else {\n            // Fallback if describe block isn't easily matched\n            cleanCode = `beforeEach(() => {\\n  cy.visit('${targetUrl.replace(/'/g, \"\\\\'\")}');\\n});\\n\\n` + cleanCode;\n        }\n    }\n}\n\n\n// Count the number of locator placeholders\nconst placeholderRegex = /{{LOCATOR_(\\d+)}}/g;\nconst placeholders = [];\nlet placeholderMatch;\nwhile ((placeholderMatch = placeholderRegex.exec(cleanCode)) !== null) {\n  placeholders.push(placeholderMatch[0]);\n}\n\n// Generate a unique filename for the spec\nconst featureNameForFile = (originalInput.metadata?.featureName || 'test').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst specFileName = `${featureNameForFile}-${timestamp}.spec.js`;\n\nreturn [{\n  json: {\n    success: true,\n    code: cleanCode,\n    targetUrl,\n    placeholdersFound: placeholders.length,\n    specFileName,\n    chatInfo,\n    gherkinRawText: originalInput.rawText, // Pass through original Gherkin\n    gherkinMetadata: originalInput.metadata // Pass through Gherkin metadata\n  }\n}];"
+      },
+      "id": "b9c8d7e6-f5e4-3d2c-8a0a-f7a8f39a3e8b",
+      "name": "Process Code",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.targetUrl}}",
+        "options": {
+          "response": {
+            "fullResponse": false, // Get only body for HTML content
+            "responseFormat": "string"
+          },
+          "redirect": {
+            "follow": true,
+            "maxRedirects": 5
+          },
+          "timeout": 30000,
+          "includeInputData": true // To pass through chatInfo, code, specFileName etc.
+        }
+      },
+      "id": "d5e4f3c2-b1a0-9d8e-8a0a-f7a8f39a3e8b",
+      "name": "Fetch HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1400,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// qa-automation/functions/html-locator-extractor.js\n// This function is intended to be pasted into an n8n Function node.\n// It takes HTML content from a web page and extracts high-quality\n// CSS selectors for interactive elements. It prioritizes data-testid, id,\n// unique classes, and semantic selectors while providing fallbacks.\n\n// Input: items[0].json.body (HTML string from HTTP Request node)\n//        items[0].json.chatInfo (passthrough from previous nodes)\n// Output: [{ json: { success: boolean, locators?: array, error?: string, metadata?: object, chatInfo: object } }]\n\n// Ensure Cheerio is available. In n8n, you might need to ensure it's\n// installed in your n8n instance if running custom code that requires external modules.\n// For this setup, we assume cheerio is globally available or can be required.\nlet cheerio;\ntry {\n  cheerio = require('cheerio');\n} catch (e) {\n  console.error(\"Cheerio module is not available. Please ensure it's installed in your n8n environment or custom Docker image.\");\n  // If cheerio is critical and not found, you might want to return an error immediately.\n  // For now, we'll let it fail later if htmlContent is processed.\n}\n\nconst inputItem = items[0].json.inputData.json; // Original data passed through HTTP Request\nconst htmlContent = items[0].json.body || ''; // HTML content from HTTP Request output\nconst chatInfo = inputItem.chatInfo || {}; // Preserve chatInfo\nconst specFileName = inputItem.specFileName;\nconst targetUrl = inputItem.targetUrl;\nconst codeForInjection = inputItem.code; // The code generated by DeepSeek\n\nif (!htmlContent) {\n  console.log('No HTML content found in input for chat:', chatInfo.chatId);\n  return [{\n    json: {\n      success: false,\n      error: 'No HTML content provided to extract locators from.',\n      errorType: 'MISSING_HTML',\n      chatInfo: chatInfo,\n      specFileName,\n      targetUrl,\n      code: codeForInjection\n    }\n  }];\n}\n\nif (!cheerio) {\n    return [{\n        json: {\n            success: false,\n            error: \"Cheerio library is not available. Cannot parse HTML.\",\n            errorType: \"LIBRARY_MISSING\",\n            chatInfo: chatInfo,\n            specFileName,\n            targetUrl,\n            code: codeForInjection\n        }\n    }];\n}\n\n// Configuration for selector extraction\nconst CONFIG = {\n  targetElements: 'button, a, input, select, textarea, [role=\"button\"], [role=\"link\"], [role=\"checkbox\"], [role=\"radio\"], [role=\"menuitem\"], [role=\"tab\"], [role=\"combobox\"], [role=\"listbox\"], [role=\"option\"], [role=\"switch\"], [role=\"textbox\"], [role=\"searchbox\"], form, label, [tabindex]',\n  selectorAttributes: [\n    'data-testid', 'data-test-id', 'data-test', 'data-cy', 'data-qa',\n    'id',\n    'name', 'aria-label', 'aria-labelledby', 'title', 'for',\n    'placeholder', 'value',\n    'href', 'src',\n    'class'\n  ],\n  frameworkAttributes: {\n    react: ['data-reactid', /^data-react-\\w+/i, /__reactEventHandlers\\w*/i, /__reactFiber\\w*/i],\n    angular: [/^ng-/i, /^\\[ng-/i, /^data-ng-/i, /^\\[data-ng-/i, /^\\*ng/i, /_ngcontent-/i, /_nghost-/i],\n    vue: [/^data-v-/i, /^v-/i]\n  },\n  maxLocators: 100,\n  maxSelectorLength: 200, // Increased for potentially longer paths\n  maxFallbacks: 3,\n  ignoreClasses: [ // Common utility/framework classes to ignore for primary selection\n    /active/i, /disabled/i, /focus/i, /hover/i, /selected/i, /open/i, /closed/i,\n    /container/i, /wrapper/i, /row/i, /col/i, /grid/i, /flex/i,\n    /primary/i, /secondary/i, /success/i, /danger/i, /warning/i, /info/i,\n    /^fa-/i, /^glyphicon-/i, /^icon-/i, /^mat-/i, /^ant-/i, /^v-/i, /^bp3-/i, // Icon/UI library prefixes\n    /js-/i, /qa-/i // Prefixes that might be too generic if not specific test IDs\n  ]\n};\n\nfunction log(message, level = 'info') {\n  const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : 'INFO';\n  console.log(`[LocatorExtractor] ${prefix}: ${message}`);\n}\n\nfunction cleanSelector(selector) {\n  if (!selector) return '';\n  selector = selector.trim().replace(/\\s+/g, ' '); // Normalize whitespace\n\n  if (selector.startsWith('#')) {\n    const idValue = selector.substring(1);\n    if (/^\\d|[^a-zA-Z0-9_-]/.test(idValue)) {\n      return `#${CSS.escape ? CSS.escape(idValue) : idValue.replace(/([^a-zA-Z0-9_:\\-.#\\s\\[\\]\\\\=\"'])/g, '\\\\$1')}`;\n    }\n  }\n  // More robust class and attribute selector cleaning\n  selector = selector.replace(/\\.([^.]+)/g, (match, className) => {\n    return `.${CSS.escape ? CSS.escape(className) : className.replace(/([^a-zA-Z0-9_:\\-.#\\s\\[\\]\\\\=\"'])/g, '\\\\$1')}`;\n  });\n  selector = selector.replace(/\\[([^\\]=]+)=[\"']?([^\"]')[\"']?\\]/g, (match, attr, value) => {\n    return `[${CSS.escape ? CSS.escape(attr) : attr}=\"${CSS.escape ? CSS.escape(value) : value.replace(/\"/g, '\\\\\"')}\"]`;\n  });\n  return selector;\n}\n\nfunction isSelectorUnique($, selector) {\n  if (!selector || selector.length > CONFIG.maxSelectorLength) return false;\n  try {\n    return $(selector).length === 1;\n  } catch (e) {\n    log(`Invalid selector generated: \"${selector}\". Error: ${e.message}`, 'warn');\n    return false;\n  }\n}\n\nfunction getElementText($el) {\n    // Get text only from the element itself, not its children, and trim.\n    // Clone the element, remove its children, then get text.\n    let text = $el.clone().children().remove().end().text().trim();\n    if (!text) { // If no direct text, try to get text from immediate children text nodes\n        text = $el.contents().filter(function() {\n            return this.type === 'text';\n        }).text().trim();\n    }\n    return text.replace(/\\s+/g, ' ').substring(0, 100); // Normalize and limit length\n}\n\n\nfunction generateAttributeSelector($, element) {\n  const $el = $(element);\n  const tagName = (element.name || $el.prop('tagName') || '').toLowerCase();\n\n  for (const attr of CONFIG.selectorAttributes) {\n    let value = $el.attr(attr);\n    if (typeof value !== 'string' || !value.trim()) continue;\n    value = value.trim();\n\n    let selector = '';\n    if (attr === 'id') {\n      selector = `#${value}`;\n    } else if (attr === 'class') {\n      const classes = value.split(/\\s+/).filter(c => c.trim() && !CONFIG.ignoreClasses.some(pattern => pattern.test(c)));\n      if (classes.length === 0) continue;\n\n      // Try unique class first\n      for (const cn of classes) {\n        const s = `.${cn}`;\n        if (isSelectorUnique($, s)) { selector = s; break; }\n      }\n      // Try tag + unique class\n      if (!selector) {\n        for (const cn of classes) {\n          const s = `${tagName}.${cn}`;\n          if (isSelectorUnique($, s)) { selector = s; break; }\n        }\n      }\n      // Try combination of first two non-ignored classes\n      if (!selector && classes.length >= 2) {\n        const s = `.${classes[0]}.${classes[1]}`;\n        if (isSelectorUnique($, s)) { selector = s; }\n      }\n      // Try tag + combination\n      if (!selector && classes.length >= 2) {\n          const s = `${tagName}.${classes[0]}.${classes[1]}`;\n          if (isSelectorUnique($, s)) { selector = s; }\n      }\n      if (!selector) continue; // If no good class selector found\n\n    } else {\n      selector = `${tagName}[${attr}=\"${value.replace(/\"/g, '\\\\\"')}\"]`;\n    }\n\n    const cleaned = cleanSelector(selector);\n    if (cleaned && isSelectorUnique($, cleaned)) {\n      return {\n        selector: cleaned, attribute: attr, value,\n        priority: CONFIG.selectorAttributes.indexOf(attr), unique: true\n      };\n    }\n  }\n  return null;\n}\n\nfunction generatePositionalSelector($, element) {\n  const $el = $(element);\n  const tagName = (element.name || $el.prop('tagName') || '').toLowerCase();\n  if (!tagName) return null;\n\n  let path = tagName;\n  let $current = $el;\n\n  // Try nth-child/nth-of-type relative to parent\n  const parent = $current.parent();\n  if (parent.length) {\n      const siblings = parent.children(tagName);\n      if (siblings.length > 1) {\n          const index = siblings.index($current) + 1;\n          path = `${tagName}:nth-of-type(${index})`; // Prefer nth-of-type\n          if (!isSelectorUnique($, path)) {\n             path = `${tagName}:nth-child(${parent.children().index($current) + 1})`;\n          }\n      }\n  }\n  if (isSelectorUnique($, path)) return { selector: cleanSelector(path), attribute: 'position-simple', value: path, priority: 100, unique: true};\n\n\n  // Build up path from parent, max 3 levels\n  for (let i = 0; i < 3 && $current.parent().length && $current.parent().prop('tagName'); i++) {\n    const $parentEl = $current.parent();\n    const parentTagName = ($parentEl.prop('tagName') || '').toLowerCase();\n    if (parentTagName === 'body' || parentTagName === 'html') {\n        path = `${parentTagName} > ${path}`;\n        break;\n    }\n\n    let parentSegment = parentTagName;\n    const parentId = $parentEl.attr('id');\n    if (parentId && isSelectorUnique($, `#${parentId}`)) { // If parent has unique ID, use it\n        parentSegment = `#${parentId}`;\n        path = `${parentSegment} > ${path}`;\n        break; \n    }\n\n    const siblings = $parentEl.siblings(parentTagName).addBack();\n    if (siblings.length > 1) {\n      const index = siblings.index($parentEl) + 1;\n      parentSegment = `${parentTagName}:nth-of-type(${index})`;\n    }\n    path = `${parentSegment} > ${path}`;\n    if (isSelectorUnique($, path)) break; // Stop if unique path found\n    $current = $parentEl;\n  }\n\n  const cleaned = cleanSelector(path);\n  if (cleaned && isSelectorUnique($, cleaned)) {\n    return { selector: cleaned, attribute: 'position-path', value: path, priority: 110, unique: true };\n  }\n  return null;\n}\n\nfunction generateTextSelector($, element) {\n  const $el = $(element);\n  const tagName = (element.name || $el.prop('tagName') || '').toLowerCase();\n  if (!tagName) return null;\n\n  const text = getElementText($el);\n  if (!text || text.length > 100) return null; // Avoid very long text\n\n  // Try exact text match using Cypress-like :contains (Cheerio needs custom filter)\n  // Cheerio's :contains is case-sensitive. For robustness, one might implement case-insensitive.\n  // For n8n Function node, keep it simple or use exact match.\n  // This requires a custom Cheerio filter for exact text match.\n  $.expr[':'].exactText = (el, i, meta) => $(el).text().trim() === meta[3];\n  let selector = `${tagName}:exactText(\"${text.replace(/\"/g, '\\\\\"')}\")`;\n  \n  if (isSelectorUnique($, selector)) {\n    return { selector: cleanSelector(selector), attribute: 'text-exact', value: text, priority: 120, unique: true };\n  }\n\n  // Fallback to substring contains if exact fails (less reliable)\n  selector = `${tagName}:contains(\"${text.replace(/\"/g, '\\\\\"')}\")`;\n  if (isSelectorUnique($, selector)) {\n    return { selector: cleanSelector(selector), attribute: 'text-contains', value: text, priority: 125, unique: true };\n  }\n  return null;\n}\n\n\nfunction detectFramework($) {\n  for (const fw in CONFIG.frameworkAttributes) {\n    for (const attrPattern of CONFIG.frameworkAttributes[fw]) {\n      let selector = '';\n      if (typeof attrPattern === 'string') {\n        // Handles simple string attributes like 'data-reactid' or prefixes like 'ng-'\n        if (attrPattern.startsWith('[') && attrPattern.endsWith(']')) { // full attribute selector\n            selector = attrPattern;\n        } else if (attrPattern.includes('-')) { // attribute name prefix\n            selector = `[${attrPattern}*=\"\"]`; // checks if an attribute name STARTS WITH the pattern\n             // This is a simplification. A more robust check would iterate all attributes of some elements.\n             // For performance, we use a simpler check here.\n             if ($(`[${attrPattern}*]`).length > 0) return fw; // Check if any element has an attribute starting with this\n             // A more precise check would be to iterate attributes:\n             // $('*').each((i, el) => { Object.keys(el.attribs).forEach(a => { if (a.startsWith(attrPattern)) found=true; }); });\n        } else { // specific attribute name\n            selector = `[${attrPattern}]`;\n        }\n      } else if (attrPattern instanceof RegExp) {\n        // For regex, we'd need to iterate attributes of elements, which is slow.\n        // As a proxy, check if common tags might have such attributes.\n        // This is a heuristic.\n        let found = false;\n        $('button, input, div, span, a').each((i, el) => {\n          Object.keys(el.attribs).forEach(a => {\n            if (attrPattern.test(a)) {\n              found = true;\n              return false; // break .each\n            }\n          });\n          if (found) return false; // break outer .each\n        });\n        if (found) return fw;\n      }\n      if (selector && $(selector).length > 0) return fw;\n    }\n  }\n  return 'generic';\n}\n\n\nfunction generateAllSelectors($, element, framework) {\n  const selectors = [];\n  const strategies = [\n    () => generateAttributeSelector($, element),\n    // Framework-specific could be added here if needed, but attribute selector covers data-*\n    () => generateTextSelector($, element), // Text selector before positional for more human-readable locators\n    () => generatePositionalSelector($, element)\n  ];\n\n  for (const strategy of strategies) {\n    const s = strategy();\n    if (s && s.selector && !selectors.find(ex => ex.selector === s.selector)) { // Ensure unique selectors\n        selectors.push(s);\n    }\n  }\n  selectors.sort((a, b) => a.priority - b.priority);\n  return selectors;\n}\n\nfunction extractElementInfo($, element) {\n  const $el = $(element);\n  const tagName = (element.name || $el.prop('tagName') || '').toLowerCase();\n  return {\n    tagName,\n    id: $el.attr('id') || '',\n    classes: ($el.attr('class') || '').split(/\\s+/).filter(c => c.trim()),\n    text: getElementText($el).substring(0,50), // Limit text length\n    attributes: Object.fromEntries(\n        Object.entries(element.attribs || {}).slice(0, 5) // Limit number of attributes shown\n    )\n  };\n}\n\nfunction isPotentiallyUseful($el) {\n    // Heuristic: is it visible (not type hidden, not display:none, not visibility:hidden)\n    // Cheerio doesn't evaluate styles, so this is limited.\n    if ($el.attr('type') === 'hidden' || $el.css('display') === 'none' || $el.css('visibility') === 'hidden') {\n        return false;\n    }\n    // Heuristic: does it have some content or identifying attributes?\n    if (getElementText($el) || $el.attr('id') || $el.attr('name') || $el.attr('data-testid')) {\n        return true;\n    }\n    // Heuristic: is it an interactive element type?\n    const interactiveTags = ['button', 'a', 'input', 'select', 'textarea'];\n    if (interactiveTags.includes(($el.prop('tagName')||'').toLowerCase())) {\n        return true;\n    }\n    return false;\n}\n\n\n// Main function to extract locators from HTML\ntry {\n  const $ = cheerio.load(htmlContent);\n  const framework = detectFramework($);\n  log(`Detected framework: ${framework}`);\n\n  const elements = $(CONFIG.targetElements);\n  log(`Found ${elements.length} potential target elements.`);\n\n  const extractedLocators = [];\n  let locatorCounter = 1;\n\n  elements.each((index, element) => {\n    if (extractedLocators.length >= CONFIG.maxLocators) return false; // Stop if max locators reached\n\n    const $el = $(element);\n    if(!isPotentiallyUseful($el)) return; // Skip elements that are likely not useful\n\n    const selectors = generateAllSelectors($, element, framework);\n    if (selectors.length === 0) return;\n\n    const elementInfo = extractElementInfo($, element);\n    const primarySelector = selectors[0];\n\n    extractedLocators.push({\n      id: `LOCATOR_${locatorCounter++}`,\n      primary: primarySelector.selector,\n      fallbacks: selectors.slice(1, CONFIG.maxFallbacks + 1).map(s => s.selector),\n      element: elementInfo,\n      selectorDetails: primarySelector // Details of the primary selector chosen\n    });\n  });\n\n  log(`Successfully extracted ${extractedLocators.length} locators.`);\n\n  return [{\n    json: {\n      success: true,\n      locators: extractedLocators,\n      metadata: {\n        framework,\n        targetElementsFound: elements.length,\n        extractedLocatorsCount: extractedLocators.length,\n        timestamp: new Date().toISOString()\n      },\n      chatInfo: chatInfo,\n      specFileName, // Pass through\n      targetUrl,    // Pass through\n      code: codeForInjection // Pass through the original code\n    }\n  }];\n\n} catch (error) {\n  log(`Error extracting locators: ${error.message}\\nStack: ${error.stack}`, 'error');\n  return [{\n    json: {\n      success: false,\n      error: `Error extracting locators: ${error.message}`,\n      errorType: 'EXTRACTION_ERROR',\n      stack: error.stack,\n      chatInfo: chatInfo,\n      specFileName,\n      targetUrl,\n      code: codeForInjection\n    }\n  }];\n}"
+      },
+      "id": "e3c2d1b0-a9f8-7e6d-8a0a-f7a8f39a3e8b",
+      "name": "Extract Locators",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// qa-automation/functions/inject-locators.js\n// This function is intended to be pasted into an n8n Function node.\n// It takes Cypress test code with placeholder locators ({{LOCATOR_n}})\n// and injects actual CSS selectors extracted from HTML analysis.\n\n// Input from previous node (Extract Locators) which should contain:\n// items[0].json.code (original code from Process Code, passed through Extract Locators)\n// items[0].json.locators (extracted locators)\n// items[0].json.chatInfo, specFileName, targetUrl (passed through)\n// Output: [{ json: { success: boolean, code?: string, error?: string, ... chatInfo: object } }]\n\nconst inputData = items[0].json;\n\nconst cypressCode = inputData.code;\nconst locators = inputData.locators || [];\nconst chatInfo = inputData.chatInfo || {};\nconst specFileName = inputData.specFileName;\nconst targetUrl = inputData.targetUrl;\n\nif (!cypressCode) {\n  console.error('Error: Missing Cypress code for locator injection.');\n  return [{ json: { success: false, error: 'Cypress code is missing for injection.', errorType: 'MISSING_CODE_FOR_INJECTION', chatInfo, specFileName, targetUrl } }];\n}\n\nfunction log(message, level = 'info') {\n  const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : 'INFO';\n  console.log(`[InjectLocators] ${prefix}: ${message}`);\n}\n\nfunction findPlaceholders(code) {\n  const placeholderRegex = /\\{\\{(LOCATOR_\\d+)\\}\\}|\\{\\{ (LOCATOR_\\d+) \\}\\}/g; // Handles {{LOCATOR_N}} and {{ LOCATOR_N }}\n  const placeholders = {};\n  let match;\n  while ((match = placeholderRegex.exec(code)) !== null) {\n    const placeholderId = match[1] || match[2]; // Check both capture groups\n    const originalPlaceholder = match[0];\n    const startPos = match.index;\n    const endPos = startPos + originalPlaceholder.length;\n    const lineStart = code.lastIndexOf('\\n', startPos) + 1;\n    const lineEnd = code.indexOf('\\n', endPos);\n    const context = code.substring(lineStart, lineEnd > -1 ? lineEnd : code.length).trim();\n    const commentMatch = context.match(/\\/\\*\\s*(.+?)\\s*\\*\\//);\n    const comment = commentMatch ? commentMatch[1].trim() : '';\n\n    placeholders[placeholderId] = {\n      originalString: originalPlaceholder,\n      id: placeholderId,\n      startPos,\n      endPos,\n      context,\n      comment\n    };\n  }\n  return placeholders;\n}\n\nfunction matchPlaceholderToLocator(placeholderId, availableLocators) {\n  return availableLocators.find(loc => loc.id === placeholderId);\n}\n\nfunction generateSelectorString(locator) {\n  if (!locator || !locator.primary) return \"'.LOCATOR_NOT_FOUND_IN_HTML'\";\n\n  const selectors = [locator.primary];\n  if (locator.fallbacks && locator.fallbacks.length > 0) {\n    selectors.push(...locator.fallbacks);\n  }\n\n  const escapedSelectors = selectors.map(s => s.replace(/'/g, \"\\\\'\"));\n\n  if (escapedSelectors.length === 1) {\n    return `'${escapedSelectors[0]}'`;\n  }\n  // For multiple selectors, Cypress's cy.get() can take a comma-separated string.\n  // This finds the first element matching any of the selectors.\n  return `'${escapedSelectors.join(', ')}'`;\n}\n\nfunction generateLocatorComment(locator, placeholder) {\n  if (!locator || !locator.element) {\n    return `/* ${placeholder.id} - No HTML element details found. Original hint: ${placeholder.comment || 'N/A'} */`;\n  }\n  const el = locator.element;\n  let comment = `/* ${placeholder.id} for ${el.tagName || 'element'}`;\n  if (el.id) comment += ` #${el.id}`;\n  if (el.name) comment += ` [name=\"${el.name}\"]`;\n  if (el.text && el.text.trim()) {\n    const snippet = el.text.trim().substring(0, 30);\n    comment += ` (text: \"${snippet}${el.text.trim().length > 30 ? '...' : ''}\")`;\n  }\n  if (placeholder.comment && placeholder.comment !== \"N/A\") {\n      comment += ` - User hint: ${placeholder.comment}`;\n  }\n  comment += ` */`;\n  return comment;\n}\n\nfunction validateSyntax(code) {\n  try {\n    new Function(code);\n    return { valid: true, error: null };\n  } catch (e) {\n    return { valid: false, error: e.message };\n  }\n}\n\ntry {\n  log(`Starting locator injection. Available locators: ${locators.length}`);\n  const placeholdersMap = findPlaceholders(cypressCode);\n  const placeholderIds = Object.keys(placeholdersMap);\n  log(`Found ${placeholderIds.length} placeholders in code.`);\n\n  if (placeholderIds.length === 0 && locators.length > 0) {\n    log('No placeholders in code, but locators were extracted. This might indicate an issue with placeholder generation or that no dynamic locators were needed.', 'warn');\n  }\n  if (placeholderIds.length > 0 && locators.length === 0) {\n    log('Placeholders found in code, but no locators extracted from HTML. Injection will use fallback strings.', 'warn');\n  }\n\n  let modifiedCode = cypressCode;\n  let injectedCount = 0;\n  let notFoundCount = 0;\n\n  const sortedPlaceholders = placeholderIds.map(id => placeholdersMap[id]).sort((a, b) => b.startPos - a.startPos);\n\n  for (const placeholder of sortedPlaceholders) {\n    const matchedLocator = matchPlaceholderToLocator(placeholder.id, locators);\n    \n    let replacementString;\n    if (matchedLocator) {\n      const selectorStr = generateSelectorString(matchedLocator);\n      const commentStr = generateLocatorComment(matchedLocator, placeholder);\n      replacementString = `${selectorStr} ${commentStr}`;\n      injectedCount++;\n      log(`Injecting for ${placeholder.id}: ${selectorStr}`);\n    } else {\n      replacementString = `'${placeholder.id}_NOT_EXTRACTED_FROM_HTML' /* Original hint: ${placeholder.comment || 'N/A'} */`;\n      notFoundCount++;\n      log(`No locator found for ${placeholder.id}. Original hint: ${placeholder.comment || 'N/A'}`, 'warn');\n    }\n    \n    modifiedCode = modifiedCode.substring(0, placeholder.startPos) + \n                   replacementString + \n                   modifiedCode.substring(placeholder.endPos);\n  }\n\n  const syntaxCheck = validateSyntax(modifiedCode);\n  if (!syntaxCheck.valid) {\n    log(`Syntax error after injection: ${syntaxCheck.error}`, 'error');\n    return [{ json: { \n      success: false, \n      error: `Generated code has syntax errors after locator injection: ${syntaxCheck.error}`,\n      errorType: 'INVALID_SYNTAX_POST_INJECTION',\n      originalCode: cypressCode,\n      problematicCode: modifiedCode,\n      chatInfo, specFileName, targetUrl\n    }}];\n  }\n\n  const message = `Locator injection complete. Injected: ${injectedCount}. Not found: ${notFoundCount}. Total placeholders: ${placeholderIds.length}.`;\n  log(message);\n  return [{ json: {\n    success: true,\n    code: modifiedCode,\n    message,\n    placeholdersFound: placeholderIds.length,\n    locatorsInjected: injectedCount,\n    locatorsNotFound: notFoundCount,\n    specFileName, \n    targetUrl,    \n    chatInfo\n  }}];\n\n} catch (error) {\n  log(`Error during locator injection: ${error.message}\\nStack: ${error.stack}`, 'error');\n  return [{ json: { \n    success: false, \n    error: `An unexpected error occurred during locator injection: ${error.message}`,\n    errorType: 'INJECTION_PROCESS_ERROR',\n    stack: error.stack,\n    chatInfo, specFileName, targetUrl\n  }}];\n}"
+      },
+      "id": "f2d1c0b9-a8e7-6f5d-8a0a-f7a8f39a3e8b",
+      "name": "Inject Locators",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        180
+      ],
+      "inputs": {
+        "main": [
+          [
+            {
+              "node": "Extract Locators",
+              "output": "main"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-e5f6-7g8h-8a0a-f7a8f39a3e8b",
+      "name": "Code Injection OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "text": "=❌ *Error: Code Generation/Injection Failed*\n\n{{$json.error}}\n\nI encountered an issue while finalizing the Cypress test code. This might be due to:\n\n- Complex Gherkin specifications leading to problematic code structures.\n- Issues with HTML analysis or locator extraction for the target page.\n- Syntax errors introduced during code modification.\n\nPlease review the Gherkin or check the target page. If the problem persists, contact the administrator.\n\nRaw error type: `{{$json.errorType}}`",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true,
+          "reply_to_message_id": "={{$json.chatInfo.messageId}}"
+        }
+      },
+      "id": "k1l2m3n4-o5p6-q7r8-8a0a-f7a8f39a3e8b",
+      "name": "Send Code Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "filePath": "={{'/home/node/cypress/e2e/' + $json.specFileName}}",
+        "fileContent": "={{$json.code}}",
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6g7-8h9i-8a0a-f7a8f39a3e8b",
+      "name": "Save Spec File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "={{$json.filePath}}",
+        "options": {}
+      },
+      "id": "c3d4e5f6-g7h8-9i0j-8a0a-f7a8f39a3e8b",
+      "name": "Read Spec File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "text": "=✅ *Cypress Test Generated Successfully!*\n\nI've created a Cypress test based on your Gherkin specification: `{{$json.specFileName}}`\nLocators found: {{$json.placeholdersFound}} | Locators injected: {{$json.locatorsInjected}}\nTarget URL: `{{$json.targetUrl}}`\n\nSending you the test file now. I'll run it and send you the results shortly.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true,
+          "reply_to_message_id": "={{$json.chatInfo.messageId}}"
+        }
+      },
+      "id": "d4e5f6g7-h8i9-0j1k-8a0a-f7a8f39a3e8b",
+      "name": "Send File Info",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        60
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "caption": "=📄 *Cypress Test File: {{$json.fileName}}*\n\nHere's the generated test code. I'll now execute this test and provide you with the results.",
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "e5f6g7h8-i9j0-k1l2-8a0a-f7a8f39a3e8b",
+      "name": "Send Spec File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        60
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=cd /home/node && ./scripts/run_cypress.sh {{$json.specFileName}}",
+        "options": {
+          "cwd": "/home/node",
+          "shell": true
+        }
+      },
+      "id": "f6g7h8i9-j0k1-l2m3-8a0a-f7a8f39a3e8b",
+      "name": "Run Cypress Test",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3000,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const stdout = $input.item.json.stdout;\nconst stderr = $input.item.json.stderr;\n// chatInfo and specFileName should be passed through from the input to ExecuteCommand if 'Always Output Data' is on\n// or specifically merged if ExecuteCommand doesn't pass all input data.\n// Assuming they are available in $input.item.json from passthrough.\nconst chatInfo = $input.item.json.chatInfo;\nconst specFileName = $input.item.json.specFileName; \n\ntry {\n  // The run_cypress.sh script is expected to print a JSON object to stdout\n  const result = JSON.parse(stdout);\n  // The result object should contain: {success, mochawesomeJsonPath, htmlReportPath, logPath, cypressExitCode}\n  // And specFileName might be part of it or passed through context.\n  return [{ json: { \n      success: true, // Parsing stdout was successful\n      executionStatus: { // This is the content of the JSON from stdout\n        ...result, // Spread all properties from the script's JSON output\n        specFileName: result.specFileName || specFileName // Prioritize from script, fallback to context\n      },\n      stderr: stderr, // Include stderr for debugging if needed\n      chatInfo \n  }}];\n} catch (e) {\n  console.error('Failed to parse Cypress execution output:', e.message, 'Stdout:', stdout, 'Stderr:', stderr);\n  return [{ json: { \n      success: false, \n      error: 'Failed to parse Cypress execution output: ' + e.message, \n      stdout: stdout, \n      stderr: stderr,\n      errorType: 'PARSE_EXEC_OUTPUT_ERROR', \n      chatInfo, \n      specFileName \n  }}];\n}"
+      },
+      "id": "parse-run-output-node",
+      "name": "Parse Run Output",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.success}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-run-output-parsed-ok",
+      "name": "Run Output Parsed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        3400,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "text": "=⚠️ *Error: Could Not Parse Test Execution Output*\n\nI was unable to understand the results from the test run. This usually indicates an issue with the test execution script or environment.\n\nError: `{{$json.error}}`\n\nStdout:\n```\n{{$json.stdout ? $json.stdout.substring(0, 500) : 'N/A'}}\n```\nStderr:\n```\n{{$json.stderr ? $json.stderr.substring(0, 500) : 'N/A'}}\n```\nPlease check the n8n execution logs for more details.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-execution-error-node",
+      "name": "Send Execution Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        180
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "filePath": "={{$json.executionStatus.mochawesomeJsonPath}}",
+        "options": {}
+      },
+      "id": "read-mochawesome-json-node",
+      "name": "Read Mochawesome JSON",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "={{$json.executionStatus.logPath}}",
+        "options": {}
+      },
+      "id": "read-cypress-log-node",
+      "name": "Read Cypress Log",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "merge-report-data-node",
+      "name": "Merge Report Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1.1,
+      "position": [
+        3800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Inputs from Merge (order might vary based on execution, so access by property):\n// Item 1: From Parse Run Output (contains executionStatus, chatInfo, specFileName)\n// Item 2: From Read Mochawesome JSON (contains binary.data as mochawesomeFile)\n// Item 3: From Read Cypress Log (contains binary.data as logFile)\n\nconst parseOutputItem = items.find(item => item.json.executionStatus);\nconst mochawesomeFileItem = items.find(item => item.binary && item.binary.data && item.json.fileName && item.json.fileName.includes('report.json')); // Heuristic to find mochawesome json\nconst logFileItem = items.find(item => item.binary && item.binary.data && item.json.fileName && item.json.fileName.includes('cypress-run.log')); // Heuristic for log file\n\nif (!parseOutputItem || !mochawesomeFileItem || !logFileItem) {\n    let missing = [];\n    if (!parseOutputItem) missing.push('parsed execution output');\n    if (!mochawesomeFileItem) missing.push('Mochawesome JSON file data');\n    if (!logFileItem) missing.push('Cypress run log file data');\n    \n    return [{ json: { \n        success: false, \n        error: `Missing required data for report preparation: ${missing.join(', ')}. Check Merge node inputs.`, \n        errorType: 'PREPARE_REPORT_DATA_ERROR', \n        chatInfo: parseOutputItem?.json?.chatInfo || items[0]?.json?.chatInfo || {}\n    }}];\n}\n\nconst executionStatus = parseOutputItem.json.executionStatus;\nconst chatInfo = parseOutputItem.json.chatInfo;\n\n// Ensure binary data is correctly identified and converted\n// n8n ReadBinaryFile node puts data under 'data' key if binaryPropertyName is default\nconst mochawesomeJsonString = Buffer.from(mochawesomeFileItem.binary.data, 'base64').toString('utf-8');\nconst cypressRunLogString = Buffer.from(logFileItem.binary.data, 'base64').toString('utf-8');\n\nreturn [{ json: {\n    success: true,\n    mochawesomeJsonString: mochawesomeJsonString,\n    cypressRunLogString: cypressRunLogString,\n    executionStatus: executionStatus, // Contains exit code, specFileName, htmlReportPath etc.\n    chatInfo: chatInfo\n}}];"
+      },
+      "id": "prepare-report-data-node",
+      "name": "Prepare Report Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        4000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// qa-automation/functions/report-generator.js\n// This function is intended to be pasted into an n8n Function node.\n// It processes Cypress test execution results, parses reports (Mochawesome JSON and console logs),\n// and generates user-friendly HTML and text summaries for delivery via Telegram.\n\n// Input: items[0].json should contain:\n//   - executionStatus: { success: boolean, reportPath: string, logPath: string, cypressExitCode: number }\n//   - mochawesomeJsonString: string (content of Mochawesome JSON report)\n//   - cypressRunLogString: string (content of cypress-run.log)\n//   - chatInfo: object (Telegram chat details)\n// Output: [{ json: { success: boolean, summary?: object, ... }, binary: { report.html: {...}, summary.txt: {...} } }]\n\nconst input = items[0].json;\n\n// Ensure all required inputs are present\nif (!input || !input.executionStatus || typeof input.mochawesomeJsonString !== 'string' || typeof input.cypressRunLogString !== 'string' || !input.chatInfo) {\n  console.error('Error: Missing critical input data for report generation.');\n  return [{\n    json: {\n      success: false,\n      error: 'Report generator received incomplete data. Ensure executionStatus, mochawesomeJsonString, cypressRunLogString, and chatInfo are provided.',\n      errorType: 'MISSING_REPORT_INPUTS',\n      chatInfo: input?.chatInfo || {}\n    }\n  }];\n}\n\nconst { executionStatus, mochawesomeJsonString, cypressRunLogString, chatInfo } = input;\n\nfunction log(message, level = 'info') {\n  const prefix = level === 'error' ? 'ERROR' : level === 'warn' ? 'WARN' : 'INFO';\n  console.log(`[ReportGenerator] ${prefix}: ${message}`);\n}\n\n/**\n * Parses Mochawesome JSON report content.\n * @param {string} jsonString - The Mochawesome JSON report as a string.\n * @returns {Object} - Parsed report data including summary, tests, and suites.\n */\nfunction parseMochawesomeReport(jsonString) {\n  try {\n    const report = JSON.parse(jsonString);\n    const stats = report.stats || {};\n    const results = report.results || []; // This is an array of suites (typically one)\n    const allSuites = results.flatMap(result => result.suites || []);\n    const allTests = allSuites.flatMap(suite => suite.tests || []);\n\n    const summary = {\n      totalSuites: stats.suites || allSuites.length,\n      totalTests: stats.tests || allTests.length,\n      passes: stats.passes || 0,\n      failures: stats.failures || 0,\n      pending: stats.pending || 0, // Mochawesome uses 'pending' for skipped due to hooks or exclusive .only\n      skipped: stats.skipped || 0, // Explicitly skipped tests\n      duration: stats.duration || 0,\n      startTime: stats.start || new Date().toISOString(),\n      endTime: stats.end || new Date().toISOString(),\n      passPercent: stats.passPercent || 0,\n      pendingPercent: stats.pendingPercent || 0\n    };\n\n    const testDetails = allTests.map(test => ({\n      title: test.title || 'Untitled Test',\n      fullTitle: test.fullTitle || test.title,\n      duration: test.duration || 0,\n      state: test.state || (test.pass ? 'passed' : test.fail ? 'failed' : (test.pending || test.skipped) ? 'skipped' : 'unknown'),\n      passed: !!test.pass,\n      failed: !!test.fail,\n      skipped: !!(test.pending || test.skipped),\n      code: test.code || '',\n      error: test.err ? { message: test.err.message, stack: test.err.estack, diff: test.err.diff } : null,\n      // Screenshots are often in err.context if using mochawesome-screenshots\n      screenshots: (test.err && test.err.context) ? JSON.parse(test.err.context).value : [] // Assumes context is JSON string like `{\"title\":\"Screenshot\",\"value\":\"assets/...\"}`\n    }));\n    \n    const suiteDetails = allSuites.map(suite => ({\n        title: suite.title || 'Untitled Suite',\n        file: suite.file || '',\n        duration: suite.duration || 0,\n        hasFailures: suite.failures && suite.failures.length > 0,\n        hasPasses: suite.passes && suite.passes.length > 0,\n        hasSkipped: (suite.pending && suite.pending.length > 0) || (suite.skipped && suite.skipped.length > 0),\n        tests: (suite.tests || []).map(t => t.title) // Just titles for brevity in suite summary\n    }));\n\n    return { summary, tests: testDetails, suites: suiteDetails, reportType: 'mochawesome' };\n  } catch (error) {\n    log(`Error parsing Mochawesome report: ${error.message}`, 'error');\n    // Fallback if Mochawesome parsing fails, use executionStatus\n    return {\n      summary: {\n        totalTests: 1, // Assume 1 overall test if parsing fails\n        passes: executionStatus.cypressExitCode === 0 ? 1 : 0,\n        failures: executionStatus.cypressExitCode !== 0 ? 1 : 0,\n        skipped: 0, pending: 0, duration: 0,\n        startTime: new Date().toISOString(), endTime: new Date().toISOString(),\n        passPercent: executionStatus.cypressExitCode === 0 ? 100 : 0\n      },\n      tests: [{ title: 'Overall Test Run', state: executionStatus.cypressExitCode === 0 ? 'passed' : 'failed', duration: 0, error: executionStatus.cypressExitCode !== 0 ? { message: 'Test execution failed, see logs.' } : null }],\n      suites: [],\n      reportType: 'fallback'\n    };\n  }\n}\n\n/**\n * Parses Cypress console log output.\n * @param {string} logString - The Cypress console log as a string.\n * @returns {Object} - Extracted information like Cypress version, browser, warnings.\n */\nfunction parseCypressLog(logString) {\n  const info = {\n    cypressVersion: (logString.match(/Cypress:\\s*(\\d+\\.\\d+\\.\\d+)/) || [])[1] || 'N/A',\n    browser: (logString.match(/Browser:\\s*([^\\s]+)\\s+\\d+/) || [])[1] || 'N/A', // e.g. Chrome 100\n    specFile: (logString.match(/Running:\\s*(.*\\.spec\\.js)/) || [])[1] || 'N/A',\n    warnings: [],\n    errors: [] // For console errors not part of test failures\n  };\n  // Extract console warnings/errors if any specific patterns are known\n  // For simplicity, this part can be expanded if needed.\n  return info;\n}\n\n/**\n * Basic performance analysis.\n * @param {Object} reportData - Parsed report data from Mochawesome.\n * @returns {Object} - Performance metrics and a simple grade.\n */\nfunction analyzePerformance(reportData) {\n  const { summary, tests } = reportData;\n  const totalDuration = summary.duration || 0;\n  const numTests = summary.totalTests || (tests ? tests.length : 0);\n  const avgTestDuration = numTests > 0 ? totalDuration / numTests : 0;\n  const passRate = summary.passPercent || (numTests > 0 ? (summary.passes / numTests) * 100 : 0);\n\n  const slowTests = tests ? tests.filter(test => test.duration > 10000) : []; // Tests > 10s\n\n  let performanceGrade = 'N/A';\n  if (passRate >= 95 && avgTestDuration <= 5000) performanceGrade = 'A';\n  else if (passRate >= 80 && avgTestDuration <= 10000) performanceGrade = 'B';\n  else if (passRate >= 60) performanceGrade = 'C';\n  else if (passRate >= 40) performanceGrade = 'D';\n  else performanceGrade = 'F';\n  \n  let recommendations = [];\n  if (slowTests.length > 0) recommendations.push(`Investigate ${slowTests.length} slow test(s) (>${(10000/1000).toFixed(0)}s).`);\n  if (passRate < 70 && numTests > 0) recommendations.push(\"Improve test stability to increase pass rate.\");\n\n\n  return {\n    metrics: {\n      totalDurationMs: totalDuration,\n      avgTestDurationMs: avgTestDuration,\n      passRate: parseFloat(passRate.toFixed(2)),\n      slowTestCount: slowTests.length,\n    },\n    performanceGrade,\n    recommendations: recommendations.length > 0 ? recommendations : [\"All good!\"]\n  };\n}\n\n/**\n * Generates an HTML report string.\n * @param {Object} reportData - Parsed Mochawesome data.\n * @param {Object} performanceData - Output of analyzePerformance.\n * @param {Object} logData - Output of parseCypressLog.\n * @returns {string} - HTML report content.\n */\nfunction generateHtmlReport(reportData, performanceData, logData) {\n  const { summary, tests, suites } = reportData;\n\n  const formatMs = (ms) => ms ? `${(ms / 1000).toFixed(2)}s` : '0s';\n  const getStatusClass = (state) => state || 'unknown'; // 'passed', 'failed', 'skipped'\n\n  let testsHtml = tests.map(test => `\n    <div class=\"test-case ${getStatusClass(test.state)}\">\n      <h4>${test.fullTitle || test.title} (${formatMs(test.duration)}) - ${test.state.toUpperCase()}</h4>\n      ${test.error ? `<pre class=\"error-details\"><strong>Error:</strong> ${test.error.message}\\n${test.error.stack ? `\\nStack:\\n${test.error.stack}` : ''}${test.error.diff ? `\\nDiff:\\n${test.error.diff}` : ''}</pre>` : ''}\n      ${test.screenshots && test.screenshots.length > 0 ? `<div>Screenshots: ${test.screenshots.map(s => `<a href=\"${s.value}\" target=\"_blank\">${s.title || 'View'}</a>`).join(', ')}</div>` : ''}\n    </div>`).join('');\n  \n  if (tests.length === 0 && summary.failures > 0) { // Handle case where tests array is empty but failures reported (e.g. hook failure)\n      testsHtml = `<div class=\"test-case failed\"><h4>Global Error / Hook Failure</h4><pre class=\"error-details\">Execution failed with ${summary.failures} critical error(s). Check Cypress logs.</pre></div>`;\n  }\n\n\n  return `\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Cypress Test Report - ${logData.specFile || 'General'}</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }\n        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }\n        h1, h2, h3 { color: #2c3e50; }\n        h1 { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; }\n        .summary-grid, .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }\n        .metric-box { background-color: #ecf0f1; padding: 15px; border-radius: 5px; text-align: center; }\n        .metric-box h3 { margin-top: 0; font-size: 1.2em; color: #34495e;}\n        .metric-box .value { font-size: 2em; font-weight: bold; color: #2980b9; }\n        .passed .value { color: #27ae60; }\n        .failed .value { color: #c0392b; }\n        .skipped .value { color: #7f8c8d; }\n        .recommendations ul { list-style-type: '💡 '; padding-left: 20px; }\n        .test-case { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px; }\n        .test-case.passed { border-left: 5px solid #27ae60; background-color: #e9f7ef; }\n        .test-case.failed { border-left: 5px solid #c0392b; background-color: #fdedec; }\n        .test-case.skipped, .test-case.pending { border-left: 5px solid #7f8c8d; background-color: #f0f1f1; }\n        .error-details { background-color: #fcebea; color: #c0392b; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; margin-top:5px; }\n        .footer { text-align: center; margin-top: 30px; font-size: 0.9em; color: #7f8c8d; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Cypress Test Report</h1>\n        <p style=\"text-align:center;\">Spec: ${logData.specFile || 'N/A'} | Browser: ${logData.browser} | Cypress: v${logData.cypressVersion}</p>\n        <p style=\"text-align:center;\">Start: ${new Date(summary.startTime).toLocaleString()} | End: ${new Date(summary.endTime).toLocaleString()}</p>\n        \n        <h2>Overall Summary</h2>\n        <div class=\"summary-grid\">\n            <div class=\"metric-box total\"><h3 class=\"label\">Total Tests</h3><span class=\"value\">${summary.totalTests}</span></div>\n            <div class=\"metric-box passed\"><h3 class=\"label\">Passed</h3><span class=\"value\">${summary.passes}</span></div>\n            <div class=\"metric-box failed\"><h3 class=\"label\">Failed</h3><span class=\"value\">${summary.failures}</span></div>\n            <div class=\"metric-box skipped\"><h3 class=\"label\">Skipped/Pending</h3><span class=\"value\">${summary.skipped + summary.pending}</span></div>\n            <div class=\"metric-box duration\"><h3 class=\"label\">Duration</h3><span class=\"value\">${formatMs(summary.duration)}</span></div>\n        </div>\n\n        <h2>Performance Analysis</h2>\n        <div class=\"perf-grid\">\n            <div class=\"metric-box\"><h3 class=\"label\">Pass Rate</h3><span class=\"value ${performanceData.metrics.passRate >= 80 ? 'passed' : 'failed'}\">${performanceData.metrics.passRate}%</span></div>\n            <div class=\"metric-box\"><h3 class=\"label\">Avg. Duration</h3><span class=\"value\">${formatMs(performanceData.metrics.avgTestDurationMs)}</span></div>\n            <div class=\"metric-box\"><h3 class=\"label\">Slow Tests</h3><span class=\"value\">${performanceData.metrics.slowTestCount}</span></div>\n            <div class=\"metric-box\"><h3 class=\"label\">Grade</h3><span class=\"value ${performanceData.performanceGrade === 'A' || performanceData.performanceGrade === 'B' ? 'passed' : 'failed'}\">${performanceData.performanceGrade}</span></div>\n        </div>\n        ${performanceData.recommendations.length > 0 ? `<div class=\"recommendations\"><h3>Recommendations</h3><ul>${performanceData.recommendations.map(rec => `<li>${rec}</li>`).join('')}</ul></div>` : ''}\n\n        <h2>Test Details</h2>\n        ${testsHtml || '<p>No individual test details available or all tests passed without specific logging.</p>'}\n        \n        <div class=\"footer\">Report generated by n8n QA Automation on ${new Date().toLocaleString()}</div>\n    </div>\n</body>\n</html>`;\n}\n\n/**\n * Generates a text summary for Telegram.\n * @param {Object} reportData - Parsed Mochawesome data.\n * @param {Object} performanceData - Output of analyzePerformance.\n * @param {string} specFile - The spec file name.\n * @returns {string} - Markdown formatted text summary.\n */\nfunction generateTextSummary(reportData, performanceData, specFile) {\n  const { summary } = reportData;\n  const formatMs = (ms) => ms ? `${(ms / 1000).toFixed(1)}s` : '0s';\n  const overallStatus = summary.failures > 0 ? '❌ FAILED' : (summary.totalTests === 0 ? '⚠️ NO TESTS RUN' : '✅ PASSED');\n\n  let text = `*Cypress Test Results: ${specFile || 'General'}*\\n`;\n  text += `${overallStatus} (Grade: ${performanceData.performanceGrade})\\n\\n`;\n  text += `*Summary:*\\n`;\n  text += `  Total: ${summary.totalTests} | ✅ Passed: ${summary.passes} | ❌ Failed: ${summary.failures} | ⏭️ Skipped: ${summary.skipped + summary.pending}\\n`;\n  text += `  ⏱️ Duration: ${formatMs(summary.duration)} | 📊 Pass Rate: ${performanceData.metrics.passRate}%\\n\\n`;\n\n  if (summary.failures > 0) {\n    text += `*Failed Tests:*\\n`;\n    const failedTests = reportData.tests ? reportData.tests.filter(t => t.failed) : [];\n    failedTests.slice(0, 5).forEach(test => { // List up to 5 failed tests\n      text += `  - ${test.title.substring(0, 60)}${test.title.length > 60 ? '...' : ''}\\n`;\n    });\n    if (failedTests.length > 5) text += `  ...and ${failedTests.length - 5} more.\\n`;\n    text += `\\n`;\n  }\n  \n  if (performanceData.recommendations.length > 0 && !(performanceData.recommendations.length === 1 && performanceData.recommendations[0] === \"All good!\")) {\n      text += `*Recommendations:*\\n`;\n      performanceData.recommendations.slice(0,3).forEach(rec => { text += `  - ${rec}\\n`;});\n  }\n\n  text += `\\n_Full HTML report is attached._`;\n  return text;\n}\n\n// --- Main Execution ---\ntry {\n  log(`Processing report for chat ${chatInfo.chatId}. Cypress exit code: ${executionStatus.cypressExitCode}`);\n\n  const reportData = parseMochawesomeReport(mochawesomeJsonString);\n  const logData = parseCypressLog(cypressRunLogString);\n  // executionStatus from run_cypress.sh should contain the correct specFileName\n  logData.specFile = executionStatus.specFileName || logData.specFile; \n\n  const performanceData = analyzePerformance(reportData);\n\n  const htmlReportContent = generateHtmlReport(reportData, performanceData, logData);\n  const textSummaryContent = generateTextSummary(reportData, performanceData, logData.specFile);\n\n  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');\n  const htmlReportFilename = `cypress-report-${logData.specFile ? logData.specFile.replace(/\\.spec\\.js$/i, '') : 'run'}-${timestamp}.html`;\n  const textSummaryFilename = `summary-${logData.specFile ? logData.specFile.replace(/\\.spec\\.js$/i, '') : 'run'}-${timestamp}.txt`;\n  \n  log(`Reports generated successfully for ${logData.specFile}. HTML: ${htmlReportFilename}`);\n\n  return [{\n    json: {\n      success: true,\n      overallStatus: reportData.summary.failures > 0 ? 'FAILED' : 'PASSED',\n      summaryStats: reportData.summary,\n      performanceGrade: performanceData.performanceGrade,\n      textSummary: textSummaryContent, // For direct use in Telegram message node\n      htmlReportFilename: htmlReportFilename, // For context\n      chatInfo: chatInfo\n    },\n    binary: {\n      // n8n expects binary data to be base64 encoded string under 'data' property\n      html_report: { // This key 'html_report' can be referenced in subsequent nodes\n        data: Buffer.from(htmlReportContent).toString('base64'),\n        fileName: htmlReportFilename,\n        mimeType: 'text/html'\n      },\n      text_summary_file: { // A text file version of the summary\n        data: Buffer.from(textSummaryContent).toString('base64'),\n        fileName: textSummaryFilename,\n        mimeType: 'text/plain'\n      }\n    }\n  }];\n\n} catch (error) {\n  log(`Critical error in report generation: ${error.message}\\nStack: ${error.stack}`, 'error');\n  return [{\n    json: {\n      success: false,\n      error: `Failed to generate reports: ${error.message}`,\n      errorType: 'REPORT_GENERATION_FAILURE',\n      stack: error.stack,\n      chatInfo: chatInfo\n    }\n  }];\n}"
+      },
+      "id": "g7h8i9j0-k1l2-m3n4-8a0a-f7a8f39a3e8b",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        4200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "text": "={{$json.textSummary}}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "h8i9j0k1-l2m3-n4o5-8a0a-f7a8f39a3e8b",
+      "name": "Send Test Results Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        4400,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatInfo.chatId}}",
+        "binaryData": true,
+        "binaryPropertyName": "html_report",
+        "additionalFields": {
+          "caption": "📊 *Detailed Test Report: {{$json.htmlReportFilename}}*\n\nHere's the complete HTML report for your test execution.",
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "i9j0k1l2-m3n4-o5p6-8a0a-f7a8f39a3e8b",
+      "name": "Send HTML Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        4600,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Gherkin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gherkin": {
+      "main": [
+        [
+          {
+            "node": "Gherkin Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gherkin Valid?": {
+      "main": [
+        [
+          {
+            "node": "DeepSeek Prompt Gen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Gherkin Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Prompt Gen": {
+      "main": [
+        [
+          {
+            "node": "DeepSeek API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek API": {
+      "main": [
+        [
+          {
+            "node": "Process Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Code": {
+      "main": [
+        [
+          {
+            "node": "Fetch HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HTML": {
+      "main": [
+        [
+          {
+            "node": "Extract Locators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Locators": {
+      "main": [
+        [
+          {
+            "node": "Inject Locators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inject Locators": {
+      "main": [
+        [
+          {
+            "node": "Code Injection OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Injection OK?": {
+      "main": [
+        [
+          {
+            "node": "Save Spec File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Code Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Spec File": {
+      "main": [
+        [
+          {
+            "node": "Read Spec File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Spec File": {
+      "main": [
+        [
+          {
+            "node": "Send File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send File Info": {
+      "main": [
+        [
+          {
+            "node": "Send Spec File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Spec File": {
+      "main": [
+        [
+          {
+            "node": "Run Cypress Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Cypress Test": {
+      "main": [
+        [
+          {
+            "node": "Parse Run Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Run Output": {
+      "main": [
+        [
+          {
+            "node": "Run Output Parsed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Output Parsed?": {
+      "main": [
+        [
+          {
+            "node": "Read Mochawesome JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Execution Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Mochawesome JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge Report Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cypress Log": {
+      "main": [
+        [
+          {
+            "node": "Merge Report Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Run Output Parsed?": { // This connection should come from the "true" output of "Run Output Parsed?"
+      "main": [ // Assuming output 0 is true path
+        [
+          // Connect "Run Output Parsed?" true path to "Read Cypress Log" as well
+          {
+            "node": "Read Cypress Log", 
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Run Output": { // Connect "Parse Run Output" to "Merge Report Data" for its direct JSON output
+        "main": [
+            [
+                {
+                    "node": "Merge Report Data",
+                    "type": "main",
+                    "index": 1 // Connect to a different input index of Merge
+                }
+            ]
+        ]
+    },
+    "Merge Report Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Report Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Report Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Send Test Results Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Test Results Summary": {
+      "main": [
+        [
+          {
+            "node": "Send HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-workflow-placeholder-id" 
+  },
+  "versionId": "a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6",
+  "id": "telegram-cypress-qa-automation",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "n8n-qa-automation-instance"
+  },
+  "tags": [
+    {
+      "createdAt": "2025-06-03T12:00:00.000Z",
+      "updatedAt": "2025-06-03T12:00:00.000Z",
+      "id": "tag-qa",
+      "name": "QA"
+    },
+    {
+      "createdAt": "2025-06-03T12:00:00.000Z",
+      "updatedAt": "2025-06-03T12:00:00.000Z",
+      "id": "tag-cypress",
+      "name": "Cypress"
+    },
+    {
+      "createdAt": "2025-06-03T12:00:00.000Z",
+      "updatedAt": "2025-06-03T12:00:00.000Z",
+      "id": "tag-e2e",
+      "name": "E2E"
+    },
+    {
+      "createdAt": "2025-06-03T12:00:00.000Z",
+      "updatedAt": "2025-06-03T12:00:00.000Z",
+      "id": "tag-telegram",
+      "name": "Telegram"
+    },
+    {
+      "createdAt": "2025-06-03T12:00:00.000Z",
+      "updatedAt": "2025-06-03T12:00:00.000Z",
+      "id": "tag-ai",
+      "name": "AI"
+    }
+  ]
+}

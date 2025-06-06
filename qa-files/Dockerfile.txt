@@ -1,0 +1,86 @@
+# Dockerfile for n8n QA Automation
+# Path: docker/qa-automation/Dockerfile
+# This Dockerfile extends the base n8n image to include
+# Cypress and other dependencies for QA automation.
+
+# Use a specific stable n8n version as the base
+FROM n8nio/n8n:1.45.0
+
+# Set environment variables for memory optimization (Render free tier)
+# and Cypress/Puppeteer configuration.
+ENV NODE_OPTIONS="--max-old-space-size=384"
+ENV CYPRESS_CACHE_FOLDER=/tmp/cy-cache
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV N8N_DIAGNOSTICS_ENABLED=false
+ENV N8N_DEFAULT_CONCURRENCY=2
+
+# Install system dependencies required for Cypress and headless browser operation.
+# curl and wget are added for general utility if needed by scripts.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    libgtk2.0-0 \
+    libgtk-3-0 \
+    libgbm-dev \
+    libnotify-dev \
+    libgconf-2-4 \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libxtst6 \
+    curl \
+    wget \
+    # Clean up apt cache to reduce image size
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install global Node.js packages:
+# - cypress: E2E testing framework
+# - cheerio: HTML parsing for locator extraction
+# - puppeteer-core: For potential SPA HTML fetching (browser not included to save space)
+# - junit-viewer, mochawesome-merge, mochawesome-report-generator: For report processing
+RUN npm install -g \
+    cypress@13.7.3 \
+    cheerio \
+    puppeteer-core \
+    junit-viewer \
+    mochawesome-merge \
+    mochawesome-report-generator
+
+# Create directories for Cypress tests, support files, reports, and custom scripts
+# These directories will be within the n8n user's home directory.
+RUN mkdir -p /home/node/cypress/e2e \
+    /home/node/cypress/support \
+    /home/node/cypress/reports \
+    /home/node/cypress/fixtures \
+    /home/node/cypress/plugins \
+    /home/node/scripts \
+    # Ensure the Cypress cache folder exists and is writable
+    && mkdir -p ${CYPRESS_CACHE_FOLDER} \
+    && chown -R node:node ${CYPRESS_CACHE_FOLDER}
+
+# Copy QA automation specific configuration files and scripts.
+# These paths are relative to the build context (root of the n8n repository).
+# It's assumed these files will be placed in a 'qa-automation' directory
+# at the root of the main n8n repository.
+COPY qa-automation/cypress.json /home/node/cypress/cypress.json
+COPY qa-automation/scripts/run_cypress.sh /home/node/scripts/run_cypress.sh
+
+# Make the script executable
+RUN chmod +x /home/node/scripts/run_cypress.sh
+
+# Set the working directory for subsequent commands
+WORKDIR /home/node
+
+# Ensure the n8n user owns the copied files and created directories
+RUN chown -R node:node /home/node/cypress \
+    /home/node/scripts
+
+# Expose the n8n port (already exposed in base image, but good for clarity)
+EXPOSE 5678
+
+# Switch to the non-root n8n user
+USER node
+
+# The n8n base image already has the CMD to start n8n,
+# so it doesn't need to be redefined here.
+# CMD ["tini", "--", "n8n"]

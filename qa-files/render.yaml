@@ -1,0 +1,150 @@
+# render.yaml - Render Blueprint for n8n QA Automation
+# This file defines the services and configurations for deploying the
+# n8n application with custom QA automation capabilities on Render.com.
+
+services:
+  - type: web # Specifies this is a web service
+    name: n8n-qa-automation # A unique name for your service
+    env: docker # Specifies that the service is built from a Dockerfile
+    region: oregon # Choose a region (e.g., oregon, frankfurt, singapore)
+    plan: free # Use Render's free instance type
+    branch: main # Deploy from the 'main' branch of your Git repository
+    autoDeploy: true # Enable automatic deploys on new commits to the branch
+
+    # Docker build configuration
+    dockerfilePath: ./docker/qa-automation/Dockerfile # Path to your custom Dockerfile
+    dockerContext: . # The root of your repository is the build context
+
+    # Health check configuration for n8n
+    healthCheckPath: /healthz # n8n provides a health check endpoint
+
+    # Persistent disk for storing n8n data (SQLite database, workflows, etc.)
+    disk:
+      name: n8n-data # Name for the persistent disk
+      mountPath: /var/data # Mount path inside the container
+      sizeGB: 1 # Size of the disk (1GB is available on the free plan)
+
+    # Environment variables for configuring n8n and QA tools
+    # Secrets (API keys, passwords) should be stored in an Environment Group in Render.
+    # This blueprint assumes an Environment Group named 'n8n-qa-secrets'.
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: N8N_PORT # n8n listens on this port if set
+        value: "5678" # Default n8n port
+      - key: PORT # Render provides this environment variable with the port to bind to
+        sync: false # Let Render manage this; n8n will use it if N8N_PORT is not set or if it's the same
+      - key: N8N_PROTOCOL
+        value: https # n8n should assume HTTPS
+      - key: N8N_HOST # n8n needs to know its external hostname
+        sync: false # Render will set this to your service's URL (e.g., your-app.onrender.com)
+      - key: WEBHOOK_URL # Base URL for webhooks
+        sync: false # Render will also set this to your service's URL
+
+      # Database Configuration (using SQLite on the persistent disk)
+      - key: DB_TYPE
+        value: sqlite
+      - key: DB_SQLITE_PATH
+        value: /var/data/database.sqlite # Store SQLite DB on the persistent disk
+      - key: DB_SQLITE_WAL_ENABLED # Enable Write-Ahead Logging for better SQLite performance
+        value: "true"
+
+      # n8n Performance & Operational Settings
+      - key: N8N_DIAGNOSTICS_ENABLED # Disable n8n's built-in diagnostics/telemetry
+        value: "false"
+      - key: N8N_DEFAULT_CONCURRENCY # Limit concurrent workflow executions (good for free tier)
+        value: "2"
+      - key: EXECUTIONS_PROCESS # How n8n handles workflow executions
+        value: main # 'main' process is usually fine for smaller setups
+      - key: EXECUTIONS_TIMEOUT # Maximum execution time for a single workflow in seconds
+        value: "300" # 5 minutes
+      - key: EXECUTIONS_DATA_PRUNE_MAX_COUNT # Keep up to this many execution logs
+        value: "1000"
+      - key: EXECUTIONS_DATA_MAX_AGE # Prune execution logs older than this (in hours)
+        value: "24" # Keep for 1 day
+      - key: DB_PRUNE_MAX_COUNT # For other database pruning if applicable
+        value: "1000"
+      - key: DB_PRUNE_MAX_AGE # (in hours)
+        value: "336" # Keep for 14 days
+
+      # Node.js runtime options for memory management on free tier
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384 # Limit Node.js heap size to 384MB
+
+      # Cypress & QA Automation Specific Settings
+      - key: CYPRESS_CACHE_FOLDER # Path for Cypress binary cache
+        value: /tmp/cy-cache # Use a non-persistent path for cache
+      - key: CYPRESS_VIDEO # Disable video recording to save resources and disk space
+        value: "false"
+      - key: GENERIC_TIMEZONE # Timezone for n8n's internal scheduling
+        value: UTC
+
+      # Security: Basic Authentication for n8n UI
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: "true"
+      - key: N8N_BASIC_AUTH_USER
+        fromEnvironmentGroup: n8n-qa-secrets # Pull from 'n8n-qa-secrets' Environment Group
+      - key: N8N_BASIC_AUTH_PASSWORD
+        fromEnvironmentGroup: n8n-qa-secrets
+      - key: N8N_ENCRYPTION_KEY # Essential for encrypting credentials stored in n8n
+        fromEnvironmentGroup: n8n-qa-secrets
+      - key: JWT_SECRET # Secret for JWT tokens if n8n uses them internally
+        fromEnvironmentGroup: n8n-qa-secrets
+
+      # Telegram Bot Configuration
+      - key: TELEGRAM_BOT_TOKEN
+        fromEnvironmentGroup: n8n-qa-secrets
+      - key: TELEGRAM_ALLOWED_CHAT_IDS # Optional: Comma-separated list of chat IDs to restrict bot access
+        fromEnvironmentGroup: n8n-qa-secrets
+        optional: true # This env var is optional
+
+      # DeepSeek API Configuration
+      - key: DEEPSEEK_API_KEY
+        fromEnvironmentGroup: n8n-qa-secrets
+      - key: DEEPSEEK_API_URL
+        value: https://api.deepseek.com/v1/generate # Default API endpoint
+      - key: DEEPSEEK_MODEL
+        value: deepseek-coder # Default model for code generation
+      - key: DEEPSEEK_TEMPERATURE
+        value: "0.2" # Controls randomness, lower is more deterministic
+
+      # Cypress Base URL for the Application Under Test (AUT)
+      - key: CYPRESS_BASE_URL
+        fromEnvironmentGroup: n8n-qa-secrets
+
+      # Render specific environment variable (Render sets IS_RENDER=true automatically)
+      - key: IS_RENDER
+        value: "true" # Can be useful for scripts to know they are running on Render
+
+      # Logging Configuration
+      - key: LOG_LEVEL
+        value: info # Set log level (error, warn, info, verbose, debug)
+      - key: LOG_FORMAT
+        value: json # Use JSON format for logs for easier parsing by log management systems
+
+      # Disable n8n setup wizard and public API for production/security
+      - key: N8N_PUBLIC_API_DISABLED
+        value: "true"
+      - key: N8N_SETUP_DISABLED
+        value: "true"
+
+# Optional: Cron Job for Daily Database Backups
+# This job runs daily, copies the SQLite database to a backups folder on the
+# persistent disk, and removes backups older than 7 days.
+cronJobs:
+  - name: n8n-db-backup # A unique name for your cron job
+    schedule: "0 2 * * *" # Runs daily at 2:00 AM UTC (see crontab.guru for syntax)
+    env: docker # Uses the same Docker environment as the main service
+    region: oregon # Should match the main service's region
+    plan: free # Cron jobs can run on the free plan
+    dockerfilePath: ./docker/qa-automation/Dockerfile # Use the same custom Dockerfile
+    dockerContext: .
+    # Command to execute for the backup
+    # 1. Ensures the backup directory exists.
+    # 2. Copies the database file with a timestamp.
+    # 3. Finds and deletes backup files older than 7 days.
+    command: sh -c "mkdir -p /var/data/backups && cp /var/data/database.sqlite /var/data/backups/database-$(date +%Y%m%d-%H%M%S).sqlite && find /var/data/backups -name 'database-*.sqlite' -type f -mtime +7 -delete"
+    # Mount the same persistent disk to access the database and store backups
+    disk:
+      name: n8n-data # Must match the disk name of the main service
+      mountPath: /var/data
