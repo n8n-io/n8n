@@ -1682,7 +1682,7 @@ export function makeNodeName(
 }
 
 /**
- * Returns true if the node name is of format <defaultNodeName>\d* , which includes auto-renamed nodes
+ * Returns true if the node name is of format `<defaultNodeName>\d*` , which includes auto-renamed nodes
  */
 export function isDefaultNodeName(
 	name: string,

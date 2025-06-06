@@ -5276,7 +5276,7 @@ describe('NodeHelpers', () => {
 			['Test Node', true],
 			['Test Node1', true],
 			['Create a new user5', true],
-			['Create a new user5', false],
+			['Create a new user in Test Node5', false],
 			['Create a new user 5', false],
 			['Update user', false],
 			['Update user5', false],
@@ -5325,7 +5325,7 @@ describe('NodeHelpers', () => {
 		});
 		it('should detect default names for tool node types', () => {
 			// Arrange
-			const name = 'Create a new user in Test Node';
+			const name = 'Create user in Test Node';
 			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
 
 			const parameters: INodeParameters = {
@@ -5342,7 +5342,7 @@ describe('NodeHelpers', () => {
 		it('should detect non-default names for tool node types', () => {
 			// Arrange
 			// The default for tools would include ` in Test Node`
-			const name = 'Create a new user';
+			const name = 'Create user';
 			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
 
 			const parameters: INodeParameters = {
@@ -5410,7 +5410,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('Create a new user in Test Node');
+			expect(result).toBe('Create a new user');
 		});
 
 		test('should return resource-operation-based name when action is not available', () => {
@@ -5445,7 +5445,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('Create user in Test Node');
+			expect(result).toBe('Create user');
 		});
 
 		test('should return default name when resource or operation is missing', () => {
@@ -5476,7 +5476,7 @@ describe('NodeHelpers', () => {
 			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
 
 			// Assert
-			expect(result).toBe('Create user in Test Node');
+			expect(result).toBe('Create user');
 		});
 
 		test('should handle case where options are not a list of INodePropertyOptions', () => {
@@ -5503,6 +5503,24 @@ describe('NodeHelpers', () => {
 					],
 					default: 'create',
 				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+		test('should handle case where node is a tool', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
 			];
 
 			// Act
