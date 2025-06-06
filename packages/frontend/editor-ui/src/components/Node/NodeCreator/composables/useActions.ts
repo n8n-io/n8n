@@ -322,21 +322,19 @@ export const useActions = () => {
 				after(() => {
 					const node = findLast(allNodes, (n) => n.type === action.key);
 					const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					const isDefaultName =
+					const wasDefaultName =
 						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
 
 					setLastNodeParameters(action);
 
 					// We update the default name here based on the chosen resource and operation
-					if (isDefaultName) {
-						// setTimeout to allow remaining events trigger by node addition to finish
-						setTimeout(
-							async () =>
-								await canvasOperations.renameNode(
-									node.name,
-									NodeHelpers.makeNodeName(node.parameters, nodeType),
-								),
-						);
+					if (wasDefaultName) {
+						const newName = NodeHelpers.makeNodeName(node.parameters, nodeType);
+						// Account for unique-ified nodes with `<name><digit>`
+						if (!node.name.startsWith(newName)) {
+							// setTimeout to allow remaining events trigger by node addition to finish
+							setTimeout(async () => await canvasOperations.renameNode(node.name, newName));
+						}
 					}
 					if (telemetry) trackActionSelected(action, telemetry, rootView);
 					// Unsubscribe from the store watcher

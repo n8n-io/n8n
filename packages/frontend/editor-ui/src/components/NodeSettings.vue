@@ -582,14 +582,12 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		}
 
 		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
-			// We need a timeout here to support events reacting to the valueChange based on node names
-			setTimeout(
-				async () =>
-					await canvasOperations.renameNode(
-						_node.name,
-						NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType),
-					),
-			);
+			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType);
+			// Account for unique-ified nodes with `<name><digit>`
+			if (!_node.name.startsWith(newName)) {
+				// We need a timeout here to support events reacting to the valueChange based on node names
+				setTimeout(async () => await canvasOperations.renameNode(_node.name, newName));
+			}
 		}
 
 		for (const key of Object.keys(nodeParameters as object)) {
