@@ -6,12 +6,10 @@ import { paginationSchema } from '../pagination/pagination.dto';
 const USERS_LIST_SORT_OPTIONS = [
 	'name:asc',
 	'name:desc',
-	'role:asc',
+	'role:asc', // ascending order by role is Owner, Admin, Member
 	'role:desc',
 	'lastActive:asc',
 	'lastActive:desc',
-	'projects:asc',
-	'projects:desc',
 ] as const;
 
 const usersListSortByValidator = z
