@@ -14,6 +14,7 @@ import type { TestRunRecord } from '@/api/evaluation.ee';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -214,7 +215,9 @@ describe('EvaluationsRootView', () => {
 
 			// Mock dataset trigger node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_TRIGGER_NODE_TYPE ? { name: EVALUATION_TRIGGER_NODE_TYPE } : null,
+				nodeType === EVALUATION_TRIGGER_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_TRIGGER_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
@@ -268,7 +271,9 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
+				nodeType === EVALUATION_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
@@ -322,7 +327,9 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
+				nodeType === EVALUATION_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });

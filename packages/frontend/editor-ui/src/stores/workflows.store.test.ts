@@ -3,13 +3,13 @@ import * as workflowsApi from '@/api/workflows';
 import {
 	DUPLICATE_POSTFFIX,
 	FORM_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
@@ -31,7 +31,8 @@ import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -179,11 +180,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('workflowTriggerNodes', () => {
 		it('should return only nodes that are triggers', () => {
-			vi.mocked(useNodeTypesStore).mockReturnValueOnce({
-				getNodeType: vi.fn(() => ({
-					group: ['trigger'],
-				})),
-			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			getNodeType.mockReturnValueOnce({ group: ['trigger'] });
 
 			workflowsStore.workflow.nodes = [
 				{ type: 'triggerNode', typeVersion: '1' },
@@ -1268,6 +1265,31 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			]);
+		});
+	});
+
+	describe('selectedTriggerNode', () => {
+		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
+		const n1 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n1' });
+		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
+
+		beforeEach(() => {
+			workflowsStore.setNodes([n0, n1]);
+			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
+		});
+
+		it('should select newly added trigger node automatically', async () => {
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			workflowsStore.addNode(n2);
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
+		});
+
+		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			workflowsStore.removeNode(n0);
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
+			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
 });
