@@ -32,13 +32,13 @@ describe('LocalFileTrigger', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should set up chokidar with correct options for folder + regex ignore', async () => {
+	it('should set up chokidar with correct options for folder + match ignore', async () => {
 		(context.getNodeParameter as jest.Mock)
 			.mockReturnValueOnce('folder')
 			.mockReturnValueOnce('/some/folder')
 			.mockReturnValueOnce({
 				ignored: '**/*.txt',
-				ignoreMode: 'regex',
+				ignoreMode: 'match',
 				ignoreInitial: true,
 				followSymlinks: true,
 				depth: 1,
@@ -64,13 +64,13 @@ describe('LocalFileTrigger', () => {
 		expect(mockWatcher.on).toHaveBeenCalledWith('add', expect.any(Function));
 	});
 
-	it('should wrap ignored in function for ignoreMode=function', async () => {
+	it('should wrap ignored in function for ignoreMode=contain', async () => {
 		(context.getNodeParameter as jest.Mock)
 			.mockReturnValueOnce('folder')
 			.mockReturnValueOnce('/folder')
 			.mockReturnValueOnce({
 				ignored: 'node_modules',
-				ignoreMode: 'function',
+				ignoreMode: 'contain',
 			})
 			.mockReturnValueOnce(['change']);
 
