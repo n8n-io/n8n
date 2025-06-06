@@ -990,7 +990,6 @@ export function useNodeHelpers() {
 	function getDefaultNodeName(node: AddedNode | INode) {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (nodeType === null) return null;
-		debugger;
 		const parameters = NodeHelpers.getNodeParameters(
 			nodeType?.properties,
 			node.parameters ?? {},
