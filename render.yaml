@@ -1,0 +1,106 @@
+# Render Blueprint for n8n QA Automation
+
+services:
+  # Main n8n service
+  - type: web
+    name: n8n
+    env: docker
+    dockerfilePath: ./docker/n8n/Dockerfile
+    dockerContext: .
+    plan: standard
+    healthCheckPath: /healthz
+    envVars:
+      - key: N8N_PORT
+        value: 5678
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_HOST
+        fromService:
+          name: n8n
+          type: web
+          property: host
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        fromService:
+          name: n8n-db
+          type: pserv
+          property: host
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+      - key: DB_POSTGRESDB_DATABASE
+        value: n8n
+      - key: DB_POSTGRESDB_USER
+        value: n8n
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: n8n-data
+      mountPath: /home/node/.n8n
+      sizeGB: 10
+
+  # QA Automation service
+  - type: web
+    name: n8n-qa-automation
+    env: docker
+    dockerfilePath: ./docker/qa-automation/Dockerfile
+    dockerContext: .
+    plan: standard
+    numInstances: 0  # Only run when triggered
+    envVars:
+      - key: CYPRESS_BASE_URL
+        fromService:
+          name: n8n
+          type: web
+          property: host
+      - key: N8N_API_KEY
+        sync: false
+      - key: TEST_USER_EMAIL
+        sync: false
+      - key: TEST_USER_PASSWORD
+        sync: false
+      - key: REPORT_PORTAL_URL
+        sync: false
+      - key: REPORT_PORTAL_TOKEN
+        sync: false
+
+  # PostgreSQL database
+  - type: pserv
+    name: n8n-db
+    env: docker
+    dockerfilePath: ./docker/postgres/Dockerfile
+    dockerContext: ./docker/postgres
+    plan: standard
+    disk:
+      name: n8n-db-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+    envVars:
+      - key: POSTGRES_DB
+        value: n8n
+      - key: POSTGRES_USER
+        value: n8n
+      - key: POSTGRES_PASSWORD
+        sync: false
+
+# Cron job to run QA tests periodically
+cronJobs:
+  - name: n8n-qa-daily-tests
+    schedule: "0 0 * * *"  # Run daily at midnight UTC
+    command: |
+      curl -X POST https://$RENDER_SERVICE_NAME-qa-automation.onrender.com/api/v1/run-tests \
+        -H "Authorization: Bearer $QA_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{"suite": "daily", "browser": "chrome"}'
+    envVars:
+      - key: RENDER_SERVICE_NAME
+        fromService:
+          name: n8n
+          type: web
+          property: name
+      - key: QA_API_KEY
+        sync: false

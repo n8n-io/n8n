@@ -1,0 +1,51 @@
+{
+  "baseUrl": "${CYPRESS_BASE_URL}",
+  "chromeWebSecurity": false,
+  "defaultCommandTimeout": 15000,
+  "requestTimeout": 20000,
+  "responseTimeout": 20000,
+  "pageLoadTimeout": 60000,
+  "viewportWidth": 1280,
+  "viewportHeight": 800,
+  "video": false,
+  "videoUploadOnPasses": false,
+  "screenshotOnRunFailure": true,
+  "trashAssetsBeforeRuns": true,
+  "retries": {
+    "runMode": 1,
+    "openMode": 0
+  },
+  "reporter": "mochawesome",
+  "reporterOptions": {
+    "reportDir": "cypress/reports/mochawesome",
+    "overwrite": false,
+    "html": true,
+    "json": true,
+    "charts": true,
+    "reportPageTitle": "n8n QA Automation Report",
+    "embeddedScreenshots": true,
+    "inlineAssets": true
+  },
+  "screenshotsFolder": "cypress/reports/screenshots",
+  "videosFolder": "cypress/reports/videos",
+  "fixturesFolder": "cypress/fixtures",
+  "integrationFolder": "cypress/e2e",
+  "supportFile": "cypress/support/e2e.js",
+  "pluginsFile": "cypress/plugins/index.js",
+  "downloadsFolder": "cypress/downloads",
+  "experimentalMemoryManagement": true,
+  "numTestsKeptInMemory": 1,
+  "env": {
+    "grepFilterSpecs": true,
+    "failOnStatusCode": false
+  },
+  "watchForFileChanges": false,
+  "testFiles": "**/*.spec.js",
+  "nodeVersion": "system",
+  "includeShadowDom": true,
+  "e2e": {
+    "setupNodeEvents(on, config)": {
+      "comment": "This is a placeholder, actual implementation in pluginsFile"
+    }
+  }
+}

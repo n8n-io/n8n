@@ -1,0 +1,40 @@
+{
+  "name": "QA E2E Telegram to Cypress",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "options": {
+          "parseMode": "Markdown",
+          "updates": [
+            "message"
+          ],
+          "allowedUpdates": [
+            "message"
+          ]
+        }
+      },
+      "id": "3f9b0a7c-1e2d-4c5b-8a1f-0b9e8d7c6a5b",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "placeholder-webhook-id",
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot API"
+        }
+      }
+    }
+  ]
+}
