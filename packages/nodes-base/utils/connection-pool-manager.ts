@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
-import { OperationsError } from 'ldapts';
-import { type Logger } from 'n8n-workflow';
+import { OperationalError, type Logger } from 'n8n-workflow';
 
 let instance: ConnectionPoolManager;
 
@@ -110,11 +109,9 @@ export class ConnectionPoolManager {
 		// It's possible that `options.fallBackHandler` already called the abort
 		// function. If that's the case let's not continue.
 		if (abortController.signal.aborted) {
-			throw new OperationsError(
-				abortController.signal.reason
-					? String(abortController.signal.reason)
-					: 'Could not connect to postgres. Connection attempt was aborted.',
-			);
+			throw new OperationalError('Could not create pool. Connection attempt was aborted.', {
+				cause: abortController.signal.reason,
+			});
 		}
 
 		this.map.set(key, { ...value, lastUsed: Date.now() });
