@@ -98,7 +98,7 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Typeform', true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
-		ndv.getters.parameterInput('credential').find('input').eq(1).focus().blur();
+		ndv.getters.parameterInput('authentication').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 1);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Typeform');
