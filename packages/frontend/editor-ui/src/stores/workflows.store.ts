@@ -1984,7 +1984,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeProperties,
 		setNodeValue,
 		setNodeParameters,
-		getLatestNode,
 		setLastNodeParameters,
 		updateNodeExecutionData,
 		clearNodeExecutionData,
