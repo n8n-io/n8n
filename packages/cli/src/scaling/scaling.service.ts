@@ -55,6 +55,8 @@ export class ScalingService {
 	// #region Lifecycle
 
 	async setupQueue() {
+		if (this.queue) return;
+
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
 		const service = Container.get(RedisClientService);

@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import type { ExecutionEntity } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
@@ -27,7 +27,7 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@test/mocking';
+import { mockInstance, mockLogger } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
@@ -39,6 +39,7 @@ let runner: WorkflowRunner;
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
+mockLogger();
 
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
@@ -256,5 +257,41 @@ describe('run', () => {
 			'1',
 			undefined,
 		);
+	});
+});
+
+describe('enqueueExecution', () => {
+	const setupQueue = jest.fn();
+
+	@Service()
+	class MockScalingService {
+		setupQueue = setupQueue;
+
+		addJob = jest.fn();
+	}
+
+	beforeAll(() => {
+		jest.mock('@/scaling/scaling.service', () => ({
+			ScalingService: MockScalingService,
+		}));
+	});
+
+	afterAll(() => {
+		jest.unmock('@/scaling/scaling.service');
+	});
+
+	it('should setup queue when scalingService is not initialized', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+		});
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', data);
+
+		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 });
