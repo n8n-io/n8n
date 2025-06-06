@@ -30,7 +30,7 @@ export class SSHClientsManager {
 
 	readonly clientsReversed = new WeakMap<Client, string>();
 
-	private cleanupTimer: NodeJS.Timer;
+	private cleanupTimer: NodeJS.Timeout;
 
 	constructor(
 		private readonly config: SSHClientsConfig,
