@@ -3,7 +3,7 @@ import {
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
-	ROLES,
+	ROLE,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
@@ -35,7 +35,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLES.Owner;
+const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 

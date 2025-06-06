@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ROLES, type Role } from '@n8n/api-types';
+import { ROLE, type Role } from '@n8n/api-types';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
 import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
@@ -88,11 +88,11 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
 		{
-			value: ROLES.Member,
+			value: ROLE.Member,
 			label: i18n.baseText('auth.roles.member'),
 		},
 		{
-			value: ROLES.Admin,
+			value: ROLE.Admin,
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},

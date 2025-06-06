@@ -40,7 +40,7 @@ export {
 } from './schemas/insights.schema';
 
 export {
-	ROLES,
+	ROLE,
 	Role,
 	UsersList,
 } from './schemas/user.schema';

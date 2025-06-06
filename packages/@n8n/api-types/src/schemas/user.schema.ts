@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
-export const ROLES = {
+export const ROLE = {
 	Owner: 'global:owner',
 	Member: 'global:member',
 	Admin: 'global:admin',
 	Default: 'default', // default user with no email when setting up instance
 } as const;
 
-export type Role = (typeof ROLES)[keyof typeof ROLES];
+export type Role = (typeof ROLE)[keyof typeof ROLE];
 
 // Ensuring the array passed to z.enum is correctly typed as non-empty.
-const roleValuesForSchema = Object.values(ROLES) as [Role, ...Role[]];
+const roleValuesForSchema = Object.values(ROLE) as [Role, ...Role[]];
 export const roleSchema = z.enum(roleValuesForSchema);
 
 export const userListItemSchema = z.object({

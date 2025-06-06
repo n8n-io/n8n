@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { ROLES } from '@n8n/api-types';
+import { ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/stores/ui.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
@@ -25,7 +25,7 @@ const currentUser = {
 	lastName: 'Doe',
 	email: 'joh.doe@example.com',
 	createdAt: Date().toString(),
-	role: ROLES.Owner,
+	role: ROLE.Owner,
 	isDefaultUser: false,
 	isPendingUser: false,
 	isPending: false,
@@ -149,16 +149,16 @@ describe('SettingsPersonalView', () => {
 	});
 
 	test.each([
-		['Default', ROLES.Default, false, 'Default role for new users'],
-		['Member', ROLES.Member, false, 'Create and manage own workflows and credentials'],
+		['Default', ROLE.Default, false, 'Default role for new users'],
+		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
 		[
 			'Admin',
-			ROLES.Admin,
+			ROLE.Admin,
 			false,
 			'Full access to manage workflows,tags, credentials, projects, users and more',
 		],
-		['Owner', ROLES.Owner, false, 'Manage everything'],
-		['Owner', ROLES.Owner, true, 'Manage everything and access Cloud dashboard'],
+		['Owner', ROLE.Owner, false, 'Manage everything'],
+		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
 	])('should show %s user role information', async (label, role, hasCloudPlan, tooltipText) => {
 		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
 		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);

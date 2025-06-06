@@ -60,7 +60,7 @@ import {
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
 } from '@/constants';
-import { ROLES } from '@n8n/api-types';
+import { ROLE } from '@n8n/api-types';
 import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
@@ -89,7 +89,7 @@ export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } =
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
 
-export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLES.Owner;
+export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
 
 export function getPersonalizedNodeTypes(
 	answers:

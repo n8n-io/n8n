@@ -12,7 +12,7 @@ import {
 	getUserCloudInfo,
 	getNotTrialingUserResponse,
 } from './__tests__/utils/cloudStoreUtils';
-import { ROLES, type Role } from '@n8n/api-types';
+import { ROLE, type Role } from '@n8n/api-types';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -31,7 +31,7 @@ function setUser(role: Role) {
 }
 
 function setupOwnerAndCloudDeployment() {
-	setUser(ROLES.Owner);
+	setUser(ROLE.Owner);
 	settingsStore.setSettings(
 		merge({}, defaultSettings, {
 			n8nMetadata: {

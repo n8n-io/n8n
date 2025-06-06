@@ -6,7 +6,7 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
-	ROLES,
+	ROLE,
 	Role,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
@@ -567,7 +567,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV3
 	| IPersonalizationSurveyAnswersV4;
 
-export type InvitableRoleName = (typeof ROLES)['Member' | 'Admin'];
+export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;

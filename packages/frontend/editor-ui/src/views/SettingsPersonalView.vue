@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLES, type Role } from '@n8n/api-types';
+import { ROLE, type Role } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -91,19 +91,19 @@ const hasAnyChanges = computed(() => {
 });
 
 const roles = computed<Record<Role, RoleContent>>(() => ({
-	[ROLES.Default]: {
+	[ROLE.Default]: {
 		name: i18n.baseText('auth.roles.default'),
 		description: i18n.baseText('settings.personal.role.tooltip.default'),
 	},
-	[ROLES.Member]: {
+	[ROLE.Member]: {
 		name: i18n.baseText('auth.roles.member'),
 		description: i18n.baseText('settings.personal.role.tooltip.member'),
 	},
-	[ROLES.Admin]: {
+	[ROLE.Admin]: {
 		name: i18n.baseText('auth.roles.admin'),
 		description: i18n.baseText('settings.personal.role.tooltip.admin'),
 	},
-	[ROLES.Owner]: {
+	[ROLE.Owner]: {
 		name: i18n.baseText('auth.roles.owner'),
 		description: i18n.baseText('settings.personal.role.tooltip.owner', {
 			interpolate: {

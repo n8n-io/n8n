@@ -1,4 +1,4 @@
-import { ROLES } from '@n8n/api-types';
+import { ROLE } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
 import merge from 'lodash/merge';
 import { usePageRedirectionHelper } from './usePageRedirectionHelper';
@@ -63,19 +63,19 @@ describe('usePageRedirectionHelper', () => {
 		[
 			'default',
 			'production',
-			ROLES.Owner,
+			ROLE.Owner,
 			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
 		],
 		[
 			'default',
 			'development',
-			ROLES.Owner,
+			ROLE.Owner,
 			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
 		],
 		[
 			'cloud',
 			'production',
-			ROLES.Owner,
+			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
 				'/account/change-plan',
 			)}&utm_campaign=upgrade-api&source=advanced-permissions`,
@@ -83,7 +83,7 @@ describe('usePageRedirectionHelper', () => {
 		[
 			'cloud',
 			'production',
-			ROLES.Member,
+			ROLE.Member,
 			'https://n8n.io/pricing?utm_campaign=upgrade-api&source=advanced-permissions',
 		],
 	])(
@@ -140,13 +140,13 @@ describe('usePageRedirectionHelper', () => {
 		[
 			'cloud',
 			'production',
-			ROLES.Owner,
+			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent('/manage')}`,
 		],
 		[
 			'cloud',
 			'production',
-			ROLES.Member,
+			ROLE.Member,
 			'https://docs.n8n.io/release-notes/#n8n1652?utm_source=n8n_app&utm_medium=instance_upgrade_releases',
 		],
 	])(
@@ -189,10 +189,10 @@ describe('usePageRedirectionHelper', () => {
 		[
 			'cloud',
 			'production',
-			ROLES.Owner,
+			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent('/dashboard')}`,
 		],
-		['cloud', 'production', ROLES.Member, 'https://test.app.n8n.cloud'],
+		['cloud', 'production', ROLE.Member, 'https://test.app.n8n.cloud'],
 	])(
 		'"goToDashboard" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
 		async (type, environment, role, expectation) => {

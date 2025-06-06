@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import V1Banner from './V1Banner.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { ROLES } from '@n8n/api-types';
+import { ROLE } from '@n8n/api-types';
 import type { IUser } from '@/Interface';
 
 const renderComponent = createComponentRenderer(V1Banner);
@@ -25,7 +25,7 @@ describe('V1 Banner', () => {
 	});
 
 	it('should render banner with dismiss call if user is owner', () => {
-		usersStore.usersById = { '1': { role: ROLES.Owner } as IUser };
+		usersStore.usersById = { '1': { role: ROLE.Owner } as IUser };
 		usersStore.currentUserId = '1';
 
 		const { container } = renderComponent();
