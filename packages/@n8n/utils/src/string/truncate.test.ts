@@ -26,7 +26,7 @@ describe(truncateBeforeLast, () => {
 	it('should remove chars just before the last word, as long as the last word is under 15 chars', () => {
 		expect(truncateBeforeLast('I love nodemation', 15)).toBe('I lo…nodemation');
 		expect(truncateBeforeLast('I love "nodemation"', 15)).toBe('I …"nodemation"');
-		expect(truncateBeforeLast('I ❤️ nodemation', 10)).toBe('I ❤️ …ation');
+		expect(truncateBeforeLast('I ❤️ nodemation', 13)).toBe('I …nodemation');
 		expect(truncateBeforeLast('Nodemation is cool', 15)).toBe('Nodemation…cool');
 		expect(truncateBeforeLast('"Nodemation" is cool', 15)).toBe('"Nodematio…cool');
 		expect(truncateBeforeLast('Is it fun to automate boring stuff?', 15)).toBe('Is it fu…stuff?');
