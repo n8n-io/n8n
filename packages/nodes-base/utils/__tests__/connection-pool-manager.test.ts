@@ -43,7 +43,6 @@ describe('getConnection', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler,
-			// TODO: test wasUsed
 			wasUsed: jest.fn(),
 		};
 
