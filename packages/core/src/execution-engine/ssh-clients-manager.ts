@@ -30,6 +30,8 @@ export class SSHClientsManager {
 
 	readonly clientsReversed = new WeakMap<Client, string>();
 
+	private cleanupTimer: NodeJS.Timer;
+
 	constructor(
 		private readonly config: SSHClientsConfig,
 		private readonly logger: Logger,
@@ -37,10 +39,8 @@ export class SSHClientsManager {
 		// Close all SSH connections when the process exits
 		process.on('exit', () => this.onShutdown());
 
-		if (process.env.NODE_ENV === 'test') return;
-
 		// Regularly close stale SSH connections
-		setInterval(() => this.cleanupStaleConnections(), 60 * 1000);
+		this.cleanupTimer = setInterval(() => this.cleanupStaleConnections(), 60 * 1000);
 
 		this.logger = logger.scoped('ssh-client');
 	}
@@ -138,6 +138,7 @@ export class SSHClientsManager {
 
 	onShutdown() {
 		this.logger.debug('Shutting down. Cleaning up all clients');
+		clearInterval(this.cleanupTimer);
 		for (const key of this.clients.keys()) {
 			this.cleanupClient(key);
 		}
