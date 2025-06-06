@@ -316,7 +316,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.actions.deleteNode('When clicking ‘Execute workflow’');
-			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
+			WorkflowPage.getters.canvasNodePlusEndpointByName('Create a credential').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();

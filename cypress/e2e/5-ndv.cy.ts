@@ -117,7 +117,7 @@ describe('NDV', () => {
 	it('should show all validation errors when opening pasted node', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_errors.json', 'Validation errors');
 		workflowPage.getters.canvasNodes().should('have.have.length', 1);
-		workflowPage.actions.openNode('Search records');
+		workflowPage.actions.openNode('Airtable');
 		cy.get('.has-issues').should('have.length', 3);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});

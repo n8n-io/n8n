@@ -30,12 +30,12 @@ const NEW_CREDENTIAL_NAME2 = 'Something else entirely';
 
 function createNotionCredential() {
 	workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
-	workflowPage.actions.openNode('Create a page');
+	workflowPage.actions.openNode(NOTION_NODE_NAME);
 	workflowPage.getters.nodeCredentialsSelect().click();
 	workflowPage.getters.nodeCredentialsCreateOption().click();
 	credentialsModal.actions.fillCredentialsForm();
 	cy.get('body').type('{esc}');
-	workflowPage.actions.deleteNode('Create a page');
+	workflowPage.actions.deleteNode(NOTION_NODE_NAME);
 }
 
 function deleteSelectedCredential() {

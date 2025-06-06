@@ -45,7 +45,7 @@ describe('Editors', () => {
 			ndv.actions.setPinnedData([{ table: 'test_table' }]);
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('MySQL');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
@@ -132,13 +132,13 @@ describe('Editors', () => {
 			ndv.actions.close();
 
 			workflowPage.actions.openNode('Execute a SQL query');
-			ndv.actions.clickFloatingNode('Postgres1');
+			ndv.actions.clickFloatingNode('Execute a SQL query1');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
 				.should('have.text', 'SELECT * FROM `secondTable`');
 
-			ndv.actions.clickFloatingNode('Postgres');
+			ndv.actions.clickFloatingNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
@@ -230,14 +230,14 @@ describe('Editors', () => {
 				.paste('<div>Second</div>');
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('HTML');
-			ndv.actions.clickFloatingNode('HTML1');
+			workflowPage.actions.openNode('Generate HTML template');
+			ndv.actions.clickFloatingNode('Generate HTML template1');
 			ndv.getters
 				.htmlEditorContainer()
 				.find('.cm-content')
 				.should('have.text', '<div>Second</div>');
 
-			ndv.actions.clickFloatingNode('HTML');
+			ndv.actions.clickFloatingNode('Generate HTML template');
 			ndv.getters.htmlEditorContainer().find('.cm-content').should('have.text', '<div>First</div>');
 		});
 	});
