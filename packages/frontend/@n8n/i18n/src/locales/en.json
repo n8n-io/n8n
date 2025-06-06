@@ -996,6 +996,7 @@
 	"generic.oauth1Api": "OAuth1 API",
 	"generic.oauth2Api": "OAuth2 API",
 	"genericHelpers.loading": "Loading",
+	"genericHelpers.hrsShort": "h",
 	"genericHelpers.min": "min",
 	"genericHelpers.minShort": "m",
 	"genericHelpers.sec": "sec",
