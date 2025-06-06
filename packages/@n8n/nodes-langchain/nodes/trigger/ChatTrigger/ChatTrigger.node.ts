@@ -6,12 +6,14 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	INodeTypeDescription,
+	MultiPartFormData,
 	INodeExecutionData,
+	IBinaryData,
 	INodeProperties,
 } from 'n8n-workflow';
 
 import { cssVariables } from './constants';
-import { handleFormData, validateAuth } from './GenericFunctions';
+import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
 
@@ -405,6 +407,68 @@ ${cssVariables}
 		],
 	};
 
+	private async handleFormData(context: IWebhookFunctions) {
+		const req = context.getRequestObject() as MultiPartFormData.Request;
+		const options = context.getNodeParameter('options', {}) as IDataObject;
+		const { data, files } = req.body;
+
+		const returnItem: INodeExecutionData = {
+			json: data,
+		};
+
+		if (files && Object.keys(files).length) {
+			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
+			returnItem.binary = {};
+
+			const count = 0;
+			for (const fileKey of Object.keys(files)) {
+				const processedFiles: MultiPartFormData.File[] = [];
+				if (Array.isArray(files[fileKey])) {
+					processedFiles.push(...files[fileKey]);
+				} else {
+					processedFiles.push(files[fileKey]);
+				}
+
+				let fileIndex = 0;
+				for (const file of processedFiles) {
+					let binaryPropertyName = 'data';
+
+					// Remove the '[]' suffix from the binaryPropertyName if it exists
+					if (binaryPropertyName.endsWith('[]')) {
+						binaryPropertyName = binaryPropertyName.slice(0, -2);
+					}
+					if (options.binaryPropertyName) {
+						binaryPropertyName = `${options.binaryPropertyName.toString()}${count}`;
+					}
+
+					const binaryFile = await context.nodeHelpers.copyBinaryFile(
+						file.filepath,
+						file.originalFilename ?? file.newFilename,
+						file.mimetype,
+					);
+
+					const binaryKey = `${binaryPropertyName}${fileIndex}`;
+
+					const binaryInfo = {
+						...pick(binaryFile, ['fileName', 'fileSize', 'fileType', 'mimeType', 'fileExtension']),
+						binaryKey,
+					};
+
+					returnItem.binary = Object.assign(returnItem.binary ?? {}, {
+						[`${binaryKey}`]: binaryFile,
+					});
+					returnItem.json.files = [
+						...(returnItem.json.files as Array<Omit<IBinaryData, 'data'>>),
+						binaryInfo,
+					];
+					fileIndex += 1;
+				}
+			}
+		}
+
+		return returnItem;
+	}
+
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
@@ -510,7 +574,7 @@ ${cssVariables}
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 		if (req.contentType === 'multipart/form-data') {
-			returnData = [await handleFormData(ctx)];
+			returnData = [await this.handleFormData(ctx)];
 			return {
 				webhookResponse,
 				workflowData: [returnData],

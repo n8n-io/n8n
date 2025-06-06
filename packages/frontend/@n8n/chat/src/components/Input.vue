@@ -147,7 +147,9 @@ function setupWebsocketConnection() {
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
 		const baseUrl = new URL(options.webhookUrl).origin;
-		chatStore.ws = new WebSocket(`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}`);
+		chatStore.ws = new WebSocket(
+			`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}&isPublic=true`,
+		);
 		chatStore.ws.onmessage = (e) => {
 			const newMessage: ChatMessage = {
 				id: uuidv4(),
@@ -161,7 +163,6 @@ function setupWebsocketConnection() {
 		};
 
 		chatStore.ws.onclose = () => {
-			console.log('Websocket connection closed');
 			chatStore.ws = null;
 			waitingForChatResponse.value = false;
 			chatStore.waitingForResponse.value = false;

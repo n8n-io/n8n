@@ -177,6 +177,9 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				messages.value.push(newMessage);
 				setLoadingState(false);
 			};
+			ws.value.onclose = () => {
+				setLoadingState(false);
+			};
 			await createExecutionPromise();
 			workflowsStore.appendChatMessage(payload.message);
 		}

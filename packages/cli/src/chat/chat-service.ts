@@ -1,12 +1,16 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { Application, Request } from 'express';
+import type { Application } from 'express';
 import type { Server } from 'http';
 import { ServerResponse } from 'http';
 import { ExecuteContext } from 'n8n-core';
-import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { jsonParse, Workflow } from 'n8n-workflow';
+import type {
+	IBinaryKeyData,
+	INodeExecutionData,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+import { jsonParse, Workflow, BINARY_ENCODING } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
@@ -15,83 +19,23 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import type { ChatMessage, ChatRequest, Session } from './chat-service.types';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
-
-type ChatRequest = Request<
-	{ workflowId: string },
-	{},
-	{},
-	{ sessionId: string; executionId?: string }
-> & {
-	ws: WebSocket;
-};
-
-type Session = {
-	connection: WebSocket;
-	executionId?: string;
-	intervalId?: NodeJS.Timer;
-	waitingResponseFromChat: boolean;
-};
-
-type ChatMessage = {
-	sessionId: string;
-	action: string;
-	chatInput: string;
-	files?: Array<{
-		name: string;
-		type: string;
-		data: string;
-	}>;
-};
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
+
+const PING_INTERVAL = 60 * 1000;
+const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 
 @Service()
 export class ChatService {
 	private readonly sessions = new Map<string, Session>();
 
 	constructor(private readonly executionRepository: ExecutionRepository) {
-		// Ping all connected clients every 60 seconds
-		setInterval(async () => await this.pingAll(), 60 * 1000);
-	}
-
-	private async getExecution(executionId: string, sessionId: string) {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (
-			!execution ||
-			['error', 'canceled', 'crashed', 'success'].includes(execution.status) ||
-			execution.finished
-		) {
-			const { connection, intervalId } = this.sessions.get(sessionId) || {};
-			if (connection) {
-				connection.terminate();
-			}
-			clearInterval(intervalId);
-			this.sessions.delete(sessionId);
-			console.log('session deleted', sessionId);
-			return null;
-		}
-
-		if (execution.status === 'running') {
-			return null;
-		}
-
-		return execution;
-	}
-
-	getConnection(executionID: string | undefined) {
-		if (!executionID) return undefined;
-		for (const { connection, executionId } of this.sessions.values()) {
-			if (executionId === executionID) return connection;
-		}
-		return undefined;
+		setInterval(async () => await this.pingAllAndRemoveDisconnected(), PING_INTERVAL);
 	}
 
 	setup(server: Server, app: Application) {
@@ -120,11 +64,8 @@ export class ChatService {
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
-			query: { sessionId, executionId },
+			query: { sessionId, executionId, isPublic },
 		} = req;
-
-		console.log('startSession', sessionId, executionId);
-		console.log('opened sessions ids', this.sessions.keys());
 
 		if (!sessionId) {
 			ws.send('The query parameter "sessionId" is missing!');
@@ -132,20 +73,13 @@ export class ChatService {
 			return;
 		}
 
-		const previousSessionConnection = this.sessions.get(sessionId)?.connection;
-
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
 
-		if (previousSessionConnection) {
-			previousSessionConnection.close(1008);
-		}
+		const onMessage = this.incomingMessageHandler(sessionId);
+		const respondToChat = this.outgoingMessageHandler(sessionId);
 
-		const onMessage = this.messageHandler(sessionId);
-
-		const responseToChatHandler = this.handleResponseToChat(sessionId);
-
-		const intervalId = setInterval(async () => await responseToChatHandler(), 3000);
+		const intervalId = setInterval(async () => await respondToChat(), CHECK_FOR_RESPONSE_INTERVAL);
 
 		ws.once('close', async () => {
 			ws.off('pong', heartbeat);
@@ -160,19 +94,69 @@ export class ChatService {
 			connection: ws,
 			executionId,
 			intervalId,
-			waitingResponseFromChat: false,
+			nodeWaitingForResponse: null,
+			isPublic,
 		};
 
 		this.sessions.set(sessionId, session);
 	}
 
-	private messageHandler(sessionId: string) {
+	private outgoingMessageHandler(sessionId: string) {
+		return async () => {
+			const { connection, executionId, nodeWaitingForResponse, isPublic } =
+				this.sessions.get(sessionId) || {};
+
+			if (!executionId || !connection || nodeWaitingForResponse) return;
+
+			const execution = await this.getExecution(executionId, sessionId);
+
+			if (!execution) {
+				return;
+			}
+
+			if (execution?.status === 'waiting') {
+				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+				const nodeExecutionData =
+					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+				const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+
+				if (message) {
+					connection.send(message);
+					this.sessions.get(sessionId)!.nodeWaitingForResponse = lastNodeExecuted;
+				}
+				return;
+			}
+
+			if (execution?.status === 'success') {
+				if (!isPublic) {
+					connection.close();
+					return;
+				}
+				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+				const nodeExecutionData =
+					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+				const json = nodeExecutionData?.[0] ? nodeExecutionData[0].json : {};
+
+				let textMessage = json.output ?? json.text ?? json.message ?? '';
+				if (typeof textMessage !== 'string') {
+					textMessage = JSON.stringify(textMessage);
+				}
+
+				connection.send(textMessage);
+				connection.close();
+
+				return;
+			}
+		};
+	}
+
+	private incomingMessageHandler(sessionId: string) {
 		return async (data: RawData) => {
 			const executionId = this.sessions.get(sessionId)?.executionId;
 
 			if (executionId) {
 				await this.resumeExecution(executionId, data, sessionId);
-				this.sessions.get(sessionId)!.waitingResponseFromChat = false;
+				this.sessions.get(sessionId)!.nodeWaitingForResponse = null;
 			}
 		};
 	}
@@ -185,6 +169,57 @@ export class ChatService {
 		}
 
 		throw new NotFoundError(`The session "${sessionId}" does not exist.`);
+	}
+
+	private async getExecution(executionId: string, sessionId: string) {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
+			const { connection, intervalId } = this.sessions.get(sessionId) || {};
+			if (connection) {
+				connection.terminate();
+			}
+			clearInterval(intervalId);
+			this.sessions.delete(sessionId);
+			return null;
+		}
+
+		if (execution.status === 'running') {
+			return null;
+		}
+
+		return execution;
+	}
+
+	private async cancelExecution(executionId: string) {
+		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
+	}
+
+	private async resumeExecution(executionId: string, data: RawData, sessionId: string) {
+		const execution = (await this.getExecution(executionId ?? '', sessionId)) as IExecutionResponse;
+
+		const buffer = Array.isArray(data)
+			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
+			: Buffer.from(data);
+
+		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
+
+		if (message.files) {
+			message.files = message.files.map((file) => ({
+				...file,
+				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
+			}));
+		}
+
+		await Container.get(WorkflowRunner).run(
+			await this.getRunData(execution, message),
+			true,
+			true,
+			executionId,
+		);
 	}
 
 	private getWorkflow(execution: IExecutionResponse) {
@@ -225,9 +260,29 @@ export class ChatService {
 				[],
 			);
 
-			if (nodeType.onMessage) {
-				return await nodeType.onMessage(context, message);
+			const { sessionId, action, chatInput, files } = message;
+			const binary: IBinaryKeyData = {};
+
+			if (files) {
+				for (const [index, file] of files.entries()) {
+					const base64 = file.data;
+					const buffer = Buffer.from(base64, BINARY_ENCODING);
+					const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
+
+					binary[`data_${index}`] = binaryData;
+				}
 			}
+
+			const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
+			if (Object.keys(binary).length > 0) {
+				nodeExecutionData.binary = binary;
+			}
+
+			if (nodeType.onMessage) {
+				return await nodeType.onMessage(context, nodeExecutionData);
+			}
+
+			return [[nodeExecutionData]];
 		}
 
 		return null;
@@ -260,66 +315,7 @@ export class ChatService {
 		return runData;
 	}
 
-	private async resumeExecution(executionId: string, data: RawData, sessionId: string) {
-		const execution = (await this.getExecution(executionId ?? '', sessionId)) as IExecutionResponse;
-
-		const buffer = Array.isArray(data)
-			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
-			: Buffer.from(data);
-
-		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
-
-		if (message.files) {
-			message.files = message.files.map((file) => ({
-				...file,
-				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
-			}));
-		}
-
-		await Container.get(WorkflowRunner).run(
-			await this.getRunData(execution, message),
-			true,
-			true,
-			executionId,
-		);
-	}
-
-	private async cancelExecution(executionId: string) {
-		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
-	}
-
-	private handleResponseToChat(sessionId: string) {
-		return async () => {
-			const { connection, executionId, waitingResponseFromChat } =
-				this.sessions.get(sessionId) || {};
-
-			if (!executionId || !connection || waitingResponseFromChat) return;
-
-			const execution = await this.getExecution(executionId, sessionId);
-
-			if (!execution) {
-				return;
-			}
-
-			if (execution?.status === 'waiting') {
-				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-				const nodeExecutionData =
-					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
-				const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
-
-				if (message) {
-					connection.send(message);
-					this.sessions.get(sessionId)!.waitingResponseFromChat = true;
-				}
-				return;
-			}
-		};
-	}
-
-	/*
-	 *  If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
-	 */
-	private async pingAll() {
+	private async pingAllAndRemoveDisconnected() {
 		const sessionsToClose: string[] = [];
 
 		for (const sessionId of this.sessions.keys()) {

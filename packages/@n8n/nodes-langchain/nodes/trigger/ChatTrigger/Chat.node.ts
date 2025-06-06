@@ -1,12 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { BINARY_ENCODING, NodeConnectionTypes, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeConnectionTypes, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
-	IDataObject,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 export class Chat implements INodeType {
@@ -47,29 +45,11 @@ export class Chat implements INodeType {
 		],
 	};
 
-	async onMessage(context: IExecuteFunctions, data: IDataObject): Promise<INodeExecutionData[][]> {
-		const { sessionId, action, chatInput, files } = data;
-		const binary: IBinaryKeyData = {};
-
-		if (files) {
-			for (const [index, file] of (files as IDataObject[]).entries()) {
-				const base64 = file.data as string;
-				const buffer = Buffer.from(base64, BINARY_ENCODING);
-				const binaryData = await context.helpers.prepareBinaryData(
-					buffer,
-					file.name as string,
-					file.type as string,
-				);
-
-				binary[`data_${index}`] = binaryData;
-			}
-		}
-
-		const returnData: INodeExecutionData = { json: { sessionId, action, chatInput } };
-		if (Object.keys(binary).length > 0) {
-			returnData.binary = binary;
-		}
-		return [[returnData]];
+	async onMessage(
+		_context: IExecuteFunctions,
+		data: INodeExecutionData,
+	): Promise<INodeExecutionData[][]> {
+		return [[data]];
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
