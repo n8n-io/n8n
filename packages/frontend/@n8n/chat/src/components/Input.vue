@@ -235,8 +235,6 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	await chatStore.sendMessage(messageText, attachFiles());
 	isSubmitting.value = false;
-	// chatStore.ws?.close();
-	// chatStore.ws = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
