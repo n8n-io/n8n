@@ -316,11 +316,11 @@ export const useActions = () => {
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
-			({ name, after, store: { setLastNodeParameters, allNodes }, args }) => {
+			({ name, after, store: { getLatestNode, setLastNodeParameters }, args }) => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
-					const node = allNodes[allNodes.length - 1];
-					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+					const node = getLatestNode(action);
+					const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 					const isDefaultName =
 						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
 
