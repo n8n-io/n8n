@@ -59,8 +59,8 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
-	ROLE,
 } from '@/constants';
+import { ROLES } from '@n8n/api-types';
 import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
@@ -89,7 +89,7 @@ export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } =
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
 
-export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
+export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLES.Owner;
 
 export function getPersonalizedNodeTypes(
 	answers:

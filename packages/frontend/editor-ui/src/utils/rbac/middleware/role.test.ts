@@ -2,7 +2,8 @@ import { roleMiddleware } from '@/utils/rbac/middleware/role';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import type { RouteLocationNormalized } from 'vue-router';
-import { VIEWS, ROLE } from '@/constants';
+import { ROLES } from '@n8n/api-types';
+import { VIEWS } from '@/constants';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -14,12 +15,12 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: ROLE.Owner,
+					role: ROLES.Owner,
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 
 			const nextMock = vi.fn();
-			const role = [ROLE.Default];
+			const role = [ROLES.Default];
 
 			await roleMiddleware(
 				{} as RouteLocationNormalized,
@@ -37,7 +38,7 @@ describe('Middleware', () => {
 			} as ReturnType<typeof useUsersStore>);
 
 			const nextMock = vi.fn();
-			const role = [ROLE.Default];
+			const role = [ROLES.Default];
 
 			await roleMiddleware(
 				{} as RouteLocationNormalized,
@@ -53,12 +54,12 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: ROLE.Owner,
+					role: ROLES.Owner,
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 
 			const nextMock = vi.fn();
-			const role = [ROLE.Owner];
+			const role = [ROLES.Owner];
 
 			await roleMiddleware(
 				{} as RouteLocationNormalized,

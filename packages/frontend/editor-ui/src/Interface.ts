@@ -6,6 +6,8 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
+	ROLES,
+	Role,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -53,7 +55,6 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
 } from '@/constants';
@@ -566,9 +567,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV3
 	| IPersonalizationSurveyAnswersV4;
 
-export type Roles = typeof ROLE;
-export type IRole = Roles[keyof Roles];
-export type InvitableRoleName = Roles['Member' | 'Admin'];
+export type InvitableRoleName = (typeof ROLES)['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -576,7 +575,7 @@ export interface IUserResponse {
 	lastName?: string;
 	email?: string;
 	createdAt?: string;
-	role?: IRole;
+	role?: Role;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
@@ -617,7 +616,7 @@ export const enum UserManagementAuthenticationMethod {
 
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
-	role?: IRole[];
+	role?: Role[];
 }
 
 export interface IPermissionAllowGroup extends IPermissionGroup {
@@ -1198,7 +1197,7 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
-		role: IRole;
+		role: Role;
 	};
 	error?: string;
 }

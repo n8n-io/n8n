@@ -1,13 +1,14 @@
-import type {
-	LoginRequestDto,
-	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
-	UserUpdateRequestDto,
+import {
+	type LoginRequestDto,
+	type PasswordUpdateRequestDto,
+	type SettingsUpdateRequestDto,
+	type UserUpdateRequestDto,
+	ROLES,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
-import { PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
 	Cloud,
@@ -34,7 +35,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
+const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLES.Owner;
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 

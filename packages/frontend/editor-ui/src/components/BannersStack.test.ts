@@ -2,7 +2,7 @@ import merge from 'lodash/merge';
 import userEvent from '@testing-library/user-event';
 
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { ROLE } from '@/constants';
+import { ROLES } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 
 import { createTestingPinia } from '@pinia/testing';
@@ -27,11 +27,11 @@ const initialState = {
 		usersById: {
 			'aaa-bbb': {
 				id: 'aaa-bbb',
-				role: ROLE.Owner,
+				role: ROLES.Owner,
 			},
 			'bbb-bbb': {
 				id: 'bbb-bbb',
-				role: ROLE.Member,
+				role: ROLES.Member,
 			},
 		},
 	},

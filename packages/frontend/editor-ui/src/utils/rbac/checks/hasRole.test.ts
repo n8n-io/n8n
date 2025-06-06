@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { hasRole } from '@/utils/rbac/checks';
-import { ROLE } from '@/constants';
+import { ROLES } from '@n8n/api-types';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -12,11 +12,11 @@ describe('Checks', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: ROLE.Owner,
+					role: ROLES.Owner,
 				},
 			} as ReturnType<typeof useUsersStore>);
 
-			expect(hasRole([ROLE.Owner])).toBe(true);
+			expect(hasRole([ROLES.Owner])).toBe(true);
 		});
 
 		it('should return false if the user does not have the specified role', () => {
@@ -27,7 +27,7 @@ describe('Checks', () => {
 				},
 			} as ReturnType<typeof useUsersStore>);
 
-			expect(hasRole([ROLE.Owner])).toBe(false);
+			expect(hasRole([ROLES.Owner])).toBe(false);
 		});
 
 		it('should return true for default user if checking for default role', () => {
@@ -37,7 +37,7 @@ describe('Checks', () => {
 				},
 			} as ReturnType<typeof useUsersStore>);
 
-			expect(hasRole([ROLE.Default])).toBe(true);
+			expect(hasRole([ROLES.Default])).toBe(true);
 		});
 
 		it('should return false if there is no current user', () => {
@@ -45,7 +45,7 @@ describe('Checks', () => {
 				typeof useUsersStore
 			>);
 
-			expect(hasRole([ROLE.Owner])).toBe(false);
+			expect(hasRole([ROLES.Owner])).toBe(false);
 		});
 	});
 });

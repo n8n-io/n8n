@@ -38,3 +38,9 @@ export {
 	type InsightsDateRange,
 	INSIGHTS_DATE_RANGE_KEYS,
 } from './schemas/insights.schema';
+
+export {
+	ROLES,
+	Role,
+	UsersList,
+} from './schemas/user.schema';

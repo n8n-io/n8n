@@ -3,12 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
-import {
-	EnterpriseEditionFeature,
-	VALID_EMAIL_REGEX,
-	INVITE_USER_MODAL_KEY,
-	ROLE,
-} from '@/constants';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import { ROLES } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
@@ -31,7 +27,7 @@ const formBus = createFormEventBus();
 const modalBus = createEventBus();
 const config = ref<IFormInputs | null>();
 const emails = ref('');
-const role = ref<InvitableRoleName>(ROLE.Member);
+const role = ref<InvitableRoleName>(ROLES.Member);
 const showInviteUrls = ref<IInviteResponse[] | null>(null);
 const loading = ref(false);
 
@@ -55,18 +51,18 @@ onMounted(() => {
 		},
 		{
 			name: 'role',
-			initialValue: ROLE.Member,
+			initialValue: ROLES.Member,
 			properties: {
 				label: i18n.baseText('auth.role'),
 				required: true,
 				type: 'select',
 				options: [
 					{
-						value: ROLE.Member,
+						value: ROLES.Member,
 						label: i18n.baseText('auth.roles.member'),
 					},
 					{
-						value: ROLE.Admin,
+						value: ROLES.Admin,
 						label: i18n.baseText('auth.roles.admin'),
 						disabled: !isAdvancedPermissionsEnabled.value,
 					},
