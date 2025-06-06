@@ -35,12 +35,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-
-	// const canvasStore = useCanvasStore();
 	const rootStore = useRootStore();
-
 	const logsStore = useLogsStore();
-
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const { runWorkflow } = useRunWorkflow({ router });
@@ -167,23 +163,28 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				`${rootStore.urlBaseEditor}chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 			);
 			ws.value.onmessage = (event) => {
+				setLoadingState(false);
 				const newMessage: ChatMessage & { sessionId: string } = {
 					text: event.data,
 					sender: 'bot',
-					// createdAt: new Date().toISOString(),
 					sessionId: currentSessionId.value,
 					id: uuid(),
 				};
 				messages.value.push(newMessage);
-				setLoadingState(false);
+
+				if (logsStore.isOpen) {
+					chatEventBus.emit('focusInput');
+				}
 			};
 			ws.value.onclose = () => {
 				setLoadingState(false);
+				ws.value = null;
 			};
 			await createExecutionPromise();
 			workflowsStore.appendChatMessage(payload.message);
+			return response;
 		}
-		return response;
+		return;
 	}
 
 	function refreshSession() {

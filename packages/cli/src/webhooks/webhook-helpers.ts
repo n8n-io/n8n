@@ -132,7 +132,8 @@ export function autoDetectResponseMode(
 	if (
 		workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
 		method === 'POST' &&
-		workflowStartNode.parameters.public
+		workflowStartNode.parameters.public &&
+		(workflowStartNode.parameters.options as IDataObject)?.responseMode !== 'responseNode'
 	) {
 		return 'hostedChat';
 	}

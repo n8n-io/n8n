@@ -121,3 +121,27 @@ export function restoreChatHistory(
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
 }
+
+export async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = (error) => reject(error);
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
+}

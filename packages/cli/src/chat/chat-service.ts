@@ -7,13 +7,14 @@ import { ServerResponse } from 'http';
 import { ExecuteContext } from 'n8n-core';
 import type {
 	IBinaryKeyData,
+	IDataObject,
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { jsonParse, Workflow, BINARY_ENCODING } from 'n8n-workflow';
+import { jsonParse, Workflow, BINARY_ENCODING, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
-import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
+import { type RawData, WebSocket, Server as WebSocketServer } from 'ws';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -25,6 +26,20 @@ import { OwnershipService } from '../services/ownership.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
+}
+
+function closeConnection(ws: WebSocket) {
+	if (ws.readyState !== WebSocket.OPEN) return;
+
+	ws.once('drain', () => {
+		ws.close();
+	});
+
+	setTimeout(() => {
+		if (ws.readyState === WebSocket.OPEN) {
+			ws.close();
+		}
+	}, 50);
 }
 
 const PING_INTERVAL = 60 * 1000;
@@ -114,7 +129,7 @@ export class ChatService {
 				return;
 			}
 
-			if (execution?.status === 'waiting') {
+			if (execution.status === 'waiting') {
 				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 				const nodeExecutionData =
 					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
@@ -127,9 +142,16 @@ export class ChatService {
 				return;
 			}
 
-			if (execution?.status === 'success') {
-				if (!isPublic) {
-					connection.close();
+			if (execution.status === 'success') {
+				const chatTrigger = execution.workflowData.nodes.find(
+					(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+				);
+				if (
+					!isPublic ||
+					(isPublic &&
+						(chatTrigger?.parameters.options as IDataObject)?.responseMode === 'responseNode')
+				) {
+					closeConnection(connection);
 					return;
 				}
 				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -142,8 +164,9 @@ export class ChatService {
 					textMessage = JSON.stringify(textMessage);
 				}
 
-				connection.send(textMessage);
-				connection.close();
+				connection.send(textMessage, () => {
+					closeConnection(connection);
+				});
 
 				return;
 			}
@@ -192,10 +215,6 @@ export class ChatService {
 		}
 
 		return execution;
-	}
-
-	private async cancelExecution(executionId: string) {
-		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
 	}
 
 	private async resumeExecution(executionId: string, data: RawData, sessionId: string) {
@@ -315,8 +334,22 @@ export class ChatService {
 		return runData;
 	}
 
+	private async cancelExecution(executionId: string) {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!execution) {
+			return;
+		}
+		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
+			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
+		}
+	}
+
 	private async pingAllAndRemoveDisconnected() {
-		const sessionsToClose: string[] = [];
+		const sessionsToDelete: string[] = [];
 
 		for (const sessionId of this.sessions.keys()) {
 			const { connection, executionId, intervalId } = this.sessions.get(sessionId)!;
@@ -325,14 +358,14 @@ export class ChatService {
 				if (executionId) await this.cancelExecution(executionId);
 				connection.terminate();
 				clearInterval(intervalId);
-				sessionsToClose.push(sessionId);
+				sessionsToDelete.push(sessionId);
 			}
 
 			connection.isAlive = false;
 			connection.ping();
 		}
 
-		for (const sessionId of sessionsToClose) {
+		for (const sessionId of sessionsToDelete) {
 			this.sessions.delete(sessionId);
 		}
 	}
