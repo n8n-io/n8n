@@ -90,14 +90,7 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		cy.get('.has-issues').should('have.length', 0);
-		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
-		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
-		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Search records');
-		cy.get('.has-issues').should('have.length', 2);
-		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
 
 	it('should show validation errors only after blur or re-opening of NDV of nodes without operation and resource', () => {

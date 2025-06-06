@@ -230,14 +230,14 @@ describe('Editors', () => {
 				.paste('<div>Second</div>');
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('Generate HTML template');
-			ndv.actions.clickFloatingNode('Generate HTML template1');
+			workflowPage.actions.openNode('HTML');
+			ndv.actions.clickFloatingNode('HTML1');
 			ndv.getters
 				.htmlEditorContainer()
 				.find('.cm-content')
 				.should('have.text', '<div>Second</div>');
 
-			ndv.actions.clickFloatingNode('Generate HTML template');
+			ndv.actions.clickFloatingNode('HTML');
 			ndv.getters.htmlEditorContainer().find('.cm-content').should('have.text', '<div>First</div>');
 		});
 	});
