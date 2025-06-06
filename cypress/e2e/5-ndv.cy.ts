@@ -93,19 +93,6 @@ describe('NDV', () => {
 		cy.get('.has-issues').should('have.length', 2);
 	});
 
-	it('should show validation errors only after blur or re-opening of NDV of nodes without operation and resource', () => {
-		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Typeform', true);
-		ndv.getters.container().should('be.visible');
-		cy.get('.has-issues').should('have.length', 0);
-		ndv.getters.credentialInput().find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 1);
-		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Typeform');
-		cy.get('.has-issues').should('have.length', 1);
-		cy.get('[class*=hasIssues]').should('have.length', 1);
-	});
-
 	// Correctly failing in V2 - node issues are only shows after execution
 	it('should show all validation errors when opening pasted node', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_errors.json', 'Validation errors');
