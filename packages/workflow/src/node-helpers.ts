@@ -1625,7 +1625,10 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
-function isTool(nodeTypeDescription: INodeTypeDescription, parameters: INodeParameters) {
+export function isTool(
+	nodeTypeDescription: INodeTypeDescription,
+	parameters: INodeParameters,
+): boolean {
 	// Check if node is a vector store in retrieve-as-tool mode
 	if (nodeTypeDescription.name.includes('vectorStore')) {
 		const mode = parameters.mode;

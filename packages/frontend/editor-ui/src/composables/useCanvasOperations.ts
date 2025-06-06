@@ -997,7 +997,6 @@ export function useCanvasOperations() {
 		);
 
 		node.parameters = nodeParameters ?? {};
-		debugger;
 	}
 
 	function resolveNodePosition(

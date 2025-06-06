@@ -20,6 +20,7 @@ import {
 	getToolDescriptionForNode,
 	isDefaultNodeName,
 	makeNodeName,
+	isTool,
 } from '@/node-helpers';
 import type { Workflow } from '@/workflow';
 
@@ -5476,6 +5477,87 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('Create user in Test Node');
+		});
+	});
+	describe('isTool', () => {
+		it('should return true for a node with AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.AiTool],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				name: '',
+				group: [],
+				description: '',
+			};
+			const node = { type: 'n8n-nodes-base.someTool', parameters: {} };
+			const result = isTool(description, node);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for a node with AiTool output in NodeOutputConfiguration', () => {
+			const description = {
+				outputs: [{ type: NodeConnectionTypes.AiTool }, { type: NodeConnectionTypes.Main }],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				name: '',
+				group: [],
+				description: '',
+			};
+			const node = { type: 'n8n-nodes-base.someTool', parameters: {} };
+			const result = isTool(description, node);
+			expect(result).toBe(true);
+		});
+
+		it('returns true for a vectore store node in retrieve-as-tool mode', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				name: '',
+				group: [],
+				description: '',
+			};
+			const node = { type: 'n8n-nodes-base.vectorStore', parameters: { mode: 'retrieve-as-tool' } };
+			const result = isTool(description, node);
+			expect(result).toBe(true);
+		});
+
+		it('returns false for node with no AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				name: '',
+				group: [],
+				description: '',
+			};
+			const node = { type: 'n8n-nodes-base.someTool', parameters: { mode: 'retrieve-as-tool' } };
+			const result = isTool(description, node);
+			expect(result).toBe(false);
 		});
 	});
 });
