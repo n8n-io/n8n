@@ -5272,14 +5272,14 @@ describe('NodeHelpers', () => {
 		});
 
 		it.each([
-			['Create a new user in Test Node', true],
+			['Create a new user', true],
 			['Test Node', true],
 			['Test Node1', true],
-			['Create a new user in Test Node5', true],
-			['Create a new user in Test Node 5', false],
-			['Create a new user in Test Node  5', false],
-			['Update user in Test Node', false],
-			['Update user in Test Node5', false],
+			['Create a new user5', true],
+			['Create a new user5', false],
+			['Create a new user 5', false],
+			['Update user', false],
+			['Update user5', false],
 			['TestNode', false],
 		])('should detect default names for input %s', (input, expected) => {
 			// Arrange
@@ -5322,6 +5322,39 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe(expected);
+		});
+		it('should detect default names for tool node types', () => {
+			// Arrange
+			const name = 'Create a new user in Test Node';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+		it('should detect non-default names for tool node types', () => {
+			// Arrange
+			// The default for tools would include ` in Test Node`
+			const name = 'Create a new user';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(false);
 		});
 	});
 	describe('makeNodeName', () => {
@@ -5491,12 +5524,12 @@ describe('NodeHelpers', () => {
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
 				displayName: '',
-				name: '',
 				group: [],
 				description: '',
+				name: 'n8n-nodes-base.someTool',
 			};
-			const node = { type: 'n8n-nodes-base.someTool', parameters: {} };
-			const result = isTool(description, node);
+			const parameters = {};
+			const result = isTool(description, parameters);
 			expect(result).toBe(true);
 		});
 
@@ -5511,16 +5544,16 @@ describe('NodeHelpers', () => {
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
 				displayName: '',
-				name: '',
 				group: [],
 				description: '',
+				name: 'n8n-nodes-base.someTool',
 			};
-			const node = { type: 'n8n-nodes-base.someTool', parameters: {} };
-			const result = isTool(description, node);
+			const parameters = {};
+			const result = isTool(description, parameters);
 			expect(result).toBe(true);
 		});
 
-		it('returns true for a vectore store node in retrieve-as-tool mode', () => {
+		it('returns true for a vector store node in retrieve-as-tool mode', () => {
 			const description = {
 				outputs: [NodeConnectionTypes.Main],
 				version: 0,
@@ -5531,12 +5564,12 @@ describe('NodeHelpers', () => {
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
 				displayName: '',
-				name: '',
-				group: [],
 				description: '',
+				group: [],
+				name: 'n8n-nodes-base.vectorStore',
 			};
-			const node = { type: 'n8n-nodes-base.vectorStore', parameters: { mode: 'retrieve-as-tool' } };
-			const result = isTool(description, node);
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
 			expect(result).toBe(true);
 		});
 
@@ -5551,12 +5584,12 @@ describe('NodeHelpers', () => {
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
 				displayName: '',
-				name: '',
 				group: [],
 				description: '',
+				name: 'n8n-nodes-base.someTool',
 			};
-			const node = { type: 'n8n-nodes-base.someTool', parameters: { mode: 'retrieve-as-tool' } };
-			const result = isTool(description, node);
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
 			expect(result).toBe(false);
 		});
 	});
