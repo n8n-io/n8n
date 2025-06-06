@@ -6,11 +6,19 @@ import {
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
+	findTriggerNodeToAutoSelect,
 } from './executionUtils';
-import type { INode, IRunData, IPinData, ExecutionError } from 'n8n-workflow';
+import type { INode, IRunData, IPinData, ExecutionError, INodeTypeDescription } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
-import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '@/constants';
-import { createTestNode } from '@/__tests__/mocks';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CORE_NODES_CATEGORY,
+	FORM_TRIGGER_NODE_TYPE,
+	GITHUB_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from '@/constants';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
@@ -502,5 +510,53 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Problem executing workflow',
 			message: 'Execution error.Details: Something broke',
 		});
+	});
+});
+
+describe(findTriggerNodeToAutoSelect, () => {
+	const APP_TRIGGER_TYPE = 'app trigger';
+
+	function getNodeType(type: string): INodeTypeDescription {
+		return mockNodeTypeDescription({
+			name: type,
+			codex: { categories: type === APP_TRIGGER_TYPE ? [] : [CORE_NODES_CATEGORY] },
+		});
+	}
+
+	it('should return the first enabled node', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', disabled: true }),
+					createTestNode({ name: 'B', disabled: false }),
+					createTestNode({ name: 'C', disabled: false }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should prioritize form trigger node than other node types', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: FORM_TRIGGER_NODE_TYPE }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should prioritize an app trigger than a scheduled trigger', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: SCHEDULE_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: APP_TRIGGER_TYPE }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
 	});
 });
