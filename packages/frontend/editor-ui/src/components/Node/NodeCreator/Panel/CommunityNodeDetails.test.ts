@@ -30,6 +30,7 @@ const getAllNodeCreateElements = vi.fn(() => [
 
 const popViewStack = vi.fn();
 const pushViewStack = vi.fn();
+const updateCurrentViewStack = vi.fn();
 
 const showError = vi.fn();
 
@@ -114,6 +115,7 @@ vi.mock('../composables/useViewStacks', () => ({
 		},
 		pushViewStack,
 		popViewStack,
+		updateCurrentViewStack,
 		getAllNodeCreateElements,
 	})),
 }));
@@ -148,6 +150,7 @@ describe('CommunityNodeDetails', () => {
 		expect(fetchCredentialTypes).toHaveBeenCalledWith(true);
 		expect(getAllNodeCreateElements).toHaveBeenCalled();
 		expect(popViewStack).toHaveBeenCalled();
+		expect(updateCurrentViewStack).toHaveBeenCalled();
 		expect(pushViewStack).toHaveBeenCalledWith(
 			{
 				communityNodeDetails: {
