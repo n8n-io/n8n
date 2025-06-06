@@ -86,7 +86,7 @@ describe('NDV', () => {
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
 
-	it('should show validation errors only after blur or re-opening of NDV', () => {
+	it('should show validation errors only after blur or re-opening of NDV of a node with operation and resource', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
@@ -95,8 +95,21 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Airtable');
+		workflowPage.actions.openNode('Search records');
 		cy.get('.has-issues').should('have.length', 2);
+		cy.get('[class*=hasIssues]').should('have.length', 1);
+	});
+
+	it('should show validation errors only after blur or re-opening of NDV of nodes without operation and resource', () => {
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Typeform', true);
+		ndv.getters.container().should('be.visible');
+		cy.get('.has-issues').should('have.length', 0);
+		ndv.getters.parameterInput('credential').find('input').eq(1).focus().blur();
+		cy.get('.has-issues').should('have.length', 1);
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.openNode('Typeform');
+		cy.get('.has-issues').should('have.length', 1);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
 
@@ -104,7 +117,7 @@ describe('NDV', () => {
 	it('should show all validation errors when opening pasted node', () => {
 		cy.createFixtureWorkflow('Test_workflow_ndv_errors.json', 'Validation errors');
 		workflowPage.getters.canvasNodes().should('have.have.length', 1);
-		workflowPage.actions.openNode('Airtable');
+		workflowPage.actions.openNode('Search records');
 		cy.get('.has-issues').should('have.length', 3);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});

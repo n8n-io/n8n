@@ -324,7 +324,11 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes(
+				'Create a credential',
+				'Create a credential1',
+				'Summarize',
+			);
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
