@@ -128,10 +128,8 @@ describe('getConnection', () => {
 	test('throws OperationsError if the fallBackHandler aborts during connection initialization', async () => {
 		// ARRANGE
 		const connectionType = {};
-		let abortController: AbortController | undefined;
 		const fallBackHandler = jest.fn(async (ac: AbortController) => {
 			ac.abort();
-			abortController = ac;
 			return connectionType;
 		});
 
