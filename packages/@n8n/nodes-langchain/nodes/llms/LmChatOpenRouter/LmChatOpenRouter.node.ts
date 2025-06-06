@@ -9,6 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -114,7 +115,7 @@ export class LmChatOpenRouter implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'openai/gpt-4o-mini',
+				default: 'openai/gpt-4.1-mini',
 			},
 			{
 				displayName: 'Options',
@@ -227,6 +228,7 @@ export class LmChatOpenRouter implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			httpAgent: getHttpProxyAgent(),
 		};
 
 		const model = new ChatOpenAI({

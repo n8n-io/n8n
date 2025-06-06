@@ -1,6 +1,6 @@
 import { type INodeTypeDescription } from 'n8n-workflow';
 import type { IVersionNode } from '../Interface';
-import { useRootStore } from '../stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
 import { isNodePreviewKey } from '../components/Node/NodeCreator/utils';

@@ -1,11 +1,16 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "files": [
     "dist"
   ],
   "exports": {
+    "./dist/*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js",
+      "require": "./dist/*.cjs"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js",

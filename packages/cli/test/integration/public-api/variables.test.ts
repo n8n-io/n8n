@@ -2,7 +2,7 @@ import type { User, Variables } from '@n8n/db';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
-import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
+import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 
 import * as testDb from '../shared/test-db';
@@ -83,7 +83,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
-			await expect(getVariableOrFail(response.body.id)).resolves.toEqual(
+			await expect(getVariableByIdOrFail(response.body.id)).resolves.toEqual(
 				expect.objectContaining(variablePayload),
 			);
 		});
@@ -126,7 +126,7 @@ describe('Variables in Public API', () => {
 				.send(variablePayload);
 
 			expect(response.status).toBe(204);
-			const updatedVariable = await getVariableOrFail(variable.id);
+			const updatedVariable = await getVariableByIdOrFail(variable.id);
 			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
 		});
 
@@ -164,7 +164,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(204);
-			await expect(getVariableOrFail(variable.id)).rejects.toThrow();
+			await expect(getVariableByIdOrFail(variable.id)).rejects.toThrow();
 		});
 
 		it('if not licensed, should reject', async () => {

@@ -1,5 +1,11 @@
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
-import { entities, subscribers } from '@n8n/db';
+import {
+	entities,
+	subscribers,
+	mysqlMigrations,
+	postgresMigrations,
+	sqliteMigrations,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -13,10 +19,6 @@ import type { TlsOptions } from 'tls';
 import { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
-
-import { mysqlMigrations } from './migrations/mysqldb';
-import { postgresMigrations } from './migrations/postgresdb';
-import { sqliteMigrations } from './migrations/sqlite';
 
 @Service()
 export class DbConnectionOptions {
@@ -129,6 +131,9 @@ export class DbConnectionOptions {
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
 			ssl,
+			extra: {
+				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
+			},
 		};
 	}
 

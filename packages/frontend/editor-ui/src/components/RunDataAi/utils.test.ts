@@ -1434,6 +1434,69 @@ describe(createLogTree, () => {
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[1].children).toHaveLength(0);
 	});
+
+	it('should include all runs of sub nodes in sub execution under correct parent run', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ name: 'A' })],
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ name: 'B' }), createTestNode({ name: 'C' })],
+			connections: {
+				C: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+		const rootExecutionData = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-id' },
+								},
+							}),
+						],
+					},
+				},
+			},
+		});
+		const subExecutionData = {
+			resultData: {
+				runData: {
+					B: [createTestTaskData(), createTestTaskData()],
+					C: [
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 0 }] }),
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 1 }] }),
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 1 }] }),
+					],
+				},
+			},
+		};
+		const logs = createLogTree(
+			workflow,
+			rootExecutionData,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-id': subExecutionData },
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe('A');
+		expect(logs[0].children).toHaveLength(2);
+		expect(logs[0].children[0].node.name).toBe('B');
+		expect(logs[0].children[0].children).toHaveLength(1);
+		expect(logs[0].children[0].children[0].node.name).toBe('C');
+		expect(logs[0].children[1].node.name).toBe('B');
+		expect(logs[0].children[1].children).toHaveLength(2);
+		expect(logs[0].children[1].children[0].node.name).toBe('C');
+		expect(logs[0].children[1].children[1].node.name).toBe('C');
+	});
 });
 
 describe(deepToRaw, () => {

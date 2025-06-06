@@ -1,13 +1,15 @@
 import type {
 	ActionResultRequestDto,
+	CommunityNodeType,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
-import * as nodeTypesApi from '@/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
+import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
-import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
+import { addHeaders, addNodeTranslation } from '@n8n/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
 	INode,
@@ -21,7 +23,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
@@ -34,7 +36,7 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
-	const communityPreviews = ref<INodeTypeDescription[]>([]);
+	const vettedCommunityNodeTypes = ref<Map<string, CommunityNodeType>>(new Map());
 
 	const rootStore = useRootStore();
 
@@ -46,34 +48,41 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
+	const communityNodeType = computed(() => {
+		return (nodeTypeName: string) => {
+			return vettedCommunityNodeTypes.value.get(nodeTypeName);
+		};
+	});
+
+	const officialCommunityNodeTypes = computed(() =>
+		Array.from(vettedCommunityNodeTypes.value.values())
+			.filter(({ isOfficialNode, isInstalled }) => isOfficialNode && !isInstalled)
+			.map(({ nodeDescription }) => nodeDescription),
+	);
+
+	const unofficialCommunityNodeTypes = computed(() =>
+		Array.from(vettedCommunityNodeTypes.value.values())
+			.filter(({ isOfficialNode, isInstalled }) => !isOfficialNode && !isInstalled)
+			.map(({ nodeDescription }) => nodeDescription),
+	);
+
 	const communityNodesAndActions = computed(() => {
-		return actionsGenerator.generateMergedNodesAndActions(communityPreviews.value, []);
+		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
 	});
 
 	const allNodeTypes = computed(() => {
-		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
-			(allNodeTypes, nodeType) => {
-				const versionNumbers = Object.keys(nodeType).map(Number);
-				const allNodeVersions = versionNumbers.map((version) => nodeType[version]);
-
-				return [...allNodeTypes, ...allNodeVersions];
-			},
-			[],
+		return Object.values(nodeTypes.value).flatMap((nodeType) =>
+			Object.keys(nodeType).map((version) => nodeType[Number(version)]),
 		);
 	});
 
 	const allLatestNodeTypes = computed(() => {
-		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
-			(allLatestNodeTypes, nodeVersions) => {
+		return Object.values(nodeTypes.value)
+			.map((nodeVersions) => {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
-				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
-
-				if (!latestNodeVersion) return allLatestNodeTypes;
-
-				return [...allLatestNodeTypes, latestNodeVersion];
-			},
-			[],
-		);
+				return nodeVersions[Math.max(...versionNumbers)];
+			})
+			.filter(Boolean);
 	});
 
 	const getNodeType = computed(() => {
@@ -158,7 +167,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const visibleNodeTypes = computed(() => {
-		return allLatestNodeTypes.value.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
+		return allLatestNodeTypes.value
+			.concat(officialCommunityNodeTypes.value)
+			.filter((nodeType) => !nodeType.hidden);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
@@ -359,11 +370,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			return;
 		}
 		try {
-			communityPreviews.value = await nodeTypesApi.fetchCommunityNodeTypes(
+			const communityNodeTypes = await nodeTypesApi.fetchCommunityNodeTypes(
 				rootStore.restApiContext,
 			);
+
+			vettedCommunityNodeTypes.value = new Map(
+				communityNodeTypes.map((nodeType) => [nodeType.name, nodeType]),
+			);
 		} catch (error) {
-			communityPreviews.value = [];
+			vettedCommunityNodeTypes.value = new Map();
 		}
 	};
 
@@ -401,6 +416,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		communityNodesAndActions,
+		communityNodeType,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,

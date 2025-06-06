@@ -11,7 +11,7 @@ catalog:
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': ^9.0.9
-  '@types/lodash': ^4.14.195
+  '@types/lodash': ^4.17.17
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   axios: 1.8.3
@@ -23,6 +23,7 @@ catalog:
   form-data: 4.0.0
   iconv-lite: 0.6.3
   jsonwebtoken: 9.0.2
+  js-base64: 3.7.2
   lodash: 4.17.21
   luxon: 3.4.4
   nanoid: 3.3.8
@@ -36,9 +37,9 @@ catalog:
   xss: 1.0.15
   zod: 3.24.1
   'zod-to-json-schema': 3.23.3
-  '@langchain/core': 0.3.30
-  '@langchain/openai': 0.3.17
-  '@langchain/anthropic': 0.3.11
+  '@langchain/core': 0.3.48
+  '@langchain/openai': 0.5.0
+  '@langchain/anthropic': 0.3.21
   '@langchain/community': 0.3.24
   '@n8n_io/ai-assistant-sdk': 1.14.0
 
@@ -52,11 +53,13 @@ catalogs:
     '@vitest/coverage-v8': ^3.1.3
     '@vitejs/plugin-vue': ^5.2.4
     '@sentry/vue': ^8.33.1
+    pinia: ^2.2.4
     typescript: ^5.8.2
     vite: ^6.3.5
     vitest: ^3.1.3
     vitest-mock-extended: ^3.1.0
     vue: ^3.5.13
+    vue-i18n: ^11.1.2
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1

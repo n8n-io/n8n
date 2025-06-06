@@ -19,13 +19,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -68,7 +68,7 @@ vi.mock('@/stores/workflows.store', () => {
 vi.mock('@/stores/parameterOverrides.store', () => {
 	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
 		agentRequests: {},
-		generateAgentRequest: vi.fn(),
+		getAgentRequest: vi.fn(),
 	};
 	return {
 		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
@@ -85,7 +85,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
-vi.mock('@/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
 }));
 
@@ -152,7 +152,7 @@ describe('useRunWorkflow({ router })', () => {
 		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();
-		workflowHelpers = useWorkflowHelpers({ router });
+		workflowHelpers = useWorkflowHelpers();
 	});
 
 	afterEach(() => {
@@ -236,7 +236,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',
@@ -267,7 +267,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',
@@ -357,6 +357,64 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should exclude destinationNode from startNodes when provided', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const { runWorkflow } = useRunWorkflow({ router });
+			const dataCaptor = captor<IStartRunData>();
+
+			const parentNodeName = 'parentNode';
+			const destinationNodeName = 'destinationNode';
+
+			// Mock workflow with parent-child relationship
+			const workflow = {
+				name: 'Test Workflow',
+				id: 'workflowId',
+				getParentNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === destinationNodeName) {
+						return [parentNodeName];
+					}
+					return [];
+				}),
+				nodes: {
+					[parentNodeName]: createTestNode({ name: parentNodeName }),
+					[destinationNodeName]: createTestNode({ name: destinationNodeName }),
+				},
+			} as unknown as Workflow;
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentNodeName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+						data: { main: [[{ json: { test: 'data' } }]] },
+					},
+				],
+			} as unknown as IRunData;
+
+			// ACT
+			await runWorkflow({ destinationNode: destinationNodeName });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+
+			const startNodes = dataCaptor.value.startNodes ?? [];
+			const destinationInStartNodes = startNodes.some((node) => node.name === destinationNodeName);
+
+			expect(destinationInStartNodes).toBe(false);
 		});
 
 		it('should send dirty nodes for partial executions v2', async () => {
@@ -453,6 +511,77 @@ describe('useRunWorkflow({ router })', () => {
 						name: triggerNode,
 						data: nodeData,
 					},
+					startNodes: [],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from child node if triggerNode and nodeData are passed in', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [
+						{
+							name: {
+								name: 'Child node',
+								type: 'nodes.child',
+							},
+							sourceData: null,
+						},
+					],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from trigger node if rerunTriggerNode is set', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData, rerunTriggerNode: true });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [],
 				}),
 			);
 		});
@@ -563,12 +692,12 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-			vi.mocked(agentRequestStore).generateAgentRequest.mockReturnValue(agentRequest);
+			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
-			expect(agentRequestStore.generateAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
+			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
 				agentRequest: {
 					query: 'query',

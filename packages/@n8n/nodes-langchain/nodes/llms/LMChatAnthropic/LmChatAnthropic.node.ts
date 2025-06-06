@@ -12,6 +12,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { searchModels } from './methods/searchModels';
@@ -154,8 +155,8 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-3-7-sonnet-20250219',
-					cachedResultName: 'Claude 3.7 Sonnet',
+					value: 'claude-sonnet-4-20250514',
+					cachedResultName: 'Claude 4 Sonnet',
 				},
 				required: true,
 				modes: [
@@ -329,6 +330,9 @@ export class LmChatAnthropic implements INodeType {
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
+			clientOptions: {
+				httpAgent: getHttpProxyAgent(),
+			},
 		});
 
 		return {

@@ -2,7 +2,7 @@ import { START_NODE_TYPE } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -13,8 +13,7 @@ export function useClearExecutionButtonVisible() {
 	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
-	const router = useRouter();
-	const { editableWorkflow } = useCanvasOperations({ router });
+	const { editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>

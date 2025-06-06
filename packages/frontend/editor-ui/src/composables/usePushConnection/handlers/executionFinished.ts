@@ -3,7 +3,13 @@ import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '@/utils/executionUtils';
+import {
+	clearPopupWindowState,
+	hasTrimmedData,
+	hasTrimmedItem,
+	getExecutionErrorToastConfiguration,
+	getExecutionErrorMessage,
+} from '@/utils/executionUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -11,24 +17,16 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
-import { TelemetryHelpers } from 'n8n-workflow';
-import type {
-	IWorkflowBase,
-	NodeError,
-	NodeOperationError,
-	SubworkflowOperationError,
-	ExpressionError,
-	IDataObject,
-	IRunExecutionData,
-} from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
-import { h } from 'vue';
-import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -87,7 +85,7 @@ export async function executionFinished(
 		};
 	} else {
 		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId, options);
+			handleExecutionFinishedSuccessfully(data.workflowId);
 			successToastAlreadyShown = true;
 		}
 
@@ -104,12 +102,53 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown, options);
+		handleExecutionFinishedWithOther(successToastAlreadyShown);
 	}
 
 	setRunExecutionData(execution, runExecutionData);
+
+	continueEvaluationLoop(execution, options.router);
+}
+
+/**
+ * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
+ * @param execution
+ * @param router
+ */
+export function continueEvaluationLoop(
+	execution: SimplifiedExecution,
+	router: ReturnType<typeof useRouter>,
+) {
+	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
+		return;
+	}
+
+	// check if we have an evaluation trigger in our workflow and whether it has any run data
+	const evaluationTrigger = execution.workflowData.nodes.find(
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+	);
+	const triggerRunData = evaluationTrigger
+		? execution?.data?.resultData?.runData[evaluationTrigger.name]
+		: undefined;
+
+	if (!evaluationTrigger || triggerRunData === undefined) {
+		return;
+	}
+
+	const mainData = triggerRunData[0]?.data?.main[0];
+	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+	if (rowsLeft && rowsLeft > 0) {
+		const { runWorkflow } = useRunWorkflow({ router });
+		void runWorkflow({
+			triggerNode: evaluationTrigger.name,
+			// pass output of previous node run to trigger next run
+			nodeData: triggerRunData[0],
+			rerunTriggerNode: true,
+		});
+	}
 }
 
 /**
@@ -165,45 +204,6 @@ export function getRunExecutionData(execution: SimplifiedExecution): IRunExecuti
 }
 
 /**
- * Returns the error message from the execution object if it exists,
- * or a fallback error message otherwise
- */
-export function getExecutionError(execution: SimplifiedExecution): string {
-	const error = execution.data?.resultData.error;
-	const i18n = useI18n();
-
-	let errorMessage: string;
-
-	if (execution.data?.resultData.lastNodeExecuted && error) {
-		errorMessage = error.message ?? error.description ?? '';
-	} else {
-		errorMessage = i18n.baseText('pushConnection.executionError', {
-			interpolate: { error: '!' },
-		});
-
-		if (error?.message) {
-			let nodeName: string | undefined;
-			if ('node' in error) {
-				nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
-			}
-
-			const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
-			errorMessage = i18n.baseText('pushConnection.executionError', {
-				interpolate: {
-					error: `.${i18n.baseText('pushConnection.executionError.details', {
-						interpolate: {
-							details: receivedError,
-						},
-					})}`,
-				},
-			});
-		}
-	}
-
-	return errorMessage;
-}
-
-/**
  * Returns the error message for the execution run data if the execution status is crashed or canceled,
  * or a fallback error message otherwise
  */
@@ -220,7 +220,10 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		});
 	}
 
-	return getExecutionError(execution);
+	return getExecutionErrorMessage({
+		error: execution.data?.resultData.error,
+		lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+	});
 }
 
 /**
@@ -232,7 +235,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 }) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowSaving = useWorkflowSaving(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	const workflowSettings = workflowsStore.workflowSettings;
@@ -245,7 +249,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowHelpers.saveAsNewWorkflow();
+				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});
@@ -261,15 +265,13 @@ export function handleExecutionFinishedWithWaitTill(options: {
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	options: { router: ReturnType<typeof useRouter> },
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
-	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -315,62 +317,19 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 		});
 	}
 
-	if (runExecutionData.resultData.error?.name === 'SubworkflowOperationError') {
-		const error = runExecutionData.resultData.error as SubworkflowOperationError;
-
-		workflowsStore.subWorkflowExecutionError = error;
-
-		toast.showMessage({
-			title: error.message,
-			message: error.description,
-			type: 'error',
-			duration: 0,
-		});
-	} else if (
-		(runExecutionData.resultData.error?.name === 'NodeOperationError' ||
-			runExecutionData.resultData.error?.name === 'NodeApiError') &&
-		(runExecutionData.resultData.error as NodeError).functionality === 'configuration-node'
-	) {
-		// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
-		let title: string;
-		const nodeError = runExecutionData.resultData.error as NodeOperationError;
-		if (nodeError.node.name) {
-			title = `Error in sub-node ‘${nodeError.node.name}‘`;
-		} else {
-			title = 'Problem executing workflow';
-		}
-
-		toast.showMessage({
-			title,
-			message: h(NodeExecutionErrorMessage, {
-				errorMessage: nodeError?.description ?? runDataExecutedErrorMessage,
-				nodeName: nodeError.node.name,
-			}),
-			type: 'error',
-			duration: 0,
-		});
-	} else {
+	if (execution.status === 'canceled') {
 		// Do not show the error message if the workflow got canceled
-		if (execution.status === 'canceled') {
-			toast.showMessage({
-				title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
-				type: 'success',
-			});
-		} else {
-			let title: string;
-			if (runExecutionData.resultData.lastNodeExecuted) {
-				title = `Problem in node ‘${runExecutionData.resultData.lastNodeExecuted}‘`;
-			} else {
-				title = 'Problem executing workflow';
-			}
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
+			type: 'success',
+		});
+	} else if (execution.data?.resultData.error) {
+		const { message, title } = getExecutionErrorToastConfiguration({
+			error: execution.data.resultData.error,
+			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+		});
 
-			toast.showMessage({
-				title,
-				message: runDataExecutedErrorMessage,
-				type: 'error',
-				duration: 0,
-			});
-		}
+		toast.showMessage({ title, message, type: 'error', duration: 0 });
 	}
 }
 
@@ -381,12 +340,9 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(
-	workflowId: string,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedSuccessfully(workflowId: string) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 	const i18n = useI18n();
 
@@ -401,14 +357,11 @@ export function handleExecutionFinishedSuccessfully(
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(
-	successToastAlreadyShown: boolean,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 

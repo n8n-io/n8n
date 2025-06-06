@@ -1,7 +1,8 @@
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type IExecutionResponse, type INodeUi, type IWorkflowDb } from '@/Interface';
 import { type ChatMessage } from '@n8n/chat/types';
-import { get, isEmpty } from 'lodash-es';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 

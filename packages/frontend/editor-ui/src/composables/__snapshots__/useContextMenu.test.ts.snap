@@ -80,6 +80,18 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": true,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
     "disabled": false,
     "divided": true,
     "id": "select_all",
@@ -161,125 +173,15 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
-    "disabled": false,
-    "divided": true,
-    "id": "select_all",
-    "label": "Select all",
-    "shortcut": {
-      "keys": [
-        "A",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "disabled": false,
-    "id": "deselect_all",
-    "label": "Clear selection",
-  },
-  {
     "disabled": true,
     "divided": true,
-    "id": "delete",
-    "label": "Delete",
-    "shortcut": {
-      "keys": [
-        "Del",
-      ],
-    },
-  },
-]
-`;
-
-exports[`useContextMenu > should include "Open Sub-workflow" action when node is "Execute Workflow" with a set workflow 1`] = `
-[
-  {
-    "id": "open",
-    "label": "Open...",
-    "shortcut": {
-      "keys": [
-        "↵",
-      ],
-    },
-  },
-  {
-    "disabled": false,
-    "id": "execute",
-    "label": "Execute step",
-  },
-  {
-    "disabled": false,
-    "id": "rename",
-    "label": "Rename",
-    "shortcut": {
-      "keys": [
-        "Space",
-      ],
-    },
-  },
-  {
-    "disabled": false,
-    "id": "open_sub_workflow",
-    "label": "Open Sub-workflow",
-    "shortcut": {
-      "keys": [
-        "O",
-      ],
-      "metaKey": true,
-      "shiftKey": true,
-    },
-  },
-  {
-    "disabled": false,
-    "id": "toggle_activation",
-    "label": "Deactivate",
-    "shortcut": {
-      "keys": [
-        "D",
-      ],
-    },
-  },
-  {
-    "disabled": true,
-    "id": "toggle_pin",
-    "label": "Pin",
-    "shortcut": {
-      "keys": [
-        "p",
-      ],
-    },
-  },
-  {
-    "id": "copy",
-    "label": "Copy",
-    "shortcut": {
-      "keys": [
-        "C",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "disabled": true,
-    "id": "duplicate",
-    "label": "Duplicate",
-    "shortcut": {
-      "keys": [
-        "D",
-      ],
-      "metaKey": true,
-    },
-  },
-  {
-    "divided": true,
-    "id": "tidy_up",
-    "label": "Tidy up workflow",
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
     "shortcut": {
       "altKey": true,
       "keys": [
-        "T",
+        "X",
       ],
-      "shiftKey": true,
     },
   },
   {
@@ -300,7 +202,7 @@ exports[`useContextMenu > should include "Open Sub-workflow" action when node is
     "label": "Clear selection",
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": true,
     "id": "delete",
     "label": "Delete",
@@ -390,6 +292,18 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
         "T",
       ],
       "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
     },
   },
   {
@@ -505,6 +419,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": false,
     "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
     "id": "select_all",
     "label": "Select all",
     "shortcut": {
@@ -586,6 +512,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": false,
     "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
     "id": "select_all",
     "label": "Select all",
     "shortcut": {
@@ -614,7 +552,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
 ]
 `;
 
-exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when node is "Execute Workflow" without a set workflow 1`] = `
+exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) when node is "Execute Workflow" without a set workflow 1`] = `
 [
   {
     "id": "open",
@@ -643,7 +581,7 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when
   {
     "disabled": true,
     "id": "open_sub_workflow",
-    "label": "Open Sub-workflow",
+    "label": "Go to Sub-workflow",
     "shortcut": {
       "keys": [
         "O",
@@ -708,6 +646,18 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when
   {
     "disabled": false,
     "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
     "id": "select_all",
     "label": "Select all",
     "shortcut": {
@@ -736,7 +686,7 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when
 ]
 `;
 
-exports[`useContextMenu > should show "Open Sub-workflow" action (enabled) when node is "Execute Workflow" with a set workflow 1`] = `
+exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) when node is "Workflow Tool" without a set workflow 1`] = `
 [
   {
     "id": "open",
@@ -763,9 +713,9 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (enabled) when 
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "id": "open_sub_workflow",
-    "label": "Open Sub-workflow",
+    "label": "Go to Sub-workflow",
     "shortcut": {
       "keys": [
         "O",
@@ -825,6 +775,286 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (enabled) when 
         "T",
       ],
       "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when node is "Execute Workflow" with a set workflow 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Execute step",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename",
+    "shortcut": {
+      "keys": [
+        "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "open_sub_workflow",
+    "label": "Go to Sub-workflow",
+    "shortcut": {
+      "keys": [
+        "O",
+      ],
+      "metaKey": true,
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when node is "Workflow Tool" with a set workflow 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Execute step",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename",
+    "shortcut": {
+      "keys": [
+        "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "open_sub_workflow",
+    "label": "Go to Sub-workflow",
+    "shortcut": {
+      "keys": [
+        "O",
+      ],
+      "metaKey": true,
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert node to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
     },
   },
   {
@@ -911,6 +1141,18 @@ exports[`useContextMenu > should support opening and closing (default = right cl
         "T",
       ],
       "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "extract_sub_workflow",
+    "label": "Convert 2 nodes to sub-workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "X",
+      ],
     },
   },
   {

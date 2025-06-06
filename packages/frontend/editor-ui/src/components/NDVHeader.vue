@@ -2,7 +2,7 @@
 import type { NodeIconSource } from '@/utils/nodeIcon';
 import { N8nIconButton, N8nInput } from '@n8n/design-system';
 import { nextTick, ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { onClickOutside } from '@vueuse/core';
 
 const props = defineProps<{

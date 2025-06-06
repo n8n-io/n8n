@@ -2,10 +2,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
-import { useRouter } from 'vue-router';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
 
 export function useResolvedExpression({
@@ -22,8 +21,7 @@ export function useResolvedExpression({
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const router = useRouter();
-	const { resolveExpression } = useWorkflowHelpers({ router });
+	const { resolveExpression } = useWorkflowHelpers();
 
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');

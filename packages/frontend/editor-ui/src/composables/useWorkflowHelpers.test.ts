@@ -1,6 +1,5 @@
-import type { IWorkflowData, IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, IWorkflowData, IWorkflowDb } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -9,63 +8,18 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
-import * as apiWebhooks from '../api/webhooks';
-
-const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
-	name: 'Duplicate webhook test',
-	active: false,
-	nodes: [
-		{
-			parameters: {
-				path: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-				options: {},
-			},
-			id: 'c1e1b6e7-df13-41b1-95f6-42903b85e438',
-			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [680, 20],
-			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-		},
-		{
-			parameters: {
-				path: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-				options: {},
-			},
-			id: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-			name: 'Webhook 2',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [700, 40],
-			webhookId: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-		},
-		{
-			parameters: {
-				resume: 'webhook',
-				options: {
-					webhookSuffix: '/test',
-				},
-			},
-			id: '979d8443-51b1-48e2-b239-acf399b66509',
-			name: 'Wait',
-			type: 'n8n-nodes-base.wait',
-			typeVersion: 1.1,
-			position: [900, 20],
-			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-		},
-	],
-	connections: {},
-});
+import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
+import { mockedStore } from '@/__tests__/utils';
 
 describe('useWorkflowHelpers', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
-		workflowsStore = useWorkflowsStore();
+		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
 		uiStore = useUIStore();
@@ -89,7 +43,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 				infoMessage: '',
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
 				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
@@ -113,7 +67,7 @@ describe('useWorkflowHelpers', () => {
 				includeOtherFields: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
 				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
@@ -154,7 +108,7 @@ describe('useWorkflowHelpers', () => {
 				looseTypeValidation: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -183,7 +137,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -222,7 +176,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -232,55 +186,9 @@ describe('useWorkflowHelpers', () => {
 		});
 	});
 
-	describe('saveAsNewWorkflow', () => {
-		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
-			const workflow = getDuplicateTestWorkflow();
-			if (!workflow.nodes) {
-				throw new Error('Missing nodes in test workflow');
-			}
-			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
-
-			await saveAsNewWorkflow({
-				name: workflow.name,
-				resetWebhookUrls: false,
-				data: workflow,
-			});
-
-			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Expect webhookIds and paths to be the same as in the original workflow
-			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
-			expect(pathsPreSave).toEqual(pathsPostSave);
-		});
-
-		it('should respect `resetWebhookUrls: true` when duplicating workflows', async () => {
-			const workflow = getDuplicateTestWorkflow();
-			if (!workflow.nodes) {
-				throw new Error('Missing nodes in test workflow');
-			}
-			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
-
-			await saveAsNewWorkflow({
-				name: workflow.name,
-				resetWebhookUrls: true,
-				data: workflow,
-			});
-
-			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Now, expect webhookIds and paths to be different
-			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
-			expect(pathsPreSave).not.toEqual(pathsPostSave);
-		});
-	});
-
 	describe('initState', () => {
 		it('should initialize workflow state with provided data', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -334,7 +242,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -355,7 +263,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `tags` gracefully', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -377,7 +285,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
@@ -386,7 +294,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -423,7 +331,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if webhook already exist but workflow id is the same', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -446,12 +354,383 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should call getWorkflowDataToSave if state is dirty', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = true;
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
 			} as unknown as IWorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+		});
+	});
+
+	describe('executeData', () => {
+		it('should return empty execute data if no parent nodes', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes: string[] = [];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {},
+				source: null,
+			});
+		});
+
+		it('should return the correct execution data with one parent node', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['Start'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+			const jsonData = {
+				name: 'Test',
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Start', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[0]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonData,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonData,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[0],
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
+		it('should return the correct execution data with multiple parent nodes, only one with execution data', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['Parent A', 'Parent B'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+			const jsonData = {
+				name: 'Test',
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Start', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[1]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonData,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonData,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[1],
+							previousNodeOutput: undefined,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
+		it('should return the correct execution data with multiple parent nodes, all with execution data', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['Parent A', 'Parent B'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			const jsonDataA = {
+				name: 'Test A',
+			};
+
+			const jsonDataB = {
+				name: 'Test B',
+			};
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Parent A', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+							[
+								{ node: 'Parent B', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[0]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonDataA,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+							[parentNodes[1]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonDataB,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonDataA,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[0],
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
+		it('should return data from pinnedWorkflowData if available', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['ParentNode'];
+			const currentNode = 'CurrentNode';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			workflowsStore.pinnedWorkflowData = {
+				ParentNode: [{ json: { key: 'value' } }],
+			};
+			workflowsStore.shouldReplaceInputDataWithPinData = true;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result.data).toEqual({ main: [[{ json: { key: 'value' } }]] });
+			expect(result.source).toEqual({ main: [{ previousNode: 'ParentNode' }] });
+		});
+
+		it('should return data from getWorkflowRunData if pinnedWorkflowData is not available', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['ParentNode'];
+			const currentNode = 'CurrentNode';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			workflowsStore.pinnedWorkflowData = undefined;
+			workflowsStore.shouldReplaceInputDataWithPinData = false;
+			workflowsStore.getWorkflowRunData = {
+				ParentNode: [
+					{
+						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
+					} as never,
+				],
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					CurrentNode: {
+						main: [
+							[
+								{ node: 'ParentNode', index: 0, type: 'main' },
+								{ node: 'CurrentNode', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result.data).toEqual({ main: [[{ json: { key: 'valueFromRunData' } }]] });
+			expect(result.source).toEqual({
+				main: [{ previousNode: 'ParentNode', previousNodeOutput: 0, previousNodeRun: 0 }],
+			});
+		});
+		it('should use provided parentRunIndex ', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['ParentNode'];
+			const currentNode = 'CurrentNode';
+			const inputName = 'main';
+			const runIndex = 0;
+			const parentRunIndex = 1;
+
+			workflowsStore.pinnedWorkflowData = undefined;
+			workflowsStore.shouldReplaceInputDataWithPinData = false;
+			workflowsStore.getWorkflowRunData = {
+				ParentNode: [
+					{ data: {} } as never,
+					{
+						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
+					} as never,
+				],
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					CurrentNode: {
+						main: [
+							[
+								{ node: 'ParentNode', index: 1, type: 'main' },
+								{ node: 'CurrentNode', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex, parentRunIndex);
+
+			expect(result.data).toEqual({ main: [[{ json: { key: 'valueFromRunData' } }]] });
+			expect(result.source).toEqual({
+				main: [{ previousNode: 'ParentNode', previousNodeOutput: 1, previousNodeRun: 1 }],
+			});
+		});
+
+		it('should return empty data if neither pinnedWorkflowData nor getWorkflowRunData is available', () => {
+			const { executeData } = useWorkflowHelpers();
+
+			const parentNodes = ['ParentNode'];
+			const currentNode = 'CurrentNode';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			workflowsStore.pinnedWorkflowData = undefined;
+			workflowsStore.shouldReplaceInputDataWithPinData = false;
+			workflowsStore.getWorkflowRunData = null;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result.data).toEqual({});
+			expect(result.source).toBeNull();
 		});
 	});
 });

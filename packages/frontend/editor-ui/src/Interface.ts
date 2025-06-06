@@ -55,6 +55,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
@@ -174,15 +175,6 @@ export interface INodeTypesMaxCount {
 		exist: number;
 		max: number;
 		nodeNames: string[];
-	};
-}
-
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
 	};
 }
 
@@ -372,7 +364,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -386,11 +377,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -970,33 +965,6 @@ export interface WorkflowsState {
 	isInDebugMode?: boolean;
 }
 
-export interface RootState {
-	baseUrl: string;
-	restEndpoint: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointMcp: string;
-	endpointMcpTest: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: {
-		[key: string]: string | number | undefined;
-	};
-	pushRef: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-}
-
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
@@ -1106,7 +1074,8 @@ export type NodeFilterType =
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
-	| typeof AI_UNCATEGORIZED_CATEGORY;
+	| typeof AI_UNCATEGORIZED_CATEGORY
+	| typeof AI_EVALUATION;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1119,7 +1088,9 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
-	| 'add_node_button';
+	| 'add_node_button'
+	| 'add_evaluation_trigger_button'
+	| 'add_evaluation_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1204,11 +1175,6 @@ export interface IWorkflowsMap {
 export interface CommunityNodesState {
 	availablePackageCount: number;
 	installedPackages: CommunityPackageMap;
-}
-
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1345,6 +1311,10 @@ export type UsageState = {
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
 			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
+			};
 		};
 		license: {
 			planId: string; // community
@@ -1369,6 +1339,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';
@@ -1493,7 +1464,8 @@ export type CloudUpdateLinkSourceType =
 	| 'external-secrets'
 	| 'rbac'
 	| 'debug'
-	| 'insights';
+	| 'insights'
+	| 'evaluations';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1517,7 +1489,8 @@ export type UTMCampaign =
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
-	| 'upgrade-insights';
+	| 'upgrade-insights'
+	| 'upgrade-evaluations';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1547,6 +1520,7 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
 	hasAddedNodes?: boolean;
+	connectionType?: NodeConnectionType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';

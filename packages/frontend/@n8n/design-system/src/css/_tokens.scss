@@ -224,6 +224,17 @@
 	--color-line-break: var(--prim-gray-320);
 	--color-code-line-break: var(--prim-color-secondary-tint-200);
 
+	// Tag
+	--tag-height: 22px;
+	--tag-padding: 0 var(--spacing-4xs);
+	--tag-background-color: var(--prim-gray-40);
+	--tag-border-color: var(--color-foreground-light);
+	--tag-border-radius: var(--border-radius-base);
+	--tag-text-color: var(--color-text-base);
+	--tag-font-size: var(--font-size-2xs);
+	--tag-font-weight: var(--font-weight-regular);
+	--tag-line-height: 0;
+
 	// Variables
 	--color-variables-usage-font: var(--color-success);
 	--color-variables-usage-syntax-bg: var(--color-success-tint-2);

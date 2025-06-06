@@ -72,6 +72,29 @@ export class ProjectController {
 		}
 	}
 
+	@Get('/:folderId/credentials')
+	@ProjectScope('folder:read')
+	async getFolderUsedCredentials(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+	) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const credentials = await this.enterpriseWorkflowService.getFolderUsedCredentials(
+				req.user,
+				folderId,
+				projectId,
+			);
+			return credentials;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
 	@Patch('/:folderId')
 	@ProjectScope('folder:update')
 	async updateFolder(

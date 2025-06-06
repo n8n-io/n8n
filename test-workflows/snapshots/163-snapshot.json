@@ -1,0 +1,302 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1678116858540,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides": [
+          {
+            "startTime": 1678116858541,
+            "executionTime": 1809,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "presentationId": "1-6V0k7PVcPC90kFahRHD7_TjLP6W9-3Muf-PjlNVTN0",
+                      "pageSize": {
+                        "object": true
+                      },
+                      "slides": [
+                        "json array"
+                      ],
+                      "title": "SlidesMon, 06 Mar 2023 15:34:18 GMT",
+                      "masters": [
+                        "json array"
+                      ],
+                      "layouts": [
+                        "json array"
+                      ],
+                      "locale": "en",
+                      "revisionId": "M-s2cBLdEa4K1A",
+                      "notesMaster": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides3": [
+          {
+            "startTime": 1678116860351,
+            "executionTime": 1496,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "presentationId": "1y7glcx_2V4LQoSWXTkBbn-kWRLBEAsn7I27B6RQ3cdo",
+                      "replies": [
+                        "json array"
+                      ],
+                      "writeControl": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides1": [
+          {
+            "startTime": 1678116861848,
+            "executionTime": 703,
+            "source": [
+              {
+                "previousNode": "Google Slides"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "presentationId": "1-6V0k7PVcPC90kFahRHD7_TjLP6W9-3Muf-PjlNVTN0",
+                      "pageSize": {
+                        "object": true
+                      },
+                      "slides": [
+                        "json array"
+                      ],
+                      "title": "SlidesMon, 06 Mar 2023 15:34:18 GMT",
+                      "masters": [
+                        "json array"
+                      ],
+                      "layouts": [
+                        "json array"
+                      ],
+                      "locale": "en",
+                      "revisionId": "M-s2cBLdEa4K1A",
+                      "notesMaster": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides4": [
+          {
+            "startTime": 1678116862552,
+            "executionTime": 1078,
+            "source": [
+              {
+                "previousNode": "Google Slides"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "width": 1600,
+                      "height": 900,
+                      "contentUrl": "https://lh3.googleusercontent.com/NS47n8mpkUBEGGOaqfTxrbk40A0gu3ISENHFprG6BcQDWjmrMF5-LwFVYJ9dxyTGYpJ-a1OwLvWPCabzaHTeMKFQs_ZxdgY_UmJG4vZcyaXAIIM8yDzqSuNBWwiO1Jzco0TbPQj_UXmQlU5_7f5_pO4ZVO96NpI-HVariL4E3OV8rXS7qf5BEs39975C6Rt1GuRprL-CCE5zr-lO_DXhP5imOBv07CMGwjMVKMTGq7xbxRN41rTRLDg=s1600"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "image/png",
+                        "fileType": "image",
+                        "fileExtension": "png",
+                        "data": "iVBORw0KGgoAAAANSUhEUgAABkAAAAOECAIAAAB2L2r1AAAAA3NCSVQICAjb4U/gAAAYxElEQVR4nOzYMQEAIAzAMMC/5+GAlx6Jgt7dM7MAAAAAoOr8DgAAAACAFwMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAIA0AwsAAACANAMLAAAAgDQDCwAAAOC2Y8cCAAAAAIP8raexozBiTWABAAAAsCawAAAAAFgTWAAAAACsCSwAAAAA1gQWAAAAAGsCCwAAAIA1gQUAAADAmsACAAAAYE1gAQAAALAmsAAAAABYE1gAAAAArAksAAAAANYEFgAAAABrAgsAAACANYEFAAAAwJrAAgAAAGBNYAEAAACwJrAAAAAAWBNYAAAAAKwJLAAAAADWBBYAAAAAawILAAAAgDWBBQAAAMCawAIAAABgTWABAAAAsCawAAAAAFgTWAAAAACsCSwAAAAA1gQWAAAAAGsCCwAAAIA1gQUAAADAmsACAAAAYE1gAQAAALAmsAAAAABYE1gAAAAArAksAAAAANYEFgAAAABrAgsAAACAtQBWkwoFDcwppQAAAABJRU5ErkJggg==",
+                        "fileName": "p.png",
+                        "fileSize": "6.41 kB"
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides6": [
+          {
+            "startTime": 1678116863630,
+            "executionTime": 370,
+            "source": [
+              {
+                "previousNode": "Google Slides3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "presentationId": "1y7glcx_2V4LQoSWXTkBbn-kWRLBEAsn7I27B6RQ3cdo",
+                      "replies": [
+                        "json array"
+                      ],
+                      "writeControl": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides2": [
+          {
+            "startTime": 1678116864000,
+            "executionTime": 316,
+            "source": [
+              {
+                "previousNode": "Google Slides1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectId": "p",
+                      "pageElements": [
+                        "json array"
+                      ],
+                      "slideProperties": {
+                        "object": true
+                      },
+                      "pageProperties": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Slides5": [
+          {
+            "startTime": 1678116864316,
+            "executionTime": 345,
+            "source": [
+              {
+                "previousNode": "Google Slides4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectId": "p",
+                      "pageElements": [
+                        "json array"
+                      ],
+                      "slideProperties": {
+                        "object": true
+                      },
+                      "revisionId": "M-s2cBLdEa4K1A",
+                      "pageProperties": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Google Slides5"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-03-06T15:34:18.538Z",
+  "stoppedAt": "2023-03-06T15:34:24.661Z",
+  "status": "running",
+  "finished": true
+}
