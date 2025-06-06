@@ -27,7 +27,7 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance, mockLogger } from '@test/mocking';
+import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
@@ -39,7 +39,6 @@ let runner: WorkflowRunner;
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
-mockLogger();
 
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
