@@ -2024,15 +2024,20 @@ onBeforeUnmount(() => {
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
+				:trigger-nodes="triggerNodes"
+				:get-node-type="nodeTypesStore.getNodeType"
+				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="runEntireWorkflow('main')"
+				@execute="runEntireWorkflow('main')"
+				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 			/>
 			<template v-if="containsChatTriggerNodes">
 				<CanvasChatButton
 					v-if="isLogsPanelOpen"
 					type="tertiary"
 					:label="i18n.baseText('chat.hide')"
+					:class="$style.chatButton"
 					@click="logsStore.toggleOpen(false)"
 				/>
 				<KeyboardShortcutTooltip
@@ -2041,8 +2046,9 @@ onBeforeUnmount(() => {
 					:shortcut="{ keys: ['c'] }"
 				>
 					<CanvasChatButton
-						type="primary"
+						:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
 						:label="i18n.baseText('chat.open')"
+						:class="$style.chatButton"
 						@click="onOpenChat"
 					/>
 				</KeyboardShortcutTooltip>
@@ -2136,6 +2142,10 @@ onBeforeUnmount(() => {
 				margin: 0;
 			}
 		}
+	}
+
+	.chatButton {
+		align-self: stretch;
 	}
 }
 

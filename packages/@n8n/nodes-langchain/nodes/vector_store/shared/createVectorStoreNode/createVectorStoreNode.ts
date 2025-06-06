@@ -72,7 +72,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
 
-				if (['load', 'retrieve-as-tool'].includes(mode) && useReranker) {
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
 					inputs.push({ displayName: "Reranker", type: "${NodeConnectionTypes.AiReranker}", required: true, maxConnections: 1})
 				}
 
@@ -215,7 +215,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					description: 'Whether or not to rerank results',
 					displayOptions: {
 						show: {
-							mode: ['load', 'retrieve-as-tool'],
+							mode: ['load', 'retrieve', 'retrieve-as-tool'],
 						},
 					},
 				},

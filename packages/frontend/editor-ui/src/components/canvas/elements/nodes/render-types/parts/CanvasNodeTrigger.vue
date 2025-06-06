@@ -44,6 +44,11 @@ const { startChat } = useCanvasOperations();
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
+
+async function handleClickExecute() {
+	workflowsStore.setSelectedTriggerNodeName(name);
+	await runEntireWorkflow('node', name);
+}
 </script>
 
 <template>
@@ -59,6 +64,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					<N8nButton
 						v-if="isChatOpen"
 						type="secondary"
+						icon="comment"
 						size="large"
 						:disabled="isExecuting"
 						:data-test-id="testId"
@@ -72,6 +78,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					>
 						<N8nButton
 							type="primary"
+							icon="comment"
 							size="large"
 							:disabled="isExecuting"
 							:data-test-id="testId"
@@ -83,11 +90,12 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 				<N8nButton
 					v-else
 					type="primary"
+					icon="flask"
 					size="large"
 					:disabled="isExecuting"
 					:data-test-id="testId"
 					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-					@click.capture="runEntireWorkflow('node', name)"
+					@click.capture="handleClickExecute"
 				/>
 			</template>
 		</div>
