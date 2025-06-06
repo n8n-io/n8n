@@ -18,12 +18,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import { useRouter } from 'vue-router';
-import { mockedStore } from '@/__tests__/utils';
 
 describe('useActions', () => {
-	const router = mockedStore(useRouter);
-
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 	});
