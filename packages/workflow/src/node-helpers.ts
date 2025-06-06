@@ -1570,6 +1570,11 @@ export function isNodeWithWorkflowSelector(node: INode) {
 	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
 }
 
+/**
+ * @returns An object containing either the resolved operation's action if available,
+ * else the resource and operation if both exist.
+ * If neither can be resolved, returns an empty object.
+ */
 function resolveResourceAndOperation(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
@@ -1691,8 +1696,8 @@ export function isDefaultNodeName(
 ): boolean {
 	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
 	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const start of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(start) && /^\d*$/.test(name.slice(start.length))) return true;
+	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
+		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
 	}
 
 	return false;
