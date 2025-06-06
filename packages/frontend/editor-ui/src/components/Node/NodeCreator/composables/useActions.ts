@@ -45,6 +45,7 @@ import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import findLast from 'lodash/findLast';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -316,10 +317,10 @@ export const useActions = () => {
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
-			({ name, after, store: { getLatestNode, setLastNodeParameters }, args }) => {
+			({ name, after, store: { setLastNodeParameters, allNodes }, args }) => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
-					const node = getLatestNode(action);
+					const node = findLast(allNodes, (n) => n.type === action.key);
 					const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 					const isDefaultName =
 						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
