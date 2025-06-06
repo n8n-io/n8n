@@ -2,6 +2,62 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.98.0
+
+### What changed?
+
+The `last_activity` metric included as a part of route metrics has been changed to output a Unix time in seconds from
+the previous timestamp label approach. The labeling approach could result in high cardinality within Prometheus and
+thus result in poorer performance.
+
+### When is action necessary?
+
+If you've been ingesting route metrics from your n8n instance (version 1.81.0 and newer), you should analyze
+how the `last_activity` metric has affected your Prometheus instance and potentially clean up the old data. Future
+metrics will also be served in a different format, which needs to be taken into account.
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v20.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v20 or above.
+
+## 1.83.0
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.82.1
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.81.3
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
 ## 1.65.0
 
 ### What changed?

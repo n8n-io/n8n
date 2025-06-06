@@ -1,3 +1,5 @@
+export * from './browser';
+
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
@@ -39,6 +41,7 @@ export const LICENSE_QUOTAS = {
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
+	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
@@ -93,3 +96,9 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
+
+export const INSTANCE_TYPES = ['main', 'webhook', 'worker'] as const;
+export type InstanceType = (typeof INSTANCE_TYPES)[number];
+
+export const INSTANCE_ROLES = ['unset', 'leader', 'follower'] as const;
+export type InstanceRole = (typeof INSTANCE_ROLES)[number];

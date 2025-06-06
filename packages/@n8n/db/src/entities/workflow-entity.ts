@@ -16,6 +16,7 @@ import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
+import type { TestRun } from './test-run.ee';
 import type { IWorkflowDb } from './types-db';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
@@ -108,6 +109,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	@JoinColumn({ name: 'parentFolderId' })
 	parentFolder: Folder | null;
+
+	@OneToMany('TestRun', 'workflow')
+	testRuns: TestRun[];
 }
 
 /**

@@ -22,6 +22,9 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "Tools": [
         "Other Tools",
       ],
+      "Vector Stores": [
+        "Other Vector Stores",
+      ],
     },
   },
   "credentials": undefined,
@@ -38,7 +41,12 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
   "inputs": "={{
 			((parameters) => {
 				const mode = parameters?.mode;
+				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "ai_embedding", required: true, maxConnections: 1}]
+
+				if (['load', 'retrieve-as-tool'].includes(mode) && useReranker) {
+					inputs.push({ displayName: "Reranker", type: "ai_reranker", required: true, maxConnections: 1})
+				}
 
 				if (mode === 'retrieve-as-tool') {
 					return inputs;
@@ -127,6 +135,13 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "displayName": "Name",
       "displayOptions": {
         "show": {
+          "@version": [
+            {
+              "_cnd": {
+                "lte": 1.2,
+              },
+            },
+          ],
           "mode": [
             "retrieve-as-tool",
           ],
@@ -224,6 +239,21 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "type": "boolean",
     },
     {
+      "default": false,
+      "description": "Whether or not to rerank results",
+      "displayName": "Rerank Results",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "useReranker",
+      "type": "boolean",
+    },
+    {
       "default": "",
       "description": "ID of an embedding entry",
       "displayName": "ID",
@@ -253,6 +283,8 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
   "version": [
     1,
     1.1,
+    1.2,
+    1.3,
   ],
 }
 `;

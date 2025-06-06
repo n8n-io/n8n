@@ -27,10 +27,11 @@ import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import * as apiUtils from '@/utils/apiUtils';
+import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -387,6 +388,35 @@ describe('useWorkflowsStore', () => {
 			};
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
+			expect(result).toBe(false);
+		});
+
+		it('should return true if connection is indirect within `depth`', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
+				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 2);
+			expect(result).toBe(true);
+		});
+
+		it('should return false if connection is indirect beyond `depth`', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
+				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 1);
+			expect(result).toBe(false);
+		});
+
+		it('should return false if depth is 0', () => {
+			workflowsStore.workflow.connections = {
+				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
+			};
+
+			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
 			expect(result).toBe(false);
 		});
 	});
@@ -1038,6 +1068,36 @@ describe('useWorkflowsStore', () => {
 				'POST',
 				`/workflows/${workflowId}/unarchive`,
 			);
+		});
+	});
+
+	describe('setNodeParameters', () => {
+		beforeEach(() => {
+			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
+		});
+
+		it('should set node parameters', () => {
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
+
+			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } });
+
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ q: false, r: 's' });
+		});
+
+		it('should set node parameters preserving existing ones if append=true', () => {
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: true });
+
+			workflowsStore.setNodeParameters({ name: 'a', value: { q: false, r: 's' } }, true);
+
+			expect(workflowsStore.nodesByName.a.parameters).toEqual({ p: 1, q: false, r: 's' });
+		});
+
+		it('should not update last parameter update time if parameters are set to the same value', () => {
+			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+
+			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
+
+			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
 		});
 	});
 

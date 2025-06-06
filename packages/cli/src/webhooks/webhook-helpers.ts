@@ -6,12 +6,13 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import get from 'lodash/get';
-import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -104,6 +105,7 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
+// eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
@@ -120,6 +122,21 @@ export function autoDetectResponseMode(
 			}
 
 			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+				return 'formPage';
+			}
+		}
+	}
+
+	// If there are form nodes connected to a current form node we're dealing with a multipage form
+	// and we need to return the formPage response mode when a second page of the form gets submitted
+	// to be able to show potential form errors correctly.
+	if (workflowStartNode.type === FORM_NODE_TYPE && method === 'POST') {
+		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+
+		for (const nodeName of connectedNodes) {
+			const node = workflow.nodes[nodeName];
+
+			if (node.type === FORM_NODE_TYPE && !node.disabled) {
 				return 'formPage';
 			}
 		}

@@ -8,7 +8,7 @@ import {
 } from '@/constants';
 import { mfaEventBus } from '@/event-bus';
 import { onMounted, ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
 

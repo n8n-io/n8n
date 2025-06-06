@@ -175,7 +175,7 @@ export namespace ExecutionSummaries {
 		status: ExecutionStatus[];
 		workflowId: string;
 		waitTill: boolean;
-		metadata: Array<{ key: string; value: string }>;
+		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
 		annotationTags: string[]; // tag IDs
@@ -283,19 +283,23 @@ export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSu
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
 
 export type TestRunErrorCode =
-	| 'PAST_EXECUTIONS_NOT_FOUND'
-	| 'EVALUATION_WORKFLOW_NOT_FOUND'
+	| 'TEST_CASES_NOT_FOUND'
 	| 'INTERRUPTED'
-	| 'UNKNOWN_ERROR';
+	| 'UNKNOWN_ERROR'
+	| 'EVALUATION_TRIGGER_NOT_FOUND'
+	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
+	| 'EVALUATION_TRIGGER_DISABLED'
+	| 'SET_OUTPUTS_NODE_NOT_FOUND'
+	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
+	| 'SET_METRICS_NODE_NOT_FOUND'
+	| 'SET_METRICS_NODE_NOT_CONFIGURED'
+	| 'CANT_FETCH_TEST_CASES';
 
 export type TestCaseExecutionErrorCode =
-	| 'MOCKED_NODE_DOES_NOT_EXIST'
-	| 'TRIGGER_NO_LONGER_EXISTS'
+	| 'NO_METRICS_COLLECTED'
+	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
 	| 'FAILED_TO_EXECUTE_WORKFLOW'
-	| 'EVALUATION_WORKFLOW_DOES_NOT_EXIST'
-	| 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW'
 	| 'INVALID_METRICS'
-	| 'PAYLOAD_LIMIT_EXCEEDED'
 	| 'UNKNOWN_ERROR';
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
@@ -337,7 +341,7 @@ export interface IGetExecutionsQueryFilter {
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
+	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
 }

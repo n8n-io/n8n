@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20.16.0 AS base
+FROM node:22.16.0 AS base
 
 # Install required dependencies
 RUN apt-get update && apt-get install -y gnupg2 curl
@@ -18,7 +18,7 @@ RUN apt-get update && \
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install -g corepack@0.31 && corepack enable
+RUN npm install -g corepack@0.33 && corepack enable
 
 #
 # Builder

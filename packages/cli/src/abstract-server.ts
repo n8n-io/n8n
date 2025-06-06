@@ -1,4 +1,4 @@
-import { inTest, inDevelopment } from '@n8n/backend-common';
+import { inTest, inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -8,7 +8,6 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
-import { Logger } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';

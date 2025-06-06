@@ -1,4 +1,4 @@
-import type { CommunityNodeAttributes } from '@n8n/api-types';
+import type { CommunityNodeType } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 
@@ -9,12 +9,12 @@ export class CommunityNodeTypesController {
 	constructor(private readonly communityNodeTypesService: CommunityNodeTypesService) {}
 
 	@Get('/:name')
-	async getCommunityNodeAttributes(req: Request): Promise<CommunityNodeAttributes | null> {
-		return this.communityNodeTypesService.getCommunityNodeAttributes(req.params.name);
+	async getCommunityNodeType(req: Request): Promise<CommunityNodeType | null> {
+		return await this.communityNodeTypesService.getCommunityNodeType(req.params.name);
 	}
 
 	@Get('/')
 	async getCommunityNodeTypes() {
-		return await this.communityNodeTypesService.getDescriptions();
+		return await this.communityNodeTypesService.getCommunityNodeTypes();
 	}
 }

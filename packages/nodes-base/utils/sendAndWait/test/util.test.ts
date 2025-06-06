@@ -303,6 +303,7 @@ describe('Send and Wait utils tests', () => {
 						responseFormTitle: 'Test title',
 						responseFormDescription: 'Test description',
 						responseFormButtonLabel: 'Test button',
+						responseFormCustomCss: 'body { background-color: red; }',
 					},
 				};
 				return params[parameterName];
@@ -334,6 +335,7 @@ describe('Send and Wait utils tests', () => {
 				],
 				appendAttribution: true,
 				buttonLabel: 'Test button',
+				dangerousCustomCss: 'body { background-color: red; }',
 			});
 		});
 

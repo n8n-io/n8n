@@ -6,7 +6,7 @@ import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 import { useUsersStore } from '@/stores/users.store';
@@ -101,7 +101,19 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
-	return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
+
+	// Allow local redirects
+	if (redirect.startsWith('/')) {
+		return true;
+	}
+
+	try {
+		// Only allow origin domain redirects
+		const url = new URL(redirect);
+		return url.origin === window.location.origin;
+	} catch {
+		return false;
+	}
 };
 
 const getRedirectQueryParameter = () => {

@@ -1,27 +1,20 @@
-import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
+import { Column, Entity, OneToMany, ManyToOne } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { TestCaseExecution } from './test-case-execution.ee';
-import { TestDefinition } from './test-definition.ee';
 import { AggregatedTestRunMetrics } from './types-db';
 import type { TestRunErrorCode, TestRunFinalResult } from './types-db';
+import { WorkflowEntity } from './workflow-entity';
 
 export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
 /**
  * Entity representing a Test Run.
- * It stores info about a specific run of a test, combining the test definition with the status and collected metrics
+ * It stores info about a specific run of a test, including the status and collected metrics
  */
 @Entity()
-@Index(['testDefinition'])
 export class TestRun extends WithTimestampsAndStringId {
-	@ManyToOne('TestDefinition', 'runs')
-	testDefinition: TestDefinition;
-
-	@RelationId((testRun: TestRun) => testRun.testDefinition)
-	testDefinitionId: string;
-
 	@Column('varchar')
 	status: TestRunStatus;
 
@@ -33,25 +26,6 @@ export class TestRun extends WithTimestampsAndStringId {
 
 	@JsonColumn({ nullable: true })
 	metrics: AggregatedTestRunMetrics;
-
-	/**
-	 * Total number of the test cases, matching the filter condition of the test definition (specified annotationTag)
-	 */
-	@Column('integer', { nullable: true })
-	totalCases: number;
-
-	/**
-	 * Number of test cases that passed (evaluation workflow was executed successfully)
-	 */
-	@Column('integer', { nullable: true })
-	passedCases: number;
-
-	/**
-	 * Number of failed test cases
-	 * (any unexpected exception happened during the execution or evaluation workflow ended with an error)
-	 */
-	@Column('integer', { nullable: true })
-	failedCases: number;
 
 	/**
 	 * This will contain the error code if the test run failed.
@@ -68,6 +42,12 @@ export class TestRun extends WithTimestampsAndStringId {
 
 	@OneToMany('TestCaseExecution', 'testRun')
 	testCaseExecutions: TestCaseExecution[];
+
+	@ManyToOne('WorkflowEntity')
+	workflow: WorkflowEntity;
+
+	@Column('varchar', { length: 255 })
+	workflowId: string;
 
 	/**
 	 * Calculated property to determine the final result of the test run

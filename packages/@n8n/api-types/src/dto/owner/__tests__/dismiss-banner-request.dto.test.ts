@@ -1,4 +1,4 @@
-import { bannerNameSchema } from '../../../schemas/bannerName.schema';
+import { bannerNameSchema } from '../../../schemas/banner-name.schema';
 import { DismissBannerRequestDto } from '../dismiss-banner-request.dto';
 
 describe('DismissBannerRequestDto', () => {
