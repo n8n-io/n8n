@@ -211,7 +211,7 @@ const goToUpgrade = () => {
 			>
 				{{ i18n.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionsFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
+			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
 			ref="executionListRef"
