@@ -173,7 +173,7 @@ export const base64DecodeUTF8 = (str: string): string => {
 	} catch (error) {
 		// Fallback method for older browsers
 		console.warn('TextDecoder not available, using fallback method');
-		return decodeURIComponent(escape(atob(str)));
+		return atob(str);
 	}
 };
 
