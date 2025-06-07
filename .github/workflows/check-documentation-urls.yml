@@ -3,8 +3,6 @@ name: Check Documentation URLs
 on:
   release:
     types: [published]
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
