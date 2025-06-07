@@ -679,17 +679,7 @@ export async function executeWebhook(
 		// Pass streaming context through workflow execution data
 			console.log('WebhookHelpers: Setting up streaming context in runData');
 			runData.streamingEnabled = true;
-			runData.streamingResponse = (chunk: string) => {
-				console.log('WebhookHelpers: Streaming chunk:', chunk);
-				res.write(chunk);
-				res.flush();
-			};
-			runData.streamingClose = () => {
-				console.log('WebhookHelpers: Closing streaming response');
-				res.end();
-			};
-			// The streamingResponse function should already be set up in the workflow static data
-			// We don't need to override it here, just pass the flag
+			runData.response = res;
 		} else {
 			console.log('WebhookHelpers: No streaming response found in webhookResultData');
 		}

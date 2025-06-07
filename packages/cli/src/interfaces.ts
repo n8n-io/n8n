@@ -17,7 +17,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-
+import type * as express from 'express';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
 
@@ -108,6 +108,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** HTTPResponse needed for streaming responses */
+	httpResponse?: express.Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;

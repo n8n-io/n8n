@@ -918,6 +918,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendChunk(type: 'begin' | 'end' | 'progress', chunk?: IDataObject | string): void;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -2311,7 +2312,8 @@ export interface IWorkflowExecutionDataProcess {
 	};
 	agentRequest?: AiAgentRequest;
 	streamingEnabled?: boolean;
-	streamingResponse?: (chunk: string) => void;
+	response?: express.Response;
+	streamingResponse?: (chunk: IDataObject) => void;
 	streamingClose?: () => void;
 }
 
@@ -2388,7 +2390,7 @@ export interface IWorkflowExecuteAdditionalData {
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	streamingEnabled?: boolean;
-	streamingResponse?: (chunk: string) => void;
+	streamingResponse?: (chunk: IDataObject) => void;
 	streamingClose?: () => void;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,

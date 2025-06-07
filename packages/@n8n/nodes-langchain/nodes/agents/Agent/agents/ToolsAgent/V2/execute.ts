@@ -51,9 +51,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	// Check if streaming is enabled
 	const enableStreaming = this.getNodeParameter('enableStreaming', 0, false) as boolean;
 
-	// Access streaming context from execution context
-	const isStreamingContext = enableStreaming && (this as any).additionalData?.streamingEnabled;
-
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
 		const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -106,12 +103,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations: options.maxIterations ?? 10,
 			});
 
-			// Invoke the executor with the given input and system message.
-			if (isStreamingContext && (this as any).additionalData?.streamingResponse) {
-				// Handle streaming execution with tool calling support using streamEvents
-				console.log('Streaming context is enabled with tool calling support');
-				const streamingResponseFn = (this as any).additionalData.streamingResponse;
-
+			if (enableStreaming) {
 				const inputData = {
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
@@ -119,38 +111,40 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				};
 
-				// Use streamEvents to get token-by-token streaming while maintaining tool calling
-				const eventStream = executor.streamEvents(inputData, { version: 'v2' });
+				const eventStream = executor.streamEvents(inputData,
+					{
+						version: 'v2',
+						signal: this.getExecutionCancelSignal()
+					},
+				);
 
 				const agentResult: any = {
 					output: ''
 				};
 
+				this.sendChunk('begin');
 				for await (const event of eventStream) {
 					// Stream chat model tokens as they come in
 					if (event.event === 'on_chat_model_stream') {
 						const chunk = event.data?.chunk as AIMessageChunk;
 						if (chunk?.content) {
-							console.log('Chunk:', chunk);
 							const chunkContent = chunk.content;
 							let chunkText = '';
 							if(Array.isArray(chunkContent)) {
-								console.log('Chunk is object:', chunkContent);
 								for(const message of chunkContent) {
-									chunkText = (message as MessageContentText)?.text;
+									chunkText += (message as MessageContentText)?.text;
 								}
 							} else if(typeof(chunkContent) === 'string') {
-								console.log('Chunk is string:', chunkContent);
 								chunkText = chunkContent;
 							}
-							console.log('Streaming token:', chunkText);
-							streamingResponseFn.call(this, chunkText);
+							this.sendChunk('progress', chunkText);
+
 							agentResult.output += chunkText;
 						}
 					}
 				}
 
-				console.log("Final result data", agentResult);
+				this.sendChunk('end');
 				return agentResult;
 			} else {
 				// Handle regular execution
@@ -184,14 +178,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			}
 			const response = result.value;
 			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser && !isStreamingContext) {
+			if (memory && outputParser) {
 				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
 					response.output as string,
 				);
 				response.output = parsedOutput?.output ?? parsedOutput;
 			}
 
-			console.log("Setting output value", response);
 			// Omit internal keys before returning the result.
 			const itemResult = {
 				json: omit(

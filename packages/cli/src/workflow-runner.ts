@@ -278,6 +278,14 @@ export class WorkflowRunner {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
 			});
 
+			if(data.streamingEnabled) {
+				console.log('Add streaming lifecycleHooks');
+				lifecycleHooks.addHandler('sendChunk', (chunk) => {
+					data.response?.write(JSON.stringify(chunk)+'\n');
+					data.response?.flush();
+				})
+			}
+
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
 			});

@@ -116,8 +116,15 @@ export async function sendMessageStreaming(
 			}
 
 			const chunk = decoder.decode(value, { stream: true });
-			console.log('Received raw chunk:', chunk);
-			onChunk(chunk);
+
+			if(chunk.includes('\n')) {
+				const decoded = JSON.parse(chunk.substring(0, chunk.indexOf('\n')));
+				console.log('Received raw chunk:', chunk);
+				if(decoded?.type === 'progress'){
+					onChunk(decoded?.output);
+				}
+				buffer += chunk.substring(chunk.indexOf('\n'))
+			}
 
 			// Try to process complete JSON objects immediately
 		}

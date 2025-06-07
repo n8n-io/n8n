@@ -46,6 +46,11 @@ export type ExecutionLifecyleHookHandlers = {
 		(this: ExecutionLifecycleHooks, response: IExecuteResponsePromiseData) => Promise<void> | void
 	>;
 
+	/** Used by trigger and webhook nodes to send chunks to a streaming response */
+	sendChunk: Array<
+		(this: ExecutionLifecycleHooks, chunk: IDataObject) => Promise<void> | void
+	>;
+
 	/**
 	 * Executed after a node fetches data
 	 * - For a webhook node, after the node had been run.
@@ -54,6 +59,7 @@ s	 */
 	nodeFetchedData: Array<
 		(this: ExecutionLifecycleHooks, workflowId: string, node: INode) => Promise<void> | void
 	>;
+
 };
 
 export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
@@ -84,6 +90,7 @@ export class ExecutionLifecycleHooks {
 		sendResponse: [],
 		workflowExecuteAfter: [],
 		workflowExecuteBefore: [],
+		sendChunk: [],
 	};
 
 	constructor(

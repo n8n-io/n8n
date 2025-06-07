@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute, Logger } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	IDataObject,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -24,6 +25,7 @@ import type {
 	JobResult,
 	RespondToWebhookMessage,
 	RunningJob,
+    SendChunkMessage,
 } from './scaling.types';
 
 /**
@@ -137,6 +139,17 @@ export class JobProcessor {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
+		lifecycleHooks.addHandler('sendChunk', async (chunk: IDataObject): Promise<void> => {
+			const msg: SendChunkMessage = {
+				kind: 'send-chunk',
+				executionId,
+				chunkText: chunk,
+				workerId: this.instanceSettings.hostId,
+			}
+
+			await job.progress(msg);
+		});
+
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
@@ -144,6 +157,7 @@ export class JobProcessor {
 				response: this.encodeWebhookResponse(response),
 				workerId: this.instanceSettings.hostId,
 			};
+
 
 			await job.progress(msg);
 		});

@@ -1,6 +1,6 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
-import type { ExecutionError, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type { ExecutionError, IDataObject, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 export type JobQueue = Bull.Queue<JobData>;
@@ -34,7 +34,15 @@ export type JobMessage =
 	| RespondToWebhookMessage
 	| JobFinishedMessage
 	| JobFailedMessage
-	| AbortJobMessage;
+	| AbortJobMessage
+	| SendChunkMessage;
+
+export type SendChunkMessage = {
+	kind: 'send-chunk';
+	executionId: string;
+	chunkText: IDataObject;
+	workerId: string;
+}
 
 /** Message sent by worker to main to respond to a webhook. */
 export type RespondToWebhookMessage = {

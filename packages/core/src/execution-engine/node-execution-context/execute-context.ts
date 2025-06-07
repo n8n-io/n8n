@@ -2,6 +2,7 @@ import type {
 	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -198,6 +199,20 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
 		await this.additionalData.hooks?.runHook('sendResponse', [response]);
+	}
+
+	async sendChunk(type: 'begin' | 'end' | 'progress', chunk?: IDataObject | string): Promise<void> {
+		const metaData = {
+			node: this.getNode().name,
+			timestamp: Date.now(),
+		}
+
+		const message = {
+			type,
+			output: chunk ?? undefined,
+			metaData
+		}
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */

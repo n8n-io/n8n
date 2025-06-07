@@ -8,6 +8,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
+    IDataObject,
 } from 'n8n-workflow';
 import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
@@ -97,6 +98,7 @@ export class ActiveExecutions {
 			postExecutePromise,
 			status: executionStatus,
 			responsePromise: resumingExecution?.responsePromise,
+			httpResponse: executionData.response ?? undefined,
 		};
 		this.activeExecutions[executionId] = execution;
 
@@ -142,6 +144,15 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
+	sendChunk(executionId: string, chunkText: IDataObject):void {
+		const execution = this.activeExecutions[executionId];
+		if(execution.httpResponse) {
+			console.log('Sending chunk from lifecycle hook', chunkText);
+			execution?.httpResponse.write(JSON.stringify(chunkText)+'\n');
+			execution?.httpResponse.flush();
+		}
+	}
+
 	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string): void {
 		const execution = this.activeExecutions[executionId];
@@ -167,11 +178,11 @@ export class ActiveExecutions {
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
 
-		// Close streaming response if it exists
-		if (execution.executionData.streamingClose) {
+		// Close response if it exists (for streaming responses)
+		if (execution.executionData.response) {
 			try {
-				this.logger.debug('Closing streaming response', { executionId });
-				execution.executionData.streamingClose();
+				this.logger.debug('Closing response for execution', { executionId });
+				execution.executionData.response.end();
 			} catch (error) {
 				this.logger.error('Error closing streaming response', { executionId, error });
 			}

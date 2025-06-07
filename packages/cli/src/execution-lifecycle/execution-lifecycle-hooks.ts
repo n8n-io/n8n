@@ -6,6 +6,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+    IDataObject,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -420,6 +421,14 @@ export function getLifecycleHooksForScalingMain(
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
+
+	hooks.addHandler('sendChunk', async (chunk: IDataObject) => {
+		if(data.response) {
+			console.log('Sending chunk', chunk);
+			data.response.write(JSON.stringify(chunk));
+			data.response.flush();
+		}
+	});
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 		// Don't delete executions before they are finished
