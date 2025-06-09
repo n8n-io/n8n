@@ -212,27 +212,51 @@ export class PasswordResetController {
 	}
 
 	/**
-	 * Find the monorepo root by looking for a known file like pnpm-workspace.yaml
+	 * Find the n8n executable path, handling both development and production environments
 	 */
-	private findProjectRoot(startDir: string): string {
-		let dir = startDir;
-		while (!fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
-			const parent = path.dirname(dir);
-			if (parent === dir) break; // Reached filesystem root
-			dir = parent;
+	private findN8nExecutable(): string {
+		// First try the development environment path
+		const devPath = path.resolve(
+			__dirname,
+			'..',
+			'..',
+			'..',
+			'..',
+			'packages',
+			'cli',
+			'bin',
+			'n8n',
+		);
+		if (fs.existsSync(devPath)) {
+			return devPath;
 		}
-		return dir;
+
+		// Then try the production path
+		const prodPath = path.resolve(__dirname, '..', '..', 'bin', 'n8n');
+		if (fs.existsSync(prodPath)) {
+			return prodPath;
+		}
+
+		// Finally try the global installation path
+		const globalPath =
+			process.platform === 'win32' ? 'C:\\Program Files\\n8n\\bin\\n8n.cmd' : '/usr/local/bin/n8n';
+
+		if (fs.existsSync(globalPath)) {
+			return globalPath;
+		}
+
+		throw new Error('Could not find n8n executable in any of the expected locations');
 	}
 
-	@Post('/reset-n8n', { skipAuth: true })
+	@Post('/reset-n8n')
 	async resetN8n() {
 		try {
-			// Dynamically find the monorepo root
-			const projectRoot = this.findProjectRoot(__dirname);
-			const n8nPath = path.resolve(projectRoot, 'packages', 'cli', 'bin', 'n8n');
+			const n8nPath = this.findN8nExecutable();
 
-			if (!fs.existsSync(n8nPath)) {
-				throw new Error(`n8n executable not found at ${n8nPath}`);
+			// Make sure the file is executable
+			const stats = fs.statSync(n8nPath);
+			if (!(stats.mode & fs.constants.S_IXUSR)) {
+				throw new Error(`n8n executable at ${n8nPath} is not executable`);
 			}
 
 			// On Windows, use `.cmd` if needed
@@ -241,12 +265,12 @@ export class PasswordResetController {
 					? `"${n8nPath}.cmd" user-management:reset`
 					: `${n8nPath} user-management:reset`;
 
-			const { stdout, stderr } = await execAsync(cmd);
+			const { stderr } = await execAsync(cmd);
 			if (stderr) {
 				throw new Error(stderr);
 			}
 
-			return { success: true, output: stdout.trim() };
+			return { success: true };
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new InternalServerError(`Failed to reset n8n: ${error.message}`);

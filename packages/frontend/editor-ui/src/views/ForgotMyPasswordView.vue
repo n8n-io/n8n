@@ -6,11 +6,9 @@ import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const router = useRouter();
 
 const toast = useToast();
 const locale = useI18n();
@@ -144,4 +142,34 @@ const onSubmit = async (values: { [key: string]: string }) => {
 
 <template>
 	<AuthView :form="formConfig" :form-loading="loading || resetting" @submit="onSubmit" />
+	<div>
+		<el-button
+			v-if="settingsStore.settings.userManagement?.showSetupOnFirstLoad"
+			type="primary"
+			:loading="resetting"
+			@click="handleResetN8n"
+			data-test-id="reset-n8n-button"
+		>
+			{{ locale.baseText('forgotPassword.resetN8nButton') }}
+		</el-button>
+		<el-dialog
+			v-model="showResetConfirm"
+			:title="locale.baseText('forgotPassword.resetN8nWarning')"
+			data-test-id="reset-n8n-confirm-dialog"
+		>
+			<template #footer>
+				<el-button @click="showResetConfirm = false">
+					{{ locale.baseText('generic.cancel') }}
+				</el-button>
+				<el-button
+					type="primary"
+					@click="confirmReset"
+					:loading="resetting"
+					data-test-id="reset-n8n-confirm"
+				>
+					{{ locale.baseText('forgotPassword.resetN8nButton') }}
+				</el-button>
+			</template>
+		</el-dialog>
+	</div>
 </template>
