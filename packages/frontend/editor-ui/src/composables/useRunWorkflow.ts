@@ -549,7 +549,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
-		void runWorkflow({ triggerNode });
+		void runWorkflow({
+			triggerNode: triggerNode ?? workflowsStore.selectedTriggerNodeName,
+		});
 	}
 
 	return {

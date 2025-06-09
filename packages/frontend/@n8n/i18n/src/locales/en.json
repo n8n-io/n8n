@@ -1479,6 +1479,7 @@
 	"nodeView.runButtonText.executeWorkflow": "Execute workflow",
 	"nodeView.runButtonText.executingWorkflow": "Executing workflow",
 	"nodeView.runButtonText.waitingForTriggerEvent": "Waiting for trigger event",
+	"nodeView.runButtonText.from": "from {nodeName}",
 	"nodeView.showError.workflowError": "Workflow execution had an error",
 	"nodeView.showError.getWorkflowDataFromUrl.title": "Problem loading workflow",
 	"nodeView.showError.importWorkflowData.title": "Problem importing workflow",
