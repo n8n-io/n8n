@@ -211,28 +211,42 @@ export class PasswordResetController {
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
 	}
 
+	/**
+	 * Find the monorepo root by looking for a known file like pnpm-workspace.yaml
+	 */
+	private findProjectRoot(startDir: string): string {
+		let dir = startDir;
+		while (!fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+			const parent = path.dirname(dir);
+			if (parent === dir) break; // Reached filesystem root
+			dir = parent;
+		}
+		return dir;
+	}
+
 	@Post('/reset-n8n', { skipAuth: true })
 	async resetN8n() {
 		try {
-			// Get the absolute path to the n8n executable
-			const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
+			// Dynamically find the monorepo root
+			const projectRoot = this.findProjectRoot(__dirname);
 			const n8nPath = path.resolve(projectRoot, 'packages', 'cli', 'bin', 'n8n');
 
 			if (!fs.existsSync(n8nPath)) {
 				throw new Error(`n8n executable not found at ${n8nPath}`);
 			}
 
-			// Make sure the file is executable
-			const stats = fs.statSync(n8nPath);
-			if (!(stats.mode & fs.constants.S_IXUSR)) {
-				throw new Error(`n8n executable at ${n8nPath} is not executable`);
-			}
+			// On Windows, use `.cmd` if needed
+			const cmd =
+				process.platform === 'win32'
+					? `"${n8nPath}.cmd" user-management:reset`
+					: `${n8nPath} user-management:reset`;
 
-			const { stdout, stderr } = await execAsync(`${n8nPath} user-management:reset`);
+			const { stdout, stderr } = await execAsync(cmd);
 			if (stderr) {
 				throw new Error(stderr);
 			}
-			return { success: true };
+
+			return { success: true, output: stdout.trim() };
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new InternalServerError(`Failed to reset n8n: ${error.message}`);
