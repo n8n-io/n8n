@@ -20,9 +20,9 @@ import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
+import { HttpProxyAgent } from 'http-proxy-agent';
 import { type AgentOptions, Agent as HttpsAgent } from 'https';
 import { Agent as HttpAgent } from 'https';
-import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -241,8 +241,12 @@ const getBeforeRedirectFn =
 			targetUrl: redirectedRequest.href,
 		});
 
-		applyAgentToAxiosConfig(redirectedRequest, redirectAgent);
 		redirectedRequest.agent = redirectAgent.agent;
+		if (redirectAgent.protocol === 'http') {
+			redirectedRequest.agents.http = redirectAgent.agent;
+		} else {
+			redirectedRequest.agents.https = redirectAgent.agent;
+		}
 
 		if (axiosConfig.headers?.Authorization) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access

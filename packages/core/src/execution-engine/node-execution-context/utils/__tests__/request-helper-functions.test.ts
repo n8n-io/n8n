@@ -1,6 +1,6 @@
 import FormData from 'form-data';
-import { Agent } from 'https';
 import { HttpProxyAgent } from 'http-proxy-agent';
+import { Agent } from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -31,7 +31,7 @@ import {
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
-		const baseUrl = 'http://example.de';
+		const baseUrl = 'https://example.de';
 		const workflow = mock<Workflow>();
 		const hooks = mock<ExecutionLifecycleHooks>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
@@ -69,7 +69,7 @@ describe('Request Helper Functions', () => {
 				expect(error.options).toMatchObject({
 					headers: { Accept: '*/*' },
 					method: 'get',
-					url: 'http://example.de/test',
+					url: 'https://example.de/test',
 				});
 				expect(error.config).toBeUndefined();
 				expect(error.message).toEqual('403 - "Forbidden"');
@@ -168,7 +168,7 @@ describe('Request Helper Functions', () => {
 	});
 
 	describe('invokeAxios', () => {
-		const baseUrl = 'http://example.de';
+		const baseUrl = 'https://example.de';
 
 		beforeEach(() => {
 			nock.cleanAll();
@@ -349,7 +349,11 @@ describe('Request Helper Functions', () => {
 				const axiosOptions = await parseRequestObject(requestObject);
 				expect(axiosOptions.beforeRedirect).toBeDefined;
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
+				const redirectOptions: Record<string, any> = {
+					agents: {},
+					hostname: 'example.de',
+					href: requestObject.uri,
+				};
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
 				expect((redirectOptions.agent as Agent).options).toEqual({
@@ -873,9 +877,10 @@ describe('Request Helper Functions', () => {
 		const proxyUrlHttp = 'http://proxy-for-http.com:8080/';
 
 		test('should return a regular agent when no proxy is set', async () => {
-			const { agent } = getAgentWithProxy({
+			const { agent, protocol } = getAgentWithProxy({
 				targetUrl: baseUrlHttps,
 			});
+			expect(protocol).toEqual('https');
 			expect(agent).toBeInstanceOf(Agent);
 		});
 
