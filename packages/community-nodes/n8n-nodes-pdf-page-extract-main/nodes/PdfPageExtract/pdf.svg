@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>PDF Icon</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="pdf-icon" fill="#FF0000" fill-rule="nonzero">
+            <path d="M20,2 L8,2 C6.9,2 6,2.9 6,4 L6,16 C6,17.1 6.9,18 8,18 L20,18 C21.1,18 22,17.1 22,16 L22,4 C22,2.9 21.1,2 20,2 Z M20,16 L8,16 L8,4 L20,4 L20,16 Z M4,6 L2,6 L2,20 C2,21.1 2.9,22 4,22 L18,22 L18,20 L4,20 L4,6 Z M16,12 L16,9 L13,9 L13,12 L10,12 L10,14 L13,14 L13,17 L16,17 L16,14 L19,14 L19,12 L16,12 Z" id="Shape"></path>
+        </g>
+    </g>
+</svg>
