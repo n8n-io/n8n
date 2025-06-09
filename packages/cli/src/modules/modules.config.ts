@@ -1,18 +1,16 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
-import type { DatabaseConfig } from '@n8n/config/src/configs/database.config';
 import type { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 export type ModulePreInitContext = {
 	instance: InstanceSettings;
-	database: DatabaseConfig;
 };
 
 export type ModulePreInit = {
 	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
 };
 
-const moduleNames = ['insights'] as const;
+const moduleNames = ['insights', 'external-secrets.ee'] as const;
 export type ModuleName = (typeof moduleNames)[number];
 
 class Modules extends CommaSeparatedStringArray<ModuleName> {
@@ -38,7 +36,7 @@ export class ModulesConfig {
 	disabledModules: Modules = [];
 
 	// Default modules are always enabled unless explicitly disabled
-	private readonly defaultModules: ModuleName[] = ['insights'];
+	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets.ee'];
 
 	// Loaded modules are the ones that have been loaded so far by the instance
 	readonly loadedModules = new Set<ModuleName>();

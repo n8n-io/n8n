@@ -24,7 +24,35 @@
                 "type": "string"
             }
         },
+        "ccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "changeKey": {
+            "type": "string"
+        },
         "conversationId": {
+            "type": "string"
+        },
+        "conversationIndex": {
+            "type": "string"
+        },
+        "createdDateTime": {
             "type": "string"
         },
         "flag": {
@@ -32,6 +60,22 @@
             "properties": {
                 "flagStatus": {
                     "type": "string"
+                }
+            }
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -44,11 +88,26 @@
         "importance": {
             "type": "string"
         },
+        "inferenceClassification": {
+            "type": "string"
+        },
+        "internetMessageId": {
+            "type": "string"
+        },
         "isDraft": {
             "type": "boolean"
         },
         "isRead": {
             "type": "boolean"
+        },
+        "isReadReceiptRequested": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "parentFolderId": {
+            "type": "string"
         },
         "receivedDateTime": {
             "type": "string"
@@ -88,9 +147,34 @@
                 }
             }
         },
+        "sentDateTime": {
+            "type": "string"
+        },
         "subject": {
+            "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "webLink": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

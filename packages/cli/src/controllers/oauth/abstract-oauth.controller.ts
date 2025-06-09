@@ -1,23 +1,23 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials, Logger } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { AuthenticatedRequest, OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
-import type { ICredentialsDb } from '@/types-db';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 type CsrfStateParam = {

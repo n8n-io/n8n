@@ -1,0 +1,299 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1678116858375,
+            "executionTime": 2,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar1": [
+          {
+            "startTime": 1678116858378,
+            "executionTime": 930,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "calendar#event",
+                      "etag": "\"3356233718144000\"",
+                      "id": "47hbcbv038ub5d4rvhu6adpl7c",
+                      "status": "confirmed",
+                      "htmlLink": "https://www.google.com/calendar/event?eid=NDdoYmNidjAzOHViNWQ0cnZodTZhZHBsN2Mgbm9kZThxYUBt",
+                      "created": "2023-03-06T15:34:19.000Z",
+                      "updated": "2023-03-06T15:34:19.072Z",
+                      "description": "Test",
+                      "creator": {
+                        "object": true
+                      },
+                      "organizer": {
+                        "object": true
+                      },
+                      "start": {
+                        "object": true
+                      },
+                      "end": {
+                        "object": true
+                      },
+                      "iCalUID": "47hbcbv038ub5d4rvhu6adpl7c@google.com",
+                      "sequence": 0,
+                      "reminders": {
+                        "object": true
+                      },
+                      "eventType": "default"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar": [
+          {
+            "startTime": 1678116859308,
+            "executionTime": 364,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "available": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar3": [
+          {
+            "startTime": 1678116859673,
+            "executionTime": 368,
+            "source": [
+              {
+                "previousNode": "Google Calendar1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "calendar#event",
+                      "etag": "\"3228659471956000\"",
+                      "id": "svnpd5hm5nifk9sgl76vc5o0bk",
+                      "status": "confirmed",
+                      "htmlLink": "https://www.google.com/calendar/event?eid=c3ZucGQ1aG01bmlmazlzZ2w3NnZjNW8wYmsgbm9kZThxYUBt",
+                      "created": "2021-02-26T08:55:33.000Z",
+                      "updated": "2021-02-26T08:55:35.978Z",
+                      "description": "Test",
+                      "colorId": "7",
+                      "creator": {
+                        "object": true
+                      },
+                      "organizer": {
+                        "object": true
+                      },
+                      "start": {
+                        "object": true
+                      },
+                      "end": {
+                        "object": true
+                      },
+                      "iCalUID": "svnpd5hm5nifk9sgl76vc5o0bk@google.com",
+                      "sequence": 0,
+                      "reminders": {
+                        "object": true
+                      },
+                      "eventType": "default"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar2": [
+          {
+            "startTime": 1678116860041,
+            "executionTime": 351,
+            "source": [
+              {
+                "previousNode": "Google Calendar3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "calendar#event",
+                      "etag": "\"3356233718144000\"",
+                      "id": "47hbcbv038ub5d4rvhu6adpl7c",
+                      "status": "confirmed",
+                      "htmlLink": "https://www.google.com/calendar/event?eid=NDdoYmNidjAzOHViNWQ0cnZodTZhZHBsN2Mgbm9kZThxYUBt",
+                      "created": "2023-03-06T15:34:19.000Z",
+                      "updated": "2023-03-06T15:34:19.072Z",
+                      "description": "Test",
+                      "creator": {
+                        "object": true
+                      },
+                      "organizer": {
+                        "object": true
+                      },
+                      "start": {
+                        "object": true
+                      },
+                      "end": {
+                        "object": true
+                      },
+                      "iCalUID": "47hbcbv038ub5d4rvhu6adpl7c@google.com",
+                      "sequence": 0,
+                      "reminders": {
+                        "object": true
+                      },
+                      "eventType": "default"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar4": [
+          {
+            "startTime": 1678116860392,
+            "executionTime": 639,
+            "source": [
+              {
+                "previousNode": "Google Calendar2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "calendar#event",
+                      "etag": "\"3356233721642000\"",
+                      "id": "47hbcbv038ub5d4rvhu6adpl7c",
+                      "status": "confirmed",
+                      "htmlLink": "https://www.google.com/calendar/event?eid=NDdoYmNidjAzOHViNWQ0cnZodTZhZHBsN2Mgbm9kZThxYUBt",
+                      "created": "2023-03-06T15:34:19.000Z",
+                      "updated": "2023-03-06T15:34:20.821Z",
+                      "description": "Test",
+                      "colorId": "7",
+                      "creator": {
+                        "object": true
+                      },
+                      "organizer": {
+                        "object": true
+                      },
+                      "start": {
+                        "object": true
+                      },
+                      "end": {
+                        "object": true
+                      },
+                      "iCalUID": "47hbcbv038ub5d4rvhu6adpl7c@google.com",
+                      "sequence": 0,
+                      "reminders": {
+                        "object": true
+                      },
+                      "eventType": "default"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Calendar5": [
+          {
+            "startTime": 1678116861031,
+            "executionTime": 509,
+            "source": [
+              {
+                "previousNode": "Google Calendar4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Google Calendar5"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-03-06T15:34:18.372Z",
+  "stoppedAt": "2023-03-06T15:34:21.540Z",
+  "status": "running",
+  "finished": true
+}

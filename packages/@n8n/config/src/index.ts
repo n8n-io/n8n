@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -30,6 +30,8 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export { DatabaseConfig } from './configs/database.config';
+export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
@@ -94,7 +96,7 @@ export class GlobalConfig {
 
 	/** IP address n8n should listen on */
 	@Env('N8N_LISTEN_ADDRESS')
-	listen_address: string = '0.0.0.0';
+	listen_address: string = '::';
 
 	/** HTTP Protocol via which n8n can be reached */
 	@Env('N8N_PROTOCOL', protocolSchema)

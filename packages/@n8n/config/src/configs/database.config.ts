@@ -84,6 +84,10 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
 	connectionTimeoutMs: number = 20_000;
 
+	/** Postgres idle connection timeout (ms) */
+	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
+	idleTimeoutMs: number = 30_000;
+
 	@Nested
 	ssl: PostgresSSLConfig;
 }
@@ -145,9 +149,24 @@ export class DatabaseConfig {
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
 
+	/**
+	 * Is true if the default sqlite data source of TypeORM is used, as opposed
+	 * to any other (e.g. postgres)
+	 * This also returns false if n8n's new pooled sqlite data source is used.
+	 */
+	get isLegacySqlite() {
+		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
+	}
+
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
 	tablePrefix: string = '';
+
+	/**
+	 * The interval in seconds to ping the database to check if the connection is still alive.
+	 */
+	@Env('DB_PING_INTERVAL_SECONDS')
+	pingIntervalSeconds: number = 2;
 
 	@Nested
 	logging: LoggingConfig;

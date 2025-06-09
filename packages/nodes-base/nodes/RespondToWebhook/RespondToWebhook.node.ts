@@ -22,6 +22,7 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { configuredOutputs } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
@@ -80,13 +81,13 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${configuredOutputs})($nodeVersion, $parameter)}}`,
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -99,6 +100,16 @@ export class RespondToWebhook implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Enable Response Output Branch',
+				name: 'enableResponseOutput',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to provide an additional output branch with the response sent to the webhook',
+				isNodeSetting: true,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
+			},
 			{
 				displayName:
 					'Verify that the "Webhook" node\'s "Respond" parameter is set to "Using Respond to Webhook Node". <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details',
@@ -318,6 +329,8 @@ export class RespondToWebhook implements INodeType {
 			WAIT_NODE_TYPE,
 		];
 
+		let response: IN8nHttpFullResponse;
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
@@ -445,7 +458,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const response: IN8nHttpFullResponse = {
+			response = {
 				body: responseBody,
 				headers,
 				statusCode,
@@ -463,6 +476,12 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			throw error;
+		}
+
+		if (nodeVersion === 1.3) {
+			return [items, [{ json: { response } }]];
+		} else if (nodeVersion >= 1.4 && this.getNodeParameter('enableResponseOutput', 0, false)) {
+			return [items, [{ json: { response } }]];
 		}
 
 		return [items];

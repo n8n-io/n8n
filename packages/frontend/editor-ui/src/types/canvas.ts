@@ -175,7 +175,7 @@ export type CanvasEventBusEvents = {
 	fitView: never;
 	'saved:workflow': never;
 	'open:execution': IExecutionResponse;
-	'nodes:select': { ids: string[] };
+	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;
@@ -228,4 +228,11 @@ export type BoundingBox = {
 	y: number;
 	width: number;
 	height: number;
+};
+
+export type ViewportBoundaries = {
+	xMin: number;
+	xMax: number;
+	yMin: number;
+	yMax: number;
 };

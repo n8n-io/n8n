@@ -1,7 +1,7 @@
 import type { RunWorkflowChatPayload } from '@/components/CanvasChat/composables/useChatMessaging';
 import { useChatMessaging } from '@/components/CanvasChat/composables/useChatMessaging';
 import { useChatTrigger } from '@/components/CanvasChat/composables/useChatTrigger';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';
@@ -16,8 +16,8 @@ import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { LOGS_PANEL_STATE } from '../types/logs';
 import { restoreChatHistory } from '@/components/CanvasChat/utils';
+import { useLogsStore } from '@/stores/logs.store';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -34,6 +34,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const logsStore = useLogsStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const { runWorkflow } = useRunWorkflow({ router });
@@ -42,7 +43,6 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-	const logsPanelState = computed(() => workflowsStore.logsPanelState);
 	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 	// Initialize features with injected dependencies
@@ -168,7 +168,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
 
-		if (logsPanelState.value !== LOGS_PANEL_STATE.CLOSED) {
+		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
 		}
 	}

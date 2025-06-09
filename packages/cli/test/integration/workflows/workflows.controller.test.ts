@@ -1,3 +1,10 @@
+import type { User } from '@n8n/db';
+import type { ListQueryDb } from '@n8n/db';
+import type { WorkflowFolderUnionFull } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -5,15 +12,8 @@ import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ListQueryDb } from '@/types-db';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -54,7 +54,6 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -62,13 +61,12 @@ beforeEach(async () => {
 		'WorkflowHistory',
 		'ProjectRelation',
 		'Folder',
-		'Workflow',
-		'Tag',
+		'WorkflowEntity',
+		'TagEntity',
 		'Project',
 		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
-	projectService = Container.get(ProjectService);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -288,7 +286,10 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await projectService.addUser(project.id, owner.id, 'project:admin');
+		await Container.get(ProjectService).addUser(project.id, {
+			userId: owner.id,
+			role: 'project:admin',
+		});
 
 		//
 		// ACT
@@ -362,7 +363,10 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await projectService.addUser(project.id, member.id, 'project:viewer');
+		await Container.get(ProjectService).addUser(project.id, {
+			userId: member.id,
+			role: 'project:viewer',
+		});
 
 		//
 		// ACT
@@ -2328,9 +2332,197 @@ describe('POST /workflows/:workflowId/run', () => {
 	});
 });
 
-describe('DELETE /workflows/:workflowId', () => {
-	test('deletes a workflow owned by the user', async () => {
+describe('POST /workflows/:workflowId/archive', () => {
+	test('should archive workflow', async () => {
 		const workflow = await createWorkflow({}, owner);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(versionId).not.toBe(workflow.versionId);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
+	test('should deactivate active workflow on archive', async () => {
+		const workflow = await createWorkflow({ active: true }, owner);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId, active },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(active).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
+	test('should not archive workflow that is already archived', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, owner);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(400);
+
+		expect(response.body.message).toBe('Workflow is already archived.');
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
+	test('should not archive missing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/404/archive').send().expect(403);
+		expect(response.body.message).toBe(
+			'Could not archive the workflow - workflow was not found in your projects',
+		);
+	});
+
+	test('should not archive a workflow that is not owned by the user', async () => {
+		const workflow = await createWorkflow({ isArchived: false }, member);
+
+		await testServer
+			.authAgentFor(anotherMember)
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(403);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).not.toBeNull();
+		expect(workflowsInDb!.isArchived).toBe(false);
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test("should allow the owner to archive workflows they don't own", async () => {
+		const workflow = await createWorkflow({ isArchived: false }, member);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(versionId).not.toBe(workflow.versionId);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).not.toBeNull();
+		expect(workflowsInDb!.isArchived).toBe(true);
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+});
+
+describe('POST /workflows/:workflowId/unarchive', () => {
+	test('should unarchive workflow', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, owner);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(false);
+	});
+
+	test('should not unarchive workflow that is already not archived', async () => {
+		const workflow = await createWorkflow({ isArchived: false }, owner);
+		await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).send().expect(400);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(false);
+	});
+
+	test('should not unarchive missing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/404/unarchive').send().expect(403);
+		expect(response.body.message).toBe(
+			'Could not unarchive the workflow - workflow was not found in your projects',
+		);
+	});
+
+	test('should not unarchive a workflow that is not owned by the user', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, member);
+
+		await testServer
+			.authAgentFor(anotherMember)
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(403);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).not.toBeNull();
+		expect(workflowsInDb!.isArchived).toBe(true);
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test("should allow the owner to unarchive workflows they don't own", async () => {
+		const workflow = await createWorkflow({ isArchived: true }, member);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).not.toBeNull();
+		expect(workflowsInDb!.isArchived).toBe(false);
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+});
+
+describe('DELETE /workflows/:workflowId', () => {
+	test('deletes an archived workflow owned by the user', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, owner);
 
 		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
 
@@ -2343,8 +2535,15 @@ describe('DELETE /workflows/:workflowId', () => {
 		expect(sharedWorkflowsInDb).toHaveLength(0);
 	});
 
-	test('deletes a workflow owned by the user, even if the user is just a member', async () => {
-		const workflow = await createWorkflow({}, member);
+	test('should not delete missing workflow', async () => {
+		const response = await authOwnerAgent.delete('/workflows/404').send().expect(403);
+		expect(response.body.message).toBe(
+			'Could not delete the workflow - workflow was not found in your projects',
+		);
+	});
+
+	test('deletes an archived workflow owned by the user, even if the user is just a member', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, member);
 
 		await testServer.authAgentFor(member).delete(`/workflows/${workflow.id}`).send().expect(200);
 
@@ -2357,8 +2556,23 @@ describe('DELETE /workflows/:workflowId', () => {
 		expect(sharedWorkflowsInDb).toHaveLength(0);
 	});
 
-	test('does not delete a workflow that is not owned by the user', async () => {
-		const workflow = await createWorkflow({}, member);
+	test('does not delete a workflow that is not archived', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(400);
+		expect(response.body.message).toBe('Workflow must be archived before it can be deleted.');
+
+		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowInDb).not.toBeNull();
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test('does not delete an archived workflow that is not owned by the user', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, member);
 
 		await testServer
 			.authAgentFor(anotherMember)
@@ -2375,8 +2589,8 @@ describe('DELETE /workflows/:workflowId', () => {
 		expect(sharedWorkflowsInDb).toHaveLength(1);
 	});
 
-	test("allows the owner to delete workflows they don't own", async () => {
-		const workflow = await createWorkflow({}, member);
+	test("allows the owner to delete archived workflows they don't own", async () => {
+		const workflow = await createWorkflow({ isArchived: true }, member);
 
 		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
 

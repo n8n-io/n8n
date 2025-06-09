@@ -28,6 +28,8 @@ export { ChangePasswordRequestDto } from './password-reset/change-password-reque
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
+export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
+export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -63,6 +65,7 @@ export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
 export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
+export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';

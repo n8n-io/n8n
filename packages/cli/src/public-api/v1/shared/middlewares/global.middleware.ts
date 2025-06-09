@@ -114,7 +114,7 @@ export const validLicenseWithUserQuota = (
 
 export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isFeatureEnabled(feature)) return next();
+		if (Container.get(License).isLicensed(feature)) return next();
 
 		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};

@@ -17,6 +17,7 @@ export const LOG_SCOPES = [
 	'waiting-executions',
 	'task-runner',
 	'insights',
+	'workflow-activation',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -65,6 +66,15 @@ export class LoggingConfig {
 	@Env('N8N_LOG_OUTPUT')
 	outputs: CommaSeparatedStringArray<'console' | 'file'> = ['console'];
 
+	/**
+	 * What format the logs should have.
+	 * `text` is only printing the human readable messages.
+	 * `json` is printing one JSON object per line containing the message, level,
+	 * timestamp and all the metadata.
+	 */
+	@Env('N8N_LOG_FORMAT')
+	format: 'text' | 'json' = 'text';
+
 	@Nested
 	file: FileLoggingConfig;
 
@@ -84,6 +94,8 @@ export class LoggingConfig {
 	 * - `scaling`
 	 * - `waiting-executions`
 	 * - `task-runner`
+	 * - `workflow-activation`
+	 * - `insights`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

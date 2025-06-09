@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import {
@@ -68,13 +68,21 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 <template>
 	<div :class="$style.insights">
 		<ul data-test-id="insights-summary-tabs">
-			<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
-			<template v-else>
-				<li
-					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
-					:key="id"
-					:data-test-id="`insights-summary-tab-${id}`"
-				>
+			<li
+				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+				:key="id"
+				:data-test-id="`insights-summary-tab-${id}`"
+			>
+				<N8nTooltip placement="top" :disabled="!(summaryHasNoData && id === 'total')">
+					<template #content>
+						<i18n-t keypath="insights.banner.noData.tooltip">
+							<template #link>
+								<a :href="i18n.baseText('insights.banner.noData.tooltip.link.url')" target="_blank">
+									{{ i18n.baseText('insights.banner.noData.tooltip.link') }}
+								</a>
+							</template>
+						</i18n-t>
+					</template>
 					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
 						<strong>
 							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
@@ -87,15 +95,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						<small :class="$style.days">
 							{{ TIME_RANGE_LABELS[timeRange] }}
 						</small>
-						<span v-if="summaryHasNoData" :class="$style.noData">
-							<N8nTooltip placement="bottom">
-								<template #content>
-									{{ i18n.baseText('insights.banner.noData.tooltip') }}
-								</template>
-								<em>{{ i18n.baseText('insights.banner.noData') }}</em>
-							</N8nTooltip>
-						</span>
-						<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+						<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 							<em>--</em>
 							<small>
 								<N8nTooltip placement="bottom">
@@ -130,8 +130,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 							</small>
 						</span>
 					</router-link>
-				</li>
-			</template>
+				</N8nTooltip>
+			</li>
 		</ul>
 	</div>
 </template>
@@ -208,6 +208,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				&.empty {
 					em {
 						color: var(--color-text-lighter);
+						body[data-theme='dark'] & {
+							color: var(--color-text-light);
+						}
 					}
 					small {
 						padding: 0;

@@ -9,9 +9,9 @@ import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
 import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import { loadLanguage } from '@/plugins/i18n';
+import { loadLanguage } from '@n8n/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -19,6 +19,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
+import { locale } from '@n8n/design-system';
+import axios from 'axios';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -79,9 +81,15 @@ watch(route, (r) => {
 	);
 });
 
-watch(defaultLocale, (newLocale) => {
-	void loadLanguage(newLocale);
-});
+watch(
+	defaultLocale,
+	(newLocale) => {
+		void loadLanguage(newLocale);
+		void locale.use(newLocale);
+		axios.defaults.headers.common['Accept-Language'] = newLocale;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

@@ -9,6 +9,8 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -248,7 +250,9 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
-		const configuration: ClientOptions = {};
+		const configuration: ClientOptions = {
+			httpAgent: getHttpProxyAgent(),
+		};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		}

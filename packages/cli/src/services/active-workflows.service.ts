@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import type { User } from '@/databases/entities/user';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -28,7 +28,7 @@ export class ActiveWorkflowsService {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
 
-		const hasFullAccess = user.hasGlobalScope('workflow:list');
+		const hasFullAccess = hasGlobalScope(user, 'workflow:list');
 		if (hasFullAccess) {
 			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 		}

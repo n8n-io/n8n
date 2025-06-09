@@ -1,3 +1,5 @@
+import { LicenseState } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -9,7 +11,6 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
-import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
@@ -125,6 +126,8 @@ export const setupTestServer = ({
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
+		testServer.license.mockLicenseState(Container.get(LicenseState));
+
 		if (enabledFeatures) {
 			testServer.license.setDefaults({
 				features: enabledFeatures,
@@ -247,10 +250,6 @@ export const setupTestServer = ({
 						await import('@/controllers/tags.controller');
 						break;
 
-					case 'externalSecrets':
-						await import('@/external-secrets.ee/external-secrets.controller.ee');
-						break;
-
 					case 'workflowHistory':
 						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
@@ -280,7 +279,6 @@ export const setupTestServer = ({
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation.ee/test-definitions.controller.ee');
 						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
 
@@ -290,8 +288,11 @@ export const setupTestServer = ({
 					case 'folder':
 						await import('@/controllers/folder.controller');
 
+					case 'externalSecrets':
+						await import('@/modules/external-secrets.ee/external-secrets.ee.module');
+
 					case 'insights':
-						await import('@/modules/insights/insights.controller');
+						await import('@/modules/insights/insights.module');
 				}
 			}
 

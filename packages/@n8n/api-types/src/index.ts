@@ -5,20 +5,20 @@ export type * from './scaling';
 export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
+export type * from './community-node-types';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
 
-export type { BannerName } from './schemas/bannerName.schema';
-export { ViewableMimeTypes } from './schemas/binaryData.schema';
+export type { BannerName } from './schemas/banner-name.schema';
+export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
 
 export type {
 	ProjectType,
 	ProjectIcon,
-	ProjectRole,
 	ProjectRelation,
 } from './schemas/project.schema';
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -69,7 +69,8 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 
 			if (props.modelValue && item.value === props.modelValue) {
 				acc.selected = item;
-			} else {
+			} else if (!item.isArchived) {
+				// Archived items are not shown in the list unless selected
 				acc.notSelected.push(item);
 			}
 
@@ -127,7 +128,8 @@ function openUrl(event: MouseEvent, url: string) {
 
 function onKeyDown(e: KeyboardEvent) {
 	if (e.key === 'ArrowDown') {
-		if (hoverIndex.value < sortedResources.value.length - 1) {
+		// hoverIndex 0 is reserved for the "add new resource" item
+		if (hoverIndex.value < sortedResources.value.length) {
 			hoverIndex.value++;
 
 			if (resultsContainerRef.value && itemsRef.value.length === 1) {
@@ -154,7 +156,12 @@ function onKeyDown(e: KeyboardEvent) {
 			}
 		}
 	} else if (e.key === 'Enter') {
-		const selected = sortedResources.value[hoverIndex.value]?.value;
+		if (hoverIndex.value === 0 && props.allowNewResources.label) {
+			emit('addResourceClick');
+			return;
+		}
+
+		const selected = sortedResources.value[hoverIndex.value - 1]?.value;
 
 		// Selected resource can be empty when loading or empty results
 		if (selected) {
@@ -224,7 +231,11 @@ defineExpose({ isWithinDropdown });
 				ref="searchRef"
 				:model-value="filter"
 				:clearable="true"
-				:placeholder="i18n.baseText('resourceLocator.search.placeholder')"
+				:placeholder="
+					allowNewResources.label
+						? i18n.baseText('resourceLocator.placeholder.searchOrCreate')
+						: i18n.baseText('resourceLocator.placeholder.search')
+				"
 				data-test-id="rlc-search"
 				@update:model-value="onFilterInput"
 			>
@@ -252,7 +263,7 @@ defineExpose({ isWithinDropdown });
 				v-if="allowNewResources.label"
 				key="addResourceKey"
 				ref="itemsRef"
-				data-test-id="rlc-item"
+				data-test-id="rlc-item-add-resource"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.hovering]: hoverIndex === 0,
@@ -282,6 +293,11 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
+					<span v-if="result.isArchived">
+						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+							{{ i18n.baseText('workflows.item.archived') }}
+						</N8nBadge>
+					</span>
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon

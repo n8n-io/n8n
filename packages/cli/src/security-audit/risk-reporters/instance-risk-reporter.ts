@@ -1,12 +1,13 @@
+import { inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import config from '@/config';
-import { inDevelopment, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,

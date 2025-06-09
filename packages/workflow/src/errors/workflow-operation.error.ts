@@ -1,5 +1,5 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
-import type { INode } from '../Interfaces';
+import type { INode } from '../interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.

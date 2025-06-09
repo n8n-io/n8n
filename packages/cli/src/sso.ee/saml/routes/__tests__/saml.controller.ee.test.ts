@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { User } from '@/databases/entities/user';
 import type { AuthlessRequest } from '@/requests';
 
 import type { SamlService } from '../../saml.service.ee';

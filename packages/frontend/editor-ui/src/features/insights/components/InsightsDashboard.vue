@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -116,6 +117,10 @@ watch(
 		immediate: true,
 	},
 );
+
+onMounted(() => {
+	useDocumentTitle().set(i18n.baseText('insights.heading'));
+});
 </script>
 
 <template>
@@ -148,27 +153,22 @@ watch(
 					v-if="!insightsStore.isDashboardEnabled"
 					data-test-id="insights-dashboard-unlicensed"
 				/>
-				<div v-else>
+				<div v-else :class="$style.insightsContentWrapper">
+					<div
+						:class="[
+							$style.dataLoader,
+							{
+								[$style.isDataLoading]:
+									insightsStore.charts.isLoading || insightsStore.table.isLoading,
+							},
+						]"
+					>
+						<N8nSpinner />
+						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
+					</div>
 					<div :class="$style.insightsChartWrapper">
-						<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
-							<svg
-								width="22"
-								height="22"
-								viewBox="0 0 22 22"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
-									stroke="currentColor"
-									stroke-width="2"
-								/>
-							</svg>
-							{{ i18n.baseText('insights.chart.loading') }}
-						</div>
 						<component
 							:is="chartComponents[props.insightType]"
-							v-else
 							:type="props.insightType"
 							:data="insightsStore.charts.state"
 							:granularity
@@ -222,21 +222,59 @@ watch(
 	background: var(--color-background-xlight);
 }
 
+.insightsContentWrapper {
+	position: relative;
+	overflow-x: hidden;
+}
+
 .insightsChartWrapper {
+	position: relative;
 	height: 292px;
 	padding: 0 var(--spacing-l);
+	z-index: 1;
 }
 
 .insightsTableWrapper {
+	position: relative;
 	padding: var(--spacing-l) var(--spacing-l) 0;
+	z-index: 1;
 }
 
-.chartLoader {
+.dataLoader {
+	position: absolute;
+	top: 0;
+	left: -100%;
 	height: 100%;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: 9px;
+	z-index: 2;
+
+	&.isDataLoading {
+		transition: left 0s linear;
+		left: 0;
+		transition-delay: 0.5s;
+	}
+
+	> span {
+		position: relative;
+		z-index: 2;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		display: block;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--color-background-xlight);
+		opacity: 0.75;
+		z-index: 1;
+	}
 }
 </style>

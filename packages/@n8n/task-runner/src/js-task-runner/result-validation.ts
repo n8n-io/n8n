@@ -50,20 +50,26 @@ function validateItem({ json, binary }: INodeExecutionData, itemIndex: number) {
 	}
 }
 
+export class NonArrayOfObjectsError extends ValidationError {
+	constructor() {
+		super({
+			message: "Code doesn't return items properly",
+			description: 'Please return an array of objects, one for each item you would like to output.',
+		});
+	}
+}
+
 /**
  * Validates the output of a code node in 'Run for All Items' mode.
  */
 export function validateRunForAllItemsOutput(
 	executionResult: INodeExecutionData | INodeExecutionData[] | undefined,
 ) {
-	if (typeof executionResult !== 'object') {
-		throw new ValidationError({
-			message: "Code doesn't return items properly",
-			description: 'Please return an array of objects, one for each item you would like to output.',
-		});
-	}
-
 	if (Array.isArray(executionResult)) {
+		for (const item of executionResult) {
+			if (!isObject(item)) throw new NonArrayOfObjectsError();
+		}
+
 		/**
 		 * If at least one top-level key is an n8n item key (`json`, `binary`, etc.),
 		 * then require all item keys to be an n8n item key.
@@ -81,6 +87,8 @@ export function validateRunForAllItemsOutput(
 				validateTopLevelKeys(item, index);
 			}
 		}
+	} else if (!isObject(executionResult)) {
+		throw new NonArrayOfObjectsError();
 	}
 
 	const returnData = normalizeItems(executionResult);

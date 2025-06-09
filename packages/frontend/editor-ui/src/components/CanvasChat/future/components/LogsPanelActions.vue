@@ -1,16 +1,23 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton } from '@n8n/design-system';
 import { computed } from 'vue';
 
-const { isOpen, showToggleButton, showPopOutButton } = defineProps<{
+const {
+	isOpen,
+	isSyncSelectionEnabled: isSyncEnabled,
+	showToggleButton,
+	showPopOutButton,
+} = defineProps<{
 	isOpen: boolean;
+	isSyncSelectionEnabled: boolean;
 	showToggleButton: boolean;
 	showPopOutButton: boolean;
 }>();
 
-const emit = defineEmits<{ popOut: []; toggleOpen: [] }>();
+const emit = defineEmits<{ popOut: []; toggleOpen: []; toggleSyncSelection: [] }>();
 
 const appStyles = useStyles();
 const locales = useI18n();
@@ -19,31 +26,70 @@ const popOutButtonText = computed(() => locales.baseText('runData.panel.actions.
 const toggleButtonText = computed(() =>
 	locales.baseText(isOpen ? 'runData.panel.actions.collapse' : 'runData.panel.actions.open'),
 );
+const menuItems = computed(() => [
+	{
+		id: 'toggleSyncSelection' as const,
+		label: locales.baseText('runData.panel.actions.sync'),
+		checked: isSyncEnabled,
+	},
+	...(showPopOutButton ? [{ id: 'popOut' as const, label: popOutButtonText.value }] : []),
+]);
+
+function handleSelectMenuItem(selected: string) {
+	// This switch looks redundant, but needed to pass type checker
+	switch (selected) {
+		case 'popOut':
+			emit(selected);
+			return;
+		case 'toggleSyncSelection':
+			emit(selected);
+			return;
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.container">
-		<N8nTooltip v-if="showPopOutButton" :z-index="tooltipZIndex" :content="popOutButtonText">
+		<N8nTooltip
+			v-if="!isOpen && showPopOutButton"
+			:z-index="tooltipZIndex"
+			:content="popOutButtonText"
+		>
 			<N8nIconButton
 				icon="pop-out"
-				type="secondary"
+				type="tertiary"
+				text
 				size="small"
 				icon-size="medium"
 				:aria-label="popOutButtonText"
 				@click.stop="emit('popOut')"
 			/>
 		</N8nTooltip>
-		<N8nTooltip v-if="showToggleButton" :z-index="tooltipZIndex" :content="toggleButtonText">
+		<N8nActionDropdown
+			v-if="isOpen"
+			icon-size="small"
+			activator-icon="ellipsis-h"
+			activator-size="small"
+			:items="menuItems"
+			:teleported="false /* for PiP window */"
+			@select="handleSelectMenuItem"
+		/>
+		<KeyboardShortcutTooltip
+			v-if="showToggleButton"
+			:label="locales.baseText('generic.shortcutHint')"
+			:shortcut="{ keys: ['l'] }"
+			:z-index="tooltipZIndex"
+		>
 			<N8nIconButton
-				type="secondary"
+				type="tertiary"
+				text
 				size="small"
 				icon-size="medium"
 				:icon="isOpen ? 'chevron-down' : 'chevron-up'"
 				:aria-label="toggleButtonText"
-				style="color: var(--color-text-base)"
 				@click.stop="emit('toggleOpen')"
 			/>
-		</N8nTooltip>
+		</KeyboardShortcutTooltip>
 	</div>
 </template>
 
@@ -52,8 +98,7 @@ const toggleButtonText = computed(() =>
 	display: flex;
 }
 
-.container button {
-	border: none;
-	color: var(--color-text-light);
+.container button:hover {
+	background-color: var(--color-background-base);
 }
 </style>
