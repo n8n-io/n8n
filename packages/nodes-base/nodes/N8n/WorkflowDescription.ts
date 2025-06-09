@@ -286,24 +286,6 @@ const getAllOperation: INodeProperties[] = [
 					},
 				},
 			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				description: 'Max number of results to return',
-				type: 'number',
-				default: 100,
-				typeOptions: {
-					minValue: 1,
-					maxValue: 250,
-				},
-				routing: {
-					request: {
-						qs: {
-							limit: '={{ $value }}',
-						},
-					},
-				},
-			},
 		],
 	},
 ];
