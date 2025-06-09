@@ -10,7 +10,6 @@ export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI',
 		name: 'openAi',
-		hidden: true,
 		icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1],
