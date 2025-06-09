@@ -156,6 +156,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const {
 		executingNode,
+		lastAddedExecutingNode,
 		addExecutingNode,
 		removeExecutingNode,
 		isNodeExecuting,
@@ -1878,6 +1879,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
+		lastAddedExecutingNode,
 		workflowsById,
 		nodeMetadata,
 		isInDebugMode,
