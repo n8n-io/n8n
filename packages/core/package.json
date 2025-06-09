@@ -53,6 +53,7 @@
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",
+    "http-proxy-agent": "catalog:",
     "https-proxy-agent": "catalog:",
     "iconv-lite": "catalog:",
     "jsonwebtoken": "catalog:",

@@ -63,6 +63,9 @@ catalogs:
     form-data:
       specifier: 4.0.0
       version: 4.0.0
+    http-proxy-agent:
+      specifier: 7.0.2
+      version: 7.0.2
     https-proxy-agent:
       specifier: 7.0.6
       version: 7.0.6
@@ -763,7 +766,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac))
+        version: 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(2ecef5dd5ce3e0c6dee7163d14def631))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -790,7 +793,7 @@ importers:
         version: 0.3.2(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(8d6d0c7c173d79d9dc61e6a9334e3ecc)
+        version: 0.3.24(a7747bc06767d45b4fc71d69250d6ec9)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -895,7 +898,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac)
+        version: 0.3.11(2ecef5dd5ce3e0c6dee7163d14def631)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1547,6 +1550,9 @@ importers:
       form-data:
         specifier: 'catalog:'
         version: 4.0.0
+      http-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.2
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
@@ -9775,6 +9781,10 @@ packages:
     resolution: {integrity: sha512-+ZT+iBxVUQ1asugqnD6oWoRiS25AkjNfG085dKJGtGxkdwLQrMKU5wJr2bOOFAXzKcTuqq+7fZlTMgG3SRfIYQ==}
     engines: {node: '>= 14'}
 
+  http-proxy-agent@7.0.2:
+    resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
+    engines: {node: '>= 14'}
+
   http-signature@1.4.0:
     resolution: {integrity: sha512-G5akfn7eKbpDN+8nPS/cb57YeA1jLTVxjpCj7tmm3QKPdyDy7T+qSC40e9ptydSWvkwjSXw1VbkpyEm39ukeAg==}
     engines: {node: '>=0.10'}
@@ -16807,7 +16817,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(2ecef5dd5ce3e0c6dee7163d14def631))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16816,7 +16826,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac)
+      langchain: 0.3.11(2ecef5dd5ce3e0c6dee7163d14def631)
     transitivePeerDependencies:
       - encoding
 
@@ -17340,7 +17350,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(8d6d0c7c173d79d9dc61e6a9334e3ecc)':
+  '@langchain/community@0.3.24(a7747bc06767d45b4fc71d69250d6ec9)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17351,7 +17361,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac)
+      langchain: 0.3.11(2ecef5dd5ce3e0c6dee7163d14def631)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17366,7 +17376,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(2ecef5dd5ce3e0c6dee7163d14def631))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -20141,7 +20151,7 @@ snapshots:
 
   '@typespec/ts-http-runtime@0.2.2':
     dependencies:
-      http-proxy-agent: 7.0.0
+      http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -20902,6 +20912,14 @@ snapshots:
   axios@1.9.0(debug@4.4.0):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.0)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0(debug@4.4.1):
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.4.1)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -22516,7 +22534,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22541,7 +22559,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -22561,7 +22579,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -23071,6 +23089,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.0
 
+  follow-redirects@1.15.9(debug@4.4.1):
+    optionalDependencies:
+      debug: 4.4.1(supports-color@8.1.1)
+
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -23386,7 +23408,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -23630,6 +23652,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  http-proxy-agent@7.0.2:
+    dependencies:
+      agent-base: 7.1.3
+      debug: 4.4.1(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - supports-color
+
   http-signature@1.4.0:
     dependencies:
       assert-plus: 1.0.0
@@ -23674,7 +23703,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.17.57
       '@types/tough-cookie': 4.0.5
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.1(supports-color@8.1.1)
       dotenv: 16.5.0
@@ -23684,7 +23713,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -24674,7 +24703,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(6e4aa47666b8dfceb9beddf0b146b9ac):
+  langchain@0.3.11(2ecef5dd5ce3e0c6dee7163d14def631):
     dependencies:
       '@langchain/core': 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -26271,7 +26300,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -27073,7 +27102,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
       axios: 1.9.0
 
@@ -27100,7 +27129,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
