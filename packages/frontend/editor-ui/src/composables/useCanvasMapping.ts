@@ -562,8 +562,8 @@ export function useCanvasMapping({
 
 	const mappedNodes = computed<CanvasNode[]>(() => [
 		...nodes.value.map<CanvasNode>((node) => {
-			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
-			const outputConnections = workflowObject.value.connectionsBySourceNode[node.name] ?? {};
+			const inputConnections = workflowsStore.connectionsByDestinationNode[node.name] ?? {};
+			const outputConnections = workflowsStore.connectionsBySourceNode[node.name] ?? {};
 
 			const data: CanvasNodeData = {
 				id: node.id,

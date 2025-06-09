@@ -52,7 +52,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
@@ -77,7 +76,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
@@ -115,7 +113,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
@@ -139,7 +136,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
@@ -163,7 +159,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
@@ -188,7 +183,6 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
 		});
 
