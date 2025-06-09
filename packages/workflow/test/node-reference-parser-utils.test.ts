@@ -508,6 +508,8 @@ describe('NodeReferenceParserUtils', () => {
 					'$("A").last().json.myField',
 					'$("A").all().json.myField',
 					'$("A").item.json.myField',
+					'$("A").first()',
+					'$("A").all()',
 				]),
 			];
 			nodeNames = ['A', 'B'];
@@ -517,6 +519,8 @@ describe('NodeReferenceParserUtils', () => {
 				['myField_lastItem', '$("A").last().json.myField'],
 				['myField_allItems', '$("A").all().json.myField'],
 				['myField', '$("A").item.json.myField'],
+				['A_firstItem', '$("A").first()'],
+				['A_allItems', '$("A").all()'],
 			]);
 			expect(result.nodes).toEqual([
 				{
@@ -526,6 +530,8 @@ describe('NodeReferenceParserUtils', () => {
 						p1: "={{ $('Start').last().json.myField_lastItem }}",
 						p2: "={{ $('Start').first().json.myField_allItems }}",
 						p3: "={{ $('Start').item.json.myField }}",
+						p4: "={{ $('Start').first().json.A_firstItem }}",
+						p5: "={{ $('Start').first().json.A_allItems }}",
 					},
 				},
 			]);
@@ -695,7 +701,20 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
-
+		it('should support handle unexpected code after the data accessor', () => {
+			nodes = [makeNode('A', ['$("B").all()[0].json.first_node_variable'])];
+			nodeNames = ['A', 'B'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['B_allItems', '$("B").all()']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: "={{ $('Start').first().json.B_allItems[0].json.first_node_variable }}",
+					},
+				},
+			]);
+		});
 		it('should carry over unrelated properties', () => {
 			nodes = [
 				{

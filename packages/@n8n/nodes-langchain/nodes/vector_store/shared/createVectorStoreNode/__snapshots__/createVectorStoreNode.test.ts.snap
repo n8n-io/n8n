@@ -44,7 +44,7 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
 				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "ai_embedding", required: true, maxConnections: 1}]
 
-				if (['load', 'retrieve-as-tool'].includes(mode) && useReranker) {
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
 					inputs.push({ displayName: "Reranker", type: "ai_reranker", required: true, maxConnections: 1})
 				}
 
@@ -246,6 +246,7 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
         "show": {
           "mode": [
             "load",
+            "retrieve",
             "retrieve-as-tool",
           ],
         },
