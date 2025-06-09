@@ -1,31 +1,31 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { FrontendSettings, PushPayload, PushType } from '@n8n/api-types';
+             { FrontendSettings, PushPayload, PushType } from '@n8n/api-types';
 
 Cypress.Keyboard.defaults({
 	keystrokeDelay: 0,
 });
 
-interface SigninPayload {
-	email: string;
-	password: string;
+          SigninPayload {
+	email:       ;
+	password:      ;
 }
 
-interface DragAndDropOptions {
+           DragAndDropOptions {
 	position: 'top' | 'center' | 'bottom';
 }
 
 declare global {
 	namespace Cypress {
-		interface SuiteConfigOverrides {
+		          SuiteConfigOverrides {
 			disableAutoLogin: boolean;
 		}
 
-		interface Chainable {
+		           Chainable {
 			config(key: keyof SuiteConfigOverrides): boolean;
 			getByTestId(
-				selector: string,
+				selector:      ,
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
@@ -46,17 +46,17 @@ declare global {
 			signinAsMember(index?: number): void;
 			signout(): void;
 			overrideSettings(value: Partial<FrontendSettings>): void;
-			enableFeature(feature: string): void;
-			disableFeature(feature: string): void;
+			enableFeature(feature:      ): void;
+			disableFeature(feature:      ): void;
 			enableQueueMode(): void;
 			disableQueueMode(): void;
 			changeQuota(feature: string, value: number): void;
 			waitForLoad(waitForIntercepts?: boolean): void;
-			grantBrowserPermissions(...permissions: string[]): void;
-			readClipboard(): Chainable<string>;
-			paste(pastePayload: string): void;
+			grantBrowserPermissions(...permissions:       []): void;
+			readClipboard(): Chainable<      >;
+			paste(pastePayload:      ): void;
 			drag(
-				selector: string | Chainable<JQuery<HTMLElement>>,
+				selector:        | Chainable<JQuery<HTMLElement>>,
 				target: [number, number],
 				options?: {
 					abs?: boolean;
@@ -67,8 +67,8 @@ declare global {
 				},
 			): void;
 			draganddrop(
-				draggableSelector: string,
-				droppableSelector: string,
+				draggableSelector:       ,
+				droppableSelector:       ,
 				options?: Partial<DragAndDropOptions>,
 			): void;
 			push<Type extends PushType>(type: Type, data: PushPayload<Type>): void;
@@ -80,7 +80,7 @@ declare global {
 					preventNodeViewBeforeUnload?: boolean;
 					maxPinnedDataSize?: number;
 					featureFlags: {
-						override: (feature: string, value: unknown) => void;
+						override: (feature:      , value: unknown) => void;
 					};
 				}
 			>;
