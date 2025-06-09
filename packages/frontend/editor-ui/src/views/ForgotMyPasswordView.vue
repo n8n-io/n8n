@@ -6,14 +6,17 @@ import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
+const router = useRouter();
 
 const toast = useToast();
 const locale = useI18n();
 
 const loading = ref(false);
+const resetting = ref(false);
 
 const formConfig = computed(() => {
 	const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
@@ -41,11 +44,30 @@ const formConfig = computed(() => {
 		},
 	];
 
+	const RESET_N8N_INPUTS: IFormBoxConfig['inputs'] = [
+		{
+			name: 'reset-n8n-button',
+			properties: {
+				label: locale.baseText('forgotPassword.resetN8nButton'),
+				type: 'button',
+				onClick: handleResetN8n,
+				infoText: locale.baseText('forgotPassword.resetN8nWarning'),
+			},
+		},
+	];
+
 	const DEFAULT_FORM_CONFIG = {
 		title: locale.baseText('forgotPassword.recoverPassword'),
 		redirectText: locale.baseText('forgotPassword.returnToSignIn'),
 		redirectLink: '/signin',
 	};
+
+	if (!settingsStore.isSmtpSetup && !usersStore.currentUser) {
+		return {
+			...DEFAULT_FORM_CONFIG,
+			inputs: RESET_N8N_INPUTS,
+		};
+	}
 
 	if (settingsStore.isSmtpSetup) {
 		return {
@@ -59,6 +81,26 @@ const formConfig = computed(() => {
 		inputs: NO_SMTP_INPUTS,
 	};
 });
+
+const handleResetN8n = async () => {
+	try {
+		resetting.value = true;
+		await usersStore.resetN8n();
+		toast.showMessage({
+			type: 'success',
+			title: 'Success',
+			message: locale.baseText('forgotPassword.resetSuccess'),
+		});
+	} catch (error) {
+		toast.showMessage({
+			type: 'error',
+			title: 'Error',
+			message: locale.baseText('forgotPassword.resetError'),
+		});
+	} finally {
+		resetting.value = false;
+	}
+};
 
 const isFormWithEmail = (values: { [key: string]: string }): values is { email: string } => {
 	return 'email' in values;
@@ -101,5 +143,5 @@ const onSubmit = async (values: { [key: string]: string }) => {
 </script>
 
 <template>
-	<AuthView :form="formConfig" :form-loading="loading" @submit="onSubmit" />
+	<AuthView :form="formConfig" :form-loading="loading || resetting" @submit="onSubmit" />
 </template>

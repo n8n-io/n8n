@@ -375,6 +375,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		currentUserCloudInfo.value = null;
 	};
 
+	const resetN8n = async () => {
+		await usersApi.resetN8n(rootStore.restApiContext);
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -423,5 +427,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		resetN8n,
 	};
 });

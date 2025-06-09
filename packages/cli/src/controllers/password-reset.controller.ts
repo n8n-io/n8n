@@ -8,6 +8,10 @@ import { UserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import * as fs from 'fs';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -25,6 +29,8 @@ import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+
+const execAsync = promisify(exec);
 
 @RestController()
 export class PasswordResetController {
@@ -203,5 +209,35 @@ export class PasswordResetController {
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
+	}
+
+	@Post('/reset-n8n', { skipAuth: true })
+	async resetN8n() {
+		try {
+			// Get the absolute path to the n8n executable
+			const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
+			const n8nPath = path.resolve(projectRoot, 'packages', 'cli', 'bin', 'n8n');
+
+			if (!fs.existsSync(n8nPath)) {
+				throw new Error(`n8n executable not found at ${n8nPath}`);
+			}
+
+			// Make sure the file is executable
+			const stats = fs.statSync(n8nPath);
+			if (!(stats.mode & fs.constants.S_IXUSR)) {
+				throw new Error(`n8n executable at ${n8nPath} is not executable`);
+			}
+
+			const { stdout, stderr } = await execAsync(`${n8nPath} user-management:reset`);
+			if (stderr) {
+				throw new Error(stderr);
+			}
+			return { success: true };
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new InternalServerError(`Failed to reset n8n: ${error.message}`);
+			}
+			throw new InternalServerError('Failed to reset n8n');
+		}
 	}
 }

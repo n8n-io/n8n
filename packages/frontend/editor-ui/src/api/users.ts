@@ -76,6 +76,10 @@ export async function sendForgotPasswordEmail(
 	await makeRestApiRequest(context, 'POST', '/forgot-password', params);
 }
 
+export async function resetN8n(context: IRestApiContext): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/reset-n8n');
+}
+
 export async function validatePasswordToken(
 	context: IRestApiContext,
 	params: { token: string },
