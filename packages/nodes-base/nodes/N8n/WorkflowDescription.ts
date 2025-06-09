@@ -304,21 +304,6 @@ const getAllOperation: INodeProperties[] = [
 					},
 				},
 			},
-			{
-				displayName: 'Cursor',
-				name: 'cursor',
-				description:
-					'Paginate by setting the cursor parameter to the nextCursor attribute returned by the previous request\'s response. Default value fetches the first "page" of the collection. See pagination for more detail.',
-				type: 'string',
-				default: '',
-				routing: {
-					request: {
-						qs: {
-							cursor: '={{ $value }}',
-						},
-					},
-				},
-			},
 		],
 	},
 ];
