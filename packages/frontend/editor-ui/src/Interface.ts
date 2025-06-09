@@ -1257,49 +1257,6 @@ export type SchemaType =
 	| 'null'
 	| 'undefined';
 
-export interface ILdapSyncData {
-	id: number;
-	startedAt: string;
-	endedAt: string;
-	created: number;
-	updated: number;
-	disabled: number;
-	scanned: number;
-	status: string;
-	error: string;
-	runMode: string;
-}
-
-export interface ILdapSyncTable {
-	status: string;
-	endedAt: string;
-	runTime: string;
-	runMode: string;
-	details: string;
-}
-
-export interface ILdapConfig {
-	loginEnabled: boolean;
-	loginLabel: string;
-	connectionUrl: string;
-	allowUnauthorizedCerts: boolean;
-	connectionSecurity: string;
-	connectionPort: number;
-	baseDn: string;
-	bindingAdminDn: string;
-	bindingAdminPassword: string;
-	firstNameAttribute: string;
-	lastNameAttribute: string;
-	emailAttribute: string;
-	loginIdAttribute: string;
-	ldapIdAttribute: string;
-	userFilter: string;
-	synchronizationEnabled: boolean;
-	synchronizationInterval: number; // minutes
-	searchPageSize: number;
-	searchTimeout: number;
-}
-
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
