@@ -86,8 +86,15 @@ const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
+const isTelemetryEnabled = computed((): boolean => {
+	return settingsStore.isTelemetryEnabled;
+});
 const showGitHubButton = computed(
-	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
+	() =>
+		!isEnterprise.value &&
+		!settingsStore.settings.inE2ETests &&
+		!githubButtonHidden.value &&
+		isTelemetryEnabled.value,
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
