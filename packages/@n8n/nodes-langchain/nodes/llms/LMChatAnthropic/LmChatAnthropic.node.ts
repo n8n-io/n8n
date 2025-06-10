@@ -331,7 +331,7 @@ export class LmChatAnthropic implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
 			clientOptions: {
-				httpAgent: getHttpProxyAgent(),
+				httpAgent: getHttpProxyAgent(baseURL),
 			},
 		});
 

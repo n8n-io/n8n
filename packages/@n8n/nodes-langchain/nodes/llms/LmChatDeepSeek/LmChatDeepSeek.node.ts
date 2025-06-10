@@ -227,9 +227,13 @@ export class LmChatDeepSeek implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const requestDefaults = this.getNodeParameter('options', itemIndex, {}) as {
+			baseURL: string;
+		};
+
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			httpAgent: getHttpProxyAgent(),
+			httpAgent: getHttpProxyAgent(requestDefaults.baseURL),
 		};
 
 		const model = new ChatOpenAI({

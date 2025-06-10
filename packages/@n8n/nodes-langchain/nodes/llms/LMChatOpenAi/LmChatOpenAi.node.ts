@@ -348,7 +348,7 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			httpAgent: getHttpProxyAgent(),
+			httpAgent: getHttpProxyAgent(options.baseURL),
 		};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;

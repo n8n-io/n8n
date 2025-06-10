@@ -140,6 +140,9 @@ export class LmChatGroq implements INodeType {
 			maxTokensToSample?: number;
 			temperature: number;
 		};
+		const requestDefaults = this.getNodeParameter('options', itemIndex, {}) as {
+			baseURL: string;
+		};
 
 		const model = new ChatGroq({
 			apiKey: credentials.apiKey as string,
@@ -147,7 +150,7 @@ export class LmChatGroq implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
-			httpAgent: getHttpProxyAgent(),
+			httpAgent: getHttpProxyAgent(requestDefaults.baseURL),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
