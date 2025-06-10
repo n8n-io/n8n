@@ -2418,6 +2418,218 @@ describe('Workflow', () => {
 			expect(nodes).toHaveLength(0);
 		});
 	});
+	describe('Reserved JavaScript keywords as node names', () => {
+		test('should handle nodes named with JavaScript reserved keywords', () => {
+			const reservedKeywords = ['toString', 'valueOf', 'hasOwnProperty', 'constructor'];
+
+			reservedKeywords.forEach((keyword) => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: 'node-1',
+							name: keyword,
+							type: 'test.set',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				// Test getNode works with reserved keywords
+				const node = workflow.getNode(keyword);
+				expect(node).not.toBeNull();
+				expect(node?.name).toBe(keyword);
+				expect(node?.parameters.value1).toBe('default-value1');
+			});
+
+			// Test additional reserved keywords that are more commonly problematic
+			const additionalKeywords = ['isPrototypeOf', 'propertyIsEnumerable'];
+			additionalKeywords.forEach((keyword) => {
+				const workflow = new Workflow({
+					id: `test-${keyword}`,
+					nodes: [
+						{
+							id: `node-${keyword}`,
+							name: keyword,
+							type: 'test.set',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				const node = workflow.getNode(keyword);
+				expect(node).not.toBeNull();
+				expect(node?.name).toBe(keyword);
+			});
+		});
+
+		test('should handle node renaming with reserved keywords', () => {
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'NormalNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { value1: 'test' },
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			// Rename to reserved keyword
+			workflow.renameNode('NormalNode', 'toString');
+
+			// Should be able to retrieve renamed node
+			const renamedNode = workflow.getNode('toString');
+			expect(renamedNode).not.toBeNull();
+			expect(renamedNode?.name).toBe('toString');
+			expect(renamedNode?.parameters.value1).toBe('test');
+
+			// Original node name should not exist
+			const originalNode = workflow.getNode('NormalNode');
+			expect(originalNode).toBeNull();
+		});
+
+		test('should handle connections with reserved keyword node names', () => {
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'toString',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'valueOf',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+					{
+						id: 'node-3',
+						name: 'hasOwnProperty',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					toString: {
+						main: [[{ node: 'valueOf', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					valueOf: {
+						main: [[{ node: 'hasOwnProperty', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			// Test parent/child relationships work
+			const parentNodes = workflow.getParentNodes('hasOwnProperty');
+			expect(parentNodes).toContain('valueOf');
+			expect(parentNodes).toContain('toString');
+
+			const childNodes = workflow.getChildNodes('toString');
+			expect(childNodes).toContain('valueOf');
+			expect(childNodes).toContain('hasOwnProperty');
+
+			// Test connection indexes
+			const connectionIndex = workflow.getNodeConnectionIndexes('valueOf', 'toString');
+			expect(connectionIndex).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle workflow execution with reserved keyword nodes', () => {
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'constructor',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { value1: 'constructorValue' },
+					},
+					{
+						id: 'node-2',
+						name: 'propertyIsEnumerable',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: { value2: '={{$node.constructor.parameter.value1}}' },
+					},
+				],
+				connections: {
+					constructor: {
+						main: [[{ node: 'propertyIsEnumerable', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			// Test that nodes can be retrieved
+			const constructorNode = workflow.getNode('constructor');
+			const enumNode = workflow.getNode('propertyIsEnumerable');
+
+			expect(constructorNode).not.toBeNull();
+			expect(enumNode).not.toBeNull();
+			expect(constructorNode?.parameters.value1).toBe('constructorValue');
+
+			// Test node renaming with expressions
+			workflow.renameNode('constructor', 'MyConstructor');
+			const renamedNode = workflow.getNode('MyConstructor');
+			const targetNode = workflow.getNode('propertyIsEnumerable');
+
+			expect(renamedNode).not.toBeNull();
+			expect(targetNode?.parameters.value2).toBe('={{$node.MyConstructor.parameter.value1}}');
+		});
+
+		test('should handle getConnectionsByDestination with reserved keywords', () => {
+			const connections = {
+				toString: {
+					main: [[{ node: 'valueOf', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				hasOwnProperty: {
+					main: [[{ node: 'valueOf', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = Workflow.getConnectionsByDestination(connections);
+
+			expect(result).toHaveProperty('valueOf');
+			expect((result as any).valueOf.main[0]).toEqual([
+				{ node: 'toString', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'hasOwnProperty', type: NodeConnectionTypes.Main, index: 0 },
+			]);
+		});
+	});
+
 	describe('getConnectionsBetweenNodes', () => {
 		test('should return empty array if no connections exist between sources and targets', () => {
 			const result = SIMPLE_WORKFLOW.getConnectionsBetweenNodes(['Start'], ['Set1']);

@@ -1642,7 +1642,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
-		if (!workflow.value.pinData?.[nodeName]) return undefined;
+		if (
+			!workflow.value.pinData ||
+			!Object.prototype.hasOwnProperty.call(workflow.value.pinData, nodeName)
+		)
+			return undefined;
 
 		return workflow.value.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
 	}

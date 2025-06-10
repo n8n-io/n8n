@@ -279,14 +279,14 @@ export class WorkflowDataProxy {
 				let returnValue: NodeParameterValueType;
 				if (name[0] === '&') {
 					const key = name.slice(1);
-					if (!that.siblingParameters.hasOwnProperty(key)) {
+					if (!Object.prototype.hasOwnProperty.call(that.siblingParameters, key)) {
 						throw new ApplicationError('Could not find sibling parameter on node', {
 							extra: { nodeName, parameter: key },
 						});
 					}
 					returnValue = that.siblingParameters[key];
 				} else {
-					if (!node.parameters.hasOwnProperty(name)) {
+					if (!Object.prototype.hasOwnProperty.call(node.parameters, name)) {
 						// Parameter does not exist on node
 						return undefined;
 					}
@@ -398,7 +398,7 @@ export class WorkflowDataProxy {
 			}
 
 			if (
-				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
+				!Object.prototype.hasOwnProperty.call(that.runExecutionData.resultData.runData, nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
 				throw new ExpressionError('Referenced node is unexecuted', {
@@ -1075,7 +1075,10 @@ export class WorkflowDataProxy {
 
 				const ensureNodeExecutionData = () => {
 					if (
-						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
+						!Object.prototype.hasOwnProperty.call(
+							that?.runExecutionData?.resultData?.runData || {},
+							nodeName,
+						) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
 						throw createExpressionError('Referenced node is unexecuted', {
@@ -1110,7 +1113,10 @@ export class WorkflowDataProxy {
 
 							if (property === 'isExecuted') {
 								return (
-									that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) ?? false
+									Object.prototype.hasOwnProperty.call(
+										that?.runExecutionData?.resultData?.runData || {},
+										nodeName,
+									) ?? false
 								);
 							}
 

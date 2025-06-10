@@ -154,24 +154,29 @@ export class Workflow {
 		let connectionInfo;
 		let maxIndex: number;
 		for (const sourceNode in connections) {
-			if (!connections.hasOwnProperty(sourceNode)) {
+			if (!Object.prototype.hasOwnProperty.call(connections, sourceNode)) {
 				continue;
 			}
 
 			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionType[]) {
-				if (!connections[sourceNode].hasOwnProperty(type)) {
+				if (!Object.prototype.hasOwnProperty.call(connections[sourceNode], type)) {
 					continue;
 				}
 				for (const inputIndex in connections[sourceNode][type]) {
-					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
+					if (!Object.prototype.hasOwnProperty.call(connections[sourceNode][type], inputIndex)) {
 						continue;
 					}
 
 					for (connectionInfo of connections[sourceNode][type][inputIndex] ?? []) {
-						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
+						if (!Object.prototype.hasOwnProperty.call(returnConnection, connectionInfo.node)) {
 							returnConnection[connectionInfo.node] = {};
 						}
-						if (!returnConnection[connectionInfo.node].hasOwnProperty(connectionInfo.type)) {
+						if (
+							!Object.prototype.hasOwnProperty.call(
+								returnConnection[connectionInfo.node],
+								connectionInfo.type,
+							)
+						) {
 							returnConnection[connectionInfo.node][connectionInfo.type] = [];
 						}
 
@@ -285,7 +290,7 @@ export class Workflow {
 	 * @param {string} nodeName Name of the node to return
 	 */
 	getNode(nodeName: string): INode | null {
-		if (this.nodes.hasOwnProperty(nodeName)) {
+		if (Object.prototype.hasOwnProperty.call(this.nodes, nodeName)) {
 			return this.nodes[nodeName];
 		}
 
@@ -406,7 +411,7 @@ export class Workflow {
 		}
 
 		// Change all source connections
-		if (this.connectionsBySourceNode.hasOwnProperty(currentName)) {
+		if (Object.prototype.hasOwnProperty.call(this.connectionsBySourceNode, currentName)) {
 			this.connectionsBySourceNode[newName] = this.connectionsBySourceNode[currentName];
 			delete this.connectionsBySourceNode[currentName];
 		}
@@ -457,12 +462,17 @@ export class Workflow {
 			currentHighest.push(nodeName);
 		}
 
-		if (!this.connectionsByDestinationNode.hasOwnProperty(nodeName)) {
+		if (!Object.prototype.hasOwnProperty.call(this.connectionsByDestinationNode, nodeName)) {
 			// Node does not have incoming connections
 			return currentHighest;
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionTypes.Main)) {
+		if (
+			!Object.prototype.hasOwnProperty.call(
+				this.connectionsByDestinationNode[nodeName],
+				NodeConnectionTypes.Main,
+			)
+		) {
 			// Node does not have incoming connections of given type
 			return currentHighest;
 		}
@@ -573,7 +583,7 @@ export class Workflow {
 			return [];
 		}
 
-		if (!connections.hasOwnProperty(nodeName)) {
+		if (!Object.prototype.hasOwnProperty.call(connections, nodeName)) {
 			// Node does not have incoming connections
 			return [];
 		}
@@ -596,7 +606,7 @@ export class Workflow {
 		const returnNodes: string[] = [];
 
 		types.forEach((type) => {
-			if (!connections[nodeName].hasOwnProperty(type)) {
+			if (!Object.prototype.hasOwnProperty.call(connections[nodeName], type)) {
 				// Node does not have incoming connections of given type
 				return;
 			}
@@ -690,7 +700,7 @@ export class Workflow {
 
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			toAdd.forEach((curr) => {
-				if (visited[curr.name]) {
+				if (Object.prototype.hasOwnProperty.call(visited, curr.name)) {
 					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
 					return;
 				}
@@ -701,8 +711,8 @@ export class Workflow {
 				}
 
 				if (
-					!connections.hasOwnProperty(curr.name) ||
-					!connections[curr.name].hasOwnProperty(type)
+					!Object.prototype.hasOwnProperty.call(connections, curr.name) ||
+					!Object.prototype.hasOwnProperty.call(connections[curr.name], type)
 				) {
 					return;
 				}
@@ -791,12 +801,12 @@ export class Workflow {
 			return undefined;
 		}
 
-		if (!this.connectionsByDestinationNode.hasOwnProperty(nodeName)) {
+		if (!Object.prototype.hasOwnProperty.call(this.connectionsByDestinationNode, nodeName)) {
 			// Node does not have incoming connections
 			return undefined;
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(type)) {
+		if (!Object.prototype.hasOwnProperty.call(this.connectionsByDestinationNode[nodeName], type)) {
 			// Node does not have incoming connections of given type
 			return undefined;
 		}

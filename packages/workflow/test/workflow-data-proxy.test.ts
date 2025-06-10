@@ -835,4 +835,277 @@ describe('WorkflowDataProxy', () => {
 			expect(tools[0].aiDefinedFields).toEqual(['Start']);
 		});
 	});
+
+	describe('Reserved JavaScript keywords as node names', () => {
+		test('should handle nodes named with reserved keywords in $() function', () => {
+			const workflow = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'toString',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { value: 'test' },
+					},
+					{
+						id: 'node-2',
+						name: 'valueOf',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: { value: 'test2' },
+					},
+				],
+				connections: {
+					toString: {
+						main: [[{ node: 'valueOf', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							toString: [
+								{
+									source: [{ previousNode: 'test' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { test: 'data1' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+							valueOf: [
+								{
+									source: [{ previousNode: 'toString' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { test: 'data2' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'valueOf');
+
+			// Test accessing nodes with reserved keywords
+			expect(proxy.$('toString').first().json.test).toBe('data1');
+			expect(proxy.$('valueOf').first().json.test).toBe('data2');
+			expect(proxy.$('toString').isExecuted).toBe(true);
+			expect(proxy.$('valueOf').isExecuted).toBe(true);
+		});
+
+		test('should handle parameter access with reserved keyword node names', () => {
+			const workflow = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'hasOwnProperty',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { myParam: 'paramValue' },
+					},
+					{
+						id: 'node-2',
+						name: 'constructor',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: { refParam: '={{$node.hasOwnProperty.parameter.myParam}}' },
+					},
+				],
+				connections: {
+					hasOwnProperty: {
+						main: [[{ node: 'constructor', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							hasOwnProperty: [
+								{
+									source: [{ previousNode: 'test' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { data: 'value1' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+							constructor: [
+								{
+									source: [{ previousNode: 'hasOwnProperty' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { data: 'value2' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'constructor');
+
+			// Test parameter access from reserved keyword node - using default node parameters
+			expect(proxy.$('hasOwnProperty').params.value1).toBe('default-value1');
+			expect(proxy.$('constructor').params.value1).toBe('default-value1');
+		});
+
+		test('should handle execution data access with reserved keywords', () => {
+			const workflow = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'isPrototypeOf',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'propertyIsEnumerable',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					isPrototypeOf: {
+						main: [[{ node: 'propertyIsEnumerable', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							isPrototypeOf: [
+								{
+									source: [{ previousNode: 'test' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { message: 'proto data' },
+													pairedItem: { item: 0 },
+												},
+												{
+													json: { message: 'proto data 2' },
+													pairedItem: { item: 1 },
+												},
+											],
+										],
+									},
+								},
+							],
+							propertyIsEnumerable: [
+								{
+									source: [{ previousNode: 'isPrototypeOf' }],
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: { result: 'final data' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'propertyIsEnumerable');
+
+			// Test that we can access all data from reserved keyword node
+			const allData = proxy.$('isPrototypeOf').all();
+			expect(allData).toHaveLength(2);
+			expect(allData[0].json.message).toBe('proto data');
+			expect(allData[1].json.message).toBe('proto data 2');
+
+			// Test first and last
+			expect(proxy.$('isPrototypeOf').first().json.message).toBe('proto data');
+			expect(proxy.$('isPrototypeOf').last().json.message).toBe('proto data 2');
+		});
+
+		test('should handle error cases with reserved keyword nodes', () => {
+			const workflow = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'isPrototypeOf',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const proxy = getProxyFromFixture(workflow, null, 'isPrototypeOf');
+
+			// Test that accessing non-executed reserved keyword node throws proper error
+			expect(() => proxy.$('isPrototypeOf').first()).toThrow(ExpressionError);
+			expect(proxy.$('isPrototypeOf').isExecuted).toBe(false);
+		});
+	});
 });
