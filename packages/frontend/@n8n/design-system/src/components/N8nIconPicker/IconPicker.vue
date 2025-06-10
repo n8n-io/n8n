@@ -162,7 +162,9 @@ const togglePopup = () => {
 .container {
 	position: relative;
 }
-
+.emoji-button {
+	padding: 0;
+}
 .popup {
 	position: absolute;
 	z-index: 1;

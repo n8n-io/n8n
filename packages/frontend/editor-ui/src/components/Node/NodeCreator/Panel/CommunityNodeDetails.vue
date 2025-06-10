@@ -16,7 +16,13 @@ import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../uti
 
 import { N8nText } from '@n8n/design-system';
 
-const { activeViewStack, pushViewStack, popViewStack, getAllNodeCreateElements } = useViewStacks();
+const {
+	activeViewStack,
+	pushViewStack,
+	popViewStack,
+	getAllNodeCreateElements,
+	updateCurrentViewStack,
+} = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -37,6 +43,8 @@ const updateViewStack = (key: string) => {
 
 		popViewStack();
 
+		updateCurrentViewStack({ searchItems: nodeCreatorStore.mergedNodes });
+
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,
 			getNodeIconSource(installedNode.properties),
@@ -45,7 +53,6 @@ const updateViewStack = (key: string) => {
 		);
 
 		pushViewStack(viewStack, {
-			resetStacks: true,
 			transitionDirection: 'none',
 		});
 	} else {
