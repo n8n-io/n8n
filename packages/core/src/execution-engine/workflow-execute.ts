@@ -72,6 +72,7 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 	rewireGraph,
+	isTool,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
 import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
@@ -367,12 +368,8 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
-		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
-			destination.type,
-			destination.typeVersion,
-		);
 		// Partial execution of nodes as tools
-		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
+		if (isTool(destination, workflow.nodeTypes)) {
 			graph = rewireGraph(destination, graph, agentRequest);
 			workflow = graph.toWorkflow({ ...workflow });
 			// Rewire destination node to the virtual agent

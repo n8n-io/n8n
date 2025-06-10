@@ -1571,35 +1571,6 @@ export function isNodeWithWorkflowSelector(node: INode) {
 }
 
 /**
- * @returns An object containing either the resolved operation's action if available,
- * else the resource and operation if both exist.
- * If neither can be resolved, returns an empty object.
- */
-function resolveResourceAndOperation(
-	nodeParameters: INodeParameters,
-	nodeTypeDescription: INodeTypeDescription,
-) {
-	const resource = nodeParameters.resource as string;
-	const operation = nodeParameters.operation as string;
-	const nodeTypeOperation = nodeTypeDescription.properties.find(
-		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
-	);
-
-	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
-		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
-		if (foundOperation?.action) {
-			return { action: foundOperation.action };
-		}
-	}
-
-	if (resource && operation) {
-		return { operation, resource };
-	} else {
-		return {};
-	}
-}
-
-/**
  * Generates a human-readable description for a node based on its parameters and type definition.
  *
  * This function creates a descriptive string that represents what the node does,
@@ -1614,93 +1585,28 @@ export function makeDescription(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
-	const { action, operation, resource } = resolveResourceAndOperation(
-		nodeParameters,
-		nodeTypeDescription,
+	let description = '';
+	const resource = nodeParameters.resource as string;
+	const operation = nodeParameters.operation as string;
+	const nodeTypeOperation = nodeTypeDescription.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
 	);
 
-	if (action) {
-		return `${action} in ${nodeTypeDescription.defaults.name}`;
-	}
-
-	if (resource && operation) {
-		return `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
-	}
-
-	return nodeTypeDescription.description;
-}
-
-export function isTool(
-	nodeTypeDescription: INodeTypeDescription,
-	parameters: INodeParameters,
-): boolean {
-	// Check if node is a vector store in retrieve-as-tool mode
-	if (nodeTypeDescription.name.includes('vectorStore')) {
-		const mode = parameters.mode;
-		return mode === 'retrieve-as-tool';
-	}
-
-	// Check for other tool nodes
-	for (const output of nodeTypeDescription.outputs) {
-		if (typeof output === 'string') {
-			return output === NodeConnectionTypes.AiTool;
-		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
-			return true;
+	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
+		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
+		if (foundOperation?.action) {
+			description = `${foundOperation.action} in ${nodeTypeDescription.defaults.name}`;
+			return description;
 		}
 	}
 
-	return false;
-}
-
-/**
- * Generates a resource and operation aware node name.
- *
- * Appends `in {nodeTypeDisplayName}` if nodeType is a tool
- *
- * 1. "{action}" if the operation has a defined action
- * 2. "{operation} {resource}" if resource and operation exist
- * 3. The node type's defaults.name field or displayName as a fallback
- */
-export function makeNodeName(
-	nodeParameters: INodeParameters,
-	nodeTypeDescription: INodeTypeDescription,
-): string {
-	const { action, operation, resource } = resolveResourceAndOperation(
-		nodeParameters,
-		nodeTypeDescription,
-	);
-
-	const postfix = isTool(nodeTypeDescription, nodeParameters)
-		? ` in ${nodeTypeDescription.defaults.name}`
-		: '';
-
-	if (action) {
-		return `${action}${postfix}`;
+	if (!description && resource && operation) {
+		description = `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
+	} else {
+		description = nodeTypeDescription.description;
 	}
 
-	if (resource && operation) {
-		const operationProper = operation[0].toUpperCase() + operation.slice(1);
-		return `${operationProper} ${resource}${postfix}`;
-	}
-
-	return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
-}
-
-/**
- * Returns true if the node name is of format `<defaultNodeName>\d*` , which includes auto-renamed nodes
- */
-export function isDefaultNodeName(
-	name: string,
-	nodeType: INodeTypeDescription,
-	parameters: INodeParameters,
-): boolean {
-	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
-	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
-	}
-
-	return false;
+	return description;
 }
 
 /**
