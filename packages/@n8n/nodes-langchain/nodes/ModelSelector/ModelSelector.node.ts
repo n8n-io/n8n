@@ -1,72 +1,34 @@
+/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options */
+/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
+import type { BaseCallbackHandler, CallbackHandlerMethods } from '@langchain/core/callbacks/base';
+import type { Callbacks } from '@langchain/core/callbacks/manager';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-    NodeOperationError,
-    ILoadOptionsFunctions,
-    INodeProperties,
-    INodeParameters,
+	type ILoadOptionsFunctions,
+	NodeOperationError,
 } from 'n8n-workflow';
 
+import { configuredInputs, numberInputsProperty } from './helpers';
+import { N8nLlmTracing } from '../llms/N8nLlmTracing';
 
+function getCallbacksArray(
+	callbacks: Callbacks | undefined,
+): Array<BaseCallbackHandler | CallbackHandlerMethods> {
+	if (!callbacks) return [];
 
-function configuredInputs(parameters: INodeParameters): INodeOutputConfiguration[] {
-	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
-		type: 'ai_languageModel',
-		displayName: `Model ${(i + 1).toString()}`,
-	}));
-};
+	if (Array.isArray(callbacks)) {
+		return callbacks;
+	}
 
-export const numberInputsProperty: INodeProperties = {
-	displayName: 'Number of Inputs',
-	name: 'numberInputs',
-	type: 'options',
-	noDataExpression: true,
-	default: 2,
-	options: [
-		{
-			name: '2',
-			value: 2,
-		},
-		{
-			name: '3',
-			value: 3,
-		},
-		{
-			name: '4',
-			value: 4,
-		},
-		{
-			name: '5',
-			value: 5,
-		},
-		{
-			name: '6',
-			value: 6,
-		},
-		{
-			name: '7',
-			value: 7,
-		},
-		{
-			name: '8',
-			value: 8,
-		},
-		{
-			name: '9',
-			value: 9,
-		},
-		{
-			name: '10',
-			value: 10,
-		},
-	],
-	validateType: 'number',
-	description:
-		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
-};
+	// If it's a CallbackManager, extract its handlers
+	return callbacks.handlers || [];
+}
+
 export class ModelSelector implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Model Selector',
@@ -77,8 +39,9 @@ export class ModelSelector implements INodeType {
 		},
 		version: 1,
 		group: ['transform'],
-		description: 'Selects one of the models connected to this node based on workflow data',
-			inputs: `={{
+		description:
+			'Use this node to select one of the connected models to this node based on workflow data',
+		inputs: `={{
 				((parameters) => {
 					${configuredInputs.toString()};
 					return configuredInputs(parameters)
@@ -108,9 +71,10 @@ export class ModelSelector implements INodeType {
 								displayName: 'Model',
 								name: 'modelIndex',
 								type: 'options',
-								description: 'Choose from the list',
+								description: 'Choose model input from the list',
+								default: 1,
 								required: true,
-								default: '1',
+								placeholder: 'Choose model input from the list',
 								typeOptions: {
 									loadOptionsMethod: 'getModels',
 								},
@@ -143,7 +107,7 @@ export class ModelSelector implements INodeType {
 				const numberInputs = this.getCurrentNodeParameter('numberInputs') as number;
 
 				return Array.from({ length: numberInputs ?? 2 }, (_, i) => ({
-					value: i+1,
+					value: i + 1,
 					name: `Model ${(i + 1).toString()}`,
 				}));
 			},
@@ -159,7 +123,7 @@ export class ModelSelector implements INodeType {
 		if (!models || models.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'No models connected', {
 				itemIndex,
-				description: 'No models found in input connections'
+				description: 'No models found in input connections',
 			});
 		}
 		models.reverse();
@@ -169,38 +133,40 @@ export class ModelSelector implements INodeType {
 		if (!rules || rules.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'No rules defined', {
 				itemIndex,
-				description: 'At least one rule must be defined to select a model'
+				description: 'At least one rule must be defined to select a model',
 			});
 		}
 
-		// Evaluate each rule
 		for (let i = 0; i < rules.length; i++) {
 			const rule = rules[i];
 			const modelIndex = parseInt(rule.modelIndex as string, 10);
 
-			// Check if model index is valid
 			if (modelIndex < 1 || modelIndex > models.length) {
 				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {
 					itemIndex,
-					description: `Model index must be between 1 and ${models.length}`
+					description: `Model index must be between 1 and ${models.length}`,
 				});
 			}
 
-			// Evaluate conditions using n8n's built-in evaluation
 			const conditionsMet = this.getNodeParameter(`rules.rule[${i}].conditions`, itemIndex, false, {
 				extractValue: true,
 			}) as boolean;
 
+			const model: BaseChatModel = models[modelIndex - 1] as BaseChatModel;
+
+			const oldCallbacks = getCallbacksArray(model.callbacks);
+
+			model.callbacks = [...oldCallbacks, new N8nLlmTracing(this)];
 			if (conditionsMet) {
 				return {
-					response: models[modelIndex - 1]
+					response: model,
 				};
 			}
 		}
 
 		throw new NodeOperationError(this.getNode(), 'No matching rule found', {
 			itemIndex,
-			description: 'None of the defined rules matched the workflow data'
+			description: 'None of the defined rules matched the workflow data',
 		});
 	}
 }

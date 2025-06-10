@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { ModelSelector } from '../ModelSelector.node';
+
+// Mock the N8nLlmTracing module completely to avoid module resolution issues
+jest.mock('../../llms/N8nLlmTracing', () => ({
+	N8nLlmTracing: jest.fn().mockImplementation(() => ({
+		handleLLMStart: jest.fn(),
+		handleLLMEnd: jest.fn(),
+	})),
+}));
 
 describe('ModelSelector Node', () => {
 	let node: ModelSelector;
@@ -71,9 +80,18 @@ describe('ModelSelector Node', () => {
 	});
 
 	describe('supplyData', () => {
-		const mockModel1 = { name: 'model1' };
-		const mockModel2 = { name: 'model2' };
-		const mockModel3 = { name: 'model3' };
+		const mockModel1: Partial<BaseChatModel> = {
+			_llmType: () => 'fake-llm',
+			callbacks: [],
+		};
+		const mockModel2: Partial<BaseChatModel> = {
+			_llmType: () => 'fake-llm-2',
+			callbacks: undefined,
+		};
+		const mockModel3: Partial<BaseChatModel> = {
+			_llmType: () => 'fake-llm-3',
+			callbacks: [{ handleLLMStart: jest.fn() }],
+		};
 
 		beforeEach(() => {
 			// Note: models array gets reversed in supplyData, so [model1, model2, model3] becomes [model3, model2, model1]
@@ -116,6 +134,46 @@ describe('ModelSelector Node', () => {
 
 			// After reverse: [model3, model2, model1], so index 2 (1-based) = model2
 			expect(result.response).toBe(mockModel2);
+		});
+
+		it('should add N8nLlmTracing callback to selected model', async () => {
+			const rules = [
+				{
+					modelIndex: '1',
+					conditions: {},
+				},
+			];
+
+			mockSupplyDataFunction.getNodeParameter
+				.mockReturnValueOnce(rules) // rules.rule parameter
+				.mockReturnValueOnce(true); // conditions evaluation
+
+			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
+
+			// After reverse: [model3, model2, model1], so index 1 (1-based) = model3
+			expect(result.response).toBe(mockModel3);
+			expect((result.response as BaseChatModel).callbacks).toHaveLength(2); // original + N8nLlmTracing
+		});
+
+		it('should handle models with undefined callbacks', async () => {
+			const rules = [
+				{
+					modelIndex: '2',
+					conditions: {},
+				},
+			];
+
+			mockSupplyDataFunction.getNodeParameter
+				.mockReturnValueOnce(rules) // rules.rule parameter
+				.mockReturnValueOnce(true); // conditions evaluation
+
+			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
+
+			// After reverse: [model3, model2, model1], so index 2 (1-based) = model2
+			expect(result.response).toBe(mockModel2);
+			// Should have 1 callback added (N8nLlmTracing)
+			expect(Array.isArray((result.response as BaseChatModel).callbacks)).toBe(true);
+			expect((result.response as BaseChatModel).callbacks).toHaveLength(2);
 		});
 
 		it('should evaluate multiple rules and return first matching model', async () => {

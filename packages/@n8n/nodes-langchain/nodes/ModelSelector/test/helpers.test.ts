@@ -1,7 +1,7 @@
 import type { INodeParameters, INodePropertyOptions } from 'n8n-workflow';
 
-// Import the function and property - note: these will have import errors until the main file is fixed
-import { numberInputsProperty } from '../ModelSelector.node';
+// Import the function and property
+import { numberInputsProperty, configuredInputs } from '../helpers';
 
 // We need to extract the configuredInputs function for testing
 // Since it's not exported, we'll test it indirectly through the node's inputs property
@@ -31,55 +31,37 @@ describe('ModelSelector Configuration', () => {
 		});
 	});
 
-	describe('configuredInputs function behavior', () => {
-		// Since configuredInputs is not exported, we test its behavior indirectly
-		// by examining how it would work based on the code structure
-
+	describe('configuredInputs function', () => {
 		it('should generate correct input configuration for default value', () => {
 			const parameters: INodeParameters = { numberInputs: 2 };
+			const result = configuredInputs(parameters);
 
-			// Simulate what configuredInputs would return
-			const expectedResult = Array.from({ length: 2 }, (_, i) => ({
-				type: 'ai_languageModel',
-				displayName: `Model ${(i + 1).toString()}`,
-			}));
-
-			expect(expectedResult).toEqual([
-				{ type: 'ai_languageModel', displayName: 'Model 1' },
-				{ type: 'ai_languageModel', displayName: 'Model 2' },
+			expect(result).toEqual([
+				{ type: 'ai_languageModel', displayName: 'Model 1', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 2', required: true, maxConnections: 1 },
 			]);
 		});
 
 		it('should generate correct input configuration for custom value', () => {
 			const parameters: INodeParameters = { numberInputs: 5 };
+			const result = configuredInputs(parameters);
 
-			// Simulate what configuredInputs would return
-			const expectedResult = Array.from({ length: 5 }, (_, i) => ({
-				type: 'ai_languageModel',
-				displayName: `Model ${(i + 1).toString()}`,
-			}));
-
-			expect(expectedResult).toEqual([
-				{ type: 'ai_languageModel', displayName: 'Model 1' },
-				{ type: 'ai_languageModel', displayName: 'Model 2' },
-				{ type: 'ai_languageModel', displayName: 'Model 3' },
-				{ type: 'ai_languageModel', displayName: 'Model 4' },
-				{ type: 'ai_languageModel', displayName: 'Model 5' },
+			expect(result).toEqual([
+				{ type: 'ai_languageModel', displayName: 'Model 1', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 2', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 3', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 4', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 5', required: true, maxConnections: 1 },
 			]);
 		});
 
 		it('should handle undefined numberInputs parameter', () => {
 			const parameters: INodeParameters = {};
+			const result = configuredInputs(parameters);
 
-			// Simulate what configuredInputs would return (should default to 2)
-			const expectedResult = Array.from({ length: 2 }, (_, i) => ({
-				type: 'ai_languageModel',
-				displayName: `Model ${(i + 1).toString()}`,
-			}));
-
-			expect(expectedResult).toEqual([
-				{ type: 'ai_languageModel', displayName: 'Model 1' },
-				{ type: 'ai_languageModel', displayName: 'Model 2' },
+			expect(result).toEqual([
+				{ type: 'ai_languageModel', displayName: 'Model 1', required: true, maxConnections: 1 },
+				{ type: 'ai_languageModel', displayName: 'Model 2', required: true, maxConnections: 1 },
 			]);
 		});
 	});
