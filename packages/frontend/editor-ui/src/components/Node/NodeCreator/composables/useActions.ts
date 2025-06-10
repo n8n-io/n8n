@@ -2,7 +2,6 @@ import { computed } from 'vue';
 import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
-	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
 } from 'n8n-workflow';
@@ -14,6 +13,8 @@ import type {
 	INodeCreateElement,
 	IUpdateInformation,
 	LabelCreateElement,
+	NodeCreateElement,
+	NodeTypeSelectedPayload,
 } from '@/Interface';
 import {
 	AGENT_NODE_TYPE,
@@ -44,14 +45,11 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import findLast from 'lodash/findLast';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
-	const canvasOperations = useCanvasOperations();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -157,7 +155,13 @@ export const useActions = () => {
 		return filteredActions;
 	}
 
-	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
+	type ActionData = {
+		name: string;
+		key: string;
+		value: INodeParameters;
+	};
+
+	function getActionData(actionItem: ActionTypeDescription): ActionData {
 		const displayOptions = actionItem.displayOptions;
 
 		const displayConditions = Object.keys(displayOptions?.show ?? {}).reduce(
@@ -173,6 +177,51 @@ export const useActions = () => {
 			key: actionItem.name,
 			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
 		};
+	}
+
+	function actionDataToNodeTypeSelectedPayload(actionData: ActionData): NodeTypeSelectedPayload {
+		const result: NodeTypeSelectedPayload = {
+			type: actionData.key,
+		};
+
+		if (
+			typeof actionData.value.resource === 'string' ||
+			typeof actionData.value.operation === 'string'
+		) {
+			result.parameters = {};
+
+			if (typeof actionData.value.resource === 'string') {
+				result.parameters.resource = actionData.value.resource;
+			}
+
+			if (typeof actionData.value.operation === 'string') {
+				result.parameters.operation = actionData.value.operation;
+			}
+		}
+
+		return result;
+	}
+
+	function nodeCreateElementToNodeTypeSelectedPayload(
+		actionData: NodeCreateElement,
+	): NodeTypeSelectedPayload {
+		const result: NodeTypeSelectedPayload = {
+			type: actionData.key,
+		};
+
+		if (typeof actionData.resource === 'string' || typeof actionData.operation === 'string') {
+			result.parameters = {};
+
+			if (typeof actionData.resource === 'string') {
+				result.parameters.resource = actionData.resource;
+			}
+
+			if (typeof actionData.operation === 'string') {
+				result.parameters.operation = actionData.operation;
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -316,32 +365,14 @@ export const useActions = () => {
 		rootView = '',
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-		const storeWatcher = onWorkflowStoreAction(
-			({ name, after, store: { setLastNodeParameters, allNodes }, args }) => {
-				if (name !== 'addNode' || args[0].type !== action.key) return;
-				after(() => {
-					const node = findLast(allNodes, (n) => n.type === action.key);
-					const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					const wasDefaultName =
-						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
-
-					setLastNodeParameters(action);
-
-					// We update the default name here based on the chosen resource and operation
-					if (wasDefaultName) {
-						const newName = NodeHelpers.makeNodeName(node.parameters, nodeType);
-						// Account for unique-ified nodes with `<name><digit>`
-						if (!node.name.startsWith(newName)) {
-							// setTimeout to allow remaining events trigger by node addition to finish
-							setTimeout(async () => await canvasOperations.renameNode(node.name, newName));
-						}
-					}
-					if (telemetry) trackActionSelected(action, telemetry, rootView);
-					// Unsubscribe from the store watcher
-					storeWatcher();
-				});
-			},
-		);
+		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
+			if (name !== 'addNode' || args[0].type !== action.key) return;
+			after(() => {
+				if (telemetry) trackActionSelected(action, telemetry, rootView);
+				// Unsubscribe from the store watcher
+				storeWatcher();
+			});
+		});
 
 		return storeWatcher;
 	}
@@ -363,6 +394,8 @@ export const useActions = () => {
 
 	return {
 		actionsCategoryLocales,
+		actionDataToNodeTypeSelectedPayload,
+		nodeCreateElementToNodeTypeSelectedPayload,
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
 		getAddedNodesAndConnections,

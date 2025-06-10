@@ -880,6 +880,14 @@ export type INodeCreateElement =
 	| ActionCreateElement
 	| LinkCreateElement;
 
+export type NodeTypeSelectedPayload = {
+	type: string;
+	parameters?: {
+		resource?: string;
+		operation?: string;
+	};
+};
+
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
 }
