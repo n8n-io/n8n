@@ -21,6 +21,8 @@ catalog:
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
+  http-proxy-agent: 7.0.2
+  https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
   jsonwebtoken: 9.0.2
   js-base64: 3.7.2
