@@ -206,15 +206,12 @@ const onSelect = (action: string) => {
 							{{ projectDescription }}
 						</N8nText>
 						<div v-else :class="$style.projectDescriptionWrapper">
-							<N8nTooltip :content="projectDescription" placement="bottom-end">
-								<N8nText
-									:class="$style.truncate"
-									color="text-light"
-									data-test-id="project-subtitle"
-								>
-									{{ projectDescription }}
-								</N8nText></N8nTooltip
-							>
+							<N8nText :class="$style.truncated" color="text-light" data-test-id="project-subtitle">
+								{{ projectDescription }}
+							</N8nText>
+							<div :class="$style.tooltip">
+								<N8nText color="text-light">{{ projectDescription }}</N8nText>
+							</div>
 						</div>
 					</template>
 				</div>
@@ -270,13 +267,33 @@ const onSelect = (action: string) => {
 
 .projectDescriptionWrapper {
 	max-width: 50vw;
+	position: relative;
+	display: inline-block;
+
+	&:hover .tooltip {
+		display: block;
+	}
 }
 
-.truncate {
-	display: block;
+.truncated {
+	display: inline-block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	max-width: 100%;
+}
+
+.tooltip {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: calc(-1 * var(--spacing-3xs));
+	background-color: var(--color-background-light);
+	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
+	z-index: 10;
+	white-space: normal;
+	border-radius: 6px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 @include mixins.breakpoint('xs-only') {
