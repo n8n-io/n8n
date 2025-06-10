@@ -68,6 +68,11 @@ describe('getInputConnectionData', () => {
 		nodeTypes.getByNameAndVersion
 			.calledWith(agentNode.type, expect.anything())
 			.mockReturnValue(agentNodeType);
+
+		// Mock getConnections method used by validateInputConfiguration
+		jest
+			.spyOn(executeContext, 'getConnections')
+			.mockReturnValue([[{ node: 'mockNode', type: 'main', index: 0 }]]);
 	});
 
 	describe.each([
@@ -88,7 +93,7 @@ describe('getInputConnectionData', () => {
 			type: 'test.type',
 			disabled: false,
 		});
-		const secondNode = mock<INode>({ name: 'Second Node', disabled: false });
+		const secondNode = mock<INode>({ name: 'Second Node', type: 'test.type', disabled: false });
 		const supplyData = jest.fn().mockResolvedValue({ response });
 		const nodeType = mock<INodeType>({ supplyData });
 
@@ -232,6 +237,109 @@ describe('getInputConnectionData', () => {
 			expect(supplyData).toHaveBeenCalled();
 			// @ts-expect-error private property
 			expect(executeContext.closeFunctions).toContain(closeFunction);
+		});
+
+		it('should handle multiple input configurations of the same type with different max connections', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					maxConnections: 2,
+					required: true,
+				},
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: false,
+				},
+			];
+
+			const thirdNode = mock<INode>({ name: 'Third Node', type: 'test.type', disabled: false });
+
+			// Mock node types for all connected nodes
+			nodeTypes.getByNameAndVersion
+				.calledWith(secondNode.type, expect.anything())
+				.mockReturnValue(nodeType);
+			nodeTypes.getByNameAndVersion
+				.calledWith(thirdNode.type, expect.anything())
+				.mockReturnValue(nodeType);
+
+			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
+			workflow.getNode.calledWith(thirdNode.name).mockReturnValue(thirdNode);
+
+			const result = await executeContext.getInputConnectionData(connectionType, 0);
+			expect(result).toEqual([response, response, response]);
+			expect(supplyData).toHaveBeenCalledTimes(3);
+		});
+
+		it('should throw when exceeding total max connections across multiple input configurations', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: true,
+				},
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: false,
+				},
+			];
+
+			const thirdNode = mock<INode>({ name: 'Third Node', type: 'test.type', disabled: false });
+
+			// Mock node types for all connected nodes
+			nodeTypes.getByNameAndVersion
+				.calledWith(secondNode.type, expect.anything())
+				.mockReturnValue(nodeType);
+			nodeTypes.getByNameAndVersion
+				.calledWith(thirdNode.type, expect.anything())
+				.mockReturnValue(nodeType);
+
+			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
+
+			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
+				`Only 2 ${connectionType} sub-nodes are/is allowed to be connected`,
+			);
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+
+		it('should return array when multiple input configurations exist even with single connection', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: true,
+				},
+				{
+					type: connectionType,
+					maxConnections: 2,
+					required: false,
+				},
+			];
+
+			const result = await executeContext.getInputConnectionData(connectionType, 0);
+			expect(result).toEqual([response]);
+			expect(supplyData).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return empty array when no connections and multiple optional inputs', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: false,
+				},
+				{
+					type: connectionType,
+					maxConnections: 1,
+					required: false,
+				},
+			];
+			workflow.getParentNodes.mockReturnValueOnce([]);
+
+			const result = await executeContext.getInputConnectionData(connectionType, 0);
+			expect(result).toEqual([]);
+			expect(supplyData).not.toHaveBeenCalled();
 		});
 	});
 

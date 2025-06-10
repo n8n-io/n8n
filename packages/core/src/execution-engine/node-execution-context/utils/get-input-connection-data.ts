@@ -15,12 +15,16 @@ import type {
 	ISupplyDataFunctions,
 	INodeType,
 	INode,
+	INodeInputConfiguration,
+	INodeConnection,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	ExecutionBaseError,
 	ApplicationError,
+	UserError,
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
@@ -85,6 +89,28 @@ export function makeHandleToolInvocation(
 	};
 }
 
+function validateInputConfiguration(
+	context: ExecuteContext | WebhookContext | SupplyDataContext,
+	connectionType: NodeConnectionType,
+	nodeInputs: INodeInputConfiguration[],
+) {
+	const parentNode = context.getNode();
+
+	const connections = context.getConnections(parentNode, connectionType);
+	// Validate missing required connections
+	for (let index = 0; index < nodeInputs.length; index++) {
+		const inputConfiguration = nodeInputs[index];
+		if (inputConfiguration.required) {
+			if (!connections || connections.length === 0 || index >= connections.length) {
+				throw new NodeOperationError(
+					parentNode,
+					`A ${inputConfiguration?.displayName ?? connectionType} sub-node must be connected and enabled`,
+				);
+			}
+		}
+	}
+}
+
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
 	workflow: Workflow,
@@ -101,32 +127,36 @@ export async function getInputConnectionData(
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
 	const parentNode = this.getNode();
+	const inputConfigurations = this.nodeInputs.filter((input) => input.type === connectionType);
 
-	const inputConfiguration = this.nodeInputs.find((input) => input.type === connectionType);
-	if (inputConfiguration === undefined) {
-		throw new ApplicationError('Node does not have input of type', {
+	if (inputConfigurations === undefined || inputConfigurations.length === 0) {
+		throw new UserError('Node does not have input of type', {
 			extra: { nodeName: parentNode.name, connectionType },
 		});
 	}
 
+	const maxConnections = inputConfigurations.reduce(
+		(acc, currentItem) => (currentItem.maxConnections ? acc + currentItem.maxConnections : acc),
+		0,
+	);
+
 	const connectedNodes = this.getConnectedNodes(connectionType);
+	validateInputConfiguration(this, connectionType, inputConfigurations);
+
+	// Nothing is connected or required
 	if (connectedNodes.length === 0) {
-		if (inputConfiguration.required) {
-			throw new NodeOperationError(
-				parentNode,
-				`A ${inputConfiguration?.displayName ?? connectionType} sub-node must be connected and enabled`,
-			);
-		}
-		return inputConfiguration.maxConnections === 1 ? undefined : [];
+		return maxConnections === 1 ? undefined : [];
 	}
 
+	// Too many connections
 	if (
-		inputConfiguration.maxConnections !== undefined &&
-		connectedNodes.length > inputConfiguration.maxConnections
+		maxConnections !== undefined &&
+		maxConnections !== 0 &&
+		connectedNodes.length > maxConnections
 	) {
 		throw new NodeOperationError(
 			parentNode,
-			`Only ${inputConfiguration.maxConnections} ${connectionType} sub-nodes are/is allowed to be connected`,
+			`Only ${maxConnections} ${connectionType} sub-nodes are/is allowed to be connected`,
 		);
 	}
 
@@ -214,7 +244,5 @@ export async function getInputConnectionData(
 		}
 	}
 
-	return inputConfiguration.maxConnections === 1
-		? (nodes || [])[0]?.response
-		: nodes.map((node) => node.response);
+	return maxConnections === 1 ? (nodes || [])[0]?.response : nodes.map((node) => node.response);
 }

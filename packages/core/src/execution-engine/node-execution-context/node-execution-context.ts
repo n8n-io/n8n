@@ -9,6 +9,8 @@ import type {
 	IExecuteData,
 	IGetNodeParameterOptions,
 	INode,
+	INodeConnection,
+	INodeConnections,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeExecutionData,
@@ -17,6 +19,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
@@ -42,6 +45,7 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
+import { connect } from 'node:net';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -151,6 +155,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			.map((nodeName) => this.workflow.getNode(nodeName))
 			.filter((node) => !!node)
 			.filter((node) => node.disabled !== true);
+	}
+
+	getConnections(destination: INode, connectionType: NodeConnectionType): NodeInputConnections {
+		return this.workflow.connectionsByDestinationNode[destination.name]?.[connectionType] ?? [];
 	}
 
 	getNodeOutputs(): INodeOutputConfiguration[] {
