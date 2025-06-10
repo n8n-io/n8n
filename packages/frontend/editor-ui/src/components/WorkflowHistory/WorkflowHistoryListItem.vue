@@ -6,7 +6,7 @@ import type {
 	WorkflowHistory,
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
