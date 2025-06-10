@@ -583,20 +583,10 @@ describe('getInsightsByTime', () => {
 });
 
 describe('getAvailableDateRanges', () => {
-	let insightsService: InsightsService;
 	let licenseMock: jest.Mocked<LicenseState>;
 
 	beforeAll(() => {
 		licenseMock = mock<LicenseState>();
-		insightsService = new InsightsService(
-			mock<InsightsByPeriodRepository>(),
-			mock<InsightsCompactionService>(),
-			mock<InsightsCollectionService>(),
-			mock<InsightsPruningService>(),
-			licenseMock,
-			mock<InstanceSettings>(),
-			mockLogger(),
-		);
 	});
 
 	test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
