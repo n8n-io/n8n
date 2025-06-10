@@ -64,7 +64,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-import { ChatService } from '../chat/chat-service';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -132,8 +131,7 @@ export function autoDetectResponseMode(
 	if (
 		workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
 		method === 'POST' &&
-		workflowStartNode.parameters.public &&
-		(workflowStartNode.parameters.options as IDataObject)?.responseMode !== 'responseNode'
+		workflowStartNode.parameters.public
 	) {
 		return 'hostedChat';
 	}
@@ -674,11 +672,6 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
-
-		if (workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE) {
-			const sessionId = webhookResultData.workflowData[0][0].json.sessionId as string;
-			Container.get(ChatService).updateSessionExecutionId(sessionId, executionId);
-		}
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });

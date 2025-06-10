@@ -5,14 +5,14 @@ export type ChatRequest = Request<
 	{ workflowId: string },
 	{},
 	{},
-	{ sessionId: string; executionId?: string; isPublic?: boolean }
+	{ sessionId: string; executionId: string; isPublic?: boolean }
 > & {
 	ws: WebSocket;
 };
 
 export type Session = {
 	connection: WebSocket;
-	executionId?: string;
+	executionId: string;
 	intervalId?: NodeJS.Timeout;
 	nodeWaitingForResponse: string | null;
 	isPublic?: boolean;

@@ -47,7 +47,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			);
 
 			if (sendMessageResponse.executionStarted) {
-				return;
+				return sendMessageResponse;
 			}
 
 			let textMessage =
@@ -73,6 +73,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
 			});
+
+			return null;
 		}
 
 		async function loadPreviousSession() {

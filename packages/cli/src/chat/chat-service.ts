@@ -82,8 +82,8 @@ export class ChatService {
 			query: { sessionId, executionId, isPublic },
 		} = req;
 
-		if (!sessionId) {
-			ws.send('The query parameter "sessionId" is missing!');
+		if (!sessionId || !executionId) {
+			ws.send(`The query parameter "${sessionId ? 'sessionId' : 'executionId'}" is missing!`);
 			ws.close(1008);
 			return;
 		}
@@ -131,8 +131,9 @@ export class ChatService {
 
 			if (execution.status === 'waiting') {
 				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+				const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
 				const nodeExecutionData =
-					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+					execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main[0];
 				const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
 
 				if (message) {
@@ -182,16 +183,6 @@ export class ChatService {
 				this.sessions.get(sessionId)!.nodeWaitingForResponse = null;
 			}
 		};
-	}
-
-	updateSessionExecutionId(sessionId: string, executionId: string) {
-		const session = this.sessions.get(sessionId);
-		if (session) {
-			session.executionId = executionId;
-			return;
-		}
-
-		throw new NotFoundError(`The session "${sessionId}" does not exist.`);
 	}
 
 	private async getExecution(executionId: string, sessionId: string) {
