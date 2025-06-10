@@ -207,6 +207,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
