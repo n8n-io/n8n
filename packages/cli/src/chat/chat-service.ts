@@ -8,10 +8,17 @@ import { ExecuteContext } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	INode,
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { jsonParse, Workflow, BINARY_ENCODING, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	jsonParse,
+	Workflow,
+	BINARY_ENCODING,
+	CHAT_TRIGGER_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, WebSocket, Server as WebSocketServer } from 'ws';
@@ -118,8 +125,11 @@ export class ChatService {
 
 	private outgoingMessageHandler(sessionId: string) {
 		return async () => {
-			const { connection, executionId, nodeWaitingForResponse, isPublic } =
-				this.sessions.get(sessionId) || {};
+			const session = this.sessions.get(sessionId);
+
+			if (!session) return;
+
+			const { connection, executionId, nodeWaitingForResponse, isPublic } = session;
 
 			if (!executionId || !connection || nodeWaitingForResponse) return;
 
@@ -138,7 +148,21 @@ export class ChatService {
 
 				if (message) {
 					connection.send(message);
-					this.sessions.get(sessionId)!.nodeWaitingForResponse = lastNodeExecuted;
+
+					const lastNode = execution.workflowData.nodes.find(
+						(node) => node.name === lastNodeExecuted,
+					) as INode;
+
+					if (this.resumeImmediately(lastNode)) {
+						await this.resumeExecution(
+							executionId,
+							{ action: 'user', chatInput: '', sessionId },
+							sessionId,
+						);
+						session.nodeWaitingForResponse = null;
+					} else {
+						session.nodeWaitingForResponse = lastNodeExecuted;
+					}
 				}
 				return;
 			}
@@ -174,15 +198,46 @@ export class ChatService {
 		};
 	}
 
+	private resumeImmediately(lastNode: INode) {
+		if (lastNode?.type === RESPOND_TO_WEBHOOK_NODE_TYPE) {
+			return true;
+		}
+
+		const waitResponseFromChat = (lastNode?.parameters.options as IDataObject).waitResponseFromChat;
+
+		if (waitResponseFromChat === false) {
+			return true;
+		}
+
+		return false;
+	}
+
 	private incomingMessageHandler(sessionId: string) {
 		return async (data: RawData) => {
 			const executionId = this.sessions.get(sessionId)?.executionId;
 
 			if (executionId) {
-				await this.resumeExecution(executionId, data, sessionId);
+				await this.resumeExecution(executionId, this.processIncomingData(data), sessionId);
 				this.sessions.get(sessionId)!.nodeWaitingForResponse = null;
 			}
 		};
+	}
+
+	private processIncomingData(data: RawData) {
+		const buffer = Array.isArray(data)
+			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
+			: Buffer.from(data);
+
+		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
+
+		if (message.files) {
+			message.files = message.files.map((file) => ({
+				...file,
+				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
+			}));
+		}
+
+		return message;
 	}
 
 	private async getExecution(executionId: string, sessionId: string) {
@@ -208,21 +263,8 @@ export class ChatService {
 		return execution;
 	}
 
-	private async resumeExecution(executionId: string, data: RawData, sessionId: string) {
+	private async resumeExecution(executionId: string, message: ChatMessage, sessionId: string) {
 		const execution = (await this.getExecution(executionId ?? '', sessionId)) as IExecutionResponse;
-
-		const buffer = Array.isArray(data)
-			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
-			: Buffer.from(data);
-
-		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
-
-		if (message.files) {
-			message.files = message.files.map((file) => ({
-				...file,
-				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
-			}));
-		}
 
 		await Container.get(WorkflowRunner).run(
 			await this.getRunData(execution, message),

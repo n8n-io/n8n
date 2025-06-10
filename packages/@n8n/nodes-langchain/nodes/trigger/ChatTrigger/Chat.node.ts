@@ -9,15 +9,15 @@ import type {
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Respond to Chat and Wait for Response',
+		displayName: 'Respond to Chat',
 		name: 'chat',
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['input'],
 		version: 1,
-		description: 'Respond to Chat and Wait for Response',
+		description: 'Send a message to a chat',
 		defaults: {
-			name: 'Respond to Chat and Wait for Response',
+			name: 'Respond to Chat',
 		},
 		codex: {
 			categories: ['Core Nodes'],
@@ -42,13 +42,36 @@ export class Chat implements INodeType {
 					rows: 6,
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Wait Response From Chat',
+						name: 'waitResponseFromChat',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			},
 		],
 	};
 
 	async onMessage(
-		_context: IExecuteFunctions,
+		context: IExecuteFunctions,
 		data: INodeExecutionData,
 	): Promise<INodeExecutionData[][]> {
+		const options = context.getNodeParameter('options', 0, {}) as {
+			waitResponseFromChat?: boolean;
+		};
+
+		if (options.waitResponseFromChat === false) {
+			const inputData = context.getInputData();
+			return [inputData];
+		}
 		return [[data]];
 	}
 
