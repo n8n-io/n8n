@@ -19,7 +19,7 @@ interface MessageRecord {
 }
 
 export function simplifyMessages(messages: BaseMessage[]) {
-	// This function trips the content of the messages to a simple format and
+	// This function strips the content of the messages to a simple format and
 	// simplifies the messages by grouping them based on their type
 	// and returning an array of objects where each object contains messages of different types.
 	if (messages.length === 0) return [];
