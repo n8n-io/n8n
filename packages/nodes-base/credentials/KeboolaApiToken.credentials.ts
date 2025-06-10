@@ -9,7 +9,7 @@ export class KeboolaApiToken implements ICredentialType {
 	name = 'keboolaApiToken';
 	displayName = 'Keboola API Token';
 	documentationUrl = 'https://developers.keboola.com/integrate/storage/api/';
-	icon = 'file:keboola.png';
+	icon = 'file:keboola.svg';
 
 	properties: INodeProperties[] = [
 		{

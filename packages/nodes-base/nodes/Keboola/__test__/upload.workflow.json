@@ -1,0 +1,51 @@
+{
+	"name": "Keboola Table Upload",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "trigger",
+			"name": "Start"
+		},
+		{
+			"parameters": {
+				"operation": "upload",
+				"bucketStage": "out",
+				"bucketName": "n8n",
+				"tableName": "my-table",
+				"importMode": "full",
+				"primaryKeys": "id"
+			},
+			"type": "n8n-nodes-base.keboola",
+			"typeVersion": 1,
+			"position": [500, 300],
+			"id": "keboola-upload",
+			"name": "Keboola: Upload Data",
+			"credentials": {
+				"keboolaApiToken": {
+					"id": "123",
+					"name": "Keboola"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Keboola: Upload Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"active": false,
+	"settings": {},
+	"id": "upload-workflow"
+}

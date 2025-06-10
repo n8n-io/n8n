@@ -100,7 +100,7 @@ export const FileMetadataSchema = z.object({
 		.optional(),
 	credentials: z
 		.object({
-			access_token: z.string(),
+			access_token: z.string().optional(), // Change from required to optional
 			expires_in: z.number().optional(),
 		})
 		.optional(),
@@ -308,9 +308,7 @@ export function hasGcsCredentials(
 	return metadata.gcsCredentials?.access_token !== undefined;
 }
 
-export function hasAwsCredentials(
-	metadata: FileMetadata,
-): metadata is FileMetadata & {
+export function hasAwsCredentials(metadata: FileMetadata): metadata is FileMetadata & {
 	awsCredentials: { AccessKeyId: string; SecretAccessKey: string; SessionToken: string };
 } {
 	return metadata.awsCredentials?.AccessKeyId !== undefined;

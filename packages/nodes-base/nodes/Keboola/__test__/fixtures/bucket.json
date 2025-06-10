@@ -1,0 +1,13 @@
+{
+	"id": "out.c-n8n",
+	"name": "n8n",
+	"stage": "out",
+	"backend": "snowflake",
+	"created": "2023-01-01T00:00:00",
+	"lastChangeDate": "2023-01-01T01:00:00",
+	"isReadOnly": false,
+	"description": "",
+	"displayName": "",
+	"rowsCount": 0,
+	"tables": []
+}

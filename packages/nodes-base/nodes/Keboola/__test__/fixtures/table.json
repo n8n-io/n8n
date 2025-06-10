@@ -1,0 +1,20 @@
+{
+	"id": "in.c-my.my-table",
+	"name": "my-table",
+	"bucket": {
+		"id": "in.c-my",
+		"name": "my",
+		"stage": "in",
+		"backend": "snowflake",
+		"created": "2024-01-01T00:00:00Z",
+		"lastChangeDate": "2024-01-02T00:00:00Z",
+		"isReadOnly": false
+	},
+	"columns": ["id", "name"],
+	"primaryKey": [],
+	"isAlias": false,
+	"created": "2024-01-01T00:00:00Z",
+	"lastChangeDate": "2024-01-02T00:00:00Z",
+	"rowsCount": 10,
+	"dataSizeBytes": 1000
+}

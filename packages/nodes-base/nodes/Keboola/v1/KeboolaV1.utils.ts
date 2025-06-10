@@ -2,7 +2,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IExecuteFunctions } from 'n8n-workflow';
 
 import type {
-	Platform,
 	KeboolaUploadParams,
 	KeboolaTableIdentifiers,
 	BucketIdentifiers,
@@ -31,18 +30,18 @@ export function buildCsvFromItems(items: INodeExecutionData[], columns: string[]
 	return [header, ...rows].join('\n');
 }
 
-export function detectCloudProvider(url: string): Platform {
-	if (url.startsWith('gs://') || url.includes('storage.googleapis.com')) {
-		return 'gcp';
-	}
-	if (url.startsWith('s3://')) {
-		return 'aws';
-	}
-	if (url.includes('.blob.core.windows.net')) {
-		return 'azure';
-	}
-	throw new UnexpectedError(`Unsupported cloud provider URL: ${url}`);
-}
+// export function detectCloudProvider(url: string): Platform {
+// 	if (url.startsWith('gs://') || url.includes('storage.googleapis.com')) {
+// 		return 'gcp';
+// 	}
+// 	if (url.startsWith('s3://') || url.includes('.s3.amazonaws.com')) {
+// 		return 'aws';
+// 	}
+// 	if (url.includes('.blob.core.windows.net')) {
+// 		return 'azure';
+// 	}
+// 	throw new UnexpectedError(`Unsupported cloud provider URL: ${url}`);
+// }
 
 export function parseCsv(csv: string, columns: string[]): Array<Record<string, string>> {
 	const lines = csv.trim().split('\n');
@@ -60,13 +59,18 @@ export function createTableIdentifiers(params: KeboolaUploadParams): KeboolaTabl
 	return { bucketId, tableId, incremental };
 }
 
-export function parsePrimaryKeys(primaryKeysRaw: string): string[] {
+export function parsePrimaryKeys(primaryKeysRaw: string | string[] | undefined | null): string[] {
+	if (!primaryKeysRaw) return [];
+
+	if (Array.isArray(primaryKeysRaw)) return primaryKeysRaw.filter(Boolean);
+
+	if (typeof primaryKeysRaw !== 'string') return [];
+
+	// Normal string processing
 	return primaryKeysRaw
-		? primaryKeysRaw
-				.split(',')
-				.map((s) => s.trim())
-				.filter((s) => s.length > 0)
-		: [];
+		.split(',')
+		.map((key) => key.trim())
+		.filter(Boolean);
 }
 
 export function extractColumnsFromItems(items: INodeExecutionData[]): string[] {
@@ -95,6 +99,28 @@ export function formatUploadSuccessMessage(itemCount: number, tableId: string): 
 
 export async function delay(ms: number): Promise<void> {
 	return await new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+export function extractAwsRegion(url: string): string {
+	try {
+		const parsedUrl = new URL(url);
+
+		const hostParts = parsedUrl.hostname.split('.');
+
+		if (hostParts.length >= 4 && hostParts[1] === 's3') {
+			return hostParts[2]; // Return the region part
+		}
+
+		const regionMatch = parsedUrl.hostname.match(/\.([a-z0-9-]+)\.amazonaws\.com$/);
+		if (regionMatch && regionMatch[1]) {
+			return regionMatch[1];
+		}
+
+		return 'us-east-1';
+	} catch (error) {
+		console.warn(`Failed to extract AWS region from URL: ${url}`, error);
+		return 'us-east-1';
+	}
 }
 
 export async function extractCredentials(

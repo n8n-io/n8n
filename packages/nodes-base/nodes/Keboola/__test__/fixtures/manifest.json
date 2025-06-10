@@ -1,0 +1,8 @@
+{
+	"entries": [
+		{
+			"url": "gs://my-bucket/file1.csv",
+			"mandatory": true
+		}
+	]
+}
