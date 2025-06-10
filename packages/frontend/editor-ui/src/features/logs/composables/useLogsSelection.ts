@@ -72,6 +72,18 @@ export function useLogsSelection(
 		syncSelectionToCanvasIfEnabled(nextEntry);
 	}
 
+	watch(
+		selected,
+		(sel) => {
+			if (sel) {
+				logsStore.setSubNodeSelected(
+					sel.parent !== undefined && sel.parent.workflow.id === sel.workflow.id,
+				);
+			}
+		},
+		{ immediate: true },
+	);
+
 	// Synchronize selection from canvas
 	watch(
 		[() => uiStore.lastSelectedNode, () => logsStore.isLogSelectionSyncedWithCanvas],
