@@ -26,6 +26,8 @@ export const objectRetriever: ValueTransformer = {
 
 /** Remove invisible Unicode characters that break JSON parsing. */
 function sanitizeJson(value: string): string {
+	if (!value) return value;
+
 	return value
 		.replace(/\u2028/g, '') // line separator (LSEP)
 		.replace(/\u2029/g, '') // paragraph separator (PSEP)
