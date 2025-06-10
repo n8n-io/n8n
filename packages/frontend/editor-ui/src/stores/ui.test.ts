@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
 import { defaultSettings } from '../__tests__/defaults';

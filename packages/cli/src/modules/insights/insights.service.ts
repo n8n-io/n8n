@@ -6,6 +6,7 @@ import {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
@@ -33,6 +34,7 @@ export class InsightsService {
 		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
@@ -40,26 +42,37 @@ export class InsightsService {
 
 	@OnLeaderTakeover()
 	startTimers() {
-		this.compactionService.startCompactionTimer();
 		this.collectionService.startFlushingTimer();
+		this.logger.debug('Started flushing timer');
+
+		// Start compaction and pruning timers for main leader instance only
+		if (this.instanceSettings.isLeader) {
+			this.startCompactionAndPruningTimers();
+		}
+	}
+
+	@OnLeaderTakeover()
+	startCompactionAndPruningTimers() {
+		this.compactionService.startCompactionTimer();
+		this.logger.debug('Started compaction timer');
 		if (this.pruningService.isPruningEnabled) {
 			this.pruningService.startPruningTimer();
+			this.logger.debug('Started pruning timer');
 		}
-		this.logger.debug('Started compaction, flushing and pruning schedulers');
 	}
 
 	@OnLeaderStepdown()
-	stopTimers() {
+	stopCompactionAndPruningTimers() {
 		this.compactionService.stopCompactionTimer();
-		this.collectionService.stopFlushingTimer();
+		this.logger.debug('Stopped compaction timer');
 		this.pruningService.stopPruningTimer();
-		this.logger.debug('Stopped compaction, flushing and pruning schedulers');
+		this.logger.debug('Stopped pruning timer');
 	}
 
 	@OnShutdown()
 	async shutdown() {
 		await this.collectionService.shutdown();
-		this.stopTimers();
+		this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({

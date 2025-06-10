@@ -1,4 +1,4 @@
-import deepEqual from 'deep-equal';
+import isEqual from 'lodash/isEqual';
 import uniqWith from 'lodash/uniqWith';
 
 import type { Extension, ExtensionMap } from './extensions';
@@ -64,9 +64,7 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		}
 		return item;
 	};
-	return uniqWith(value, (a, b) =>
-		deepEqual(mapForEqualityCheck(a), mapForEqualityCheck(b), { strict: true }),
-	);
+	return uniqWith(value, (a, b) => isEqual(mapForEqualityCheck(a), mapForEqualityCheck(b)));
 }
 
 const ensureNumberArray = (arr: unknown[], { fnName }: { fnName: string }) => {
@@ -266,7 +264,7 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
-		if (newArr.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
+		if (newArr.findIndex((w) => isEqual(w, v)) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -282,7 +280,7 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
+		if (others.findIndex((w) => isEqual(w, v)) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -298,12 +296,12 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
+		if (others.findIndex((w) => isEqual(w, v)) !== -1) {
 			newArr.push(v);
 		}
 	}
 	for (const v of others) {
-		if (value.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
+		if (value.findIndex((w) => isEqual(w, v)) !== -1) {
 			newArr.push(v);
 		}
 	}

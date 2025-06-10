@@ -109,6 +109,7 @@ describe('DbConnectionOptions', () => {
 						key: '',
 						rejectUnauthorized: true,
 					},
+					idleTimeoutMs: 30000,
 				};
 			});
 
@@ -128,6 +129,9 @@ describe('DbConnectionOptions', () => {
 					migrations: postgresMigrations,
 					connectTimeoutMS: 20000,
 					ssl: false,
+					extra: {
+						idleTimeoutMillis: 30000,
+					},
 				});
 			});
 

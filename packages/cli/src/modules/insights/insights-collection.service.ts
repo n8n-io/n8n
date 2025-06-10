@@ -75,20 +75,27 @@ export class InsightsCollectionService {
 
 	startFlushingTimer() {
 		this.isAsynchronouslySavingInsights = true;
-		this.stopFlushingTimer();
+		this.scheduleFlushing();
+	}
+
+	scheduleFlushing() {
+		this.cancelScheduledFlushing();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
 			this.insightsConfig.flushIntervalSeconds * 1000,
 		);
-		this.logger.debug('Started flushing timer');
 	}
 
-	stopFlushingTimer() {
+	cancelScheduledFlushing() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
-			this.logger.debug('Stopped flushing timer');
 		}
+	}
+
+	stopFlushingTimer() {
+		this.cancelScheduledFlushing();
+		this.logger.debug('Stopped flushing timer');
 	}
 
 	async shutdown() {
@@ -228,12 +235,12 @@ export class InsightsCollectionService {
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
 			// reschedule the timer to flush again
-			this.startFlushingTimer();
+			this.scheduleFlushing();
 			return;
 		}
 
 		// Stop timer to prevent concurrent flush from timer
-		this.stopFlushingTimer();
+		this.cancelScheduledFlushing();
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
@@ -250,7 +257,7 @@ export class InsightsCollectionService {
 					this.bufferedInsights.add(event);
 				}
 			} finally {
-				this.startFlushingTimer();
+				this.scheduleFlushing();
 				this.flushesInProgress.delete(flushPromise!);
 			}
 		})();

@@ -17,7 +17,6 @@ import {
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
-import { useRouter } from 'vue-router';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/utils/mappingUtils';
 
@@ -210,7 +209,7 @@ export function autocompletableNodeNames() {
 
 	const activeNodeName = activeNode.name;
 
-	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	const workflow = useWorkflowHelpers().getCurrentWorkflow();
 	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
@@ -222,7 +221,7 @@ export function autocompletableNodeNames() {
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	const workflow = useWorkflowHelpers().getCurrentWorkflow();
 	return workflow
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

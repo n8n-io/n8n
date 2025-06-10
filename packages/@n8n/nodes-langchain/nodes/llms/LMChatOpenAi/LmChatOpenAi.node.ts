@@ -149,7 +149,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-4o-mini' },
+				default: { mode: 'list', value: 'gpt-4.1-mini' },
 				required: true,
 				modes: [
 					{
@@ -166,7 +166,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'gpt-4o-mini',
+						placeholder: 'gpt-4.1-mini',
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',

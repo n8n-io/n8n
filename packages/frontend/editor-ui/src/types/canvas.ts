@@ -123,6 +123,7 @@ export interface CanvasNodeData {
 		status?: ExecutionStatus;
 		waiting?: string;
 		running: boolean;
+		waitingForNext?: boolean;
 	};
 	runData: {
 		outputMap: ExecutionOutputMap;

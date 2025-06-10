@@ -6,7 +6,8 @@ import {
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
-import { memoize, startCase } from 'lodash-es';
+import memoize from 'lodash/memoize';
+import startCase from 'lodash/startCase';
 import type {
 	ICredentialType,
 	INodeProperties,

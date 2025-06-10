@@ -33,7 +33,7 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { ElCheckbox } from 'element-plus';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
 import N8nPagination from '../N8nPagination';

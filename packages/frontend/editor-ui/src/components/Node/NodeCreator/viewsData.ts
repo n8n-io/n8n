@@ -65,7 +65,7 @@ import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workf
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@n8n/i18n';
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 export interface NodeViewItemSection {

@@ -1,3 +1,6 @@
+export * from './browser';
+export * from './instance';
+
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',

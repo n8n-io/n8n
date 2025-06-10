@@ -14,6 +14,7 @@ import type { TestRunRecord } from '@/api/evaluation.ee';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -143,15 +144,19 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: false,
-					output_set_up: false,
-					metrics_set_up: false,
-					quota_reached: false,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: false,
+						output_set_up: false,
+						metrics_set_up: false,
+						quota_reached: false,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 
@@ -171,12 +176,16 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'overview',
-					run_count: 2,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'overview',
+						run_count: 2,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 
@@ -206,21 +215,27 @@ describe('EvaluationsRootView', () => {
 
 			// Mock dataset trigger node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_TRIGGER_NODE_TYPE ? { name: EVALUATION_TRIGGER_NODE_TYPE } : null,
+				nodeType === EVALUATION_TRIGGER_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_TRIGGER_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: true,
-					output_set_up: false,
-					metrics_set_up: false,
-					quota_reached: false,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: true,
+						output_set_up: false,
+						metrics_set_up: false,
+						quota_reached: false,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 
@@ -256,21 +271,27 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
+				nodeType === EVALUATION_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: false,
-					output_set_up: true,
-					metrics_set_up: false,
-					quota_reached: false,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: false,
+						output_set_up: true,
+						metrics_set_up: false,
+						quota_reached: false,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 
@@ -306,21 +327,27 @@ describe('EvaluationsRootView', () => {
 
 			// Mock evaluation node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE ? { name: EVALUATION_NODE_TYPE } : null,
+				nodeType === EVALUATION_NODE_TYPE
+					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
+					: null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: false,
-					output_set_up: false,
-					metrics_set_up: true,
-					quota_reached: false,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: false,
+						output_set_up: false,
+						metrics_set_up: true,
+						quota_reached: false,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 
@@ -340,15 +367,19 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
-					workflow_id: mockWorkflow.id,
-					test_type: 'evaluation',
-					view: 'setup',
-					trigger_set_up: false,
-					output_set_up: false,
-					metrics_set_up: false,
-					quota_reached: true,
-				});
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					'User viewed tests tab',
+					{
+						workflow_id: mockWorkflow.id,
+						test_type: 'evaluation',
+						view: 'setup',
+						trigger_set_up: false,
+						output_set_up: false,
+						metrics_set_up: false,
+						quota_reached: true,
+					},
+					{ withPostHog: true },
+				);
 			});
 		});
 	});

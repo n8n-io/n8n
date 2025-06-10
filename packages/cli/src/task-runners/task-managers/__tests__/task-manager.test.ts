@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import { get, set } from 'lodash';
+import get from 'lodash/get';
+import set from 'lodash/set';
 
 import type { NodeTypes } from '@/node-types';
 import type { Task } from '@/task-runners/task-managers/task-requester';

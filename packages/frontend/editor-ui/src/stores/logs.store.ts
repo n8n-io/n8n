@@ -1,8 +1,4 @@
-import {
-	LOG_DETAILS_PANEL_STATE,
-	LOGS_PANEL_STATE,
-	type LogDetailsPanelState,
-} from '@/components/CanvasChat/types/logs';
+import { type LogDetailsPanelState } from '@/features/logs/logs.types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
@@ -12,6 +8,7 @@ import {
 import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { LOG_DETAILS_PANEL_STATE, LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
 
 export const useLogsStore = defineStore('logs', () => {
 	const isOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
