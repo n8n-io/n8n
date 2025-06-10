@@ -13,3 +13,4 @@ export * from './sso';
 export * from './ui';
 export * from './versions';
 export * from './webhooks';
+export * from './workflowHistory';
