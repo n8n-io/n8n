@@ -142,9 +142,6 @@ export class LmChatAwsBedrock implements INodeType {
 			temperature: number;
 			maxTokensToSample: number;
 		};
-		const requestDefaults = this.getNodeParameter('options', itemIndex, {}) as {
-			baseURL: string;
-		};
 
 		const model = new ChatBedrockConverse({
 			region: credentials.region as string,
@@ -152,7 +149,7 @@ export class LmChatAwsBedrock implements INodeType {
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			clientConfig: {
-				httpAgent: getHttpProxyAgent(requestDefaults.baseURL),
+				httpAgent: getHttpProxyAgent(undefined),
 			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
