@@ -43,7 +43,7 @@ function shouldBypassProxy(baseURL: string, noProxyString: string): boolean {
 		}
 
 		// Wildcard domain match (e.g., *.example.com)
-		if (pattern.startsWith('*.')) {
+		if (pattern.startsWith('*.') || pattern.startsWith('.')) {
 			const domain = pattern.slice(2);
 			if (hostname === domain || hostname.endsWith(`.${domain}`)) {
 				return true;

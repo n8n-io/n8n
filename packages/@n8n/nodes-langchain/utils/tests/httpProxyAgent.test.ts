@@ -108,11 +108,31 @@ describe('getHttpProxyAgent', () => {
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
 	});
 
-	it('should return undefined when NO_PROXY matches wildcard domain in baseURL', () => {
+	it('should return undefined when NO_PROXY matches *-prefixed wildcard domain in baseURL', () => {
 		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
 		process.env.NO_PROXY = '*.example.com';
 
 		const agent = getHttpProxyAgent('https://api.example.com/subpath');
+
+		expect(agent).toBeUndefined();
+		expect(HttpsProxyAgent).not.toHaveBeenCalled();
+	});
+
+	it('should return undefined when NO_PROXY matches .-prefixed wildcard domain in baseURL', () => {
+		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
+		process.env.NO_PROXY = '.example.com';
+
+		const agent = getHttpProxyAgent('https://api.example.com/subpath');
+
+		expect(agent).toBeUndefined();
+		expect(HttpsProxyAgent).not.toHaveBeenCalled();
+	});
+
+	it('should return undefined when NO_PROXY .-prefixed wildcard matches base domain', () => {
+		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
+		process.env.NO_PROXY = '.example.com';
+
+		const agent = getHttpProxyAgent('https://example.com');
 
 		expect(agent).toBeUndefined();
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
@@ -130,7 +150,7 @@ describe('getHttpProxyAgent', () => {
 
 	it('should return undefined when NO_PROXY matches multiple patterns', () => {
 		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
-		process.env.NO_PROXY = '169.254.169.254,example.com,*.example.com';
+		process.env.NO_PROXY = '169.254.169.254,example.com,*.example.com,.example.com';
 
 		const agent = getHttpProxyAgent('https://sub.example.com:443/path');
 
