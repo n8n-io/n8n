@@ -94,6 +94,25 @@ const completeOperations: INodeProperties[] = [
 		default: 'gpt-3.5-turbo',
 	},
 	{
+		displayName: 'Enable Streaming',
+		name: 'stream',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to stream the response as it is generated',
+		displayOptions: {
+			show: {
+				operation: ['complete'],
+				resource: ['chat'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'stream',
+			},
+		},
+	},
+	{
 		displayName: 'Model',
 		name: 'chatModel',
 		type: 'options',
@@ -197,7 +216,7 @@ const completeOperations: INodeProperties[] = [
 						default: 'user',
 					},
 					{
-						displayName: 'Content',
+						displayName: 'Message',
 						name: 'content',
 						type: 'string',
 						default: '',
@@ -248,14 +267,28 @@ const sharedOperations: INodeProperties[] = [
 						if (this.getNode().parameters.simplifyOutput === false) {
 							return items;
 						}
-						return items.map((item) => {
-							return {
-								json: {
-									...item.json,
-									message: item.json.message,
-								},
-							};
-						});
+
+						// Handle streaming responses
+						if (this.getNode().parameters.stream === true) {
+							const streamedItems: INodeExecutionData[] = [];
+							for (const item of items) {
+								if (item.json.data) {
+									for (const choice of item.json.data) {
+										if (choice.delta?.content) {
+											streamedItems.push({
+												json: {
+													content: choice.delta.content,
+													role: choice.delta.role || 'assistant',
+												},
+											});
+										}
+									}
+								}
+							}
+							return streamedItems;
+						}
+
+						return items;
 					},
 				],
 			},
