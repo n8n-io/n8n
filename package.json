@@ -84,6 +84,7 @@
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "multer": "^2.0.1",
+      "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tar-fs": "2.1.3",
