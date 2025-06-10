@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import type { MessageContent, BaseMessage } from '@langchain/core/messages';
+import { AIMessage, SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -17,24 +18,45 @@ interface MessageRecord {
 	hideFromUI: boolean;
 }
 
-function simplifyMessages(messages: BaseMessage[]) {
-	const chunkedMessages = [];
-	for (let i = 0; i < messages.length; i += 2) {
-		chunkedMessages.push([messages[i], messages[i + 1]]);
-	}
+export function simplifyMessages(messages: BaseMessage[]) {
+	// This function trips the content of the messages to a simple format and
+	// simplifies the messages by grouping them based on their type
+	// and returning an array of objects where each object contains messages of different types.
+	if (messages.length === 0) return [];
 
-	const transformedMessages = chunkedMessages.map((exchange) => {
-		const simplified = {
-			[exchange[0]._getType()]: exchange[0].content,
-		};
+	const result = [];
+	let i = 0;
 
-		if (exchange[1]) {
-			simplified[exchange[1]._getType()] = exchange[1].content;
+	while (i < messages.length) {
+		const currentGroup: Record<string, MessageContent> = {};
+		const currentMessage = messages[i];
+		const currentType = currentMessage.getType();
+		const currentContent = currentMessage.content;
+
+		// Add current message to group
+		currentGroup[currentType] = currentContent;
+		i++;
+
+		// Always try to add subsequent different message types to the current group
+		while (i < messages.length) {
+			const nextMessage = messages[i];
+			const nextType = nextMessage.getType();
+			const nextContent = nextMessage.content;
+
+			// If we already have this type, stop and start a new group
+			if (currentGroup[nextType] !== undefined) {
+				break;
+			}
+
+			// Add to current group
+			currentGroup[nextType] = nextContent;
+			i++;
 		}
 
-		return simplified;
-	});
-	return transformedMessages;
+		result.push(currentGroup);
+	}
+
+	return result;
 }
 
 const prepareOutputSetup = (ctx: IExecuteFunctions, version: number, memory: BaseChatMemory) => {
