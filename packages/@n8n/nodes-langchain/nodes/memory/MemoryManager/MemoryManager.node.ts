@@ -18,40 +18,26 @@ interface MessageRecord {
 	hideFromUI: boolean;
 }
 
-export function simplifyMessages(messages: BaseMessage[]) {
-	// This function strips the content of the messages to a simple format and
-	// simplifies the messages by grouping them based on their type
-	// and returning an array of objects where each object contains messages of different types.
+export function simplifyMessages(messages: BaseMessage[]): Array<Record<string, MessageContent>> {
 	if (messages.length === 0) return [];
 
-	const result = [];
-	let i = 0;
+	const result: Array<Record<string, MessageContent>> = [];
+	let index = 0;
 
-	while (i < messages.length) {
+	while (index < messages.length) {
 		const currentGroup: Record<string, MessageContent> = {};
-		const currentMessage = messages[i];
-		const currentType = currentMessage.getType();
-		const currentContent = currentMessage.content;
 
-		// Add current message to group
-		currentGroup[currentType] = currentContent;
-		i++;
+		do {
+			const message = messages[index];
+			const messageType = message.getType();
 
-		// Always try to add subsequent different message types to the current group
-		while (i < messages.length) {
-			const nextMessage = messages[i];
-			const nextType = nextMessage.getType();
-			const nextContent = nextMessage.content;
-
-			// If we already have this type, stop and start a new group
-			if (currentGroup[nextType] !== undefined) {
+			if (messageType in currentGroup) {
 				break;
 			}
 
-			// Add to current group
-			currentGroup[nextType] = nextContent;
-			i++;
-		}
+			currentGroup[messageType] = message.content;
+			index++;
+		} while (index < messages.length);
 
 		result.push(currentGroup);
 	}
