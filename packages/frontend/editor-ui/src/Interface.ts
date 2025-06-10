@@ -45,7 +45,7 @@ import type {
 	ITaskData,
 	ISourceData,
 } from 'n8n-workflow';
-import type { VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -1139,8 +1139,8 @@ export interface ITemplateState {
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
-	nextVersions: IVersion[];
-	currentVersion: IVersion | undefined;
+	nextVersions: Version[];
+	currentVersion: Version | undefined;
 }
 
 export interface IWorkflowsMap {
