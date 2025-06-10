@@ -206,7 +206,8 @@ export class TestRunnerService {
 				},
 				resultData: {
 					// pinData,
-					runData: {},
+					// trigger full manual run instead of partial execution
+					runData: undefined,
 				},
 				manualData: {
 					userId: metadata.userId,

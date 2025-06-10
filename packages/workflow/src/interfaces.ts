@@ -2138,7 +2138,7 @@ export interface IRunExecutionData {
 	};
 	resultData: {
 		error?: ExecutionError;
-		runData: IRunData;
+		runData?: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
