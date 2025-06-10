@@ -157,9 +157,6 @@ export const defaultSettings: FrontendSettings = {
 			{ key: 'year', licensed: false, granularity: 'week' },
 		],
 	},
-	logsView: {
-		enabled: false,
-	},
 	evaluation: {
 		quota: 0,
 	},

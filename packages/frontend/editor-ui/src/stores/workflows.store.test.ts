@@ -737,11 +737,6 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 		it('should replace existing placeholder task data in new log view', () => {
-			settingsStore.settings = {
-				logsView: {
-					enabled: true,
-				},
-			} as FrontendSettings;
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
