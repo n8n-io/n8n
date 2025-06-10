@@ -173,15 +173,40 @@ export class GetAllHandler implements OperationHandler {
 			qs.ids = filters.ids as string;
 		}
 
-		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
+		let page = 1;
+		const returnData: IDataObject[] = [];
+		const pageSize = 100; // Maximum page size supported by Todoist API
 
-		if (!returnAll) {
-			const limit = ctx.getNodeParameter('limit', itemIndex) as number;
-			responseData = responseData.splice(0, limit);
+		while (true) {
+			qs.page = page;
+			qs.page_size = pageSize;
+
+			const responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
+
+			if (!responseData || responseData.length === 0) {
+				break;
+			}
+
+			returnData.push(...responseData);
+
+			if (!returnAll) {
+				const limit = ctx.getNodeParameter('limit', itemIndex) as number;
+				if (returnData.length >= limit) {
+					returnData.splice(limit);
+					break;
+				}
+			}
+
+			// If we got fewer items than the page size, we've reached the end
+			if (responseData.length < pageSize) {
+				break;
+			}
+
+			page++;
 		}
 
 		return {
-			data: responseData,
+			data: returnData,
 		};
 	}
 }
