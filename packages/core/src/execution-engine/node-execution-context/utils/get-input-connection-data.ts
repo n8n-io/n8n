@@ -16,8 +16,8 @@ import type {
 	INodeType,
 	INode,
 	INodeInputConfiguration,
-	INodeConnection,
 	NodeConnectionType,
+	IConnection,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -93,15 +93,29 @@ function validateInputConfiguration(
 	context: ExecuteContext | WebhookContext | SupplyDataContext,
 	connectionType: NodeConnectionType,
 	nodeInputs: INodeInputConfiguration[],
+	connectedNodes: INode[],
 ) {
 	const parentNode = context.getNode();
 
 	const connections = context.getConnections(parentNode, connectionType);
+
 	// Validate missing required connections
 	for (let index = 0; index < nodeInputs.length; index++) {
 		const inputConfiguration = nodeInputs[index];
+
 		if (inputConfiguration.required) {
-			if (!connections || connections.length === 0 || index >= connections.length) {
+			// For required inputs, we need at least one enabled connected node
+			if (
+				connections.length === 0 ||
+				connections.length <= index ||
+				connections.at(index)?.length === 0 ||
+				!connectedNodes.find((node) =>
+					connections
+						.at(index)
+						?.map((value) => value.node)
+						.includes(node.name),
+				)
+			) {
 				throw new NodeOperationError(
 					parentNode,
 					`A ${inputConfiguration?.displayName ?? connectionType} sub-node must be connected and enabled`,
@@ -141,7 +155,7 @@ export async function getInputConnectionData(
 	);
 
 	const connectedNodes = this.getConnectedNodes(connectionType);
-	validateInputConfiguration(this, connectionType, inputConfigurations);
+	validateInputConfiguration(this, connectionType, inputConfigurations, connectedNodes);
 
 	// Nothing is connected or required
 	if (connectedNodes.length === 0) {

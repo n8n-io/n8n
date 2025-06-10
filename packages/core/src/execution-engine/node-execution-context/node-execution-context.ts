@@ -9,8 +9,6 @@ import type {
 	IExecuteData,
 	IGetNodeParameterOptions,
 	INode,
-	INodeConnection,
-	INodeConnections,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeExecutionData,
@@ -45,7 +43,6 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { connect } from 'node:net';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);

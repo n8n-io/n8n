@@ -70,9 +70,8 @@ describe('getInputConnectionData', () => {
 			.mockReturnValue(agentNodeType);
 
 		// Mock getConnections method used by validateInputConfiguration
-		jest
-			.spyOn(executeContext, 'getConnections')
-			.mockReturnValue([[{ node: 'mockNode', type: 'main', index: 0 }]]);
+		// This will be overridden in individual tests as needed
+		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
 	});
 
 	describe.each([
@@ -126,6 +125,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
+			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toBeUndefined();
@@ -141,6 +141,12 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name]);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: node.name, type: connectionType, index: 0 }],
+					[{ node: secondNode.name, type: connectionType, index: 0 }],
+				]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 1 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -156,6 +162,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
+			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -178,6 +185,10 @@ describe('getInputConnectionData', () => {
 			});
 			workflow.getParentNodes.mockReturnValueOnce([disabledNode.name]);
 			workflow.getNode.calledWith(disabledNode.name).mockReturnValue(disabledNode);
+			// Mock connections that include the disabled node, but getConnectedNodes will filter it out
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([[{ node: disabledNode.name, type: connectionType, index: 0 }]]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -192,6 +203,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
 
 			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
 
@@ -208,6 +222,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
 
 			const configError = new NodeOperationError(node, 'Config Error in node', {
 				functionality: 'configuration-node',
@@ -228,6 +245,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
 
 			const closeFunction = jest.fn();
 			supplyData.mockResolvedValueOnce({ response, closeFunction });
@@ -265,6 +285,13 @@ describe('getInputConnectionData', () => {
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
 			workflow.getNode.calledWith(thirdNode.name).mockReturnValue(thirdNode);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: node.name, type: connectionType, index: 0 }],
+					[{ node: secondNode.name, type: connectionType, index: 0 }],
+					[{ node: thirdNode.name, type: connectionType, index: 0 }],
+				]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response, response, response]);
@@ -296,6 +323,13 @@ describe('getInputConnectionData', () => {
 				.mockReturnValue(nodeType);
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: node.name, type: connectionType, index: 0 }],
+					[{ node: secondNode.name, type: connectionType, index: 0 }],
+					[{ node: thirdNode.name, type: connectionType, index: 0 }],
+				]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 2 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -316,6 +350,9 @@ describe('getInputConnectionData', () => {
 					required: false,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response]);
@@ -336,6 +373,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
+			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([]);
@@ -378,6 +416,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
+			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([]);
@@ -392,6 +431,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
+			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -417,6 +457,11 @@ describe('getInputConnectionData', () => {
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([disabledToolNode.name]);
 			workflow.getNode.calledWith(disabledToolNode.name).mockReturnValue(disabledToolNode);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: disabledToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -439,6 +484,12 @@ describe('getInputConnectionData', () => {
 			workflow.getParentNodes
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([toolNode.name, secondToolNode.name]);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool, secondMockTool]);
@@ -455,6 +506,11 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -469,6 +525,11 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool]);
