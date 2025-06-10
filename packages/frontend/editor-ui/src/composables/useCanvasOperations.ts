@@ -111,6 +111,7 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
+import uniq from 'lodash/uniq';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -469,11 +470,14 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-
 		const wf = workflowsStore.getCurrentWorkflow();
 
-		const inputNodeNames = replaceInputs ? wf.getParentNodes(previousNode.name, 'main', 1) : [];
-		const outputNodeNames = replaceOutputs ? wf.getChildNodes(previousNode.name, 'main', 1) : [];
+		const inputNodeNames = replaceInputs
+			? uniq(wf.getParentNodes(previousNode.name, 'main', 1))
+			: [];
+		const outputNodeNames = replaceOutputs
+			? uniq(wf.getChildNodes(previousNode.name, 'main', 1))
+			: [];
 		const connectionPairs = [
 			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
 			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
@@ -911,10 +915,7 @@ export function useCanvasOperations() {
 		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
-		const name =
-			node.name ??
-			nodeHelpers.getDefaultNodeName(node) ??
-			(nodeTypeDescription.defaults.name as string);
+		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
 		const position =

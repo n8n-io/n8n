@@ -53,7 +53,6 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 const props = withDefaults(
 	defineProps<{
@@ -97,7 +96,6 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const canvasOperations = useCanvasOperations();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -578,15 +576,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
-			}
-		}
-
-		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
-			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType);
-			// Account for unique-ified nodes with `<name><digit>`
-			if (!_node.name.startsWith(newName)) {
-				// We need a timeout here to support events reacting to the valueChange based on node names
-				setTimeout(async () => await canvasOperations.renameNode(_node.name, newName));
 			}
 		}
 

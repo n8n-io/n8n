@@ -19,7 +19,7 @@ import type {
 	IWorkflowTemplate,
 	IWorkflowTemplateNode,
 } from '@/Interface';
-import { RemoveNodeCommand } from '@/models/history';
+import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
@@ -3103,6 +3103,450 @@ describe('useCanvasOperations', () => {
 				projectsStore.currentProjectId,
 			);
 			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({ templateId });
+		});
+	});
+	describe('replaceNodeParameters', () => {
+		it('should replace node parameters and track history', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const nodeId = 'node1';
+			const currentParameters = { param1: 'value1' };
+			const newParameters = { param1: 'value2' };
+
+			const node = createTestNode({
+				id: nodeId,
+				type: 'node',
+				name: 'Node 1',
+				parameters: currentParameters,
+			});
+
+			workflowsStore.getNodeById.mockReturnValue(node);
+
+			const { replaceNodeParameters } = useCanvasOperations();
+			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: true });
+
+			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+				name: node.name,
+				value: newParameters,
+			});
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
+				new ReplaceNodeParametersCommand(
+					nodeId,
+					currentParameters,
+					newParameters,
+					expect.any(Number),
+				),
+			);
+		});
+
+		it('should replace node parameters without tracking history', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const nodeId = 'node1';
+			const currentParameters = { param1: 'value1' };
+			const newParameters = { param1: 'value2' };
+
+			const node = createTestNode({
+				id: nodeId,
+				type: 'node',
+				name: 'Node 1',
+				parameters: currentParameters,
+			});
+
+			workflowsStore.getNodeById.mockReturnValue(node);
+
+			const { replaceNodeParameters } = useCanvasOperations();
+			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: false });
+
+			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+				name: node.name,
+				value: newParameters,
+			});
+			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
+		});
+
+		it('should not replace parameters if node does not exist', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeId = 'nonexistent';
+			const currentParameters = { param1: 'value1' };
+			const newParameters = { param1: 'value2' };
+
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			const { replaceNodeParameters } = useCanvasOperations();
+			replaceNodeParameters(nodeId, currentParameters, newParameters);
+
+			expect(workflowsStore.setNodeParameters).not.toHaveBeenCalled();
+		});
+
+		it('should handle bulk tracking when replacing parameters for multiple nodes', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const nodeId1 = 'node1';
+			const nodeId2 = 'node2';
+			const currentParameters1 = { param1: 'value1' };
+			const newParameters1 = { param1: 'value2' };
+			const currentParameters2 = { param2: 'value3' };
+			const newParameters2 = { param2: 'value4' };
+
+			const node1 = createTestNode({
+				id: nodeId1,
+				type: 'node',
+				name: 'Node 1',
+				parameters: currentParameters1,
+			});
+			const node2 = createTestNode({
+				id: nodeId2,
+				type: 'node',
+				name: 'Node 2',
+				parameters: currentParameters2,
+			});
+
+			workflowsStore.getNodeById.mockReturnValueOnce(node1).mockReturnValueOnce(node2);
+
+			const { replaceNodeParameters } = useCanvasOperations();
+			replaceNodeParameters(nodeId1, currentParameters1, newParameters1, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+			replaceNodeParameters(nodeId2, currentParameters2, newParameters2, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+			expect(workflowsStore.setNodeParameters).toHaveBeenCalledTimes(2);
+		});
+
+		it('should revert replaced node parameters', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeId = 'node1';
+			const currentParameters = { param1: 'value1' };
+			const newParameters = { param1: 'value2' };
+
+			const node = createTestNode({
+				id: nodeId,
+				type: 'node',
+				name: 'Node 1',
+				parameters: newParameters,
+			});
+
+			workflowsStore.getNodeById.mockReturnValue(node);
+
+			const { revertReplaceNodeParameters } = useCanvasOperations();
+			await revertReplaceNodeParameters(nodeId, currentParameters, newParameters);
+
+			expect(workflowsStore.setNodeParameters).toHaveBeenCalledWith({
+				name: node.name,
+				value: currentParameters,
+			});
+		});
+	});
+	describe('replaceNodeConnections', () => {
+		const sourceNode = createTestNode({ id: 'source', name: 'Source Node' });
+		const targetNode = createTestNode({ id: 'target', name: 'Target Node' });
+		const replacementNode = createTestNode({ id: 'replacement', name: 'Replacement Node' });
+		const nextNode = createTestNode({ id: 'next', name: 'Next Node' });
+
+		let historyStore: ReturnType<typeof mockedStore<typeof useHistoryStore>>;
+		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+		beforeEach(() => {
+			historyStore = mockedStore(useHistoryStore);
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+		});
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		describe('common cases', () => {
+			beforeEach(() => {
+				workflowsStore.workflow.nodes = [sourceNode, targetNode, replacementNode, nextNode];
+				workflowsStore.workflow.connections = {
+					[sourceNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+								{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 1 },
+							],
+						],
+					},
+					[targetNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: nextNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+
+				workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
+					if (id === sourceNode.id) return sourceNode;
+					if (id === targetNode.id) return targetNode;
+					if (id === replacementNode.id) return replacementNode;
+					if (id === nextNode.id) return nextNode;
+					return undefined;
+				});
+				workflowsStore.getNodeByName = vi.fn().mockImplementation((name) => {
+					if (name === sourceNode.name) return sourceNode;
+					if (name === targetNode.name) return targetNode;
+					if (name === replacementNode.name) return replacementNode;
+					if (name === nextNode.name) return nextNode;
+					return undefined;
+				});
+			});
+			it('should replace connections for a node and track history', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				replaceNodeConnections(targetNode.id, replacementNode.id, { trackHistory: true });
+
+				expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(3);
+				expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Source Node',
+							type: NodeConnectionTypes.Main,
+						},
+						{
+							index: 0,
+							node: 'Target Node',
+							type: NodeConnectionTypes.Main,
+						},
+					],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Source Node',
+							type: NodeConnectionTypes.Main,
+						},
+						{
+							index: 1,
+							node: 'Target Node',
+							type: NodeConnectionTypes.Main,
+						},
+					],
+				});
+				expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Target Node',
+							type: NodeConnectionTypes.Main,
+						},
+						{
+							index: 0,
+							node: 'Next Node',
+							type: NodeConnectionTypes.Main,
+						},
+					],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledTimes(3);
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Source Node',
+							type: 'main',
+						},
+						{
+							index: 0,
+							node: 'Replacement Node',
+							type: 'main',
+						},
+					],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Source Node',
+							type: NodeConnectionTypes.Main,
+						},
+						{
+							index: 1,
+							node: 'Replacement Node',
+							type: NodeConnectionTypes.Main,
+						},
+					],
+				});
+				expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+					connection: [
+						{
+							index: 0,
+							node: 'Replacement Node',
+							type: NodeConnectionTypes.Main,
+						},
+						{
+							index: 0,
+							node: 'Next Node',
+							type: NodeConnectionTypes.Main,
+						},
+					],
+				});
+
+				expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+				expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			});
+
+			it('should replace connections without tracking history', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				replaceNodeConnections(targetNode.id, replacementNode.id, { trackHistory: false });
+
+				expect(workflowsStore.removeConnection).toHaveBeenCalled();
+				expect(workflowsStore.addConnection).toHaveBeenCalled();
+				expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+				expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+			});
+
+			it('should not replace connections if previous node does not exist', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				replaceNodeConnections('nonexistent', replacementNode.id);
+
+				expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+				expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			});
+
+			it('should not replace connections if new node does not exist', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				replaceNodeConnections(targetNode.id, 'nonexistent');
+
+				expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+				expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			});
+
+			it('should respect replaceInputs being false', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				// nextNode only has an input connection
+				replaceNodeConnections(nextNode.id, replacementNode.id, {
+					trackHistory: true,
+					replaceInputs: false,
+				});
+
+				expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+				expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			});
+
+			it('should respect replaceOutputs being false', () => {
+				const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+				workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+				const { replaceNodeConnections } = useCanvasOperations();
+				// sourceNode only has an output connection
+				replaceNodeConnections(sourceNode.id, replacementNode.id, {
+					trackHistory: true,
+					replaceOutputs: false,
+				});
+
+				expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+				expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			});
+		});
+		it('should handle bulk tracking when replacing connections for multiple nodes', () => {
+			const previousNode1 = createTestNode({
+				id: 'node1',
+				name: 'Previous Node 1',
+			});
+			const newNode1 = createTestNode({
+				id: 'node2',
+				name: 'New Node 1',
+			});
+			const previousNode2 = createTestNode({
+				id: 'node3',
+				name: 'Previous Node 2',
+			});
+			const newNode2 = createTestNode({
+				id: 'node4',
+				name: 'New Node 2',
+			});
+			const targetNode = createTestNode({
+				id: 'node5',
+				name: 'Target Node',
+			});
+
+			workflowsStore.workflow.nodes = [
+				previousNode1,
+				previousNode2,
+				newNode1,
+				newNode2,
+				targetNode,
+			];
+			workflowsStore.workflow.connections = {
+				[previousNode1.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[previousNode2.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById = vi.fn().mockImplementation((id) => {
+				if (id === previousNode1.id) return previousNode1;
+				if (id === newNode1.id) return newNode1;
+				if (id === previousNode2.id) return previousNode1;
+				if (id === newNode2.id) return newNode2;
+				if (id === targetNode.id) return targetNode;
+
+				return undefined;
+			});
+			workflowsStore.getNodeByName = vi.fn().mockImplementation((name) => {
+				if (name === previousNode1.name) return previousNode1;
+				if (name === newNode1.name) return newNode1;
+				if (name === previousNode2.name) return previousNode1;
+				if (name === newNode2.name) return newNode2;
+				if (name === targetNode.name) return targetNode;
+				return undefined;
+			});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { replaceNodeConnections } = useCanvasOperations();
+			replaceNodeConnections(previousNode1.id, newNode1.id, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+			replaceNodeConnections(previousNode2.id, newNode2.id, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(2);
+			expect(workflowsStore.addConnection).toHaveBeenCalledTimes(2);
 		});
 	});
 });
