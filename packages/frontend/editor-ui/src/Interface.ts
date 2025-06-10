@@ -46,6 +46,7 @@ import type {
 	ISourceData,
 } from 'n8n-workflow';
 import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -1300,50 +1301,11 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export declare namespace Cloud {
-	export interface PlanData {
-		planId: number;
-		monthlyExecutionsLimit: number;
-		activeWorkflowsLimit: number;
-		credentialsLimit: number;
-		isActive: boolean;
-		displayName: string;
-		expirationDate: string;
-		metadata: PlanMetadata;
-	}
-
-	export interface PlanMetadata {
-		version: 'v1';
-		group: 'opt-out' | 'opt-in' | 'trial';
-		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-		trial?: Trial;
-	}
-
-	interface Trial {
-		length: number;
-		gracePeriod: number;
-	}
-
-	export type UserAccount = {
-		confirmed: boolean;
-		username: string;
-		email: string;
-		hasEarlyAccess?: boolean;
-		role?: string;
-	};
-}
-
 export interface CloudPlanState {
 	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;
-}
-
-export interface InstanceUsage {
-	timeframe?: string;
-	executions: number;
-	activeWorkflows: number;
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
