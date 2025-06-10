@@ -52,6 +52,7 @@ export function useCanvasNode() {
 
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
+	const executionWaitingForNext = computed(() => data.value.execution.waitingForNext);
 	const executionRunning = computed(() => data.value.execution.running);
 
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
@@ -83,6 +84,7 @@ export function useCanvasNode() {
 		hasIssues,
 		executionStatus,
 		executionWaiting,
+		executionWaitingForNext,
 		executionRunning,
 		render,
 		eventBus,
