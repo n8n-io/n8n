@@ -1,8 +1,9 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
-import type { OutputFixingParser } from 'langchain/output_parsers';
+import type { StructuredOutputParser } from 'langchain/output_parsers';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
+import type { z } from 'zod';
 
 import { getTracingConfig } from '@utils/tracing';
 
@@ -12,7 +13,7 @@ export async function processItem(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 	llm: BaseLanguageModel,
-	parser: OutputFixingParser<object>,
+	parser: StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>,
 ) {
 	const input = ctx.getNodeParameter('text', itemIndex) as string;
 	if (!input?.trim()) {
@@ -38,7 +39,21 @@ export async function processItem(
 		inputPrompt,
 	];
 	const prompt = ChatPromptTemplate.fromMessages(messages);
-	const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(ctx));
 
-	return await chain.invoke(messages);
+	const schema = parser.schema;
+	const llmWithStructure = llm.withStructuredOutput?.(schema);
+	let chain;
+
+	if (llmWithStructure) {
+		chain = prompt.pipe(llmWithStructure).withConfig(getTracingConfig(ctx));
+	} else {
+		chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(ctx));
+	}
+
+	const response = await chain.invoke(messages);
+
+	// Validate the response
+	schema.parse(response);
+
+	return response;
 }
