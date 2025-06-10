@@ -24,13 +24,24 @@ export const objectRetriever: ValueTransformer = {
 	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 
-/**
- * Transformer for sqlite JSON columns to mimic JSON-as-object behavior
- * from Postgres and MySQL.
- */
+/** Remove invisible Unicode characters that break JSON parsing. */
+function sanitizeJson(value: string): string {
+	return value
+		.replace(/\u2028/g, '') // line separator (LSEP)
+		.replace(/\u2029/g, '') // paragraph separator (PSEP)
+		.replace(/\u200B/g, '') // zero-width space
+		.replace(/\u200C/g, '') // zero width non-joiner
+		.replace(/\u200D/g, '') // zero width joiner
+		.replace(/\uFEFF/g, ''); // byte order mark (BOM)
+}
+
 const jsonColumn: ValueTransformer = {
-	to: (value: object): string | object =>
-		Container.get(GlobalConfig).database.type === 'sqlite' ? JSON.stringify(value) : value,
+	to: (value: object): string | object => {
+		if (Container.get(GlobalConfig).database.type === 'sqlite') {
+			return sanitizeJson(JSON.stringify(value));
+		}
+		return value;
+	},
 	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 

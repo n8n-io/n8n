@@ -45,7 +45,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: false })
 	isArchived: boolean;
 
-	@JsonColumn()
+	@JsonColumn({
+		transformer: sqlite.jsonColumn,
+	})
 	nodes: INode[];
 
 	@JsonColumn()
