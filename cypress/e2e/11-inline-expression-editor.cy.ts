@@ -50,7 +50,7 @@ describe('Inline expression editor', () => {
 		beforeEach(() => {
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.openNode('Get many items');
+			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 		});
 
@@ -112,7 +112,7 @@ describe('Inline expression editor', () => {
 			WorkflowPage.actions.addNodeToCanvas('No Operation');
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.openNode('Get many items');
+			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 		});
 
@@ -150,7 +150,7 @@ describe('Inline expression editor', () => {
 			// Run workflow
 			ndv.actions.close();
 			WorkflowPage.actions.executeNode('No Operation, do nothing', { anchor: 'topLeft' });
-			WorkflowPage.actions.openNode('Get many items');
+			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 
 			// Previous nodes have run, input can be resolved
