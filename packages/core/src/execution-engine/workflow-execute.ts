@@ -1776,11 +1776,11 @@ export class WorkflowExecute {
 							executionNode.name
 						].ai_tool.filter((node) => {
 							// @ts-ignore
+							const cmp = nodeSuccessData?.[0]?.[0]?.json?.subNodeExecute?.[0]?.tool;
 							return (
 								node?.[0].node
 									.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_')
-									.replace(/_+/g, '_') ===
-								nodeSuccessData?.[0]?.[0]?.json?.subNodeExecute?.[0]?.tool
+									.replace(/_+/g, '_') === cmp
 							);
 						})[0];
 						if (nodeToAdd !== undefined && nodeToAdd !== null)
@@ -1789,7 +1789,7 @@ export class WorkflowExecute {
 								nodeToAdd[0],
 								0,
 								executionNode.name,
-								nodeSuccessData!,
+								nodeSuccessData,
 								runIndex,
 							);
 					}
@@ -1800,7 +1800,7 @@ export class WorkflowExecute {
 						if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('ai_tool')) {
 							const prevNodeName = taskData?.source?.[0]?.previousNode;
 							const nodeToAdd = workflow.connectionsBySourceNode[executionNode.name].ai_tool.find(
-								(node) => node?.[0].node == prevNodeName,
+								(node) => node?.[0].node === prevNodeName,
 							);
 							if (nodeToAdd !== undefined && nodeToAdd !== null)
 								this.addNodeToBeExecuted(

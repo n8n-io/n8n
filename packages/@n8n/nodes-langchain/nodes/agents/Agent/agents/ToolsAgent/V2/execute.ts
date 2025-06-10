@@ -48,10 +48,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const model = await getChatModel(this);
 
 	// here we should check if we can find the steps from previous run-data of this item.
-	let steps = [];
+	const steps = [];
 	if (items[0].aiToolOutput) {
-		// @ts-ignore
 		steps.push({
+			// @ts-ignore
 			action: items?.[0]?.json?.subNodeExecute?.[0] ?? {},
 			observation: JSON.stringify(items[0].aiToolOutput[0]),
 		});
