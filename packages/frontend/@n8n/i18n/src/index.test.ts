@@ -3,6 +3,7 @@ import { I18nClass } from './index';
 describe(I18nClass, () => {
 	describe('displayTimer', () => {
 		it('should format duration with hours, minutes and seconds', () => {
+			expect(new I18nClass().displayTimer(-1)).toBe('-1s');
 			expect(new I18nClass().displayTimer(0)).toBe('0s');
 			expect(new I18nClass().displayTimer(12)).toBe('0s');
 			expect(new I18nClass().displayTimer(123)).toBe('0s');
