@@ -1,0 +1,278 @@
+<script setup lang="ts">
+import { nextTick, computed, useTemplateRef } from 'vue';
+import { N8nResizeWrapper } from '@n8n/design-system';
+import { useChatState } from '@/features/logs/composables/useChatState';
+import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
+import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
+import LogsDetailsPanel from '@/features/logs/components/LogDetailsPanel.vue';
+import LogsPanelActions from '@/features/logs/components/LogsPanelActions.vue';
+import { useLogsExecutionData } from '@/features/logs/composables/useLogsExecutionData';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
+import { useLogsSelection } from '@/features/logs/composables/useLogsSelection';
+import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand';
+import { type LogEntry } from '@/features/logs/logs.types';
+import { useLogsStore } from '@/stores/logs.store';
+import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
+
+const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
+
+const container = useTemplateRef('container');
+const logsContainer = useTemplateRef('logsContainer');
+const pipContainer = useTemplateRef('pipContainer');
+const pipContent = useTemplateRef('pipContent');
+
+const logsStore = useLogsStore();
+const ndvStore = useNDVStore();
+
+const {
+	height,
+	chatPanelWidth,
+	overviewPanelWidth,
+	canPopOut,
+	isOpen,
+	isPoppedOut,
+	isCollapsingDetailsPanel,
+	isOverviewPanelFullWidth,
+	pipWindow,
+	onResize,
+	onResizeEnd,
+	onToggleOpen,
+	onPopOut,
+	onChatPanelResize,
+	onChatPanelResizeEnd,
+	onOverviewPanelResize,
+	onOverviewPanelResizeEnd,
+} = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
+
+const {
+	currentSessionId,
+	messages,
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(props.isReadOnly);
+
+const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
+	useLogsExecutionData();
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { selected, select, selectNext, selectPrev } = useLogsSelection(
+	execution,
+	entries,
+	flatLogEntries,
+	toggleExpanded,
+);
+
+const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
+const isLogDetailsVisuallyOpen = computed(
+	() => isLogDetailsOpen.value && !isCollapsingDetailsPanel.value,
+);
+const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
+	isOpen: isOpen.value,
+	isSyncSelectionEnabled: logsStore.isLogSelectionSyncedWithCanvas,
+	showToggleButton: !isPoppedOut.value,
+	showPopOutButton: canPopOut.value && !isPoppedOut.value,
+	onPopOut,
+	onToggleOpen,
+	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
+}));
+
+function handleResizeOverviewPanelEnd() {
+	if (isOverviewPanelFullWidth.value) {
+		select(undefined);
+	}
+
+	onOverviewPanelResizeEnd();
+}
+
+async function handleOpenNdv(treeNode: LogEntry) {
+	ndvStore.setActiveNodeName(treeNode.node.name);
+
+	await nextTick(() => {
+		const source = treeNode.runData.source[0];
+		const inputBranch = source?.previousNodeOutput ?? 0;
+
+		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
+		ndvEventBus.emit('setInputBranchIndex', inputBranch);
+		ndvStore.setOutputRunIndex(treeNode.runIndex);
+	});
+}
+</script>
+
+<template>
+	<div ref="pipContainer">
+		<div ref="pipContent" :class="$style.pipContent">
+			<N8nResizeWrapper
+				:height="height"
+				:supported-directions="['top']"
+				:is-resizing-enabled="!isPoppedOut"
+				:class="$style.resizeWrapper"
+				:style="{ height: isOpen ? `${height}px` : 'auto' }"
+				@resize="onResize"
+				@resizeend="onResizeEnd"
+			>
+				<div
+					ref="container"
+					:class="$style.container"
+					tabindex="-1"
+					@keydown.esc.exact.stop="select(undefined)"
+					@keydown.j.exact.stop="selectNext"
+					@keydown.down.exact.stop.prevent="selectNext"
+					@keydown.k.exact.stop="selectPrev"
+					@keydown.up.exact.stop.prevent="selectPrev"
+					@keydown.space.exact.stop="selected && toggleExpanded(selected)"
+					@keydown.enter.exact.stop="selected && handleOpenNdv(selected)"
+				>
+					<N8nResizeWrapper
+						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
+						:supported-directions="['right']"
+						:is-resizing-enabled="isOpen"
+						:width="chatPanelWidth"
+						:style="{ width: `${chatPanelWidth}px` }"
+						:class="$style.chat"
+						:window="pipWindow"
+						@resize="onChatPanelResize"
+						@resizeend="onChatPanelResizeEnd"
+					>
+						<ChatMessagesPanel
+							data-test-id="canvas-chat"
+							:is-open="isOpen"
+							:is-read-only="isReadOnly"
+							:messages="messages"
+							:session-id="currentSessionId"
+							:past-chat-messages="previousChatMessages"
+							:show-close-button="false"
+							:is-new-logs-enabled="true"
+							@close="onToggleOpen"
+							@refresh-session="refreshSession"
+							@display-execution="displayExecution"
+							@send-message="sendMessage"
+							@click-header="onToggleOpen(true)"
+						/>
+					</N8nResizeWrapper>
+					<div ref="logsContainer" :class="$style.logsContainer">
+						<N8nResizeWrapper
+							:class="$style.overviewResizer"
+							:width="overviewPanelWidth"
+							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
+							:supported-directions="['right']"
+							:is-resizing-enabled="isLogDetailsOpen"
+							:window="pipWindow"
+							@resize="onOverviewPanelResize"
+							@resizeend="handleResizeOverviewPanelEnd"
+						>
+							<LogsOverviewPanel
+								:key="execution?.id ?? ''"
+								:class="$style.logsOverview"
+								:is-open="isOpen"
+								:is-read-only="isReadOnly"
+								:is-compact="isLogDetailsVisuallyOpen"
+								:selected="selected"
+								:execution="execution"
+								:entries="entries"
+								:latest-node-info="latestNodeNameById"
+								:flat-log-entries="flatLogEntries"
+								@click-header="onToggleOpen(true)"
+								@select="select"
+								@clear-execution-data="resetExecutionData"
+								@toggle-expanded="toggleExpanded"
+								@open-ndv="handleOpenNdv"
+								@load-sub-execution="loadSubExecution"
+							>
+								<template #actions>
+									<LogsPanelActions
+										v-if="!isLogDetailsVisuallyOpen"
+										v-bind="logsPanelActionsProps"
+									/>
+								</template>
+							</LogsOverviewPanel>
+						</N8nResizeWrapper>
+						<LogsDetailsPanel
+							v-if="isLogDetailsVisuallyOpen && selected"
+							:class="$style.logDetails"
+							:is-open="isOpen"
+							:log-entry="selected"
+							:window="pipWindow"
+							:latest-info="latestNodeNameById[selected.id]"
+							:panels="logsStore.detailsState"
+							@click-header="onToggleOpen(true)"
+							@toggle-input-open="logsStore.toggleInputOpen"
+							@toggle-output-open="logsStore.toggleOutputOpen"
+						>
+							<template #actions>
+								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />
+							</template>
+						</LogsDetailsPanel>
+					</div>
+				</div>
+			</N8nResizeWrapper>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+@media all and (display-mode: picture-in-picture) {
+	.resizeWrapper {
+		height: 100% !important;
+		max-height: 100vh !important;
+	}
+}
+
+.pipContent {
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+}
+
+.resizeWrapper {
+	height: 100%;
+	min-height: 0;
+	flex-basis: 0;
+	border-top: var(--border-base);
+	background-color: var(--color-background-light);
+}
+
+.container {
+	height: 100%;
+	display: flex;
+	flex-grow: 1;
+
+	& > *:not(:last-child) {
+		border-right: var(--border-base);
+	}
+}
+
+.chat {
+	flex-shrink: 0;
+}
+
+.logsContainer {
+	width: 0;
+	flex-grow: 1;
+	display: flex;
+	align-items: stretch;
+
+	& > *:not(:last-child) {
+		border-right: var(--border-base);
+	}
+}
+
+.overviewResizer {
+	flex-grow: 0;
+	flex-shrink: 0;
+
+	&:last-child {
+		flex-grow: 1;
+	}
+}
+
+.logsOverview {
+	height: 100%;
+}
+
+.logsDetails {
+	width: 0;
+	flex-grow: 1;
+}
+</style>

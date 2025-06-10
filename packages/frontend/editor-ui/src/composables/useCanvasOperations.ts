@@ -108,9 +108,10 @@ import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { isChatNode } from '@/components/CanvasChat/utils';
 import { useLogsStore } from '@/stores/logs.store';
+import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
+import uniq from 'lodash/uniq';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -436,6 +437,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
+		uiStore.stateIsDirty = true;
 	}
 
 	function trackDeleteNode(id: string) {
@@ -468,11 +470,14 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-
 		const wf = workflowsStore.getCurrentWorkflow();
 
-		const inputNodeNames = replaceInputs ? wf.getParentNodes(previousNode.name, 'main', 1) : [];
-		const outputNodeNames = replaceOutputs ? wf.getChildNodes(previousNode.name, 'main', 1) : [];
+		const inputNodeNames = replaceInputs
+			? uniq(wf.getParentNodes(previousNode.name, 'main', 1))
+			: [];
+		const outputNodeNames = replaceOutputs
+			? uniq(wf.getChildNodes(previousNode.name, 'main', 1))
+			: [];
 		const connectionPairs = [
 			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
 			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),

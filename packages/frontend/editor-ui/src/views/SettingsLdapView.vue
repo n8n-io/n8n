@@ -6,13 +6,8 @@ import { convertToDisplayDate } from '@/utils/typesUtils';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type {
-	ILdapConfig,
-	ILdapSyncData,
-	ILdapSyncTable,
-	IFormInput,
-	IFormInputs,
-} from '@/Interface';
+import type { IFormInput, IFormInputs } from '@/Interface';
+import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-client/api/ldap';
 import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
@@ -71,9 +66,9 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const settingsStore = useSettingsStore();
 
-const dataTable = ref<ILdapSyncTable[]>([]);
+const dataTable = ref<LdapSyncTable[]>([]);
 const tableKey = ref(0);
-const adConfig = ref<ILdapConfig>();
+const adConfig = ref<LdapConfig>();
 const loadingTestConnection = ref(false);
 const loadingDryRun = ref(false);
 const loadingLiveRun = ref(false);
@@ -123,7 +118,7 @@ const onReadyToSubmit = (ready: boolean) => {
 	readyToSubmit.value = ready;
 };
 
-const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
+const syncDataMapper = (sync: LdapSyncData): LdapSyncTable => {
 	const startedAt = new Date(sync.startedAt);
 	const endedAt = new Date(sync.endedAt);
 	const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
@@ -149,7 +144,7 @@ const onSubmit = async () => {
 
 	const formValues = ldapConfigFormRef.value.getValues();
 
-	const newConfiguration: ILdapConfig = {
+	const newConfiguration: LdapConfig = {
 		loginEnabled: formValues.loginEnabled,
 		loginLabel: formValues.loginLabel,
 		connectionUrl: formValues.serverAddress,
