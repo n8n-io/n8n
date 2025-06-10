@@ -176,10 +176,8 @@ export async function connectMcpClient({
 				requestInit: { headers },
 			});
 			await client.connect(transport);
-			console.log('Connected using Streamable HTTP transport');
 		} catch (error) {
 			// If that fails with a 4xx error, try the older SSE transport
-			console.log('Streamable HTTP connection failed, falling back to SSE transport');
 			const sseTransport = new SSEClientTransport(endpoint.result, {
 				eventSourceInit: {
 					fetch: async (url, init) =>
@@ -194,7 +192,6 @@ export async function connectMcpClient({
 				requestInit: { headers },
 			});
 			await client.connect(sseTransport);
-			console.log('Connected using SSE transport');
 		}
 		return createResultOk(client);
 	} catch (error) {
