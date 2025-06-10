@@ -110,7 +110,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
-import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -124,7 +123,6 @@ import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
-import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
@@ -134,6 +132,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
+import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 
 defineOptions({
 	name: 'NodeView',
@@ -1239,8 +1238,6 @@ const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
 
-const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
@@ -1367,11 +1364,6 @@ async function onStopExecution() {
 
 async function onStopWaitingForWebhook() {
 	await stopWaitingForWebhook();
-}
-
-async function onClearExecutionData() {
-	workflowsStore.workflowExecutionData = null;
-	nodeHelpers.updateNodesExecutionIssues();
 }
 
 function onRunWorkflowButtonMouseEnter() {
@@ -2024,15 +2016,20 @@ onBeforeUnmount(() => {
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
+				:trigger-nodes="triggerNodes"
+				:get-node-type="nodeTypesStore.getNodeType"
+				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="runEntireWorkflow('main')"
+				@execute="runEntireWorkflow('main')"
+				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 			/>
 			<template v-if="containsChatTriggerNodes">
 				<CanvasChatButton
 					v-if="isLogsPanelOpen"
 					type="tertiary"
 					:label="i18n.baseText('chat.hide')"
+					:class="$style.chatButton"
 					@click="logsStore.toggleOpen(false)"
 				/>
 				<KeyboardShortcutTooltip
@@ -2041,8 +2038,9 @@ onBeforeUnmount(() => {
 					:shortcut="{ keys: ['c'] }"
 				>
 					<CanvasChatButton
-						type="primary"
+						:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
 						:label="i18n.baseText('chat.open')"
+						:class="$style.chatButton"
 						@click="onOpenChat"
 					/>
 				</KeyboardShortcutTooltip>
@@ -2055,10 +2053,6 @@ onBeforeUnmount(() => {
 			<CanvasStopWaitingForWebhookButton
 				v-if="isStopWaitingForWebhookButtonVisible"
 				@click="onStopWaitingForWebhook"
-			/>
-			<CanvasClearExecutionDataButton
-				v-if="isClearExecutionButtonVisible && !settingsStore.isNewLogsEnabled"
-				@click="onClearExecutionData"
 			/>
 		</div>
 
@@ -2136,6 +2130,10 @@ onBeforeUnmount(() => {
 				margin: 0;
 			}
 		}
+	}
+
+	.chatButton {
+		align-self: stretch;
 	}
 }
 

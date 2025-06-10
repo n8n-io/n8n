@@ -47,6 +47,7 @@ import type {
 	ITaskData,
 	ISourceData,
 } from 'n8n-workflow';
+import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -899,33 +900,7 @@ export interface ITagRow {
 	canDelete?: boolean;
 }
 
-export interface IVersion {
-	name: string;
-	nodes: IVersionNode[];
-	createdAt: string;
-	description: string;
-	documentationUrl: string;
-	hasBreakingChange: boolean;
-	hasSecurityFix: boolean;
-	hasSecurityIssue: boolean;
-	securityIssueFixVersion: string;
-}
-
-export interface IVersionNode {
-	name: string;
-	displayName: string;
-	icon: string;
-	iconUrl?: string;
-	defaults: INodeParameters;
-	iconData: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
-	typeVersion?: number;
-}
-
-export interface ITemplatesNode extends IVersionNode {
+export interface ITemplatesNode extends VersionNode {
 	id: number;
 	categories?: ITemplatesCategory[];
 }
@@ -1163,8 +1138,8 @@ export interface ITemplateState {
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
-	nextVersions: IVersion[];
-	currentVersion: IVersion | undefined;
+	nextVersions: Version[];
+	currentVersion: Version | undefined;
 }
 
 export interface IWorkflowsMap {
@@ -1365,11 +1340,6 @@ export type ExecutionsQueryFilter = {
 	startedBefore?: string;
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
-};
-
-export type SamlPreferencesExtractedData = {
-	entityID: string;
-	returnUrl: string;
 };
 
 export declare namespace Cloud {
