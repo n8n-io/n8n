@@ -1,4 +1,6 @@
+export * from './api';
 export * from './browser';
+export * from './community-nodes';
 export * from './instance';
 
 export const LICENSE_FEATURES = {

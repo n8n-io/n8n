@@ -4,7 +4,7 @@ import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
-import * as settingsApi from '@/api/settings';
+import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import {
