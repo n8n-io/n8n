@@ -2,7 +2,6 @@ import { computed } from 'vue';
 import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
-	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
 } from 'n8n-workflow';
@@ -44,14 +43,11 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import findLast from 'lodash/findLast';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
-	const canvasOperations = useCanvasOperations();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -309,7 +305,7 @@ export const useActions = () => {
 		return { nodes, connections };
 	}
 
-	// Hook into addNode action to set the last node parameters, adjust default name and track the action selected
+	// Hook into addNode action to set the last node parameters & track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
@@ -317,25 +313,10 @@ export const useActions = () => {
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
-			({ name, after, store: { setLastNodeParameters, allNodes }, args }) => {
+			({ name, after, store: { setLastNodeParameters }, args }) => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
-					const node = findLast(allNodes, (n) => n.type === action.key);
-					const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					const wasDefaultName =
-						nodeType && NodeHelpers.isDefaultNodeName(node.name, nodeType, node.parameters ?? {});
-
 					setLastNodeParameters(action);
-
-					// We update the default name here based on the chosen resource and operation
-					if (wasDefaultName) {
-						const newName = NodeHelpers.makeNodeName(node.parameters, nodeType);
-						// Account for unique-ified nodes with `<name><digit>`
-						if (!node.name.startsWith(newName)) {
-							// setTimeout to allow remaining events trigger by node addition to finish
-							setTimeout(async () => await canvasOperations.renameNode(node.name, newName));
-						}
-					}
 					if (telemetry) trackActionSelected(action, telemetry, rootView);
 					// Unsubscribe from the store watcher
 					storeWatcher();
