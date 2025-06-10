@@ -4,6 +4,7 @@ import {
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
+	isSubNodeLog,
 } from '@/features/logs/logs.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { canvasEventBus } from '@/event-bus/canvas';
@@ -76,9 +77,7 @@ export function useLogsSelection(
 		selected,
 		(sel) => {
 			if (sel) {
-				logsStore.setSubNodeSelected(
-					sel.parent !== undefined && sel.parent.workflow.id === sel.workflow.id,
-				);
+				logsStore.setSubNodeSelected(isSubNodeLog(sel));
 			}
 		},
 		{ immediate: true },
