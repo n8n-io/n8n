@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
@@ -167,13 +167,43 @@ const sectionDescription = computed(() => {
 	return null;
 });
 
-const projectDescriptionNonTruncatedMaxLength = 50;
 const projectDescription = computed(() => {
 	if (projectPages.isProjectsSubPage) {
 		return projectsStore.currentProject?.description;
 	}
 
 	return null;
+});
+
+const projectHeaderRef = ref<HTMLElement | null>(null);
+const projectHeaderWidth = ref(0);
+
+const headerActionsRef = ref<HTMLElement | null>(null);
+const headerActionsWidth = ref(0);
+
+const projectDescriptionTruncated = computed(() => {
+	if (!projectDescription.value) {
+		return '';
+	}
+
+	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
+	if (availableTextWidth <= 0) {
+		return '';
+	}
+
+	// N8nText component default font-size - small
+	const fontSizeInPixels = 14;
+	const averageCharWidth = 0.55 * fontSizeInPixels;
+
+	const maxLengthToDisplay = Math.floor(availableTextWidth / averageCharWidth);
+
+	if (projectDescription.value.length <= maxLengthToDisplay) {
+		return '';
+	}
+
+	const truncated = projectDescription.value.slice(0, maxLengthToDisplay);
+	const lastSpaceIndex = truncated.lastIndexOf(' ');
+	return truncated.slice(0, lastSpaceIndex === -1 ? maxLengthToDisplay : lastSpaceIndex) + '...';
 });
 
 const onSelect = (action: string) => {
@@ -183,11 +213,35 @@ const onSelect = (action: string) => {
 	}
 	executableAction(homeProject.value.id);
 };
+
+const calculateProjectHeaderWidth = () => {
+	if (projectHeaderRef.value) {
+		projectHeaderWidth.value = projectHeaderRef.value.offsetWidth;
+	}
+};
+
+const calculateHeaderActionsWidth = () => {
+	if (headerActionsRef.value) {
+		headerActionsWidth.value = headerActionsRef.value.offsetWidth;
+	}
+};
+
+onMounted(() => {
+	calculateProjectHeaderWidth();
+	calculateHeaderActionsWidth();
+	window.addEventListener('resize', calculateProjectHeaderWidth);
+	window.addEventListener('resize', calculateHeaderActionsWidth);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', calculateProjectHeaderWidth);
+	window.removeEventListener('resize', calculateHeaderActionsWidth);
+});
 </script>
 
 <template>
 	<div>
-		<div :class="$style.projectHeader">
+		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
@@ -198,25 +252,22 @@ const onSelect = (action: string) => {
 						{{ sectionDescription }}
 					</N8nText>
 					<template v-else-if="projectDescription">
-						<N8nText
-							v-if="projectDescription.length <= projectDescriptionNonTruncatedMaxLength"
-							color="text-light"
-							data-test-id="project-subtitle"
-						>
-							{{ projectDescription }}
-						</N8nText>
-						<div v-else :class="$style.projectDescriptionWrapper">
-							<N8nText :class="$style.truncated" color="text-light" data-test-id="project-subtitle">
-								{{ projectDescription }}
+						<div :class="$style.projectDescriptionWrapper">
+							<N8nText color="text-light" data-test-id="project-subtitle">
+								{{ projectDescriptionTruncated || projectDescription }}
 							</N8nText>
-							<div :class="$style.tooltip">
+							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
 								<N8nText color="text-light">{{ projectDescription }}</N8nText>
 							</div>
 						</div>
 					</template>
 				</div>
 			</div>
-			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
+			<div
+				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
+				ref="headerActionsRef"
+				:class="[$style.headerActions]"
+			>
 				<N8nTooltip
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
@@ -266,21 +317,12 @@ const onSelect = (action: string) => {
 }
 
 .projectDescriptionWrapper {
-	max-width: 50vw;
 	position: relative;
 	display: inline-block;
 
 	&:hover .tooltip {
 		display: block;
 	}
-}
-
-.truncated {
-	display: inline-block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	max-width: 100%;
 }
 
 .tooltip {
