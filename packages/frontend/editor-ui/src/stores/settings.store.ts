@@ -3,10 +3,10 @@ import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as eventsApi from '@n8n/rest-api-client/api/events';
-import * as ldapApi from '@/api/ldap';
+import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { ILdapConfig } from '@/Interface';
+import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
@@ -192,8 +192,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const isNewLogsEnabled = computed(() => !!settings.value.logsView?.enabled);
-
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
@@ -365,7 +363,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return await ldapApi.testLdapConnection(rootStore.restApiContext);
 	};
 
-	const updateLdapConfig = async (ldapConfig: ILdapConfig) => {
+	const updateLdapConfig = async (ldapConfig: LdapConfig) => {
 		const rootStore = useRootStore();
 		return await ldapApi.updateLdapConfig(rootStore.restApiContext, ldapConfig);
 	};
@@ -456,7 +454,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		isNewLogsEnabled,
 		experimental__minZoomNodeSettingsInCanvas,
 		reset,
 		testLdapConnection,

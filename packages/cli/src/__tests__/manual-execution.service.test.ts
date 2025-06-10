@@ -562,6 +562,11 @@ describe('ManualExecutionService', () => {
 					return null;
 				}),
 				getTriggerNodes: jest.fn().mockReturnValue([determinedStartNode]),
+				nodeTypes: {
+					getByNameAndVersion: jest
+						.fn()
+						.mockReturnValue({ description: { name: '', outputs: [] } }),
+				},
 			});
 
 			jest
