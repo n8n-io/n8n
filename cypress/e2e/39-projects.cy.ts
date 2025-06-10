@@ -157,7 +157,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				expect(interception.request.query).not.to.have.property('projectId');
 				expect(interception.request.query).to.have.property('workflowId');
 			});
-			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -182,7 +182,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -211,7 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -280,7 +280,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
-			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 

@@ -6,9 +6,10 @@ import {
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
+	isTool,
 	rewireGraph,
 } from 'n8n-core';
-import { MANUAL_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
@@ -135,12 +136,8 @@ export class ManualExecutionService {
 					`Could not find a node named "${data.destinationNode}" in the workflow.`,
 				);
 
-				const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
-					destinationNode.type,
-					destinationNode.typeVersion,
-				);
 				// Rewire graph to be able to execute the destination tool node
-				if (NodeHelpers.isTool(destinationNodeType.description, destinationNode.parameters)) {
+				if (isTool(destinationNode, workflow.nodeTypes)) {
 					const graph = rewireGraph(
 						destinationNode,
 						DirectedGraph.fromWorkflow(workflow),
