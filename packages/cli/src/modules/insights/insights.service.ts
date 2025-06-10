@@ -45,10 +45,7 @@ export class InsightsService {
 		this.collectionService.startFlushingTimer();
 		this.logger.debug('Started flushing timer');
 
-		// Start compaction and pruning timers for main leader instance only
-		if (this.instanceSettings.isLeader) {
-			this.startCompactionAndPruningTimers();
-		}
+		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
 
 	@OnLeaderTakeover()
