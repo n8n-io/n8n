@@ -7,8 +7,8 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryRequestParams,
 	WorkflowVersionId,
-} from '@/types/workflowHistory';
-import * as whApi from '@/api/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
+import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
