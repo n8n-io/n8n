@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Z } from 'zod-class';
 
 import { InsightsDateFilterDto } from './date-filter.dto';
-import { createTakeValidator, skipValidator } from '../pagination/pagination.dto';
+import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const MAX_ITEMS_PER_PAGE = 100;
 
@@ -32,7 +32,7 @@ const sortByValidator = z
 	.optional();
 
 export class ListInsightsWorkflowQueryDto extends Z.class({
-	skip: skipValidator,
+	...paginationSchema,
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
 	dateRange: InsightsDateFilterDto.shape.dateRange,
 	sortBy: sortByValidator,

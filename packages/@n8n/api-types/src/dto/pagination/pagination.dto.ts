@@ -3,7 +3,7 @@ import { Z } from 'zod-class';
 
 export const MAX_ITEMS_PER_PAGE = 50;
 
-export const skipValidator = z
+const skipValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
@@ -27,7 +27,7 @@ export const createTakeValidator = (maxItems: number) =>
 		})
 		.transform((val) => Math.min(val, maxItems));
 
-const paginationSchema = {
+export const paginationSchema = {
 	skip: skipValidator,
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
 };
