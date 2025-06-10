@@ -1368,11 +1368,6 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export type SamlPreferencesExtractedData = {
-	entityID: string;
-	returnUrl: string;
-};
-
 export declare namespace Cloud {
 	export interface PlanData {
 		planId: number;

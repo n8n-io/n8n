@@ -436,6 +436,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
+		uiStore.stateIsDirty = true;
 	}
 
 	function trackDeleteNode(id: string) {
@@ -910,7 +911,10 @@ export function useCanvasOperations() {
 		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
-		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
+		const name =
+			node.name ??
+			nodeHelpers.getDefaultNodeName(node) ??
+			(nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
 		const position =
