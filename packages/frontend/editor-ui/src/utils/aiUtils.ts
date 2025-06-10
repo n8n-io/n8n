@@ -1,3 +1,5 @@
+import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import type { INodeUi, LlmTokenUsageData } from '@/Interface';
 import type { IDataObject, INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -239,4 +241,41 @@ export function parseAiContent(
 	return contentJson
 		.filter((c): c is IDataObject => c !== undefined)
 		.map((c) => ({ raw: c, parsedContent: parser(c) }));
+}
+
+export const emptyTokenUsageData: LlmTokenUsageData = {
+	completionTokens: 0,
+	promptTokens: 0,
+	totalTokens: 0,
+	isEstimate: false,
+};
+
+export function addTokenUsageData(
+	one: LlmTokenUsageData,
+	another: LlmTokenUsageData,
+): LlmTokenUsageData {
+	return {
+		completionTokens: one.completionTokens + another.completionTokens,
+		promptTokens: one.promptTokens + another.promptTokens,
+		totalTokens: one.totalTokens + another.totalTokens,
+		isEstimate: one.isEstimate || another.isEstimate,
+	};
+}
+
+export function formatTokenUsageCount(
+	usage: LlmTokenUsageData,
+	field: 'total' | 'prompt' | 'completion',
+) {
+	const count =
+		field === 'total'
+			? usage.totalTokens
+			: field === 'completion'
+				? usage.completionTokens
+				: usage.promptTokens;
+
+	return usage.isEstimate ? `~${count}` : count.toLocaleString();
+}
+
+export function isChatNode(node: INodeUi) {
+	return [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type);
 }
