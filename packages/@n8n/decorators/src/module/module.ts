@@ -1,7 +1,19 @@
 import { Container, Service, type Constructable } from '@n8n/di';
-import type { BaseEntity } from '@n8n/typeorm';
 
 import { ModuleMetadata } from './module-metadata';
+
+/**
+ * Structurally similar (not identical) interface to typeorm's `BaseEntity`
+ * to prevent importing `@n8n/typeorm` into `@n8n/decorators`.
+ */
+export interface BaseEntity {
+	hasId(): boolean;
+	save(options?: unknown): Promise<this>;
+	remove(options?: unknown): Promise<this>;
+	softRemove(options?: unknown): Promise<this>;
+	recover(options?: unknown): Promise<this>;
+	reload(): Promise<void>;
+}
 
 export type EntityClass = new () => BaseEntity;
 
