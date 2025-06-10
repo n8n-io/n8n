@@ -7,9 +7,10 @@ import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useI18n } from '@n8n/i18n';
-import { formatTokenUsageCount, getConsumedTokens } from '@/components/RunDataAi/utils';
+import { getConsumedTokens } from '@/components/RunDataAi/utils';
 import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '../ViewSubExecution.vue';
+import { formatTokenUsageCount } from '@/utils/aiUtils';
 
 interface RunMeta {
 	startTimeMs: number;
