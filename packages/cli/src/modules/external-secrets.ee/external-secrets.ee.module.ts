@@ -12,7 +12,7 @@ export class ExternalSecretsModule implements BaseN8nModule {
 		private readonly externalSecretsProxy: ExternalSecretsProxy,
 	) {}
 
-	async initialize() {
+	async init() {
 		const { externalSecretsProxy, manager } = this;
 		await manager.init();
 		externalSecretsProxy.setManager(manager);
