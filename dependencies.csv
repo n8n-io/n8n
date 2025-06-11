@@ -1,0 +1,45 @@
+View,Local Components,Design System Components,Total Components
+"AuthView.vue","Logo; SSOLogin; Logo; SSOLogin","",4
+"CanvasAddButton.vue","","",0
+"ChangePasswordView.vue","AuthView; AuthView","",2
+"CredentialsView.vue","CredentialCard; ProjectHeader; CredentialCard; ProjectHeader","N8nCheckbox",5
+"ErrorView.vue","","",0
+"EvaluationsRootView.vue","EvaluationsPaywall; SetupWizard; EvaluationsPaywall; SetupWizard","N8nLink; N8nText",6
+"EvaluationsView.vue","RunsSection; RunsSection","N8nButton",3
+"TestRunDetailView.vue","TestTableBase; TestTableBase","N8nText; N8nTooltip; N8nIcon",5
+"ExecutionsView.vue","ProjectHeader; GlobalExecutionsList; ProjectHeader; GlobalExecutionsList","",4
+"ForgotMyPasswordView.vue","AuthView","",1
+"LoadingView.vue","","",0
+"MfaView.vue","Logo; Logo","",2
+"NodeView.vue","WorkflowCanvas; CanvasRunWorkflowButton; CanvasStopCurrentExecutionButton; CanvasStopWaitingForWebhookButton; CanvasClearExecutionDataButton; NodeViewUnfinishedWorkflowMessage; KeyboardShortcutTooltip; WorkflowCanvas; CanvasRunWorkflowButton; CanvasStopCurrentExecutionButton; CanvasStopWaitingForWebhookButton; CanvasClearExecutionDataButton; NodeViewUnfinishedWorkflowMessage; KeyboardShortcutTooltip","N8nCallout",15
+"ProjectSettings.vue","ProjectDeleteDialog; ProjectRoleUpgradeDialog; ProjectHeader; ProjectDeleteDialog; ProjectRoleUpgradeDialog; ProjectHeader","N8nFormInput",7
+"SamlOnboarding.vue","AuthView; AuthView","",2
+"SettingsApiView.vue","","",0
+"SettingsCommunityNodesView.vue","CommunityPackageCard; CommunityPackageCard","",2
+"SettingsExternalSecrets.vue","ExternalSecretsProviderCard; ExternalSecretsProviderCard","",2
+"SettingsLdapView.vue","","",0
+"SettingsLogStreamingView.vue","EventDestinationCard; EventDestinationCard","",2
+"SettingsPersonalView.vue","","",0
+"SettingsSourceControl.vue","CopyInput; CopyInput","",2
+"SettingsSso.vue","CopyInput; CopyInput","",2
+"SettingsUsageAndPlan.vue","","N8nInfoTip",1
+"SettingsUsersView.vue","","",0
+"SettingsView.vue","SettingsSidebar; SettingsSidebar","",2
+"SetupView.vue","AuthView; AuthView","",2
+"AppsRequiringCredsNotice.vue","","N8nNotice",1
+"IconSuccess.vue","","",0
+"SetupTemplateFormStep.vue","NodeIcon; CredentialPicker; IconSuccess; NodeIcon; CredentialPicker","N8nHeading",6
+"SetupWorkflowFromTemplateView.vue","AppsRequiringCredsNotice; SetupTemplateFormStep; TemplatesView","N8nHeading; N8nLink",5
+"SigninView.vue","AuthView; MfaView","",2
+"SignoutView.vue","","",0
+"SignupView.vue","AuthView; AuthView","",2
+"TemplatesCollectionView.vue","TemplateDetails; TemplateList; TemplatesView; TemplateDetails; TemplateList","",5
+"TemplatesSearchView.vue","TemplatesInfoCarousel; TemplateFilters; TemplateList; TemplatesView; TemplatesInfoCarousel; TemplateFilters; TemplateList; TemplatesView","",8
+"TemplatesView.vue","GoBackButton; GoBackButton","",2
+"TemplatesWorkflowView.vue","TemplatesView","",1
+"VariablesView.vue","VariablesForm; VariablesUsageBadge; VariablesForm; VariablesUsageBadge","N8nActionBox; N8nBadge; N8nButton; N8nCheckbox; N8nInputLabel; N8nTooltip",10
+"WorkerView.vue","WorkerList; WorkerList","",2
+"WorkflowExecutionsView.vue","WorkflowExecutionsList; WorkflowExecutionsList","",2
+"WorkflowHistory.vue","WorkflowHistoryList; WorkflowHistoryContent; WorkflowHistoryList; WorkflowHistoryContent","",4
+"WorkflowOnboardingView.vue","","",0
+"WorkflowsView.vue","Draggable; ResourcesListLayout; ProjectHeader; WorkflowCard; WorkflowTagsDropdown; Draggable; ResourcesListLayout; ProjectHeader; WorkflowCard; WorkflowTagsDropdown","N8nCard; N8nHeading; N8nIcon; N8nInlineTextEdit; N8nInputLabel; N8nOption; N8nSelect; N8nText",18

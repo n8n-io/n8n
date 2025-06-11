@@ -501,15 +501,13 @@ class ComponentDependencyAnalyzer {
 	 * Format output as table
 	 */
 	formatAsTable(tree) {
-		let output = 'View,Local Components,Design System Components,n8n Package Components,External Components,Total Components\n';
+		let output = 'View,Local Components,Design System Components,Total Components\n';
 
 		for (const [viewPath, viewData] of Object.entries(tree.views)) {
 			const localComponents = viewData.localComponents.map((c) => c.name).join('; ');
 			const designSystemComponents = viewData.designSystemComponents.map((c) => c.name).join('; ');
-			const n8nPackageComponents = viewData.n8nPackageComponents.map((c) => c.name).join('; ');
-			const externalComponents = viewData.externalComponents.map((c) => c.name).join('; ');
 			
-			output += `"${viewData.name}","${localComponents}","${designSystemComponents}","${n8nPackageComponents}","${externalComponents}",${viewData.totalComponents}\n`;
+			output += `"${viewData.name}","${localComponents}","${designSystemComponents}",${viewData.totalComponents}\n`;
 		}
 
 		return output;
