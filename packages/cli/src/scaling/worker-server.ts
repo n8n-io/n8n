@@ -8,8 +8,8 @@ import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 
+import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DbConnection } from '@/databases/db-connection';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -17,7 +17,8 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
-import { RedisClientService } from '@/services/redis-client.service';
+
+import '@/controllers/health.controller';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the `/healthz` endpoint is enabled. */
@@ -50,12 +51,11 @@ export class WorkerServer {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly dbConnection: DbConnection,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly prometheusMetricsService: PrometheusMetricsService,
-		private readonly redisClientService: RedisClientService,
+		private readonly controllerRegistry: ControllerRegistry,
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
@@ -99,18 +99,9 @@ export class WorkerServer {
 	}
 
 	private async mountEndpoints() {
-		const { health, overwrites, metrics } = this.endpointsConfig;
+		this.controllerRegistry.activate(this.app);
 
-		if (health) {
-			this.app.get('/healthz', async (_, res) => {
-				res.send({ status: 'ok' });
-			});
-			this.app.get('/healthz/readiness', async (_, res) => {
-				await this.readiness(_, res);
-			});
-		}
-
-		if (overwrites) {
+		if (this.endpointsConfig.overwrites) {
 			const { endpoint } = this.globalConfig.credentials.overwrite;
 
 			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
@@ -118,23 +109,9 @@ export class WorkerServer {
 			);
 		}
 
-		if (metrics) {
+		if (this.endpointsConfig.metrics) {
 			await this.prometheusMetricsService.init(this.app);
 		}
-	}
-
-	private async readiness(_req: express.Request, res: express.Response) {
-		const { connectionState } = this.dbConnection;
-		const isReady =
-			connectionState.connected &&
-			connectionState.migrated &&
-			this.redisClientService.isConnected();
-
-		const status = !Db.connectionState.connected ? 503 : !Db.connectionState.migrated ? 504 : 505;
-
-		return isReady
-			? res.status(200).send({ status: 'ok' })
-			: res.status(status).send({ status: 'error' });
 	}
 
 	private handleOverwrites(
