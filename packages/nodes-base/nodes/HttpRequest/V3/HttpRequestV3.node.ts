@@ -124,6 +124,8 @@ export class HttpRequestV3 implements INodeType {
 
 		let autoDetectResponseFormat = false;
 
+		let responseFileName: string | undefined;
+
 		// Can not be defined on a per item level
 		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
 			rawExpressions: true,
@@ -241,11 +243,18 @@ export class HttpRequestV3 implements INodeType {
 					allowUnauthorizedCerts: boolean;
 					queryParameterArrays: 'indices' | 'brackets' | 'repeat';
 					response: {
-						response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
+						response: {
+							neverError: boolean;
+							responseFormat: string;
+							fullResponse: boolean;
+							outputPropertyName: string;
+						};
 					};
 					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 					lowercaseHeaders: boolean;
 				};
+
+				responseFileName = response.response?.outputPropertyName;
 
 				const url = this.getNodeParameter('url', itemIndex) as string;
 
