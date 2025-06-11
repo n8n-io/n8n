@@ -17,10 +17,12 @@ export class InsightsModule implements BaseN8nModule {
 		 * Only main- and webhook-type instances collect insights because
 		 * only they are informed of finished workflow executions.
 		 */
-		if (instanceType === 'main' || instanceType === 'webhook') {
-			const { InsightsInit } = await import('./insights.init');
-			Container.get(InsightsInit);
-		}
+		if (instanceType === 'worker') return;
+
+		await import('./insights.controller');
+
+		const { InsightsService } = await import('./insights.service');
+		Container.get(InsightsService).startTimers();
 	}
 
 	entities() {

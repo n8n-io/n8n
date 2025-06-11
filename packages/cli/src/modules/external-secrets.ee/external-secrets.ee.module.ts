@@ -5,7 +5,15 @@ import { Container } from '@n8n/di';
 @N8nModule()
 export class ExternalSecretsModule implements BaseN8nModule {
 	async init() {
-		const { ExternalSecretsInit } = await import('./external-secrets.init');
-		await Container.get(ExternalSecretsInit).init();
+		await import('./external-secrets.controller.ee');
+
+		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');
+		const { ExternalSecretsProxy } = await import('n8n-core');
+
+		const externalSecretsManager = Container.get(ExternalSecretsManager);
+		const externalSecretsProxy = Container.get(ExternalSecretsProxy);
+
+		await externalSecretsManager.init();
+		externalSecretsProxy.setManager(externalSecretsManager);
 	}
 }
