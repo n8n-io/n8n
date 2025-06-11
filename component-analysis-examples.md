@@ -40,7 +40,7 @@ Analyzes where each Vue component is used throughout the codebase (reverse analy
 - **Complete reverse index** of Vue component usage
 - **Filter by component type** (local, design-system)
 - **Pattern matching** for finding specific components
-- **Usage frequency analysis** 
+- **Usage frequency analysis**
 - **Impact assessment** for component changes
 - **Vue component focus** - filters out non-component imports automatically
 
@@ -60,7 +60,7 @@ node reverse-component-lookup.js --filter="Modal"
 node reverse-component-lookup.js --type=local --min-usage=10
 
 # Find all N8n design system components
-node reverse-component-lookup.js --filter="N8n.*" --type=design
+node reverse-component-lookup.js  --type=design
 
 # Export high-usage components to CSV
 node reverse-component-lookup.js --min-usage=5 --format=table --output=high-usage.csv

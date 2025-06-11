@@ -1,0 +1,465 @@
+🔍 Reverse Component Lookup
+============================================================
+
+📈 Summary:
+  • Total Components Found: 402
+  • Filtered Components: 49
+  • Total Files Processed: 410
+  • Local Components: 353
+  • Design System Components: 49
+  • Type Filter: design
+
+🧩 COMPONENT USAGE:
+────────────────────────────────────────
+
+🎨 N8nText (design-system)
+   📊 Used 38 times
+   📍 Source: @n8n/design-system
+     ├── 📄 EvaluationsRootView.vue (views/Evaluations.ee/EvaluationsRootView.vue)
+     ├── 📄 TestRunDetailView.vue (views/Evaluations.ee/TestRunDetailView.vue)
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 ApiKeyCreateOrEditModal.vue (components/ApiKeyCreateOrEditModal.vue)
+     ├── 🧩 LogsOverviewPanel.vue (components/CanvasChat/future/components/LogsOverviewPanel.vue)
+     ├── 🧩 LogsOverviewRow.vue (components/CanvasChat/future/components/LogsOverviewRow.vue)
+     ├── 🧩 LogsPanelHeader.vue (components/CanvasChat/future/components/LogsPanelHeader.vue)
+     ├── 🧩 LogsViewExecutionSummary.vue (components/CanvasChat/future/components/LogsViewExecutionSummary.vue)
+     ├── 🧩 LogsViewNodeName.vue (components/CanvasChat/future/components/LogsViewNodeName.vue)
+     ├── 🧩 LogsViewRunData.vue (components/CanvasChat/future/components/LogsViewRunData.vue)
+     ├── 🧩 ConsumedTokensDetails.vue (components/ConsumedTokensDetails.vue)
+     ├── 🧩 CredentialEdit.vue (components/CredentialEdit/CredentialEdit.vue)
+     ├── 🧩 CredentialInfo.vue (components/CredentialEdit/CredentialInfo.vue)
+     ├── 🧩 TestRunsTable.vue (components/Evaluations.ee/ListRuns/TestRunsTable.vue)
+     ├── 🧩 SetupWizard.vue (components/Evaluations.ee/SetupWizard/SetupWizard.vue)
+     ├── 🧩 StepHeader.vue (components/Evaluations.ee/shared/StepHeader.vue)
+     ├── 🧩 ExpressionEditModal.vue (components/ExpressionEditModal.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 InputPanel.vue (components/InputPanel.vue)
+     ├── 🧩 MultipleParameter.vue (components/MultipleParameter.vue)
+     ├── 🧩 CommunityNodeDetails.vue (components/Node/NodeCreator/Panel/CommunityNodeDetails.vue)
+     ├── 🧩 CommunityNodeDocsLink.vue (components/Node/NodeCreator/Panel/CommunityNodeDocsLink.vue)
+     ├── 🧩 CommunityNodeFooter.vue (components/Node/NodeCreator/Panel/CommunityNodeFooter.vue)
+     ├── 🧩 CommunityNodeInfo.vue (components/Node/NodeCreator/Panel/CommunityNodeInfo.vue)
+     ├── 🧩 CommunityNodeInstallHint.vue (components/Node/NodeCreator/Panel/CommunityNodeInstallHint.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 OutputPanel.vue (components/OutputPanel.vue)
+     ├── 🧩 ParameterInputList.vue (components/ParameterInputList.vue)
+     ├── 🧩 MappingModeSelect.vue (components/ResourceMapper/MappingModeSelect.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 RunDataItemCount.vue (components/RunDataItemCount.vue)
+     ├── 🧩 RunDataPinButton.vue (components/RunDataPinButton.vue)
+     ├── 🧩 EventDestinationSettingsModal.ee.vue (components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue)
+     ├── 🧩 SourceControlPullModal.ee.vue (components/SourceControlPullModal.ee.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     ├── 🧩 VirtualSchema.vue (components/VirtualSchema.vue)
+     ├── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+     └── 🧩 WorkflowExecutionsPreview.vue (components/executions/workflow/WorkflowExecutionsPreview.vue)
+
+🎨 N8nTooltip (design-system)
+   📊 Used 22 times
+   📍 Source: @n8n/design-system
+     ├── 📄 TestRunDetailView.vue (views/Evaluations.ee/TestRunDetailView.vue)
+     ├── 📄 VariablesView.vue (views/VariablesView.vue)
+     ├── 🧩 ChatMessagesPanel.vue (components/CanvasChat/components/ChatMessagesPanel.vue)
+     ├── 🧩 LogsOverviewPanel.vue (components/CanvasChat/future/components/LogsOverviewPanel.vue)
+     ├── 🧩 LogsViewConsumedTokenCountText.vue (components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue)
+     ├── 🧩 TestTableBase.vue (components/Evaluations.ee/shared/TestTableBase.vue)
+     ├── 🧩 InputPanel.vue (components/InputPanel.vue)
+     ├── 🧩 KeyboardShortcutTooltip.vue (components/KeyboardShortcutTooltip.vue)
+     ├── 🧩 MainSidebar.vue (components/MainSidebar.vue)
+     ├── 🧩 NodeItem.vue (components/Node/NodeCreator/ItemTypes/NodeItem.vue)
+     ├── 🧩 CommunityNodeInfo.vue (components/Node/NodeCreator/Panel/CommunityNodeInfo.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterIssues.vue (components/ParameterIssues.vue)
+     ├── 🧩 ProjectHeader.vue (components/Projects/ProjectHeader.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 RunDataPinButton.vue (components/RunDataPinButton.vue)
+     ├── 🧩 RunDataTable.vue (components/RunDataTable.vue)
+     ├── 🧩 VariablesUsageBadge.vue (components/VariablesUsageBadge.vue)
+     ├── 🧩 VirtualSchemaItem.vue (components/VirtualSchemaItem.vue)
+     ├── 🧩 CanvasNodeStatusIcons.vue (components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue)
+     └── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+
+🎨 N8nButton (design-system)
+   📊 Used 21 times
+   📍 Source: @n8n/design-system
+     ├── 📄 EvaluationsView.vue (views/Evaluations.ee/EvaluationsView.vue)
+     ├── 📄 VariablesView.vue (views/VariablesView.vue)
+     ├── 🧩 ChatMessagesPanel.vue (components/CanvasChat/components/ChatMessagesPanel.vue)
+     ├── 🧩 LogDetailsPanel.vue (components/CanvasChat/future/components/LogDetailsPanel.vue)
+     ├── 🧩 LogsOverviewPanel.vue (components/CanvasChat/future/components/LogsOverviewPanel.vue)
+     ├── 🧩 LogsOverviewRow.vue (components/CanvasChat/future/components/LogsOverviewRow.vue)
+     ├── 🧩 CredentialsSelectModal.vue (components/CredentialsSelectModal.vue)
+     ├── 🧩 SetupWizard.vue (components/Evaluations.ee/SetupWizard/SetupWizard.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 MultipleParameter.vue (components/MultipleParameter.vue)
+     ├── 🧩 CommunityNodeItem.vue (components/Node/NodeCreator/ItemTypes/CommunityNodeItem.vue)
+     ├── 🧩 ProjectHeader.vue (components/Projects/ProjectHeader.vue)
+     ├── 🧩 ResourceMapper.vue (components/ResourceMapper/ResourceMapper.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 SourceControlPullModal.ee.vue (components/SourceControlPullModal.ee.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     ├── 🧩 VariablesForm.vue (components/VariablesForm.vue)
+     ├── 🧩 CanvasNodeTrigger.vue (components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue)
+     ├── 🧩 GlobalExecutionsList.vue (components/executions/global/GlobalExecutionsList.vue)
+     ├── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+     └── 🧩 WorkflowExecutionsPreview.vue (components/executions/workflow/WorkflowExecutionsPreview.vue)
+
+🎨 N8nIcon (design-system)
+   📊 Used 17 times
+   📍 Source: @n8n/design-system
+     ├── 📄 TestRunDetailView.vue (views/Evaluations.ee/TestRunDetailView.vue)
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 LogsOverviewRow.vue (components/CanvasChat/future/components/LogsOverviewRow.vue)
+     ├── 🧩 TestRunsTable.vue (components/Evaluations.ee/ListRuns/TestRunsTable.vue)
+     ├── 🧩 StepIndicator.vue (components/Evaluations.ee/shared/StepIndicator.vue)
+     ├── 🧩 TestTableBase.vue (components/Evaluations.ee/shared/TestTableBase.vue)
+     ├── 🧩 InputPanel.vue (components/InputPanel.vue)
+     ├── 🧩 CommunityNodeInfo.vue (components/Node/NodeCreator/Panel/CommunityNodeInfo.vue)
+     ├── 🧩 CommunityNodeInstallHint.vue (components/Node/NodeCreator/Panel/CommunityNodeInstallHint.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterInput.vue (components/ParameterInput.vue)
+     ├── 🧩 ParameterInputList.vue (components/ParameterInputList.vue)
+     ├── 🧩 ParameterIssues.vue (components/ParameterIssues.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 RunDataDisplayModeSelect.vue (components/RunDataDisplayModeSelect.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     └── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+
+🎨 N8nIconButton (design-system)
+   📊 Used 16 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 Assignment.vue (components/AssignmentCollection/Assignment.vue)
+     ├── 🧩 ChatMessagesPanel.vue (components/CanvasChat/components/ChatMessagesPanel.vue)
+     ├── 🧩 LogsOverviewRow.vue (components/CanvasChat/future/components/LogsOverviewRow.vue)
+     ├── 🧩 LogsPanelActions.vue (components/CanvasChat/future/components/LogsPanelActions.vue)
+     ├── 🧩 NodeErrorView.vue (components/Error/NodeErrorView.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 MainSidebar.vue (components/MainSidebar.vue)
+     ├── 🧩 ParameterInputList.vue (components/ParameterInputList.vue)
+     ├── 🧩 ProjectCreateResource.vue (components/Projects/ProjectCreateResource.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 RunDataParsedAiContent.vue (components/RunDataParsedAiContent.vue)
+     ├── 🧩 RunDataPinButton.vue (components/RunDataPinButton.vue)
+     ├── 🧩 RunDataTable.vue (components/RunDataTable.vue)
+     ├── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+     └── 🧩 WorkflowExecutionsPreview.vue (components/executions/workflow/WorkflowExecutionsPreview.vue)
+
+🎨 N8nSelect (design-system)
+   📊 Used 13 times
+   📍 Source: @n8n/design-system
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 CredentialsSelect.vue (components/CredentialsSelect.vue)
+     ├── 🧩 CredentialsSelectModal.vue (components/CredentialsSelectModal.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 MoveToFolderDropdown.vue (components/Folders/MoveToFolderDropdown.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterInput.vue (components/ParameterInput.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 MappingModeSelect.vue (components/ResourceMapper/MappingModeSelect.vue)
+     ├── 🧩 MatchingColumnsSelect.vue (components/ResourceMapper/MatchingColumnsSelect.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     └── 🧩 TagsDropdown.vue (components/TagsDropdown.vue)
+
+🎨 N8nInputLabel (design-system)
+   📊 Used 11 times
+   📍 Source: @n8n/design-system
+     ├── 📄 VariablesView.vue (views/VariablesView.vue)
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 MultipleParameter.vue (components/MultipleParameter.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterInputFull.vue (components/ParameterInputFull.vue)
+     ├── 🧩 ParameterInputList.vue (components/ParameterInputList.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 MappingModeSelect.vue (components/ResourceMapper/MappingModeSelect.vue)
+     ├── 🧩 MatchingColumnsSelect.vue (components/ResourceMapper/MatchingColumnsSelect.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nLink (design-system)
+   📊 Used 9 times
+   📍 Source: @n8n/design-system
+     ├── 📄 EvaluationsRootView.vue (views/Evaluations.ee/EvaluationsRootView.vue)
+     ├── 🧩 LogsViewRunData.vue (components/CanvasChat/future/components/LogsViewRunData.vue)
+     ├── 🧩 MainSidebar.vue (components/MainSidebar.vue)
+     ├── 🧩 CommunityNodeDocsLink.vue (components/Node/NodeCreator/Panel/CommunityNodeDocsLink.vue)
+     ├── 🧩 CommunityNodeFooter.vue (components/Node/NodeCreator/Panel/CommunityNodeFooter.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 RunDataPinButton.vue (components/RunDataPinButton.vue)
+     ├── 🧩 SourceControlPullModal.ee.vue (components/SourceControlPullModal.ee.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nOption (design-system)
+   📊 Used 9 times
+   📍 Source: @n8n/design-system
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 CredentialsSelect.vue (components/CredentialsSelect.vue)
+     ├── 🧩 FixedCollectionParameter.vue (components/FixedCollectionParameter.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterInput.vue (components/ParameterInput.vue)
+     ├── 🧩 MappingFields.vue (components/ResourceMapper/MappingFields.vue)
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     └── 🧩 TagsDropdown.vue (components/TagsDropdown.vue)
+
+🎨 AskAssistantChat (design-system)
+   📊 Used 6 times
+   📍 Source: @n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue
+     ├── 🧩 AskAssistantBuild.vue (components/AskAssistant/Agent/AskAssistantBuild.vue)
+     ├── 🧩 AskAssistantBuild.vue (components/AskAssistant/Agent/AskAssistantBuild.vue)
+     ├── 🧩 AskAssistantBuild.vue (components/AskAssistant/Agent/AskAssistantBuild.vue)
+     ├── 🧩 AskAssistantChat.vue (components/AskAssistant/Chat/AskAssistantChat.vue)
+     ├── 🧩 AskAssistantChat.vue (components/AskAssistant/Chat/AskAssistantChat.vue)
+     └── 🧩 AskAssistantChat.vue (components/AskAssistant/Chat/AskAssistantChat.vue)
+
+🎨 InlineAskAssistantButton (design-system)
+   📊 Used 6 times
+   📍 Source: @n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue
+     ├── 🧩 CredentialConfig.vue (components/CredentialEdit/CredentialConfig.vue)
+     ├── 🧩 CredentialConfig.vue (components/CredentialEdit/CredentialConfig.vue)
+     ├── 🧩 CredentialConfig.vue (components/CredentialEdit/CredentialConfig.vue)
+     ├── 🧩 NodeErrorView.vue (components/Error/NodeErrorView.vue)
+     ├── 🧩 NodeErrorView.vue (components/Error/NodeErrorView.vue)
+     └── 🧩 NodeErrorView.vue (components/Error/NodeErrorView.vue)
+
+🎨 N8nCheckbox (design-system)
+   📊 Used 5 times
+   📍 Source: @n8n/design-system
+     ├── 📄 CredentialsView.vue (views/CredentialsView.vue)
+     ├── 📄 VariablesView.vue (views/VariablesView.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     ├── 🧩 GlobalExecutionsList.vue (components/executions/global/GlobalExecutionsList.vue)
+     └── 🧩 GlobalExecutionsListItem.vue (components/executions/global/GlobalExecutionsListItem.vue)
+
+🎨 N8nInlineTextEdit (design-system)
+   📊 Used 5 times
+   📍 Source: @n8n/design-system
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     ├── 🧩 CredentialEdit.vue (components/CredentialEdit/CredentialEdit.vue)
+     ├── 🧩 WorkflowDetails.vue (components/MainHeader/WorkflowDetails.vue)
+     ├── 🧩 NodeTitle.vue (components/NodeTitle.vue)
+     └── 🧩 EventDestinationSettingsModal.ee.vue (components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue)
+
+🎨 N8nRadioButtons (design-system)
+   📊 Used 5 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 LogsOverviewPanel.vue (components/CanvasChat/future/components/LogsOverviewPanel.vue)
+     ├── 🧩 InputPanel.vue (components/InputPanel.vue)
+     ├── 🧩 OutputPanel.vue (components/OutputPanel.vue)
+     ├── 🧩 AiRunContentBlock.vue (components/RunDataAi/AiRunContentBlock.vue)
+     └── 🧩 RunDataDisplayModeSelect.vue (components/RunDataDisplayModeSelect.vue)
+
+🎨 N8nInput (design-system)
+   📊 Used 5 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 ExpressionEditModal.vue (components/ExpressionEditModal.vue)
+     ├── 🧩 NodeCredentials.vue (components/NodeCredentials.vue)
+     ├── 🧩 ParameterInput.vue (components/ParameterInput.vue)
+     ├── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+     └── 🧩 TagsTable.vue (components/TagsManager/TagsView/TagsTable.vue)
+
+🎨 N8nNotice (design-system)
+   📊 Used 5 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 ParameterInputList.vue (components/ParameterInputList.vue)
+     ├── 🧩 ResourceLocator.vue (components/ResourceLocator/ResourceLocator.vue)
+     ├── 🧩 MatchingColumnsSelect.vue (components/ResourceMapper/MatchingColumnsSelect.vue)
+     ├── 🧩 ResourceMapper.vue (components/ResourceMapper/ResourceMapper.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nCallout (design-system)
+   📊 Used 4 times
+   📍 Source: @n8n/design-system
+     ├── 📄 NodeView.vue (views/NodeView.vue)
+     ├── 🧩 SetupWizard.vue (components/Evaluations.ee/SetupWizard/SetupWizard.vue)
+     ├── 🧩 ResourceMapper.vue (components/ResourceMapper/ResourceMapper.vue)
+     └── 🧩 RunData.vue (components/RunData.vue)
+
+🎨 N8nFormInput (design-system)
+   📊 Used 4 times
+   📍 Source: @n8n/design-system
+     ├── 📄 ProjectSettings.vue (views/ProjectSettings.vue)
+     ├── 🧩 CommunityPlusEnrollmentModal.vue (components/CommunityPlusEnrollmentModal.vue)
+     ├── 🧩 VariablesForm.vue (components/VariablesForm.vue)
+     └── 🧩 WorkflowExtractionNameModal.vue (components/WorkflowExtractionNameModal.vue)
+
+🎨 N8nBadge (design-system)
+   📊 Used 4 times
+   📍 Source: @n8n/design-system
+     ├── 📄 VariablesView.vue (views/VariablesView.vue)
+     ├── 🧩 StepHeader.vue (components/Evaluations.ee/shared/StepHeader.vue)
+     ├── 🧩 SourceControlPullModal.ee.vue (components/SourceControlPullModal.ee.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nResizeWrapper (design-system)
+   📊 Used 4 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 CanvasChat.vue (components/CanvasChat/CanvasChat.vue)
+     ├── 🧩 LogsPanel.vue (components/CanvasChat/future/LogsPanel.vue)
+     ├── 🧩 LogDetailsPanel.vue (components/CanvasChat/future/components/LogDetailsPanel.vue)
+     └── 🧩 ExpressionEditModal.vue (components/ExpressionEditModal.vue)
+
+🎨 N8nInfoTip (design-system)
+   📊 Used 4 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 RunData.vue (components/RunData.vue)
+     ├── 🧩 RunDataTable.vue (components/RunDataTable.vue)
+     ├── 🧩 RunInfo.vue (components/RunInfo.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nHeading (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/N8nHeading
+     ├── 📄 SetupTemplateFormStep.vue (views/SetupWorkflowFromTemplateView/SetupTemplateFormStep.vue)
+     ├── 📄 SetupWorkflowFromTemplateView.vue (views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue)
+     └── 🧩 SetupWorkflowCredentialsModal.vue (components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue)
+
+🎨 AssistantAvatar (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue
+     ├── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+     ├── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+     └── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+
+🎨 AskAssistantButton (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue
+     ├── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+     ├── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+     └── 🧩 AskAssistantFloatingButton.vue (components/AskAssistant/Chat/AskAssistantFloatingButton.vue)
+
+🎨 AssistantIcon (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue
+     ├── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+     ├── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+     └── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+
+🎨 AssistantText (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/AskAssistantText/AssistantText.vue
+     ├── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+     ├── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+     └── 🧩 NewAssistantSessionModal.vue (components/AskAssistant/Chat/NewAssistantSessionModal.vue)
+
+🎨 N8nIconButton (design-system)
+   📊 Used 3 times
+   📍 Source: @n8n/design-system/components/N8nIconButton/IconButton.vue
+     ├── 🧩 NodeCreator.vue (components/Node/NodeCreator/NodeCreator.vue)
+     ├── 🧩 NodeCreator.vue (components/Node/NodeCreator/NodeCreator.vue)
+     └── 🧩 NodeCreator.vue (components/Node/NodeCreator/NodeCreator.vue)
+
+🎨 N8nHeading (design-system)
+   📊 Used 2 times
+   📍 Source: @n8n/design-system
+     ├── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nActionDropdown (design-system)
+   📊 Used 2 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 LogsPanelActions.vue (components/CanvasChat/future/components/LogsPanelActions.vue)
+     └── 🧩 ContextMenu.vue (components/ContextMenu/ContextMenu.vue)
+
+🎨 N8nNodeIcon (design-system)
+   📊 Used 2 times
+   📍 Source: @n8n/design-system
+     ├── 🧩 CredentialIcon.vue (components/CredentialIcon.vue)
+     └── 🧩 NodeIcon.vue (components/NodeIcon.vue)
+
+🎨 N8nInfoTip (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system/components/N8nInfoTip
+     └── 📄 SettingsUsageAndPlan.vue (views/SettingsUsageAndPlan.vue)
+
+🎨 N8nNotice (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system/components/N8nNotice
+     └── 📄 AppsRequiringCredsNotice.vue (views/SetupWorkflowFromTemplateView/AppsRequiringCredsNotice.vue)
+
+🎨 N8nLink (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system/components/N8nLink
+     └── 📄 SetupWorkflowFromTemplateView.vue (views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue)
+
+🎨 N8nActionBox (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 📄 VariablesView.vue (views/VariablesView.vue)
+
+🎨 N8nCard (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 📄 WorkflowsView.vue (views/WorkflowsView.vue)
+
+🎨 N8nTooltip (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system/components/N8nTooltip
+     └── 🧩 TableStatusCell.vue (components/Evaluations.ee/shared/TableStatusCell.vue)
+
+🎨 type PathItem  (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue
+     └── 🧩 FolderBreadcrumbs.vue (components/Folders/FolderBreadcrumbs.vue)
+
+🎨 N8nKeyboardShortcut (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 KeyboardShortcutTooltip.vue (components/KeyboardShortcutTooltip.vue)
+
+🎨 N8nNavigationDropdown (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 MainSidebar.vue (components/MainSidebar.vue)
+
+🎨 N8nInputNumber (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 ParameterInput.vue (components/ParameterInput.vue)
+
+🎨 N8nSelectableList (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 ParameterOverrideSelectableList.vue (components/ParameterInputOverrides/ParameterOverrideSelectableList.vue)
+
+🎨 N8nActionToggle (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 ProjectCreateResource.vue (components/Projects/ProjectCreateResource.vue)
+
+🎨 N8nLoading (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 ResourceLocatorDropdown.vue (components/ResourceLocator/ResourceLocatorDropdown.vue)
+
+🎨 N8nBlockUi (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 RunData.vue (components/RunData.vue)
+
+🎨 N8nSpinner (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 RunData.vue (components/RunData.vue)
+
+🎨 N8nTabs (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 RunData.vue (components/RunData.vue)
+
+🎨 N8nTree (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 RunDataTable.vue (components/RunDataTable.vue)
+
+🎨 N8nPopover (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 SourceControlPushModal.ee.vue (components/SourceControlPushModal.ee.vue)
+
+🎨 N8nTableBase (design-system)
+   📊 Used 1 times
+   📍 Source: @n8n/design-system
+     └── 🧩 GlobalExecutionsList.vue (components/executions/global/GlobalExecutionsList.vue)
