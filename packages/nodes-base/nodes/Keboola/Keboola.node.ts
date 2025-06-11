@@ -1,7 +1,7 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { KeboolaV1 } from './v1/KeboolaV1.node';
+import { KeboolaV1 } from './V1/KeboolaV1.node';
 
 export class Keboola extends VersionedNodeType {
 	constructor() {

@@ -1,4 +1,3 @@
-import aws4, { sign } from 'aws4';
 import axios, { type AxiosError } from 'axios';
 import FormData from 'form-data';
 import type { INodeExecutionData } from 'n8n-workflow';
@@ -6,14 +5,11 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import type {
 	JobStatus,
-	FileMetadata,
 	CreateBucketRequest,
 	CreateTableRequest,
 	ImportTableRequest,
 	KeboolaTableIdentifiers,
-	DownloadTableResult,
 	KeboolaCredentials,
-	ExtractParams,
 	UploadParams,
 } from './KeboolaV1.types';
 import {
@@ -21,16 +17,11 @@ import {
 	validateUploadResponse,
 	validateTableDetail,
 	validateBucketDetail,
-	validateFileMetadata,
-	validateManifest,
 	assertNotErrorResponse,
 	isJobSuccess,
 	isJobFailure,
-	hasFileResults,
-	hasGcsCredentials,
 } from './KeboolaV1.types';
 import {
-	parseCsv,
 	validateBucketId,
 	createUploadUrl,
 	delay,
@@ -82,166 +73,6 @@ export class KeboolaValidationError extends Error {
 	}
 }
 
-export async function downloadSignedSlice(signedUrl: string): Promise<string> {
-	const response = await axios.get(signedUrl, {
-		responseType: 'text',
-	});
-
-	return response.data;
-}
-
-export function getAccessToken(metadata: FileMetadata): string | undefined {
-	if (hasGcsCredentials(metadata)) {
-		return metadata.gcsCredentials.access_token;
-	}
-	if (metadata.credentials?.access_token) {
-		return metadata.credentials.access_token;
-	}
-	return undefined;
-}
-
-export async function downloadAwsSlice(s3Url: string, metadata: FileMetadata): Promise<string> {
-	if (!s3Url.startsWith('s3://')) {
-		throw new UnexpectedError(`Invalid S3 URL format: ${s3Url}`);
-	}
-
-	try {
-		const manifestUrl = metadata.url;
-		const manifestUrlObj = new URL(manifestUrl);
-
-		const [bucket, ...keyParts] = s3Url.slice(5).split('/');
-		const key = keyParts.join('/');
-		const region = metadata.region || 'eu-central-1';
-		const host = `${bucket}.s3.${region}.amazonaws.com`;
-		const signedQuery = manifestUrlObj.search;
-
-		// Build the slice URL using the same signed query
-		const sliceUrl = `https://${host}/${key}${signedQuery}`;
-		console.log('[AWS] Accessing slice using presigned URL:', sliceUrl);
-
-		const response = await axios.get(sliceUrl, { responseType: 'text' });
-
-		console.log('[AWS] Slice downloaded successfully');
-		return response.data;
-	} catch (error) {
-		if (axios.isAxiosError(error)) {
-			const status = error.response?.status;
-			const body = error.response?.data || error.message;
-			throw new UnexpectedError(`Failed to download AWS slice (${status}): ${body}`);
-		}
-		throw new UnexpectedError(`Failed to download AWS slice: ${(error as Error).message}`);
-	}
-}
-
-// Google Cloud Storage slice download - updated to match new schema
-export async function downloadGcsSlice(gsUrl: string, metadata: FileMetadata): Promise<string> {
-	// Check URL format
-	if (!gsUrl.startsWith('gs://')) {
-		throw new UnexpectedError(`Invalid GCS URL format: ${gsUrl}`);
-	}
-
-	// Get GCS credentials from metadata
-	const credentials = metadata.gcsCredentials;
-	if (!credentials) {
-		throw new UnexpectedError('No GCS credentials found in metadata');
-	}
-
-	try {
-		// Parse the GCS URL
-		const match = gsUrl.match(/^gs:\/\/([^\/]+)\/(.+)$/);
-		if (!match) {
-			throw new UnexpectedError(`Failed to parse GCS URL: ${gsUrl}`);
-		}
-
-		const [, bucket, path] = match;
-		const quotedPath = encodeURIComponent(path);
-		const url = `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${quotedPath}?alt=media`;
-
-		// Add authorization header with access token
-		const headers = {
-			Authorization: `Bearer ${credentials.access_token}`,
-		};
-
-		console.debug(`[GCS] Downloading object: ${url}`);
-
-		const response = await axios.get(url, {
-			headers,
-			responseType: 'text',
-		});
-
-		return response.data;
-	} catch (error) {
-		console.error('[GCS] Download error:', error);
-		throw new UnexpectedError(`Failed to download GCS slice: ${error.message}`);
-	}
-}
-
-// Universal function to download slices based on storage provider
-export async function downloadKeboolaSlices(
-	entries: Array<{ url: string; mandatory?: boolean }>,
-	metadata: FileMetadata,
-): Promise<string[]> {
-	// Determine cloud provider from metadata
-	const provider = metadata.provider.toLowerCase();
-
-	console.debug(`[Slices] Using cloud provider: ${provider}`);
-
-	// Download all slices in parallel
-	const slicePromises = entries.map(async (entry) => {
-		try {
-			const url = entry.url;
-			console.debug(`[Slice] Downloading: ${url}`);
-
-			if (provider === 'gcp') {
-				return await downloadGcsSlice(url, metadata);
-			} else if (provider === 'aws') {
-				return await downloadAwsSlice(url, metadata);
-			} else if (provider === 'azure') {
-				return await downloadAzureSlice(url, metadata);
-			} else {
-				throw new UnexpectedError(`Unsupported cloud provider: ${provider}`);
-			}
-		} catch (error) {
-			console.error(`[Slice] Download failed: ${entry.url}`, error);
-
-			// If the slice is marked as mandatory (or not explicitly optional), rethrow the error
-			if (entry.mandatory !== false) {
-				throw error;
-			}
-
-			// Return empty string for optional slices that failed to download
-			return '';
-		}
-	});
-
-	return await Promise.all(slicePromises);
-}
-
-export async function downloadAllSlices(metadata: FileMetadata): Promise<string[]> {
-	// Get the manifest URL from metadata
-	const manifestUrl = metadata.url;
-
-	// Download the manifest
-	console.debug(`[Manifest] Downloading: ${manifestUrl}`);
-	const manifestResponse = await axios.get(manifestUrl);
-	const manifest = validateManifest(manifestResponse.data);
-
-	// Download all slices
-	return await downloadKeboolaSlices(manifest.entries, metadata);
-}
-
-export async function startTableExport(
-	tableId: string,
-	apiUrl: string,
-	headers: Record<string, string>,
-): Promise<JobStatus> {
-	const exportUrl = `${apiUrl}/v2/storage/tables/${tableId}/export-async`;
-	const response = await axios.post(exportUrl, { format: 'rfc' }, { headers });
-
-	assertNotErrorResponse(response.data);
-	return validateJobStatus(response.data);
-}
-
 export async function waitForJobCompletion(
 	jobUrl: string,
 	headers: Record<string, string>,
@@ -279,57 +110,6 @@ export async function waitForJobCompletion(
 	}
 
 	throw new KeboolaJobTimeoutError();
-}
-
-export async function waitForExportAndGetMetadata(
-	jobId: string,
-	apiUrl: string,
-	headers: Record<string, string>,
-): Promise<FileMetadata> {
-	const jobUrl = `${apiUrl}/v2/storage/jobs/${jobId}`;
-
-	for (let attempt = 1; attempt <= MAX_JOB_ATTEMPTS; attempt++) {
-		try {
-			const { data } = await axios.get(jobUrl, { headers });
-			assertNotErrorResponse(data);
-			const jobStatus = validateJobStatus(data);
-
-			console.debug(`[Job ${jobId}] Attempt ${attempt} - status: ${jobStatus.status}`);
-			if (isJobSuccess(jobStatus)) {
-				console.debug(`[Job ${jobId}] Job succeeded. Checking file results...`);
-
-				if (!hasFileResults(jobStatus)) {
-					throw new UnexpectedError('Job completed successfully but no file results found');
-				}
-
-				const fileId = jobStatus.results.file.id;
-				console.debug(`[Job ${jobId}] File ID found: ${fileId}`);
-
-				const metaUrl = `${apiUrl}/v2/storage/files/${fileId}?federationToken=1`;
-				const metaResponse = await axios.get(metaUrl, { headers });
-
-				assertNotErrorResponse(metaResponse.data);
-				return validateFileMetadata(metaResponse.data);
-			}
-
-			if (isJobFailure(jobStatus)) {
-				console.error(`[Job ${jobId}] FAILED:`, jobStatus.error);
-				throw new KeboolaJobFailedError(jobStatus);
-			}
-
-			await delay(POLLING_INTERVAL_MS);
-		} catch (error) {
-			console.error(`[Job ${jobId}] Error:`, error);
-			if (error instanceof KeboolaJobFailedError || error instanceof KeboolaValidationError) {
-				throw error;
-			}
-
-			if (attempt === MAX_JOB_ATTEMPTS) throw error;
-			await delay(POLLING_INTERVAL_MS);
-		}
-	}
-
-	throw new KeboolaJobTimeoutError('Export job did not complete in time');
 }
 
 export async function createBucket(
@@ -520,57 +300,6 @@ export async function ensureTableAndImport(
 	} else {
 		await importToExistingTable(tableId, fileId, apiUrl, headers);
 	}
-}
-
-export async function fetchTableColumns(
-	tableId: string,
-	apiUrl: string,
-	apiToken: string,
-): Promise<string[]> {
-	const headers = { 'X-StorageApi-Token': apiToken };
-	const response = await axios.get(`${apiUrl}/v2/storage/tables/${tableId}`, { headers });
-
-	assertNotErrorResponse(response.data);
-	const tableDetail = validateTableDetail(response.data);
-
-	return tableDetail.columns;
-}
-
-export async function downloadKeboolaTable(
-	tableId: string,
-	apiUrl: string,
-	apiToken: string,
-): Promise<DownloadTableResult> {
-	const headers = { 'X-StorageApi-Token': apiToken };
-	const kbcApiUrl = apiUrl.replace(/\/$/, '');
-
-	const columns = await fetchTableColumns(tableId, kbcApiUrl, apiToken);
-	const exportJobData = await startTableExport(tableId, kbcApiUrl, headers);
-
-	const fileMetadata = await waitForExportAndGetMetadata(exportJobData.id, kbcApiUrl, headers);
-
-	const csvSlices = await downloadAllSlices(fileMetadata);
-	const rows = csvSlices.flatMap((csv) => parseCsv(csv, columns));
-
-	console.log(`Downloaded ${rows.length} rows from table ${tableId}`);
-	return { rows };
-}
-
-export async function handleExtractOperation(
-	params: ExtractParams,
-	credentials: KeboolaCredentials,
-): Promise<INodeExecutionData[]> {
-	console.log(`🔍 Extracting data from table: ${params.tableId}`);
-
-	const { rows } = await downloadKeboolaTable(
-		params.tableId,
-		credentials.stack,
-		credentials.apiToken,
-	);
-
-	console.log(`Successfully extracted ${rows.length} rows`);
-
-	return rows.map((row) => ({ json: row }));
 }
 
 export async function handleUploadOperation(

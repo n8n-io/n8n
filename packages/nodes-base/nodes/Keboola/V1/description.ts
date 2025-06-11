@@ -44,24 +44,9 @@ export const keboolaNodeDescription: INodeProperties[] = [
 				resource: ['table'],
 			},
 		},
-		options: [
-			{ name: 'Extract', value: 'extract', description: 'Download table data' },
-			{ name: 'Upload', value: 'upload', description: 'Upload data to a table' },
-		],
-		default: 'extract',
+		options: [{ name: 'Upload', value: 'upload', description: 'Upload data to a table' }],
+		default: 'upload',
 		required: true,
-	},
-	{
-		displayName: 'Table ID',
-		name: 'tableId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['extract'],
-			},
-		},
 	},
 	{
 		displayName: 'Bucket Stage',

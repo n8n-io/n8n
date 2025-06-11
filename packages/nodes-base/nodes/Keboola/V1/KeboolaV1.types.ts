@@ -1,7 +1,5 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { IExecuteFunctions, UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
-
-export type Platform = 'aws' | 'gcp' | 'azure';
 
 export const JobStatusSchema = z.object({
 	id: z.union([z.string(), z.number()]).transform((val) => String(val)),
@@ -86,48 +84,6 @@ export const BucketDetailSchema = z.object({
 	isReadOnly: z.boolean(),
 });
 
-export const FileMetadataSchema = z.object({
-	id: z.number(),
-	name: z.string(),
-	url: z.string(),
-	provider: z.string(),
-	region: z.string().optional(),
-	gcsCredentials: z
-		.object({
-			access_token: z.string(),
-			expires_in: z.number().optional(),
-		})
-		.optional(),
-	credentials: z
-		.object({
-			access_token: z.string().optional(), // Change from required to optional
-			expires_in: z.number().optional(),
-		})
-		.optional(),
-	awsCredentials: z
-		.object({
-			AccessKeyId: z.string(),
-			SecretAccessKey: z.string(),
-			SessionToken: z.string(),
-			Expiration: z.string(),
-		})
-		.optional(),
-	azureCredentials: z
-		.object({
-			SASConnectionString: z.string(),
-		})
-		.optional(),
-});
-
-export const ManifestEntrySchema = z.object({
-	url: z.string(),
-	mandatory: z.boolean().optional(),
-});
-
-export const ManifestSchema = z.object({
-	entries: z.array(ManifestEntrySchema),
-});
-
 export const CreateBucketRequestSchema = z.object({
 	name: z.string().min(1),
 	stage: z.enum(['in', 'out']),
@@ -157,22 +113,20 @@ export const ErrorResponseSchema = z.object({
 	exceptionId: z.string().optional(),
 });
 
+export const KeboolaCredentialsSchema = z.object({
+	apiToken: z.string().min(1),
+	stack: z.string().url().or(z.string().min(1)),
+});
+
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 export type UploadResponse = z.infer<typeof UploadResponseSchema>;
 export type TableDetail = z.infer<typeof TableDetailSchema>;
 export type BucketDetail = z.infer<typeof BucketDetailSchema>;
-export type FileMetadata = z.infer<typeof FileMetadataSchema>;
-export type ManifestEntry = z.infer<typeof ManifestEntrySchema>;
-export type Manifest = z.infer<typeof ManifestSchema>;
 export type CreateBucketRequest = z.infer<typeof CreateBucketRequestSchema>;
 export type CreateTableRequest = z.infer<typeof CreateTableRequestSchema>;
 export type ImportTableRequest = z.infer<typeof ImportTableRequestSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
-
-export interface KeboolaCredentials {
-	apiToken: string;
-	stack: string;
-}
+export type KeboolaCredentials = z.infer<typeof KeboolaCredentialsSchema>;
 
 export interface KeboolaUploadParams {
 	bucketStage: string;
@@ -189,20 +143,7 @@ export interface KeboolaTableIdentifiers {
 	incremental: boolean;
 }
 
-export interface ExtractParams {
-	tableId: string;
-}
-
 export interface UploadParams extends KeboolaUploadParams {}
-
-export interface BucketIdentifiers {
-	stage: string;
-	name: string;
-}
-
-export interface DownloadTableResult {
-	rows: Array<Record<string, string>>;
-}
 
 export function validateJobStatus(data: unknown): JobStatus {
 	try {
@@ -236,19 +177,13 @@ export function validateBucketDetail(data: unknown): BucketDetail {
 	}
 }
 
-export function validateFileMetadata(data: unknown): FileMetadata {
-	try {
-		return FileMetadataSchema.parse(data);
-	} catch (error) {
-		throw new UnexpectedError(`Invalid file metadata response: ${error}`);
-	}
-}
+export async function extractCredentials(this: IExecuteFunctions): Promise<KeboolaCredentials> {
+	const raw: unknown = await this.getCredentials('keboolaApiToken');
 
-export function validateManifest(data: unknown): Manifest {
 	try {
-		return ManifestSchema.parse(data);
+		return KeboolaCredentialsSchema.parse(raw);
 	} catch (error) {
-		throw new UnexpectedError(`Invalid manifest response: ${error}`);
+		throw new UnexpectedError('Invalid or missing Keboola credentials');
 	}
 }
 
@@ -267,8 +202,6 @@ export const ApiResponseSchema = z.union([
 	UploadResponseSchema,
 	TableDetailSchema,
 	BucketDetailSchema,
-	FileMetadataSchema,
-	ManifestSchema,
 	ErrorResponseSchema,
 ]);
 
@@ -276,8 +209,6 @@ export type ApiResponse = z.infer<typeof ApiResponseSchema>;
 
 export const JOB_SUCCESS_STATUS = 'success' as const;
 export const JOB_FAILURE_STATUSES = ['error', 'cancelled', 'terminated'] as const;
-export const BUCKET_STAGES = ['in', 'out'] as const;
-export const SUPPORTED_PLATFORMS: Platform[] = ['gcp', 'aws', 'azure'];
 
 type JobFailureStatus = (typeof JOB_FAILURE_STATUSES)[number];
 
@@ -289,33 +220,4 @@ export function isJobFailure(
 	status: JobStatus,
 ): status is JobStatus & { status: JobFailureStatus } {
 	return (JOB_FAILURE_STATUSES as readonly string[]).includes(status.status);
-}
-
-export function hasFileResults(
-	job: JobStatus,
-): job is JobStatus & { results: { file: { id: number } } } {
-	return (
-		job.results !== null &&
-		job.results !== undefined &&
-		'file' in job.results &&
-		job.results.file?.id !== undefined
-	);
-}
-
-export function hasGcsCredentials(
-	metadata: FileMetadata,
-): metadata is FileMetadata & { gcsCredentials: { access_token: string } } {
-	return metadata.gcsCredentials?.access_token !== undefined;
-}
-
-export function hasAwsCredentials(metadata: FileMetadata): metadata is FileMetadata & {
-	awsCredentials: { AccessKeyId: string; SecretAccessKey: string; SessionToken: string };
-} {
-	return metadata.awsCredentials?.AccessKeyId !== undefined;
-}
-
-export function hasAzureCredentials(
-	metadata: FileMetadata,
-): metadata is FileMetadata & { azureCredentials: { SASConnectionString: string } } {
-	return metadata.azureCredentials?.SASConnectionString !== undefined;
 }

@@ -11,7 +11,8 @@ export class KeboolaV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
-			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			// Optionally change subtitle to be upload-specific
+			subtitle: '={{"upload: table"}}',
 			defaults: {
 				name: 'Keboola',
 			},
