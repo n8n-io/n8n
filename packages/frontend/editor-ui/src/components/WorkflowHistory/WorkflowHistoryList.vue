@@ -7,7 +7,7 @@ import type {
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 	WorkflowHistoryRequestParams,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 
 const props = defineProps<{

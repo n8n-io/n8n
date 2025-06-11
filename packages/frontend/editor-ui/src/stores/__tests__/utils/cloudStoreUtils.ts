@@ -1,4 +1,4 @@
-import type { Cloud } from '@/Interface';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 
 // Mocks cloud plan API responses with different trial expiration dates
 function getUserPlanData(trialExpirationDate: Date, isTrial = true): Cloud.PlanData {

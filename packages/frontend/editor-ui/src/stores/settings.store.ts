@@ -4,7 +4,8 @@ import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
-import * as settingsApi from '@/api/settings';
+import * as settingsApi from '@n8n/rest-api-client/api/settings';
+import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import {
@@ -332,7 +333,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const submitContactInfo = async (email: string) => {
 		try {
 			const usersStore = useUsersStore();
-			return await settingsApi.submitContactInfo(
+			return await promptsApi.submitContactInfo(
 				settings.value.instanceId,
 				usersStore.currentUserId || '',
 				email,

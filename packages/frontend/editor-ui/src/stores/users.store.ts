@@ -10,13 +10,13 @@ import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	Cloud,
 	IPersonalizationLatestVersion,
 	IUser,
 	IUserResponse,
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -24,7 +24,7 @@ import { usePostHog } from './posthog.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
-import * as cloudApi from '@/api/cloudPlans';
+import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import * as invitationsApi from '@/api/invitation';
