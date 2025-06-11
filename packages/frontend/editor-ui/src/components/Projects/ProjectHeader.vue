@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useElementSize } from '@vueuse/core';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -177,10 +178,10 @@ const projectDescription = computed(() => {
 });
 
 const projectHeaderRef = ref<HTMLElement | null>(null);
-const projectHeaderWidth = ref(0);
+const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 
 const headerActionsRef = ref<HTMLElement | null>(null);
-const headerActionsWidth = ref(0);
+const { width: headerActionsWidth } = useElementSize(headerActionsRef);
 
 const projectDescriptionTruncated = computed(() => {
 	if (!projectDescription.value) {
@@ -200,30 +201,6 @@ const onSelect = (action: string) => {
 	}
 	executableAction(homeProject.value.id);
 };
-
-const calculateProjectHeaderWidth = () => {
-	if (projectHeaderRef.value) {
-		projectHeaderWidth.value = projectHeaderRef.value.offsetWidth;
-	}
-};
-
-const calculateHeaderActionsWidth = () => {
-	if (headerActionsRef.value) {
-		headerActionsWidth.value = headerActionsRef.value.offsetWidth;
-	}
-};
-
-onMounted(() => {
-	calculateProjectHeaderWidth();
-	calculateHeaderActionsWidth();
-	window.addEventListener('resize', calculateProjectHeaderWidth);
-	window.addEventListener('resize', calculateHeaderActionsWidth);
-});
-
-onBeforeUnmount(() => {
-	window.removeEventListener('resize', calculateProjectHeaderWidth);
-	window.removeEventListener('resize', calculateHeaderActionsWidth);
-});
 </script>
 
 <template>
