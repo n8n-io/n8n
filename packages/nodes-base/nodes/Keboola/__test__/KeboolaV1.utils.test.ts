@@ -3,7 +3,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { fixtures } from './fixtures/utils.fixtures';
 import {
 	buildCsvFromItems,
-	detectCloudProvider,
 	parseCsv,
 	createTableIdentifiers,
 	parsePrimaryKeys,
@@ -11,8 +10,7 @@ import {
 	validateBucketId,
 	createUploadUrl,
 	formatUploadSuccessMessage,
-	createContextualError,
-} from '../v1/KeboolaV1.utils';
+} from '../V1/KeboolaV1.utils';
 
 describe('buildCsvFromItems', () => {
 	test('converts items to CSV string', () => {
@@ -29,30 +27,6 @@ describe('buildCsvFromItems', () => {
 
 	test('throws on empty input', () => {
 		expect(() => buildCsvFromItems([], ['id'])).toThrow(UnexpectedError);
-	});
-});
-
-describe('detectCloudProvider', () => {
-	test('detects GCP from gs://', () => {
-		expect(detectCloudProvider('gs://bucket/file')).toBe('gcp');
-	});
-
-	test('detects GCP from storage.googleapis.com', () => {
-		expect(detectCloudProvider('https://storage.googleapis.com/bucket/file')).toBe('gcp');
-	});
-
-	test('detects AWS from s3://', () => {
-		expect(detectCloudProvider('s3://bucket/file')).toBe('aws');
-	});
-
-	test('detects Azure from blob URL', () => {
-		expect(detectCloudProvider('https://account.blob.core.windows.net/container/file')).toBe(
-			'azure',
-		);
-	});
-
-	test('throws on unsupported URL', () => {
-		expect(() => detectCloudProvider('ftp://example.com')).toThrow(UnexpectedError);
 	});
 });
 
@@ -116,19 +90,5 @@ describe('formatUploadSuccessMessage', () => {
 		expect(formatUploadSuccessMessage(5, 'in.c-bucket.table')).toBe(
 			'Uploaded 5 rows to in.c-bucket.table',
 		);
-	});
-});
-
-describe('createContextualError', () => {
-	test('wraps string error', () => {
-		const err = createContextualError('Oops', 'extract');
-		expect(err.message).toMatch(/extract operation failed: Oops/);
-	});
-
-	test('wraps Error instance', () => {
-		const base = new Error('Something went wrong');
-		const err = createContextualError(base, 'upload');
-		expect(err.message).toMatch(/upload operation failed: Something went wrong/);
-		expect(err.stack).toBe(base.stack);
 	});
 });

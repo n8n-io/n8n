@@ -1,15 +1,13 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { KeboolaV1 } from '../v1/KeboolaV1.node';
-
-// Fixtures
-import tableFixture from './fixtures/table.json';
-import jobFixture from './fixtures/job.json';
-import fileFixture from './fixtures/file.json';
-import manifestFixture from './fixtures/manifest.json';
-import dataFixture from './fixtures/data.json';
 import bucketFixture from './fixtures/bucket.json';
+import dataFixture from './fixtures/data.json';
+import fileFixture from './fixtures/file.json';
+import jobFixture from './fixtures/job.json';
+import manifestFixture from './fixtures/manifest.json';
+import tableFixture from './fixtures/table.json';
+import { KeboolaV1 } from '../V1/KeboolaV1.node';
 
 describe('Keboola Node', () => {
 	nock.disableNetConnect();
