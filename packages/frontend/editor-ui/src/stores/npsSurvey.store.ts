@@ -12,8 +12,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@n8n/rest-api-client/api/npsSurvey';
-import type { IN8nPrompts } from '@/Interface';
-import { getPromptsData } from '@/api/settings';
+import type { N8nPrompts } from '@n8n/rest-api-client/api/prompts';
+import { getPromptsData } from '@n8n/rest-api-client/api/prompts';
 import { assert } from '@n8n/utils/assert';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
@@ -26,7 +26,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	const shouldShowNpsSurveyNext = ref<boolean>(false);
 	const currentSurveyState = ref<NpsSurveyState | undefined>();
 	const currentUserId = ref<string | undefined>();
-	const promptsData = ref<IN8nPrompts | undefined>();
+	const promptsData = ref<N8nPrompts | undefined>();
 
 	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings): void {
 		currentUserId.value = userId;
