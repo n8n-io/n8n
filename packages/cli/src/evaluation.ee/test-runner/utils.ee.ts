@@ -55,7 +55,7 @@ export function extractTokenUsage(executionRunData: IRunData) {
 			);
 		}
 
-		const tokenInfo = nodeData.json?.tokenUsageEstimate ?? nodeData.json?.tokenUsage;
+		const tokenInfo = nodeData.json?.tokenUsage ?? nodeData.json?.tokenUsageEstimate;
 
 		if (tokenInfo && isValidTokenInfo(tokenInfo)) {
 			result[`${nodeName}__${index}`] = {
