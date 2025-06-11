@@ -1,7 +1,4 @@
-import type { EmbeddingsInterface } from '@langchain/core/embeddings';
-import type { MongoDBAtlasVectorSearchLibArgs } from '@langchain/mongodb';
 import { MongoDBAtlasVectorSearch } from '@langchain/mongodb';
-import { metadataFilterField } from '@utils/sharedFields';
 import { MongoClient } from 'mongodb';
 import {
 	type ILoadOptionsFunctions,
@@ -10,6 +7,8 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
+
+import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
@@ -206,129 +205,92 @@ export const getVectorIndexName = getParameter.bind(null, VECTOR_INDEX_NAME);
 export const getEmbeddingFieldName = getParameter.bind(null, EMBEDDING_NAME);
 export const getMetadataFieldName = getParameter.bind(null, METADATA_FIELD_NAME);
 
-/**
- * Convenience method to get all the required field names in one shot.
- * @param context - The context.
- * @param itemIndex - The index.
- * @returns The field names.
- */
-function getFieldNames(context: IFunctionsContext, itemIndex: number) {
-	return {
-		collectionName: getCollectionName(context, itemIndex),
-		mongoVectorIndexName: getVectorIndexName(context, itemIndex),
-		embeddingFieldName: getEmbeddingFieldName(context, itemIndex),
-		metadataFieldName: getMetadataFieldName(context, itemIndex),
-	};
-}
-
-/**
- * The MongoClient on the collection needs to be accessible in order to close it properly
- * when the node needs to release the client. We extend the class here to add access.
- */
-class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
-	client: MongoClient;
-
-	constructor(embeddings: EmbeddingsInterface, args: MongoDBAtlasVectorSearchLibArgs) {
-		super(embeddings, args);
-		// @ts-expect-error Client exists on the collection, it's flagged as internal.
-		this.client = args.collection.client as MongoClient;
-	}
-}
-
-/**
- * The MongoDB Atlas Vector Store node.
- */
-export class VectorStoreMongoDBAtlas extends createVectorStoreNode<ExtendedMongoDBAtlasVectorSearch>(
-	{
-		meta: {
-			displayName: 'MongoDB Atlas Vector Store',
-			name: 'vectorStoreMongoDBAtlas',
-			description: 'Work with your data in MongoDB Atlas Vector Store',
-			icon: { light: 'file:mongodb.svg', dark: 'file:mongodb.dark.svg' },
-			docsUrl:
-				'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremongodbatlas/',
-			credentials: [
-				{
-					name: 'mongoDb',
-					required: true,
-				},
-			],
-			operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
-		},
-		methods: { listSearch: { mongoCollectionSearch: getCollections } },
-		retrieveFields,
-		loadFields: retrieveFields,
-		insertFields,
-		sharedFields,
-		async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
-			const client = await getMongoClient(context);
-			try {
-				const db = await getDatabase(context, client);
-				const { collectionName, mongoVectorIndexName, embeddingFieldName, metadataFieldName } =
-					getFieldNames(context, itemIndex);
-
-				const collection = db.collection(collectionName);
-
-				// test index exists
-				const indexes = await collection.listSearchIndexes().toArray();
-
-				const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
-
-				if (!indexExists) {
-					throw new NodeOperationError(
-						context.getNode(),
-						`Index ${mongoVectorIndexName} not found`,
-						{
-							itemIndex,
-							description: 'Please check that the index exists in your collection',
-						},
-					);
-				}
-
-				return new ExtendedMongoDBAtlasVectorSearch(embeddings, {
-					collection,
-					indexName: mongoVectorIndexName, // Default index name
-					textKey: metadataFieldName, // Field containing raw text
-					embeddingKey: embeddingFieldName, // Field containing embeddings
-				});
-			} catch (error) {
-				if (error instanceof NodeOperationError) {
-					throw error;
-				}
-				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
-					itemIndex,
-					description: 'Please check your MongoDB Atlas connection details',
-				});
-			}
-		},
-		async populateVectorStore(context, embeddings, documents, itemIndex) {
-			const client = await getMongoClient(context);
-			try {
-				const db = await getDatabase(context, client);
-				const { collectionName, mongoVectorIndexName, embeddingFieldName, metadataFieldName } =
-					getFieldNames(context, itemIndex);
-
-				// Check if collection exists
-				const collections = await db.listCollections({ name: collectionName }).toArray();
-				if (collections.length === 0) {
-					await db.createCollection(collectionName);
-				}
-				const collection = db.collection(collectionName);
-				await ExtendedMongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
-					collection,
-					indexName: mongoVectorIndexName, // Default index name
-					textKey: metadataFieldName, // Field containing raw text
-					embeddingKey: embeddingFieldName, // Field containing embeddings
-				});
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
-					itemIndex,
-					description: 'Please check your MongoDB Atlas connection details',
-				});
-			}
-		},
-		releaseVectorStoreClient(vectorStore) {
-			void vectorStore.client?.close();
-		},
+export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
+	meta: {
+		displayName: 'MongoDB Atlas Vector Store',
+		name: 'vectorStoreMongoDBAtlas',
+		description: 'Work with your data in MongoDB Atlas Vector Store',
+		icon: { light: 'file:mongodb.svg', dark: 'file:mongodb.dark.svg' },
+		docsUrl:
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremongodbatlas/',
+		credentials: [
+			{
+				name: 'mongoDb',
+				required: true,
+			},
+		],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
-) {}
+	methods: { listSearch: { mongoCollectionSearch: getCollections } },
+	retrieveFields,
+	loadFields: retrieveFields,
+	insertFields,
+	sharedFields,
+	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
+		const client = await getMongoClient(context);
+		try {
+			const db = await getDatabase(context, client);
+			const collectionName = getCollectionName(context, itemIndex);
+			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
+			const embeddingFieldName = getEmbeddingFieldName(context, itemIndex);
+			const metadataFieldName = getMetadataFieldName(context, itemIndex);
+
+			const collection = db.collection(collectionName);
+
+			// test index exists
+			const indexes = await collection.listSearchIndexes().toArray();
+
+			const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
+
+			if (!indexExists) {
+				throw new NodeOperationError(context.getNode(), `Index ${mongoVectorIndexName} not found`, {
+					itemIndex,
+					description: 'Please check that the index exists in your collection',
+				});
+			}
+
+			return new MongoDBAtlasVectorSearch(embeddings, {
+				collection,
+				indexName: mongoVectorIndexName, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
+			});
+		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+				itemIndex,
+				description: 'Please check your MongoDB Atlas connection details',
+			});
+		}
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const client = await getMongoClient(context);
+		try {
+			const db = await getDatabase(context, client);
+			const collectionName = getCollectionName(context, itemIndex);
+			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
+			const embeddingFieldName = getEmbeddingFieldName(context, itemIndex);
+			const metadataFieldName = getMetadataFieldName(context, itemIndex);
+
+			// Check if collection exists
+			const collections = await db.listCollections({ name: collectionName }).toArray();
+			if (collections.length === 0) {
+				await db.createCollection(collectionName);
+			}
+			const collection = db.collection(collectionName);
+			await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
+				collection,
+				indexName: mongoVectorIndexName, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
+			});
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+				itemIndex,
+				description: 'Please check your MongoDB Atlas connection details',
+			});
+		}
+	},
+}) {}
