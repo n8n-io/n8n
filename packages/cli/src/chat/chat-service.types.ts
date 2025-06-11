@@ -13,6 +13,7 @@ export type ChatRequest = Request<
 export type Session = {
 	connection: WebSocket;
 	executionId: string;
+	sessionId: string;
 	intervalId?: NodeJS.Timeout;
 	nodeWaitingForResponse: string | null;
 	isPublic?: boolean;

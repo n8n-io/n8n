@@ -31,6 +31,10 @@ import type { ChatMessage, ChatRequest, Session } from './chat-service.types';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
 
+const PING_INTERVAL = 60 * 1000;
+const CHECK_FOR_RESPONSE_INTERVAL = 3000;
+const DRAIN_TIMEOUT_MS = 50;
+
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
@@ -46,11 +50,8 @@ function closeConnection(ws: WebSocket) {
 		if (ws.readyState === WebSocket.OPEN) {
 			ws.close();
 		}
-	}, 50);
+	}, DRAIN_TIMEOUT_MS);
 }
-
-const PING_INTERVAL = 60 * 1000;
-const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 
 @Service()
 export class ChatService {
@@ -98,8 +99,16 @@ export class ChatService {
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
 
-		const onMessage = this.incomingMessageHandler(sessionId);
-		const respondToChat = this.outgoingMessageHandler(sessionId);
+		const key = `${sessionId}|${executionId}|${isPublic ? 'hosted' : 'integrated'}`;
+
+		if (this.sessions.has(key)) {
+			this.sessions.get(key)?.connection.terminate();
+			clearInterval(this.sessions.get(key)?.intervalId);
+			this.sessions.delete(key);
+		}
+
+		const onMessage = this.incomingMessageHandler(key);
+		const respondToChat = this.outgoingMessageHandler(key);
 
 		const intervalId = setInterval(async () => await respondToChat(), CHECK_FOR_RESPONSE_INTERVAL);
 
@@ -107,7 +116,7 @@ export class ChatService {
 			ws.off('pong', heartbeat);
 			ws.off('message', onMessage);
 			clearInterval(intervalId);
-			this.sessions.delete(sessionId);
+			this.sessions.delete(key);
 		});
 
 		ws.on('message', onMessage);
@@ -115,25 +124,26 @@ export class ChatService {
 		const session: Session = {
 			connection: ws,
 			executionId,
+			sessionId,
 			intervalId,
 			nodeWaitingForResponse: null,
 			isPublic,
 		};
 
-		this.sessions.set(sessionId, session);
+		this.sessions.set(key, session);
 	}
 
-	private outgoingMessageHandler(sessionId: string) {
+	private outgoingMessageHandler(sessionKey: string) {
 		return async () => {
-			const session = this.sessions.get(sessionId);
+			const session = this.sessions.get(sessionKey);
 
 			if (!session) return;
 
-			const { connection, executionId, nodeWaitingForResponse, isPublic } = session;
+			const { connection, executionId, sessionId, nodeWaitingForResponse, isPublic } = session;
 
 			if (!executionId || !connection || nodeWaitingForResponse) return;
 
-			const execution = await this.getExecution(executionId, sessionId);
+			const execution = await this.getExecution(executionId, sessionKey);
 
 			if (!execution) {
 				return;
@@ -157,7 +167,7 @@ export class ChatService {
 						await this.resumeExecution(
 							executionId,
 							{ action: 'user', chatInput: '', sessionId },
-							sessionId,
+							sessionKey,
 						);
 						session.nodeWaitingForResponse = null;
 					} else {
@@ -212,13 +222,13 @@ export class ChatService {
 		return false;
 	}
 
-	private incomingMessageHandler(sessionId: string) {
+	private incomingMessageHandler(sessionKey: string) {
 		return async (data: RawData) => {
-			const executionId = this.sessions.get(sessionId)?.executionId;
+			const executionId = this.sessions.get(sessionKey)?.executionId;
 
 			if (executionId) {
-				await this.resumeExecution(executionId, this.processIncomingData(data), sessionId);
-				this.sessions.get(sessionId)!.nodeWaitingForResponse = null;
+				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
+				this.sessions.get(sessionKey)!.nodeWaitingForResponse = null;
 			}
 		};
 	}
@@ -240,19 +250,19 @@ export class ChatService {
 		return message;
 	}
 
-	private async getExecution(executionId: string, sessionId: string) {
+	private async getExecution(executionId: string, sessionKey: string) {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
 
 		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-			const { connection, intervalId } = this.sessions.get(sessionId) || {};
+			const { connection, intervalId } = this.sessions.get(sessionKey) || {};
 			if (connection) {
 				connection.terminate();
 			}
 			clearInterval(intervalId);
-			this.sessions.delete(sessionId);
+			this.sessions.delete(sessionKey);
 			return null;
 		}
 
@@ -263,8 +273,11 @@ export class ChatService {
 		return execution;
 	}
 
-	private async resumeExecution(executionId: string, message: ChatMessage, sessionId: string) {
-		const execution = (await this.getExecution(executionId ?? '', sessionId)) as IExecutionResponse;
+	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
+		const execution = (await this.getExecution(
+			executionId ?? '',
+			sessionKey,
+		)) as IExecutionResponse;
 
 		await Container.get(WorkflowRunner).run(
 			await this.getRunData(execution, message),
@@ -384,22 +397,22 @@ export class ChatService {
 	private async pingAllAndRemoveDisconnected() {
 		const sessionsToDelete: string[] = [];
 
-		for (const sessionId of this.sessions.keys()) {
-			const { connection, executionId, intervalId } = this.sessions.get(sessionId)!;
+		for (const key of this.sessions.keys()) {
+			const { connection, executionId, intervalId } = this.sessions.get(key)!;
 
 			if (!connection.isAlive) {
 				if (executionId) await this.cancelExecution(executionId);
 				connection.terminate();
 				clearInterval(intervalId);
-				sessionsToDelete.push(sessionId);
+				sessionsToDelete.push(key);
 			}
 
 			connection.isAlive = false;
 			connection.ping();
 		}
 
-		for (const sessionId of sessionsToDelete) {
-			this.sessions.delete(sessionId);
+		for (const key of sessionsToDelete) {
+			this.sessions.delete(key);
 		}
 	}
 }
