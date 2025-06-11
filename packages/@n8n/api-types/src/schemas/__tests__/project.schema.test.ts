@@ -59,9 +59,9 @@ describe('project.schema', () => {
 
 	describe('projectDescriptionSchema', () => {
 		test.each([
-			{ name: 'valid description', value: 'Nice Description', expected: true },
-			{ name: 'empty description', value: '', expected: true },
-			{ name: 'name too long', value: 'a'.repeat(513), expected: false },
+			{ description: 'valid description', value: 'Nice Description', expected: true },
+			{ description: 'empty description', value: '', expected: true },
+			{ description: 'name too long', value: 'a'.repeat(513), expected: false },
 		])('should validate $description', ({ value, expected }) => {
 			const result = projectDescriptionSchema.safeParse(value);
 			expect(result.success).toBe(expected);

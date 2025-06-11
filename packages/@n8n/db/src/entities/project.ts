@@ -17,7 +17,7 @@ export class Project extends WithTimestampsAndStringId {
 	icon: { type: 'emoji' | 'icon'; value: string } | null;
 
 	@Column({ length: 512, nullable: true })
-	description: string;
+	description: string | null;
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];

@@ -204,7 +204,8 @@ export class ProjectController {
 		@Param('projectId') projectId: string,
 	) {
 		const { name, icon, relations, description } = payload;
-		if (name || icon || description) {
+		// eslint-disable-next-line eqeqeq
+		if (name != null || icon != null || description != null) {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
 		if (relations) {

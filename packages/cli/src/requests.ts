@@ -294,7 +294,7 @@ export declare namespace ProjectRequest {
 		name: string | undefined;
 		icon: ProjectIcon | null;
 		type: ProjectType;
-		description: string | undefined;
+		description: string | null;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
 	};
