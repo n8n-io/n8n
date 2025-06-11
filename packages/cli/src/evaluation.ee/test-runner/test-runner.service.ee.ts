@@ -201,11 +201,8 @@ export class TestRunnerService {
 		// the same way as it would be passed in manual mode
 		if (config.getEnv('executions.mode') === 'queue') {
 			data.executionData = {
-				startData: {
-					// startNodes: startNodesData.startNodes,
-				},
 				resultData: {
-					// pinData,
+					pinData,
 					runData: {},
 				},
 				manualData: {

@@ -19,6 +19,7 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import config from '@/config';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -678,6 +679,88 @@ describe('TestRunnerService', () => {
 				// Restore original method
 				abortController.signal.addEventListener = originalAddEventListener;
 			}
+		});
+
+		describe('runTestCase - Queue Mode', () => {
+			beforeEach(() => {
+				// Mock config to return 'queue' mode
+				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+					if (key === 'executions.mode') {
+						return 'queue';
+					}
+					return undefined;
+				});
+			});
+
+			test('should call workflowRunner.run with correct data in queue mode', async () => {
+				// Setup test data
+				const triggerNodeName = 'TriggerNode';
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: triggerNodeName,
+							type: EVALUATION_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				const metadata = {
+					testRunId: 'test-run-id',
+					userId: 'user-id',
+				};
+
+				const testCase = { json: { id: 1, name: 'Test 1' } };
+				const abortController = new AbortController();
+
+				// Call the method
+				await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify workflowRunner.run was called with the correct data
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+				// Verify the expected structure for queue mode
+				expect(runCallArg).toEqual(
+					expect.objectContaining({
+						executionMode: 'evaluation',
+						pinData: {
+							[triggerNodeName]: [testCase],
+						},
+						workflowData: workflow,
+						userId: metadata.userId,
+						partialExecutionVersion: 2,
+						triggerToStartFrom: {
+							name: triggerNodeName,
+						},
+						executionData: {
+							resultData: {
+								pinData: {
+									[triggerNodeName]: [testCase],
+								},
+								runData: {},
+							},
+							manualData: {
+								userId: metadata.userId,
+								partialExecutionVersion: 2,
+								triggerToStartFrom: {
+									name: triggerNodeName,
+								},
+							},
+						},
+					}),
+				);
+			});
 		});
 	});
 
