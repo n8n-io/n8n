@@ -20,6 +20,7 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import { Mock } from 'jest-mock';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -690,6 +691,10 @@ describe('TestRunnerService', () => {
 					}
 					return undefined;
 				});
+			});
+
+			afterEach(() => {
+				(config.getEnv as unknown as Mock).mockRestore();
 			});
 
 			test('should call workflowRunner.run with correct data in queue mode', async () => {
