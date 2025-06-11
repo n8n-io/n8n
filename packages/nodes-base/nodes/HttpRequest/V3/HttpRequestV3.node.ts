@@ -39,6 +39,7 @@ import {
 	setAgentOptions,
 } from '../GenericFunctions';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
+import { mimeTypeFromResponse } from './utils/parse';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -904,7 +905,7 @@ export class HttpRequestV3 implements INodeType {
 					const preparedBinaryData = await this.helpers.prepareBinaryData(
 						binaryData,
 						undefined,
-						responseContentType || undefined,
+						mimeTypeFromResponse(responseContentType),
 					);
 
 					if (
