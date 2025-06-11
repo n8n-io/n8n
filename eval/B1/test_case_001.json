@@ -1,0 +1,25 @@
+{
+  "test_id": "B1_001",
+  "description": "Test handling of missing description field in CSV entry",
+  "input": {
+    "csv_data": [
+      {
+        "date": "2025-06-11",
+        "amount": "1500.00",
+        "account": "Sales Revenue",
+        "description": ""
+      }
+    ]
+  },
+  "expected_output": {
+    "entries": [
+      {
+        "date": "2025-06-11",
+        "amount": "1500.00",
+        "account": "Sales Revenue",
+        "description": "Missing description - please review",
+        "_needs_review": true
+      }
+    ]
+  }
+}

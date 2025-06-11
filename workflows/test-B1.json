@@ -1,0 +1,58 @@
+{
+  "name": "B1 Bookkeeping Entry",
+  "nodes": [
+    {
+      "id": "csv_input",
+      "type": "n8n-nodes-base.read-csv",
+      "position": [100, 100],
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      }
+    },
+    {
+      "id": "validate_entry",
+      "type": "n8n-nodes-base.function",
+      "position": [300, 100],
+      "parameters": {
+        "functionCode": "// Check for required fields\nfor (const item of items) {\n  if (!item.json.description) {\n    item.json.description = 'Missing description - please review';\n    item.json._needs_review = true;\n  }\n}\nreturn items;"
+      }
+    },
+    {
+      "id": "log_entry",
+      "type": "n8n-nodes-base.function",
+      "position": [500, 100],
+      "parameters": {
+        "functionCode": "// Log the entry\nconst results = [];\nfor (const item of items) {\n  results.push({\n    timestamp: new Date().toISOString(),\n    entry: item.json,\n    status: item.json._needs_review ? 'needs_review' : 'processed'\n  });\n}\nreturn {json: results};"
+      }
+    }
+  ],
+  "connections": {
+    "csv_input": {
+      "main": [
+        [
+          {
+            "node": "validate_entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validate_entry": {
+      "main": [
+        [
+          {
+            "node": "log_entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "version": 1
+}
