@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
-import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
@@ -64,9 +64,7 @@ const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
 );
 
-const hasChildren = computed(
-	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
-);
+const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
 
 function isLastChild(level: number) {
 	let parent = props.data.parent;
