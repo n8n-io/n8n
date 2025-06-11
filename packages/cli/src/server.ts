@@ -11,7 +11,6 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
-import { ChatService } from '@/chat/chat-service';
 import config from '@/config';
 import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -62,6 +61,7 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+import { ChatServer } from './chat/chat-server';
 
 @Service()
 export class Server extends AbstractServer {
@@ -452,6 +452,6 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
-		Container.get(ChatService).setup(server, app);
+		Container.get(ChatServer).setup(server, app);
 	}
 }

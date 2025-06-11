@@ -1,9 +1,6 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { Application } from 'express';
-import type { Server } from 'http';
-import { ServerResponse } from 'http';
 import { ExecuteContext } from 'n8n-core';
 import type {
 	IBinaryKeyData,
@@ -19,9 +16,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
-import type { Socket } from 'net';
-import { parse as parseUrl } from 'url';
-import { type RawData, WebSocket, Server as WebSocketServer } from 'ws';
+import { type RawData, WebSocket } from 'ws';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -33,10 +28,10 @@ import { OwnershipService } from '../services/ownership.service';
 
 const PING_INTERVAL = 60 * 1000;
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
-const DRAIN_TIMEOUT_MS = 50;
+const DRAIN_TIMEOUT = 50;
 
-function heartbeat(this: WebSocket) {
-	this.isAlive = true;
+function heartbeat(ws: WebSocket) {
+	ws.isAlive = true;
 }
 
 function closeConnection(ws: WebSocket) {
@@ -50,7 +45,7 @@ function closeConnection(ws: WebSocket) {
 		if (ws.readyState === WebSocket.OPEN) {
 			ws.close();
 		}
-	}, DRAIN_TIMEOUT_MS);
+	}, DRAIN_TIMEOUT);
 }
 
 @Service()
@@ -59,29 +54,6 @@ export class ChatService {
 
 	constructor(private readonly executionRepository: ExecutionRepository) {
 		setInterval(async () => await this.pingAllAndRemoveDisconnected(), PING_INTERVAL);
-	}
-
-	setup(server: Server, app: Application) {
-		const wsServer = new WebSocketServer({ noServer: true });
-		server.on('upgrade', (request: ChatRequest, socket: Socket, head) => {
-			if (parseUrl(request.url).pathname?.startsWith('/chat')) {
-				wsServer.handleUpgrade(request, socket, head, (ws) => {
-					request.ws = ws;
-
-					const response = new ServerResponse(request);
-					response.writeHead = (statusCode) => {
-						if (statusCode > 200) ws.close();
-						return response;
-					};
-
-					// @ts-ignore
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					app.handle(request, response);
-				});
-			}
-		});
-
-		app.use('/chat', async (req: ChatRequest) => await this.startSession(req));
 	}
 
 	async startSession(req: ChatRequest) {
@@ -99,7 +71,7 @@ export class ChatService {
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
 
-		const key = `${sessionId}|${executionId}|${isPublic ? 'hosted' : 'integrated'}`;
+		const key = `${sessionId}|${executionId}|${isPublic ? 'public' : 'integrated'}`;
 
 		if (this.sessions.has(key)) {
 			this.sessions.get(key)?.connection.terminate();
