@@ -14,6 +14,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
+import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 
 const route = useRoute();
 const router = useRouter();
@@ -187,23 +188,9 @@ const projectDescriptionTruncated = computed(() => {
 	}
 
 	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
-	if (availableTextWidth <= 0) {
-		return '';
-	}
-
 	// N8nText component default font-size - small
 	const fontSizeInPixels = 14;
-	const averageCharWidth = 0.55 * fontSizeInPixels;
-
-	const maxLengthToDisplay = Math.floor(availableTextWidth / averageCharWidth);
-
-	if (projectDescription.value.length <= maxLengthToDisplay) {
-		return '';
-	}
-
-	const truncated = projectDescription.value.slice(0, maxLengthToDisplay);
-	const lastSpaceIndex = truncated.lastIndexOf(' ');
-	return truncated.slice(0, lastSpaceIndex === -1 ? maxLengthToDisplay : lastSpaceIndex) + '...';
+	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
 const onSelect = (action: string) => {
