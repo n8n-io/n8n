@@ -1,5 +1,5 @@
-import type { PublicInstalledPackage } from 'n8n-workflow';
 import { NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@n8n/constants';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { get, post, makeRestApiRequest } from '../utils';
