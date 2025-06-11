@@ -6,17 +6,24 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
+import { ChatOptionsSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
-import type { Ref } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/stores/logs.store';
 import { restoreChatHistory } from '@/features/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/utils/aiUtils';
+
+type IntegratedChat = Omit<Chat, 'sendMessage'> & {
+	sendMessage: (text: string, files: File[]) => Promise<void>;
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const ChatSymbol = 'Chat' as unknown as InjectionKey<IntegratedChat>;
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -67,14 +74,14 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	// Extracted pure functions for better testability
 	function createChatConfig(params: {
 		messages: Chat['messages'];
-		sendMessage: Chat['sendMessage'];
+		sendMessage: IntegratedChat['sendMessage'];
 		currentSessionId: Chat['currentSessionId'];
 		isLoading: Ref<boolean>;
 		isDisabled: Ref<boolean>;
 		allowFileUploads: Ref<boolean>;
 		locale: ReturnType<typeof useI18n>;
-	}): { chatConfig: Chat; chatOptions: ChatOptions } {
-		const chatConfig: Chat = {
+	}): { chatConfig: IntegratedChat; chatOptions: ChatOptions } {
+		const chatConfig: IntegratedChat = {
 			messages: params.messages,
 			sendMessage: params.sendMessage,
 			initialMessages: ref([]),
