@@ -1,0 +1,45 @@
+View,Local Components,Design System Components,n8n Package Components,External Components,Total Components
+"AuthView.vue","Logo; SSOLogin","","","",2
+"CanvasAddButton.vue","","","useI18n ","computed ",2
+"ChangePasswordView.vue","AuthView","","useI18n ","onMounted; ref; useRouter ",5
+"CredentialsView.vue","CredentialCard; ProjectHeader; InsightsSummary","N8nCheckbox ","useI18n ; CREDENTIAL_EMPTY_VALUE ","pickBy; computed; onMounted; ref; watch; useRoute; useRouter; type LocationQueryRaw",14
+"ErrorView.vue","","","useI18n ","useRouter ",2
+"EvaluationsRootView.vue","EvaluationsPaywall; SetupWizard","N8nLink; N8nText","useI18n ","useRouter ; computed; watch",8
+"EvaluationsView.vue","RunsSection","N8nButton ","useI18n ","orderBy; computed; ref",6
+"TestRunDetailView.vue","TestTableBase; statusDictionary ; getErrorBaseKey ","N8nText; N8nTooltip; N8nIcon","useI18n ","orderBy; computed; onMounted; ref; useRouter ",12
+"ExecutionsView.vue","ProjectHeader; GlobalExecutionsList; InsightsSummary","","useI18n ","storeToRefs ; onBeforeMount; onBeforeUnmount; onMounted; useRoute ",9
+"ForgotMyPasswordView.vue","AuthView","","useI18n ","computed; ref",4
+"LoadingView.vue","","","","",0
+"MfaView.vue","Logo","","useI18n ","onMounted; ref",4
+"NodeView.vue","WorkflowCanvas; CanvasRunWorkflowButton; CanvasStopCurrentExecutionButton; CanvasStopWaitingForWebhookButton; CanvasClearExecutionDataButton; NodeViewUnfinishedWorkflowMessage; KeyboardShortcutTooltip","N8nCallout ","useI18n ; NodeConnectionTypes; jsonParse; EVALUATION_TRIGGER_NODE_TYPE; EVALUATION_NODE_TYPE; useRootStore ; useAgentRequestStore ","computed; defineAsyncComponent; nextTick; onActivated; onBeforeMount; onDeactivated; onMounted; ref; useCssModule; watch; h; onBeforeUnmount; onBeforeRouteLeave; useRoute; useRouter",30
+"ProjectSettings.vue","ProjectDeleteDialog; ProjectRoleUpgradeDialog; ProjectHeader","N8nFormInput ","deepCopy ; useI18n ","computed; ref; watch; onBeforeMount; onMounted; nextTick; useRouter ",13
+"SamlOnboarding.vue","AuthView","","useI18n ","reactive; ref; useRouter ",5
+"SettingsApiView.vue","","","useI18n ; useRootStore ","onMounted; ref; storeToRefs ",5
+"SettingsCommunityNodesView.vue","CommunityPackageCard","","useI18n ","onBeforeUnmount; ref; computed; onBeforeMount; onMounted; useRouter ",8
+"SettingsExternalSecrets.vue","ExternalSecretsProviderCard","","useI18n ","computed; onMounted",4
+"SettingsLdapView.vue","","createFormEventBus ","useI18n ","computed; onMounted; ref; ElTable; ElTableColumn",7
+"SettingsLogStreamingView.vue","EventDestinationCard","","deepCopy; defaultMessageEventBusDestinationOptions; createEventBus ; useI18n ","computed; nextTick; onBeforeMount; onMounted; ref; getCurrentInstance",11
+"SettingsPersonalView.vue","","createFormEventBus ","useI18n ","ref; computed; onMounted; onBeforeUnmount",6
+"SettingsSourceControl.vue","CopyInput","","useI18n ","computed; onMounted; reactive; ref",6
+"SettingsSso.vue","CopyInput","","useI18n ; useRootStore ","computed; ref; onMounted",6
+"SettingsUsageAndPlan.vue","","N8nInfoTip","i18n as locale ","computed; onMounted; ref; useRoute; useRouter",7
+"SettingsUsersView.vue","","","useI18n ","computed; onMounted",3
+"SettingsView.vue","SettingsSidebar","","","onMounted; ref; useRouter ",4
+"SetupView.vue","AuthView","","useI18n ","reactive; ref; useRouter ",5
+"AppsRequiringCredsNotice.vue","","N8nNotice","useI18n ","computed ",3
+"IconSuccess.vue","","","","",0
+"SetupTemplateFormStep.vue","NodeIcon; CredentialPicker; IconSuccess","N8nHeading","useI18n ","computed ",6
+"SetupWorkflowFromTemplateView.vue","AppsRequiringCredsNotice; SetupTemplateFormStep; TemplatesView","N8nHeading; N8nLink","useI18n ","computed; onMounted; watch; useRoute; useRouter",11
+"SigninView.vue","AuthView; MfaView","","useI18n ","computed; reactive; ref; useRoute; useRouter",8
+"SignoutView.vue","","","useI18n ","useRouter ; onMounted ",3
+"SignupView.vue","AuthView","","useI18n ","computed; onMounted; ref; useRoute; useRouter",7
+"TemplatesCollectionView.vue","TemplateDetails; TemplateList; TemplatesView","","useI18n ","computed; onMounted; ref; watch; useRoute; useRouter",10
+"TemplatesSearchView.vue","TemplatesInfoCarousel; TemplateFilters; TemplateList; TemplatesView","","useI18n ","computed; onMounted; ref; watch; useRoute; onBeforeRouteLeave; useRouter",12
+"TemplatesView.vue","GoBackButton","","","",1
+"TemplatesWorkflowView.vue","TemplatesView","","useI18n ","computed; onMounted; ref; watch; useRoute; useRouter",8
+"VariablesView.vue","VariablesForm; VariablesUsageBadge","N8nActionBox; N8nBadge; N8nButton; N8nCheckbox; N8nInputLabel; N8nTooltip; uid ","useI18n ","pickBy; computed; onMounted; ref; useTemplateRef; useRoute; useRouter; type LocationQueryRaw",18
+"WorkerView.vue","WorkerList","","useI18n ","",2
+"WorkflowExecutionsView.vue","WorkflowExecutionsList","","useI18n ","computed; onBeforeUnmount; onMounted; ref; watch; useRoute; useRouter",9
+"WorkflowHistory.vue","WorkflowHistoryList; WorkflowHistoryContent","","useI18n ; useRootStore ","onBeforeMount; ref; watchEffect; computed; h; useRoute; useRouter",11
+"WorkflowOnboardingView.vue","","","useI18n ","onMounted ; useRoute; useRouter",4
+"WorkflowsView.vue","Draggable; ResourcesListLayout; ProjectHeader; WorkflowCard; WorkflowTagsDropdown; InsightsSummary; FOLDER_LIST_ITEM_ACTIONS ","N8nCard; N8nHeading; N8nIcon; N8nInlineTextEdit; N8nInputLabel; N8nOption; N8nSelect; N8nText","useI18n ; createEventBus ; PROJECT_ROOT ","debounce; useTemplateRef; computed; onBeforeUnmount; onMounted; ref; watch; type LocationQueryRaw; useRoute; useRouter",28
