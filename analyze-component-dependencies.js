@@ -513,18 +513,15 @@ class ComponentDependencyAnalyzer {
 			.filter(([_, compData]) => compData.usageCount > 0)
 			.sort(([, a], [, b]) => b.usageCount - a.usageCount);
 
-		for (const [compPath, compData] of sortedComponents.slice(0, 15)) { // Show top 15
+		for (const [compPath, compData] of sortedComponents) { // Show all components
 			output += `\n🧩 ${compData.name} (${compPath})\n`;
 			output += `   📊 Used by ${compData.usageCount} file(s) | Depth: ${compData.depth} | Local: ${compData.totalLocalDependencies}, External: ${compData.totalExternalDependencies}\n`;
-			compData.usedBy.slice(0, 5).forEach((usedByPath, index) => {
+			compData.usedBy.forEach((usedByPath, index) => {
 				const fileName = tree.views[usedByPath]?.name || tree.components[usedByPath]?.name || path.basename(usedByPath);
-				const isLast = index === Math.min(compData.usedBy.length - 1, 4);
-				const prefix = isLast && compData.usedBy.length <= 5 ? '     └──' : '     ├──';
+				const isLast = index === compData.usedBy.length - 1;
+				const prefix = isLast ? '     └──' : '     ├──';
 				output += `${prefix} 📄 ${fileName}\n`;
 			});
-			if (compData.usedBy.length > 5) {
-				output += `     └── ... and ${compData.usedBy.length - 5} more\n`;
-			}
 		}
 
 		output += '\n\n🌐 EXTERNAL LIBRARY USAGE:\n';
@@ -546,7 +543,7 @@ class ComponentDependencyAnalyzer {
 
 		if (externalByType['design-system'].length > 0) {
 			output += '\n🎨 Design System Components:\n';
-			externalByType['design-system'].slice(0, 10).forEach(([libPath, libData]) => {
+			externalByType['design-system'].forEach(([libPath, libData]) => {
 				output += `   📦 ${libPath} (${libData.componentCount} components, ${libData.usageCount} usages)\n`;
 				output += `      Components: ${libData.components.join(', ')}\n`;
 			});
@@ -554,14 +551,14 @@ class ComponentDependencyAnalyzer {
 
 		if (externalByType['n8n-package'].length > 0) {
 			output += '\n📦 n8n Packages:\n';
-			externalByType['n8n-package'].slice(0, 10).forEach(([libPath, libData]) => {
+			externalByType['n8n-package'].forEach(([libPath, libData]) => {
 				output += `   📦 ${libPath} (${libData.componentCount} components, ${libData.usageCount} usages)\n`;
 			});
 		}
 
 		if (externalByType['external'].length > 0) {
 			output += '\n🌐 Third-Party Libraries:\n';
-			externalByType['external'].slice(0, 10).forEach(([libPath, libData]) => {
+			externalByType['external'].forEach(([libPath, libData]) => {
 				output += `   📦 ${libPath} (${libData.componentCount} components, ${libData.usageCount} usages)\n`;
 			});
 		}
