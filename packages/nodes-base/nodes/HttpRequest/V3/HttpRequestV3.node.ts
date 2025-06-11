@@ -27,6 +27,8 @@ import type { Readable } from 'stream';
 import { keysToLowercase } from '@utils/utilities';
 
 import { mainProperties } from './Description';
+import { setFilename } from './utils/binaryData';
+import { mimeTypeFromResponse } from './utils/parse';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -39,8 +41,6 @@ import {
 	setAgentOptions,
 } from '../GenericFunctions';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
-import { setFilename } from './utils/binaryData';
-import { mimeTypeFromResponse } from './utils/parse';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
