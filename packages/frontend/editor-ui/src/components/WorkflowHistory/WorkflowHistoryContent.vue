@@ -5,7 +5,7 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';

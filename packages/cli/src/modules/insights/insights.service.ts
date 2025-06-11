@@ -30,7 +30,6 @@ export class InsightsService {
 	@OnLeaderTakeover()
 	startTimers() {
 		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started flushing timer');
 
 		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
@@ -38,19 +37,15 @@ export class InsightsService {
 	@OnLeaderTakeover()
 	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		this.logger.debug('Started compaction timer');
 		if (this.pruningService.isPruningEnabled) {
 			this.pruningService.startPruningTimer();
-			this.logger.debug('Started pruning timer');
 		}
 	}
 
 	@OnLeaderStepdown()
 	stopCompactionAndPruningTimers() {
 		this.compactionService.stopCompactionTimer();
-		this.logger.debug('Stopped compaction timer');
 		this.pruningService.stopPruningTimer();
-		this.logger.debug('Stopped pruning timer');
 	}
 
 	@OnShutdown()
