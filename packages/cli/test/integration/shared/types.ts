@@ -47,7 +47,7 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights';
 
-type ModuleName = 'insights';
+type ModuleName = 'insights' | 'external-secrets';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
