@@ -542,6 +542,18 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
 }
 
+function isRagStarterCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
+}
+
+function isCalloutVisible(parameter: INodeProperties): boolean {
+	if (isRagStarterCallout(parameter)) {
+		return shouldShowRagStarterCallout.value;
+	}
+
+	return true;
+}
+
 async function onCalloutAction(action: CalloutAction) {
 	if (action === 'openRagStarterTemplate') {
 		await openRagStarterTemplate();
@@ -596,7 +608,7 @@ const onCalloutDismiss = async () => {
 
 			<template v-else-if="parameter.type === 'callout'">
 				<N8nCallout
-					v-if="shouldShowRagStarterCallout"
+					v-if="isCalloutVisible(parameter)"
 					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 					theme="secondary"
 				>
@@ -619,7 +631,7 @@ const onCalloutDismiss = async () => {
 						</N8nLink>
 					</template>
 
-					<template #trailingContent>
+					<template v-if="isRagStarterCallout(parameter)" #trailingContent>
 						<N8nIcon
 							icon="times"
 							title="Dismiss"

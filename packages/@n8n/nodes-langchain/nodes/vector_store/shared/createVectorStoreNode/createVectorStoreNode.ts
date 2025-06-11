@@ -27,9 +27,9 @@ import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types'
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
 
-const ragCallout: INodeProperties = {
+const ragStarterCallout: INodeProperties = {
 	displayName: 'Tip: Get a feel for vector stores in n8n with our',
-	name: 'callout',
+	name: 'ragStarterCallout',
 	type: 'callout',
 	typeOptions: {
 		actions: [
@@ -119,7 +119,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			})($parameter)
 		}}`,
 			properties: [
-				ragCallout,
+				ragStarterCallout,
 				{
 					displayName: 'Operation Mode',
 					name: 'mode',
