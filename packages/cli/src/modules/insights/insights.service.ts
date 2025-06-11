@@ -42,7 +42,6 @@ export class InsightsService {
 
 	startTimers() {
 		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started flushing timer');
 
 		// Start compaction and pruning timers for main leader instance only
 		if (this.instanceSettings.isLeader) {
@@ -53,19 +52,15 @@ export class InsightsService {
 	@OnLeaderTakeover()
 	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		this.logger.debug('Started compaction timer');
 		if (this.pruningService.isPruningEnabled) {
 			this.pruningService.startPruningTimer();
-			this.logger.debug('Started pruning timer');
 		}
 	}
 
 	@OnLeaderStepdown()
 	stopCompactionAndPruningTimers() {
 		this.compactionService.stopCompactionTimer();
-		this.logger.debug('Stopped compaction timer');
 		this.pruningService.stopPruningTimer();
-		this.logger.debug('Stopped pruning timer');
 	}
 
 	@OnShutdown()
