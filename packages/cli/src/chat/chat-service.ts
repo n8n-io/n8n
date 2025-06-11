@@ -1,30 +1,16 @@
-import { ExecutionRepository } from '@n8n/db';
-import type { IExecutionResponse, Project } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
-import { ExecuteContext } from 'n8n-core';
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	INode,
-	INodeExecutionData,
-	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import {
-	jsonParse,
-	Workflow,
-	BINARY_ENCODING,
-	CHAT_TRIGGER_NODE_TYPE,
-	RESPOND_TO_WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-
+import { ChatExecutionManager } from './chat-execution-manager';
 import type { ChatMessage, ChatRequest, Session } from './chat-service.types';
-import { NodeTypes } from '../node-types';
-import { OwnershipService } from '../services/ownership.service';
+import {
+	getLastNodeExecuted,
+	getMessage,
+	isResponseNodeMode,
+	prepareMessageFromLastNode,
+	shouldResumeImmediately,
+} from './utils';
 
 const PING_INTERVAL = 60 * 1000;
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
@@ -52,7 +38,7 @@ function closeConnection(ws: WebSocket) {
 export class ChatService {
 	private readonly sessions = new Map<string, Session>();
 
-	constructor(private readonly executionRepository: ExecutionRepository) {
+	constructor(private readonly executionManager: ChatExecutionManager) {
 		setInterval(async () => await this.pingAllAndRemoveDisconnected(), PING_INTERVAL);
 	}
 
@@ -120,25 +106,16 @@ export class ChatService {
 			if (!execution) return;
 
 			if (execution.status === 'waiting') {
-				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-				const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-				const nodeExecutionData =
-					execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main[0];
-				const message = nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+				const message = getMessage(execution);
 
-				if (message) {
+				if (message !== undefined) {
 					connection.send(message);
 
-					const lastNode = execution.workflowData.nodes.find(
-						(node) => node.name === lastNodeExecuted,
-					) as INode;
+					const lastNode = getLastNodeExecuted(execution);
 
-					if (this.shouldResumeImmediately(lastNode)) {
-						await this.resumeExecution(
-							executionId,
-							{ action: 'user', chatInput: '', sessionId },
-							sessionKey,
-						);
+					if (lastNode && shouldResumeImmediately(lastNode)) {
+						const data = { action: 'user', chatInput: '', sessionId };
+						await this.resumeExecution(executionId, data, sessionKey);
 						session.waitingForResponse = false;
 					} else {
 						session.waitingForResponse = true;
@@ -148,29 +125,15 @@ export class ChatService {
 			}
 
 			if (execution.status === 'success') {
-				const chatTrigger = execution.workflowData.nodes.find(
-					(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-				);
-
 				const shouldNotReturnLastNodeResponse =
-					!isPublic ||
-					(isPublic &&
-						(chatTrigger?.parameters.options as IDataObject)?.responseMode === 'responseNode');
+					!isPublic || (isPublic && isResponseNodeMode(execution));
 
 				if (shouldNotReturnLastNodeResponse) {
 					closeConnection(connection);
 					return;
 				}
 
-				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-				const nodeExecutionData =
-					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
-				const json = nodeExecutionData?.[0] ? nodeExecutionData[0].json : {};
-
-				let textMessage = json.output ?? json.text ?? json.message ?? '';
-				if (typeof textMessage !== 'string') {
-					textMessage = JSON.stringify(textMessage);
-				}
+				const textMessage = prepareMessageFromLastNode(execution);
 
 				connection.send(textMessage, () => {
 					closeConnection(connection);
@@ -179,20 +142,6 @@ export class ChatService {
 				return;
 			}
 		};
-	}
-
-	private shouldResumeImmediately(lastNode: INode) {
-		if (lastNode?.type === RESPOND_TO_WEBHOOK_NODE_TYPE) {
-			return true;
-		}
-
-		const waitResponseFromChat = (lastNode?.parameters.options as IDataObject).waitResponseFromChat;
-
-		if (waitResponseFromChat === false) {
-			return true;
-		}
-
-		return false;
 	}
 
 	private incomingMessageHandler(sessionKey: string) {
@@ -206,6 +155,31 @@ export class ChatService {
 			await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
 			session.waitingForResponse = false;
 		};
+	}
+
+	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
+		const execution = await this.getExecution(executionId, sessionKey);
+		if (!execution) return;
+		await this.executionManager.runWorkflow(execution, message);
+	}
+
+	private async getExecution(executionId: string, sessionKey: string) {
+		const execution = await this.executionManager.findExecution(executionId);
+
+		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
+			const session = this.sessions.get(sessionKey);
+
+			if (!session) return null;
+
+			session.connection.terminate();
+			clearInterval(session.intervalId);
+			this.sessions.delete(sessionKey);
+			return null;
+		}
+
+		if (execution.status === 'running') return null;
+
+		return execution;
 	}
 
 	private processIncomingData(data: RawData) {
@@ -225,147 +199,6 @@ export class ChatService {
 		return message;
 	}
 
-	private async getExecution(executionId: string, sessionKey: string) {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-			const session = this.sessions.get(sessionKey);
-
-			if (!session) return null;
-
-			session.connection.terminate();
-			clearInterval(session.intervalId);
-			this.sessions.delete(sessionKey);
-			return null;
-		}
-
-		if (execution.status === 'running') return null;
-
-		return execution;
-	}
-
-	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
-		const execution = await this.getExecution(executionId, sessionKey);
-
-		if (!execution) return;
-
-		await Container.get(WorkflowRunner).run(
-			await this.getRunData(execution, message),
-			true,
-			true,
-			executionId,
-		);
-	}
-
-	private getWorkflow(execution: IExecutionResponse) {
-		const { workflowData } = execution;
-		return new Workflow({
-			id: workflowData.id,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: Container.get(NodeTypes),
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-	}
-
-	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
-		const workflow = this.getWorkflow(execution);
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-		const node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
-		const executionData = execution.data.executionData?.nodeExecutionStack[0];
-
-		if (node && executionData) {
-			const inputData = executionData.data;
-			const connectionInputData = executionData.data.main[0];
-			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const context = new ExecuteContext(
-				workflow,
-				node,
-				additionalData,
-				'manual',
-				execution.data,
-				0,
-				connectionInputData ?? [],
-				inputData,
-				executionData,
-				[],
-			);
-
-			const { sessionId, action, chatInput, files } = message;
-			const binary: IBinaryKeyData = {};
-
-			if (files) {
-				for (const [index, file] of files.entries()) {
-					const base64 = file.data;
-					const buffer = Buffer.from(base64, BINARY_ENCODING);
-					const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
-
-					binary[`data_${index}`] = binaryData;
-				}
-			}
-
-			const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
-			if (Object.keys(binary).length > 0) {
-				nodeExecutionData.binary = binary;
-			}
-
-			if (nodeType.onMessage) {
-				return await nodeType.onMessage(context, nodeExecutionData);
-			}
-
-			return [[nodeExecutionData]];
-		}
-
-		return null;
-	}
-
-	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {
-		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
-
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main = (await this.runNode(
-			execution,
-			message,
-		)) ?? [[{ json: message }]];
-
-		let project: Project | undefined = undefined;
-		try {
-			project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-		} catch (error) {
-			throw new NotFoundError('Cannot find workflow');
-		}
-
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode,
-			executionData: runExecutionData,
-			pushRef: runExecutionData.pushRef,
-			workflowData,
-			pinData: runExecutionData.resultData.pinData,
-			projectId: project?.id,
-		};
-
-		return runData;
-	}
-
-	private async cancelExecution(executionId: string) {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!execution) return;
-
-		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
-			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
-		}
-	}
-
 	private async pingAllAndRemoveDisconnected() {
 		const disconnected: string[] = [];
 
@@ -375,7 +208,7 @@ export class ChatService {
 			if (!session) continue;
 
 			if (!session.connection.isAlive) {
-				await this.cancelExecution(session.executionId);
+				await this.executionManager.cancelExecution(session.executionId);
 				session.connection.terminate();
 				clearInterval(session.intervalId);
 				disconnected.push(key);
