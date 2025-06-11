@@ -4,6 +4,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import {
+	assert,
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
@@ -48,6 +49,8 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	protected disableNode(execution: IExecutionResponse, _method?: string) {
+		assert(execution.data);
+
 		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 	}
 
@@ -119,6 +122,8 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 		}
 
+		assert(execution.data);
+
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
 		return await this.getWebhookExecutionData({
@@ -146,6 +151,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		executionId: string;
 		suffix?: string;
 	}): Promise<IWebhookResponseCallbackData> {
+		assert(execution.data);
+
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
 		this.disableNode(execution, req.method);

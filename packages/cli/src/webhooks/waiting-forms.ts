@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
 import {
+	assert,
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	WAITING_FORMS_EXECUTION_STATUS,
@@ -24,8 +25,10 @@ export class WaitingForms extends WaitingWebhooks {
 	}
 
 	protected disableNode(execution: IExecutionResponse, method?: string) {
+		assert(execution.data?.executionData);
+
 		if (method === 'POST') {
-			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+			execution.data.executionData.nodeExecutionStack[0].node.disabled = true;
 		}
 	}
 
@@ -81,7 +84,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
 			let status: string = execution?.status ?? 'null';
-			const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
+			const { node } = execution?.data?.executionData?.nodeExecutionStack[0] ?? {};
 
 			if (node && status === 'waiting') {
 				if (node.type === FORM_NODE_TYPE) {
@@ -97,6 +100,10 @@ export class WaitingForms extends WaitingWebhooks {
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		}
+
+		if (!execution.data) {
+			throw new NotFoundError(`The execution "${executionId}" has no data.`);
 		}
 
 		if (execution.data.resultData.error) {

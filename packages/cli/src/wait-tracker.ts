@@ -118,13 +118,13 @@ export class WaitTracker {
 			executionData: fullExecutionData.data,
 			workflowData: fullExecutionData.workflowData,
 			projectId: project.id,
-			pushRef: fullExecutionData.data.pushRef,
+			pushRef: fullExecutionData.data?.pushRef,
 		};
 
 		// Start the execution again
 		await this.workflowRunner.run(data, false, false, executionId);
 
-		const { parentExecution } = fullExecutionData.data;
+		const { parentExecution } = fullExecutionData.data ?? {};
 		if (parentExecution) {
 			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {

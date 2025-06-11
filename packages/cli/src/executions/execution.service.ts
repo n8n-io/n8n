@@ -151,7 +151,7 @@ export class ExecutionService {
 
 		if (execution.status === 'new') throw new QueuedExecutionRetryError();
 
-		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
+		if (!execution.data?.executionData) throw new AbortedExecutionRetryError();
 
 		if (execution.finished) {
 			throw new UnexpectedError('The execution succeeded, so it cannot be retried.');

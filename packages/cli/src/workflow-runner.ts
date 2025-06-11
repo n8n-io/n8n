@@ -425,6 +425,10 @@ export class WorkflowRunner {
 					return reject(new Error(`Could not find execution with id "${executionId}"`));
 				}
 
+				if (!fullExecutionData.data) {
+					return reject(new Error(`Execution "${executionId}" missing data`));
+				}
+
 				const runData: IRun = {
 					finished: fullExecutionData.finished,
 					mode: fullExecutionData.mode,

@@ -161,7 +161,7 @@ export class JobProcessor {
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 
-		const { startData, resultData, manualData } = execution.data;
+		const { startData, resultData, manualData } = execution.data ?? {};
 
 		if (execution.data?.executionData) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
@@ -172,8 +172,8 @@ export class JobProcessor {
 				workflowData: execution.workflowData,
 				destinationNode: startData?.destinationNode,
 				startNodes: startData?.startNodes,
-				runData: resultData.runData,
-				pinData: resultData.pinData,
+				runData: resultData?.runData,
+				pinData: resultData?.pinData,
 				partialExecutionVersion: manualData?.partialExecutionVersion,
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
@@ -186,7 +186,7 @@ export class JobProcessor {
 					workflow,
 					additionalData,
 					executionId,
-					resultData.pinData,
+					resultData?.pinData,
 				);
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
