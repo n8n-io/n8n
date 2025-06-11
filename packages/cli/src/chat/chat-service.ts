@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
@@ -38,7 +39,10 @@ function closeConnection(ws: WebSocket) {
 export class ChatService {
 	private readonly sessions = new Map<string, Session>();
 
-	constructor(private readonly executionManager: ChatExecutionManager) {
+	constructor(
+		private readonly executionManager: ChatExecutionManager,
+		private readonly logger: Logger,
+	) {
 		setInterval(async () => await this.pingAllAndRemoveDisconnected(), PING_INTERVAL);
 	}
 
@@ -93,67 +97,79 @@ export class ChatService {
 
 	private outgoingMessageHandler(sessionKey: string) {
 		return async () => {
-			const session = this.sessions.get(sessionKey);
+			try {
+				const session = this.sessions.get(sessionKey);
 
-			if (!session) return;
+				if (!session) return;
 
-			const { connection, executionId, sessionId, waitingForResponse, isPublic } = session;
+				const { connection, executionId, sessionId, waitingForResponse, isPublic } = session;
 
-			if (!executionId || !connection || waitingForResponse) return;
+				if (!executionId || !connection || waitingForResponse) return;
 
-			const execution = await this.getExecution(executionId, sessionKey);
+				const execution = await this.getExecution(executionId, sessionKey);
 
-			if (!execution) return;
+				if (!execution) return;
 
-			if (execution.status === 'waiting') {
-				const message = getMessage(execution);
+				if (execution.status === 'waiting') {
+					const message = getMessage(execution);
 
-				if (message !== undefined) {
-					connection.send(message);
+					if (message !== undefined) {
+						connection.send(message);
 
-					const lastNode = getLastNodeExecuted(execution);
+						const lastNode = getLastNodeExecuted(execution);
 
-					if (lastNode && shouldResumeImmediately(lastNode)) {
-						const data = { action: 'user', chatInput: '', sessionId };
-						await this.resumeExecution(executionId, data, sessionKey);
-						session.waitingForResponse = false;
-					} else {
-						session.waitingForResponse = true;
+						if (lastNode && shouldResumeImmediately(lastNode)) {
+							const data = { action: 'user', chatInput: '', sessionId };
+							await this.resumeExecution(executionId, data, sessionKey);
+							session.waitingForResponse = false;
+						} else {
+							session.waitingForResponse = true;
+						}
 					}
-				}
-				return;
-			}
-
-			if (execution.status === 'success') {
-				const shouldNotReturnLastNodeResponse =
-					!isPublic || (isPublic && isResponseNodeMode(execution));
-
-				if (shouldNotReturnLastNodeResponse) {
-					closeConnection(connection);
 					return;
 				}
 
-				const textMessage = prepareMessageFromLastNode(execution);
+				if (execution.status === 'success') {
+					const shouldNotReturnLastNodeResponse =
+						!isPublic || (isPublic && isResponseNodeMode(execution));
 
-				connection.send(textMessage, () => {
-					closeConnection(connection);
-				});
+					if (shouldNotReturnLastNodeResponse) {
+						closeConnection(connection);
+						return;
+					}
 
-				return;
+					const textMessage = prepareMessageFromLastNode(execution);
+
+					connection.send(textMessage, () => {
+						closeConnection(connection);
+					});
+
+					return;
+				}
+			} catch (error) {
+				this.logger.error(
+					`Error sending message to chat in session ${sessionKey}: ${(error as Error).message}`,
+				);
 			}
 		};
 	}
 
 	private incomingMessageHandler(sessionKey: string) {
 		return async (data: RawData) => {
-			const session = this.sessions.get(sessionKey);
+			try {
+				const session = this.sessions.get(sessionKey);
 
-			if (!session) return;
+				if (!session) return;
 
-			const executionId = session.executionId;
+				const executionId = session.executionId;
 
-			await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
-			session.waitingForResponse = false;
+				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
+				session.waitingForResponse = false;
+			} catch (error) {
+				this.logger.error(
+					`Error processing message from chat in session ${sessionKey}: ${(error as Error).message}`,
+				);
+			}
 		};
 	}
 
@@ -200,26 +216,30 @@ export class ChatService {
 	}
 
 	private async pingAllAndRemoveDisconnected() {
-		const disconnected: string[] = [];
+		try {
+			const disconnected: string[] = [];
 
-		for (const key of this.sessions.keys()) {
-			const session = this.sessions.get(key);
+			for (const key of this.sessions.keys()) {
+				const session = this.sessions.get(key);
 
-			if (!session) continue;
+				if (!session) continue;
 
-			if (!session.connection.isAlive) {
-				await this.executionManager.cancelExecution(session.executionId);
-				session.connection.terminate();
-				clearInterval(session.intervalId);
-				disconnected.push(key);
+				if (!session.connection.isAlive) {
+					await this.executionManager.cancelExecution(session.executionId);
+					session.connection.terminate();
+					clearInterval(session.intervalId);
+					disconnected.push(key);
+				}
+
+				session.connection.isAlive = false;
+				session.connection.ping();
 			}
 
-			session.connection.isAlive = false;
-			session.connection.ping();
-		}
-
-		for (const key of disconnected) {
-			this.sessions.delete(key);
+			for (const key of disconnected) {
+				this.sessions.delete(key);
+			}
+		} catch (error) {
+			this.logger.error(`Error pinging chat sessions: ${(error as Error).message}`);
 		}
 	}
 }
