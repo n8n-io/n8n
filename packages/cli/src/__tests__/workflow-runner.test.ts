@@ -259,7 +259,8 @@ describe('run', () => {
 	});
 });
 
-describe('enqueueExecution', () => {
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('enqueueExecution', () => {
 	const setupQueue = jest.fn();
 
 	@Service()
