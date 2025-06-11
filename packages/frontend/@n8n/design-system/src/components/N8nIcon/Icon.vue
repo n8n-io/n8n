@@ -1,49 +1,49 @@
 <script lang="ts" setup>
-import type { FontAwesomeIconProps } from '@fortawesome/vue-fontawesome';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
+/* eslint-disable import/extensions, import/no-unresolved */
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
 import N8nText from '../N8nText';
 
+import IconLucideHouse from '~icons/lucide/house';
+import IconLucidePlus from '~icons/lucide/plus';
+import IconLucideShare from '~icons/lucide/share';
+import IconLucideUserRound from '~icons/lucide/user-round';
+
+const icons = {
+	home: IconLucideHouse,
+	plus: IconLucidePlus,
+	user: IconLucideUserRound,
+	share: IconLucideShare,
+} as const;
+
+export type IconName = keyof typeof icons;
+
 interface IconProps {
-	icon: FontAwesomeIconProps['icon'];
+	icon: IconName;
 	size?: IconSize;
-	spin?: FontAwesomeIconProps['spin'];
+	spin?: boolean;
 	color?: IconColor;
 }
 
 defineOptions({ name: 'N8nIcon' });
-withDefaults(defineProps<IconProps>(), {
+
+const props = withDefaults(defineProps<IconProps>(), {
 	size: 'medium',
 	spin: false,
 });
 </script>
 
 <template>
-	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
-		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
+	<N8nText class="n8n-icon" :size="size" :color="color" :compact="true">
+		<Component v-if="icons[icon]" :is="icons[icon]" :spin="spin" />
+		<span v-else>[{{ icon }}]</span>
 	</N8nText>
 </template>
 
-<style lang="scss" module>
-.xlarge {
-	width: var(--font-size-xl) !important;
-}
-
-.large {
-	width: var(--font-size-m) !important;
-}
-
-.medium {
-	width: var(--font-size-s) !important;
-}
-
-.small {
-	width: var(--font-size-2xs) !important;
-}
-
-.xsmall {
-	width: var(--font-size-3xs) !important;
+<style>
+.n8n-icon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
 }
 </style>

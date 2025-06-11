@@ -151,6 +151,12 @@ catalogs:
     pinia:
       specifier: ^2.2.4
       version: 2.2.4
+    unplugin-icons:
+      specifier: ^0.19.0
+      version: 0.19.0
+    unplugin-vue-components:
+      specifier: ^0.27.2
+      version: 0.27.3
     vite:
       specifier: ^6.3.5
       version: 6.3.5
@@ -1895,10 +1901,10 @@ importers:
         specifier: ^3.4.3
         version: 3.4.3(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.2))
       unplugin-icons:
-        specifier: ^0.19.0
+        specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       unplugin-vue-components:
-        specifier: ^0.27.2
+        specifier: catalog:frontend
         version: 0.27.3(@babel/parser@7.26.10)(rollup@4.35.0)(vue@3.5.13(typescript@5.8.2))
       vite:
         specifier: catalog:frontend
@@ -2388,10 +2394,10 @@ importers:
         specifier: ^0.1.48
         version: 0.1.48
       unplugin-icons:
-        specifier: ^0.19.0
+        specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       unplugin-vue-components:
-        specifier: ^0.27.2
+        specifier: catalog:frontend
         version: 0.27.3(@babel/parser@7.26.10)(rollup@4.35.0)(vue@3.5.13(typescript@5.8.2))
       vite:
         specifier: catalog:frontend
@@ -5660,15 +5666,6 @@ packages:
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
 
-  '@rollup/pluginutils@5.1.0':
-    resolution: {integrity: sha512-XTIWOPPcpvyKI6L1NHo0lFlCyznUEyPmPY1mc3KpPVDYulHSTvyeLNVW00QTLIAFNhR3kYnJTQHeGqU4M3n09g==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-
   '@rollup/pluginutils@5.1.4':
     resolution: {integrity: sha512-USm05zrsFxYLPdWWq+K3STlWiT/3ELn3RcV5hJMghpeAIhxfsUIg6mt12CBJBInWMV4VneoV7SfGv8xIwo2qNQ==}
     engines: {node: '>=14.0.0'}
@@ -8150,9 +8147,6 @@ packages:
     resolution: {integrity: sha512-nnLMxO2LU492mTUj9qX/az/lESonSZu81UznYDoXtz1IQf996ixVqPAgHXwvHiHCAef/7S8HIK+fTFK7Ifk8YA==}
     engines: {node: ^14.13.0 || >=16.0.0}
     hasBin: true
-
-  confbox@0.1.7:
-    resolution: {integrity: sha512-uJcB/FKZtBMCJpK8MQji6bJHgu1tixKPxRLeGkNzBoOZzpnZUJm0jm2/sBDWcuBx1dYgxV4JU+g5hmNxCyAmdA==}
 
   confbox@0.1.8:
     resolution: {integrity: sha512-RMtmw0iFkeR4YV+fUOSucriAQNb9g8zFR52MWCtl+cCZOFRNL6zeB395vPzFhEjjn4fMxXudmELnl/KF/WrK6w==}
@@ -11268,9 +11262,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  mlly@1.7.1:
-    resolution: {integrity: sha512-rrVRZRELyQzrIUAVMHxP97kv+G786pHmOKzuFII8zDYahFBS7qnHh2AlYSl1GAHhaMPCz6/oHjVMcfFYgFYHgA==}
-
   mlly@1.7.4:
     resolution: {integrity: sha512-qmdSIPC4bDJXgZTCR7XosJiNKySV7O215tsPtDN9iEO/7q/76b/ijtgRu/+epFXSJhijtTCCGp3DWS549P3xKw==}
 
@@ -12027,9 +12018,6 @@ packages:
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
-
-  pkg-types@1.1.3:
-    resolution: {integrity: sha512-+JrgthZG6m3ckicaOB74TwQ+tBWsFl3qVQg7mN8ulwSOElJ7gBhKzj2VkCPnZ4NlF6kEquYU+RIYNVAvzd54UA==}
 
   pkg-types@1.3.1:
     resolution: {integrity: sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ==}
@@ -16954,7 +16942,7 @@ snapshots:
       debug: 4.4.1(supports-color@8.1.1)
       kolorist: 1.8.0
       local-pkg: 0.5.0
-      mlly: 1.7.1
+      mlly: 1.7.4
     transitivePeerDependencies:
       - supports-color
 
@@ -18442,14 +18430,6 @@ snapshots:
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
       '@codemirror/view': 6.26.3
-
-  '@rollup/pluginutils@5.1.0(rollup@4.35.0)':
-    dependencies:
-      '@types/estree': 1.0.6
-      estree-walker: 2.0.2
-      picomatch: 2.3.1
-    optionalDependencies:
-      rollup: 4.35.0
 
   '@rollup/pluginutils@5.1.4(rollup@4.35.0)':
     dependencies:
@@ -21587,8 +21567,6 @@ snapshots:
       tree-kill: 1.2.2
       yargs: 17.7.2
 
-  confbox@0.1.7: {}
-
   confbox@0.1.8: {}
 
   confbox@0.2.1: {}
@@ -24514,7 +24492,7 @@ snapshots:
   jsdom@20.0.2:
     dependencies:
       abab: 2.0.6
-      acorn: 8.12.1
+      acorn: 8.14.0
       acorn-globals: 7.0.1
       cssom: 0.5.0
       cssstyle: 2.3.0
@@ -24891,8 +24869,8 @@ snapshots:
 
   local-pkg@0.5.0:
     dependencies:
-      mlly: 1.7.1
-      pkg-types: 1.1.3
+      mlly: 1.7.4
+      pkg-types: 1.3.1
 
   local-pkg@1.1.1:
     dependencies:
@@ -25593,13 +25571,6 @@ snapshots:
   mkdirp@1.0.4: {}
 
   mkdirp@2.1.3: {}
-
-  mlly@1.7.1:
-    dependencies:
-      acorn: 8.14.0
-      pathe: 1.1.2
-      pkg-types: 1.1.3
-      ufo: 1.5.4
 
   mlly@1.7.4:
     dependencies:
@@ -26399,12 +26370,6 @@ snapshots:
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
-
-  pkg-types@1.1.3:
-    dependencies:
-      confbox: 0.1.7
-      mlly: 1.7.1
-      pathe: 1.1.2
 
   pkg-types@1.3.1:
     dependencies:
@@ -28562,14 +28527,14 @@ snapshots:
   unplugin-vue-components@0.27.3(@babel/parser@7.26.10)(rollup@4.35.0)(vue@3.5.13(typescript@5.8.2)):
     dependencies:
       '@antfu/utils': 0.7.10
-      '@rollup/pluginutils': 5.1.0(rollup@4.35.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.35.0)
       chokidar: 4.0.1
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       fast-glob: 3.3.2
       local-pkg: 0.5.0
       magic-string: 0.30.17
       minimatch: 9.0.5
-      mlly: 1.7.1
+      mlly: 1.7.4
       unplugin: 1.11.0
       vue: 3.5.13(typescript@5.8.2)
     optionalDependencies:
