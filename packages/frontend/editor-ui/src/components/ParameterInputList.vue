@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import type { IUpdateInformation } from '@/Interface';
 
@@ -20,14 +21,17 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
+	VIEWS,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 import {
 	getMainAuthField,
@@ -38,7 +42,15 @@ import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
@@ -76,6 +88,9 @@ const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const route = useRoute();
+const router = useRouter();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -464,6 +479,26 @@ function onNoticeAction(action: string) {
 	}
 }
 
+async function onCalloutAction(action: string) {
+	if (action === 'openRagStarterTemplate') {
+		await openRagStarterTemplate();
+	}
+}
+
+const openRagStarterTemplate = async () => {
+	telemetry.track('User clicked on RAG callout', {
+		node_type: nodeType.value?.name ?? 'unknown',
+	});
+
+	const template = getRagStarterWorkflowJson();
+
+	await router.push({
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: template.meta.templateId },
+		query: { fromJson: 'true', parentFolderId: route.params.folderId },
+	});
+};
+
 function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
@@ -563,6 +598,31 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
+
+			<N8nCallout
+				v-else-if="parameter.type === 'callout'"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+				theme="secondary"
+			>
+				<N8nText
+					v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+					size="small"
+				></N8nText>
+
+				<template #actions>
+					<N8nLink
+						v-for="action in parameter.typeOptions?.actions"
+						:key="action.label"
+						theme="secondary"
+						size="small"
+						:bold="true"
+						:underline="true"
+						@click="onCalloutAction(action.type)"
+					>
+						{{ action.label }}
+					</N8nLink>
+				</template>
+			</N8nCallout>
 
 			<div v-else-if="parameter.type === 'button'" class="parameter-item">
 				<ButtonParameter

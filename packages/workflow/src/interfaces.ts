@@ -1241,6 +1241,7 @@ export type NodePropertyTypes =
 	| 'fixedCollection'
 	| 'hidden'
 	| 'json'
+	| 'callout'
 	| 'notice'
 	| 'multiOptions'
 	| 'number'
