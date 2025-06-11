@@ -1,5 +1,4 @@
 import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
-import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -29,7 +28,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const fetchAvailableCommunityPackageCount = async (): Promise<void> => {
 		if (availablePackageCount.value === -1) {
-			availablePackageCount.value = await getAvailableCommunityPackageCount();
+			availablePackageCount.value = await communityNodesApi.getAvailableCommunityPackageCount();
 		}
 	};
 
