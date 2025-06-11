@@ -833,7 +833,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
-				const responseContentType: string | undefined = response.headers['content-type'] ?? '';
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
