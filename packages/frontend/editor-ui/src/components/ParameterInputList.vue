@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+	CalloutAction,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -32,6 +33,7 @@ import {
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useUsersStore } from '@/stores/users.store';
 
 import {
 	getMainAuthField,
@@ -52,6 +54,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
+import { updateCurrentUserSettings } from '@/api/users';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -81,8 +85,10 @@ const emit = defineEmits<{
 	parameterBlur: [value: string];
 }>();
 
+const rootStore = useRootStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const usersStore = useUsersStore();
 
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
@@ -479,28 +485,6 @@ function onNoticeAction(action: string) {
 	}
 }
 
-async function onCalloutAction(action: string) {
-	if (action === 'openRagStarterTemplate') {
-		await openRagStarterTemplate();
-	}
-}
-
-const openRagStarterTemplate = async () => {
-	telemetry.track('User clicked on RAG callout', {
-		node_type: nodeType.value?.name ?? 'unknown',
-	});
-
-	const template = getRagStarterWorkflowJson();
-
-	const { href } = router.resolve({
-		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: template.meta.templateId },
-		query: { fromJson: 'true', parentFolderId: route.params.folderId },
-	});
-
-	window.open(href, '_blank');
-};
-
 function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
@@ -562,6 +546,45 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 ): T {
 	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
 }
+
+const shouldShowRagStarterCallout = computed(() => {
+	// const isRagStarterWorkflowExperimentEnabled =
+	// 	posthogStore.getVariant(RAG_STARTER_WORKFLOW_EXPERIMENT.name) ===
+	// 	RAG_STARTER_WORKFLOW_EXPERIMENT.variant;
+	const isRagStarterCalloutExperimentEnabled = true;
+
+	return isRagStarterCalloutExperimentEnabled && !usersStore.isRagStarterCalloutDismissed;
+});
+
+async function onCalloutAction(action: CalloutAction) {
+	if (action === 'openRagStarterTemplate') {
+		await openRagStarterTemplate();
+	}
+}
+
+const openRagStarterTemplate = async () => {
+	telemetry.track('User clicked on RAG callout', {
+		node_type: nodeType.value?.name ?? 'unknown',
+	});
+
+	const template = getRagStarterWorkflowJson();
+
+	const { href } = router.resolve({
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: template.meta.templateId },
+		query: { fromJson: 'true', parentFolderId: route.params.folderId },
+	});
+
+	window.open(href, '_blank');
+};
+
+const onCalloutDismiss = async () => {
+	usersStore.setRagStarterCalloutDismissed();
+
+	await updateCurrentUserSettings(rootStore.restApiContext, {
+		ragStarterCalloutDismissed: true,
+	});
+};
 </script>
 
 <template>
@@ -601,30 +624,44 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				@action="onNoticeAction"
 			/>
 
-			<N8nCallout
-				v-else-if="parameter.type === 'callout'"
-				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
-				theme="secondary"
-			>
-				<N8nText
-					v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-					size="small"
-				></N8nText>
-
-				<template #actions>
-					<N8nLink
-						v-for="action in parameter.typeOptions?.actions"
-						:key="action.label"
-						theme="secondary"
+			<template v-else-if="parameter.type === 'callout'">
+				<N8nCallout
+					v-if="shouldShowRagStarterCallout"
+					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+					theme="secondary"
+				>
+					<N8nText
+						v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 						size="small"
-						:bold="true"
-						:underline="true"
-						@click="onCalloutAction(action.type)"
-					>
-						{{ action.label }}
-					</N8nLink>
-				</template>
-			</N8nCallout>
+					></N8nText>
+
+					<template #actions>
+						<N8nLink
+							v-for="callout in parameter.typeOptions?.actions"
+							:key="callout.label"
+							theme="secondary"
+							size="small"
+							:bold="true"
+							:underline="true"
+							@click="onCalloutAction(callout.action)"
+						>
+							{{ callout.label }}
+						</N8nLink>
+					</template>
+
+					<template #trailingContent>
+						<N8nIcon
+							icon="times"
+							title="Dismiss"
+							size="medium"
+							type="secondary"
+							class="callout-dismiss"
+							data-test-id="callout-dismiss-icon"
+							@click="onCalloutDismiss"
+						/>
+					</template>
+				</N8nCallout>
+			</template>
 
 			<div v-else-if="parameter.type === 'button'" class="parameter-item">
 				<ButtonParameter
@@ -827,6 +864,13 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.async-notice {
 		display: block;
 		padding: var(--spacing-3xs) 0;
+	}
+
+	.callout-dismiss {
+		cursor: pointer;
+	}
+	.callout-dismiss:hover {
+		color: var(--color-icon-hover);
 	}
 }
 </style>

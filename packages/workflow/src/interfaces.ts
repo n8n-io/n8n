@@ -1285,6 +1285,12 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
+export type CalloutAction = 'openRagStarterTemplate';
+export interface CalloutTypeOptions {
+	action: CalloutAction;
+	label: string;
+}
+
 export interface INodePropertyTypeOptions {
 	// Supported by: button
 	buttonConfig?: {
@@ -1317,6 +1323,7 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	actions?: CalloutTypeOptions[]; // Supported by: callout
 	[key: string]: any;
 }
 
@@ -2826,6 +2833,7 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
+	ragStarterCalloutDismissed?: boolean;
 }
 
 export interface IProcessedDataConfig {

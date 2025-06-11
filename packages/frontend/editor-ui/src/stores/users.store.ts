@@ -89,6 +89,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const isRagStarterCalloutDismissed = computed(() =>
+		Boolean(currentUser.value?.settings?.ragStarterCalloutDismissed),
+	);
+
+	const setRagStarterCalloutDismissed = () => {
+		if (currentUser.value?.settings) {
+			currentUser.value.settings.ragStarterCalloutDismissed = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -390,6 +400,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		isRagStarterCalloutDismissed,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -423,5 +434,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		setRagStarterCalloutDismissed,
 	};
 });

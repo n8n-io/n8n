@@ -14,21 +14,6 @@ import {
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
-const ragCallout: INodeProperties = {
-	displayName: 'Tip: Get a feel for vector stores in n8n with our',
-	name: 'callout',
-	type: 'callout',
-	typeOptions: {
-		actions: [
-			{
-				label: 'RAG starter template',
-				type: 'openRagStarterTemplate',
-			},
-		],
-	},
-	default: '',
-};
-
 const warningBanner: INodeProperties = {
 	displayName:
 		'<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low, and is accessible to all users of this instance. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
@@ -38,7 +23,6 @@ const warningBanner: INodeProperties = {
 };
 
 const insertFields: INodeProperties[] = [
-	ragCallout,
 	{
 		displayName: 'Clear Store',
 		name: 'clearStore',
