@@ -13,7 +13,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { configuredInputs, numberInputsProperty } from './helpers';
+import { numberInputsProperty, configuredInputs } from './helpers';
 import { N8nLlmTracing } from '../llms/N8nLlmTracing';
 
 function getCallbacksArray(
@@ -138,10 +138,12 @@ export class ModelSelector implements INodeType {
 		}
 
 		for (let i = 0; i < rules.length; i++) {
-			const rule = rules[i];
-			const modelIndex = parseInt(rule.modelIndex as string, 10);
+			const rule = rules[i] as {
+				modelIndex: string;
+			};
+			const modelIndex = parseInt(rule.modelIndex, 10) - 1;
 
-			if (modelIndex < 1 || modelIndex > models.length) {
+			if (modelIndex < 0 || modelIndex >= models.length) {
 				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {
 					itemIndex,
 					description: `Model index must be between 1 and ${models.length}`,
@@ -152,14 +154,16 @@ export class ModelSelector implements INodeType {
 				extractValue: true,
 			}) as boolean;
 
-			const model: BaseChatModel = models[modelIndex - 1] as BaseChatModel;
-
-			const oldCallbacks = getCallbacksArray(model.callbacks);
-
-			model.callbacks = [...oldCallbacks, new N8nLlmTracing(this)];
 			if (conditionsMet) {
+				const selectedModel = models[modelIndex] as BaseChatModel;
+
+				// Keep the original tracing for the LLM node AND add ModelSelector tracing
+				const originalCallbacks = getCallbacksArray(selectedModel.callbacks);
+				const modelSelectorTracing = new N8nLlmTracing(this);
+				selectedModel.callbacks = [...originalCallbacks, modelSelectorTracing];
+
 				return {
-					response: model,
+					response: selectedModel,
 				};
 			}
 		}

@@ -172,7 +172,7 @@ export class AgentV2 implements INodeType {
 					noDataExpression: true,
 				},
 				{
-					displayName: 'Require a Fallback Model',
+					displayName: 'Enable Fallback Model',
 					name: 'fallback',
 					type: 'boolean',
 					default: false,
@@ -180,7 +180,7 @@ export class AgentV2 implements INodeType {
 				},
 				{
 					displayName:
-						'Connect another Chat Model to use as fallback if the first model returns an error (e.g. due to rate limiting)',
+						'Connect another Chat Model to the Fallback input to use it as fallback if the Chat model returns an error (e.g. due to downtime)',
 					name: 'notice',
 					type: 'notice',
 					default: '',

@@ -1,12 +1,18 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
-import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import {
+	getOptionalOutputParser,
+	type N8nOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
 
 import {
 	fixEmptyContentMessage,
@@ -18,6 +24,39 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+
+/**
+ * Creates an agent executor with the given configuration
+ */
+function createAgentExecutor(
+	model: BaseChatModel,
+	tools: Array<DynamicStructuredTool | Tool>,
+	prompt: ChatPromptTemplate,
+	options: { maxIterations?: number; returnIntermediateSteps?: boolean },
+	outputParser?: N8nOutputParser,
+	memory?: BaseChatMemory,
+) {
+	const agent = createToolCallingAgent({
+		llm: model,
+		tools,
+		prompt,
+		streamRunnable: false,
+	});
+
+	const runnableAgent = RunnableSequence.from([
+		agent,
+		getAgentStepsParser(outputParser, memory),
+		fixEmptyContentMessage,
+	]);
+
+	return AgentExecutor.fromAgentAndTools({
+		agent: runnableAgent,
+		memory,
+		tools,
+		returnIntermediateSteps: options.returnIntermediateSteps === true,
+		maxIterations: options.maxIterations ?? 10,
+	});
+}
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -44,11 +83,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		0,
 		0,
 	) as number;
+	const needsFallback = this.getNodeParameter('fallback', 0, false) as boolean;
 	const memory = await getOptionalMemory(this);
-	console.log('Getting primary model');
 	const model = await getChatModel(this, 0);
-	console.log('Getting secondary model');
-	const fallbackModel = await getChatModel(this, 1);
+	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -62,7 +100,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				promptTypeKey: 'promptType',
 			});
 			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 			}
 
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -80,74 +118,29 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
 
-			// Create the base agent that calls tools.
-			const agent = createToolCallingAgent({
-				llm: model,
-				tools,
-				prompt,
-				streamRunnable: false,
-			});
-			agent.streamRunnable = false;
+			// Create executors for primary and fallback models
+			const executor = createAgentExecutor(model, tools, prompt, options, outputParser, memory);
+			const fallbackExecutor = fallbackModel
+				? createAgentExecutor(fallbackModel, tools, prompt, options, outputParser, memory)
+				: null;
 
-			const fallbackAgent = createToolCallingAgent({
-				llm: fallbackModel,
-				tools,
-				prompt,
-				streamRunnable: false,
-			});
-			agent.streamRunnable = false;
-			// Wrap the agent with parsers and fixes.
-			const runnableAgent = RunnableSequence.from([
-				agent,
-				getAgentStepsParser(outputParser, memory),
-				fixEmptyContentMessage,
-			]);
+			// Invoke with fallback logic
+			const invokeParams = {
+				input,
+				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+				formatting_instructions:
+					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+			};
+			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
-			const runnableFallbackAgent = RunnableSequence.from([
-				fallbackAgent,
-				getAgentStepsParser(outputParser, memory),
-				fixEmptyContentMessage,
-			]);
-
-			const executor = AgentExecutor.fromAgentAndTools({
-				agent: runnableAgent,
-				memory,
-				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
-				maxIterations: options.maxIterations ?? 10,
-			});
-
-			const fallbackExecutor = AgentExecutor.fromAgentAndTools({
-				agent: runnableFallbackAgent,
-				memory,
-				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
-				maxIterations: options.maxIterations ?? 10,
-			});
-
-			// Invoke the executor with the given input and system message.
 			try {
-				console.log('Executing primary');
-				return await executor.invoke(
-					{
-						input,
-						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-						formatting_instructions:
-							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-					},
-					{ signal: this.getExecutionCancelSignal() },
-				);
+				return await executor.invoke(invokeParams, executeOptions);
 			} catch (error) {
-				console.log('Executing secondary');
-				return await fallbackExecutor.invoke(
-					{
-						input,
-						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-						formatting_instructions:
-							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-					},
-					{ signal: this.getExecutionCancelSignal() },
-				);
+				if (fallbackExecutor) {
+					return await fallbackExecutor.invoke(invokeParams, executeOptions);
+				} else {
+					throw error;
+				}
 			}
 		});
 
