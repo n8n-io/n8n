@@ -605,12 +605,6 @@ export interface IUserListAction {
 	guard?: (user: IUser) => boolean;
 }
 
-export interface IN8nPrompts {
-	message?: string;
-	title?: string;
-	showContactPrompt?: boolean;
-}
-
 export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
@@ -1432,10 +1426,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export interface IN8nPromptResponse {
-	updated: boolean;
-}
 
 export type InputPanel = {
 	nodeName?: string;
