@@ -733,10 +733,17 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
+	name: '033_rag_template',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
+	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';

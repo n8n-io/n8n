@@ -27,6 +27,7 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
+	RAG_STARTER_WORKFLOW_EXPERIMENT,
 	VIEWS,
 	WAIT_NODE_TYPE,
 } from '@/constants';
@@ -56,6 +57,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/stores/posthog.store';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -89,6 +91,7 @@ const rootStore = useRootStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const usersStore = useUsersStore();
+const posthogStore = usePostHog();
 
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
@@ -548,12 +551,11 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 }
 
 const shouldShowRagStarterCallout = computed(() => {
-	// const isRagStarterWorkflowExperimentEnabled =
-	// 	posthogStore.getVariant(RAG_STARTER_WORKFLOW_EXPERIMENT.name) ===
-	// 	RAG_STARTER_WORKFLOW_EXPERIMENT.variant;
-	const isRagStarterCalloutExperimentEnabled = true;
+	const isRagStarterWorkflowExperimentEnabled =
+		posthogStore.getVariant(RAG_STARTER_WORKFLOW_EXPERIMENT.name) ===
+		RAG_STARTER_WORKFLOW_EXPERIMENT.variant;
 
-	return isRagStarterCalloutExperimentEnabled && !usersStore.isRagStarterCalloutDismissed;
+	return isRagStarterWorkflowExperimentEnabled && !usersStore.isRagStarterCalloutDismissed;
 });
 
 async function onCalloutAction(action: CalloutAction) {
