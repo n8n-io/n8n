@@ -880,13 +880,6 @@ export const TEMPLATES_URLS = {
 	},
 };
 
-export const ROLE = {
-	Owner: 'global:owner',
-	Member: 'global:member',
-	Admin: 'global:admin',
-	Default: 'default', // default user with no email when setting up instance
-} as const;
-
 export const INSECURE_CONNECTION_WARNING = `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>
