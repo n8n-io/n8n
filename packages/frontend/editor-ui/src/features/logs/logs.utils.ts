@@ -100,8 +100,7 @@ function getChildNodes(
 
 	// Get the first level of children
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
-	const isExecutionRoot =
-		treeNode.parent === undefined || treeNode.executionId !== treeNode.parent.executionId;
+	const isExecutionRoot = !isSubNodeLog(treeNode);
 
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
@@ -538,4 +537,8 @@ export function restoreChatHistory(
 	);
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
+}
+
+export function isSubNodeLog(logEntry: LogEntry): boolean {
+	return logEntry.parent !== undefined && logEntry.parent.executionId === logEntry.executionId;
 }
