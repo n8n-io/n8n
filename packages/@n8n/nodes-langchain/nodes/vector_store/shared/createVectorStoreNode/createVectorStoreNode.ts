@@ -35,7 +35,7 @@ const ragStarterCallout: INodeProperties = {
 		actions: [
 			{
 				label: 'RAG starter template',
-				action: 'openRagStarterTemplate',
+				type: 'openRagStarterTemplate',
 			},
 		],
 	},

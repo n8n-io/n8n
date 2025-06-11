@@ -89,13 +89,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const isRagStarterCalloutDismissed = computed(() =>
-		Boolean(currentUser.value?.settings?.ragStarterCalloutDismissed),
-	);
+	const isCalloutDismissed = (callout: string) =>
+		Boolean(currentUser.value?.settings?.dismissedCallouts?.[callout]);
 
-	const setRagStarterCalloutDismissed = () => {
+	const setCalloutDismissed = (callout: string) => {
 		if (currentUser.value?.settings) {
-			currentUser.value.settings.ragStarterCalloutDismissed = true;
+			if (!currentUser.value?.settings?.dismissedCallouts) {
+				currentUser.value.settings.dismissedCallouts = {};
+			}
+
+			currentUser.value.settings.dismissedCallouts[callout] = true;
 		}
 	};
 
@@ -400,7 +403,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
-		isRagStarterCalloutDismissed,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -434,6 +436,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
-		setRagStarterCalloutDismissed,
+		isCalloutDismissed,
+		setCalloutDismissed,
 	};
 });

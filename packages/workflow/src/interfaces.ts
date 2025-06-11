@@ -1287,7 +1287,7 @@ export type NodePropertyAction = {
 
 export type CalloutAction = 'openRagStarterTemplate';
 export interface CalloutTypeOptions {
-	action: CalloutAction;
+	type: CalloutAction;
 	label: string;
 }
 
@@ -2833,7 +2833,7 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
-	ragStarterCalloutDismissed?: boolean;
+	dismissedCallouts?: Record<string, boolean>;
 }
 
 export interface IProcessedDataConfig {

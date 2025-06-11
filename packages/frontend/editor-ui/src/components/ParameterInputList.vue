@@ -29,7 +29,6 @@ import {
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
 
 import {
 	getMainAuthField,
@@ -50,8 +49,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
-import { updateCurrentUserSettings } from '@/api/users';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
@@ -82,16 +79,19 @@ const emit = defineEmits<{
 	parameterBlur: [value: string];
 }>();
 
-const rootStore = useRootStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const usersStore = useUsersStore();
 
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const { openRagStarterTemplate, shouldShowRagStarterCallout } = useCalloutHelpers();
+const {
+	dismissCallout,
+	isCalloutDismissed,
+	openRagStarterTemplate,
+	isRagStarterWorkflowExperimentEnabled,
+} = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -547,8 +547,10 @@ function isRagStarterCallout(parameter: INodeProperties): boolean {
 }
 
 function isCalloutVisible(parameter: INodeProperties): boolean {
+	if (isCalloutDismissed(parameter.name)) return false;
+
 	if (isRagStarterCallout(parameter)) {
-		return shouldShowRagStarterCallout.value;
+		return isRagStarterWorkflowExperimentEnabled.value;
 	}
 
 	return true;
@@ -560,12 +562,8 @@ async function onCalloutAction(action: CalloutAction) {
 	}
 }
 
-const onCalloutDismiss = async () => {
-	usersStore.setRagStarterCalloutDismissed();
-
-	await updateCurrentUserSettings(rootStore.restApiContext, {
-		ragStarterCalloutDismissed: true,
-	});
+const onCalloutDismiss = async (parameter: INodeProperties) => {
+	await dismissCallout(parameter.name);
 };
 </script>
 
@@ -619,19 +617,19 @@ const onCalloutDismiss = async () => {
 
 					<template #actions>
 						<N8nLink
-							v-for="callout in parameter.typeOptions?.actions"
-							:key="callout.label"
+							v-for="action in parameter.typeOptions?.actions"
+							:key="action.label"
 							theme="secondary"
 							size="small"
 							:bold="true"
 							:underline="true"
-							@click="onCalloutAction(callout.action)"
+							@click="onCalloutAction(action.type)"
 						>
-							{{ callout.label }}
+							{{ action.label }}
 						</N8nLink>
 					</template>
 
-					<template v-if="isRagStarterCallout(parameter)" #trailingContent>
+					<template #trailingContent>
 						<N8nIcon
 							icon="times"
 							title="Dismiss"
@@ -639,7 +637,7 @@ const onCalloutDismiss = async () => {
 							type="secondary"
 							class="callout-dismiss"
 							data-test-id="callout-dismiss-icon"
-							@click="onCalloutDismiss"
+							@click="onCalloutDismiss(parameter)"
 						/>
 					</template>
 				</N8nCallout>
