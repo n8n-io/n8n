@@ -63,7 +63,7 @@ export class ChatService {
 		} = req;
 
 		if (!sessionId || !executionId) {
-			ws.send(`The query parameter "${sessionId ? 'sessionId' : 'executionId'}" is missing!`);
+			ws.send(`The query parameter "${sessionId ? 'sessionId' : 'executionId'}" is missing`);
 			ws.close(1008);
 			return;
 		}
@@ -98,7 +98,7 @@ export class ChatService {
 			executionId,
 			sessionId,
 			intervalId,
-			nodeWaitingForResponse: null,
+			waitingForResponse: false,
 			isPublic,
 		};
 
@@ -111,15 +111,13 @@ export class ChatService {
 
 			if (!session) return;
 
-			const { connection, executionId, sessionId, nodeWaitingForResponse, isPublic } = session;
+			const { connection, executionId, sessionId, waitingForResponse, isPublic } = session;
 
-			if (!executionId || !connection || nodeWaitingForResponse) return;
+			if (!executionId || !connection || waitingForResponse) return;
 
 			const execution = await this.getExecution(executionId, sessionKey);
 
-			if (!execution) {
-				return;
-			}
+			if (!execution) return;
 
 			if (execution.status === 'waiting') {
 				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -135,15 +133,15 @@ export class ChatService {
 						(node) => node.name === lastNodeExecuted,
 					) as INode;
 
-					if (this.resumeImmediately(lastNode)) {
+					if (this.shouldResumeImmediately(lastNode)) {
 						await this.resumeExecution(
 							executionId,
 							{ action: 'user', chatInput: '', sessionId },
 							sessionKey,
 						);
-						session.nodeWaitingForResponse = null;
+						session.waitingForResponse = false;
 					} else {
-						session.nodeWaitingForResponse = lastNodeExecuted;
+						session.waitingForResponse = true;
 					}
 				}
 				return;
@@ -153,14 +151,17 @@ export class ChatService {
 				const chatTrigger = execution.workflowData.nodes.find(
 					(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
 				);
-				if (
+
+				const shouldNotReturnLastNodeResponse =
 					!isPublic ||
 					(isPublic &&
-						(chatTrigger?.parameters.options as IDataObject)?.responseMode === 'responseNode')
-				) {
+						(chatTrigger?.parameters.options as IDataObject)?.responseMode === 'responseNode');
+
+				if (shouldNotReturnLastNodeResponse) {
 					closeConnection(connection);
 					return;
 				}
+
 				const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 				const nodeExecutionData =
 					execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
@@ -180,7 +181,7 @@ export class ChatService {
 		};
 	}
 
-	private resumeImmediately(lastNode: INode) {
+	private shouldResumeImmediately(lastNode: INode) {
 		if (lastNode?.type === RESPOND_TO_WEBHOOK_NODE_TYPE) {
 			return true;
 		}
@@ -196,12 +197,14 @@ export class ChatService {
 
 	private incomingMessageHandler(sessionKey: string) {
 		return async (data: RawData) => {
-			const executionId = this.sessions.get(sessionKey)?.executionId;
+			const session = this.sessions.get(sessionKey);
 
-			if (executionId) {
-				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
-				this.sessions.get(sessionKey)!.nodeWaitingForResponse = null;
-			}
+			if (!session) return;
+
+			const executionId = session.executionId;
+
+			await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
+			session.waitingForResponse = false;
 		};
 	}
 
@@ -229,27 +232,25 @@ export class ChatService {
 		});
 
 		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-			const { connection, intervalId } = this.sessions.get(sessionKey) || {};
-			if (connection) {
-				connection.terminate();
-			}
-			clearInterval(intervalId);
+			const session = this.sessions.get(sessionKey);
+
+			if (!session) return null;
+
+			session.connection.terminate();
+			clearInterval(session.intervalId);
 			this.sessions.delete(sessionKey);
 			return null;
 		}
 
-		if (execution.status === 'running') {
-			return null;
-		}
+		if (execution.status === 'running') return null;
 
 		return execution;
 	}
 
 	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
-		const execution = (await this.getExecution(
-			executionId ?? '',
-			sessionKey,
-		)) as IExecutionResponse;
+		const execution = await this.getExecution(executionId, sessionKey);
+
+		if (!execution) return;
 
 		await Container.get(WorkflowRunner).run(
 			await this.getRunData(execution, message),
@@ -358,32 +359,33 @@ export class ChatService {
 			unflattenData: true,
 		});
 
-		if (!execution) {
-			return;
-		}
+		if (!execution) return;
+
 		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
 			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
 		}
 	}
 
 	private async pingAllAndRemoveDisconnected() {
-		const sessionsToDelete: string[] = [];
+		const disconnected: string[] = [];
 
 		for (const key of this.sessions.keys()) {
-			const { connection, executionId, intervalId } = this.sessions.get(key)!;
+			const session = this.sessions.get(key);
 
-			if (!connection.isAlive) {
-				if (executionId) await this.cancelExecution(executionId);
-				connection.terminate();
-				clearInterval(intervalId);
-				sessionsToDelete.push(key);
+			if (!session) continue;
+
+			if (!session.connection.isAlive) {
+				await this.cancelExecution(session.executionId);
+				session.connection.terminate();
+				clearInterval(session.intervalId);
+				disconnected.push(key);
 			}
 
-			connection.isAlive = false;
-			connection.ping();
+			session.connection.isAlive = false;
+			session.connection.ping();
 		}
 
-		for (const key of sessionsToDelete) {
+		for (const key of disconnected) {
 			this.sessions.delete(key);
 		}
 	}

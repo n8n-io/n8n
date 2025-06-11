@@ -14,8 +14,8 @@ export type Session = {
 	connection: WebSocket;
 	executionId: string;
 	sessionId: string;
-	intervalId?: NodeJS.Timeout;
-	nodeWaitingForResponse: string | null;
+	intervalId: NodeJS.Timeout;
+	waitingForResponse: boolean;
 	isPublic?: boolean;
 };
 
