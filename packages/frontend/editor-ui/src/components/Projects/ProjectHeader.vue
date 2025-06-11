@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useElementSize } from '@vueuse/core';
+import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -183,14 +183,30 @@ const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 const headerActionsRef = ref<HTMLElement | null>(null);
 const { width: headerActionsWidth } = useElementSize(headerActionsRef);
 
+const projectSubtitleFontSizeInPxs = ref<number | null>(null);
+
+useResizeObserver(projectHeaderRef, () => {
+	if (!projectHeaderRef.value) {
+		return;
+	}
+
+	const projectSubtitleEl = projectHeaderRef.value.querySelector(
+		'span[data-test-id="project-subtitle"]',
+	);
+	if (projectSubtitleEl) {
+		const computedStyle = window.getComputedStyle(projectSubtitleEl);
+		projectSubtitleFontSizeInPxs.value = parseFloat(computedStyle.fontSize);
+	}
+});
+
 const projectDescriptionTruncated = computed(() => {
 	if (!projectDescription.value) {
 		return '';
 	}
 
 	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
-	// N8nText component default font-size - small
-	const fontSizeInPixels = 14;
+	// Fallback to N8nText component default font-size, small
+	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
