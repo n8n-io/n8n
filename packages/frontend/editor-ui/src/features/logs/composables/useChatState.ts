@@ -166,7 +166,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 
 		if (response) {
 			ws.value = new WebSocket(
-				`${rootStore.urlBaseEditor}chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+				`${rootStore.urlBaseEditor.replace(/\/$/, '')}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 			);
 			ws.value.onmessage = (event) => {
 				setLoadingState(false);
