@@ -75,7 +75,11 @@ export abstract class BaseCommand extends Command {
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
 			// add module to the registry for dependency injection
-			await import(`../modules/${moduleName}/${moduleName}.module`);
+			try {
+				await import(`../modules/${moduleName}/${moduleName}.module`);
+			} catch {
+				await import(`../modules/${moduleName}/${moduleName.replace('.ee', '')}.module.ee`);
+			}
 
 			this.modulesConfig.addLoadedModule(moduleName);
 			this.logger.debug(`Loaded module "${moduleName}"`);
