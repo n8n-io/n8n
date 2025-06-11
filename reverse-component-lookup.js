@@ -42,74 +42,48 @@ class ReverseComponentLookup {
 	}
 
 	/**
-	 * Categorize import types
+	 * Categorize import types - focusing only on Vue components
 	 */
 	categorizeImport(importPath) {
-		// Design system components
-		if (importPath.startsWith('@n8n/design-system')) {
-			return 'design-system';
-		}
-
-		// n8n packages (workflow, core, etc.)
-		if (importPath.startsWith('n8n-') || importPath.startsWith('@n8n/')) {
-			return 'n8n-package';
-		}
-
-		// Local components/views
+		// Only process local Vue components and views
 		if (
 			importPath.startsWith('./') ||
 			importPath.startsWith('../') ||
-			importPath.startsWith('@/') ||
-			importPath.startsWith('~/')
+			importPath.startsWith('@/components') ||
+			importPath.startsWith('@/views') ||
+			importPath.startsWith('~/components') ||
+			importPath.startsWith('~/views')
 		) {
 			return 'local';
 		}
 
-		// External third-party libraries
-		const externalLibs = [
-			'vue',
-			'vue-router',
-			'pinia',
-			'element-plus',
-			'lodash',
-			'axios',
-			'moment',
-			'dayjs',
-			'chart.js',
-			'codemirror',
-			'vuelidate',
-			'vuedraggable',
-		];
-
-		if (externalLibs.some((lib) => importPath.startsWith(lib))) {
-			return 'external';
+		// Design system Vue components only
+		if (importPath.startsWith('@n8n/design-system') && importPath.endsWith('.vue')) {
+			return 'design-system';
 		}
 
-		// If it doesn't include node_modules and isn't a known external lib, it's probably local
-		if (!importPath.includes('node_modules')) {
-			return 'local';
-		}
-
-		// Default to ignored for node_modules and unknown patterns
+		// Ignore everything else (stores, composables, utilities, third-party, etc.)
 		return 'ignored';
 	}
 
 	/**
-	 * Extract import statements from a Vue/JS/TS file
+	 * Extract Vue component imports from a Vue/JS/TS file
 	 */
 	extractImports(filePath) {
 		try {
 			const content = fs.readFileSync(filePath, 'utf8');
 			const imports = [];
 
-			// Match import statements with various patterns
+			// Match import statements with various patterns - focus on Vue components
 			const importPatterns = [
 				// import Component from 'path'
-				/import\s+(\w+)\s+from\s+['"`]([^'"`]+)['"`]/g,
-				// import { Component1, Component2 } from 'path'
-				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['"`]([^'"`]+)['"`]/g,
+				/import\s+(\w+)\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
+				// import Component from '@/components/...'
+				/import\s+(\w+)\s+from\s+['"`](@\/(?:components|views)\/[^'"`]+)['"`]/g,
+				// import { Component1, Component2 } from 'path' (less common for Vue components)
+				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
 				// const Component = defineAsyncComponent(() => import('path'))
-				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['"`]([^'"`]+)['"`]/g,
+				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['"`]([^'"`]+\.vue)['"`]/g,
 			];
 
 			importPatterns.forEach((pattern) => {
@@ -118,10 +92,10 @@ class ReverseComponentLookup {
 					const importPath = match[2];
 					const importType = this.categorizeImport(importPath);
 
-					// Process all imports (local, external, design-system)
+					// Only process Vue component imports
 					if (importType !== 'ignored') {
 						if (match[1].includes(',') || match[1].includes('{')) {
-							// Handle destructured imports
+							// Handle destructured imports (rare for Vue components)
 							const components = match[1]
 								.replace(/[{}]/g, '')
 								.split(',')
@@ -373,11 +347,11 @@ class ReverseComponentLookup {
 	 * Format output as tree structure
 	 */
 	formatAsTree(report) {
-		let output = '🔍 Reverse Component Lookup Analysis\n';
+		let output = '🔍 Vue Component Usage Analysis\n';
 		output += '='.repeat(60) + '\n\n';
 
 		output += `📈 Summary:\n`;
-		output += `  • Total Components Found: ${report.summary.totalComponents}\n`;
+		output += `  • Vue Components Found: ${report.summary.totalComponents}\n`;
 		output += `  • Components Shown: ${report.summary.filteredComponents}\n`;
 		output += `  • Total Files Analyzed: ${report.summary.totalFiles}\n`;
 		output += `  • Most Used Component: ${report.summary.mostUsedComponent} (${report.summary.highestUsage} usages)\n\n`;
@@ -400,7 +374,7 @@ class ReverseComponentLookup {
 		});
 
 		// Show each type section
-		const typeOrder = ['design-system', 'local', 'n8n-package', 'external'];
+		const typeOrder = ['local', 'design-system'];
 		
 		typeOrder.forEach(type => {
 			if (!componentsByType[type]) return;
