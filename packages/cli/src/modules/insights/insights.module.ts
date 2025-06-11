@@ -1,5 +1,5 @@
-import type { BaseN8nModule } from '@n8n/decorators';
-import { N8nModule } from '@n8n/decorators';
+import type { ModuleInterface } from '@n8n/decorators';
+import { Module } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import './insights.controller';
 import { InstanceSettings } from 'n8n-core';
@@ -8,8 +8,8 @@ import { InsightsByPeriod } from './database/entities/insights-by-period';
 import { InsightsMetadata } from './database/entities/insights-metadata';
 import { InsightsRaw } from './database/entities/insights-raw';
 
-@N8nModule()
-export class InsightsModule implements BaseN8nModule {
+@Module()
+export class InsightsModule implements ModuleInterface {
 	async init() {
 		const { instanceType } = Container.get(InstanceSettings);
 

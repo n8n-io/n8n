@@ -17,15 +17,15 @@ export interface BaseEntity {
 
 export type EntityClass = new () => BaseEntity;
 
-export interface BaseN8nModule {
+export interface ModuleInterface {
 	init?(): void | Promise<void>;
 	entities?(): EntityClass[];
 }
 
-export type Module = Constructable<BaseN8nModule>;
+export type ModuleClass = Constructable<ModuleInterface>;
 
-export const N8nModule = (): ClassDecorator => (target) => {
-	Container.get(ModuleMetadata).register(target as unknown as Module);
+export const Module = (): ClassDecorator => (target) => {
+	Container.get(ModuleMetadata).register(target as unknown as ModuleClass);
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return Service()(target);

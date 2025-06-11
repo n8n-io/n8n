@@ -1,9 +1,9 @@
-import type { BaseN8nModule } from '@n8n/decorators';
-import { N8nModule } from '@n8n/decorators';
+import type { ModuleInterface } from '@n8n/decorators';
+import { Module } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@N8nModule()
-export class ExternalSecretsModule implements BaseN8nModule {
+@Module()
+export class ExternalSecretsModule implements ModuleInterface {
 	async init() {
 		await import('./external-secrets.controller.ee');
 
