@@ -9,6 +9,7 @@ import {
 	openContextMenu,
 	pasteWorkflow,
 	saveWorkflowOnButtonClick,
+	selectRight,
 } from '../composables/workflow';
 import SubworkflowExtractionFixture from '../fixtures/Subworkflow-extraction-workflow.json';
 import { clearAnyNotifications, successToast } from '../pages/notifications';
@@ -66,11 +67,12 @@ describe('Subworkflow Extraction', () => {
 		});
 
 		it('should extract all nodes besides trigger and succeed execution', () => {
-			for (const name of EDIT_FIELDS_NAMES) {
-				selectNode(name);
-			}
+			selectNode(EDIT_FIELDS_NAMES[0]);
+			selectRight();
 			openContextMenu();
 			clickContextMenuAction('extract_sub_workflow');
+
+			cy.getByTestId('submit-button').click();
 
 			executeAndConfirmSuccess();
 		});

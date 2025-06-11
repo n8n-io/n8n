@@ -406,3 +406,6 @@ export function hitDuplicateNode() {
 export function hitAddSticky() {
 	cy.get('body').type('{shift+S}');
 }
+export function selectRight() {
+	cy.get('body').type('{shift+rightArrow}');
+}
