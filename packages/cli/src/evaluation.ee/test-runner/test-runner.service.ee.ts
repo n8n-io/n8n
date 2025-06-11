@@ -23,7 +23,10 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
-import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
+import {
+	checkNodeParameterNotEmpty,
+	extractTokenUsage,
+} from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -505,6 +508,9 @@ export class TestRunnerService {
 					}
 					const completedAt = new Date();
 
+					const tokenUsageMetrics = extractTokenUsage(testCaseExecution.data.resultData.runData);
+					metrics.addResults(tokenUsageMetrics.total);
+
 					const { addedMetrics } = metrics.addResults(
 						this.extractEvaluationResult(testCaseExecution, workflow),
 					);
@@ -522,6 +528,11 @@ export class TestRunnerService {
 						});
 						telemetryMeta.errored_test_case_count++;
 					} else {
+						const addedMetricsWithTokenUsage = {
+							...addedMetrics,
+							...tokenUsageMetrics.total,
+						};
+
 						this.logger.debug('Test case metrics extracted', addedMetrics);
 						// Create a new test case execution in DB
 						await this.testCaseExecutionRepository.createTestCaseExecution({
@@ -532,7 +543,7 @@ export class TestRunnerService {
 							runAt,
 							completedAt,
 							status: 'success',
-							metrics: addedMetrics,
+							metrics: addedMetricsWithTokenUsage,
 						});
 					}
 				} catch (e) {
