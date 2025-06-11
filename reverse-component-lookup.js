@@ -57,8 +57,8 @@ class ReverseComponentLookup {
 			return 'local';
 		}
 
-		// Design system Vue components only
-		if (importPath.startsWith('@n8n/design-system') && importPath.endsWith('.vue')) {
+		// Design system components - all patterns
+		if (importPath.startsWith('@n8n/design-system')) {
 			return 'design-system';
 		}
 
@@ -67,7 +67,7 @@ class ReverseComponentLookup {
 	}
 
 	/**
-	 * Extract Vue component imports from a Vue/JS/TS file
+	 * Extract Vue component imports from a Vue file
 	 */
 	extractImports(filePath) {
 		try {
@@ -77,47 +77,69 @@ class ReverseComponentLookup {
 			// Match import statements with various patterns - focus on Vue components
 			const importPatterns = [
 				// import Component from 'path'
-				/import\s+(\w+)\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
+				/import\s+(\w+)\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
 				// import Component from '@/components/...'
-				/import\s+(\w+)\s+from\s+['"`](@\/(?:components|views)\/[^'"`]+)['"`]/g,
+				/import\s+(\w+)\s+from\s+['`"](@\/(?:components|views)\/[^'`"]+)['`"]/g,
 				// import { Component1, Component2 } from 'path' (less common for Vue components)
-				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
+				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
 				// const Component = defineAsyncComponent(() => import('path'))
-				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['"`]([^'"`]+\.vue)['"`]/g,
+				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['`"]([^'`"]+\.vue)['`"]/g,
+				// Design system destructured imports: import { N8nButton, N8nText } from '@n8n/design-system'
+				/import\s+\{([^}]+)\}\s+from\s+['`"]@n8n\/design-system['`"]/g,
+				// Design system default imports: import N8nButton from '@n8n/design-system/components/N8nButton'
+				/import\s+(\w+)\s+from\s+['`"]@n8n\/design-system\/(?:components\/)?([^'`"]+?)(?:\/index)?['`"]/g,
+				// Design system .vue file imports: import Component from '@n8n/design-system/components/Component/Component.vue'
+				/import\s+(\w+)\s+from\s+['`"](@n8n\/design-system\/[^'`"]+\.vue)['`"]/g,
 			];
 
-			importPatterns.forEach((pattern) => {
+			importPatterns.forEach((pattern, patternIndex) => {
 				let match;
 				while ((match = pattern.exec(content)) !== null) {
-					const importPath = match[2];
-					const importType = this.categorizeImport(importPath);
-
-					// Only process Vue component imports
-					if (importType !== 'ignored') {
+					let importPath, componentNames, importType;
+					
+					// Handle different pattern types
+					if (patternIndex === 4) {
+						// Design system destructured imports: { N8nButton, N8nText }
+						importPath = '@n8n/design-system';
+						componentNames = match[1]
+							.split(',')
+							.map(c => c.trim())
+							.filter(c => c && !c.includes('type ') && /^[A-Z]/.test(c)); // Only components starting with capital letter, exclude types
+					} else if (patternIndex === 5) {
+						// Design system default imports from component paths
+						importPath = `@n8n/design-system/components/${match[2]}`;
+						componentNames = [match[1]];
+					} else if (patternIndex === 6) {
+						// Design system .vue file imports
+						importPath = match[2];
+						componentNames = [match[1]];
+					} else {
+						// Regular patterns
+						importPath = match[2];
 						if (match[1].includes(',') || match[1].includes('{')) {
-							// Handle destructured imports (rare for Vue components)
-							const components = match[1]
+							// Handle destructured imports
+							componentNames = match[1]
 								.replace(/[{}]/g, '')
 								.split(',')
 								.map((c) => c.trim())
 								.filter((c) => c);
-
-							components.forEach((component) => {
-								imports.push({
-									name: component,
-									path: this.normalizePath(importPath),
-									type: importType,
-									originalPath: importPath,
-								});
-							});
 						} else {
+							componentNames = [match[1]];
+						}
+					}
+
+					importType = this.categorizeImport(importPath);
+
+					// Only process Vue component imports
+					if (importType !== 'ignored') {
+						componentNames.forEach((componentName) => {
 							imports.push({
-								name: match[1],
+								name: componentName,
 								path: this.normalizePath(importPath),
 								type: importType,
 								originalPath: importPath,
 							});
-						}
+						});
 					}
 				}
 			});
@@ -149,9 +171,9 @@ class ReverseComponentLookup {
 	}
 
 	/**
-	 * Get all relevant files recursively
+	 * Get all Vue files in a directory recursively
 	 */
-	getAllFiles(dir, prefix = '', extensions = ['.vue', '.js', '.ts']) {
+	getVueFiles(dir, prefix = '') {
 		const files = [];
 
 		try {
@@ -162,13 +184,12 @@ class ReverseComponentLookup {
 				const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
 				if (entry.isDirectory()) {
-					files.push(...this.getAllFiles(fullPath, relativePath, extensions));
-				} else if (extensions.some(ext => entry.name.endsWith(ext))) {
+					files.push(...this.getVueFiles(fullPath, relativePath));
+				} else if (entry.name.endsWith('.vue')) {
 					files.push({
 						name: entry.name,
 						path: relativePath,
 						fullPath: fullPath,
-						type: this.getFileType(relativePath),
 					});
 				}
 			}
@@ -182,163 +203,132 @@ class ReverseComponentLookup {
 	}
 
 	/**
-	 * Determine file type based on path
+	 * Process a single file and track component usage
 	 */
-	getFileType(filePath) {
-		if (filePath.startsWith('views/')) return 'view';
-		if (filePath.startsWith('components/')) return 'component';
-		if (filePath.includes('store')) return 'store';
-		if (filePath.includes('composable')) return 'composable';
-		if (filePath.includes('util')) return 'utility';
-		return 'other';
+	processFile(file) {
+		if (this.processedFiles.has(file.fullPath)) return;
+		this.processedFiles.add(file.fullPath);
+
+		const imports = this.extractImports(file.fullPath);
+		const fileComponents = [];
+
+		imports.forEach((imp) => {
+			// Track component usage
+			const componentKey = `${imp.name}|${imp.originalPath}`;
+			
+			if (!this.componentUsage.has(componentKey)) {
+				this.componentUsage.set(componentKey, {
+					name: imp.name,
+					type: imp.type,
+					originalPath: imp.originalPath,
+					normalizedPath: imp.path,
+					usages: [],
+					totalUsage: 0,
+				});
+			}
+
+			const componentData = this.componentUsage.get(componentKey);
+			componentData.usages.push({
+				file: file.path,
+				fileName: file.name,
+				fileType: file.path.startsWith('views/') ? 'view' : 'component',
+				fullPath: file.fullPath,
+			});
+			componentData.totalUsage++;
+
+			fileComponents.push(imp);
+		});
+
+		this.fileComponents.set(file.path, fileComponents);
 	}
 
 	/**
-	 * Check if component should be included based on filters
+	 * Analyze all Vue files for component usage
 	 */
-	shouldIncludeComponent(componentName, componentType, usageCount) {
-		// Filter by usage count
-		if (usageCount < this.options.minUsage) {
-			return false;
-		}
+	analyzeComponents() {
+		// Get all views and components
+		const viewFiles = this.getVueFiles(VIEWS_DIR, 'views');
+		const componentFiles = this.getVueFiles(COMPONENTS_DIR, 'components');
+		const allFiles = [...viewFiles, ...componentFiles];
+
+		console.log(`📁 Processing ${allFiles.length} Vue files...`);
+		
+		// Process each file
+		allFiles.forEach((file) => {
+			this.processFile(file);
+		});
+
+		console.log(`✅ Found ${this.componentUsage.size} unique components`);
+	}
+
+	/**
+	 * Filter components based on options
+	 */
+	filterComponents() {
+		let filteredComponents = Array.from(this.componentUsage.values());
 
 		// Filter by type
-		if (this.options.type !== 'all' && componentType !== this.options.type) {
-			return false;
+		if (this.options.type !== 'all') {
+			const typeMap = {
+				'local': 'local',
+				'design': 'design-system',
+				'n8n': 'n8n-package',
+				'external': 'external',
+			};
+			const targetType = typeMap[this.options.type];
+			if (targetType) {
+				filteredComponents = filteredComponents.filter(comp => comp.type === targetType);
+			}
+		}
+
+		// Filter by minimum usage
+		if (this.options.minUsage > 1) {
+			filteredComponents = filteredComponents.filter(comp => comp.totalUsage >= this.options.minUsage);
 		}
 
 		// Filter by name pattern
 		if (this.options.filter) {
-			const pattern = new RegExp(this.options.filter, 'i');
-			if (!pattern.test(componentName)) {
-				return false;
-			}
+			const filterRegex = new RegExp(this.options.filter, 'i');
+			filteredComponents = filteredComponents.filter(comp => filterRegex.test(comp.name));
 		}
 
-		return true;
+		return filteredComponents;
 	}
 
 	/**
-	 * Analyze all files for component usage
-	 */
-	analyzeComponentUsage() {
-		console.log('🔍 Scanning all files for component usage...');
-
-		// Get all Vue, JS, and TS files
-		const allFiles = [
-			...this.getAllFiles(VIEWS_DIR, 'views'),
-			...this.getAllFiles(COMPONENTS_DIR, 'components'),
-		];
-
-		console.log(`📁 Found ${allFiles.length} files to analyze`);
-
-		for (const file of allFiles) {
-			if (this.processedFiles.has(file.path)) continue;
-			this.processedFiles.add(file.path);
-
-			const imports = this.extractImports(file.fullPath);
-			this.fileComponents.set(file.path, {
-				...file,
-				imports: imports,
-			});
-
-			// Build reverse index
-			imports.forEach((imp) => {
-				const componentKey = this.getComponentKey(imp);
-				
-				if (!this.componentUsage.has(componentKey)) {
-					this.componentUsage.set(componentKey, {
-						name: imp.name,
-						type: imp.type,
-						path: imp.originalPath,
-						normalizedPath: imp.path,
-						usedBy: [],
-						usageCount: 0,
-						fileTypes: new Set(),
-					});
-				}
-
-				const usage = this.componentUsage.get(componentKey);
-				usage.usedBy.push({
-					file: file.path,
-					fileName: file.name,
-					fileType: file.type,
-					fullPath: file.fullPath,
-				});
-				usage.usageCount++;
-				usage.fileTypes.add(file.type);
-			});
-		}
-
-		console.log(`📊 Found ${this.componentUsage.size} unique components`);
-	}
-
-	/**
-	 * Generate a unique key for each component
-	 */
-	getComponentKey(importData) {
-		// For local components, use the normalized path
-		if (importData.type === 'local') {
-			return `${importData.type}:${importData.path}:${importData.name}`;
-		}
-		// For external libraries, use the original path and component name
-		return `${importData.type}:${importData.originalPath}:${importData.name}`;
-	}
-
-	/**
-	 * Generate the reverse lookup report
+	 * Generate usage report
 	 */
 	generateReport() {
+		const filteredComponents = this.filterComponents();
+		
+		// Sort by usage count (descending)
+		filteredComponents.sort((a, b) => b.totalUsage - a.totalUsage);
+
 		const report = {
 			summary: {
 				totalComponents: this.componentUsage.size,
-				totalFiles: this.processedFiles.size,
-				componentsByType: {},
-				highestUsage: 0,
-				mostUsedComponent: null,
+				filteredComponents: filteredComponents.length,
+				totalFiles: this.fileComponents.size,
+				filters: {
+					type: this.options.type,
+					minUsage: this.options.minUsage,
+					nameFilter: this.options.filter,
+				},
+				componentsByType: {
+					local: Array.from(this.componentUsage.values()).filter(c => c.type === 'local').length,
+					designSystem: Array.from(this.componentUsage.values()).filter(c => c.type === 'design-system').length,
+					n8nPackage: Array.from(this.componentUsage.values()).filter(c => c.type === 'n8n-package').length,
+					external: Array.from(this.componentUsage.values()).filter(c => c.type === 'external').length,
+				},
 			},
-			components: {},
+			components: filteredComponents.map(comp => ({
+				name: comp.name,
+				type: comp.type,
+				path: comp.originalPath,
+				totalUsage: comp.totalUsage,
+				usages: comp.usages,
+			})),
 		};
-
-		// Filter and process components
-		const filteredComponents = Array.from(this.componentUsage.entries())
-			.filter(([_, data]) => 
-				this.shouldIncludeComponent(data.name, data.type, data.usageCount)
-			)
-			.sort(([, a], [, b]) => b.usageCount - a.usageCount);
-
-		// Build summary statistics
-		const typeGroups = {};
-		filteredComponents.forEach(([key, data]) => {
-			if (!typeGroups[data.type]) {
-				typeGroups[data.type] = 0;
-			}
-			typeGroups[data.type]++;
-
-			if (data.usageCount > report.summary.highestUsage) {
-				report.summary.highestUsage = data.usageCount;
-				report.summary.mostUsedComponent = data.name;
-			}
-		});
-
-		report.summary.componentsByType = typeGroups;
-		report.summary.filteredComponents = filteredComponents.length;
-
-		// Process components
-		filteredComponents.forEach(([key, data]) => {
-			report.components[key] = {
-				name: data.name,
-				type: data.type,
-				path: data.path,
-				usageCount: data.usageCount,
-				fileTypes: Array.from(data.fileTypes),
-				usedBy: data.usedBy.map(usage => ({
-					file: usage.file,
-					fileName: usage.fileName,
-					fileType: usage.fileType,
-				})),
-			};
-		});
 
 		return report;
 	}
@@ -347,131 +337,77 @@ class ReverseComponentLookup {
 	 * Format output as tree structure
 	 */
 	formatAsTree(report) {
-		let output = '🔍 Vue Component Usage Analysis\n';
+		let output = '🔍 Reverse Component Lookup\n';
 		output += '='.repeat(60) + '\n\n';
 
 		output += `📈 Summary:\n`;
-		output += `  • Vue Components Found: ${report.summary.totalComponents}\n`;
-		output += `  • Components Shown: ${report.summary.filteredComponents}\n`;
-		output += `  • Total Files Analyzed: ${report.summary.totalFiles}\n`;
-		output += `  • Most Used Component: ${report.summary.mostUsedComponent} (${report.summary.highestUsage} usages)\n\n`;
-
-		// Show breakdown by type
-		output += `📊 Components by Type:\n`;
-		Object.entries(report.summary.componentsByType).forEach(([type, count]) => {
-			const emoji = this.getTypeEmoji(type);
-			output += `  ${emoji} ${type}: ${count} components\n`;
-		});
+		output += `  • Total Components Found: ${report.summary.totalComponents}\n`;
+		output += `  • Filtered Components: ${report.summary.filteredComponents}\n`;
+		output += `  • Total Files Processed: ${report.summary.totalFiles}\n`;
+		output += `  • Local Components: ${report.summary.componentsByType.local}\n`;
+		output += `  • Design System Components: ${report.summary.componentsByType.designSystem}\n`;
+		
+		if (report.summary.filters.type !== 'all') {
+			output += `  • Type Filter: ${report.summary.filters.type}\n`;
+		}
+		if (report.summary.filters.minUsage > 1) {
+			output += `  • Min Usage Filter: ${report.summary.filters.minUsage}\n`;
+		}
+		if (report.summary.filters.nameFilter) {
+			output += `  • Name Filter: ${report.summary.filters.nameFilter}\n`;
+		}
 		output += '\n';
 
-		// Group components by type
-		const componentsByType = {};
-		Object.entries(report.components).forEach(([key, component]) => {
-			if (!componentsByType[component.type]) {
-				componentsByType[component.type] = [];
-			}
-			componentsByType[component.type].push([key, component]);
-		});
+		output += '🧩 COMPONENT USAGE:\n';
+		output += '─'.repeat(40) + '\n';
 
-		// Show each type section
-		const typeOrder = ['local', 'design-system'];
-		
-		typeOrder.forEach(type => {
-			if (!componentsByType[type]) return;
-
-			const emoji = this.getTypeEmoji(type);
-			const typeName = this.getTypeName(type);
+		for (const component of report.components) {
+			const typeIcon = component.type === 'local' ? '🏠' : component.type === 'design-system' ? '🎨' : '📦';
+			output += `\n${typeIcon} ${component.name} (${component.type})\n`;
+			output += `   📊 Used ${component.totalUsage} times\n`;
 			
-			output += `${emoji} ${typeName.toUpperCase()}:\n`;
-			output += '─'.repeat(40) + '\n';
+			if (component.type === 'design-system') {
+				output += `   📍 Source: ${component.path}\n`;
+			}
 
-			// Sort by usage count
-			componentsByType[type]
-				.sort(([, a], [, b]) => b.usageCount - a.usageCount)
-				.forEach(([key, component]) => {
-					output += `\n🧩 ${component.name}`;
-					if (component.path && component.type === 'local') {
-						output += ` (${component.path})`;
-					} else if (component.path && component.type !== 'local') {
-						output += ` (${component.path})`;
-					}
-					output += `\n   📊 Used ${component.usageCount} time(s) across ${component.fileTypes.length} file type(s): ${component.fileTypes.join(', ')}\n`;
-					
-					// Show all usage locations (no truncation)
-					component.usedBy.forEach((usage, index) => {
-						const isLast = index === component.usedBy.length - 1;
-						const prefix = isLast ? '     └──' : '     ├──';
-						const typeIcon = this.getFileTypeIcon(usage.fileType);
-						output += `${prefix} ${typeIcon} ${usage.fileName} (${usage.file})\n`;
-					});
-				});
-
-			output += '\n';
-		});
+			// Show all usages
+			component.usages.forEach((usage, index) => {
+				const isLast = index === component.usages.length - 1;
+				const prefix = isLast ? '     └──' : '     ├──';
+				const fileIcon = usage.fileType === 'view' ? '📄' : '🧩';
+				output += `${prefix} ${fileIcon} ${usage.fileName} (${usage.file})\n`;
+			});
+		}
 
 		return output;
-	}
-
-	/**
-	 * Get emoji for component type
-	 */
-	getTypeEmoji(type) {
-		const emojis = {
-			'design-system': '🎨',
-			'local': '🏠',
-			'n8n-package': '📦',
-			'external': '🌐',
-		};
-		return emojis[type] || '📄';
-	}
-
-	/**
-	 * Get readable name for component type
-	 */
-	getTypeName(type) {
-		const names = {
-			'design-system': 'Design System Components',
-			'local': 'Local Components',
-			'n8n-package': 'n8n Package Components',
-			'external': 'External Library Components',
-		};
-		return names[type] || type;
-	}
-
-	/**
-	 * Get icon for file type
-	 */
-	getFileTypeIcon(fileType) {
-		const icons = {
-			'view': '📄',
-			'component': '🧩',
-			'store': '🗃️',
-			'composable': '🔧',
-			'utility': '⚙️',
-			'other': '📁',
-		};
-		return icons[fileType] || '📁';
 	}
 
 	/**
 	 * Format output as table (CSV)
 	 */
 	formatAsTable(report) {
-		let output = 'Component Name,Type,Path,Usage Count,File Types,Used By Files\n';
+		let output = 'Component,Type,Path,Total Usage,Used In Files\n';
 
-		Object.entries(report.components).forEach(([key, component]) => {
-			const usedByFiles = component.usedBy.map(u => u.file).join('; ');
-			output += `"${component.name}","${component.type}","${component.path}",${component.usageCount},"${component.fileTypes.join('; ')}","${usedByFiles}"\n`;
-		});
+		for (const component of report.components) {
+			const usedInFiles = component.usages.map(u => u.file).join('; ');
+			output += `"${component.name}","${component.type}","${component.path}",${component.totalUsage},"${usedInFiles}"\n`;
+		}
 
 		return output;
+	}
+
+	/**
+	 * Format output as JSON
+	 */
+	formatAsJson(report) {
+		return JSON.stringify(report, null, 2);
 	}
 
 	/**
 	 * Main analysis function
 	 */
 	async analyze() {
-		console.log('🔍 Starting reverse component lookup analysis...\n');
+		console.log('🔍 Starting reverse component lookup...\n');
 
 		// Check if directories exist
 		if (!fs.existsSync(VIEWS_DIR)) {
@@ -481,16 +417,17 @@ class ReverseComponentLookup {
 			throw new Error(`Components directory not found: ${COMPONENTS_DIR}`);
 		}
 
-		this.analyzeComponentUsage();
+		console.log('📁 Analyzing component usage...');
+		this.analyzeComponents();
 
-		console.log('🏗️  Generating reverse lookup report...');
+		console.log('📊 Generating report...');
 		const report = this.generateReport();
 
 		// Format output
 		let output;
 		switch (this.options.format) {
 			case 'json':
-				output = JSON.stringify(report, null, 2);
+				output = this.formatAsJson(report);
 				break;
 			case 'table':
 				output = this.formatAsTable(report);
@@ -536,21 +473,20 @@ Reverse Component Lookup Tool
 Usage: node reverse-component-lookup.js [options]
 
 Options:
-  --format=json|tree|table     Output format (default: tree)
-  --filter=pattern             Filter components by name pattern (regex)
-  --type=local|design|n8n|external|all  Filter by component type (default: all)
-  --min-usage=N                Only show components used at least N times (default: 1)
-  --output=file                Save results to file
-  --verbose                    Show detailed analysis
-  --help, -h                   Show this help message
+  --format=json|tree|table      Output format (default: tree)
+  --filter=pattern              Filter components by name pattern
+  --type=local|design|all       Filter by component type (default: all)
+  --min-usage=N                 Only show components used at least N times
+  --output=file                 Save results to file
+  --verbose                     Show detailed analysis
+  --help, -h                    Show this help message
 
 Examples:
   node reverse-component-lookup.js
-  node reverse-component-lookup.js --type=design-system --min-usage=5
-  node reverse-component-lookup.js --filter="N8n.*" --format=json
-  node reverse-component-lookup.js --format=table --output=usage.csv
-  node reverse-component-lookup.js --type=local --min-usage=3 --verbose
-			`);
+  node reverse-component-lookup.js --type=design --min-usage=5
+  node reverse-component-lookup.js --filter=Modal --format=json
+  node reverse-component-lookup.js --format=table --output=component-usage.csv
+    `);
 			process.exit(0);
 		}
 	});
@@ -563,14 +499,14 @@ if (require.main === module) {
 	(async () => {
 		try {
 			const options = parseArgs();
-			const analyzer = new ReverseComponentLookup(options);
-			const { output } = await analyzer.analyze();
+			const lookup = new ReverseComponentLookup(options);
+			const { output } = await lookup.analyze();
 
 			if (!options.output) {
 				console.log('\n' + output);
 			}
 
-			console.log('\n✅ Reverse lookup analysis complete!');
+			console.log('\n✅ Analysis complete!');
 		} catch (error) {
 			console.error('❌ Error:', error.message);
 			process.exit(1);

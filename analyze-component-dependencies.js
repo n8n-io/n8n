@@ -52,47 +52,69 @@ class ComponentDependencyAnalyzer {
 			// Match import statements with various patterns - focus on Vue components
 			const importPatterns = [
 				// import Component from 'path'
-				/import\s+(\w+)\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
+				/import\s+(\w+)\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
 				// import Component from '@/components/...'
-				/import\s+(\w+)\s+from\s+['"`](@\/(?:components|views)\/[^'"`]+)['"`]/g,
+				/import\s+(\w+)\s+from\s+['`"](@\/(?:components|views)\/[^'`"]+)['`"]/g,
 				// import { Component1, Component2 } from 'path' (less common for Vue components)
-				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['"`]([^'"`]+\.vue)['"`]/g,
+				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
 				// const Component = defineAsyncComponent(() => import('path'))
-				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['"`]([^'"`]+\.vue)['"`]/g,
+				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['`"]([^'`"]+\.vue)['`"]/g,
+				// Design system destructured imports: import { N8nButton, N8nText } from '@n8n/design-system'
+				/import\s+\{([^}]+)\}\s+from\s+['`"]@n8n\/design-system['`"]/g,
+				// Design system default imports: import N8nButton from '@n8n/design-system/components/N8nButton'
+				/import\s+(\w+)\s+from\s+['`"]@n8n\/design-system\/(?:components\/)?([^'`"]+?)(?:\/index)?['`"]/g,
+				// Design system .vue file imports: import Component from '@n8n/design-system/components/Component/Component.vue'
+				/import\s+(\w+)\s+from\s+['`"](@n8n\/design-system\/[^'`"]+\.vue)['`"]/g,
 			];
 
-			importPatterns.forEach((pattern) => {
+			importPatterns.forEach((pattern, patternIndex) => {
 				let match;
 				while ((match = pattern.exec(content)) !== null) {
-					const importPath = match[2];
-					const importType = this.categorizeImport(importPath);
-
-					// Only process Vue component imports
-					if (importType !== 'ignored') {
+					let importPath, componentNames, importType;
+					
+					// Handle different pattern types
+					if (patternIndex === 4) {
+						// Design system destructured imports: { N8nButton, N8nText }
+						importPath = '@n8n/design-system';
+						componentNames = match[1]
+							.split(',')
+							.map(c => c.trim())
+							.filter(c => c && !c.includes('type ') && /^[A-Z]/.test(c)); // Only components starting with capital letter, exclude types
+					} else if (patternIndex === 5) {
+						// Design system default imports from component paths
+						importPath = `@n8n/design-system/components/${match[2]}`;
+						componentNames = [match[1]];
+					} else if (patternIndex === 6) {
+						// Design system .vue file imports
+						importPath = match[2];
+						componentNames = [match[1]];
+					} else {
+						// Regular patterns
+						importPath = match[2];
 						if (match[1].includes(',') || match[1].includes('{')) {
-							// Handle destructured imports (rare for Vue components)
-							const components = match[1]
+							// Handle destructured imports
+							componentNames = match[1]
 								.replace(/[{}]/g, '')
 								.split(',')
 								.map((c) => c.trim())
 								.filter((c) => c);
-
-							components.forEach((component) => {
-								imports.push({
-									name: component,
-									path: this.normalizePath(importPath),
-									type: importType,
-									originalPath: importPath,
-								});
-							});
 						} else {
+							componentNames = [match[1]];
+						}
+					}
+
+					importType = this.categorizeImport(importPath);
+
+					// Only process Vue component imports
+					if (importType !== 'ignored') {
+						componentNames.forEach((componentName) => {
 							imports.push({
-								name: match[1],
+								name: componentName,
 								path: this.normalizePath(importPath),
 								type: importType,
 								originalPath: importPath,
 							});
-						}
+						});
 					}
 				}
 			});
@@ -122,8 +144,8 @@ class ComponentDependencyAnalyzer {
 			return 'local';
 		}
 
-		// Design system Vue components only
-		if (importPath.startsWith('@n8n/design-system') && importPath.endsWith('.vue')) {
+		// Design system components - all patterns
+		if (importPath.startsWith('@n8n/design-system')) {
 			return 'design-system';
 		}
 
@@ -573,7 +595,7 @@ Examples:
   node analyze-component-dependencies.js --format=json --output=deps.json
   node analyze-component-dependencies.js --format=table --verbose
   node analyze-component-dependencies.js --depth=10 --verbose
-      `);
+    `);
 			process.exit(0);
 		}
 	});
