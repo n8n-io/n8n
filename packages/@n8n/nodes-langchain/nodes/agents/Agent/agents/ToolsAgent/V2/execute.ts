@@ -45,7 +45,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		0,
 	) as number;
 	const memory = await getOptionalMemory(this);
-	const model = await getChatModel(this);
+	console.log('Getting primary model');
+	const model = await getChatModel(this, 0);
+	console.log('Getting secondary model');
+	const fallbackModel = await getChatModel(this, 1);
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -85,12 +88,27 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				streamRunnable: false,
 			});
 			agent.streamRunnable = false;
+
+			const fallbackAgent = createToolCallingAgent({
+				llm: fallbackModel,
+				tools,
+				prompt,
+				streamRunnable: false,
+			});
+			agent.streamRunnable = false;
 			// Wrap the agent with parsers and fixes.
 			const runnableAgent = RunnableSequence.from([
 				agent,
 				getAgentStepsParser(outputParser, memory),
 				fixEmptyContentMessage,
 			]);
+
+			const runnableFallbackAgent = RunnableSequence.from([
+				fallbackAgent,
+				getAgentStepsParser(outputParser, memory),
+				fixEmptyContentMessage,
+			]);
+
 			const executor = AgentExecutor.fromAgentAndTools({
 				agent: runnableAgent,
 				memory,
@@ -99,16 +117,38 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations: options.maxIterations ?? 10,
 			});
 
+			const fallbackExecutor = AgentExecutor.fromAgentAndTools({
+				agent: runnableFallbackAgent,
+				memory,
+				tools,
+				returnIntermediateSteps: options.returnIntermediateSteps === true,
+				maxIterations: options.maxIterations ?? 10,
+			});
+
 			// Invoke the executor with the given input and system message.
-			return await executor.invoke(
-				{
-					input,
-					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
-			);
+			try {
+				console.log('Executing primary');
+				return await executor.invoke(
+					{
+						input,
+						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+						formatting_instructions:
+							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					},
+					{ signal: this.getExecutionCancelSignal() },
+				);
+			} catch (error) {
+				console.log('Executing secondary');
+				return await fallbackExecutor.invoke(
+					{
+						input,
+						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+						formatting_instructions:
+							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					},
+					{ signal: this.getExecutionCancelSignal() },
+				);
+			}
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);

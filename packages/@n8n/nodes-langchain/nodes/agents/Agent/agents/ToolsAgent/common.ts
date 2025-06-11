@@ -263,8 +263,14 @@ export const getAgentStepsParser =
  * @param ctx - The execution context
  * @returns The validated chat model
  */
-export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
-	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+export async function getChatModel(ctx: IExecuteFunctions, index: number): Promise<BaseChatModel> {
+	const models = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+	let model = models;
+	if (Array.isArray(models)) {
+		console.log('Getting model with index', index, models.length);
+		models.reverse();
+		model = models[index];
+	}
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
