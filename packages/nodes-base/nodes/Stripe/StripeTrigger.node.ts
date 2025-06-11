@@ -871,10 +871,13 @@ export class StripeTrigger implements INodeType {
 
 				const endpoint = '/webhook_endpoints';
 
+				const credentials = await this.getCredentials('stripeApi');
+
 				const body = {
 					url: webhookUrl,
 					description: webhookDescription,
 					enabled_events: events,
+					api_version: credentials.apiVersion as string,
 				};
 
 				const responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
