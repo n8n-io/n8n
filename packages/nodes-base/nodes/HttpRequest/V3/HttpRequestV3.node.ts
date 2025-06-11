@@ -39,6 +39,7 @@ import {
 	setAgentOptions,
 } from '../GenericFunctions';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
+import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 
 function toText<T>(data: T) {
@@ -832,7 +833,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
-				const responseContentType = response.headers['content-type'] ?? '';
+				const responseContentType: string = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
@@ -917,14 +918,11 @@ export class HttpRequestV3 implements INodeType {
 						mimeTypeFromResponse(responseContentType),
 					);
 
-					if (
-						!preparedBinaryData.fileName &&
-						preparedBinaryData.fileExtension &&
-						typeof requestOptions.uri === 'string' &&
-						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
-					) {
-						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
-					}
+					preparedBinaryData.fileName = setFilename(
+						preparedBinaryData,
+						requestOptions,
+						responseFileName,
+					);
 
 					newItem.binary![outputPropertyName] = preparedBinaryData;
 
