@@ -3,6 +3,7 @@ import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
 import { readFileSync } from 'fs';
+import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -20,7 +21,6 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-import { Mock } from 'jest-mock';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
