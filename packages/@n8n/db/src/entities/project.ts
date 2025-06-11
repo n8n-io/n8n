@@ -16,7 +16,7 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ type: 'json', nullable: true })
 	icon: { type: 'emoji' | 'icon'; value: string } | null;
 
-	@Column({ length: 512, nullable: true })
+	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
 
 	@OneToMany('ProjectRelation', 'project')
