@@ -847,6 +847,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	}
 
 	.callout-dismiss {
+		margin-left: var(--spacing-xs);
+		line-height: 1;
 		cursor: pointer;
 	}
 	.callout-dismiss:hover {
