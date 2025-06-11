@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import merge from 'lodash/merge';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import * as cloudPlanApi from '@/api/cloudPlans';
+import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { defaultSettings } from '../__tests__/defaults';
 import {
 	getTrialExpiredUserResponse,
