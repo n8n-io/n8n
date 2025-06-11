@@ -8,7 +8,6 @@ import type {
 } from 'n8n-workflow';
 import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 
 import type { IUpdateInformation } from '@/Interface';
 
@@ -22,18 +21,14 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
-	RAG_STARTER_WORKFLOW_EXPERIMENT,
-	VIEWS,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useUsersStore } from '@/stores/users.store';
 
 import {
@@ -57,7 +52,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { usePostHog } from '@/stores/posthog.store';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -91,15 +86,12 @@ const rootStore = useRootStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const usersStore = useUsersStore();
-const posthogStore = usePostHog();
 
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const telemetry = useTelemetry();
-const route = useRoute();
-const router = useRouter();
+const { openRagStarterTemplate, shouldShowRagStarterCallout } = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -550,35 +542,11 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
 }
 
-const shouldShowRagStarterCallout = computed(() => {
-	const isRagStarterWorkflowExperimentEnabled =
-		posthogStore.getVariant(RAG_STARTER_WORKFLOW_EXPERIMENT.name) ===
-		RAG_STARTER_WORKFLOW_EXPERIMENT.variant;
-
-	return isRagStarterWorkflowExperimentEnabled && !usersStore.isRagStarterCalloutDismissed;
-});
-
 async function onCalloutAction(action: CalloutAction) {
 	if (action === 'openRagStarterTemplate') {
 		await openRagStarterTemplate();
 	}
 }
-
-const openRagStarterTemplate = async () => {
-	telemetry.track('User clicked on RAG callout', {
-		node_type: nodeType.value?.name ?? 'unknown',
-	});
-
-	const template = getRagStarterWorkflowJson();
-
-	const { href } = router.resolve({
-		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: template.meta.templateId },
-		query: { fromJson: 'true', parentFolderId: route.params.folderId },
-	});
-
-	window.open(href, '_blank');
-};
 
 const onCalloutDismiss = async () => {
 	usersStore.setRagStarterCalloutDismissed();
