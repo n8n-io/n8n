@@ -9,7 +9,8 @@ Analyzes Vue component dependencies from views → components (forward analysis)
 ### Key Features:
 - **Vue component focus** - only analyzes Vue components (local and design system)
 - **Recursive analysis** of component dependencies (depth 5 by default)
-- **Enhanced design system tracking** - comprehensive `@n8n/design-system` import detection
+- **Enhanced design system tracking** - detects both explicit imports and template usage
+- **Template scanning** - finds design system components used without imports (PascalCase and hyphenated)
 - **Categorized output** showing local vs design system dependencies
 - **Multiple output formats** (tree, JSON, CSV)
 
@@ -43,6 +44,8 @@ Analyzes where each Vue component is used throughout the codebase (reverse analy
 - **Usage frequency analysis**
 - **Impact assessment** for component changes
 - **Vue component focus** - filters out non-component imports automatically
+- **Template scanning** - detects design system components used without explicit imports
+- **Dual format support** - finds both PascalCase (`<N8nButton>`) and hyphenated (`<n8n-button>`) usage
 
 ### Usage Examples:
 
@@ -89,6 +92,7 @@ node reverse-component-lookup.js --type=design
 ### Design System Dependencies:
 - **Design System Components**: Comprehensive tracking of @n8n/design-system usage
 - **Import Patterns**: Supports destructured imports `{ N8nButton, N8nText }`, default imports, and .vue file imports
+- **Template Usage**: Detects components used in templates without explicit imports (both PascalCase and hyphenated)
 - **Filtered Analysis**: Non-component imports (stores, composables, utilities) are automatically excluded
 
 ## 🎯 Use Cases
@@ -163,3 +167,14 @@ node reverse-component-lookup.js --filter="ComponentName" --verbose
 ```
 
 Both tools provide comprehensive Vue component analysis capabilities for understanding and maintaining the n8n component architecture. They focus exclusively on Vue components (local and design system), automatically filtering out non-component imports like stores, composables, and utilities.
+
+## ✨ Enhanced Template Scanning
+
+Both tools now include advanced template scanning that detects design system components used without explicit imports:
+
+- **PascalCase detection**: `<N8nButton>`, `<N8nText>`, `<N8nIcon>`
+- **Hyphenated detection**: `<n8n-button>`, `<n8n-text>`, `<n8n-icon>`
+- **Smart deduplication**: Avoids counting components that are both imported and used in templates
+- **Comprehensive coverage**: Includes 40+ common n8n design system components
+
+This enhancement provides a complete picture of design system usage across the codebase, including globally registered components that don't require explicit imports.

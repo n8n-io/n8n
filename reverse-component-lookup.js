@@ -67,82 +67,20 @@ class ReverseComponentLookup {
 	}
 
 	/**
-	 * Extract Vue component imports from a Vue file
+	 * Extract Vue component imports and template usage from a Vue file
 	 */
 	extractImports(filePath) {
 		try {
 			const content = fs.readFileSync(filePath, 'utf8');
 			const imports = [];
 
-			// Match import statements with various patterns - focus on Vue components
-			const importPatterns = [
-				// import Component from 'path'
-				/import\s+(\w+)\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
-				// import Component from '@/components/...'
-				/import\s+(\w+)\s+from\s+['`"](@\/(?:components|views)\/[^'`"]+)['`"]/g,
-				// import { Component1, Component2 } from 'path' (less common for Vue components)
-				/import\s+\{\s*([^}]+)\s*\}\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
-				// const Component = defineAsyncComponent(() => import('path'))
-				/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['`"]([^'`"]+\.vue)['`"]/g,
-				// Design system destructured imports: import { N8nButton, N8nText } from '@n8n/design-system'
-				/import\s+\{([^}]+)\}\s+from\s+['`"]@n8n\/design-system['`"]/g,
-				// Design system default imports: import N8nButton from '@n8n/design-system/components/N8nButton'
-				/import\s+(\w+)\s+from\s+['`"]@n8n\/design-system\/(?:components\/)?([^'`"]+?)(?:\/index)?['`"]/g,
-				// Design system .vue file imports: import Component from '@n8n/design-system/components/Component/Component.vue'
-				/import\s+(\w+)\s+from\s+['`"](@n8n\/design-system\/[^'`"]+\.vue)['`"]/g,
-			];
+			// First, get explicit imports
+			const explicitImports = this.extractExplicitImports(content);
+			imports.push(...explicitImports);
 
-			importPatterns.forEach((pattern, patternIndex) => {
-				let match;
-				while ((match = pattern.exec(content)) !== null) {
-					let importPath, componentNames, importType;
-					
-					// Handle different pattern types
-					if (patternIndex === 4) {
-						// Design system destructured imports: { N8nButton, N8nText }
-						importPath = '@n8n/design-system';
-						componentNames = match[1]
-							.split(',')
-							.map(c => c.trim())
-							.filter(c => c && !c.includes('type ') && /^[A-Z]/.test(c)); // Only components starting with capital letter, exclude types
-					} else if (patternIndex === 5) {
-						// Design system default imports from component paths
-						importPath = `@n8n/design-system/components/${match[2]}`;
-						componentNames = [match[1]];
-					} else if (patternIndex === 6) {
-						// Design system .vue file imports
-						importPath = match[2];
-						componentNames = [match[1]];
-					} else {
-						// Regular patterns
-						importPath = match[2];
-						if (match[1].includes(',') || match[1].includes('{')) {
-							// Handle destructured imports
-							componentNames = match[1]
-								.replace(/[{}]/g, '')
-								.split(',')
-								.map((c) => c.trim())
-								.filter((c) => c);
-						} else {
-							componentNames = [match[1]];
-						}
-					}
-
-					importType = this.categorizeImport(importPath);
-
-					// Only process Vue component imports
-					if (importType !== 'ignored') {
-						componentNames.forEach((componentName) => {
-							imports.push({
-								name: componentName,
-								path: this.normalizePath(importPath),
-								type: importType,
-								originalPath: importPath,
-							});
-						});
-					}
-				}
-			});
+			// Then, scan template for component usage (including implicit design system components)
+			const templateComponents = this.extractTemplateComponents(content, explicitImports);
+			imports.push(...templateComponents);
 
 			return imports;
 		} catch (error) {
@@ -151,6 +89,182 @@ class ReverseComponentLookup {
 			}
 			return [];
 		}
+	}
+
+	/**
+	 * Extract explicit component imports from a Vue file
+	 */
+	extractExplicitImports(content) {
+		const imports = [];
+
+		// Match import statements with various patterns - focus on Vue components
+		const importPatterns = [
+			// import Component from 'path'
+			/import\s+(\w+)\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
+			// import Component from '@/components/...'
+			/import\s+(\w+)\s+from\s+['`"](@\/(?:components|views)\/[^'`"]+)['`"]/g,
+			// import { Component1, Component2 } from 'path' (less common for Vue components)
+			/import\s+\{\s*([^}]+)\s*\}\s+from\s+['`"]([^'`"]+\.vue)['`"]/g,
+			// const Component = defineAsyncComponent(() => import('path'))
+			/const\s+(\w+)\s*=\s*defineAsyncComponent\([^)]*import\s*\(\s*['`"]([^'`"]+\.vue)['`"]/g,
+			// Design system destructured imports: import { N8nButton, N8nText } from '@n8n/design-system'
+			/import\s+\{([^}]+)\}\s+from\s+['`"]@n8n\/design-system['`"]/g,
+			// Design system default imports: import N8nButton from '@n8n/design-system/components/N8nButton'
+			/import\s+(\w+)\s+from\s+['`"]@n8n\/design-system\/(?:components\/)?([^'`"]+?)(?:\/index)?['`"]/g,
+			// Design system .vue file imports: import Component from '@n8n/design-system/components/Component/Component.vue'
+			/import\s+(\w+)\s+from\s+['`"](@n8n\/design-system\/[^'`"]+\.vue)['`"]/g,
+		];
+
+		importPatterns.forEach((pattern, patternIndex) => {
+			let match;
+			while ((match = pattern.exec(content)) !== null) {
+				let importPath, componentNames, importType;
+				
+				// Handle different pattern types
+				if (patternIndex === 4) {
+					// Design system destructured imports: { N8nButton, N8nText }
+					importPath = '@n8n/design-system';
+					componentNames = match[1]
+						.split(',')
+						.map(c => c.trim())
+						.filter(c => c && !c.includes('type ') && /^[A-Z]/.test(c)); // Only components starting with capital letter, exclude types
+				} else if (patternIndex === 5) {
+					// Design system default imports from component paths
+					importPath = `@n8n/design-system/components/${match[2]}`;
+					componentNames = [match[1]];
+				} else if (patternIndex === 6) {
+					// Design system .vue file imports
+					importPath = match[2];
+					componentNames = [match[1]];
+				} else {
+					// Regular patterns
+					importPath = match[2];
+					if (match[1].includes(',') || match[1].includes('{')) {
+						// Handle destructured imports
+						componentNames = match[1]
+							.replace(/[{}]/g, '')
+							.split(',')
+							.map((c) => c.trim())
+							.filter((c) => c);
+					} else {
+						componentNames = [match[1]];
+					}
+				}
+
+				importType = this.categorizeImport(importPath);
+
+				// Only process Vue component imports
+				if (importType !== 'ignored') {
+					componentNames.forEach((componentName) => {
+						imports.push({
+							name: componentName,
+							path: this.normalizePath(importPath),
+							type: importType,
+							originalPath: importPath,
+							source: 'import'
+						});
+					});
+				}
+			}
+		});
+
+		return imports;
+	}
+
+	/**
+	 * Extract component usage from template section
+	 */
+	extractTemplateComponents(content, explicitImports) {
+		const templateComponents = [];
+		const explicitComponentNames = new Set(explicitImports.map(imp => imp.name));
+
+		// Extract template section
+		const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/);
+		if (!templateMatch) return templateComponents;
+
+		const templateContent = templateMatch[1];
+
+		// Common n8n design system components (check both PascalCase and hyphenated)
+		const designSystemComponents = [
+			'N8nActionBox', 'N8nActionDropdown', 'N8nActionToggle', 'N8nAlert', 'N8nAvatar',
+			'N8nBadge', 'N8nButton', 'N8nButtonGroup', 'N8nCallout', 'N8nCard', 'N8nCheckbox',
+			'N8nColorPicker', 'N8nDatatable', 'N8nDatePicker', 'N8nFormBox', 'N8nFormInput',
+			'N8nFormInputs', 'N8nHeading', 'N8nIcon', 'N8nIconButton', 'N8nInfoAccordion',
+			'N8nInfoTip', 'N8nInput', 'N8nInputLabel', 'N8nInputNumber', 'N8nInlineTextEdit',
+			'N8nKeyboardShortcut', 'N8nLink', 'N8nLoading', 'N8nMarkdown', 'N8nMenu', 'N8nMenuItem',
+			'N8nNotice', 'N8nOption', 'N8nPagination', 'N8nPopover', 'N8nPulse', 'N8nRadioButtons',
+			'N8nRecycleScroller', 'N8nSelect', 'N8nSpinner', 'N8nSticky', 'N8nTabs', 'N8nTag',
+			'N8nTags', 'N8nText', 'N8nTextarea', 'N8nTooltip', 'N8nTree', 'N8nUserInfo',
+			'N8nUserSelect', 'N8nUsersList'
+		];
+
+		// Create mapping of hyphenated to PascalCase
+		const hyphenatedToPascalCase = {};
+		designSystemComponents.forEach(component => {
+			const hyphenated = component.replace(/([A-Z])/g, (match, letter, index) => {
+				return index === 0 ? letter.toLowerCase() : '-' + letter.toLowerCase();
+			});
+			hyphenatedToPascalCase[hyphenated] = component;
+		});
+
+		// Check for PascalCase components (self-closing and with content)
+		designSystemComponents.forEach(componentName => {
+			if (explicitComponentNames.has(componentName)) return; // Skip if explicitly imported
+
+			const patterns = [
+				new RegExp(`<${componentName}(?:\\s[^>]*)?\\/?>`, 'g'),
+				new RegExp(`<\\/${componentName}>`, 'g')
+			];
+
+			patterns.forEach(pattern => {
+				if (pattern.test(templateContent)) {
+					templateComponents.push({
+						name: componentName,
+						path: '@n8n/design-system',
+						type: 'design-system',
+						originalPath: '@n8n/design-system',
+						source: 'template'
+					});
+				}
+			});
+		});
+
+		// Check for hyphenated components
+		Object.entries(hyphenatedToPascalCase).forEach(([hyphenated, pascalCase]) => {
+			if (explicitComponentNames.has(pascalCase)) return; // Skip if explicitly imported
+			if (templateComponents.some(tc => tc.name === pascalCase)) return; // Skip if already found
+
+			const patterns = [
+				new RegExp(`<${hyphenated}(?:\\s[^>]*)?\\/?>`, 'g'),
+				new RegExp(`<\\/${hyphenated}>`, 'g')
+			];
+
+			patterns.forEach(pattern => {
+				if (pattern.test(templateContent)) {
+					templateComponents.push({
+						name: pascalCase,
+						path: '@n8n/design-system',
+						type: 'design-system',
+						originalPath: '@n8n/design-system',
+						source: 'template'
+					});
+				}
+			});
+		});
+
+		// Remove duplicates
+		const uniqueComponents = [];
+		const seen = new Set();
+		
+		templateComponents.forEach(comp => {
+			const key = `${comp.name}|${comp.originalPath}`;
+			if (!seen.has(key)) {
+				seen.add(key);
+				uniqueComponents.push(comp);
+			}
+		});
+
+		return uniqueComponents;
 	}
 
 	/**
