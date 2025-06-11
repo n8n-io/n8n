@@ -305,3 +305,33 @@ export function prepareCommunityNodeDetailsViewStack(
 		communityNodeDetails,
 	};
 }
+
+export function getRootSearchCallouts(
+	search: string,
+	{ isRagStarterWorkflowExperimentEnabled = false },
+) {
+	const results: INodeCreateElement[] = [];
+
+	const ragKeywords = ['rag', 'vector', 'know'];
+	if (
+		isRagStarterWorkflowExperimentEnabled &&
+		ragKeywords.some((x) => search.toLowerCase().startsWith(x))
+	) {
+		results.push({
+			key: 'rag_starter_template',
+			type: 'openTemplate',
+			properties: {
+				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+				icon: 'database',
+				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+				key: 'rag_starter_template',
+				templateId: 'rag',
+				tag: {
+					type: 'info',
+					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				},
+			},
+		});
+	}
+	return results;
+}

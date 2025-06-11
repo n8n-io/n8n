@@ -797,6 +797,16 @@ export interface LinkItemProps {
 	icon: string;
 	tag?: NodeCreatorTag;
 }
+
+export interface OpenTemplateItemProps {
+	key: string;
+	title: string;
+	description: string;
+	icon: string;
+	templateId: 'rag';
+	tag?: NodeCreatorTag;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -859,6 +869,11 @@ export interface LinkCreateElement extends CreateElementBase {
 	properties: LinkItemProps;
 }
 
+export interface OpenTemplateElement extends CreateElementBase {
+	type: 'openTemplate';
+	properties: OpenTemplateItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -873,7 +888,8 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
-	| LinkCreateElement;
+	| LinkCreateElement
+	| OpenTemplateElement;
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];

@@ -1247,6 +1247,8 @@
 	"nodeCreator.noResults.wantUsToMakeItFaster": "Want us to make it faster?",
 	"nodeCreator.noResults.weDidntMakeThatYet": "We didn't make that... yet",
 	"nodeCreator.noResults.webhook": "Webhook",
+	"nodeCreator.ragStarterTemplate.openTemplateItem.title": "RAG starter template",
+	"nodeCreator.ragStarterTemplate.openTemplateItem.description": "Get a feel for vector stores in n8n",
 	"nodeCreator.searchBar.searchNodes": "Search nodes...",
 	"nodeCreator.subcategoryDescriptions.appTriggerNodes": "Runs the flow when something happens in an app like Telegram, Notion or Airtable",
 	"nodeCreator.subcategoryDescriptions.appRegularNodes": "Do something in an app or service like Google Sheets, Telegram or Notion",
