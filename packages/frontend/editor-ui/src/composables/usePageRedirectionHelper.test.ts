@@ -5,7 +5,7 @@ import { usePageRedirectionHelper } from './usePageRedirectionHelper';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/stores/users.store';
 import { createPinia, setActivePinia } from 'pinia';
-import * as cloudPlanApi from '@/api/cloudPlans';
+import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 
