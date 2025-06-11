@@ -7,7 +7,7 @@ export async function load(moduleNames: string[]) {
 		try {
 			await import(`../../../src/modules/${moduleName}/${moduleName}.module`);
 		} catch {
-			await import(`../../../src/modules/${moduleName}.ee/${moduleName}.ee.module`);
+			await import(`../../../src/modules/${moduleName}.ee/${moduleName}.module.ee`);
 		}
 	}
 
