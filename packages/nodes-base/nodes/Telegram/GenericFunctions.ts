@@ -87,7 +87,7 @@ export function addAdditionalFields(
 			additionalFields.appendAttribution = true;
 		}
 
-		if (!additionalFields.parse_mode) {
+		if (additionalFields.parse_mode === undefined) {
 			additionalFields.parse_mode = 'Markdown';
 		}
 
@@ -103,6 +103,9 @@ export function addAdditionalFields(
 				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
 			} else if (additionalFields.parse_mode === 'HTML') {
 				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+			} else {
+				// For empty string parse_mode or other values, append plain text
+				body.text = `${body.text}\n\n${attributionText}n8n (${link})`;
 			}
 		}
 
@@ -118,6 +121,11 @@ export function addAdditionalFields(
 	}
 
 	Object.assign(body, additionalFields);
+
+	// Remove parse_mode if it's empty string to let Telegram use no parsing
+	if (body.parse_mode === '') {
+		delete body.parse_mode;
+	}
 
 	// Add the reply markup
 	let replyMarkupOption = '';
