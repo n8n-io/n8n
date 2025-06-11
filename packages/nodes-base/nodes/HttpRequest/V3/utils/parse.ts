@@ -5,9 +5,5 @@ export const mimeTypeFromResponse = (
 		return undefined;
 	}
 
-	// TODO Test:
-	// 'image/png'
-	// 'text/html; charset=utf-8'
-	// 'multipart/form-data; boundary=ExampleBoundaryString'
 	return responseContentType.split(' ')[0].split(';')[0];
 };

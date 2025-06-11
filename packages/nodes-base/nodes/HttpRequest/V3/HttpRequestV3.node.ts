@@ -255,7 +255,7 @@ export class HttpRequestV3 implements INodeType {
 					lowercaseHeaders: boolean;
 				};
 
-				responseFileName = response.response?.outputPropertyName;
+				responseFileName = response?.response?.outputPropertyName;
 
 				const url = this.getNodeParameter('url', itemIndex) as string;
 
