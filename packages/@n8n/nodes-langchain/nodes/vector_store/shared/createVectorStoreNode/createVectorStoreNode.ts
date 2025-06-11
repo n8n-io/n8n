@@ -32,12 +32,10 @@ const ragStarterCallout: INodeProperties = {
 	name: 'ragStarterCallout',
 	type: 'callout',
 	typeOptions: {
-		actions: [
-			{
-				label: 'RAG starter template',
-				type: 'openRagStarterTemplate',
-			},
-		],
+		calloutAction: {
+			label: 'RAG starter template',
+			type: 'openRagStarterTemplate',
+		},
 	},
 	default: '',
 };

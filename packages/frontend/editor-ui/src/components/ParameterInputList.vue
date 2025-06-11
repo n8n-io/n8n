@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-	CalloutAction,
+	CalloutActionType,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -556,7 +556,7 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 	return true;
 }
 
-async function onCalloutAction(action: CalloutAction) {
+async function onCalloutAction(action: CalloutActionType) {
 	if (action === 'openRagStarterTemplate') {
 		await openRagStarterTemplate();
 	}
@@ -615,17 +615,15 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 						size="small"
 					></N8nText>
 
-					<template #actions>
+					<template v-if="parameter.typeOptions?.calloutAction" #actions>
 						<N8nLink
-							v-for="action in parameter.typeOptions?.actions"
-							:key="action.label"
 							theme="secondary"
 							size="small"
 							:bold="true"
 							:underline="true"
-							@click="onCalloutAction(action.type)"
+							@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
 						>
-							{{ action.label }}
+							{{ parameter.typeOptions.calloutAction.label }}
 						</N8nLink>
 					</template>
 

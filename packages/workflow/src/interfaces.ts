@@ -1285,9 +1285,9 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
-export type CalloutAction = 'openRagStarterTemplate';
-export interface CalloutTypeOptions {
-	type: CalloutAction;
+export type CalloutActionType = 'openRagStarterTemplate';
+export interface CalloutAction {
+	type: CalloutActionType;
 	label: string;
 }
 
@@ -1323,7 +1323,7 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
-	actions?: CalloutTypeOptions[]; // Supported by: callout
+	calloutAction?: CalloutAction; // Supported by: callout
 	[key: string]: any;
 }
 
