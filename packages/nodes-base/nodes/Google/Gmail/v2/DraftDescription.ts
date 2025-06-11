@@ -67,6 +67,14 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
+		displayName:
+			'If you would like to reply to an existing thread, specify the same subject title as the thread you want to reply to here.',
+		name: 'threadNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {},
+	},
+	{
 		displayName: 'Email Type',
 		name: 'emailType',
 		type: 'options',
