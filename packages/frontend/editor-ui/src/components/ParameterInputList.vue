@@ -492,11 +492,13 @@ const openRagStarterTemplate = async () => {
 
 	const template = getRagStarterWorkflowJson();
 
-	await router.push({
+	const { href } = router.resolve({
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: template.meta.templateId },
 		query: { fromJson: 'true', parentFolderId: route.params.folderId },
 	});
+
+	window.open(href, '_blank');
 };
 
 function getParameterIssues(parameter: INodeProperties): string[] {
