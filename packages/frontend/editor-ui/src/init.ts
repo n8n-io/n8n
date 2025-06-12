@@ -36,16 +36,15 @@ export async function initializeCore() {
 
 	await settingsStore.initialize();
 
-	if (settingsStore.settings.sso)
-		ssoStore.initialize({
-			authenticationMethod: settingsStore.userManagement
-				.authenticationMethod as UserManagementAuthenticationMethod,
-			config: settingsStore.settings.sso,
-			features: {
-				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
-				ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
-			},
-		});
+	ssoStore.initialize({
+		authenticationMethod: settingsStore.userManagement
+			.authenticationMethod as UserManagementAuthenticationMethod,
+		config: settingsStore.settings.sso,
+		features: {
+			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+		},
+	});
 
 	void useExternalHooks().run('app.mount');
 
