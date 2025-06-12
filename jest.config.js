@@ -20,7 +20,7 @@ const config = {
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
-		'^.+\\.ts$': ['ts-jest', tsJestOptions],
+		'^.+\\.(t|j)s$': ['ts-jest', tsJestOptions],
 		'node_modules/pdfjs-dist/.+\\.mjs$': [
 			'babel-jest',
 			{
@@ -29,7 +29,10 @@ const config = {
 			},
 		],
 	},
-	transformIgnorePatterns: ['/dist/', '/node_modules/(?!.*pdfjs-dist/)'],
+	transformIgnorePatterns: [
+		'/dist/',
+		'/node_modules/(?!.*(pdfjs-dist|@sindresorhus/transliterate|escape-string-regexp)/)',
+	],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: compilerOptions?.paths
 		? pathsToModuleNameMapper(compilerOptions.paths, {
