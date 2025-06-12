@@ -96,7 +96,6 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
-export const N8N_IO_BASE_URL = 'https://api.n8n.io/api/';
 export const DOCS_DOMAIN = 'docs.n8n.io';
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
@@ -104,7 +103,6 @@ export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`
 export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
-export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
@@ -486,6 +484,7 @@ export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
 export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
+export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS =
 	'N8N_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS';
@@ -879,13 +878,6 @@ export const TEMPLATES_URLS = {
 		utm_medium: 'template_library',
 	},
 };
-
-export const ROLE = {
-	Owner: 'global:owner',
-	Member: 'global:member',
-	Admin: 'global:admin',
-	Default: 'default', // default user with no email when setting up instance
-} as const;
 
 export const INSECURE_CONNECTION_WARNING = `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">

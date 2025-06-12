@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ROLE, type Role } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { IFormInputs, IRole, IUser, ThemeOption } from '@/Interface';
+import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
-	ROLE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -90,7 +90,7 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<IRole, RoleContent>>(() => ({
+const roles = computed<Record<Role, RoleContent>>(() => ({
 	[ROLE.Default]: {
 		name: i18n.baseText('auth.roles.default'),
 		description: i18n.baseText('settings.personal.role.tooltip.default'),

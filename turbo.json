@@ -53,6 +53,13 @@
 		"lint:frontend": {
 			"dependsOn": [
 				"^build",
+				"@n8n/rest-api-client#lint",
+				"@n8n/api-types#lint",
+				"@n8n/constants#lint",
+				"@n8n/i18n#lint",
+				"@n8n/permissions#lint",
+				"@n8n/stores#lint",
+				"@n8n/utils#lint",
 				"@n8n/chat#lint",
 				"@n8n/codemirror-lang#lint",
 				"@n8n/storybook#lint",
@@ -94,6 +101,13 @@
 		},
 		"test:frontend": {
 			"dependsOn": [
+				"@n8n/rest-api-client#test",
+				"@n8n/api-types#test",
+				"@n8n/constants#test",
+				"@n8n/i18n#test",
+				"@n8n/permissions#test",
+				"@n8n/stores#test",
+				"@n8n/utils#test",
 				"@n8n/chat#test",
 				"@n8n/codemirror-lang#test",
 				"@n8n/composables#build",
