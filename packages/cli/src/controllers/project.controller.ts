@@ -204,9 +204,7 @@ export class ProjectController {
 		@Param('projectId') projectId: string,
 	) {
 		const { name, icon, relations, description } = payload;
-		// Check for non-nullish values to treat empty strings as valid updates
-		// eslint-disable-next-line eqeqeq
-		if (name != null || icon != null || description != null) {
+		if ([name, icon, description].some((data) => typeof data === 'string')) {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
 		if (relations) {
