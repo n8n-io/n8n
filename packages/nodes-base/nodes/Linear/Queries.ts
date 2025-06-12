@@ -219,8 +219,8 @@ export const query = {
 		}`;
 	},
 	addComment() {
-		return `mutation CommentCreate ($issueId: String!, $body: String!) {
-			commentCreate(input: {issueId: $issueId, body: $body}) {
+		return `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
 				success
 				comment {
 					id
