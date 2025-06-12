@@ -36,7 +36,6 @@ afterAll(async () => {
 describe('OIDC service', () => {
 	let oidcService: OidcService;
 	let userRepository: UserRepository;
-	let existingUser: User;
 	let createdUser: User;
 
 	beforeAll(async () => {
@@ -44,7 +43,7 @@ describe('OIDC service', () => {
 		userRepository = Container.get(UserRepository);
 		await oidcService.init();
 
-		existingUser = await createUser({
+		await createUser({
 			email: 'user1@example.com',
 		});
 	});

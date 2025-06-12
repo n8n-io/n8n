@@ -228,12 +228,6 @@ export class OidcService {
 		}
 	}
 
-	private async deleteAllOidcIdentities() {
-		await this.authIdentityRepository.delete({
-			providerType: 'oidc',
-		});
-	}
-
 	private cachedOidcConfiguration:
 		| Promise<{
 				configuration: client.Configuration;
