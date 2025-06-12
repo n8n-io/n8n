@@ -492,4 +492,22 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region runner
+
+	'runner-task-requested': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	'runner-response-received': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	// #endregion
 } & AiEventMap;
