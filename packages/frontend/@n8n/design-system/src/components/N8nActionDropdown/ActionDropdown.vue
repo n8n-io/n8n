@@ -10,9 +10,10 @@ import { ref, useCssModule, useAttrs, computed } from 'vue';
 
 import type { IconSize } from '@n8n/design-system/types/icon';
 
-import type { ActionDropdownItem } from '../../types';
+import type { ActionDropdownItem, ButtonSize } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
@@ -21,7 +22,7 @@ interface ActionDropdownProps {
 	items: ActionDropdownItem[];
 	placement?: Placement;
 	activatorIcon?: IconName;
-	activatorSize?: IconSize;
+	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
@@ -97,7 +98,7 @@ defineExpose({ open, close });
 			@visible-change="onVisibleChange"
 		>
 			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
+			<N8nIconButton
 				v-else
 				type="tertiary"
 				text
