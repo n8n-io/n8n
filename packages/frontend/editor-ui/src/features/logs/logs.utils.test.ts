@@ -1047,42 +1047,39 @@ describe(createLogTree, () => {
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
 
-	it.todo(
-		'should not include duplicate sub node log when the node belongs to multiple root nodes with no run data',
-		() => {
-			const taskData = createTestTaskData({
-				source: [{ previousNode: 'PartialExecutionToolExecutor' }],
-			});
-			const logs = createLogTree(
-				createTestWorkflowObject({
-					nodes: [
-						{ ...aiAgentNode, name: 'Agent A' },
-						{ ...aiAgentNode, name: 'Agent B' },
-						aiModelNode,
-					],
-					connections: {
-						[aiModelNode.name]: {
-							[NodeConnectionTypes.AiLanguageModel]: [
-								[
-									{ node: 'Agent A', index: 0, type: NodeConnectionTypes.AiLanguageModel },
-									{ node: 'Agent B', index: 0, type: NodeConnectionTypes.AiLanguageModel },
-								],
+	it('should not include duplicate sub node log when the node belongs to multiple root nodes with no run data', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				nodes: [
+					{ ...aiAgentNode, name: 'Agent A' },
+					{ ...aiAgentNode, name: 'Agent B' },
+					aiModelNode,
+				],
+				connections: {
+					[aiModelNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[
+								{ node: 'Agent A', index: 0, type: NodeConnectionTypes.AiLanguageModel },
+								{ node: 'Agent B', index: 0, type: NodeConnectionTypes.AiLanguageModel },
 							],
-						},
+						],
 					},
-				}),
-				createTestWorkflowExecutionResponse({
-					data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
-				}),
-			);
+				},
+			}),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
 
-			expect(logs).toHaveLength(1);
-			expect(logs[0].node.name).toBe('Agent A');
-			expect(logs[0].runData).toBe(undefined);
-			expect(logs[0].children).toHaveLength(1);
-			expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
-		},
-	);
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe('Agent B');
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
 });
 
 describe(deepToRaw, () => {

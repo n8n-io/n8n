@@ -213,34 +213,50 @@ export function createLogTree(
 }
 
 function createLogTreeRec(context: LogTreeCreationContext) {
-	return Object.values(context.workflow.nodes)
+	const runData = context.data.resultData.runData;
+
+	return Object.entries(runData)
 		.flatMap<{
 			node: INode;
-			runData?: ITaskData;
+			task?: ITaskData;
 			runIndex?: number;
 			nodeHasMultipleRuns: boolean;
-		}>((node) => {
-			const nodeName = node.name;
-			const taskData = context.data.resultData.runData[nodeName] ?? [];
+		}>(([nodeName, taskData]) => {
+			const node = context.workflow.getNode(nodeName);
 
-			if (context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-				// skip sub nodes
+			if (node === null) {
 				return [];
 			}
 
-			if (taskData.length === 0) {
-				return [{ node, nodeHasMultipleRuns: false }];
+			const childNodes = context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN');
+
+			if (childNodes.length === 0) {
+				// The node is root node
+				return taskData.map((task, runIndex) => ({
+					node,
+					task,
+					runIndex,
+					nodeHasMultipleRuns: taskData.length > 1,
+				}));
 			}
 
-			return taskData.map((task, runIndex) => ({
-				node,
-				runData: task,
-				runIndex,
-				nodeHasMultipleRuns: taskData.length > 1,
-			}));
+			// The node is sub node
+			if (childNodes.some((child) => (runData[child] ?? []).length > 0)) {
+				return [];
+			}
+
+			// The sub node has data but its children don't: this can happen for partial execution of tools.
+			// In this case, we insert first child as placeholder so that the node is included in the tree.
+			const firstChild = context.workflow.getNode(childNodes[0]);
+
+			if (firstChild === null) {
+				return [];
+			}
+
+			return [{ node: firstChild, nodeHasMultipleRuns: false }];
 		})
-		.flatMap(({ node, runIndex, runData, nodeHasMultipleRuns }) =>
-			getTreeNodeData(node, runData, nodeHasMultipleRuns ? runIndex : undefined, context),
+		.flatMap(({ node, runIndex, task, nodeHasMultipleRuns }) =>
+			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
 }
