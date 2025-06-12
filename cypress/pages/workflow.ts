@@ -217,7 +217,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
-						cy.get('[data-keyboard-nav-type="action"]').contains(action).click();
+						cy.contains(action).click();
 					} else {
 						// Select the first action
 						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
