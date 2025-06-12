@@ -13,12 +13,6 @@ export const issueOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Comment',
-				value: 'addComment',
-				description: 'Add a comment to an issue',
-				action: 'Add a comment to an issue',
-			},
-			{
 				name: 'Add Link',
 				value: 'addLink',
 				description: 'Add a link to an issue',
@@ -176,7 +170,7 @@ export const issueFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['issue'],
-				operation: ['addComment', 'addLink', 'get', 'delete'],
+				operation: ['addLink', 'get', 'delete'],
 			},
 		},
 		default: '',
@@ -318,22 +312,6 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                         	issue:addComment                                  */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Comment',
-		name: 'comment',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['issue'],
-				operation: ['addComment'],
-			},
-		},
-		default: '',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                         	issue:addLink                                  */
