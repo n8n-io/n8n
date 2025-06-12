@@ -56,6 +56,14 @@ export class SSHClientsManager {
 			if (registration) {
 				registration.lastUsed = new Date();
 			}
+		} else {
+			const metadata = {};
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			Error.captureStackTrace(metadata, this.updateLastUsed);
+			this.logger.warn(
+				'Tried to update `lastUsed` for a client that has been cleaned up already. Probably forgot to subscribe to the AbortController somewhere.',
+				metadata,
+			);
 		}
 	}
 
