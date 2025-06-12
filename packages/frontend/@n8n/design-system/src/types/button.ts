@@ -1,5 +1,6 @@
 import { type IconSize } from './icon';
 import type { TextFloat } from './text';
+import type { IconName } from '../components/N8nIcon/icons';
 
 const BUTTON_ELEMENT = ['button', 'a'] as const;
 export type ButtonElement = (typeof BUTTON_ELEMENT)[number];
@@ -17,7 +18,7 @@ export interface IconButtonProps {
 	active?: boolean;
 	disabled?: boolean;
 	float?: TextFloat;
-	icon?: string | string[];
+	icon?: IconName;
 	loading?: boolean;
 	outline?: boolean;
 	size?: ButtonSize;

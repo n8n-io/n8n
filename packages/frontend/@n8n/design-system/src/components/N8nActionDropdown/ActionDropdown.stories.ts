@@ -67,7 +67,7 @@ customStyling.args = {
 		{
 			id: 'item3',
 			label: 'Action 3',
-			icon: 'heart',
+			icon: 'home',
 			divided: true,
 		},
 	],

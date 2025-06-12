@@ -79,9 +79,9 @@ const isItemActive = (item: IMenuItem): boolean => {
 		>
 			<template #title>
 				<N8nIcon
-					v-if="item.icon"
+					v-if="typeof item.icon === 'string' || item.icon?.type === 'icon'"
 					:class="$style.icon"
-					:icon="item.icon"
+					:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
 					:size="item.customIconSize || 'large'"
 				/>
 				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>

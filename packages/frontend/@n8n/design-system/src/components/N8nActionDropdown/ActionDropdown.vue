@@ -12,6 +12,7 @@ import type { IconSize } from '@n8n/design-system/types/icon';
 
 import type { ActionDropdownItem } from '../../types';
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
@@ -19,7 +20,7 @@ const TRIGGER = ['click', 'hover'] as const;
 interface ActionDropdownProps {
 	items: ActionDropdownItem[];
 	placement?: Placement;
-	activatorIcon?: string;
+	activatorIcon?: IconName;
 	activatorSize?: IconSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];

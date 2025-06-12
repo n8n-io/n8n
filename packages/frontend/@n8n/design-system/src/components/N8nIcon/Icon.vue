@@ -1,22 +1,9 @@
 <script lang="ts" setup>
-/* eslint-disable import/extensions, import/no-unresolved */
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
+import type { IconName } from './icons';
+import { icons } from './icons';
 import N8nText from '../N8nText';
-
-import IconLucideHouse from '~icons/lucide/house';
-import IconLucidePlus from '~icons/lucide/plus';
-import IconLucideShare from '~icons/lucide/share';
-import IconLucideUserRound from '~icons/lucide/user-round';
-
-const icons = {
-	home: IconLucideHouse,
-	plus: IconLucidePlus,
-	user: IconLucideUserRound,
-	share: IconLucideShare,
-} as const;
-
-export type IconName = keyof typeof icons;
 
 interface IconProps {
 	icon: IconName;
@@ -27,15 +14,17 @@ interface IconProps {
 
 defineOptions({ name: 'N8nIcon' });
 
-const props = withDefaults(defineProps<IconProps>(), {
+withDefaults(defineProps<IconProps>(), {
+	// todo fix sizes
 	size: 'medium',
+	// todo fix spin
 	spin: false,
 });
 </script>
 
 <template>
-	<N8nText class="n8n-icon" :size="size" :color="color" :compact="true">
-		<Component v-if="icons[icon]" :is="icons[icon]" :spin="spin" />
+	<N8nText class="n8n-icon" :size="size" :color="color" :compact="true" :class="$style[size]">
+		<Component :is="icons[icon]" v-if="icons[icon]" :spin="spin" />
 		<span v-else>[{{ icon }}]</span>
 	</N8nText>
 </template>
@@ -45,5 +34,23 @@ const props = withDefaults(defineProps<IconProps>(), {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
+}
+</style>
+
+<style lang="scss" module>
+.xlarge {
+	width: var(--font-size-xl) !important;
+}
+.large {
+	width: var(--font-size-m) !important;
+}
+.medium {
+	width: var(--font-size-s) !important;
+}
+.small {
+	width: var(--font-size-2xs) !important;
+}
+.xsmall {
+	width: var(--font-size-3xs) !important;
 }
 </style>
