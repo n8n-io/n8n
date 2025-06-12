@@ -115,7 +115,7 @@ export class LmChatOpenRouter implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'openai/gpt-4o-mini',
+				default: 'openai/gpt-4.1-mini',
 			},
 			{
 				displayName: 'Options',

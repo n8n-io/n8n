@@ -1,7 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';

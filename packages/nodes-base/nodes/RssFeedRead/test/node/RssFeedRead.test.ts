@@ -7,6 +7,9 @@ const feed = `<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.o
 describe('Test RSS Feed Trigger Node', () => {
 	beforeAll(() => {
 		nock('https://lorem-rss.herokuapp.com').get('/feed?length=3').reply(200, feed);
+		nock('https://fake-rss-feed.com')
+			.get('/feed')
+			.reply(200, feed, { 'Content-Type': 'application/xml; charset=utf-8' });
 	});
 
 	new NodeTestHarness().setupTests();

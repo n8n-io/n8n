@@ -1,4 +1,4 @@
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/utils/mappingUtils';
@@ -6,7 +6,7 @@ import { isObject } from '@/utils/objectUtils';
 import { isObj } from '@/utils/typeGuards';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import {
 	type IDataObject,
 	type INodeExecutionData,

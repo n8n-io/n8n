@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import {
 	NodeOperationError,
 	type IExecuteFunctions,

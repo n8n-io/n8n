@@ -14,6 +14,7 @@ export * from './execution-status';
 export * from './expression';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
 export * from './workflow-data-proxy';
@@ -26,6 +27,7 @@ export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
+	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
@@ -50,6 +52,13 @@ export {
 	isFilterValue,
 } from './type-guards';
 
+export {
+	parseExtractableSubgraphSelection,
+	buildAdjacencyList,
+	type ExtractableErrorResult,
+	type ExtractableSubgraphData,
+	type IConnectionAdjacencyList as AdjacencyList,
+} from './graph/graph-utils';
 export { ExpressionExtensions } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';

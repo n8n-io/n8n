@@ -86,6 +86,8 @@ declare global {
 			>;
 			resetDatabase(): void;
 			setAppDate(targetDate: number | Date): void;
+			interceptNewTab(): Chainable<void>;
+			visitInterceptedTab(): Chainable<void>;
 		}
 	}
 }

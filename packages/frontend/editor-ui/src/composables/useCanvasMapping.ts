@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
@@ -305,7 +305,7 @@ export function useCanvasMapping({
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
-						.nodeText()
+						.nodeText(nodeTypeDescription.name)
 						.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 				} else {
 					acc[node.id] = i18n.baseText('node.waitingForYouToCreateAnEventIn', {
@@ -323,6 +323,17 @@ export function useCanvasMapping({
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
+			return acc;
+		}, {}),
+	);
+
+	const nodeExecutionWaitingForNextById = computed(() =>
+		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
+			acc[node.id] =
+				node.name === workflowsStore.lastAddedExecutingNode &&
+				workflowsStore.executingNode.length === 0 &&
+				workflowsStore.isWorkflowRunning;
+
 			return acc;
 		}, {}),
 	);
@@ -589,6 +600,7 @@ export function useCanvasMapping({
 				execution: {
 					status: nodeExecutionStatusById.value[node.id],
 					waiting: nodeExecutionWaitingById.value[node.id],
+					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
 					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
@@ -704,6 +716,7 @@ export function useCanvasMapping({
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
+		nodeExecutionWaitingForNextById,
 		nodeIssuesById,
 		nodeHasIssuesById,
 		connections: mappedConnections,

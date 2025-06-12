@@ -14,13 +14,13 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
-import { useI18n } from '@/composables/useI18n';
 import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nTooltip } from '@n8n/design-system';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
+import { useI18n } from '@n8n/i18n';
 import { isNodePreviewKey, removePreviewToken } from '../utils';
 
 export interface Props {
@@ -124,6 +124,16 @@ const author = computed(() => {
 	return communityNodeType.value?.displayName ?? displayName.value;
 });
 
+const tag = computed(() => {
+	if (props.nodeType.tag) {
+		return { text: props.nodeType.tag };
+	}
+	if (description.value.toLowerCase().includes('deprecated')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
+	}
+	return undefined;
+});
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -163,7 +173,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:is-trigger="isTrigger"
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
-		:tag="nodeType.tag"
+		:tag="tag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>

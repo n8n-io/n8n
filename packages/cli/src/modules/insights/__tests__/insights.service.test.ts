@@ -5,8 +5,10 @@ import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
 import { mockLogger } from '@test/mocking';
@@ -45,6 +47,84 @@ beforeEach(async () => {
 // Terminate DB once after all tests complete
 afterAll(async () => {
 	await testDb.terminate();
+});
+
+describe('startTimers', () => {
+	let insightsService: InsightsService;
+	let compactionService: InsightsCompactionService;
+	let collectionService: InsightsCollectionService;
+	let pruningService: InsightsPruningService;
+	let instanceSettings: MockProxy<InstanceSettings>;
+
+	beforeEach(() => {
+		compactionService = mock<InsightsCompactionService>();
+		collectionService = mock<InsightsCollectionService>();
+		pruningService = mock<InsightsPruningService>();
+		instanceSettings = mock<InstanceSettings>({
+			instanceType: 'main',
+		});
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			compactionService,
+			collectionService,
+			pruningService,
+			mock<LicenseState>(),
+			instanceSettings,
+			mockLogger(),
+		);
+
+		jest.clearAllMocks();
+	});
+
+	const setupMocks = (
+		instanceType: string,
+		isLeader: boolean = false,
+		isPruningEnabled: boolean = false,
+	) => {
+		(instanceSettings as any).instanceType = instanceType;
+		Object.defineProperty(instanceSettings, 'isLeader', {
+			get: jest.fn(() => isLeader),
+		});
+		Object.defineProperty(pruningService, 'isPruningEnabled', {
+			get: jest.fn(() => isPruningEnabled),
+		});
+	};
+
+	test('starts flushing timer for main instance', () => {
+		setupMocks('main', false, false);
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('starts compaction and flushing timers for main leader instances', () => {
+		setupMocks('main', true, false);
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', () => {
+		setupMocks('main', true, true);
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).toHaveBeenCalled();
+	});
+
+	test('starts only collection flushing timer for webhook instance', () => {
+		setupMocks('webhook', false, false);
+		insightsService.startTimers();
+
+		expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+		expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
 });
 
 describe('getInsightsSummary', () => {
@@ -512,6 +592,7 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -614,6 +695,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -702,6 +784,7 @@ describe('shutdown', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
+			mock<InstanceSettings>(),
 			mockLogger(),
 		);
 	});
@@ -713,74 +796,6 @@ describe('shutdown', () => {
 		// ASSERT
 		expect(mockCollectionService.shutdown).toHaveBeenCalled();
 		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-	});
-});
-
-describe('timers', () => {
-	let insightsService: InsightsService;
-
-	const mockCollectionService = mock<InsightsCollectionService>({
-		startFlushingTimer: jest.fn(),
-		stopFlushingTimer: jest.fn(),
-	});
-
-	const mockCompactionService = mock<InsightsCompactionService>({
-		startCompactionTimer: jest.fn(),
-		stopCompactionTimer: jest.fn(),
-	});
-
-	const mockPruningService = mock<InsightsPruningService>({
-		startPruningTimer: jest.fn(),
-		stopPruningTimer: jest.fn(),
-		isPruningEnabled: false,
-	});
-
-	const mockedLogger = mockLogger();
-	const mockedConfig = mock<InsightsConfig>({
-		maxAgeDays: -1,
-	});
-
-	beforeAll(() => {
-		insightsService = new InsightsService(
-			mock<InsightsByPeriodRepository>(),
-			mockCompactionService,
-			mockCollectionService,
-			mockPruningService,
-			mock<LicenseState>(),
-			mockedLogger,
-		);
-	});
-
-	test('startTimers starts timers except pruning', () => {
-		// ACT
-		insightsService.startTimers();
-
-		// ASSERT
-		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
-		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
-		expect(mockPruningService.startPruningTimer).not.toHaveBeenCalled();
-	});
-
-	test('startTimers starts pruning timer', () => {
-		// ARRANGE
-		mockedConfig.maxAgeDays = 30;
-		Object.defineProperty(mockPruningService, 'isPruningEnabled', { value: true });
-
-		// ACT
-		insightsService.startTimers();
-
-		// ASSERT
-		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
-	});
-
-	test('stopTimers stops timers', () => {
-		// ACT
-		insightsService.stopTimers();
-
-		// ASSERT
-		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 	});
 });

@@ -927,4 +927,38 @@ export class Workflow {
 
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
+
+	getConnectionsBetweenNodes(
+		sources: string[],
+		targets: string[],
+	): Array<[IConnection, IConnection]> {
+		const result: Array<[IConnection, IConnection]> = [];
+
+		for (const source of sources) {
+			for (const type of Object.keys(this.connectionsBySourceNode[source] ?? {})) {
+				for (const sourceIndex of Object.keys(this.connectionsBySourceNode[source][type])) {
+					for (const connectionIndex of Object.keys(
+						this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)] ?? [],
+					)) {
+						const targetConnectionData =
+							this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)]?.[
+								parseInt(connectionIndex, 10)
+							];
+						if (targetConnectionData && targets.includes(targetConnectionData?.node)) {
+							result.push([
+								{
+									node: source,
+									index: parseInt(sourceIndex, 10),
+									type: type as NodeConnectionType,
+								},
+								targetConnectionData,
+							]);
+						}
+					}
+				}
+			}
+		}
+
+		return result;
+	}
 }

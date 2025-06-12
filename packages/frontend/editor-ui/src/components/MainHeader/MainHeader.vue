@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
@@ -86,8 +86,15 @@ const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
+const isTelemetryEnabled = computed((): boolean => {
+	return settingsStore.isTelemetryEnabled;
+});
 const showGitHubButton = computed(
-	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
+	() =>
+		!isEnterprise.value &&
+		!settingsStore.settings.inE2ETests &&
+		!githubButtonHidden.value &&
+		isTelemetryEnabled.value,
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {

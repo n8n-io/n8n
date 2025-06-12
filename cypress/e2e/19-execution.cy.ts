@@ -483,7 +483,7 @@ describe('Execution', () => {
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
 
-			const expectedKeys = ['Start Manually', 'Edit Fields', 'Process The Data'];
+			const expectedKeys = ['Start on Schedule', 'Edit Fields', 'Process The Data'];
 
 			const { runData } = interception.request.body;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);

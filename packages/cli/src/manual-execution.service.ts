@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -5,7 +6,6 @@ import {
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
-	Logger,
 	isTool,
 	rewireGraph,
 } from 'n8n-core';
@@ -113,7 +113,8 @@ export class ManualExecutionService {
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||
-			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0))
+			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0)) ||
+			data.executionMode === 'evaluation'
 		) {
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
