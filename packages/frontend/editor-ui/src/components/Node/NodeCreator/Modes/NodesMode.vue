@@ -298,8 +298,8 @@ registerKeyHook('MainViewArrowLeft', {
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
-					@add-webhook-node="emit('nodeTypeSelected', { type: WEBHOOK_NODE_TYPE })"
-					@add-http-node="emit('nodeTypeSelected', { type: HTTP_REQUEST_NODE_TYPE })"
+					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
+					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>
 			</template>
 		</ItemsRenderer>
