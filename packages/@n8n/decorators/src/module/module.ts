@@ -24,7 +24,7 @@ export interface ModuleInterface {
 
 export type ModuleClass = Constructable<ModuleInterface>;
 
-export const Module = (): ClassDecorator => (target) => {
+export const BackendModule = (): ClassDecorator => (target) => {
 	Container.get(ModuleMetadata).register(target as unknown as ModuleClass);
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return

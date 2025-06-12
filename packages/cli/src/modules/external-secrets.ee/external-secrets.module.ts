@@ -1,8 +1,8 @@
 import type { ModuleInterface } from '@n8n/decorators';
-import { Module } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@Module()
+@BackendModule()
 export class ExternalSecretsModule implements ModuleInterface {
 	async init() {
 		await import('./external-secrets.controller.ee');

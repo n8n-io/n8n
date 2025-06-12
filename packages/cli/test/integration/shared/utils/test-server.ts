@@ -292,7 +292,7 @@ export const setupTestServer = ({
 						await import('@/controllers/folder.controller');
 
 					case 'externalSecrets':
-						await import('@/modules/external-secrets.ee/external-secrets.module.ee');
+						await import('@/modules/external-secrets.ee/external-secrets.module');
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');

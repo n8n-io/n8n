@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import { Module } from '../module';
+import { BackendModule } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
-describe('@Module decorator', () => {
+describe('@BackendModule decorator', () => {
 	let moduleMetadata: ModuleMetadata;
 
 	beforeEach(() => {
@@ -14,7 +14,7 @@ describe('@Module decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@Module()
+		@BackendModule()
 		class TestModule {
 			initialize() {}
 		}
@@ -26,17 +26,17 @@ describe('@Module decorator', () => {
 	});
 
 	it('should register multiple modules', () => {
-		@Module()
+		@BackendModule()
 		class FirstModule {
 			initialize() {}
 		}
 
-		@Module()
+		@BackendModule()
 		class SecondModule {
 			initialize() {}
 		}
 
-		@Module()
+		@BackendModule()
 		class ThirdModule {
 			initialize() {}
 		}
@@ -50,7 +50,7 @@ describe('@Module decorator', () => {
 	});
 
 	it('should work with modules without initialize method', () => {
-		@Module()
+		@BackendModule()
 		class TestModule {}
 
 		const registeredModules = Array.from(moduleMetadata.getModules());
@@ -62,7 +62,7 @@ describe('@Module decorator', () => {
 	it('should support async initialize method', async () => {
 		const mockInitialize = jest.fn();
 
-		@Module()
+		@BackendModule()
 		class TestModule {
 			async initialize() {
 				mockInitialize();
@@ -81,10 +81,10 @@ describe('@Module decorator', () => {
 
 	describe('ModuleMetadata', () => {
 		it('should allow retrieving and checking registered modules', () => {
-			@Module()
+			@BackendModule()
 			class FirstModule {}
 
-			@Module()
+			@BackendModule()
 			class SecondModule {}
 
 			const registeredModules = Array.from(moduleMetadata.getModules());
@@ -95,7 +95,7 @@ describe('@Module decorator', () => {
 	});
 
 	it('should apply Service decorator', () => {
-		@Module()
+		@BackendModule()
 		class TestModule {}
 
 		expect(Container.has(TestModule)).toBe(true);

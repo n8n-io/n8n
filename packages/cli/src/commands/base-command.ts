@@ -78,7 +78,7 @@ export abstract class BaseCommand extends Command {
 			try {
 				await import(`../modules/${moduleName}/${moduleName}.module`);
 			} catch {
-				await import(`../modules/${moduleName}/${moduleName.replace('.ee', '')}.module.ee`);
+				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
 			}
 
 			this.modulesConfig.addLoadedModule(moduleName);
