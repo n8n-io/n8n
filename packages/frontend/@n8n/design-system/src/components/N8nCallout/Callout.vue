@@ -93,7 +93,7 @@ const getIconSize = computed<IconSize>(() => {
 	}
 
 	a {
-		color: inherit;
+		color: var(--color-secondary-link);
 		font-weight: var(--font-weight-medium);
 		text-decoration-line: underline;
 		text-decoration-style: solid;

@@ -630,22 +630,25 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 					theme="secondary"
 				>
-					<N8nText
-						v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-						size="small"
-					></N8nText>
-
-					<template v-if="parameter.typeOptions?.calloutAction" #actions>
-						<N8nLink
-							theme="secondary"
+					<N8nText size="small">
+						<N8nText
 							size="small"
-							:bold="true"
-							:underline="true"
-							@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
-						>
-							{{ parameter.typeOptions.calloutAction.label }}
-						</N8nLink>
-					</template>
+							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+						/>
+						<template v-if="parameter.typeOptions?.calloutAction">
+							{{ ' ' }}
+							<N8nLink
+								v-if="parameter.typeOptions?.calloutAction"
+								theme="secondary"
+								size="small"
+								:bold="true"
+								:underline="true"
+								@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
+							>
+								{{ parameter.typeOptions.calloutAction.label }}
+							</N8nLink>
+						</template>
+					</N8nText>
 
 					<template #trailingContent>
 						<N8nIcon
