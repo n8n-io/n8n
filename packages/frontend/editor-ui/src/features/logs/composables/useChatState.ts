@@ -169,6 +169,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				`${rootStore.urlBaseEditor.replace(/\/$/, '')}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 			);
 			ws.value.onmessage = (event) => {
+				if (event.data === 'n8n|continue') {
+					setLoadingState(true);
+					return;
+				}
 				setLoadingState(false);
 				const newMessage: ChatMessage & { sessionId: string } = {
 					text: event.data,

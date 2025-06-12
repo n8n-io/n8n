@@ -17,6 +17,7 @@ export type Session = {
 	intervalId: NodeJS.Timeout;
 	waitingForResponse: boolean;
 	isPublic?: boolean;
+	isProcessing?: boolean;
 };
 
 export type ChatMessage = {

@@ -97,18 +97,29 @@ export class ChatService {
 
 	private outgoingMessageHandler(sessionKey: string) {
 		return async () => {
+			let session: Session | undefined;
 			try {
-				const session = this.sessions.get(sessionKey);
+				session = this.sessions.get(sessionKey);
 
 				if (!session) return;
+				if (session.isProcessing) {
+					return;
+				}
+				session.isProcessing = true;
 
 				const { connection, executionId, sessionId, waitingForResponse, isPublic } = session;
 
-				if (!executionId || !connection || waitingForResponse) return;
+				if (!executionId || !connection || waitingForResponse) {
+					session.isProcessing = false;
+					return;
+				}
 
 				const execution = await this.getExecution(executionId, sessionKey);
 
-				if (!execution) return;
+				if (!execution) {
+					session.isProcessing = false;
+					return;
+				}
 
 				if (execution.status === 'waiting') {
 					const message = getMessage(execution);
@@ -119,6 +130,7 @@ export class ChatService {
 						const lastNode = getLastNodeExecuted(execution);
 
 						if (lastNode && shouldResumeImmediately(lastNode)) {
+							connection.send('n8n|continue');
 							const data = { action: 'user', chatInput: '', sessionId };
 							await this.resumeExecution(executionId, data, sessionKey);
 							session.waitingForResponse = false;
@@ -126,6 +138,8 @@ export class ChatService {
 							session.waitingForResponse = true;
 						}
 					}
+
+					session.isProcessing = false;
 					return;
 				}
 
@@ -135,6 +149,7 @@ export class ChatService {
 
 					if (shouldNotReturnLastNodeResponse) {
 						closeConnection(connection);
+						session.isProcessing = false;
 						return;
 					}
 
@@ -144,9 +159,13 @@ export class ChatService {
 						closeConnection(connection);
 					});
 
+					session.isProcessing = false;
 					return;
 				}
+
+				session.isProcessing = false;
 			} catch (error) {
+				if (session) session.isProcessing = false;
 				this.logger.error(
 					`Error sending message to chat in session ${sessionKey}: ${(error as Error).message}`,
 				);

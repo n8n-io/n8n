@@ -151,6 +151,11 @@ function setupWebsocketConnection(executionId: string) {
 			`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}&executionId=${executionId}&isPublic=true`,
 		);
 		chatStore.ws.onmessage = (e) => {
+			if (e.data === 'n8n|continue') {
+				waitingForChatResponse.value = false;
+				chatStore.waitingForResponse.value = true;
+				return;
+			}
 			const newMessage: ChatMessage = {
 				id: uuidv4(),
 				text: e.data,
