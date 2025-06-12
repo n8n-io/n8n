@@ -3,7 +3,8 @@ import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } f
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
-import type { BaseTextKey, INodeTranslationHeaders } from './types';
+import chineseBaseText from './locales/zh.json';
+import type { BaseTextKey, INodeTranslationHeaders, LanguageOption } from './types';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -13,10 +14,16 @@ import {
 
 export * from './types';
 
+let defaultLanguage: LanguageOption =
+	(localStorage.getItem('n8n-language') as LanguageOption) ?? 'English';
+
 export const i18nInstance = createI18n({
-	locale: 'en',
-	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	locale: defaultLanguage == 'English' ? 'en' : 'zh',
+	fallbackLocale: defaultLanguage == 'English' ? 'en' : 'zh',
+	messages: {
+		en: englishBaseText,
+		zh: chineseBaseText,
+	},
 	warnHtmlInMessage: 'off',
 });
 
@@ -27,9 +34,21 @@ type BaseTextOptions = {
 
 export class I18nClass {
 	private baseTextCache = new Map<string, string>();
+	private updateKey = 0;
 
 	private get i18n() {
 		return i18nInstance.global;
+	}
+
+	// Add public method to clear cache
+	clearCache() {
+		this.baseTextCache.clear();
+		this.updateKey++; // Increment the key to force updates
+	}
+
+	// Add method to get current update key
+	getUpdateKey() {
+		return this.updateKey;
 	}
 
 	// ----------------------------------
@@ -367,22 +386,20 @@ export class I18nClass {
 
 const loadedLanguages = ['en'];
 
-async function setLanguage(language: string) {
-	i18nInstance.global.locale = language as 'en';
+async function changeLanguage(language: string) {
+	i18nInstance.global.locale = language as 'en' | 'zh';
 	document!.querySelector('html')!.setAttribute('lang', language);
+
+	i18n.clearCache();
+	i18nInstance.global.locale = language as 'en' | 'zh';
+
+	console.log('Language changed to:', language);
+	console.log('Current translations:', i18nInstance.global.messages[language as 'en' | 'zh']);
 
 	return language;
 }
 
 export async function loadLanguage(language: string) {
-	if (i18nInstance.global.locale === language) {
-		return await setLanguage(language);
-	}
-
-	if (loadedLanguages.includes(language)) {
-		return await setLanguage(language);
-	}
-
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
 
 	i18nInstance.global.setLocaleMessage(language, rest);
@@ -393,7 +410,7 @@ export async function loadLanguage(language: string) {
 
 	loadedLanguages.push(language);
 
-	return await setLanguage(language);
+	return await changeLanguage(language);
 }
 
 /**

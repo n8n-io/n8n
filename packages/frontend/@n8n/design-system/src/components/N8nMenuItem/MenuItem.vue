@@ -162,11 +162,11 @@ const isItemActive = (item: IMenuItem): boolean => {
 // Element menu-item overrides
 :global(.el-menu-item),
 :global(.el-sub-menu__title) {
-	--menu-font-color: var(--color-text-base);
-	--menu-item-active-background-color: var(--color-foreground-base);
-	--menu-item-active-font-color: var(--color-text-dark);
-	--menu-item-hover-fill: var(--color-foreground-base);
-	--menu-item-hover-font-color: var(--color-text-dark);
+	--menu-font-color: var(--color-text-dark);
+	--menu-item-active-background-color: transparent;
+	--menu-item-active-font-color: var(--color-text-active);
+	--menu-item-hover-fill: transparent;
+	--menu-item-hover-font-color: var(--color-text-active);
 	--menu-item-height: 35px;
 	--sub-menu-item-height: 27px;
 }
@@ -186,17 +186,30 @@ const isItemActive = (item: IMenuItem): boolean => {
 		border-radius: var(--border-radius-base) !important;
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
 		user-select: none;
+		position: relative;
 
 		i {
 			padding-top: 2px;
 			&:hover {
-				color: var(--color-primary);
+				color: var(--color-text-active);
 			}
 		}
 
 		&:hover {
+			background-color: transparent !important;
 			.icon {
-				color: var(--color-text-dark);
+				color: var(--color-text-active);
+			}
+
+			&::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 3px;
+				background-color: var(--color-text-active);
+				transition: all 0.5s ease;
 			}
 		}
 	}
@@ -209,8 +222,9 @@ const isItemActive = (item: IMenuItem): boolean => {
 		user-select: none;
 
 		&:hover {
+			background-color: transparent !important;
 			.icon {
-				color: var(--color-text-dark);
+				color: var(--color-text-active);
 			}
 		}
 	}
@@ -218,16 +232,17 @@ const isItemActive = (item: IMenuItem): boolean => {
 
 .disableActiveStyle {
 	background-color: initial !important;
-	color: var(--color-text-base) !important;
+	color: var(--color-text-dark) !important;
 
 	svg {
-		color: var(--color-text-base) !important;
+		color: var(--color-text-dark) !important;
 	}
 
 	&:hover {
-		background-color: var(--color-foreground-base) !important;
+		background-color: transparent !important;
+		color: var(--color-text-active) !important;
 		svg {
-			color: var(--color-text-dark) !important;
+			color: var(--color-text-active) !important;
 		}
 		&:global(.el-sub-menu) {
 			background-color: unset !important;
@@ -238,10 +253,22 @@ const isItemActive = (item: IMenuItem): boolean => {
 .active {
 	&,
 	& :global(.el-sub-menu__title) {
-		background-color: var(--color-foreground-base);
+		background-color: transparent !important;
 		border-radius: var(--border-radius-base);
+		color: var(--color-text-active) !important;
 		.icon {
-			color: var(--color-text-dark);
+			color: var(--color-text-active);
+		}
+
+		&::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			width: 3px;
+			background-color: var(--color-text-active);
+			transition: all 0.5s ease;
 		}
 	}
 }
@@ -252,10 +279,30 @@ const isItemActive = (item: IMenuItem): boolean => {
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
 	overflow: hidden;
+	position: relative;
 
 	&.compact {
 		padding: var(--spacing-2xs) 0 !important;
 		justify-content: center;
+	}
+
+	&:hover {
+		background-color: transparent !important;
+		color: var(--color-text-active) !important;
+		.icon {
+			color: var(--color-text-active);
+		}
+
+		&::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			width: 3px;
+			background-color: var(--color-text-active);
+			transition: all 0.5s ease;
+		}
 	}
 }
 

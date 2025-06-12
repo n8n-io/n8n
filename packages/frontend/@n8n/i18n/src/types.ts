@@ -2,6 +2,8 @@ import type englishBaseText from './locales/en.json';
 
 export type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
 
+export type LanguageOption = 'English' | 'Chinese';
+
 export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
 
 export type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;

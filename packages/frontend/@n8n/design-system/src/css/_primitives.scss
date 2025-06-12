@@ -4,6 +4,12 @@
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
+	// black to white
+	--prim-color-black: hsl(0, 0%, 0%);
+	--prim-color-light: hsl(218, 38%, 60%);
+	--prim-color-xlight: hsl(216, 33%, 97%);
+	--prim-color-white: hsl(0, 0%, 100%);
+
 	// Gray
 	--prim-gray-h: 220;
 
@@ -32,9 +38,25 @@
 	--prim-gray-0: hsl(var(--prim-gray-h), 50%, 100%);
 
 	// Color Primary
-	--prim-color-primary-h: 7;
-	--prim-color-primary-s: 100%;
-	--prim-color-primary-l: 68%;
+	--prim-color-primary-h: 238;
+	--prim-color-primary-s: 80%;
+	--prim-color-primary-l: 57%;
+
+	// Color Gradient
+	--prim-color-gradient-primary-start-h: 225;
+	--prim-color-gradient-primary-start-s: 100%;
+	--prim-color-gradient-primary-start-l: 59%;
+	--prim-color-gradient-primary-end-h: 215;
+	--prim-color-gradient-primary-end-s: 100%;
+	--prim-color-gradient-primary-end-l: 66%;
+
+	// Gradient hover states
+	--prim-color-gradient-primary-start-hover-l: 54%;
+	--prim-color-gradient-primary-end-hover-l: 61%;
+
+	// Gradient active states
+	--prim-color-gradient-primary-start-active-l: 49%;
+	--prim-color-gradient-primary-end-active-l: 56%;
 
 	--prim-color-primary-shade-300: hsl(
 		var(--prim-color-primary-h),

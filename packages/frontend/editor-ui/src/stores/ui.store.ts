@@ -49,6 +49,7 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
+	LanguageOption,
 	NotificationOptions,
 	ModalState,
 	ModalKey,
@@ -73,8 +74,11 @@ import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
+import { loadLanguage } from '@n8n/i18n';
 
 let savedTheme: ThemeOption = 'system';
+let savedLanguage: LanguageOption =
+	(localStorage.getItem('n8n-language') as LanguageOption) ?? 'English';
 
 try {
 	const value = getThemeOverride();
@@ -90,6 +94,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = ref<ThemeOption>(savedTheme);
+	const language = ref<LanguageOption>(savedLanguage);
 	const modalsById = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
@@ -358,6 +363,20 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		updateTheme(newTheme);
 	};
 
+	const setLanguage = async (newLanguage: LanguageOption): Promise<void> => {
+		if (newLanguage === 'English') {
+			localStorage.setItem('n8n-language', 'English');
+			rootStore.setDefaultLocale('en');
+			await loadLanguage('en');
+		} else {
+			localStorage.setItem('n8n-language', 'Chinese');
+			rootStore.setDefaultLocale('zh');
+			await loadLanguage('zh');
+		}
+		localStorage.setItem('n8n-language', newLanguage);
+		language.value = newLanguage;
+	};
+
 	const setMode = (name: keyof Modals, mode: string): void => {
 		modalsById.value[name] = {
 			...modalsById.value[name],
@@ -574,6 +593,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews,
 		activeModals,
 		isProcessingExecutionResults,
+		language,
+		setLanguage,
 		setTheme,
 		setModalData,
 		openModalWithData,

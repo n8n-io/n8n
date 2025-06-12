@@ -863,6 +863,71 @@ defineExpose({
 			width: var(--spacing-m);
 		}
 	}
+
+	:global(.el-pager li),
+	:global(.el-pagination .el-pager li) {
+		background: linear-gradient(
+			to bottom,
+			hsl(
+				var(--prim-color-gradient-primary-start-h),
+				var(--prim-color-gradient-primary-start-s),
+				var(--prim-color-gradient-primary-start-l)
+			),
+			hsl(
+				var(--prim-color-gradient-primary-end-h),
+				var(--prim-color-gradient-primary-end-s),
+				var(--prim-color-gradient-primary-end-l)
+			)
+		);
+		color: white !important;
+		border: none !important;
+		transition: all 0.3s ease;
+
+		&:hover {
+			background: linear-gradient(
+				to bottom,
+				hsl(
+					var(--prim-color-gradient-primary-start-h),
+					var(--prim-color-gradient-primary-start-s),
+					var(--prim-color-gradient-primary-start-hover-l)
+				),
+				hsl(
+					var(--prim-color-gradient-primary-end-h),
+					var(--prim-color-gradient-primary-end-s),
+					var(--prim-color-gradient-primary-end-hover-l)
+				)
+			);
+			color: white !important;
+		}
+
+		&.is-active {
+			background: linear-gradient(
+				to bottom,
+				hsl(
+					var(--prim-color-gradient-primary-start-h),
+					var(--prim-color-gradient-primary-start-s),
+					var(--prim-color-gradient-primary-start-active-l)
+				),
+				hsl(
+					var(--prim-color-gradient-primary-end-h),
+					var(--prim-color-gradient-primary-end-s),
+					var(--prim-color-gradient-primary-end-active-l)
+				)
+			);
+			color: white !important;
+			font-weight: bold;
+		}
+	}
+
+	:global(.btn-prev),
+	:global(.btn-next),
+	:global(.el-pagination .btn-prev),
+	:global(.el-pagination .btn-next) {
+		color: black !important;
+		&:hover {
+			color: var(--prim-color-primary-shade-100) !important;
+		}
+	}
 }
 
 .sort-and-filter {

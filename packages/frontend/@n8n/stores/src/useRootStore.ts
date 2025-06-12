@@ -33,6 +33,8 @@ export type RootStoreState = {
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 };
 
+let currLanguage = localStorage.getItem('n8n-language') ?? 'English';
+
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
@@ -40,7 +42,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
 				? 'rest'
 				: window.REST_ENDPOINT,
-		defaultLocale: 'en',
+		defaultLocale: currLanguage === 'English' ? 'en' : 'zh',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
@@ -61,6 +63,9 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
+
+	// Add a reactive language state
+	const currentLocale = ref(state.value.defaultLocale);
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -186,8 +191,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.n8nMetadata = value;
 	};
 
-	const setDefaultLocale = (value: string) => {
-		state.value.defaultLocale = value;
+	const setDefaultLocale = (locale: string) => {
+		state.value.defaultLocale = locale;
+		currentLocale.value = locale;
+		currLanguage = locale;
 	};
 
 	const setBinaryDataMode = (value: RootStoreState['binaryDataMode']) => {
@@ -218,6 +225,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		executionTimeout,
 		maxExecutionTimeout,
 		timezone,
+		currentLocale,
 		setUrlBaseWebhook,
 		setUrlBaseEditor,
 		setEndpointForm,

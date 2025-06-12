@@ -283,7 +283,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+
+		// 优先使用客户端的语言设置，如果没有则使用服务器设置
+		const clientLanguage = localStorage.getItem('n8n-language');
+		if (clientLanguage) {
+			const locale = clientLanguage === 'Chinese' ? 'zh' : 'en';
+			rootStore.setDefaultLocale(locale);
+		} else {
+			rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		}
+
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 

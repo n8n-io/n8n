@@ -220,3 +220,78 @@
 	--button-loading-border-color: var(--color-danger);
 	--button-loading-background-color: var(--color-danger);
 }
+
+@mixin n8n-button-primary {
+	--button-font-color: var(--color-button-primary-font);
+	--button-border-color: var(--color-button-primary-border);
+	--button-background-color: var(--color-button-primary-background);
+
+	--button-hover-font-color: var(--color-button-primary-font);
+	--button-hover-border-color: var(--color-button-primary-hover-border);
+	--button-hover-background-color: var(--color-button-primary-hover-background);
+
+	--button-active-font-color: var(--color-button-primary-font);
+	--button-active-border-color: var(--color-button-primary-active-border);
+	--button-active-background-color: var(--color-button-primary-active-background);
+
+	--button-focus-font-color: var(--color-button-primary-font);
+	--button-focus-border-color: var(--color-button-primary-focus-border);
+	--button-focus-background-color: var(--color-button-primary-focus-background);
+	--button-focus-outline-color: var(--color-button-primary-focus-outline);
+
+	--button-disabled-font-color: var(--color-button-primary-disabled-font);
+	--button-disabled-border-color: var(--color-button-primary-disabled-border);
+	--button-disabled-background-color: var(--color-button-primary-disabled-background);
+
+	--button-loading-font-color: var(--color-button-primary-font);
+	--button-loading-border-color: var(--color-button-primary-loading-border);
+	--button-loading-background-color: var(--color-button-primary-loading-background);
+
+	background: linear-gradient(
+		to right,
+		hsl(
+			var(--prim-color-gradient-primary-start-h),
+			var(--prim-color-gradient-primary-start-s),
+			var(--prim-color-gradient-primary-start-l)
+		),
+		hsl(
+			var(--prim-color-gradient-primary-end-h),
+			var(--prim-color-gradient-primary-end-s),
+			var(--prim-color-gradient-primary-end-l)
+		)
+	) !important;
+	border: none !important;
+	color: white !important;
+
+	&:hover {
+		background: linear-gradient(
+			to right,
+			hsl(
+				var(--prim-color-gradient-primary-start-h),
+				var(--prim-color-gradient-primary-start-s),
+				var(--prim-color-gradient-primary-start-hover-l)
+			),
+			hsl(
+				var(--prim-color-gradient-primary-end-h),
+				var(--prim-color-gradient-primary-end-s),
+				var(--prim-color-gradient-primary-end-hover-l)
+			)
+		) !important;
+	}
+
+	&:active {
+		background: linear-gradient(
+			to right,
+			hsl(
+				var(--prim-color-gradient-primary-start-h),
+				var(--prim-color-gradient-primary-start-s),
+				var(--prim-color-gradient-primary-start-active-l)
+			),
+			hsl(
+				var(--prim-color-gradient-primary-end-h),
+				var(--prim-color-gradient-primary-end-s),
+				var(--prim-color-gradient-primary-end-active-l)
+			)
+		) !important;
+	}
+}

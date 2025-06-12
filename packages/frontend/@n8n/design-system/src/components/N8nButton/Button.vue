@@ -112,6 +112,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  * Colors
  */
 
+.primary {
+	@include n8n-button-primary;
+}
+
 .secondary {
 	@include n8n-button-secondary;
 }

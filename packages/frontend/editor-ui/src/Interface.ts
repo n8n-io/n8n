@@ -1529,6 +1529,7 @@ export type ToggleNodeCreatorOptions = {
 
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
+export type LanguageOption = 'English' | 'Chinese';
 
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'

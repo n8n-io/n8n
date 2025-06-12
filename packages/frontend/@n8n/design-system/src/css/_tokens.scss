@@ -43,12 +43,13 @@
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
 	// Text
-	--color-text-dark: var(--prim-gray-740);
-	--color-text-base: var(--prim-gray-540);
+	--color-text-dark: var(--prim-color-black);
+	--color-text-base: var(--prim-color-light);
 	--color-text-light: var(--prim-gray-420);
 	--color-text-lighter: var(--prim-gray-120);
 	--color-text-xlight: var(--prim-gray-0);
 	--color-text-danger: var(--prim-color-alt-c);
+	--color-text-active: var(--prim-color-primary);
 
 	// Foreground
 	--color-foreground-xdark: var(--prim-gray-490);
@@ -62,8 +63,8 @@
 	--color-background-medium: var(--prim-gray-120);
 	--color-background-base: var(--prim-gray-40);
 	--color-background-light-base: var(--prim-gray-25);
-	--color-background-light: var(--prim-gray-10);
-	--color-background-xlight: var(--prim-gray-0);
+	--color-background-light: var(--prim-color-xlight);
+	--color-background-xlight: var(--prim-color-white);
 
 	// Secondary tokens
 
