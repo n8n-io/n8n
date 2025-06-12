@@ -17,6 +17,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			oidc: {},
 			orchestration: {},
 			project: {},
 			saml: {},

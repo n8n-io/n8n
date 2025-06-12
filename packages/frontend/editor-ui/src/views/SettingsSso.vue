@@ -283,7 +283,7 @@ async function onOidcSettingsSave() {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled">
+		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
 				<label>Select Authentication Protocol</label>
 				<div>
