@@ -159,6 +159,12 @@ export class ModelSelector implements INodeType {
 
 				// Keep the original tracing for the LLM node AND add ModelSelector tracing
 				const originalCallbacks = getCallbacksArray(selectedModel.callbacks);
+				for (const currentCallback of originalCallbacks) {
+					if (currentCallback instanceof N8nLlmTracing) {
+						// Add parentRunIndex to model tracing
+						currentCallback.parentRunIndex = this.getNextRunIndex();
+					}
+				}
 				const modelSelectorTracing = new N8nLlmTracing(this);
 				selectedModel.callbacks = [...originalCallbacks, modelSelectorTracing];
 

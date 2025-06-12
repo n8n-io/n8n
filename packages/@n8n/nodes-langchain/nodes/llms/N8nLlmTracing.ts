@@ -41,6 +41,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	completionTokensEstimate = 0;
 
+	parentRunIndex?: number;
+
 	/**
 	 * A map to associate LLM run IDs to run details.
 	 * Key: Unique identifier for each LLM run (run ID)
@@ -141,9 +143,15 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 						return message;
 					});
 
-		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
-			[{ json: { ...response } }],
-		]);
+		const sourceNodeRunIndex =
+			this.parentRunIndex !== undefined ? this.parentRunIndex + runDetails.index : undefined;
+		this.executionFunctions.addOutputData(
+			this.connectionType,
+			runDetails.index,
+			[[{ json: { ...response } }]],
+			undefined,
+			sourceNodeRunIndex,
+		);
 
 		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
@@ -154,19 +162,28 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
+		const sourceNodeRunIndex =
+			this.parentRunIndex !== undefined
+				? this.parentRunIndex + this.executionFunctions.getNextRunIndex()
+				: undefined;
+		console.log('sourceNodeRunIndex', sourceNodeRunIndex);
 
 		const options = llm.type === 'constructor' ? llm.kwargs : llm;
-		const { index } = this.executionFunctions.addInputData(this.connectionType, [
+		const { index } = this.executionFunctions.addInputData(
+			this.connectionType,
 			[
-				{
-					json: {
-						messages: prompts,
-						estimatedTokens,
-						options,
+				[
+					{
+						json: {
+							messages: prompts,
+							estimatedTokens,
+							options,
+						},
 					},
-				},
+				],
 			],
-		]);
+			sourceNodeRunIndex,
+		);
 
 		// Save the run details for later use when processing `handleLLMEnd` event
 		this.runsMap[runId] = {
