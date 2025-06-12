@@ -1,3 +1,12 @@
+## [1.98.1](https://github.com/n8n-io/n8n/compare/n8n@1.98.0...n8n@1.98.1) (2025-06-12)
+
+
+### Bug Fixes
+
+* **core:** Fix http requests by using correct agent ([#16258](https://github.com/n8n-io/n8n/issues/16258)) ([4762273](https://github.com/n8n-io/n8n/commit/4762273a2679d1fa2895b331f0fa212a1c3f1770))
+
+
+
 # [1.98.0](https://github.com/n8n-io/n8n/compare/n8n@1.97.0...n8n@1.98.0) (2025-06-11)
 
 
