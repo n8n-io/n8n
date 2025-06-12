@@ -1,11 +1,13 @@
 import type { AppliedThemeOption, ThemeOption } from '@/Interface';
 import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_THEME } from '@/constants';
+import { useMediaQuery } from '@vueuse/core';
+import { computed, type ComputedRef } from 'vue';
 
 const themeRef = useStorage(LOCAL_STORAGE_THEME);
 
-export function addThemeToBody(theme: AppliedThemeOption) {
-	window.document.body.setAttribute('data-theme', theme);
+export function addThemeToBody(theme: AppliedThemeOption, window_?: Window) {
+	(window_ ?? window).document.body.setAttribute?.('data-theme', theme); // setAttribute can be missing in jsdom environment
 }
 
 export function isValidTheme(theme: string | null): theme is AppliedThemeOption {
@@ -38,4 +40,16 @@ export function getPreferredTheme(): { theme: AppliedThemeOption; mediaQuery: Me
 		theme: isDarkModeQuery?.matches ? 'dark' : 'light',
 		mediaQuery: isDarkModeQuery,
 	};
+}
+
+export function useAppliedTheme(): ComputedRef<AppliedThemeOption> {
+	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
+
+	return computed(() => {
+		if (isValidTheme(themeRef.value)) {
+			return themeRef.value;
+		}
+
+		return isDarkThemePreferred.value ? 'dark' : 'light';
+	});
 }

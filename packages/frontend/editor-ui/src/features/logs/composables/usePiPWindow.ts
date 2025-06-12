@@ -1,4 +1,5 @@
 import { IsInPiPWindowSymbol } from '@/constants';
+import { addThemeToBody, useAppliedTheme } from '@/stores/ui.utils';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
@@ -48,6 +49,7 @@ export function usePiPWindow({
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
+	const theme = useAppliedTheme();
 
 	provide(IsInPiPWindowSymbol, isPoppedOut);
 	useProvideTooltipAppendTo(tooltipContainer);
@@ -103,6 +105,18 @@ export function usePiPWindow({
 	watch(shouldPopOut, (value) => (value ? requestAnimationFrame(showPip) : hidePiP()), {
 		immediate: true,
 	});
+
+	// It seems "prefers-color-scheme: dark" media query matches in PiP window by default
+	// So we're enforcing currently applied theme in the main window by setting data-theme in PiP's body element
+	watch(
+		[theme, pipWindow],
+		([theTheme, pip]) => {
+			if (pip) {
+				addThemeToBody(theTheme, pip);
+			}
+		},
+		{ immediate: true },
+	);
 
 	onBeforeUnmount(() => {
 		isUnmounting.value = true;
