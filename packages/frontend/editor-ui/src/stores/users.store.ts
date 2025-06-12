@@ -256,7 +256,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		return await usersApi.updateCurrentUser(rootStore.restApiContext, {
+		return await updateUser({
 			email: currentUser.value.email as string,
 			...params,
 		});
