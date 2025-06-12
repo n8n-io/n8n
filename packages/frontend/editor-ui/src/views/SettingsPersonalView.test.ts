@@ -108,7 +108,9 @@ describe('SettingsPersonalView', () => {
 		});
 
 		it('should commit the theme change after clicking save', async () => {
-			vi.spyOn(usersStore, 'updateUser').mockReturnValue(Promise.resolve());
+			vi.spyOn(usersStore, 'updateUser').mockReturnValue(
+				Promise.resolve({ id: '123', isPending: false }),
+			);
 			const { getByPlaceholderText, findByText, getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 

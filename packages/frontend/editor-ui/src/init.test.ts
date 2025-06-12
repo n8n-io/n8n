@@ -9,6 +9,8 @@ import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
+import merge from 'lodash/merge';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const showMessage = vi.fn();
 
@@ -33,7 +35,14 @@ describe('Init', () => {
 	let versionsStore: ReturnType<typeof useVersionsStore>;
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(
+			createTestingPinia({
+				initialState: {
+					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+				},
+			}),
+		);
+
 		settingsStore = useSettingsStore();
 		cloudPlanStore = useCloudPlanStore();
 		sourceControlStore = useSourceControlStore();
