@@ -348,6 +348,7 @@ export class WorkflowRunner {
 		if (!this.scalingService) {
 			const { ScalingService } = await import('@/scaling/scaling.service');
 			this.scalingService = Container.get(ScalingService);
+			await this.scalingService.setupQueue();
 		}
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.

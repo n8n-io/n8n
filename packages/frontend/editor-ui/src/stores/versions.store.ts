@@ -1,20 +1,20 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
-import * as versionsApi from '@/api/versions';
+import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { IVersion } from '@/Interface';
+import type { Version } from '@n8n/rest-api-client/api/versions';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 
-type SetVersionParams = { versions: IVersion[]; currentVersion: string };
+type SetVersionParams = { versions: Version[]; currentVersion: string };
 
 export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const versionNotificationSettings = ref({ enabled: false, endpoint: '', infoUrl: '' });
-	const nextVersions = ref<IVersion[]>([]);
-	const currentVersion = ref<IVersion | undefined>();
+	const nextVersions = ref<Version[]>([]);
+	const currentVersion = ref<Version | undefined>();
 
 	const { showToast } = useToast();
 	const uiStore = useUIStore();

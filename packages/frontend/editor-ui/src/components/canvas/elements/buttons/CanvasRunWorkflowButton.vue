@@ -6,7 +6,7 @@ import { type ActionDropdownItem, N8nActionDropdown, N8nButton, N8nText } from '
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
-import { isChatNode } from '@/components/CanvasChat/utils';
+import { isChatNode } from '@/utils/aiUtils';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];

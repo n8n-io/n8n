@@ -3,10 +3,10 @@ import { hasScope as genericHasScope } from '@n8n/permissions';
 import type { ScopeOptions, Scope, Resource } from '@n8n/permissions';
 import { ref } from 'vue';
 import { STORES } from '@n8n/stores';
-import type { IRole } from '@/Interface';
+import type { Role } from '@n8n/api-types';
 
 export const useRBACStore = defineStore(STORES.RBAC, () => {
-	const globalRoles = ref<IRole[]>([]);
+	const globalRoles = ref<Role[]>([]);
 	const rolesByProjectId = ref<Record<string, string[]>>({});
 
 	const globalScopes = ref<Scope[]>([]);
@@ -38,13 +38,13 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		insights: {},
 	});
 
-	function addGlobalRole(role: IRole) {
+	function addGlobalRole(role: Role) {
 		if (!globalRoles.value.includes(role)) {
 			globalRoles.value.push(role);
 		}
 	}
 
-	function hasRole(role: IRole) {
+	function hasRole(role: Role) {
 		return globalRoles.value.includes(role);
 	}
 

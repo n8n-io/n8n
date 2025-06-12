@@ -42,7 +42,7 @@ export class InsightsPruningService {
 		this.clearPruningTimer();
 		this.isStopped = false;
 		this.scheduleNextPrune();
-		this.logger.debug(`Insights pruning every ${this.config.pruneCheckIntervalHours} hours`);
+		this.logger.debug('Started pruning timer');
 	}
 
 	private clearPruningTimer() {
@@ -55,7 +55,7 @@ export class InsightsPruningService {
 	stopPruningTimer() {
 		this.isStopped = true;
 		this.clearPruningTimer();
-		this.logger.debug('Stopped Insights pruning');
+		this.logger.debug('Stopped pruning timer');
 	}
 
 	private scheduleNextPrune(

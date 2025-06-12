@@ -5,7 +5,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import {
+	getAdminPanelLoginCode,
+	getCurrentPlan,
+	getCurrentUsage,
+} from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
 import { STORES } from '@n8n/stores';
