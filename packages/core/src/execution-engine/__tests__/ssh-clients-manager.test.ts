@@ -56,6 +56,33 @@ describe('getClient', () => {
 
 		expect(client1).toBe(client2);
 	});
+
+	it('should not create multiple clients for the same credentials in parallel', async () => {
+		// ARRANGE
+		connectSpy.mockImplementation(function (this: Client) {
+			setTimeout(() => this.emit('ready'), Math.random() * 10);
+			return this;
+		});
+
+		// ACT
+		const clients = await Promise.all([
+			sshClientsManager.getClient(credentials),
+			sshClientsManager.getClient(credentials),
+			sshClientsManager.getClient(credentials),
+			sshClientsManager.getClient(credentials),
+			sshClientsManager.getClient(credentials),
+			sshClientsManager.getClient(credentials),
+		]);
+
+		// ASSERT
+		// returns the same client for all invocations
+		const ogClient = await sshClientsManager.getClient(credentials);
+		expect(clients).toHaveLength(6);
+		for (const client of clients) {
+			expect(client).toBe(ogClient);
+		}
+		expect(connectSpy).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('onShutdown', () => {

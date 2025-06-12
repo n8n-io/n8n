@@ -22,6 +22,8 @@ type Registration = {
 	lastUsed: Date;
 
 	abortController: AbortController;
+
+	returnPromise: Promise<Client>;
 };
 
 @Service()
@@ -78,24 +80,28 @@ export class SSHClientsManager {
 		const existing = this.clients.get(clientHash);
 		if (existing) {
 			existing.lastUsed = new Date();
-			return existing.client;
+			return await existing.returnPromise;
 		}
 
-		return await new Promise((resolve, reject) => {
-			const sshClient = this.withCleanupHandler(new Client(), abortController, clientHash);
+		const sshClient = this.withCleanupHandler(new Client(), abortController, clientHash);
+		const returnPromise = new Promise<Client>((resolve, reject) => {
 			sshClient.once('error', reject);
 			sshClient.once('ready', () => {
 				sshClient.off('error', reject);
-				this.clients.set(clientHash, {
-					client: sshClient,
-					lastUsed: new Date(),
-					abortController,
-				});
-				this.clientsReversed.set(sshClient, clientHash);
 				resolve(sshClient);
 			});
 			sshClient.connect(sshConfig);
 		});
+
+		this.clients.set(clientHash, {
+			client: sshClient,
+			lastUsed: new Date(),
+			abortController,
+			returnPromise,
+		});
+		this.clientsReversed.set(sshClient, clientHash);
+
+		return await returnPromise;
 	}
 
 	/**
