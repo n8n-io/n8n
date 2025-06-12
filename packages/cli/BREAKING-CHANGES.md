@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.99.0
+
+### What changed?
+
+The expression extension `String.replaceSpecialChars` no longer supports Chinese characters.
+
+### When is action necessary?
+
+If you are using the expression extension `String.replaceSpecialChars` on Chinese characters, please install a community node that supports transliteration of Chinese characters, e.g. `n8n-nodes-transliterate`.
+
 ## 1.98.0
 
 ### What changed?

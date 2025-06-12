@@ -1,9 +1,9 @@
+import transliterate from '@sindresorhus/transliterate';
 import { toBase64, fromBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
-import { transliterate } from 'transliteration';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { toDateTime as numberToDateTime } from './number-extensions';
@@ -332,7 +332,7 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	return transliterate(value);
 }
 
 function toSentenceCase(value: string) {
@@ -609,7 +609,8 @@ urlDecode.doc = {
 
 replaceSpecialChars.doc = {
 	name: 'replaceSpecialChars',
-	description: 'Replaces special characters in the string with the closest ASCII character',
+	description:
+		'Replaces special characters in the string with the closest ASCII character (Chinese not supported)',
 	section: 'edit',
 	returnType: 'string',
 	docURL:
