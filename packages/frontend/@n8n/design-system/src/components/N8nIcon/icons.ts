@@ -1603,6 +1603,9 @@ export const icons = {
 	times: IconLucideX,
 	file: IconLucideFile,
 	'plus-circle': IconLucideCirclePlus,
+	'thumbs-up': IconLucideThumbsUp,
+	'thumbs-down': IconLucideThumbsDown,
+	trash: IconLucideTrash2,
 	// todo
 	pen: IconLucidePen,
 	'sync-alt': IconLucideX,
@@ -1614,8 +1617,6 @@ export const icons = {
 	html: IconLucideX,
 	text: IconLucideX,
 	robot: IconLucideX,
-	'thumbs-up': IconLucideThumbsUp,
-	'thumbs-down': IconLucideThumbsDown,
 } as const;
 
 export type IconName = keyof typeof icons;

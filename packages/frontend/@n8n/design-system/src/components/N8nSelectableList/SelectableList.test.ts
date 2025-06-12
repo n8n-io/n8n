@@ -19,6 +19,9 @@ describe('N8nSelectableList', () => {
 				modelValue: {},
 				inputs: [{ name: 'propA', initialValue: '' }],
 			},
+			global: {
+				stubs: ['n8n-icon'],
+			},
 		});
 
 		expect(wrapper.getByTestId('selectable-list-selectable-propA')).toBeInTheDocument();
@@ -48,6 +51,9 @@ describe('N8nSelectableList', () => {
 					{ name: 'propB', initialValue: 3 },
 					{ name: 'propA', initialValue: '' },
 				],
+			},
+			global: {
+				stubs: ['n8n-icon'],
 			},
 		});
 
@@ -86,6 +92,9 @@ describe('N8nSelectableList', () => {
 					{ name: 'propB', initialValue: '' },
 					{ name: 'propC', initialValue: '' },
 				],
+			},
+			global: {
+				stubs: ['n8n-icon'],
 			},
 		});
 

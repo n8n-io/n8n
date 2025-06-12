@@ -4,7 +4,7 @@ exports[`components > N8nCallout > should render additional slots correctly 1`] 
 "<div class="n8n-callout callout custom round" role="alert">
   <div class="messageSection">
     <div class="icon">
-      <n8n-icon-stub icon="code-branch" size="medium" spin="false"></n8n-icon-stub>
+      <n8n-icon-stub icon="home" size="medium" spin="false"></n8n-icon-stub>
     </div>
     <n8n-text-stub bold="false" size="small" compact="false" tag="span"></n8n-text-stub> &nbsp; <n8n-link-stub size="small"></n8n-link-stub>
   </div>
@@ -16,7 +16,7 @@ exports[`components > N8nCallout > should render custom theme correctly 1`] = `
 "<div class="n8n-callout callout custom round" role="alert">
   <div class="messageSection">
     <div class="icon">
-      <n8n-icon-stub icon="code-branch" size="medium" spin="false"></n8n-icon-stub>
+      <n8n-icon-stub icon="home" size="medium" spin="false"></n8n-icon-stub>
     </div>
     <n8n-text-stub bold="false" size="small" compact="false" tag="span"></n8n-text-stub> &nbsp;
   </div>
