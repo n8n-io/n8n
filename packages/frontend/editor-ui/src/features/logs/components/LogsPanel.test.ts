@@ -11,6 +11,7 @@ import {
 	aiAgentNode,
 	aiChatExecutionResponse,
 	aiChatWorkflow,
+	aiManualExecutionResponse,
 	aiManualWorkflow,
 	chatTriggerNode,
 	nodeTypes,
@@ -107,6 +108,8 @@ describe('LogsPanel', () => {
 			y: 0,
 			height: VIEWPORT_HEIGHT,
 		} as DOMRect);
+
+		localStorage.clear();
 	});
 
 	afterEach(() => {
@@ -136,6 +139,30 @@ describe('LogsPanel', () => {
 
 		expect(await rendered.findByTestId('logs-overview-header')).toBeInTheDocument();
 		expect(await rendered.findByTestId('chat-header')).toBeInTheDocument();
+	});
+
+	it('should render only output panel of selected node by default', async () => {
+		logsStore.toggleOpen(true);
+		workflowsStore.setWorkflow(aiManualWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiManualExecutionResponse);
+
+		const rendered = render();
+
+		expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Agent');
+		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
+	});
+
+	it('should render both input and output panel of selected node by default if it is sub node', async () => {
+		logsStore.toggleOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+
+		expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Model');
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 	});
 
 	it('opens collapsed panel when clicked', async () => {
@@ -384,8 +411,6 @@ describe('LogsPanel', () => {
 
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		logsStore.toggleInputOpen(false);
-		logsStore.toggleOutputOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
@@ -393,12 +418,12 @@ describe('LogsPanel', () => {
 
 		const header = within(rendered.getByTestId('log-details-header'));
 
-		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 
 		await fireEvent.click(header.getByText('Input'));
 
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 
 		await fireEvent.click(header.getByText('Output'));
