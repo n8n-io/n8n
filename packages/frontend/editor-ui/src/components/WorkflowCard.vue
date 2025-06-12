@@ -598,6 +598,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	.cardActions {
 		width: 100%;
 		padding: 0 var(--spacing-s) var(--spacing-s);
+		justify-content: end;
 	}
 
 	.cardBadge,
