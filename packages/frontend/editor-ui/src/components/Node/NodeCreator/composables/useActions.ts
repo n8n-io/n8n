@@ -365,16 +365,17 @@ export const useActions = () => {
 		rootView = '',
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
-			if (name !== 'addNode' || args[0].type !== action.key) return;
-			after(() => {
-				// This is a legacy leftover that should be refactored to directly track the action on click
-				if (telemetry) trackActionSelected(action, telemetry, rootView);
-				// Unsubscribe from the store watcher
-				storeWatcher();
-			});
-		});
-
+		const storeWatcher = onWorkflowStoreAction(
+			({ name, after, store: { setLastNodeParameters }, args }) => {
+				if (name !== 'addNode' || args[0].type !== action.key) return;
+				after(() => {
+					setLastNodeParameters(action);
+					if (telemetry) trackActionSelected(action, telemetry, rootView);
+					// Unsubscribe from the store watcher
+					storeWatcher();
+				});
+			},
+		);
 		return storeWatcher;
 	}
 
