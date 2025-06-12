@@ -1,50 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "user": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
-            "type": "string"
-        },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
-        },
         "blocks": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "block_id": {
                         "type": "string"
                     },
@@ -53,37 +14,30 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
                                 "elements": {
                                     "type": "array",
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
                                             "text": {
                                                 "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
+                                        }
                                     }
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
                         }
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
+                }
             }
         },
         "client_msg_id": {
@@ -91,6 +45,19 @@
         },
         "team": {
             "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
         }
-    }
+    },
+    "version": 4
 }

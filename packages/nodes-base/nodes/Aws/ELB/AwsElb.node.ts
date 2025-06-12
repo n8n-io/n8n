@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 import {
@@ -29,8 +29,8 @@ export class AwsElb implements INodeType {
 		defaults: {
 			name: 'AWS ELB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',

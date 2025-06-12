@@ -1,5 +1,7 @@
 import * as assert from 'assert/strict';
-import type { INode, Workflow } from 'n8n-workflow';
+import type { INode, INodeType, IRunData, Workflow } from 'n8n-workflow';
+
+const isTriggerNode = (nodeType: INodeType) => nodeType.description.group.includes('trigger');
 
 function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) {
 	const parentNodes = workflow
@@ -17,35 +19,58 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 			};
 		})
 		.filter((value) => value !== null)
-		.filter(({ nodeType }) => nodeType.description.group.includes('trigger'))
+		.filter(({ nodeType }) => isTriggerNode(nodeType))
 		.map(({ node }) => node);
 
 	return parentNodes;
 }
 
-// TODO: write unit tests for this
 // TODO: rewrite this using DirectedGraph instead of workflow.
 export function findTriggerForPartialExecution(
 	workflow: Workflow,
 	destinationNodeName: string,
+	runData: IRunData,
 ): INode | undefined {
+	// First, check if the destination node itself is a trigger
+	const destinationNode = workflow.getNode(destinationNodeName);
+	if (!destinationNode) return;
+
+	const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+		destinationNode.type,
+		destinationNode.typeVersion,
+	);
+
+	if (isTriggerNode(destinationNodeType) && !destinationNode.disabled) {
+		return destinationNode;
+	}
+
+	// Since the destination node wasn't a trigger, we try to find a parent node that's a trigger
 	const parentTriggers = findAllParentTriggers(workflow, destinationNodeName).filter(
 		(trigger) => !trigger.disabled,
 	);
+
+	// prefer triggers that have run data
+	for (const trigger of parentTriggers) {
+		if (runData[trigger.name]) {
+			return trigger;
+		}
+	}
+
+	// Prioritize webhook triggers with pinned-data
 	const pinnedTriggers = parentTriggers
 		// TODO: add the other filters here from `findAllPinnedActivators`, see
 		// copy below.
 		.filter((trigger) => workflow.pinData?.[trigger.name])
-		// TODO: Make this sorting more predictable
 		// Put nodes which names end with 'webhook' first, while also reversing the
 		// order they had in the original array.
-		.sort((n) => (n.type.endsWith('webhook') ? -1 : 1));
-
+		.sort((a, b) => (a.type.endsWith('webhook') ? -1 : b.type.endsWith('webhook') ? 1 : 0));
 	if (pinnedTriggers.length) {
 		return pinnedTriggers[0];
-	} else {
-		return parentTriggers[0];
 	}
+
+	// Prioritize webhook triggers over other parent triggers
+	const webhookTriggers = parentTriggers.filter((trigger) => trigger.type.endsWith('webhook'));
+	return webhookTriggers.length > 0 ? webhookTriggers[0] : parentTriggers[0];
 }
 
 //function findAllPinnedActivators(workflow: Workflow, pinData?: IPinData) {

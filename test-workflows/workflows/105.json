@@ -1,0 +1,133 @@
+{
+  "createdAt": "2021-03-04T13:31:56.288Z",
+  "updatedAt": "2021-03-04T13:31:56.288Z",
+  "id": "105",
+  "name": "WriteBinaryFile",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "6ad9a76c-8bd9-4a23-98ad-12e9f913fb9d"
+    },
+    {
+      "parameters": {
+        "fileName": "/tmp/test_write_binary_file.txt"
+      },
+      "name": "Write Binary File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Write binary file in /tmp directory",
+      "id": "c323f3c4-c1ca-4c7c-acbd-0387e14966ca"
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/test_write_binary_file.txt"
+      },
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Read file data",
+      "id": "19df8a14-6a25-4c6d-a891-095562ce311a"
+    },
+    {
+      "parameters": {
+        "functionCode": "items = [\n{\njson:{},\nbinary: {\n\tdata: {\n\t\tdata: 'VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl',\n\t\tfileExtension: 'txt', \n\t\tfileName: 'file.txt', \n\t}\n}\n}\n\n];\nreturn items;"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Prepare file data",
+      "id": "0a14fc91-53a3-4c8a-b1cb-eef0734f016a"
+    },
+    {
+      "parameters": {
+        "functionCode": "testData ='VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl';\n\nif(items[0].binary.data.data !== testData){\n  throw new Error('Error in Write Binary File node');\n}\nreturn items;"
+      },
+      "name": "Function1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Verify file data",
+      "id": "fe251599-60cf-45df-a1fc-4c0f5b019b50"
+    }
+  ],
+  "connections": {
+    "Write Binary File": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function": {
+      "main": [
+        [
+          {
+            "node": "Write Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Function1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

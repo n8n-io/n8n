@@ -1,6 +1,11 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"ui": "stream",
+	"remoteCache": {
+		"enabled": true,
+		"timeout": 90,
+		"uploadTimeout": 90
+	},
 	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
 		"clean": {
@@ -26,8 +31,14 @@
 		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
+				"^build",
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
+				"@n8n/decorators#lint",
+				"@n8n/constants#lint",
+				"@n8n/backend-common#lint",
+				"@n8n/integration-test-utils#lint",
+				"@n8n/db#lint",
 				"@n8n/di#lint",
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
@@ -41,28 +52,41 @@
 		},
 		"lint:frontend": {
 			"dependsOn": [
+				"^build",
+				"@n8n/rest-api-client#lint",
+				"@n8n/api-types#lint",
+				"@n8n/constants#lint",
+				"@n8n/i18n#lint",
+				"@n8n/permissions#lint",
+				"@n8n/stores#lint",
+				"@n8n/utils#lint",
 				"@n8n/chat#lint",
 				"@n8n/codemirror-lang#lint",
 				"@n8n/storybook#lint",
 				"n8n-cypress#lint",
 				"@n8n/composables#build",
-				"n8n-design-system#lint",
+				"@n8n/design-system#lint",
 				"n8n-editor-ui#lint"
 			]
 		},
 		"lint:nodes": {
 			"dependsOn": [
+				"^build",
 				"n8n-nodes-base#lint",
 				"@n8n/n8n-nodes-langchain#lint",
 				"@n8n/json-schema-to-zod#lint"
 			]
 		},
-		"lint": {},
+		"lint": {
+			"dependsOn": ["^build"]
+		},
 		"lintfix": {},
 		"test:backend": {
 			"dependsOn": [
 				"@n8n/api-types#test",
 				"@n8n/config#test",
+				"@n8n/decorators#test",
+				"@n8n/db#test",
 				"@n8n/di#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
@@ -72,17 +96,26 @@
 				"n8n-core#test",
 				"n8n#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
 		"test:frontend": {
 			"dependsOn": [
+				"@n8n/rest-api-client#test",
+				"@n8n/api-types#test",
+				"@n8n/constants#test",
+				"@n8n/i18n#test",
+				"@n8n/permissions#test",
+				"@n8n/stores#test",
+				"@n8n/utils#test",
 				"@n8n/chat#test",
 				"@n8n/codemirror-lang#test",
 				"@n8n/composables#build",
-				"n8n-design-system#test",
+				"@n8n/design-system#test",
 				"n8n-editor-ui#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
 		"test:nodes": {
 			"dependsOn": [
@@ -90,9 +123,12 @@
 				"@n8n/n8n-nodes-langchain#test",
 				"@n8n/json-schema-to-zod#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
+			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
 		},
-		"test": {},
+		"test": {
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"]
+		},
 		"watch": {
 			"cache": false,
 			"persistent": true

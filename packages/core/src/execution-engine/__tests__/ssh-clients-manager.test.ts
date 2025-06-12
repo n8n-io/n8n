@@ -1,9 +1,11 @@
+import { mock } from 'jest-mock-extended';
 import type { SSHCredentials } from 'n8n-workflow';
 import { Client } from 'ssh2';
 
 import { SSHClientsManager } from '../ssh-clients-manager';
 
 describe('SSHClientsManager', () => {
+	const idleTimeout = 5 * 60;
 	const credentials: SSHCredentials = {
 		sshAuthenticateWith: 'password',
 		sshHost: 'example.com',
@@ -20,7 +22,7 @@ describe('SSHClientsManager', () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
 
-		sshClientsManager = new SSHClientsManager();
+		sshClientsManager = new SSHClientsManager(mock({ idleTimeout }));
 		connectSpy.mockImplementation(function (this: Client) {
 			this.emit('ready');
 			return this;
@@ -59,7 +61,7 @@ describe('SSHClientsManager', () => {
 		await sshClientsManager.getClient({ ...credentials, sshHost: 'host2' });
 		await sshClientsManager.getClient({ ...credentials, sshHost: 'host3' });
 
-		jest.advanceTimersByTime(6 * 60 * 1000);
+		jest.advanceTimersByTime((idleTimeout + 1) * 1000);
 		sshClientsManager.cleanupStaleConnections();
 
 		expect(endSpy).toHaveBeenCalledTimes(3);

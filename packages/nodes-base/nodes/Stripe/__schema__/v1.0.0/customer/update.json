@@ -1,42 +1,20 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
-        "address": {
-            "type": "object",
-            "properties": {
-                "country": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "line1",
-                "line2",
-                "postal_code",
-                "state"
-            ]
-        },
         "balance": {
             "type": "integer"
         },
         "created": {
             "type": "integer"
         },
-        "default_source": {
-            "type": "null"
-        },
         "delinquent": {
             "type": "boolean"
         },
         "discount": {
             "type": "null"
+        },
+        "id": {
+            "type": "string"
         },
         "invoice_prefix": {
             "type": "string"
@@ -53,13 +31,7 @@
                 "rendering_options": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "custom_fields",
-                "default_payment_method",
-                "footer",
-                "rendering_options"
-            ]
+            }
         },
         "livemode": {
             "type": "boolean"
@@ -69,23 +41,20 @@
             "properties": {
                 "Telefone": {
                     "type": "string"
-                },
-                "Pais": {
-                    "type": "string"
                 }
             }
         },
         "next_invoice_sequence": {
             "type": "integer"
         },
+        "object": {
+            "type": "string"
+        },
         "preferred_locales": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "shipping": {
-            "type": "null"
         },
         "tax_exempt": {
             "type": "string"
@@ -94,27 +63,5 @@
             "type": "null"
         }
     },
-    "required": [
-        "id",
-        "object",
-        "address",
-        "balance",
-        "created",
-        "currency",
-        "default_source",
-        "delinquent",
-        "description",
-        "discount",
-        "email",
-        "invoice_prefix",
-        "invoice_settings",
-        "livemode",
-        "metadata",
-        "name",
-        "phone",
-        "preferred_locales",
-        "shipping",
-        "tax_exempt",
-        "test_clock"
-    ]
+    "version": 1
 }

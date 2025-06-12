@@ -5,9 +5,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "_id",
-        "_ctime",
-        "_mtime"
-    ]
+    "version": 1
 }

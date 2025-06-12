@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IHookFunctions,
 	type INodeType,
@@ -29,7 +29,7 @@ export class KoBoToolboxTrigger implements INodeType {
 			name: 'KoBoToolbox Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'koBoToolboxApi',

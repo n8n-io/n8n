@@ -1,55 +1,43 @@
 {
     "type": "object",
     "properties": {
-        "title": {
-            "type": "string"
+        "employees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "hireDate": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "fields": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "type",
-                    "name"
-                ]
+                }
             }
         },
-        "employees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "firstName": {
-                        "type": "string"
-                    },
-                    "lastName": {
-                        "type": "string"
-                    },
-                    "hireDate": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
+        "title": {
+            "type": "string"
         }
     },
-    "required": [
-        "title",
-        "fields",
-        "employees"
-    ]
+    "version": 1
 }

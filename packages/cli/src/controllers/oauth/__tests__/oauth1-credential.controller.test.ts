@@ -1,24 +1,24 @@
+import { Logger } from '@n8n/backend-common';
+import type { CredentialsEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import { Cipher, type InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
 import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
 
@@ -27,7 +27,7 @@ jest.mock('@/workflow-execute-additional-data');
 describe('OAuth1CredentialController', () => {
 	mockInstance(Logger);
 	mockInstance(ExternalHooks);
-	mockInstance(SecretsHelper);
+	mockInstance(ExternalSecretsProxy);
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
@@ -38,7 +38,7 @@ describe('OAuth1CredentialController', () => {
 	Container.set(Cipher, cipher);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 
 	const csrfSecret = 'csrf-secret';
 	const user = mock<User>({
@@ -73,7 +73,7 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should throw a NotFoundError when no matching credential is found for the user', async () => {
-			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
 
 			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user, query: { id: '1' } });
 			await expect(controller.getAuthUri(req)).rejects.toThrowError(
@@ -84,9 +84,9 @@ describe('OAuth1CredentialController', () => {
 		it('should return a valid auth URI', async () => {
 			jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
-			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				authUrl: 'https://example.domain/oauth/authorize',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
@@ -223,22 +223,18 @@ describe('OAuth1CredentialController', () => {
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
 				signatureMethod: 'HMAC-SHA1',
 			});
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
-				.post('/oauth/access_token', {
-					oauth_token: 'token',
-					oauth_verifier: 'verifier',
-				})
+				.post('/oauth/access_token', 'oauth_token=token&oauth_verifier=verifier')
 				.once()
 				.reply(200, 'access_token=new_token');
 
 			await controller.handleCallback(req, res);
-
 			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',

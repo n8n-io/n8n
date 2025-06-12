@@ -5,7 +5,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
@@ -24,8 +24,8 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'Send Email',
 		color: '#00bb88',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{

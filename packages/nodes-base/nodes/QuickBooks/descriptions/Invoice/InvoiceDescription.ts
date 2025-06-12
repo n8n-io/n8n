@@ -148,6 +148,13 @@ export const invoiceFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaxCodeRefs',
 				},
 			},
+			{
+				displayName: 'Quantity',
+				name: 'Qty',
+				description: 'Number of units of the line item',
+				type: 'number',
+				default: 0,
+			},
 		],
 	},
 	{

@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "board_kind": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
         "name": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "board_kind": {
             "type": "string"
         },
         "owners": {
@@ -21,20 +18,12 @@
                     "id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id"
-                ]
+                }
             }
+        },
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "description",
-        "state",
-        "board_folder_id",
-        "board_kind",
-        "owners"
-    ]
+    "version": 1
 }

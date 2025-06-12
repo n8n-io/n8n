@@ -1,49 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "_id": {
-            "type": "integer"
-        },
-        "formhub/uuid": {
-            "type": "string"
-        },
-        "start": {
-            "type": "string"
-        },
-        "end": {
-            "type": "string"
-        },
-        "today": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        },
-        "deviceid": {
-            "type": "string"
-        },
-        "personal_QR_code": {
-            "type": "string"
-        },
-        "infra_categ": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "gps_note": {
-            "type": "string"
-        },
         "__version__": {
-            "type": "string"
-        },
-        "meta/instanceID": {
-            "type": "string"
-        },
-        "_xform_id_string": {
-            "type": "string"
-        },
-        "_uuid": {
             "type": "string"
         },
         "_attachments": {
@@ -51,9 +9,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "download_url": {
-                        "type": "string"
-                    },
                     "download_large_url": {
                         "type": "string"
                     },
@@ -63,38 +18,32 @@
                     "download_small_url": {
                         "type": "string"
                     },
-                    "mimetype": {
+                    "download_url": {
                         "type": "string"
                     },
                     "filename": {
                         "type": "string"
                     },
-                    "instance": {
-                        "type": "integer"
-                    },
-                    "xform": {
-                        "type": "integer"
-                    },
                     "id": {
                         "type": "integer"
                     },
+                    "instance": {
+                        "type": "integer"
+                    },
+                    "mimetype": {
+                        "type": "string"
+                    },
                     "question_xpath": {
                         "type": "string"
+                    },
+                    "xform": {
+                        "type": "integer"
                     }
-                },
-                "required": [
-                    "download_url",
-                    "download_large_url",
-                    "download_medium_url",
-                    "download_small_url",
-                    "mimetype",
-                    "filename",
-                    "instance",
-                    "xform",
-                    "id",
-                    "question_xpath"
-                ]
+                }
             }
+        },
+        "_id": {
+            "type": "integer"
         },
         "_status": {
             "type": "string"
@@ -102,15 +51,12 @@
         "_submission_time": {
             "type": "string"
         },
+        "_uuid": {
+            "type": "string"
+        },
         "_validation_status": {
             "type": "object",
             "properties": {
-                "timestamp": {
-                    "type": "integer"
-                },
-                "uid": {
-                    "type": "string"
-                },
                 "by_whom": {
                     "type": "string"
                 },
@@ -119,63 +65,66 @@
                 },
                 "label": {
                     "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "timestamp",
-                "uid",
-                "by_whom",
-                "color",
-                "label"
-            ]
+            }
         },
-        "infra_subtype": {
-            "type": "string"
-        },
-        "pic1": {
+        "_xform_id_string": {
             "type": "string"
         },
         "description": {
             "type": "string"
         },
-        "q2nd_pic": {
+        "deviceid": {
+            "type": "string"
+        },
+        "end": {
+            "type": "string"
+        },
+        "formhub/uuid": {
+            "type": "string"
+        },
+        "gps_note": {
+            "type": "string"
+        },
+        "infra_categ": {
+            "type": "string"
+        },
+        "infra_subtype": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "meta/instanceID": {
+            "type": "string"
+        },
+        "personal_QR_code": {
+            "type": "string"
+        },
+        "pic1": {
             "type": "string"
         },
         "pic2": {
             "type": "string"
         },
-        "Validation_comments": {
+        "q2nd_pic": {
             "type": "string"
         },
-        "meta/deprecatedID": {
+        "start": {
             "type": "string"
         },
-        "_version_": {
+        "today": {
             "type": "string"
         },
-        "_version__001": {
-            "type": "string"
-        },
-        "_version__002": {
+        "username": {
             "type": "string"
         }
     },
-    "required": [
-        "_id",
-        "formhub/uuid",
-        "start",
-        "end",
-        "__version__",
-        "meta/instanceID",
-        "_xform_id_string",
-        "_uuid",
-        "_attachments",
-        "_status",
-        "_geolocation",
-        "_submission_time",
-        "_tags",
-        "_notes",
-        "_validation_status",
-        "_submitted_by"
-    ]
+    "version": 1
 }

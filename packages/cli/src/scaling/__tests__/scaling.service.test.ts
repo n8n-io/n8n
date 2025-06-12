@@ -81,7 +81,6 @@ describe('ScalingService', () => {
 			mock(),
 			instanceSettings,
 			mock(),
-			mock(),
 		);
 
 		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
@@ -202,7 +201,7 @@ describe('ScalingService', () => {
 		});
 
 		describe('if worker', () => {
-			it('should wait for running jobs to finish', async () => {
+			it('should pause queue and wait for running jobs to finish', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
@@ -211,7 +210,7 @@ describe('ScalingService', () => {
 				await scalingService.stop();
 
 				expect(getRunningJobsCountSpy).toHaveBeenCalled();
-				expect(queue.pause).not.toHaveBeenCalled();
+				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
 		});

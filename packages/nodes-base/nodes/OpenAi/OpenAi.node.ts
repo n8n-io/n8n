@@ -1,5 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { chatFields, chatOperations } from './ChatDescription';
 import { imageFields, imageOperations } from './ImageDescription';
@@ -19,8 +19,8 @@ export class OpenAi implements INodeType {
 		defaults: {
 			name: 'OpenAI',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'openAiApi',

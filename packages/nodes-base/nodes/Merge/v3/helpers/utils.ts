@@ -12,7 +12,7 @@ import type {
 	INodeParameters,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
@@ -364,7 +364,7 @@ export function addSourceField(data: INodeExecutionData[], sourceField: string) 
 
 export const configuredInputs = (parameters: INodeParameters) => {
 	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
-		type: `${NodeConnectionType.Main}`,
+		type: 'main',
 		displayName: `Input ${(i + 1).toString()}`,
 	}));
 };
@@ -373,7 +373,7 @@ export function getNodeInputsData(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[][] = [];
 
 	const inputs = NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
-		(type) => type === NodeConnectionType.Main,
+		(type) => type === NodeConnectionTypes.Main,
 	);
 
 	for (let i = 0; i < inputs.length; i++) {
@@ -385,4 +385,44 @@ export function getNodeInputsData(this: IExecuteFunctions) {
 	}
 
 	return returnData;
+}
+
+export const rowToExecutionData = (data: IDataObject): INodeExecutionData => {
+	const keys = Object.keys(data);
+	const pairedItem: IPairedItemData[] = [];
+	const json: IDataObject = {};
+
+	for (const key of keys) {
+		if (key.startsWith('pairedItem')) {
+			if (data[key] === undefined) continue;
+			pairedItem.push(data[key] as IPairedItemData);
+		} else {
+			json[key] = data[key];
+		}
+	}
+
+	return { json, pairedItem };
+};
+
+export function modifySelectQuery(userQuery: string, inputLength: number): string {
+	const selectMatch = userQuery.match(/SELECT\s+(.+?)\s+FROM/i);
+	if (!selectMatch) return userQuery;
+
+	let selectedColumns = selectMatch[1].trim();
+
+	if (selectedColumns === '*') {
+		return userQuery;
+	}
+
+	const pairedItemColumns = [];
+
+	for (let i = 1; i <= inputLength; i++) {
+		if (userQuery.includes(`input${i}`)) {
+			pairedItemColumns.push(`input${i}.pairedItem AS pairedItem${i}`);
+		}
+	}
+
+	selectedColumns += pairedItemColumns.length ? ', ' + pairedItemColumns.join(', ') : '';
+
+	return userQuery.replace(selectMatch[0], `SELECT ${selectedColumns} FROM`);
 }

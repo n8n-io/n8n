@@ -4,63 +4,31 @@
         "expand": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "self": {
-            "type": "string"
-        },
-        "key": {
-            "type": "string"
-        },
         "fields": {
             "type": "object",
             "properties": {
-                "priority": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "iconUrl": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "iconUrl",
-                        "name",
-                        "id"
-                    ]
-                },
                 "status": {
                     "type": "object",
                     "properties": {
-                        "self": {
-                            "type": "string"
-                        },
                         "description": {
                             "type": "string"
                         },
                         "iconUrl": {
                             "type": "string"
                         },
+                        "id": {
+                            "type": "string"
+                        },
                         "name": {
                             "type": "string"
                         },
-                        "id": {
+                        "self": {
                             "type": "string"
                         },
                         "statusCategory": {
                             "type": "object",
                             "properties": {
-                                "self": {
+                                "colorName": {
                                     "type": "string"
                                 },
                                 "id": {
@@ -69,121 +37,30 @@
                                 "key": {
                                     "type": "string"
                                 },
-                                "colorName": {
-                                    "type": "string"
-                                },
                                 "name": {
                                     "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "self",
-                                "id",
-                                "key",
-                                "colorName",
-                                "name"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "description",
-                        "iconUrl",
-                        "name",
-                        "id",
-                        "statusCategory"
-                    ]
-                },
-                "components": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "self": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "self",
-                            "id",
-                            "name"
-                        ]
+                        }
                     }
                 },
                 "summary": {
                     "type": "string"
-                },
-                "reporter": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "emailAddress": {
-                            "type": "string"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "48x48": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "48x48",
-                                "24x24",
-                                "16x16",
-                                "32x32"
-                            ]
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "accountId",
-                        "avatarUrls",
-                        "displayName",
-                        "active",
-                        "timeZone",
-                        "accountType"
-                    ]
                 }
             }
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
         }
     },
-    "required": [
-        "expand",
-        "id",
-        "self",
-        "key"
-    ]
+    "version": 4
 }

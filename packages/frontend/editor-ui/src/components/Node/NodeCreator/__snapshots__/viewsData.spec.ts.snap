@@ -1,0 +1,194 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`viewsData > AIView > should return ai view with ai transform node 1`] = `
+{
+  "items": [
+    {
+      "key": "ai_templates_root",
+      "properties": {
+        "description": "See what's possible and get started 5x faster",
+        "icon": "box-open",
+        "name": "ai_templates_root",
+        "tag": {
+          "text": "Recommended",
+          "type": "info",
+        },
+        "title": "AI Templates",
+        "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
+      },
+      "type": "link",
+    },
+    {
+      "key": "agent",
+      "properties": {
+        "description": "example mock agent node",
+        "displayName": "agent",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "agent",
+        "title": "agent",
+      },
+      "type": "node",
+    },
+    {
+      "key": "chain",
+      "properties": {
+        "description": "example mock chain node",
+        "displayName": "chain",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "chain",
+        "title": "chain",
+      },
+      "type": "node",
+    },
+    {
+      "key": "n8n-nodes-base.aiTransform",
+      "properties": {
+        "description": "",
+        "displayName": "n8n-nodes-base.aiTransform",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "n8n-nodes-base.aiTransform",
+        "title": "n8n-nodes-base.aiTransform",
+      },
+      "type": "node",
+    },
+    {
+      "key": "AI Other",
+      "properties": {
+        "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
+        "icon": "robot",
+        "title": "Other AI Nodes",
+      },
+      "type": "view",
+    },
+  ],
+  "subtitle": "Select an AI Node to add to your workflow",
+  "title": "AI Nodes",
+  "value": "AI",
+}
+`;
+
+exports[`viewsData > AIView > should return ai view without ai transform node if ask ai is not enabled 1`] = `
+{
+  "items": [
+    {
+      "key": "ai_templates_root",
+      "properties": {
+        "description": "See what's possible and get started 5x faster",
+        "icon": "box-open",
+        "name": "ai_templates_root",
+        "tag": {
+          "text": "Recommended",
+          "type": "info",
+        },
+        "title": "AI Templates",
+        "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
+      },
+      "type": "link",
+    },
+    {
+      "key": "agent",
+      "properties": {
+        "description": "example mock agent node",
+        "displayName": "agent",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "agent",
+        "title": "agent",
+      },
+      "type": "node",
+    },
+    {
+      "key": "chain",
+      "properties": {
+        "description": "example mock chain node",
+        "displayName": "chain",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "chain",
+        "title": "chain",
+      },
+      "type": "node",
+    },
+    {
+      "key": "AI Other",
+      "properties": {
+        "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
+        "icon": "robot",
+        "title": "Other AI Nodes",
+      },
+      "type": "view",
+    },
+  ],
+  "subtitle": "Select an AI Node to add to your workflow",
+  "title": "AI Nodes",
+  "value": "AI",
+}
+`;
+
+exports[`viewsData > AIView > should return ai view without ai transform node if ask ai is not enabled and node is not in the list 1`] = `
+{
+  "items": [
+    {
+      "key": "ai_templates_root",
+      "properties": {
+        "description": "See what's possible and get started 5x faster",
+        "icon": "box-open",
+        "name": "ai_templates_root",
+        "tag": {
+          "text": "Recommended",
+          "type": "info",
+        },
+        "title": "AI Templates",
+        "url": "template-repository-url.n8n.io?test=value&utm_user_role=AdvancedAI",
+      },
+      "type": "link",
+    },
+    {
+      "key": "agent",
+      "properties": {
+        "description": "example mock agent node",
+        "displayName": "agent",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "agent",
+        "title": "agent",
+      },
+      "type": "node",
+    },
+    {
+      "key": "chain",
+      "properties": {
+        "description": "example mock chain node",
+        "displayName": "chain",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "chain",
+        "title": "chain",
+      },
+      "type": "node",
+    },
+    {
+      "key": "AI Other",
+      "properties": {
+        "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
+        "icon": "robot",
+        "title": "Other AI Nodes",
+      },
+      "type": "view",
+    },
+  ],
+  "subtitle": "Select an AI Node to add to your workflow",
+  "title": "AI Nodes",
+  "value": "AI",
+}
+`;

@@ -1,6 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import config from '@/config';
 import { License } from '@/license';
 
 export function isWorkflowHistoryLicensed() {
@@ -9,7 +9,7 @@ export function isWorkflowHistoryLicensed() {
 }
 
 export function isWorkflowHistoryEnabled() {
-	return isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled');
+	return isWorkflowHistoryLicensed() && Container.get(GlobalConfig).workflowHistory.enabled;
 }
 
 export function getWorkflowHistoryLicensePruneTime() {
@@ -19,7 +19,7 @@ export function getWorkflowHistoryLicensePruneTime() {
 // Time in hours
 export function getWorkflowHistoryPruneTime(): number {
 	const licenseTime = Container.get(License).getWorkflowHistoryPruneLimit();
-	const configTime = config.getEnv('workflowHistory.pruneTime');
+	const configTime = Container.get(GlobalConfig).workflowHistory.pruneTime;
 
 	// License is infinite and config time is infinite
 	if (licenseTime === -1) {

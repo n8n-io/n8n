@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 const errorObjectPlaceholder = `{
 	"code": "404",
@@ -25,7 +25,7 @@ export class StopAndError implements INodeType {
 			name: 'Stop and Error',
 			color: '#ff0000',
 		},
-		inputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
 
 		outputs: [],
 		properties: [

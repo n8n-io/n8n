@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
+        "contactId": {
             "type": "string"
         },
         "etag": {
@@ -13,13 +13,13 @@
                 "displayName": {
                     "type": "string"
                 },
+                "displayNameLastFirst": {
+                    "type": "string"
+                },
                 "familyName": {
                     "type": "string"
                 },
                 "givenName": {
-                    "type": "string"
-                },
-                "displayNameLastFirst": {
                     "type": "string"
                 },
                 "unstructuredName": {
@@ -27,24 +27,9 @@
                 }
             }
         },
-        "contactId": {
+        "resourceName": {
             "type": "string"
-        },
-        "phoneNumbers": {
-            "type": "object",
-            "properties": {
-                "mobile": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "required": [
-        "resourceName",
-        "etag",
-        "contactId"
-    ]
+    "version": 2
 }

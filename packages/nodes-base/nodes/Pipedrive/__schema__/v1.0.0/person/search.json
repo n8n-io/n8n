@@ -1,19 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "result_score": {
-            "type": "number"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "phones": {
+        "custom_fields": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -25,25 +13,11 @@
                 "type": "string"
             }
         },
-        "visible_to": {
+        "id": {
             "type": "integer"
         },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id"
-            ]
-        },
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "name": {
+            "type": "string"
         },
         "notes": {
             "type": "array",
@@ -51,8 +25,32 @@
                 "type": "string"
             }
         },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "phones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "result_score": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string"
+        },
         "update_time": {
             "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 4
 }

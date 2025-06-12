@@ -1,3 +1,4 @@
+import isbot from 'isbot';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -17,18 +18,21 @@ import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
-	createEmailBody,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
+import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
 import { escapeHtml } from '../utilities';
 
-type SendAndWaitConfig = {
+export type SendAndWaitConfig = {
 	title: string;
 	message: string;
 	url: string;
 	options: Array<{ label: string; value: string; style: string }>;
+	appendAttribution?: boolean;
 };
 
 type FormResponseTypeOptions = {
@@ -36,6 +40,7 @@ type FormResponseTypeOptions = {
 	responseFormTitle?: string;
 	responseFormDescription?: string;
 	responseFormButtonLabel?: string;
+	responseFormCustomCss?: string;
 };
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
@@ -54,6 +59,15 @@ const limitWaitTimeOption: INodeProperties = {
 			values: limitWaitTimeProperties,
 		},
 	],
+};
+
+const appendAttributionOption: INodeProperties = {
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+	description:
+		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
 };
 
 // Operation Properties ----------------------------------------------------------
@@ -231,7 +245,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption],
+			options: [limitWaitTimeOption, appendAttributionOption],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -271,7 +285,19 @@ export function getSendAndWaitProperties(
 					type: 'string',
 					default: 'Submit',
 				},
+				{
+					displayName: 'Response Form Custom Styling',
+					name: 'responseFormCustomCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the response form with CSS',
+				},
 				limitWaitTimeOption,
+				appendAttributionOption,
 			],
 			displayOptions: {
 				show: {
@@ -318,20 +344,29 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 		formTitle,
 		formDescription,
 		buttonLabel,
+		customCss: options.responseFormCustomCss,
 	};
 };
 
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
+	const req = this.getRequestObject();
+
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
 		| 'customForm';
 
+	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
+		res.send('');
+		return { noWebhookResponse: true };
+	}
+
 	if (responseType === 'freeText') {
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
@@ -349,6 +384,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				],
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
 			res.render('form-trigger', data);
@@ -388,7 +424,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
@@ -400,6 +437,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				formFields: fields,
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
 			res.render('form-trigger', data);
@@ -424,7 +462,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 	}
 
-	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
+	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
@@ -448,11 +486,14 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		buttonDisapprovalStyle?: string;
 	};
 
+	const options = context.getNodeParameter('options', 0, {});
+
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
 		url: `${resumeUrl}/${nodeId}`,
 		options: [],
+		appendAttribution: options?.appendAttribution as boolean,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
@@ -517,14 +558,19 @@ export function createEmail(context: IExecuteFunctions) {
 	for (const option of config.options) {
 		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
-
-	const instanceId = context.getInstanceId();
+	let emailBody: string;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		emailBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		emailBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const email: IEmail = {
 		to,
 		subject: config.title,
 		body: '',
-		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
+		htmlBody: emailBody,
 	};
 
 	return email;

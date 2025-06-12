@@ -21,7 +21,7 @@ const switchBetweenEditorAndWorkflowlist = () => {
 	cy.getByTestId('menu-item').first().click();
 	cy.wait(['@getUsers', '@getWorkflows', '@getActiveWorkflows', '@getProjects']);
 
-	cy.getByTestId('resources-list-item').first().click();
+	cy.getByTestId('resources-list-item-workflow').first().click();
 
 	workflowPage.getters.canvasNodes().first().should('be.visible');
 	workflowPage.getters.canvasNodes().last().should('be.visible');

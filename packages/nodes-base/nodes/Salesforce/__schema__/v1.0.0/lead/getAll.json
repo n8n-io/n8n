@@ -10,23 +10,14 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
-            "type": "string"
-        },
-        "LastName": {
             "type": "string"
         },
         "Status": {
             "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 2
 }

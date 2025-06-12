@@ -2,13 +2,14 @@
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { searchModels } from './methods/loadModels';
@@ -51,7 +52,7 @@ export class LmChatOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -65,7 +66,7 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials?.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
@@ -104,8 +105,8 @@ export class LmChatOpenAi implements INodeType {
 										properties: {
 											// If the baseURL is not set or is set to api.openai.com, include only chat models
 											pass: `={{
-												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
-												($credentials?.url && !$credentials.url.includes('api.openai.com')) ||
+												($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+												($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
 												$responseItem.id.startsWith('ft:') ||
 												$responseItem.id.startsWith('o1') ||
 												$responseItem.id.startsWith('o3') ||
@@ -148,7 +149,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-4o-mini' },
+				default: { mode: 'list', value: 'gpt-4.1-mini' },
 				required: true,
 				modes: [
 					{
@@ -165,7 +166,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'gpt-4o-mini',
+						placeholder: 'gpt-4.1-mini',
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',
@@ -346,7 +347,9 @@ export class LmChatOpenAi implements INodeType {
 			reasoningEffort?: 'low' | 'medium' | 'high';
 		};
 
-		const configuration: ClientOptions = {};
+		const configuration: ClientOptions = {
+			httpAgent: getHttpProxyAgent(),
+		};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {

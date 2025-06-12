@@ -8,7 +8,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
@@ -30,7 +30,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -45,6 +45,7 @@ export class MemoryRedisChat implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['Other memories'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -57,10 +58,10 @@ export class MemoryRedisChat implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',
@@ -133,6 +134,9 @@ export class MemoryRedisChat implements INodeType {
 			database: credentials.database as number,
 		};
 
+		if (credentials.user && nodeVersion >= 1.5) {
+			redisOptions.username = credentials.user as string;
+		}
 		if (credentials.password) {
 			redisOptions.password = credentials.password as string;
 		}

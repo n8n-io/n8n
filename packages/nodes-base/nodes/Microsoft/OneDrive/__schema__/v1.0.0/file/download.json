@@ -1,8 +1,95 @@
 {
     "type": "object",
     "properties": {
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "createdDateTime": {
             "type": "string"
+        },
+        "file": {
+            "type": "object",
+            "properties": {
+                "hashes": {
+                    "type": "object",
+                    "properties": {
+                        "quickXorHash": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "mimeType": {
+                    "type": "string"
+                }
+            }
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "lastModifiedDateTime": {
             "type": "string"
@@ -10,8 +97,29 @@
         "name": {
             "type": "string"
         },
-        "webUrl": {
-            "type": "string"
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveId": {
+                    "type": "string"
+                },
+                "driveType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "siteId": {
+                    "type": "string"
+                }
+            }
         }
-    }
+    },
+    "version": 3
 }

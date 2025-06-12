@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type NodeExecutionWithMetadata,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -27,8 +27,8 @@ export class Automizy implements INodeType {
 		defaults: {
 			name: 'Automizy',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		hidden: true,
 		credentials: [
 			{

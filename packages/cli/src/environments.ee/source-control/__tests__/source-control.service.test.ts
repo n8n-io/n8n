@@ -1,14 +1,17 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { Variables } from '@n8n/db';
+import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
+import type { TagEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
+import type { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import type { Variables } from '@/databases/entities/variables';
-import type { TagRepository } from '@/databases/repositories/tag.repository';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableCredential } from '../types/exportable-credential';
@@ -24,6 +27,7 @@ describe('SourceControlService', () => {
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();
+	const folderRepository = mock<FolderRepository>();
 	const sourceControlService = new SourceControlService(
 		mock(),
 		mock(),
@@ -31,6 +35,7 @@ describe('SourceControlService', () => {
 		mock(),
 		sourceControlImportService,
 		tagRepository,
+		folderRepository,
 		mock(),
 	);
 
@@ -41,8 +46,9 @@ describe('SourceControlService', () => {
 
 	describe('pushWorkfolder', () => {
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
@@ -111,8 +117,9 @@ describe('SourceControlService', () => {
 		});
 
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
@@ -134,6 +141,8 @@ describe('SourceControlService', () => {
 	describe('getStatus', () => {
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:admin';
 
 			// Define a credential that does only exist locally.
 			// Pulling this would delete it so it should be marked as a conflict.
@@ -171,22 +180,44 @@ describe('SourceControlService', () => {
 				mappings: [],
 			});
 
+			// Define a folder that does only exist locally.
+			// Pulling this would delete it so it should be marked as a conflict.
+			// Pushing this is conflict free.
+			const folder = mock<FolderWithWorkflowAndSubFolderCount>({
+				updatedAt: new Date(),
+				createdAt: new Date(),
+			});
+			folderRepository.find.mockResolvedValue([folder]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [
+					{
+						id: folder.id,
+						name: folder.name,
+						parentFolderId: folder.parentFolder?.id ?? '',
+						homeProjectId: folder.homeProject.id,
+						createdAt: folder.createdAt.toISOString(),
+						updatedAt: folder.updatedAt.toISOString(),
+					},
+				],
+			});
+
 			// ACT
-			const pullResult = await sourceControlService.getStatus({
+			const pullResult = await sourceControlService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
 				preferLocalVersion: false,
 			});
 
-			const pushResult = await sourceControlService.getStatus({
+			const pushResult = await sourceControlService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: false,
 			});
 
 			// ASSERT
-			console.log(pullResult);
-			console.log(pushResult);
 
 			if (!Array.isArray(pullResult)) {
 				fail('Expected pullResult to be an array.');
@@ -195,8 +226,8 @@ describe('SourceControlService', () => {
 				fail('Expected pushResult to be an array.');
 			}
 
-			expect(pullResult).toHaveLength(4);
-			expect(pushResult).toHaveLength(4);
+			expect(pullResult).toHaveLength(5);
+			expect(pushResult).toHaveLength(5);
 
 			expect(pullResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', false);
@@ -209,6 +240,24 @@ describe('SourceControlService', () => {
 
 			expect(pullResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
+		});
+
+		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:member';
+
+			// ACT
+			await expect(
+				sourceControlService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				}),
+			).rejects.toThrowError(ForbiddenError);
 		});
 	});
 });

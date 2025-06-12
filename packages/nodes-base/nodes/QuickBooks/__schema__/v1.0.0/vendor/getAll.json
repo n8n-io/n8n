@@ -1,168 +1,130 @@
 {
-	"type": "object",
-	"properties": {
-		"Vendor1099": {
-			"type": "boolean"
-		},
-		"CurrencyRef": {
-			"type": "object",
-			"properties": {
-				"value": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"value",
-				"name"
-			]
-		},
-		"domain": {
-			"type": "string"
-		},
-		"sparse": {
-			"type": "boolean"
-		},
-		"Id": {
-			"type": "string"
-		},
-		"SyncToken": {
-			"type": "string"
-		},
-		"MetaData": {
-			"type": "object",
-			"properties": {
-				"CreateTime": {
-					"type": "string"
-				},
-				"LastUpdatedTime": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"CreateTime",
-				"LastUpdatedTime"
-			]
-		},
-		"DisplayName": {
-			"type": "string"
-		},
-		"PrintOnCheckName": {
-			"type": "string"
-		},
-		"Active": {
-			"type": "boolean"
-		},
-		"BillAddr": {
-			"type": "object",
-			"properties": {
-				"Id": {
-					"type": "string"
-				},
-				"Line1": {
-					"type": "string"
-				},
-				"City": {
-					"type": "string"
-				},
-				"CountrySubDivisionCode": {
-					"type": "string"
-				},
-				"PostalCode": {
-					"type": "string"
-				},
-				"Lat": {
-					"type": "string"
-				},
-				"Long": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"Id"
-			]
-		},
-		"AcctNum": {
-			"type": "string"
-		},
-		"GivenName": {
-			"type": "string"
-		},
-		"FamilyName": {
-			"type": "string"
-		},
-		"CompanyName": {
-			"type": "string"
-		},
-		"PrimaryPhone": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		},
-		"PrimaryEmailAddr": {
-			"type": "object",
-			"properties": {
-				"Address": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"Address"
-			]
-		},
-		"WebAddr": {
-			"type": "object",
-			"properties": {
-				"URI": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"URI"
-			]
-		},
-		"Mobile": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		},
-		"Fax": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		}
-	},
-	"required": [
-		"Balance",
-		"Vendor1099",
-		"CurrencyRef",
-		"domain",
-		"sparse",
-		"Id",
-		"SyncToken",
-		"MetaData",
-		"DisplayName",
-		"PrintOnCheckName",
-		"Active"
-	]
+    "type": "object",
+    "properties": {
+        "AcctNum": {
+            "type": "string"
+        },
+        "Active": {
+            "type": "boolean"
+        },
+        "BillAddr": {
+            "type": "object",
+            "properties": {
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "Id": {
+                    "type": "string"
+                },
+                "Lat": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "Long": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "CompanyName": {
+            "type": "string"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DisplayName": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "FamilyName": {
+            "type": "string"
+        },
+        "Fax": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "GivenName": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "Mobile": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "PrimaryEmailAddr": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "type": "string"
+                }
+            }
+        },
+        "PrimaryPhone": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "PrintOnCheckName": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Vendor1099": {
+            "type": "boolean"
+        },
+        "WebAddr": {
+            "type": "object",
+            "properties": {
+                "URI": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
 }

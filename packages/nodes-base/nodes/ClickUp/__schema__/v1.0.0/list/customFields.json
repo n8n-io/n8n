@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "date_created": {
+            "type": "string"
+        },
+        "hide_from_guests": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
         },
@@ -10,20 +16,28 @@
         "type": {
             "type": "string"
         },
-        "date_created": {
-            "type": "string"
-        },
-        "hide_from_guests": {
-            "type": "boolean"
+        "type_config": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "orderindex": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "type_config",
-        "date_created",
-        "hide_from_guests",
-        "required"
-    ]
+    "version": 2
 }

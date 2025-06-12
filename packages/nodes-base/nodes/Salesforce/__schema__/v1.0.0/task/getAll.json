@@ -10,17 +10,17 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
             "type": "string"
+        },
+        "Priority": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 2
 }

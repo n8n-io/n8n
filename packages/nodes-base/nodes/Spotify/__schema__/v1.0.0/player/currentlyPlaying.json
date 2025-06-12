@@ -1,42 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "timestamp": {
-            "type": "integer"
-        },
-        "context": {
+        "actions": {
             "type": "object",
             "properties": {
-                "external_urls": {
+                "disallows": {
                     "type": "object",
                     "properties": {
-                        "spotify": {
-                            "type": "string"
+                        "resuming": {
+                            "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
-                },
-                "href": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "uri": {
-                    "type": "string"
+                    }
                 }
-            },
-            "required": [
-                "external_urls",
-                "href",
-                "type",
-                "uri"
-            ]
+            }
         },
-        "progress_ms": {
-            "type": "integer"
+        "currently_playing_type": {
+            "type": "string"
+        },
+        "is_playing": {
+            "type": "boolean"
         },
         "item": {
             "type": "object",
@@ -55,10 +37,7 @@
                                             "spotify": {
                                                 "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "spotify"
-                                        ]
+                                        }
                                     },
                                     "href": {
                                         "type": "string"
@@ -75,15 +54,7 @@
                                     "uri": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "external_urls",
-                                    "href",
-                                    "id",
-                                    "name",
-                                    "type",
-                                    "uri"
-                                ]
+                                }
                             }
                         },
                         "available_markets": {
@@ -98,10 +69,7 @@
                                 "spotify": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "spotify"
-                            ]
+                            }
                         },
                         "images": {
                             "type": "array",
@@ -117,12 +85,7 @@
                                     "width": {
                                         "type": "integer"
                                     }
-                                },
-                                "required": [
-                                    "height",
-                                    "url",
-                                    "width"
-                                ]
+                                }
                             }
                         },
                         "name": {
@@ -134,21 +97,7 @@
                         "type": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "album_type",
-                        "artists",
-                        "available_markets",
-                        "external_urls",
-                        "href",
-                        "id",
-                        "images",
-                        "name",
-                        "release_date",
-                        "release_date_precision",
-                        "type",
-                        "uri"
-                    ]
+                    }
                 },
                 "artists": {
                     "type": "array",
@@ -161,10 +110,7 @@
                                     "spotify": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "spotify"
-                                ]
+                                }
                             },
                             "name": {
                                 "type": "string"
@@ -172,15 +118,7 @@
                             "type": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "external_urls",
-                            "href",
-                            "id",
-                            "name",
-                            "type",
-                            "uri"
-                        ]
+                        }
                     }
                 },
                 "available_markets": {
@@ -204,10 +142,7 @@
                         "isrc": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "isrc"
-                    ]
+                    }
                 },
                 "external_urls": {
                     "type": "object",
@@ -215,10 +150,7 @@
                         "spotify": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
+                    }
                 },
                 "is_local": {
                     "type": "boolean"
@@ -238,57 +170,14 @@
                 "uri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "album",
-                "artists",
-                "available_markets",
-                "disc_number",
-                "duration_ms",
-                "explicit",
-                "external_ids",
-                "external_urls",
-                "href",
-                "id",
-                "is_local",
-                "name",
-                "popularity",
-                "preview_url",
-                "track_number",
-                "type",
-                "uri"
-            ]
+            }
         },
-        "currently_playing_type": {
-            "type": "string"
+        "progress_ms": {
+            "type": "integer"
         },
-        "actions": {
-            "type": "object",
-            "properties": {
-                "disallows": {
-                    "type": "object",
-                    "properties": {
-                        "resuming": {
-                            "type": "boolean"
-                        }
-                    }
-                }
-            },
-            "required": [
-                "disallows"
-            ]
-        },
-        "is_playing": {
-            "type": "boolean"
+        "timestamp": {
+            "type": "integer"
         }
     },
-    "required": [
-        "timestamp",
-        "context",
-        "progress_ms",
-        "item",
-        "currently_playing_type",
-        "actions",
-        "is_playing"
-    ]
+    "version": 1
 }

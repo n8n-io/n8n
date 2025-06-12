@@ -9,46 +9,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-metadata:
-    name: Get Metadata
-    runs-on: ubuntu-latest
+  eligibility_check:
+    name: Check Eligibility for Test Run
     if: github.event.review.state == 'approved'
-    steps:
-      - name: Check out current commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
-
-      - name: Determine changed files
-        uses: tomi/paths-filter-action@v3.0.2
-        id: changed
-        with:
-          filters: |
-            not_ignored:
-              - '!.devcontainer/**'
-              - '!.github/*'
-              - '!.github/scripts/*'
-              - '!.github/workflows/benchmark-*'
-              - '!.github/workflows/check-*'
-              - '!.vscode/**'
-              - '!docker/**'
-              - '!packages/@n8n/benchmark/**'
-              - '!**/*.md'
-          predicate-quantifier: 'every'
-
-    outputs:
-      # The workflow should run when:
-      # - It has changes to files that are not ignored
-      # - It is not a community PR
-      # - It is targeting master or a release branch
-      should_run: ${{ steps.changed.outputs.not_ignored == 'true' && !contains(github.event.pull_request.labels.*.name, 'community') && (github.event.pull_request.base.ref == 'master' || startsWith(github.event.pull_request.base.ref, 'release/')) }}
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      is_pr_approved_by_maintainer: true
 
   run-e2e-tests:
-    name: E2E [Electron/Node 18]
+    name: E2E
     uses: ./.github/workflows/e2e-reusable.yml
-    needs: [get-metadata]
-    if: ${{ github.event.review.state == 'approved' && needs.get-metadata.outputs.should_run == 'true' }}
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
     with:
       pr_number: ${{ github.event.pull_request.number }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
@@ -56,33 +28,52 @@ jobs:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   post-e2e-tests:
+    name: E2E - Checks
     runs-on: ubuntu-latest
-    name: E2E [Electron/Node 18] - Checks
-    needs: [get-metadata, run-e2e-tests]
-    if: always()
+    needs: [eligibility_check, run-e2e-tests]
+    if: always() && needs.eligibility_check.result != 'skipped'
     steps:
-      - name: E2E success comment
-        if: ${{ needs.get-metadata.outputs.should_run == 'true' && needs.run-e2e-tests.outputs.tests_passed == 'true' }}
-        uses: peter-evans/create-or-update-comment@v4.0.0
+      - name: Determine Outcome and Comment Message
+        id: determine_outcome
+        run: |
+          JOB_OUTCOME="success"
+          COMMENT_BODY=""
+          SHOULD_POST_COMMENT="false"
+
+          if [[ "${{ needs.eligibility_check.outputs.should_run }}" == "false" ]]; then
+            COMMENT_BODY="ℹ️ E2E tests were not run for this PR based on the eligibility criteria."
+            SHOULD_POST_COMMENT="true"
+            JOB_OUTCOME="success"
+          elif [[ "${{ needs.run-e2e-tests.result }}" == "success" ]]; then
+            COMMENT_BODY=":white_check_mark: All Cypress E2E specs passed"
+            SHOULD_POST_COMMENT="true"
+            JOB_OUTCOME="success"
+          elif [[ "${{ needs.run-e2e-tests.result }}" == "failure" ]]; then
+            COMMENT_BODY=":warning: Some Cypress E2E specs are failing, please fix them before merging"
+            SHOULD_POST_COMMENT="true"
+            JOB_OUTCOME="failure"
+          else
+            COMMENT_BODY="ℹ️ E2E tests were scheduled but did not complete as expected (Result: ${{ needs.run-e2e-tests.result }})."
+            SHOULD_POST_COMMENT="true"
+            JOB_OUTCOME="failure"
+          fi
+
+          echo "comment_body=$COMMENT_BODY" >> $GITHUB_OUTPUT
+          echo "should_post_comment=$SHOULD_POST_COMMENT" >> $GITHUB_OUTPUT
+          echo "job_outcome=$JOB_OUTCOME" >> $GITHUB_OUTPUT
+
+      - name: Create or Update PR Comment
+        if: steps.determine_outcome.outputs.should_post_comment == 'true' && needs.eligibility_check.outputs.should_run == 'true'
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            :white_check_mark: All Cypress E2E specs passed
+          body: ${{ steps.determine_outcome.outputs.comment_body }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: E2E fail comment
-        if: needs.run-e2e-tests.result == 'failure'
-        uses: peter-evans/create-or-update-comment@v4.0.0
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            :warning: Some Cypress E2E specs are failing, please fix them before merging
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Success job if community PR
-        if: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
-        run: exit 0
-
-      - name: Fail job if run-e2e-tests failed
-        if: ${{ (github.event.review.state != 'approved' && github.event.review.state != 'commented') || needs.run-e2e-tests.result == 'failure' }}
-        run: exit 1
+      - name: Finalize Job Status
+        run: |
+          if [[ "${{ steps.determine_outcome.outputs.job_outcome }}" == "failure" ]]; then
+            exit 1
+          else
+            exit 0
+          fi

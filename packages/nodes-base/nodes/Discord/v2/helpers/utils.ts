@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
 import type {
 	IBinaryKeyData,
@@ -392,11 +392,13 @@ export async function sendDiscordMessage(
 
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const config = getSendAndWaitConfig(context);
-
-	const instanceId = context.getInstanceId();
-	const attributionText = 'This message was sent automatically with ';
-	const link = createUtmCampaignLink('n8n-nodes-base.discord', instanceId);
-	const description = `${config.message}\n\n_${attributionText}_[n8n](${link})`;
+	let description = config.message;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.discord', instanceId);
+		description = `${config.message}\n\n_${attributionText}_[n8n](${link})`;
+	}
 
 	const body = {
 		embeds: [

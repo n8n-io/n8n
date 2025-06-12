@@ -1,4 +1,4 @@
-import type { GenericValue, IDataObject } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow';
 
 export type BaseFacebookResponse<TData> = { data: TData };
 export type BasePaginatedFacebookResponse<TData> = BaseFacebookResponse<TData> & {
@@ -70,15 +70,15 @@ export interface WhatsAppPageEvent {
 	entry: WhatsAppEventEntry[];
 }
 
+export type WhatsAppEventChanges = Array<{
+	field: string;
+	value: { statuses?: Array<{ status: string }> };
+}>;
+
 export interface WhatsAppEventEntry {
 	id: string;
 	time: number;
-	changes: [
-		{
-			field: string;
-			value: IDataObject;
-		},
-	];
+	changes: WhatsAppEventChanges;
 }
 
 export interface FacebookFormLeadData {

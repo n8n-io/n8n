@@ -1,39 +1,42 @@
 {
-	"type": "object",
-	"properties": {
-		"kind": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"directMembersCount": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"adminCreated": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"kind",
-		"id",
-		"etag",
-		"email",
-		"name",
-		"directMembersCount",
-		"description",
-		"adminCreated"
-	]
+    "type": "object",
+    "properties": {
+        "adminCreated": {
+            "type": "boolean"
+        },
+        "aliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "directMembersCount": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nonEditableAliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "version": 1
 }

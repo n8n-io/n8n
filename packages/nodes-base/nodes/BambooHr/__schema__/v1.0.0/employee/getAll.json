@@ -1,8 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "canUploadPhoto": {
+            "type": "integer"
         },
         "displayName": {
             "type": "string"
@@ -10,34 +10,18 @@
         "firstName": {
             "type": "string"
         },
-        "lastName": {
+        "id": {
             "type": "string"
         },
-        "pronouns": {
-            "type": "null"
+        "lastName": {
+            "type": "string"
         },
         "photoUploaded": {
             "type": "boolean"
         },
         "photoUrl": {
             "type": "string"
-        },
-        "canUploadPhoto": {
-            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "displayName",
-        "firstName",
-        "lastName",
-        "preferredName",
-        "jobTitle",
-        "workEmail",
-        "department",
-        "pronouns",
-        "photoUploaded",
-        "photoUrl",
-        "canUploadPhoto"
-    ]
+    "version": 2
 }

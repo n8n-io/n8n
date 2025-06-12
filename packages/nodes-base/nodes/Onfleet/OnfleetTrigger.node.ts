@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
@@ -26,7 +26,7 @@ export class OnfleetTrigger implements INodeType {
 			name: 'Onfleet Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',

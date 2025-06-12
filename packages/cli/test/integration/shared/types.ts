@@ -1,12 +1,12 @@
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
+import type { CredentialsEntity } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ICredentialsDb } from '@n8n/db';
 import type { Application } from 'express';
 import type { Server } from 'http';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type TestAgent from 'supertest/lib/agent';
-
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/interfaces';
 
 import type { LicenseMocker } from './license';
 
@@ -43,7 +43,9 @@ type EndpointGroup =
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
-	| 'ai';
+	| 'ai'
+	| 'folder'
+	| 'insights';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

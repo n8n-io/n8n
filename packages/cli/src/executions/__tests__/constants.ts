@@ -1,5 +1,5 @@
 import type { IWorkflowBase } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
@@ -9,7 +9,7 @@ export const OOM_WORKFLOW: Partial<IWorkflowBase> = {
 		{
 			parameters: {},
 			id: '48ce17fe-9651-42ae-910c-48602a00f0bb',
-			name: 'When clicking "Test workflow"',
+			name: 'When clicking "Execute workflow"',
 			type: 'n8n-nodes-base.manualTrigger',
 			typeVersion: 1,
 			position: [640, 260],
@@ -27,12 +27,12 @@ export const OOM_WORKFLOW: Partial<IWorkflowBase> = {
 		},
 	],
 	connections: {
-		'When clicking "Test workflow"': {
+		'When clicking "Execute workflow"': {
 			main: [
 				[
 					{
 						node: 'DebugHelper',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],
@@ -49,7 +49,7 @@ export const IN_PROGRESS_EXECUTION_DATA = {
 	startData: {},
 	resultData: {
 		runData: {
-			'When clicking "Test workflow"': [
+			'When clicking "Execute workflow"': [
 				{
 					hints: [],
 					startTime: 1716138610153,
@@ -71,7 +71,7 @@ export const IN_PROGRESS_EXECUTION_DATA = {
 				},
 			],
 		},
-		lastNodeExecuted: 'When clicking "Test workflow"',
+		lastNodeExecuted: 'When clicking "Execute workflow"',
 	},
 	executionData: {
 		contextData: {},
@@ -103,7 +103,7 @@ export const IN_PROGRESS_EXECUTION_DATA = {
 				source: {
 					main: [
 						{
-							previousNode: 'When clicking "Test workflow"',
+							previousNode: 'When clicking "Execute workflow"',
 						},
 					],
 				},

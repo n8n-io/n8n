@@ -11,4 +11,6 @@ export interface ExportableWorkflow {
 	triggerCount: number;
 	versionId?: string;
 	owner: ResourceOwner;
+	parentFolderId: string | null;
+	isArchived: boolean;
 }

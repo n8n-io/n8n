@@ -1,26 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "created": {
             "type": "string"
         },
-        "summary": {
-            "type": "string"
-        },
-        "start": {
+        "creator": {
             "type": "object",
             "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
+                "email": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
+            }
         },
         "end": {
             "type": "object",
@@ -31,135 +21,12 @@
                 "timeZone": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
-        },
-        "attendees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "responseStatus": {
-                        "type": "string"
-                    },
-                    "self": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "email",
-                    "responseStatus"
-                ]
             }
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "conferenceData": {
-            "type": "object",
-            "properties": {
-                "entryPoints": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "entryPointType": {
-                                "type": "string"
-                            },
-                            "uri": {
-                                "type": "string"
-                            },
-                            "label": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "entryPointType",
-                            "uri"
-                        ]
-                    }
-                },
-                "conferenceSolution": {
-                    "type": "object",
-                    "properties": {
-                        "key": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ]
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "iconUri": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "key",
-                        "name",
-                        "iconUri"
-                    ]
-                },
-                "conferenceId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "entryPoints",
-                "conferenceSolution",
-                "conferenceId"
-            ]
         },
         "etag": {
             "type": "string"
         },
         "eventType": {
-            "type": "string"
-        },
-        "hangoutLink": {
             "type": "string"
         },
         "htmlLink": {
@@ -168,8 +35,25 @@
         "iCalUID": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "kind": {
             "type": "string"
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
+                }
+            }
         },
         "reminders": {
             "type": "object",
@@ -177,22 +61,31 @@
                 "useDefault": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "useDefault"
-            ]
+            }
         },
         "sequence": {
             "type": "integer"
         },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
         "status": {
+            "type": "string"
+        },
+        "summary": {
+            "type": "string"
+        },
+        "updated": {
             "type": "string"
         }
     },
-    "required": [
-        "summary",
-        "updated",
-        "etag",
-        "kind"
-    ]
+    "version": 1
 }

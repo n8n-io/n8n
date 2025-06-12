@@ -1,4 +1,3 @@
-import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
@@ -12,14 +11,11 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
-	const globalConfig = mock<GlobalConfig>({
-		nodes: { communityPackages: { allowToolUsage: false } },
-	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		convertNodeToAiTool: LoadNodesAndCredentials.prototype.convertNodeToAiTool,
 	});
 
-	const nodeTypes: NodeTypes = new NodeTypes(globalConfig, loadNodesAndCredentials);
+	const nodeTypes: NodeTypes = new NodeTypes(loadNodesAndCredentials);
 
 	const nonVersionedNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -117,7 +113,6 @@ describe('NodeTypes', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		globalConfig.nodes.communityPackages.allowToolUsage = false;
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
@@ -173,14 +168,7 @@ describe('NodeTypes', () => {
 			expect(result.description.outputs).toEqual(['ai_tool']);
 		});
 
-		it('should throw when a node-type is requested as tool, but is a community package', () => {
-			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool')).toThrow(
-				'Unrecognized node type: n8n-nodes-community.testNodeTool',
-			);
-		});
-
 		it('should return a tool node-type from a community node,  when requested as tool', () => {
-			globalConfig.nodes.communityPackages.allowToolUsage = true;
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool');
 			expect(result).not.toEqual(toolSupportingNode.type);
 			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');

@@ -13,8 +13,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -54,9 +56,11 @@ describe('SupplyDataContext', () => {
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
 	const mode: WorkflowExecuteMode = 'manual';
-	const runExecutionData = mock<IRunExecutionData>();
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
 	const connectionInputData: INodeExecutionData[] = [];
-	const connectionType = NodeConnectionType.Main;
+	const connectionType = NodeConnectionTypes.Main;
 	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
@@ -173,6 +177,46 @@ describe('SupplyDataContext', () => {
 				'last',
 				'params',
 			]);
+		});
+	});
+
+	describe('cloneWith', () => {
+		it('should return a new copy', () => {
+			const clone = supplyDataContext.cloneWith({ runIndex: 12, inputData: [[{ json: {} }]] });
+			expect(clone.runIndex).toBe(12);
+			expect(clone).not.toBe(supplyDataContext);
+		});
+	});
+
+	describe('getNextRunIndex', () => {
+		it('should return 0 as the default latest run index', () => {
+			const latestRunIndex = supplyDataContext.getNextRunIndex();
+			expect(latestRunIndex).toBe(0);
+		});
+
+		it('should return the length of the run execution data for the node', () => {
+			const runData = mock<IRunData>();
+			const runExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: { [node.name]: [runData, runData] } },
+			});
+			const supplyDataContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const latestRunIndex = supplyDataContext.getNextRunIndex();
+
+			expect(latestRunIndex).toBe(2);
 		});
 	});
 });

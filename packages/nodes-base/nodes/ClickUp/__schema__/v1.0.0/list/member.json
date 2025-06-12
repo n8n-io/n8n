@@ -1,14 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "username": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
+        },
+        "id": {
+            "type": "integer"
         },
         "initials": {
             "type": "string"
@@ -16,39 +13,14 @@
         "profileInfo": {
             "type": "object",
             "properties": {
-                "verified_ambassador": {
-                    "type": "null"
-                },
                 "verified_consultant": {
-                    "type": "null"
-                },
-                "viewed_verified_ambassador": {
                     "type": "null"
                 },
                 "viewed_verified_consultant": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "display_profile",
-                "verified_ambassador",
-                "verified_consultant",
-                "top_tier_user",
-                "ai_expert",
-                "viewed_verified_ambassador",
-                "viewed_verified_consultant",
-                "viewed_top_tier_user",
-                "viewed_ai_expert"
-            ]
+            }
         }
     },
-    "required": [
-        "id",
-        "username",
-        "email",
-        "color",
-        "initials",
-        "profilePicture",
-        "profileInfo"
-    ]
+    "version": 1
 }

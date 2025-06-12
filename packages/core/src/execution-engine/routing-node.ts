@@ -11,7 +11,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	sleep,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -64,8 +64,8 @@ export class RoutingNode {
 		} = context;
 		const abortSignal = context.getExecutionCancelSignal();
 
-		const items = (inputData[NodeConnectionType.Main] ??
-			inputData[NodeConnectionType.AiTool])[0] as INodeExecutionData[];
+		const items = (inputData[NodeConnectionTypes.Main] ??
+			inputData[NodeConnectionTypes.AiTool])[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
 
 		let credentialDescription: INodeCredentialDescription | undefined;
@@ -829,8 +829,16 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		const { node } = this.context;
-		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node, node.parameters)) {
+		const { node, nodeType } = this.context;
+		if (
+			!NodeHelpers.displayParameter(
+				node.parameters,
+				nodeProperties,
+				node,
+				nodeType.description,
+				node.parameters,
+			)
+		) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {

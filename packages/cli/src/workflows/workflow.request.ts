@@ -6,6 +6,7 @@ import type {
 	StartNodeData,
 	ITaskData,
 	IWorkflowBase,
+	AiAgentRequest,
 } from 'n8n-workflow';
 
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
@@ -22,6 +23,7 @@ export declare namespace WorkflowRequest {
 		hash: string;
 		meta: Record<string, unknown>;
 		projectId: string;
+		parentFolderId?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -34,6 +36,7 @@ export declare namespace WorkflowRequest {
 			name: string;
 			data?: ITaskData;
 		};
+		agentRequest?: AiAgentRequest;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
@@ -44,12 +47,14 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{},
-		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
+		ListQuery.Params & {
+			includeScopes?: string;
+			includeFolders?: string;
+			onlySharedWithMe?: string;
+		}
 	> & {
 		listQueryOptions: ListQuery.Options;
 	};
-
-	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
 		{ workflowId: string },

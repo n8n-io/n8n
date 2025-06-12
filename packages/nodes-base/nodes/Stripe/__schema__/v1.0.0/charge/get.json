@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
         "amount": {
             "type": "integer"
         },
@@ -21,23 +15,6 @@
         },
         "application_fee_amount": {
             "type": "null"
-        },
-        "billing_details": {
-            "type": "object",
-            "properties": {
-                "phone": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "address",
-                "email",
-                "name",
-                "phone"
-            ]
-        },
-        "calculated_statement_descriptor": {
-            "type": "string"
         },
         "captured": {
             "type": "boolean"
@@ -59,6 +36,9 @@
         },
         "failure_balance_transaction": {
             "type": "null"
+        },
+        "id": {
+            "type": "string"
         },
         "livemode": {
             "type": "boolean"
@@ -89,6 +69,9 @@
                 }
             }
         },
+        "object": {
+            "type": "string"
+        },
         "on_behalf_of": {
             "type": "null"
         },
@@ -98,9 +81,6 @@
         "outcome": {
             "type": "object",
             "properties": {
-                "advice_code": {
-                    "type": "null"
-                },
                 "network_status": {
                     "type": "string"
                 },
@@ -116,14 +96,7 @@
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "network_status",
-                "reason",
-                "risk_level",
-                "seller_message",
-                "type"
-            ]
+            }
         },
         "paid": {
             "type": "boolean"
@@ -143,6 +116,9 @@
                         "brand": {
                             "type": "string"
                         },
+                        "capture_before": {
+                            "type": "integer"
+                        },
                         "country": {
                             "type": "string"
                         },
@@ -158,10 +134,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "fingerprint": {
                             "type": "string"
@@ -175,10 +148,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "installments": {
                             "type": "null"
@@ -195,10 +165,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "network": {
                             "type": "string"
@@ -209,10 +176,7 @@
                                 "used": {
                                     "type": "boolean"
                                 }
-                            },
-                            "required": [
-                                "used"
-                            ]
+                            }
                         },
                         "network_transaction_id": {
                             "type": "string"
@@ -226,53 +190,20 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "maximum_amount_capturable",
-                                "status"
-                            ]
+                            }
                         },
                         "regulated_status": {
                             "type": "string"
                         },
                         "three_d_secure": {
                             "type": "null"
-                        },
-                        "capture_before": {
-                            "type": "integer"
                         }
-                    },
-                    "required": [
-                        "amount_authorized",
-                        "authorization_code",
-                        "brand",
-                        "checks",
-                        "country",
-                        "exp_month",
-                        "exp_year",
-                        "extended_authorization",
-                        "fingerprint",
-                        "funding",
-                        "incremental_authorization",
-                        "installments",
-                        "last4",
-                        "mandate",
-                        "multicapture",
-                        "network",
-                        "network_token",
-                        "overcapture",
-                        "three_d_secure",
-                        "wallet"
-                    ]
+                    }
                 },
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "card",
-                "type"
-            ]
+            }
         },
         "refunded": {
             "type": "boolean"
@@ -280,20 +211,11 @@
         "refunds": {
             "type": "object",
             "properties": {
-                "object": {
-                    "type": "string"
-                },
                 "data": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "object": {
-                                "type": "string"
-                            },
                             "amount": {
                                 "type": "integer"
                             },
@@ -327,31 +249,24 @@
                                             "type": {
                                                 "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "reference",
-                                            "reference_status",
-                                            "reference_type",
-                                            "type"
-                                        ]
+                                        }
                                     },
                                     "type": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "card",
-                                    "type"
-                                ]
+                                }
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
                             },
                             "payment_intent": {
                                 "type": "string"
                             },
                             "reason": {
                                 "type": "null"
-                            },
-                            "receipt_number": {
-                                "type": "string"
                             },
                             "source_transfer_reversal": {
                                 "type": "null"
@@ -362,28 +277,14 @@
                             "transfer_reversal": {
                                 "type": "null"
                             }
-                        },
-                        "required": [
-                            "id",
-                            "object",
-                            "amount",
-                            "balance_transaction",
-                            "charge",
-                            "created",
-                            "currency",
-                            "destination_details",
-                            "metadata",
-                            "payment_intent",
-                            "reason",
-                            "receipt_number",
-                            "source_transfer_reversal",
-                            "status",
-                            "transfer_reversal"
-                        ]
+                        }
                     }
                 },
                 "has_more": {
                     "type": "boolean"
+                },
+                "object": {
+                    "type": "string"
                 },
                 "total_count": {
                     "type": "integer"
@@ -391,14 +292,7 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "object",
-                "data",
-                "has_more",
-                "total_count",
-                "url"
-            ]
+            }
         },
         "review": {
             "type": "null"
@@ -428,53 +322,5 @@
             "type": "null"
         }
     },
-    "required": [
-        "id",
-        "object",
-        "amount",
-        "amount_captured",
-        "amount_refunded",
-        "application",
-        "application_fee",
-        "application_fee_amount",
-        "balance_transaction",
-        "billing_details",
-        "calculated_statement_descriptor",
-        "captured",
-        "created",
-        "currency",
-        "customer",
-        "description",
-        "destination",
-        "dispute",
-        "disputed",
-        "failure_balance_transaction",
-        "failure_code",
-        "failure_message",
-        "fraud_details",
-        "invoice",
-        "livemode",
-        "metadata",
-        "on_behalf_of",
-        "order",
-        "outcome",
-        "paid",
-        "payment_intent",
-        "payment_method",
-        "payment_method_details",
-        "radar_options",
-        "receipt_email",
-        "receipt_number",
-        "receipt_url",
-        "refunded",
-        "review",
-        "shipping",
-        "source",
-        "source_transfer",
-        "statement_descriptor",
-        "statement_descriptor_suffix",
-        "status",
-        "transfer_data",
-        "transfer_group"
-    ]
+    "version": 1
 }

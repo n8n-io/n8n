@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-export class TaskRunnerFailedHeartbeatError extends ApplicationError {
+export class TaskRunnerFailedHeartbeatError extends UserError {
 	description: string;
 
 	constructor(heartbeatInterval: number, isSelfHosted: boolean) {

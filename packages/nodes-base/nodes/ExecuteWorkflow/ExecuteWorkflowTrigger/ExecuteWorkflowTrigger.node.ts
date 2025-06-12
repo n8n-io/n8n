@@ -1,7 +1,7 @@
-import _ from 'lodash';
+import pickBy from 'lodash/pickBy';
 import {
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -34,7 +34,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			color: '#ff6d5a',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		hints: [
 			{
 				message:
@@ -212,14 +212,15 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		} else {
 			const newParams = getFieldEntries(this);
 			const newKeys = new Set(newParams.fields.map((x) => x.name));
-			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
+			const itemsInSchema: INodeExecutionData[] = inputData.map(({ json, binary }, index) => ({
 				json: {
 					...Object.fromEntries(newParams.fields.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
 					// Need to trim to the expected schema to support legacy Execute Workflow callers passing through all their data
 					// which we do not want to expose past this node.
-					..._.pickBy(row.json, (_value, key) => newKeys.has(key)),
+					...pickBy(json, (_value, key) => newKeys.has(key)),
 				},
 				index,
+				binary,
 			}));
 
 			return [itemsInSchema];

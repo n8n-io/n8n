@@ -44,14 +44,16 @@ export interface Command {
 	};
 }
 
-export const enum CommandType {
-	ITEM_MOVE = 'item_move',
-	ITEM_ADD = 'item_add',
-	ITEM_UPDATE = 'item_update',
-	ITEM_REORDER = 'item_reorder',
-	ITEM_DELETE = 'item_delete',
-	ITEM_COMPLETE = 'item_complete',
-}
+export const CommandTypes = {
+	ITEM_MOVE: 'item_move',
+	ITEM_ADD: 'item_add',
+	ITEM_UPDATE: 'item_update',
+	ITEM_REORDER: 'item_reorder',
+	ITEM_DELETE: 'item_delete',
+	ITEM_COMPLETE: 'item_complete',
+} as const;
+
+export type CommandType = (typeof CommandTypes)[keyof typeof CommandTypes];
 
 export class CreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
@@ -261,7 +263,7 @@ export class MoveHandler implements OperationHandler {
 		const body: SyncRequest = {
 			commands: [
 				{
-					type: CommandType.ITEM_MOVE,
+					type: CommandTypes.ITEM_MOVE,
 					uuid: uuid(),
 					args: {
 						id: taskId,
@@ -351,7 +353,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresProjectId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
@@ -362,6 +364,6 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresTempId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 }

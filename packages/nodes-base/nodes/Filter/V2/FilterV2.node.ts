@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
@@ -25,8 +25,8 @@ export class FilterV2 implements INodeType {
 				name: 'Filter',
 				color: '#229eff',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			outputNames: ['Kept', 'Discarded'],
 			parameterPane: 'wide',
 			properties: [

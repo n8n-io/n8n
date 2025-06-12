@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
+import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -11,14 +13,8 @@ import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workf
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import type {
-	CreateExecutionPayload,
-	IExecutingWorkflowData,
-	IExecutionDb,
-	IExecutionsCurrentSummary,
-} from '@/interfaces';
+import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';

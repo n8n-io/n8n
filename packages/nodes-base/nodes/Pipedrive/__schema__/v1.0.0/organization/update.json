@@ -1,40 +1,52 @@
 {
     "type": "object",
     "properties": {
-        "company_id": {
-            "type": "integer"
-        },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
-            "type": "integer"
-        },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
-            "type": "integer"
-        },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
         "active_flag": {
             "type": "boolean"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "annual_revenue": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "closed_deals_count": {
+            "type": "integer"
         },
         "country_code": {
             "type": "null"
         },
+        "delete_time": {
+            "type": "null"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "employee_count": {
+            "type": "null"
+        },
+        "files_count": {
+            "type": "integer"
+        },
         "first_char": {
             "type": "string"
         },
-        "delete_time": {
+        "followers_count": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "industry": {
             "type": "null"
         },
         "label_ids": {
@@ -43,26 +55,26 @@
                 "type": "integer"
             }
         },
-        "cc_email": {
-            "type": "string"
-        },
-        "owner_name": {
-            "type": "string"
-        },
-        "category_id": {
+        "linkedin": {
             "type": "null"
         },
-        "ID": {
+        "lost_deals_count": {
             "type": "integer"
         },
-        "Owner": {
+        "name": {
+            "type": "string"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "open_deals_count": {
+            "type": "integer"
+        },
+        "owner_id": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
+                "active_flag": {
+                    "type": "boolean"
                 },
                 "email": {
                     "type": "string"
@@ -70,64 +82,53 @@
                 "has_pic": {
                     "type": "integer"
                 },
-                "active_flag": {
-                    "type": "boolean"
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 },
                 "value": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
+            }
         },
-        "Name": {
+        "owner_name": {
             "type": "string"
         },
-        "Open deals": {
+        "people_count": {
             "type": "integer"
         },
-        "Closed deals": {
-            "type": "integer"
-        },
-        "Email messages count": {
-            "type": "integer"
-        },
-        "People": {
-            "type": "integer"
-        },
-        "Total activities": {
-            "type": "integer"
-        },
-        "Done activities": {
-            "type": "integer"
-        },
-        "Activities to do": {
-            "type": "integer"
-        },
-        "Won deals": {
-            "type": "integer"
-        },
-        "Lost deals": {
-            "type": "integer"
-        },
-        "Profile picture": {
+        "picture_id": {
             "type": "null"
         },
-        "Update time": {
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "related_open_deals_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "update_time": {
             "type": "string"
         },
-        "Organization created": {
+        "visible_to": {
             "type": "string"
         },
-        "Visible to": {
-            "type": "string"
+        "website": {
+            "type": "null"
+        },
+        "won_deals_count": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

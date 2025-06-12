@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "AccountId": {
+            "type": "string"
+        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -10,77 +13,19 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "AccountId": {
-            "type": "string"
-        },
-        "IsPrivate": {
-            "type": "boolean"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "StageName": {
-            "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
+            }
         },
         "CloseDate": {
             "type": "string"
         },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "IsWon": {
-            "type": "boolean"
-        },
-        "ForecastCategory": {
-            "type": "string"
-        },
-        "ForecastCategoryName": {
-            "type": "string"
-        },
-        "HasOpportunityLineItem": {
-            "type": "boolean"
-        },
-        "OwnerId": {
+        "CreatedById": {
             "type": "string"
         },
         "CreatedDate": {
             "type": "string"
         },
-        "AgeInDays": {
-            "type": "integer"
-        },
-        "CreatedById": {
+        "Fiscal": {
             "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "PushCount": {
-            "type": "integer"
-        },
-        "LastStageChangeInDays": {
-            "type": "integer"
         },
         "FiscalQuarter": {
             "type": "integer"
@@ -88,95 +33,57 @@
         "FiscalYear": {
             "type": "integer"
         },
-        "Fiscal": {
+        "ForecastCategory": {
             "type": "string"
         },
-        "PartnerAccountId": {
-            "type": "null"
-        },
-        "SyncedQuoteId": {
-            "type": "null"
-        },
-        "ContractId": {
-            "type": "null"
+        "ForecastCategoryName": {
+            "type": "string"
         },
         "HasOpenActivity": {
+            "type": "boolean"
+        },
+        "HasOpportunityLineItem": {
             "type": "boolean"
         },
         "HasOverdueTask": {
             "type": "boolean"
         },
-        "IsPriorityRecord": {
-            "type": "boolean"
-        },
-        "HasUnlikelyToCloseInsight": {
-            "type": "boolean"
-        },
-        "ActivityMetricId": {
+        "Id": {
             "type": "string"
         },
-        "Budget_Confirmed__c": {
+        "IsClosed": {
             "type": "boolean"
         },
-        "Discovery_Completed__c": {
+        "IsDeleted": {
             "type": "boolean"
         },
-        "ROI_Analysis_Completed__c": {
+        "IsWon": {
             "type": "boolean"
         },
-        "Loss_Reason__c": {
-            "type": "null"
+        "LastModifiedById": {
+            "type": "string"
         },
-        "Campagne_lead__c": {
-            "type": "null"
+        "LastModifiedDate": {
+            "type": "string"
         },
-        "Opmerking__c": {
-            "type": "null"
+        "Name": {
+            "type": "string"
         },
-        "Partner_land__c": {
-            "type": "null"
+        "OwnerId": {
+            "type": "string"
         },
-        "Demo_gegeven__c": {
-            "type": "boolean"
+        "Probability": {
+            "type": "integer"
         },
-        "Partner__c": {
-            "type": "null"
+        "PushCount": {
+            "type": "integer"
         },
-        "LID__CurrentGenerators__c": {
-            "type": "null"
+        "StageName": {
+            "type": "string"
         },
-        "LID__DeliveryInstallationStatus__c": {
-            "type": "null"
-        },
-        "LID__Is_Influenced__c": {
-            "type": "boolean"
-        },
-        "LID__LinkedIn_Company_Id__c": {
-            "type": "null"
-        },
-        "LID__MainCompetitors__c": {
-            "type": "null"
-        },
-        "LID__My_DateTime__c": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Latitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Longitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__c": {
-            "type": "null"
-        },
-        "LID__OrderNumber__c": {
-            "type": "null"
-        },
-        "LID__TrackingNumber__c": {
-            "type": "null"
-        },
-        "Einstein_scores__c": {
-            "type": "null"
+        "SystemModstamp": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
