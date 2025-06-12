@@ -14,6 +14,7 @@ export const enum EventMessageTypeNames {
 	node = '$$EventMessageNode',
 	execution = '$$EventMessageExecution',
 	aiNode = '$$EventMessageAiNode',
+	runner = '$$EventMessageRunner',
 }
 
 export const enum MessageEventBusDestinationTypeNames {
