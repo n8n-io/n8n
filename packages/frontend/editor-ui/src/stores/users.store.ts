@@ -249,6 +249,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
+		return user;
 	};
 
 	const updateUserName = async (params: { firstName: string; lastName: string }) => {
