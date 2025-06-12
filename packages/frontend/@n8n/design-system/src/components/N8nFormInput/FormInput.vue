@@ -215,7 +215,7 @@ defineExpose({ inputRef });
 		:required="required && showRequiredAsterisk"
 		:size="labelSize"
 	>
-		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
+		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter.exact="onEnter">
 			<slot v-if="hasDefaultSlot" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
