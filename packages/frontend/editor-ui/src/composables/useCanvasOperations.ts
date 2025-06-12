@@ -309,6 +309,7 @@ export function useCanvasOperations() {
 				title: error.message,
 				message: error.description,
 			});
+			return;
 		}
 
 		if (trackHistory) {

@@ -389,6 +389,13 @@ export class Workflow {
 			'toLocaleString',
 			'toString',
 			'valueOf',
+			'constructor',
+			'prototype',
+			'__proto__',
+			'__defineGetter__',
+			'__defineSetter__',
+			'__lookupGetter__',
+			'__lookupSetter__',
 		];
 
 		if (restrictedKeys.map((k) => k.toLowerCase()).includes(newName.toLowerCase())) {

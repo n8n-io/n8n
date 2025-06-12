@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
+import { UserError } from '@/errors';
 import { NodeConnectionTypes } from '@/interfaces';
 import type {
 	IBinaryKeyData,
@@ -17,7 +18,6 @@ import { Workflow } from '@/workflow';
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
 import * as Helpers from './helpers';
-import { UserError } from '@/errors';
 
 interface StubNode {
 	name: string;
@@ -1087,6 +1087,13 @@ describe('Workflow', () => {
 				'toLocaleString',
 				'toString',
 				'valueOf',
+				'constructor',
+				'prototype',
+				'__proto__',
+				'__defineGetter__',
+				'__defineSetter__',
+				'__lookupGetter__',
+				'__lookupSetter__',
 			];
 
 			test.each(restrictedNames)(
@@ -1166,7 +1173,7 @@ describe('Workflow', () => {
 					expect(error).toBeInstanceOf(UserError);
 					expect(error.message).toBe('Node name "toString" is a restricted name.');
 					expect(error.description).toBe(
-						'Node names cannot be any of the following: hasOwnProperty, isPrototypeOf, propertyIsEnumerable, toLocaleString, toString, valueOf',
+						'Node names cannot be any of the following: hasOwnProperty, isPrototypeOf, propertyIsEnumerable, toLocaleString, toString, valueOf, constructor, prototype, __proto__, __defineGetter__, __defineSetter__, __lookupGetter__, __lookupSetter__',
 					);
 				}
 			});
