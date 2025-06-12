@@ -1,9 +1,11 @@
 import { Service } from '@n8n/di';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { User } from '@/databases/entities/user';
+import {
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	ProjectRepository,
+	UserRepository,
+	User,
+} from '@n8n/db';
 import { SHARED_CREDENTIAL_TYPES, type CredentialType } from '../constants/credentials';
 
 @Service()
