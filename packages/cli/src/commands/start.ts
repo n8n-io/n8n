@@ -24,7 +24,6 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
@@ -63,8 +62,6 @@ export class Start extends BaseCommand {
 	};
 
 	protected activeWorkflowManager: ActiveWorkflowManager;
-
-	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
 
@@ -314,7 +311,12 @@ export class Start extends BaseCommand {
 			);
 		}
 
-		await this.server.start();
+		// Importing server dynamically so we don't import all of this for the
+		// worker and webhook which extend the base command.
+		const { Server } = await import('@/server');
+		const server = Container.get(Server);
+		await server.init();
+		await server.start();
 
 		Container.get(ExecutionsPruningService).init();
 

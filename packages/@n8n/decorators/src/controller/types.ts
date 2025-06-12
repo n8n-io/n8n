@@ -41,6 +41,7 @@ export interface RouteMetadata {
 
 export interface ControllerMetadata {
 	basePath: `/${string}`;
+	skipPrefix?: boolean;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }

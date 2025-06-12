@@ -146,13 +146,6 @@ export const setupTestServer = ({
 			app.use(...apiRouters);
 		}
 
-		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
-				testDb.isReady()
-					? res.status(200).send({ status: 'ok' })
-					: res.status(503).send({ status: 'error' });
-			});
-		}
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
@@ -284,15 +277,23 @@ export const setupTestServer = ({
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+						break;
 
 					case 'folder':
 						await import('@/controllers/folder.controller');
+						break;
 
 					case 'externalSecrets':
 						await import('@/modules/external-secrets.ee/external-secrets.ee.module');
+						break;
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');
+						break;
+
+					case 'health':
+						await import('@/controllers/health.controller');
+						break;
 				}
 			}
 
