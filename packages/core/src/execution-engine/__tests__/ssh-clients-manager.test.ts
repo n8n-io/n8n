@@ -21,7 +21,6 @@ const endSpy = jest.spyOn(Client.prototype, 'end');
 
 beforeEach(() => {
 	jest.clearAllMocks();
-	jest.useFakeTimers();
 
 	sshClientsManager = new SSHClientsManager(
 		mock({ idleTimeout }),
@@ -81,37 +80,47 @@ describe('onShutdown', () => {
 	});
 });
 
-it('should cleanup stale SSH connections', async () => {
-	await sshClientsManager.getClient({ ...credentials, sshHost: 'host1' });
-	await sshClientsManager.getClient({ ...credentials, sshHost: 'host2' });
-	await sshClientsManager.getClient({ ...credentials, sshHost: 'host3' });
+describe('cleanup', () => {
+	beforeEach(async () => {
+		jest.useFakeTimers();
+		sshClientsManager = new SSHClientsManager(
+			mock({ idleTimeout }),
+			mock<Logger>({ scoped: () => mock<Logger>() }),
+		);
+	});
 
-	jest.advanceTimersByTime((idleTimeout + cleanUpInterval + 1) * 1000);
+	it('should cleanup stale SSH connections', async () => {
+		await sshClientsManager.getClient({ ...credentials, sshHost: 'host1' });
+		await sshClientsManager.getClient({ ...credentials, sshHost: 'host2' });
+		await sshClientsManager.getClient({ ...credentials, sshHost: 'host3' });
 
-	expect(endSpy).toHaveBeenCalledTimes(3);
-	expect(sshClientsManager.clients.size).toBe(0);
-});
+		jest.advanceTimersByTime((idleTimeout + cleanUpInterval + 1) * 1000);
 
-describe('updateLastUsed', () => {
-	test('updates lastUsed in the registration', async () => {
-		// ARRANGE
-		const client = await sshClientsManager.getClient(credentials);
-		// schedule client for clean up soon
-		jest.advanceTimersByTime((idleTimeout - 1) * 1000);
+		expect(endSpy).toHaveBeenCalledTimes(3);
+		expect(sshClientsManager.clients.size).toBe(0);
+	});
 
-		// ACT 1
-		// updating lastUsed should prevent the clean up
-		sshClientsManager.updateLastUsed(client);
-		jest.advanceTimersByTime(idleTimeout * 1000);
+	describe('updateLastUsed', () => {
+		test('updates lastUsed in the registration', async () => {
+			// ARRANGE
+			const client = await sshClientsManager.getClient(credentials);
+			// schedule client for clean up soon
+			jest.advanceTimersByTime((idleTimeout - 1) * 1000);
 
-		// ASSERT 1
-		expect(endSpy).toHaveBeenCalledTimes(0);
+			// ACT 1
+			// updating lastUsed should prevent the clean up
+			sshClientsManager.updateLastUsed(client);
+			jest.advanceTimersByTime(idleTimeout * 1000);
 
-		// ACT 1
-		jest.advanceTimersByTime(cleanUpInterval * 1000);
+			// ASSERT 1
+			expect(endSpy).toHaveBeenCalledTimes(0);
 
-		// ASSERT 1
-		expect(endSpy).toHaveBeenCalledTimes(1);
+			// ACT 1
+			jest.advanceTimersByTime(cleanUpInterval * 1000);
+
+			// ASSERT 1
+			expect(endSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 });
 
