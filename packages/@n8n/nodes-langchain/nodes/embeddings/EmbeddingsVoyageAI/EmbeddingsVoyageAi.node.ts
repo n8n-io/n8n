@@ -60,22 +60,22 @@ export class EmbeddingsVoyageAi implements INodeType {
 				name: 'modelName',
 				type: 'options',
 				description: 'The model which will generate the embeddings',
-				default: 'voyage-3',
+				default: 'voyage-3.5',
 				options: [
 					{
-						name: 'Voyage-3 (1024 dimensions)',
-						value: 'voyage-3',
+						name: 'Voyage-3.5 (1024 (default), 256, 512, 2048)',
+						value: 'voyage-3.5',
 					},
 					{
-						name: 'Voyage-3-large (2048, 1024, 512, 256 dimensions)',
+						name: 'Voyage-3-large (2048, 1024 (default), 512, 256 dimensions)',
 						value: 'voyage-3-large',
 					},
 					{
-						name: 'Voyage-3-lite (512 dimensions)',
-						value: 'voyage-3-lite',
+						name: 'Voyage-3.5-lite (1024 (default), 256, 512, 2048 dimensions)',
+						value: 'voyage-3.5-lite',
 					},
 					{
-						name: 'voyage-code-3  (2048, 1024, 512, 256 dimensions)',
+						name: 'voyage-code-3  (1024 (default), 256, 512, 2048 dimensions)',
 						value: 'voyage-code-3',
 					},
 					{
@@ -112,7 +112,8 @@ export class EmbeddingsVoyageAi implements INodeType {
 					{
 						name: 'Document',
 						value: 'document',
-						description: 'For documents or content that you want to be retrievable',
+						description:
+							'For documents or content that you want to be retrievable (embeddeings stored in vector store)',
 					},
 				],
 			},
