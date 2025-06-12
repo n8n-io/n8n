@@ -5,17 +5,19 @@ import { updateCurrentUserSettings } from '@/api/users';
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	track: vi.fn(),
+	useRoute: vi.fn(() => ({ query: {}, params: {} })),
 	getVariant: vi.fn(() => 'default'),
 	isCalloutDismissed: vi.fn(() => false),
 	setCalloutDismissed: vi.fn(),
 	restApiContext: vi.fn(() => ({})),
+	getWorkflowById: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: mocks.resolve,
 	}),
-	useRoute: () => ({ params: {} }),
+	useRoute: mocks.useRoute,
 	RouterLink: vi.fn(),
 }));
 
@@ -34,6 +36,15 @@ vi.mock('@/stores/users.store', () => ({
 		isCalloutDismissed: mocks.isCalloutDismissed,
 		setCalloutDismissed: mocks.setCalloutDismissed,
 		currentUser: { settings: { dismissedCallouts: {} } },
+	}),
+}));
+
+vi.mock('@/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		getCurrentWorkflow: vi.fn(() => ({
+			id: '1',
+		})),
+		getWorkflowById: mocks.getWorkflowById,
 	}),
 }));
 
@@ -70,16 +81,51 @@ describe('useCalloutHelpers()', () => {
 	});
 
 	describe('isRagStarterWorkflowExperimentEnabled', () => {
-		it('should return false if the RAG starter workflow experiment is not enabled', () => {
+		it('should be false if the RAG starter workflow experiment is not enabled', () => {
 			const { isRagStarterWorkflowExperimentEnabled } = useCalloutHelpers();
 			expect(isRagStarterWorkflowExperimentEnabled.value).toBe(false);
 		});
 
-		it('should return true if the RAG starter workflow experiment is enabled', () => {
+		it('should be true if the RAG starter workflow experiment is enabled', () => {
 			mocks.getVariant.mockReturnValueOnce('variant');
 
 			const { isRagStarterWorkflowExperimentEnabled } = useCalloutHelpers();
 			expect(isRagStarterWorkflowExperimentEnabled.value).toBe(true);
+		});
+	});
+
+	describe('isRagStarterCalloutVisible', () => {
+		it('should be false if the feature flag is disabled', () => {
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
+			expect(isRagStarterCalloutVisible.value).toBe(false);
+		});
+
+		it('should be true if the feature flag is enabled and not on the RAG starter template', () => {
+			mocks.getVariant.mockReturnValueOnce('variant');
+
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
+			expect(isRagStarterCalloutVisible.value).toBe(true);
+		});
+
+		it('should be false if the feature flag is enabled and currently on unsaved RAG starter template', () => {
+			mocks.getVariant.mockReturnValueOnce('variant');
+			mocks.useRoute.mockReturnValueOnce({
+				query: { templateId: 'rag-starter-template' },
+				params: {},
+			});
+
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
+			expect(isRagStarterCalloutVisible.value).toBe(false);
+		});
+
+		it('should be false if the feature flag is enabled and currently on saved RAG starter template', () => {
+			mocks.getVariant.mockReturnValueOnce('variant');
+			mocks.getWorkflowById.mockReturnValueOnce({
+				meta: { templateId: 'rag-starter-template' },
+			});
+
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
+			expect(isRagStarterCalloutVisible.value).toBe(false);
 		});
 	});
 
