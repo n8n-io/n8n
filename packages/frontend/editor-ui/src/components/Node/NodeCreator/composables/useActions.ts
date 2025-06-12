@@ -368,6 +368,7 @@ export const useActions = () => {
 		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
 			if (name !== 'addNode' || args[0].type !== action.key) return;
 			after(() => {
+				// This is a legacy leftover that should be refactored to directly track the action on click
 				if (telemetry) trackActionSelected(action, telemetry, rootView);
 				// Unsubscribe from the store watcher
 				storeWatcher();

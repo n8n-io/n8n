@@ -19,7 +19,7 @@ import type { NodeTypeSelectedPayload } from '@/Interface';
 
 export interface Props {
 	active?: boolean;
-	onNodeTypeSelected?: (value: NodeTypeSelectedPayload) => void;
+	onNodeTypeSelected?: (value: NodeTypeSelectedPayload[]) => void;
 }
 
 const props = defineProps<Props>();
@@ -27,7 +27,7 @@ const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	closeNodeCreator: [];
-	nodeTypeSelected: [value: NodeTypeSelectedPayload];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();

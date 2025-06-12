@@ -87,8 +87,8 @@ function closeNodeCreator(hasAddedNodes = false) {
 	}
 }
 
-function nodeTypeSelected(value: NodeTypeSelectedPayload) {
-	emit('addNodes', getAddedNodesAndConnections([value]));
+function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
+	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
 

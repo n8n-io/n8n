@@ -48,7 +48,7 @@ export interface Props {
 }
 
 const emit = defineEmits<{
-	nodeTypeSelected: [value: NodeTypeSelectedPayload];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 
 const i18n = useI18n();
@@ -153,7 +153,7 @@ function onSelected(item: INodeCreateElement) {
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
-			emit('nodeTypeSelected', payload);
+			emit('nodeTypeSelected', [payload]);
 			setAddedNodeActionParameters({
 				name: nodeActions[0].defaults.name ?? item.properties.displayName,
 				key: item.key,
@@ -164,7 +164,7 @@ function onSelected(item: INodeCreateElement) {
 
 		// Only show actions if there are more than one or if the view is not an AI subcategory
 		if (nodeActions.length === 0 || activeViewStack.value.hideActions) {
-			emit('nodeTypeSelected', payload);
+			emit('nodeTypeSelected', [payload]);
 			return;
 		}
 

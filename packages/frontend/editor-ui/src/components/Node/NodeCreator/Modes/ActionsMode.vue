@@ -35,7 +35,7 @@ import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
 
 const emit = defineEmits<{
-	nodeTypeSelected: [value: NodeTypeSelectedPayload];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -168,18 +168,18 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 
 	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
 		const actionNode = actions.value[0]?.key;
-		if (actionNode) emit('nodeTypeSelected', { type: actionNode });
+		if (actionNode) emit('nodeTypeSelected', [{ type: actionData.key }, { type: actionNode }]);
 	} else if (
 		actionData?.key === OPEN_AI_NODE_TYPE &&
 		(actionData?.value as IDataObject)?.resource === 'assistant' &&
 		(actionData?.value as IDataObject)?.operation === 'message'
 	) {
-		emit('nodeTypeSelected', { type: OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE });
+		emit('nodeTypeSelected', [{ type: OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE }]);
 	} else if (isNodePreviewKey(actionData?.key)) {
 		return;
 	} else {
 		const payload = actionDataToNodeTypeSelectedPayload(actionData);
-		emit('nodeTypeSelected', payload);
+		emit('nodeTypeSelected', [payload]);
 	}
 
 	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
@@ -220,7 +220,7 @@ function addHttpNode() {
 		},
 	} as IUpdateInformation;
 
-	emit('nodeTypeSelected', { type: HTTP_REQUEST_NODE_TYPE });
+	emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }]);
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0]?.key;
