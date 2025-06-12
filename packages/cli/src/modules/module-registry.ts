@@ -1,5 +1,5 @@
-import type { LifecycleContext } from '@n8n/decorators';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
+import type { LifecycleContext, EntityClass } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type {
@@ -14,14 +14,26 @@ import type {
 
 @Service()
 export class ModuleRegistry {
+	readonly entities: EntityClass[] = [];
+
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
 		private readonly lifecycleMetadata: LifecycleMetadata,
 	) {}
 
-	async initializeModules() {
+	async initModules() {
 		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			await Container.get(ModuleClass).initialize?.();
+			await Container.get(ModuleClass).init?.();
+		}
+	}
+
+	addEntities() {
+		for (const ModuleClass of this.moduleMetadata.getModules()) {
+			const entities = Container.get(ModuleClass).entities?.();
+
+			if (!entities || entities.length === 0) continue;
+
+			this.entities.push(...entities);
 		}
 	}
 
