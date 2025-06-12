@@ -78,23 +78,6 @@
 			"position": [1020, 560]
 		},
 		{
-			"parameters": {
-				"url": "https://dummy.domain/path/to/text.txt",
-				"options": {
-					"response": {
-						"response": {
-							"responseFormat": "file"
-						}
-					}
-				}
-			},
-			"name": "HTTP Request (v3)2",
-			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 3,
-			"position": [960, 1420],
-			"id": "edb61e8a-546f-492b-a74f-500fa54469e5"
-		},
-		{
 			"name": "Content Disposition",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
@@ -109,6 +92,23 @@
 				}
 			},
 			"position": [1020, 720]
+		},
+		{
+			"parameters": {
+				"url": "https://dummy.domain/path/to/text.txt",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"name": "HTTP Request (v4)2",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [1680, 600],
+			"id": "665fef5c-6380-4bc0-be2a-430446b140ca"
 		}
 	],
 	"pinData": {
@@ -201,6 +201,21 @@
 				},
 				"json": {}
 			}
+		],
+		"HTTP Request (v4)2": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "text/plain",
+						"fileType": "text",
+						"fileExtension": "txt",
+						"fileName": "text.txt",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
 		]
 	},
 	"connections": {
@@ -234,6 +249,11 @@
 					},
 					{
 						"node": "Content Disposition",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request (v4)2",
 						"type": "main",
 						"index": 0
 					}
