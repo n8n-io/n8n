@@ -63,6 +63,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'ai-llm-errored': (event) => this.aiLlmErrored(event),
 			'ai-vector-store-populated': (event) => this.aiVectorStorePopulated(event),
 			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
+			'runner-task-requested': (event) => this.runnerTaskRequested(event),
+			'runner-response-received': (event) => this.runnerResponseReceived(event),
 		});
 	}
 
@@ -519,6 +521,24 @@ export class LogStreamingEventRelay extends EventRelay {
 	private aiVectorStoreUpdated(payload: RelayEventMap['ai-vector-store-updated']) {
 		void this.eventBus.sendAiNodeEvent({
 			eventName: 'n8n.ai.vector.store.updated',
+			payload,
+		});
+	}
+
+	// #endregion
+
+	// #region runner
+
+	private runnerTaskRequested(payload: RelayEventMap['runner-task-requested']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.task.requested',
+			payload,
+		});
+	}
+
+	private runnerResponseReceived(payload: RelayEventMap['runner-response-received']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.response.received',
 			payload,
 		});
 	}
