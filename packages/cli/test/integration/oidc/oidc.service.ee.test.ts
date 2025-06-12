@@ -9,21 +9,19 @@ jest.mock('openid-client', () => ({
 	fetchUserInfo: fetchUserInfoMock,
 }));
 
-import * as mocked_oidc_client from 'openid-client';
-
-const real_odic_client = jest.requireActual('openid-client') as typeof mocked_oidc_client;
-
 import type { OidcConfigDto } from '@n8n/api-types';
+import { type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type * as mocked_oidc_client from 'openid-client';
+const real_odic_client = jest.requireActual('openid-client');
 
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
-import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
-
-import * as testDb from '../shared/test-db';
-import { createUser } from '@test-integration/db/users';
-import { User, UserRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
+import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
+import { createUser } from '@test-integration/db/users';
+
+import * as testDb from '../shared/test-db';
 
 beforeAll(async () => {
 	await testDb.init();
