@@ -89,12 +89,8 @@ const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const {
-	dismissCallout,
-	isCalloutDismissed,
-	openRagStarterTemplate,
-	isRagStarterWorkflowExperimentEnabled,
-} = useCalloutHelpers();
+const { dismissCallout, isCalloutDismissed, openRagStarterTemplate, isRagStarterCalloutVisible } =
+	useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -553,7 +549,7 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 	if (isCalloutDismissed(parameter.name)) return false;
 
 	if (isRagStarterCallout(parameter)) {
-		return isRagStarterWorkflowExperimentEnabled.value;
+		return isRagStarterCalloutVisible.value;
 	}
 
 	return true;

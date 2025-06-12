@@ -270,8 +270,7 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 
 const globalCallouts = computed<INodeCreateElement[]>(() =>
 	getRootSearchCallouts(activeViewStack.value.search ?? '', {
-		isRagStarterWorkflowExperimentEnabled:
-			calloutHelpers.isRagStarterWorkflowExperimentEnabled.value,
+		isRagStarterCalloutVisible: calloutHelpers.isRagStarterCalloutVisible.value,
 	}),
 );
 

@@ -8,6 +8,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { RAG_STARTER_WORKFLOW_EXPERIMENT, VIEWS } from '@/constants';
 import { getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { updateCurrentUserSettings } from '@/api/users';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();
@@ -15,6 +16,7 @@ export function useCalloutHelpers() {
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
 	const rootStore = useRootStore();
+	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
 
 	const openRagStarterTemplate = async (nodeType?: INodeTypeDescription) => {
@@ -40,6 +42,21 @@ export function useCalloutHelpers() {
 		);
 	});
 
+	const isRagStarterCalloutVisible = computed(() => {
+		const template = getRagStarterWorkflowJson();
+
+		const routeTemplateId = route.query.templateId;
+		const currentWorkflow = workflowsStore.getCurrentWorkflow();
+		const workflow = workflowsStore.getWorkflowById(currentWorkflow.id);
+
+		// Hide the RAG starter callout if we're currently on the RAG starter template
+		if ((routeTemplateId ?? workflow?.meta?.templateId) === template.meta.templateId) {
+			return false;
+		}
+
+		return isRagStarterWorkflowExperimentEnabled.value;
+	});
+
 	const isCalloutDismissed = (callout: string) => {
 		return usersStore.isCalloutDismissed(callout);
 	};
@@ -58,6 +75,7 @@ export function useCalloutHelpers() {
 	return {
 		openRagStarterTemplate,
 		isRagStarterWorkflowExperimentEnabled,
+		isRagStarterCalloutVisible,
 		isCalloutDismissed,
 		dismissCallout,
 	};

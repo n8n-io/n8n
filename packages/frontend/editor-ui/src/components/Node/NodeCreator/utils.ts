@@ -306,17 +306,11 @@ export function prepareCommunityNodeDetailsViewStack(
 	};
 }
 
-export function getRootSearchCallouts(
-	search: string,
-	{ isRagStarterWorkflowExperimentEnabled = false },
-) {
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
 	const results: INodeCreateElement[] = [];
 
 	const ragKeywords = ['rag', 'vector', 'know'];
-	if (
-		isRagStarterWorkflowExperimentEnabled &&
-		ragKeywords.some((x) => search.toLowerCase().startsWith(x))
-	) {
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push({
 			key: 'rag_starter_template',
 			type: 'openTemplate',
