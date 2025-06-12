@@ -1,9 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { SSHCredentials } from 'n8n-workflow';
 import { Client } from 'ssh2';
 
-import { SSHClientsManager } from '../ssh-clients-manager';
+import { SSHClientsConfig, SSHClientsManager } from '../ssh-clients-manager';
 
 const idleTimeout = 5 * 60;
 const cleanUpInterval = 60;
@@ -202,4 +203,35 @@ describe('abort controller', () => {
 		// ASSERT 1
 		expect(endSpy).toHaveBeenCalledTimes(1);
 	});
+});
+
+describe('SSHClientsConfig', () => {
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	test('allows overriding the default idle timeout', async () => {
+		// ARRANGE
+		process.env.N8N_SSH_TUNNEL_IDLE_TIMEOUT = '5';
+
+		// ACT
+		const config = Container.get(SSHClientsConfig);
+
+		// ASSERT
+		expect(config.idleTimeout).toBe(5);
+	});
+
+	test.each(['-5', '0', 'foo'])(
+		'fall back to default if N8N_SSH_TUNNEL_IDLE_TIMEOUT is `%s`',
+		async (value) => {
+			// ARRANGE
+			process.env.N8N_SSH_TUNNEL_IDLE_TIMEOUT = value;
+
+			// ACT
+			const config = Container.get(SSHClientsConfig);
+
+			// ASSERT
+			expect(config.idleTimeout).toBe(300);
+		},
+	);
 });

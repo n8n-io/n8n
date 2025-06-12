@@ -4,11 +4,35 @@ import { Service } from '@n8n/di';
 import type { SSHCredentials } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Client, type ConnectConfig } from 'ssh2';
+import { z } from 'zod';
 
 @Config
-class SSHClientsConfig {
+export class SSHClientsConfig {
 	/** How many seconds before an idle SSH tunnel is closed */
-	@Env('N8N_SSH_TUNNEL_IDLE_TIMEOUT')
+	@Env(
+		'N8N_SSH_TUNNEL_IDLE_TIMEOUT',
+		z
+			.string()
+			.transform((value) => Number.parseInt(value))
+			.superRefine((value, ctx) => {
+				if (Number.isNaN(value)) {
+					return ctx.addIssue({
+						message: 'must be a valid integer',
+						code: 'custom',
+					});
+				}
+
+				if (value <= 0) {
+					return ctx.addIssue({
+						message: 'must be positive',
+						code: 'too_small',
+						minimum: 0,
+						inclusive: false,
+						type: 'number',
+					});
+				}
+			}),
+	)
 	idleTimeout: number = 5 * 60;
 }
 
