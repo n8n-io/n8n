@@ -35,6 +35,7 @@ mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 const testServer = setupTestServer({
 	endpointGroups: ['externalSecrets'],
 	enabledFeatures: ['feat:externalSecrets'],
+	modules: ['external-secrets'],
 });
 
 const connectedDate = '2023-08-01T12:32:29.000Z';
