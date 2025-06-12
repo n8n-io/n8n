@@ -5,6 +5,7 @@ import {
 	computed,
 	type ComputedRef,
 	onBeforeUnmount,
+	onScopeDispose,
 	provide,
 	type Ref,
 	ref,
@@ -25,6 +26,35 @@ interface UsePiPWindowReturn {
 	isPoppedOut: ComputedRef<boolean>;
 	canPopOut: ComputedRef<boolean>;
 	pipWindow?: Ref<Window | undefined>;
+}
+
+function isStyle(node: Node): node is HTMLElement {
+	return (
+		node instanceof HTMLStyleElement ||
+		(node instanceof HTMLLinkElement && node.rel === 'stylesheet')
+	);
+}
+
+function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
+	const currentStyles = destination.document.head.querySelectorAll('style, link[rel="stylesheet"]');
+
+	for (const mutation of mutations) {
+		for (const node of mutation.addedNodes) {
+			if (isStyle(node)) {
+				destination.document.head.appendChild(node.cloneNode(true));
+			}
+		}
+
+		for (const node of mutation.removedNodes) {
+			if (isStyle(node)) {
+				for (const found of currentStyles) {
+					if (found.isEqualNode(node)) {
+						found.remove();
+					}
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -50,6 +80,14 @@ export function usePiPWindow({
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
 	const theme = useAppliedTheme();
+	const observer = new MutationObserver((mutations) => {
+		if (pipWindow.value) {
+			syncStyleMutations(pipWindow.value, mutations);
+		}
+	});
+
+	// Copy over dynamic styles to PiP window to support lazily imported modules
+	observer.observe(document.head, { childList: true, subtree: true });
 
 	provide(IsInPiPWindowSymbol, isPoppedOut);
 	useProvideTooltipAppendTo(tooltipContainer);
@@ -117,6 +155,10 @@ export function usePiPWindow({
 		},
 		{ immediate: true },
 	);
+
+	onScopeDispose(() => {
+		observer.disconnect();
+	});
 
 	onBeforeUnmount(() => {
 		isUnmounting.value = true;
