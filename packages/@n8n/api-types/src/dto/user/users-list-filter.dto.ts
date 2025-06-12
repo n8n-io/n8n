@@ -22,5 +22,5 @@ export class UsersListFilterDto extends Z.class({
 	...paginationSchema,
 	// Default sort order is role:asc, secondary sort criteria is name:asc
 	sortBy: usersListSortByValidator,
-	search: z.string().optional(),
+	search: z.string().trim().max(256).optional(),
 }) {}
