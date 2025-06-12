@@ -445,6 +445,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				<span
 					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
 					v-show="data"
+					:class="$style.cardTags"
 				>
 					<n8n-tags
 						:tags="data.tags"
@@ -550,6 +551,11 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
+}
+
+.cardTags {
+	display: inline-block;
+	margin-top: var(--spacing-4xs);
 }
 
 .cardActions {
