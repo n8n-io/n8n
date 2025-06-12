@@ -111,25 +111,66 @@ describe('Linear -> GenericFunctions', () => {
 	});
 
 	describe('sort', () => {
-		it('should sort objects by name in ascending order', () => {
-			const array = [{ name: 'banana' }, { name: 'apple' }, { name: 'cherry' }];
+		it('should correctly sort objects by name in ascending order', () => {
+			// Test data
+			const items = [
+				{ name: 'Banana', id: 3 },
+				{ name: 'apple', id: 2 },
+				{ name: 'Cherry', id: 1 },
+				{ name: 'date', id: 4 },
+			];
 
-			const sortedArray = array.sort(sort);
+			// Execute sort
+			const sorted = [...items].sort(sort);
 
-			expect(sortedArray).toEqual([{ name: 'apple' }, { name: 'banana' }, { name: 'cherry' }]);
+			// Verify sorted order (case-insensitive)
+			expect(sorted.map((item) => item.id)).toEqual([2, 3, 1, 4]);
+			expect(sorted.map((item) => item.name)).toEqual(['apple', 'Banana', 'Cherry', 'date']);
 		});
 
-		it('should handle case insensitivity', () => {
-			const array = [{ name: 'Banana' }, { name: 'apple' }, { name: 'cherry' }];
+		it('should treat uppercase and lowercase names as equal', () => {
+			const a = { name: 'apple' };
+			const b = { name: 'APPLE' };
 
-			const sortedArray = array.sort(sort);
-
-			expect(sortedArray).toEqual([{ name: 'apple' }, { name: 'Banana' }, { name: 'cherry' }]);
+			expect(sort(a, b)).toBe(0);
+			expect(sort(b, a)).toBe(0);
 		});
 
-		it('should return 0 for objects with the same name', () => {
-			const result = sort({ name: 'apple' }, { name: 'apple' });
-			expect(result).toBe(0);
+		it('should return -1 when first name comes before second name alphabetically', () => {
+			const a = { name: 'apple' };
+			const b = { name: 'banana' };
+
+			expect(sort(a, b)).toBe(-1);
+		});
+
+		it('should return 1 when first name comes after second name alphabetically', () => {
+			const a = { name: 'cherry' };
+			const b = { name: 'banana' };
+
+			expect(sort(a, b)).toBe(1);
+		});
+
+		it('should return 0 for identical names', () => {
+			const a = { name: 'apple' };
+			const b = { name: 'apple' };
+
+			expect(sort(a, b)).toBe(0);
+		});
+
+		it('should handle mixed case properly', () => {
+			// Test data
+			const items = [
+				{ name: 'abc', id: 1 },
+				{ name: 'ABC', id: 2 },
+				{ name: 'Abc', id: 3 },
+				{ name: 'aBC', id: 4 },
+			];
+
+			// They should all be considered equal in terms of sorting
+			const sorted = [...items].sort(sort);
+
+			// Original order should be maintained for equal values
+			expect(sorted.map((item) => item.id)).toEqual([1, 2, 3, 4]);
 		});
 	});
 });

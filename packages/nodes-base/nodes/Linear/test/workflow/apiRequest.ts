@@ -1,45 +1,48 @@
-export const query = {
-	getUsers() {
-		return `query Users ($first: Int, $after: String){
-			users (first: $first, after: $after){
-				nodes {
+export const addCommentRequest = {
+	query: `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
+				success
+				comment {
 					id
-					name
-				},
-				pageInfo {
-					hasNextPage
-					endCursor
-			}
-		}}`;
-	},
-	getTeams() {
-		return `query Teams ($first: Int, $after: String){
-				teams (first: $first, after: $after){
-					nodes {
-						id
-						name
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
-			}}`;
-	},
-	getStates() {
-		return `query States ($first: Int, $after: String, $filter: WorkflowStateFilter){
-				workflowStates (first: $first, after: $after, filter: $filter){
-					nodes {
-						id
-						name
-					},
-					pageInfo {
-						hasNextPage
-						endCursor
 				}
-			}}`;
+			}
+		}`,
+	variables: {
+		issueId: 'test-17',
+		body: 'test',
 	},
-	createIssue() {
-		return `mutation IssueCreate (
+};
+
+export const addCommentWithParentRequest = {
+	query: `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
+				success
+				comment {
+					id
+				}
+			}
+		}`,
+	variables: {
+		issueId: 'test-17',
+		body: 'Add to parent',
+		parentId: 'ff12069e-fac8-4b18-8455-cc6b29fa1e77',
+	},
+};
+
+export const addCommentLink = {
+	query: `mutation AttachmentLinkURL($url: String!, $issueId: String!) {
+  		attachmentLinkURL(url: $url, issueId: $issueId) {
+    		success
+  		}
+		}`,
+	variables: {
+		issueId: 'test-17',
+		url: 'https://n8n.io',
+	},
+};
+
+export const issueCreateRequest = {
+	query: `mutation IssueCreate (
 			$title: String!,
 			$teamId: String!,
 			$description: String,
@@ -84,17 +87,19 @@ export const query = {
 						}
 					}
 				}
-			}`;
+			}`,
+	variables: {
+		teamId: '0a2994c1-5d99-48aa-ab22-8b5ba4711ebc',
+		title: 'This is a test issue',
+		assigneeId: '1c51f0c4-c552-4614-a534-8de1752ba7d7',
+		description: 'test description',
+		priorityId: 3,
+		stateId: '65a87a3a-5729-4d82-96bf-badccbeb49af',
 	},
-	deleteIssue() {
-		return `mutation IssueDelete ($issueId: String!) {
-					issueDelete(id: $issueId) {
-						success
-					}
-				}`;
-	},
-	getIssue() {
-		return `query Issue($issueId: String!) {
+};
+
+export const getIssueRequest = {
+	query: `query Issue($issueId: String!) {
 			issue(id: $issueId) {
 				id,
 				identifier,
@@ -121,19 +126,14 @@ export const query = {
 					name
 				}
 			}
-		}`;
+		}`,
+	variables: {
+		issueId: 'test-18',
 	},
-	getIssueTeam() {
-		return `query Issue($issueId: String!) {
-			issue(id: $issueId) {
-				team {
-					id
-				}
-			}
-		}`;
-	},
-	getIssues() {
-		return `query Issue ($first: Int, $after: String){
+};
+
+export const getManyIssuesRequest = {
+	query: `query Issue ($first: Int, $after: String){
 					issues (first: $first, after: $after){
 						nodes {
 						id,
@@ -166,10 +166,15 @@ export const query = {
 						endCursor
 					}
 				}
-			}`;
+			}`,
+	variables: {
+		first: 1,
+		after: null,
 	},
-	updateIssue() {
-		return `mutation IssueUpdate (
+};
+
+export const updateIssueRequest = {
+	query: `mutation IssueUpdate (
 		$issueId: String!,
 		$title: String,
 		$teamId: String,
@@ -216,23 +221,25 @@ export const query = {
 					}
 				}
 			}
-		}`;
+		}`,
+	variables: {
+		issueId: 'test-18',
+		assigneeId: '1c51f0c4-c552-4614-a534-8de1752ba7d7',
+		description: 'New Description',
+		priorityId: 3,
+		stateId: '622493c0-f4ee-456d-af65-49a7611ede7a',
+		teamId: '0a2994c1-5d99-48aa-ab22-8b5ba4711ebc',
+		title: 'New Title',
 	},
-	addComment() {
-		return `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
-			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
-				success
-				comment {
-					id
-				}
-			}
-		}`;
-	},
-	addIssueLink() {
-		return `mutation AttachmentLinkURL($url: String!, $issueId: String!) {
-  		attachmentLinkURL(url: $url, issueId: $issueId) {
-    		success
-  		}
-		}`;
+};
+
+export const deleteIssueRequest = {
+	query: `mutation IssueDelete ($issueId: String!) {
+					issueDelete(id: $issueId) {
+						success
+					}
+				}`,
+	variables: {
+		issueId: 'test-18',
 	},
 };
