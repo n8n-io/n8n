@@ -95,7 +95,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Airtable');
+		workflowPage.actions.openNode('Search records');
 		cy.get('.has-issues').should('have.length', 2);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
