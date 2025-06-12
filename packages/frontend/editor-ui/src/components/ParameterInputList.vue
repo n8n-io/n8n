@@ -21,10 +21,12 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useMessage } from '@/composables/useMessage';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
+	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -82,6 +84,7 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
+const message = useMessage();
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
@@ -563,6 +566,23 @@ async function onCalloutAction(action: CalloutActionType) {
 }
 
 const onCalloutDismiss = async (parameter: INodeProperties) => {
+	const dismissConfirmed = await message.confirm(
+		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
+		{
+			showClose: true,
+			confirmButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.confirmButtonText',
+			),
+			cancelButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.cancelButtonText',
+			),
+		},
+	);
+
+	if (dismissConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
 	await dismissCallout(parameter.name);
 };
 </script>
