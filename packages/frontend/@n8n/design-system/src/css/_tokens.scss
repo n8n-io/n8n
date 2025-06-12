@@ -225,10 +225,12 @@
 	--color-code-line-break: var(--prim-color-secondary-tint-200);
 
 	// Tag
-	--tag-height: 22px;
+	--tag-height: 20px;
 	--tag-padding: 0 var(--spacing-4xs);
 	--tag-background-color: var(--prim-gray-40);
-	--tag-border-color: var(--color-foreground-light);
+	--tag-background-hover-color: var(--prim-gray-70);
+	--tag-border-color: var(--prim-gray-70);
+	--tag-border-hover-color: var(--prim-gray-120);
 	--tag-border-radius: var(--border-radius-base);
 	--tag-text-color: var(--color-text-base);
 	--tag-font-size: var(--font-size-2xs);
