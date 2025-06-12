@@ -6,6 +6,7 @@ import type {
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
+	NodeTypeSelectedPayload,
 } from '@/Interface';
 import {
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -47,14 +48,14 @@ export interface Props {
 }
 
 const emit = defineEmits<{
-	nodeTypeSelected: [nodeTypes: string[]];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 
 const i18n = useI18n();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
-const { setAddedNodeActionParameters } = useActions();
+const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
@@ -95,10 +96,6 @@ function getFilteredActions(
 
 function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
 	return nodeActions.filter((action) => action.actionKey === SEND_AND_WAIT_OPERATION);
-}
-
-function selectNodeType(nodeTypes: string[]) {
-	emit('nodeTypeSelected', nodeTypes);
 }
 
 function onSelected(item: INodeCreateElement) {
@@ -152,9 +149,11 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
+
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
-			selectNodeType([item.key]);
+			emit('nodeTypeSelected', [payload]);
 			setAddedNodeActionParameters({
 				name: nodeActions[0].defaults.name ?? item.properties.displayName,
 				key: item.key,
@@ -165,7 +164,7 @@ function onSelected(item: INodeCreateElement) {
 
 		// Only show actions if there are more than one or if the view is not an AI subcategory
 		if (nodeActions.length === 0 || activeViewStack.value.hideActions) {
-			selectNodeType([item.key]);
+			emit('nodeTypeSelected', [payload]);
 			return;
 		}
 
@@ -299,8 +298,8 @@ registerKeyHook('MainViewArrowLeft', {
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
-					@add-webhook-node="selectNodeType([WEBHOOK_NODE_TYPE])"
-					@add-http-node="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
+					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
+					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>
 			</template>
 		</ItemsRenderer>
