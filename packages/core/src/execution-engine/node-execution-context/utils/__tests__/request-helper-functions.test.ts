@@ -1,7 +1,7 @@
 import FormData from 'form-data';
+import { Agent as HttpAgent } from 'http';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { Agent as HttpsAgent } from 'https';
-import { Agent as HttpAgent } from 'http';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
 import type {
