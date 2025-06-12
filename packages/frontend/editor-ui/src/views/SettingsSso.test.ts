@@ -319,7 +319,7 @@ describe('SettingsSso', () => {
 	});
 
 	it('should render licensed content', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		ssoStore.isEnterpriseSamlEnabled = true;
 		await nextTick();
 
 		const { getByTestId, queryByTestId, getByRole } = renderComponent({
@@ -333,7 +333,7 @@ describe('SettingsSso', () => {
 
 	it('should enable activation checkbox and test button if data is already saved', async () => {
 		await ssoStore.getSamlConfig();
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		ssoStore.isEnterpriseSamlEnabled = true;
 		await nextTick();
 
 		const { container, getByTestId, getByRole } = renderComponent({

@@ -19,6 +19,7 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useSSOStore } from '@/stores/sso.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -62,30 +63,39 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
+
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
 		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
-	const isSamlEnabled =
-		settingsStore.isSamlLoginEnabled && settingsStore.isDefaultAuthenticationSaml;
+	const isSamlEnabled = Boolean(
+		ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml,
+	);
+
 	return isLdapEnabled || isSamlEnabled;
 });
+
 const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
 });
+
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
 });
+
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
+
 const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
