@@ -15,7 +15,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useStorage } from '@/composables/useStorage';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const checked = ref(false);
 

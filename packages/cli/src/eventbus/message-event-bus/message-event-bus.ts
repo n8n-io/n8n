@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
@@ -7,7 +9,6 @@ import type { DeleteResult } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { Logger } from 'n8n-core';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
@@ -61,7 +62,7 @@ export class MessageEventBus extends EventEmitter {
 		[key: string]: MessageEventBusDestination;
 	} = {};
 
-	private pushIntervalTimer: NodeJS.Timer;
+	private pushIntervalTimer: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,
@@ -157,8 +158,6 @@ export class MessageEventBus extends EventEmitter {
 			}
 
 			if (unfinishedExecutionIds.length > 0) {
-				this.logger.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
-				this.logger.info('This could be due to a crash of an active workflow or a restart of n8n.');
 				const activeWorkflows = await this.workflowRepository.find({
 					where: { active: true },
 					select: ['id', 'name'],
@@ -180,11 +179,25 @@ export class MessageEventBus extends EventEmitter {
 				} else {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
+					const recoveredIds: string[] = [];
+
 					for (const executionId of unfinishedExecutionIds) {
 						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
-						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
+						const recoveredExecution = await this.recoveryService.recoverFromLogs(
+							executionId,
+							logMesssages ?? [],
+						);
+						if (recoveredExecution) recoveredIds.push(executionId);
+					}
+
+					if (recoveredIds.length > 0) {
+						this.logger.warn(`Found unfinished executions: ${recoveredIds.join(', ')}`);
+						this.logger.info(
+							'This could be due to a crash of an active workflow or a restart of n8n',
+						);
 					}
 				}
+
 				// remove the recovery process flag file
 				this.logWriter?.endRecoveryProcess();
 			}
@@ -263,6 +276,7 @@ export class MessageEventBus extends EventEmitter {
 		this.logger.debug('EventBus shut down.');
 	}
 
+	@OnPubSubEvent('restart-event-bus')
 	async restart() {
 		await this.close();
 		await this.initialize({ skipRecoveryPass: true });

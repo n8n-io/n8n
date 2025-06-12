@@ -6,6 +6,8 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
+	ROLE,
+	Role,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -45,6 +47,8 @@ import type {
 	ITaskData,
 	ISourceData,
 } from 'n8n-workflow';
+import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -53,7 +57,6 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
 } from '@/constants';
@@ -175,15 +178,6 @@ export interface INodeTypesMaxCount {
 		exist: number;
 		max: number;
 		nodeNames: string[];
-	};
-}
-
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
 	};
 }
 
@@ -373,7 +367,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -387,11 +380,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -572,9 +569,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV3
 	| IPersonalizationSurveyAnswersV4;
 
-export type Roles = typeof ROLE;
-export type IRole = Roles[keyof Roles];
-export type InvitableRoleName = Roles['Member' | 'Admin'];
+export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -582,7 +577,7 @@ export interface IUserResponse {
 	lastName?: string;
 	email?: string;
 	createdAt?: string;
-	role?: IRole;
+	role?: Role;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
@@ -609,12 +604,6 @@ export interface IUserListAction {
 	guard?: (user: IUser) => boolean;
 }
 
-export interface IN8nPrompts {
-	message?: string;
-	title?: string;
-	showContactPrompt?: boolean;
-}
-
 export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
@@ -623,7 +612,7 @@ export const enum UserManagementAuthenticationMethod {
 
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
-	role?: IRole[];
+	role?: Role[];
 }
 
 export interface IPermissionAllowGroup extends IPermissionGroup {
@@ -906,33 +895,7 @@ export interface ITagRow {
 	canDelete?: boolean;
 }
 
-export interface IVersion {
-	name: string;
-	nodes: IVersionNode[];
-	createdAt: string;
-	description: string;
-	documentationUrl: string;
-	hasBreakingChange: boolean;
-	hasSecurityFix: boolean;
-	hasSecurityIssue: boolean;
-	securityIssueFixVersion: string;
-}
-
-export interface IVersionNode {
-	name: string;
-	displayName: string;
-	icon: string;
-	iconUrl?: string;
-	defaults: INodeParameters;
-	iconData: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
-	typeVersion?: number;
-}
-
-export interface ITemplatesNode extends IVersionNode {
+export interface ITemplatesNode extends VersionNode {
 	id: number;
 	categories?: ITemplatesCategory[];
 }
@@ -1170,8 +1133,8 @@ export interface ITemplateState {
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
-	nextVersions: IVersion[];
-	currentVersion: IVersion | undefined;
+	nextVersions: Version[];
+	currentVersion: Version | undefined;
 }
 
 export interface IWorkflowsMap {
@@ -1181,11 +1144,6 @@ export interface IWorkflowsMap {
 export interface CommunityNodesState {
 	availablePackageCount: number;
 	installedPackages: CommunityPackageMap;
-}
-
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1209,7 +1167,7 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
-		role: IRole;
+		role: Role;
 	};
 	error?: string;
 }
@@ -1268,49 +1226,6 @@ export type SchemaType =
 	| 'null'
 	| 'undefined';
 
-export interface ILdapSyncData {
-	id: number;
-	startedAt: string;
-	endedAt: string;
-	created: number;
-	updated: number;
-	disabled: number;
-	scanned: number;
-	status: string;
-	error: string;
-	runMode: string;
-}
-
-export interface ILdapSyncTable {
-	status: string;
-	endedAt: string;
-	runTime: string;
-	runMode: string;
-	details: string;
-}
-
-export interface ILdapConfig {
-	loginEnabled: boolean;
-	loginLabel: string;
-	connectionUrl: string;
-	allowUnauthorizedCerts: boolean;
-	connectionSecurity: string;
-	connectionPort: number;
-	baseDn: string;
-	bindingAdminDn: string;
-	bindingAdminPassword: string;
-	firstNameAttribute: string;
-	lastNameAttribute: string;
-	emailAttribute: string;
-	loginIdAttribute: string;
-	ldapIdAttribute: string;
-	userFilter: string;
-	synchronizationEnabled: boolean;
-	synchronizationInterval: number; // minutes
-	searchPageSize: number;
-	searchTimeout: number;
-}
-
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
@@ -1350,6 +1265,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';
@@ -1378,55 +1294,11 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export type SamlPreferencesExtractedData = {
-	entityID: string;
-	returnUrl: string;
-};
-
-export declare namespace Cloud {
-	export interface PlanData {
-		planId: number;
-		monthlyExecutionsLimit: number;
-		activeWorkflowsLimit: number;
-		credentialsLimit: number;
-		isActive: boolean;
-		displayName: string;
-		expirationDate: string;
-		metadata: PlanMetadata;
-	}
-
-	export interface PlanMetadata {
-		version: 'v1';
-		group: 'opt-out' | 'opt-in' | 'trial';
-		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-		trial?: Trial;
-	}
-
-	interface Trial {
-		length: number;
-		gracePeriod: number;
-	}
-
-	export type UserAccount = {
-		confirmed: boolean;
-		username: string;
-		email: string;
-		hasEarlyAccess?: boolean;
-		role?: string;
-	};
-}
-
 export interface CloudPlanState {
 	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;
-}
-
-export interface InstanceUsage {
-	timeframe?: string;
-	executions: number;
-	activeWorkflows: number;
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
@@ -1553,10 +1425,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export interface IN8nPromptResponse {
-	updated: boolean;
-}
 
 export type InputPanel = {
 	nodeName?: string;

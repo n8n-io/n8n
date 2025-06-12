@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import { get, set } from 'lodash';
+import get from 'lodash/get';
+import set from 'lodash/set';
 
 import type { NodeTypes } from '@/node-types';
 import type { Task } from '@/task-runners/task-managers/task-requester';
@@ -30,6 +31,7 @@ describe('TaskRequester', () => {
 			['helpers.setBinaryDataBuffer', [{ data: '123' }, Buffer.from('data').toJSON()]],
 			['helpers.binaryToString', [Buffer.from('data').toJSON(), 'utf8']],
 			['helpers.httpRequest', [{ url: 'http://localhost' }]],
+			['helpers.request', [{ url: 'http://localhost' }]],
 		])('should handle %s rpc call', async (methodName, args) => {
 			const executeFunctions = set({}, methodName.split('.'), jest.fn());
 

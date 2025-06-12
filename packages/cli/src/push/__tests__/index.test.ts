@@ -1,7 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';
@@ -145,120 +145,84 @@ describe('Push', () => {
 			describe('should throw on invalid origin', () => {
 				test.each([
 					{
+						name: 'origin is undefined',
+						origin: undefined,
+						xForwardedHost: undefined,
+					},
+					{
 						name: 'origin does not match host',
-						origin: 'https://subdomain.example.com',
-						xForwardedProto: undefined,
+						origin: 'https://123example.com',
 						xForwardedHost: undefined,
 					},
 					{
 						name: 'origin does not match host (subdomain)',
-						origin: 'https://123example.com',
-						xForwardedProto: undefined,
+						origin: `https://subdomain.${host}`,
 						xForwardedHost: undefined,
 					},
 					{
-						name: 'origin is not defined',
-						origin: undefined,
-						xForwardedProto: undefined,
-						xForwardedHost: undefined,
+						name: 'origin does not match x-forwarded-host',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: 'https://123example.com', // this is not
 					},
 					{
-						name: 'only one of the forward headers is defined',
-						origin: 'https://123example.com',
-						xForwardedProto: 'https',
-						xForwardedHost: undefined,
+						name: 'origin does not match x-forwarded-host (subdomain)',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: `https://subdomain.${host}`, // this is not
 					},
+				])('$name', ({ origin, xForwardedHost }) => {
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
+
+					if (backendName === 'sse') {
+						expect(() => push.handleRequest(req, res)).toThrow(
+							new BadRequestError('Invalid origin!'),
+						);
+					} else {
+						push.handleRequest(req, res);
+						expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+						expect(ws.close).toHaveBeenCalledWith(1008);
+					}
+					expect(backend.add).not.toHaveBeenCalled();
+				});
+			});
+
+			describe('should not throw on invalid origin if `X-Forwarded-Host` is set correctly', () => {
+				test.each([
 					{
-						name: 'only one of the forward headers is defined',
-						origin: 'https://123example.com',
-						xForwardedProto: undefined,
-						xForwardedHost: '123example.com',
-					},
-					{
-						name: 'protocol mismatch',
-						// correct origin, but forward headers take precedence
-						origin: 'https://example.com',
-						xForwardedProto: 'http',
+						name: 'origin matches forward headers (https)',
+						origin: `https://${host}`,
 						xForwardedHost: host,
 					},
 					{
-						name: 'origin is undefined',
-						origin: undefined,
-						xForwardedProto: undefined,
-						xForwardedHost: undefined,
-					},
-				])(
-					'$name (origin: $origin, x-forwarded-proto: $xForwardedProto, x-forwarded-host: $xForwardedHost)',
-					({ origin, xForwardedProto, xForwardedHost }) => {
-						req.headers.origin = origin;
-						req.headers['x-forwarded-proto'] = xForwardedProto;
-						req.headers['x-forwarded-host'] = xForwardedHost;
-
-						if (backendName === 'sse') {
-							expect(() => push.handleRequest(req, res)).toThrow(
-								new BadRequestError('Invalid origin!'),
-							);
-						} else {
-							push.handleRequest(req, res);
-							expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
-							expect(ws.close).toHaveBeenCalledWith(1008);
-						}
-						expect(backend.add).not.toHaveBeenCalled();
-					},
-				);
-			});
-
-			describe('should not throw on invalid origin if `X-Forwarded-Host` and `X-Forwarded-Proto` are set correctly', () => {
-				test.each([
-					{
-						name: 'origin matches forward headers',
-						origin: 'https://example.com',
-						xForwardedProto: 'https',
-						xForwardedHost: 'example.com',
-					},
-					{
-						name: 'origin matches forward headers but has different case',
-						origin: 'https://example.com',
-						xForwardedProto: 'https',
-						xForwardedHost: 'EXAMPLE.com',
-					},
-					{
-						name: 'origin matches forward headers but protocol has different case',
-						origin: 'HTTPS://example.com',
-						xForwardedProto: undefined,
-						xForwardedHost: undefined,
+						name: 'origin matches forward headers (http)',
+						origin: `http://${host}`,
+						xForwardedHost: host,
 					},
 					{
 						name: 'origin matches host (https)',
-						origin: 'https://example.com',
-						xForwardedProto: undefined,
+						origin: `https://${host}`,
 						xForwardedHost: undefined,
 					},
 					{
 						name: 'origin matches host (http)',
-						origin: 'http://example.com',
-						xForwardedProto: undefined,
+						origin: `http://${host}`,
 						xForwardedHost: undefined,
 					},
-				])(
-					'$name (origin: $origin, x-forwarded-proto: $xForwardedProto, x-forwarded-host: $xForwardedHost)',
-					({ origin, xForwardedProto, xForwardedHost }) => {
-						// ARRANGE
-						req.headers.origin = origin;
-						req.headers['x-forwarded-proto'] = xForwardedProto;
-						req.headers['x-forwarded-host'] = xForwardedHost;
+				])('$name', ({ origin, xForwardedHost }) => {
+					// ARRANGE
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
 
-						const emitSpy = jest.spyOn(push, 'emit');
-						const connection = backendName === 'sse' ? { req, res } : ws;
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
 
-						// ACT
-						push.handleRequest(req, res);
+					// ACT
+					push.handleRequest(req, res);
 
-						// ASSERT
-						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
-						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
-					},
-				);
+					// ASSERT
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
 			});
 
 			test('should throw if pushRef is invalid', () => {

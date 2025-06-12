@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -5,7 +6,6 @@ import {
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
-	Logger,
 	isTool,
 	rewireGraph,
 } from 'n8n-core';

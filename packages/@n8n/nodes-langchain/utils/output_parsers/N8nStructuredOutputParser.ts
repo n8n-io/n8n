@@ -106,9 +106,13 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 						},
 					),
 			});
-		} else {
+		} else if (nodeVersion < 1.3) {
 			returnSchema = z.object({
 				output: zodSchema.optional(),
+			});
+		} else {
+			returnSchema = z.object({
+				output: zodSchema,
 			});
 		}
 

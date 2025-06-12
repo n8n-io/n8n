@@ -1,13 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstalledPackages } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
 import { join } from 'path';
 import { promisify } from 'util';
@@ -446,14 +448,28 @@ export class CommunityPackagesService {
 		}
 	}
 
-	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
+	@OnPubSubEvent('community-package-install')
+	@OnPubSubEvent('community-package-update')
+	async handleInstallEvent({
+		packageName,
+		packageVersion,
+	}: { packageName: string; packageVersion: string }) {
+		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+	}
+
+	@OnPubSubEvent('community-package-uninstall')
+	async handleUninstallEvent({ packageName }: { packageName: string }) {
+		await this.removeNpmPackage(packageName);
+	}
+
+	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.downloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
-	async removeNpmPackage(packageName: string) {
+	private async removeNpmPackage(packageName: string) {
 		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();

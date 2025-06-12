@@ -35,8 +35,8 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
-import { useI18n } from '@/composables/useI18n';
-import { get } from 'lodash-es';
+import { useI18n } from '@n8n/i18n';
+import get from 'lodash/get';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -44,10 +44,12 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useWorkflowSaving } from './useWorkflowSaving';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
-	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
+	const workflowHelpers = useWorkflowHelpers();
+	const workflowSaving = useWorkflowSaving({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -60,7 +62,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
-	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router });
+	const { startChat } = useCanvasOperations();
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
@@ -118,6 +120,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	async function runWorkflow(options: {
 		destinationNode?: string;
 		triggerNode?: string;
+		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
@@ -143,7 +146,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const runData = workflowsStore.getWorkflowRunData;
 
 			if (workflowsStore.isNewWorkflow) {
-				await workflowHelpers.saveCurrentWorkflow();
+				await workflowSaving.saveCurrentWorkflow();
 			}
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
@@ -171,7 +174,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if (options.triggerNode && options.nodeData) {
+			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
+				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
 					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
@@ -312,7 +316,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
 				if (workflow.id && nodeId && version === 2) {
-					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
+					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {
@@ -381,7 +385,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			})();
 
 			try {
-				displayForm({
+				await displayForm({
 					nodes: workflowData.nodes,
 					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
 					destinationNode: options.destinationNode,
@@ -498,7 +502,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		} finally {
 			// Wait for websocket event to update the execution status to 'canceled'
-			await retry(
+			const markedAsStopped = await retry(
 				async () => {
 					if (workflowsStore.workflowExecutionData?.status !== 'running') {
 						workflowsStore.markExecutionAsStopped();
@@ -508,8 +512,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					return false;
 				},
 				250,
-				10,
+				20,
 			);
+
+			if (!markedAsStopped) {
+				workflowsStore.markExecutionAsStopped();
+			}
 		}
 	}
 
@@ -541,7 +549,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
-		void runWorkflow({ triggerNode });
+		void runWorkflow({
+			triggerNode: triggerNode ?? workflowsStore.selectedTriggerNodeName,
+		});
 	}
 
 	return {

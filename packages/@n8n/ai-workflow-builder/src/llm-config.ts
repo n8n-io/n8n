@@ -1,14 +1,12 @@
-import { ChatAnthropic } from '@langchain/anthropic';
-import { ChatOpenAI } from '@langchain/openai';
-
 type LLMConfig = {
 	apiKey: string;
 	baseUrl?: string;
 	headers?: Record<string, string>;
 };
 
-export const o4mini = (config: LLMConfig) =>
-	new ChatOpenAI({
+export const o4mini = async (config: LLMConfig) => {
+	const { ChatOpenAI } = await import('@langchain/openai');
+	return new ChatOpenAI({
 		modelName: 'o4-mini-2025-04-16',
 		apiKey: config.apiKey,
 		configuration: {
@@ -16,9 +14,11 @@ export const o4mini = (config: LLMConfig) =>
 			defaultHeaders: config.headers,
 		},
 	});
+};
 
-export const gpt41mini = (config: LLMConfig) =>
-	new ChatOpenAI({
+export const gpt41mini = async (config: LLMConfig) => {
+	const { ChatOpenAI } = await import('@langchain/openai');
+	return new ChatOpenAI({
 		modelName: 'gpt-4.1-mini-2025-04-14',
 		apiKey: config.apiKey,
 		temperature: 0,
@@ -27,9 +27,11 @@ export const gpt41mini = (config: LLMConfig) =>
 			defaultHeaders: config.headers,
 		},
 	});
+};
 
-export const anthropicClaude37Sonnet = (config: LLMConfig) =>
-	new ChatAnthropic({
+export const anthropicClaude37Sonnet = async (config: LLMConfig) => {
+	const { ChatAnthropic } = await import('@langchain/anthropic');
+	return new ChatAnthropic({
 		modelName: 'claude-3-7-sonnet-20250219',
 		apiKey: config.apiKey,
 		temperature: 0,
@@ -39,3 +41,4 @@ export const anthropicClaude37Sonnet = (config: LLMConfig) =>
 			defaultHeaders: config.headers,
 		},
 	});
+};

@@ -6,7 +6,8 @@ import {
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
-import { memoize, startCase } from 'lodash-es';
+import memoize from 'lodash/memoize';
+import startCase from 'lodash/startCase';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -15,7 +16,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
