@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
+import { UserError } from '@/errors';
 import { NodeConnectionTypes } from '@/interfaces';
 import type {
 	IBinaryKeyData,
@@ -1077,6 +1078,129 @@ describe('Workflow', () => {
 				expect(workflow.connectionsBySourceNode).toEqual(testData.output.connections);
 			});
 		}
+
+		describe('with restricted node names', () => {
+			const restrictedNames = [
+				'hasOwnProperty',
+				'isPrototypeOf',
+				'propertyIsEnumerable',
+				'toLocaleString',
+				'toString',
+				'valueOf',
+				'constructor',
+				'prototype',
+				'__proto__',
+				'__defineGetter__',
+				'__defineSetter__',
+				'__lookupGetter__',
+				'__lookupSetter__',
+			];
+
+			test.each(restrictedNames)(
+				'should throw error when renaming node to %s',
+				(restrictedName) => {
+					const workflow = new Workflow({
+						nodes: [
+							{
+								name: 'Node1',
+								parameters: {},
+								type: 'test.set',
+								typeVersion: 1,
+								id: 'uuid-1',
+								position: [100, 100],
+							},
+						],
+						connections: {},
+						active: false,
+						nodeTypes,
+					});
+
+					expect(() => workflow.renameNode('Node1', restrictedName)).toThrow(
+						`Node name "${restrictedName}" is a restricted name.`,
+					);
+				},
+			);
+
+			test.each(restrictedNames)(
+				'should throw error when renaming node to %s with different case',
+				(restrictedName) => {
+					const workflow = new Workflow({
+						nodes: [
+							{
+								name: 'Node1',
+								parameters: {},
+								type: 'test.set',
+								typeVersion: 1,
+								id: 'uuid-1',
+								position: [100, 100],
+							},
+						],
+						connections: {},
+						active: false,
+						nodeTypes,
+					});
+
+					const upperCaseName = restrictedName.toUpperCase();
+					expect(() => workflow.renameNode('Node1', upperCaseName)).toThrow(
+						`Node name "${upperCaseName}" is a restricted name.`,
+					);
+				},
+			);
+
+			test('should throw error with proper description', () => {
+				const workflow = new Workflow({
+					nodes: [
+						{
+							name: 'Node1',
+							parameters: {},
+							type: 'test.set',
+							typeVersion: 1,
+							id: 'uuid-1',
+							position: [100, 100],
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				try {
+					workflow.renameNode('Node1', 'toString');
+				} catch (error) {
+					if (!(error instanceof UserError)) {
+						throw new Error('Expected error to be an instance of UserError');
+					}
+					expect(error).toBeInstanceOf(UserError);
+					expect(error.message).toBe('Node name "toString" is a restricted name.');
+					expect(error.description).toBe(
+						'Node names cannot be any of the following: hasOwnProperty, isPrototypeOf, propertyIsEnumerable, toLocaleString, toString, valueOf, constructor, prototype, __proto__, __defineGetter__, __defineSetter__, __lookupGetter__, __lookupSetter__',
+					);
+				}
+			});
+
+			test('should allow renaming to names that contain restricted names as substring', () => {
+				const workflow = new Workflow({
+					nodes: [
+						{
+							name: 'Node1',
+							parameters: {},
+							type: 'test.set',
+							typeVersion: 1,
+							id: 'uuid-1',
+							position: [100, 100],
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				// These should not throw as they're not exact matches
+				expect(() => workflow.renameNode('Node1', 'myToString')).not.toThrow();
+				expect(() => workflow.renameNode('Node1', 'toStringNode')).not.toThrow();
+				expect(() => workflow.renameNode('Node1', 'hasOwnPropertyChecker')).not.toThrow();
+			});
+		});
 	});
 
 	describe('getParameterValue', () => {
