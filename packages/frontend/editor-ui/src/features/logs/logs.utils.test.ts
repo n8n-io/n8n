@@ -1009,10 +1009,13 @@ describe(createLogTree, () => {
 	});
 
 	it('should include sub node log without run data in its root node', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
 		const logs = createLogTree(
 			createTestWorkflowObject(aiChatWorkflow),
 			createTestWorkflowExecutionResponse({
-				data: { resultData: { runData: { [aiModelNode.name]: [createTestTaskData({})] } } },
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
 			}),
 		);
 
@@ -1024,13 +1027,16 @@ describe(createLogTree, () => {
 	});
 
 	it('should include sub node log with its root node disabled', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
 		const logs = createLogTree(
 			createTestWorkflowObject({
 				...aiChatWorkflow,
 				nodes: [{ ...aiAgentNode, disabled: true }, aiModelNode],
 			}),
 			createTestWorkflowExecutionResponse({
-				data: { resultData: { runData: { [aiModelNode.name]: [createTestTaskData({})] } } },
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
 			}),
 		);
 
@@ -1044,6 +1050,9 @@ describe(createLogTree, () => {
 	it.todo(
 		'should not include duplicate sub node log when the node belongs to multiple root nodes with no run data',
 		() => {
+			const taskData = createTestTaskData({
+				source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+			});
 			const logs = createLogTree(
 				createTestWorkflowObject({
 					nodes: [
@@ -1063,7 +1072,7 @@ describe(createLogTree, () => {
 					},
 				}),
 				createTestWorkflowExecutionResponse({
-					data: { resultData: { runData: { [aiModelNode.name]: [createTestTaskData({})] } } },
+					data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
 				}),
 			);
 

@@ -9,6 +9,7 @@ import {
 	type ITaskStartedData,
 	type Workflow,
 	type INode,
+	type ISourceData,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
@@ -17,6 +18,7 @@ import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash-es/get';
 import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -92,6 +94,14 @@ function getChildNodes(
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
 	const isExecutionRoot = !isSubNodeLog(treeNode);
 
+	function isMatchedSource(source: ISourceData | null): boolean {
+		return (
+			(source?.previousNode === node.name ||
+				(isPlaceholderLog(treeNode) && source?.previousNode === TOOL_EXECUTOR_NODE_NAME)) &&
+			(runIndex === undefined || source.previousNodeRun === runIndex)
+		);
+	}
+
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
 			// At root depth, filter out node executions that weren't triggered by this node
@@ -99,13 +109,7 @@ function getChildNodes(
 			// Only filter nodes that have source information with valid previousNode references
 			const isMatched =
 				isExecutionRoot && t.source.some((source) => source !== null)
-					? t.source.some(
-							(source) =>
-								(source?.previousNode === node.name ||
-									(isPlaceholderLog(treeNode) &&
-										source?.previousNode === 'PartialExecutionToolExecutor')) &&
-								(runIndex === undefined || source.previousNodeRun === runIndex),
-						)
+					? t.source.some(isMatchedSource)
 					: runIndex === undefined || index === runIndex;
 
 			if (!isMatched) {
