@@ -299,4 +299,25 @@ describe('enqueueExecution', () => {
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
+
+	it('should assign subworkflow executions a priority of 25', async () => {
+		runner.setExecutionMode('queue');
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'integrated',
+		});
+
+		addJob.mockResolvedValueOnce({ finished: jest.fn().mockResolvedValue(undefined) });
+
+		await runner.run(data);
+
+		expect(addJob).toHaveBeenCalledWith(expect.any(Object), { priority: 25 });
+	});
 });

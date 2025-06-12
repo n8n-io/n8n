@@ -167,7 +167,8 @@ export class WorkflowRunner {
 				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
-			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
+			const priority = data.executionMode === 'integrated' ? 25 : realtime ? 50 : 100;
+			await this.enqueueExecution(executionId, data, loadStaticData, priority);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
@@ -337,7 +338,7 @@ export class WorkflowRunner {
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-		realtime?: boolean,
+		priority = 100,
 	): Promise<void> {
 		const jobData: JobData = {
 			executionId,
@@ -356,7 +357,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			job = await this.scalingService.addJob(jobData, { priority });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
