@@ -1692,13 +1692,13 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
-							//if (!this.isCancelled) {
-							await hooks.runHook('nodeExecuteAfter', [
-								executionNode.name,
-								taskData,
-								this.runExecutionData,
-							]);
-							//}
+							if (!this.isCancelled) {
+								await hooks.runHook('nodeExecuteAfter', [
+									executionNode.name,
+									taskData,
+									this.runExecutionData,
+								]);
+							}
 
 							break;
 						}
