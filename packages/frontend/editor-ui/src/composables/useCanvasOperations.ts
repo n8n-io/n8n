@@ -301,7 +301,15 @@ export function useCanvasOperations() {
 
 		// Rename the node and update the connections
 		const workflow = workflowsStore.getCurrentWorkflow(true);
-		workflow.renameNode(currentName, newName);
+		try {
+			workflow.renameNode(currentName, newName);
+		} catch (error) {
+			toast.showMessage({
+				type: 'error',
+				title: error.message,
+				message: error.description,
+			});
+		}
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, Date.now()));
