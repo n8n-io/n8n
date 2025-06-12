@@ -189,7 +189,16 @@ export class TestRunnerService {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'evaluation',
 			pinData,
-			workflowData: workflow,
+			workflowData: {
+				...workflow,
+				settings: {
+					...workflow.settings,
+					saveManualExecutions: true,
+					saveDataErrorExecution: 'all',
+					saveDataSuccessExecution: 'all',
+					saveExecutionProgress: false,
+				},
+			},
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 			triggerToStartFrom: {
