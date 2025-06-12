@@ -194,10 +194,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 			gmailNock.delete('/v1/users/me/drafts/test-draft-id').reply(200, messages[0]);
 			gmailNock
-				.get('/gmail/v1/users/me/threads/test-thread-id')
+				.get('/v1/users/me/threads/test-thread-id')
 				.query({
 					format: 'metadata',
-					metadataHeaders: 'Message-ID', // Not an array!
+					metadataHeaders: 'Message-ID',
 				})
 				.reply(200, {
 					messages: [{ payload: { headers: ['jjkjkjkf@reply.com'] } }],
