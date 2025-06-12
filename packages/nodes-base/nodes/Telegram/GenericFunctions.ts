@@ -87,7 +87,7 @@ export function addAdditionalFields(
 			additionalFields.appendAttribution = true;
 		}
 
-		if (additionalFields.parse_mode === undefined) {
+		if (additionalFields.parse_mode == null) {
 			additionalFields.parse_mode = 'Markdown';
 		}
 
