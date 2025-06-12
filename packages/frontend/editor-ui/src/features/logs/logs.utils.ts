@@ -134,7 +134,7 @@ export function getTreeNodeData(
 	const treeNode = createNode(node, context, runIndex ?? 0, runData);
 	const children = getChildNodes(treeNode, node, runIndex, context).sort(sortLogEntries);
 
-	if (runData === undefined && children.length === 0) {
+	if ((runData === undefined || node.disabled) && children.length === 0) {
 		return [];
 	}
 
@@ -218,10 +218,9 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 		}>((node) => {
 			const nodeName = node.name;
 			const taskData = context.data.resultData.runData[nodeName] ?? [];
-			const isSubNode = context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0;
 
-			if (isSubNode || node.disabled) {
-				// skip sub nodes and disabled nodes
+			if (context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
+				// skip sub nodes
 				return [];
 			}
 
