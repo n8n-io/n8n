@@ -305,3 +305,26 @@ export function prepareCommunityNodeDetailsViewStack(
 		communityNodeDetails,
 	};
 }
+
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
+	const results: INodeCreateElement[] = [];
+
+	const ragKeywords = ['rag', 'vec', 'know'];
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+		results.push({
+			key: 'rag-starter-template',
+			type: 'openTemplate',
+			properties: {
+				key: 'rag-starter-template',
+				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+				icon: 'database',
+				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+				tag: {
+					type: 'info',
+					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				},
+			},
+		});
+	}
+	return results;
+}
