@@ -72,7 +72,7 @@ export const draftFields: INodeProperties[] = [
 		name: 'threadNotice',
 		type: 'notice',
 		default: '',
-		displayOptions: {},
+		displayOptions: { show: { resource: ['draft'], operation: ['create'] } },
 	},
 	{
 		displayName: 'Email Type',
