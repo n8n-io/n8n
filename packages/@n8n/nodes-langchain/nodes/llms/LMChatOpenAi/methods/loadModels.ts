@@ -16,7 +16,7 @@ export async function searchModels(
 	const openai = new OpenAI({
 		baseURL,
 		apiKey: credentials.apiKey as string,
-		httpAgent: getHttpProxyAgent(),
+		httpAgent: getHttpProxyAgent(baseURL),
 	});
 	const { data: models = [] } = await openai.models.list();
 

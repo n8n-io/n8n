@@ -149,7 +149,7 @@ export class LmChatAwsBedrock implements INodeType {
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			clientConfig: {
-				httpAgent: getHttpProxyAgent(),
+				httpAgent: getHttpProxyAgent(undefined),
 			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
