@@ -3,7 +3,7 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
-import { Logger, LicenseState } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -42,7 +42,6 @@ export class PasswordResetController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
-		private readonly licenseState: LicenseState,
 	) {}
 
 	/**
