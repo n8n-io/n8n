@@ -19,12 +19,13 @@ export function prepareMessageFromLastNode(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 	const nodeExecutionData = execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main?.[0];
 	const json = nodeExecutionData?.[0] ? nodeExecutionData[0].json : {};
-
 	let textMessage = json.output ?? json.text ?? json.message ?? '';
 	if (typeof textMessage !== 'string') {
 		textMessage = JSON.stringify(textMessage);
 	}
-
+	if (!textMessage) {
+		textMessage = JSON.stringify(json, null, 2);
+	}
 	return textMessage;
 }
 
