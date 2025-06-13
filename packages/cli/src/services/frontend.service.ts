@@ -17,7 +17,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { getAvailableDateRanges as getInsightsAvailableDateRanges } from '@/modules/insights/insights-helpers';
 import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
@@ -52,7 +52,6 @@ export class FrontendService {
 		private readonly modulesConfig: ModulesConfig,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
-		private readonly insightsService: InsightsService,
 		private readonly licenseState: LicenseState,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
@@ -380,7 +379,7 @@ export class FrontendService {
 			enabled: this.modulesConfig.loadedModules.has('insights'),
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: this.insightsService.getAvailableDateRanges(),
+			dateRanges: getInsightsAvailableDateRanges(this.licenseState),
 		});
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');

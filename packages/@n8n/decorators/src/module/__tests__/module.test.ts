@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import { N8nModule } from '../module';
+import { BackendModule } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
-describe('@N8nModule Decorator', () => {
+describe('@BackendModule decorator', () => {
 	let moduleMetadata: ModuleMetadata;
 
 	beforeEach(() => {
@@ -14,7 +14,7 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@N8nModule()
+		@BackendModule()
 		class TestModule {
 			initialize() {}
 		}
@@ -26,17 +26,17 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should register multiple modules', () => {
-		@N8nModule()
+		@BackendModule()
 		class FirstModule {
 			initialize() {}
 		}
 
-		@N8nModule()
+		@BackendModule()
 		class SecondModule {
 			initialize() {}
 		}
 
-		@N8nModule()
+		@BackendModule()
 		class ThirdModule {
 			initialize() {}
 		}
@@ -50,7 +50,7 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should work with modules without initialize method', () => {
-		@N8nModule()
+		@BackendModule()
 		class TestModule {}
 
 		const registeredModules = Array.from(moduleMetadata.getModules());
@@ -62,7 +62,7 @@ describe('@N8nModule Decorator', () => {
 	it('should support async initialize method', async () => {
 		const mockInitialize = jest.fn();
 
-		@N8nModule()
+		@BackendModule()
 		class TestModule {
 			async initialize() {
 				mockInitialize();
@@ -81,10 +81,10 @@ describe('@N8nModule Decorator', () => {
 
 	describe('ModuleMetadata', () => {
 		it('should allow retrieving and checking registered modules', () => {
-			@N8nModule()
+			@BackendModule()
 			class FirstModule {}
 
-			@N8nModule()
+			@BackendModule()
 			class SecondModule {}
 
 			const registeredModules = Array.from(moduleMetadata.getModules());
@@ -95,7 +95,7 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should apply Service decorator', () => {
-		@N8nModule()
+		@BackendModule()
 		class TestModule {}
 
 		expect(Container.has(TestModule)).toBe(true);
