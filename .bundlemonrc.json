@@ -1,0 +1,29 @@
+{
+	"defaultCompression": "gzip",
+	"reportOutput": [
+		[
+			"github",
+			{
+				"checkRun": true,
+				"commitStatus": "off",
+				"prComment": true
+			}
+		]
+	],
+	"files": [
+		{
+			"path": "packages/frontend/editor-ui/dist/*.wasm",
+			"friendlyName": "WASM Dependencies"
+		}
+	],
+	"groups": [
+		{
+			"groupName": "Editor UI - Total JS Size",
+			"path": "packages/frontend/editor-ui/dist/**/*.js"
+		},
+		{
+			"groupName": "Editor UI - Total CSS Size",
+			"path": "packages/frontend/editor-ui/dist/**/*.css"
+		}
+	]
+}
