@@ -65,6 +65,7 @@ describe('SettingsSso View', () => {
 		const pinia = createTestingPinia();
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = false;
+		ssoStore.isEnterpriseOidcEnabled = false;
 
 		const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -82,6 +83,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
@@ -102,6 +104,7 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
@@ -126,6 +129,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -163,6 +167,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -199,6 +204,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -228,6 +234,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -258,6 +265,8 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
 		ssoStore.isSamlLoginEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
+		ssoStore.isOidcLoginEnabled = false;
 
 		const error = new Error('Request failed with status code 404');
 		ssoStore.getSamlConfig.mockRejectedValue(error);

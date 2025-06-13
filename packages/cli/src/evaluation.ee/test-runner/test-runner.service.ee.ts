@@ -13,10 +13,10 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
-	IExecuteData,
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
+	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -259,16 +259,11 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		// Initialize the input data for dataset trigger
-		// Provide a flag indicating that we want to get the whole dataset
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: triggerNode,
-			data: {
-				main: [[{ json: { requestDataset: true } }]],
-			},
-			source: null,
-		});
+		// Call custom operation to fetch the whole dataset
+		triggerNode.forceCustomOperation = {
+			resource: 'dataset',
+			operation: 'getRows',
+		};
 
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode: triggerNode.name,
@@ -293,13 +288,6 @@ export class TestRunnerService {
 				resultData: {
 					runData: {},
 				},
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
 				manualData: {
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
@@ -312,6 +300,33 @@ export class TestRunnerService {
 				name: triggerNode.name,
 			},
 		};
+
+		if (
+			!(
+				config.get('executions.mode') === 'queue' &&
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+			) &&
+			data.executionData
+		) {
+			const nodeExecutionStack: IExecuteData[] = [];
+			nodeExecutionStack.push({
+				node: triggerNode,
+				data: {
+					main: [[{ json: {} }]],
+				},
+				source: null,
+			});
+
+			data.executionData.executionData = {
+				contextData: {},
+				metadata: {},
+				// workflow does not evaluate correctly if this is passed in queue mode with offload manual executions
+				// but this is expected otherwise in regular execution mode
+				nodeExecutionStack,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);

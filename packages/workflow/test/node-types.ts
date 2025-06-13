@@ -573,6 +573,329 @@ const setNode: LoadedClass<INodeType> = {
 	},
 };
 
+const codeNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Code',
+			name: 'code',
+			group: ['input'],
+			version: 1,
+			description: 'Code node',
+			defaults: {
+				name: 'Code',
+				color: '#0000FF',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [
+				{
+					displayName: 'Code',
+					name: 'jsCode',
+					type: 'string',
+					default: '// placeholder',
+				},
+			],
+		},
+	},
+};
+
+const htmlNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'HTML',
+			name: 'html',
+			group: ['input'],
+			version: 1,
+			description: 'HTML node',
+			defaults: {
+				name: 'HTML',
+				color: '#0000FF',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [
+				{
+					displayName: 'HTML',
+					name: 'html',
+					type: 'string',
+					default: '// placeholder',
+				},
+			],
+		},
+	},
+};
+
+const formNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Form',
+			name: 'form',
+			group: ['input'],
+			version: 1,
+			description: 'Form node',
+			defaults: {
+				name: 'Form',
+				color: '#0000FF',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [
+				{
+					displayName: 'Form Elements',
+					name: 'formFields',
+					placeholder: 'Add Form Element',
+					type: 'fixedCollection',
+					default: {},
+					typeOptions: {
+						multipleValues: true,
+						sortable: true,
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldLabel',
+									type: 'string',
+									default: '',
+									placeholder: 'e.g. What is your name?',
+									description: 'Label that appears above the input field',
+									required: true,
+									displayOptions: {
+										hide: {
+											fieldType: ['hiddenField', 'html'],
+										},
+									},
+								},
+								{
+									displayName: 'Element Type',
+									name: 'fieldType',
+									type: 'options',
+									default: 'text',
+									description: 'The type of field to add to the form',
+									options: [
+										{
+											name: 'Custom HTML',
+											value: 'html',
+										},
+										{
+											name: 'Date',
+											value: 'date',
+										},
+										{
+											name: 'Dropdown List',
+											value: 'dropdown',
+										},
+										{
+											name: 'Email',
+											value: 'email',
+										},
+										{
+											name: 'File',
+											value: 'file',
+										},
+										{
+											name: 'Hidden Field',
+											value: 'hiddenField',
+										},
+										{
+											name: 'Number',
+											value: 'number',
+										},
+										{
+											name: 'Password',
+											value: 'password',
+										},
+										{
+											name: 'Text',
+											value: 'text',
+										},
+										{
+											name: 'Textarea',
+											value: 'textarea',
+										},
+									],
+									required: true,
+								},
+								{
+									displayName: 'Element Name',
+									name: 'elementName',
+									type: 'string',
+									default: '',
+									placeholder: 'e.g. content-section',
+									description: 'Optional field. It can be used to include the html in the output.',
+									displayOptions: {
+										show: {
+											fieldType: ['html'],
+										},
+									},
+								},
+								{
+									displayName: 'Placeholder',
+									name: 'placeholder',
+									description: 'Sample text to display inside the field',
+									type: 'string',
+									default: '',
+									displayOptions: {
+										hide: {
+											fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
+										},
+									},
+								},
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									description:
+										'The name of the field, used in input attributes and referenced by the workflow',
+									type: 'string',
+									default: '',
+									displayOptions: {
+										show: {
+											fieldType: ['hiddenField'],
+										},
+									},
+								},
+								{
+									displayName: 'Field Value',
+									name: 'fieldValue',
+									description:
+										'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
+									type: 'string',
+									default: '',
+									displayOptions: {
+										show: {
+											fieldType: ['hiddenField'],
+										},
+									},
+								},
+								{
+									displayName: 'Field Options',
+									name: 'fieldOptions',
+									placeholder: 'Add Field Option',
+									description: 'List of options that can be selected from the dropdown',
+									type: 'fixedCollection',
+									default: { values: [{ option: '' }] },
+									required: true,
+									displayOptions: {
+										show: {
+											fieldType: ['dropdown'],
+										},
+									},
+									typeOptions: {
+										multipleValues: true,
+										sortable: true,
+									},
+									options: [
+										{
+											displayName: 'Values',
+											name: 'values',
+											values: [
+												{
+													displayName: 'Option',
+													name: 'option',
+													type: 'string',
+													default: '',
+												},
+											],
+										},
+									],
+								},
+								{
+									displayName: 'Multiple Choice',
+									name: 'multiselect',
+									type: 'boolean',
+									default: false,
+									description:
+										'Whether to allow the user to select multiple options from the dropdown list',
+									displayOptions: {
+										show: {
+											fieldType: ['dropdown'],
+										},
+									},
+								},
+								{
+									displayName: 'HTML',
+									name: 'html',
+									typeOptions: {
+										editor: 'htmlEditor',
+									},
+									type: 'string',
+									noDataExpression: true,
+									default: '<!-- Your custom HTML here --->',
+									description: 'HTML elements to display on the form page',
+									hint: 'Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags',
+									displayOptions: {
+										show: {
+											fieldType: ['html'],
+										},
+									},
+								},
+								{
+									displayName: 'Multiple Files',
+									name: 'multipleFiles',
+									type: 'boolean',
+									default: true,
+									description:
+										'Whether to allow the user to select multiple files from the file input or just one',
+									displayOptions: {
+										show: {
+											fieldType: ['file'],
+										},
+									},
+								},
+								{
+									displayName: 'Accepted File Types',
+									name: 'acceptFileTypes',
+									type: 'string',
+									default: '',
+									description: 'Comma-separated list of allowed file extensions',
+									hint: 'Leave empty to allow all file types',
+									placeholder: 'e.g. .jpg, .png',
+									displayOptions: {
+										show: {
+											fieldType: ['file'],
+										},
+									},
+								},
+								{
+									displayName:
+										"The displayed date is formatted based on the locale of the user's browser",
+									name: 'formatDate',
+									type: 'notice',
+									default: '',
+									displayOptions: {
+										show: {
+											fieldType: ['date'],
+										},
+									},
+								},
+								{
+									displayName: 'Required Field',
+									name: 'requiredField',
+									type: 'boolean',
+									default: false,
+									description:
+										'Whether to require the user to enter a value for this field before submitting the form',
+									displayOptions: {
+										hide: {
+											fieldType: ['html', 'hiddenField'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+	},
+};
+
 const manualTriggerNode: LoadedClass<INodeType> = {
 	sourcePath: '',
 	type: {
@@ -1005,6 +1328,9 @@ export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
 		'n8n-nodes-base.set': setNode,
+		'n8n-nodes-base.code': codeNode,
+		'n8n-nodes-base.html': htmlNode,
+		'n8n-nodes-base.form': formNode,
 		'test.googleSheets': googleSheetsNode,
 		'test.set': setNode,
 		'n8n-nodes-base.executeWorkflow': executeWorkflowNode,

@@ -608,6 +608,7 @@ export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
+	Oidc = 'oidc',
 }
 
 export interface IPermissionGroup {
@@ -796,6 +797,15 @@ export interface LinkItemProps {
 	icon: string;
 	tag?: NodeCreatorTag;
 }
+
+export interface OpenTemplateItemProps {
+	key: 'rag-starter-template';
+	title: string;
+	description: string;
+	icon: string;
+	tag?: NodeCreatorTag;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -858,6 +868,11 @@ export interface LinkCreateElement extends CreateElementBase {
 	properties: LinkItemProps;
 }
 
+export interface OpenTemplateElement extends CreateElementBase {
+	type: 'openTemplate';
+	properties: OpenTemplateItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -872,7 +887,8 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
-	| LinkCreateElement;
+	| LinkCreateElement
+	| OpenTemplateElement;
 
 export type NodeTypeSelectedPayload = {
 	type: string;
@@ -1423,6 +1439,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'LogStreaming'
 	| 'Variables'
 	| 'Saml'
+	| 'Oidc'
 	| 'SourceControl'
 	| 'ExternalSecrets'
 	| 'AuditLogs'
