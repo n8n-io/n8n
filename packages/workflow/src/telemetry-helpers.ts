@@ -622,7 +622,7 @@ export function resolveVectorStoreMetrics(
 	const vectorStores = resolvedNodes.filter(
 		(x) =>
 			x[1].description.codex?.categories?.includes('AI') &&
-			x[1].description.codex?.subcategories?.AI.includes('Vector Stores'),
+			x[1].description.codex?.subcategories?.AI?.includes('Vector Stores'),
 	);
 
 	if (vectorStores.length === 0) return {};
