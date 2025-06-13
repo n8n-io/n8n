@@ -69,7 +69,7 @@ export class UserService {
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: providerType ? providerType : 'email',
+			signInType: providerType ?? 'email',
 			isOwner: user.role === 'global:owner',
 		};
 

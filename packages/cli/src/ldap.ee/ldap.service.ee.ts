@@ -146,14 +146,19 @@ export class LdapService {
 
 	/** Set the LDAP login enabled to the configuration object */
 	private async setLdapLoginEnabled(enabled: boolean): Promise<void> {
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 		if (enabled && !isEmailCurrentAuthenticationMethod() && !isLdapCurrentAuthenticationMethod()) {
 			throw new InternalServerError(
-				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${currentAuthenticationMethod})`,
 			);
 		}
 
 		config.set(LDAP_LOGIN_ENABLED, enabled);
-		await setCurrentAuthenticationMethod(enabled ? 'ldap' : 'email');
+
+		const targetAuthenticationMethod =
+			!enabled && currentAuthenticationMethod === 'ldap' ? 'email' : currentAuthenticationMethod;
+
+		await setCurrentAuthenticationMethod(enabled ? 'ldap' : targetAuthenticationMethod);
 	}
 
 	/**

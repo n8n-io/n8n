@@ -80,14 +80,11 @@ export class PasswordResetController {
 
 		if (
 			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
-			!(
-				user &&
-				(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
-			)
+			!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 		) {
 			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 			this.logger.debug(
-				'Request to send password reset email failed because login is handled by SAML',
+				`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
 			);
 			throw new ForbiddenError(
 				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,

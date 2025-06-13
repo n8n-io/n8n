@@ -1,7 +1,13 @@
 import type { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthIdentityRepository, SettingsRepository, type User, UserRepository } from '@n8n/db';
+import {
+	AuthIdentity,
+	AuthIdentityRepository,
+	SettingsRepository,
+	type User,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -57,6 +63,7 @@ export class OidcService {
 
 	async init() {
 		this.oidcConfig = await this.loadConfig(true);
+		console.log(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 	}
 
@@ -98,16 +105,16 @@ export class OidcService {
 
 		const userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
 
-		if (!userInfo.email_verified) {
-			throw new BadRequestError('Email needs to be verified');
-		}
-
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');
 		}
 
+		if (!userInfo.email_verified) {
+			throw new BadRequestError('Email needs to be verified');
+		}
+
 		const openidUser = await this.authIdentityRepository.findOne({
-			where: { providerId: claims.sub },
+			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: ['user'],
 		});
 
@@ -121,25 +128,29 @@ export class OidcService {
 			throw new BadRequestError('User already exist with that email.');
 		}
 
-		const { user } = await this.userRepository.createUserWithProject({
-			firstName: userInfo.given_name ?? '',
-			lastName: userInfo.family_name ?? '',
-			email: userInfo.email,
-			authIdentities: [],
-			role: 'global:member',
-			password: 'no password set',
+		return await this.userRepository.manager.transaction(async (trx) => {
+			const { user } = await this.userRepository.createUserWithProject(
+				{
+					firstName: userInfo.given_name ?? '',
+					lastName: userInfo.family_name ?? '',
+					email: userInfo.email,
+					authIdentities: [],
+					role: 'global:member',
+					password: 'no password set',
+				},
+				trx,
+			);
+
+			await trx.save(
+				trx.create(AuthIdentity, {
+					providerId: claims.sub,
+					providerType: 'oidc',
+					userId: user.id,
+				}),
+			);
+
+			return user;
 		});
-
-		const authIdentity = this.authIdentityRepository.create({
-			user,
-			userId: user.id,
-			providerId: claims.sub,
-			providerType: 'oidc',
-		});
-
-		await this.authIdentityRepository.save(authIdentity);
-
-		return user;
 	}
 
 	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
@@ -213,19 +224,19 @@ export class OidcService {
 	}
 
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
-		if (isEmailCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) {
-			if (enabled) {
-				config.set(OIDC_LOGIN_ENABLED, true);
-				await setCurrentAuthenticationMethod('oidc');
-			} else if (!enabled) {
-				config.set(OIDC_LOGIN_ENABLED, false);
-				await setCurrentAuthenticationMethod('email');
-			}
-		} else {
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+
+		if (enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod()) {
 			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${getCurrentAuthenticationMethod()})`,
+				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${currentAuthenticationMethod})`,
 			);
 		}
+
+		const targetAuthenticationMethod =
+			!enabled && currentAuthenticationMethod === 'oidc' ? 'email' : currentAuthenticationMethod;
+
+		config.set(OIDC_LOGIN_ENABLED, enabled);
+		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
 	}
 
 	private cachedOidcConfiguration:
