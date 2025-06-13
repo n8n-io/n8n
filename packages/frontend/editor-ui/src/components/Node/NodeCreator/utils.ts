@@ -309,7 +309,7 @@ export function prepareCommunityNodeDetailsViewStack(
 export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
 	const results: INodeCreateElement[] = [];
 
-	const ragKeywords = ['rag', 'vector', 'know'];
+	const ragKeywords = ['rag', 'vec', 'know'];
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push({
 			key: 'rag-starter-template',
