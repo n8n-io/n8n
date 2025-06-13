@@ -2,6 +2,7 @@ import { type LogDetailsPanelState } from '@/features/logs/logs.types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
+	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE,
 	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	LOCAL_STORAGE_LOGS_SYNC_SELECTION,
 } from '@/constants';
@@ -26,7 +27,13 @@ export const useLogsStore = defineStore('logs', () => {
 		LOG_DETAILS_PANEL_STATE.OUTPUT,
 		{ writeDefaults: false },
 	);
+	const detailsStateSubNode = useLocalStorage<LogDetailsPanelState>(
+		LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE,
+		LOG_DETAILS_PANEL_STATE.BOTH,
+		{ writeDefaults: false },
+	);
 	const isLogSelectionSyncedWithCanvas = useLocalStorage(LOCAL_STORAGE_LOGS_SYNC_SELECTION, false);
+	const isSubNodeSelected = ref(false);
 
 	const telemetry = useTelemetry();
 
@@ -42,22 +49,28 @@ export const useLogsStore = defineStore('logs', () => {
 		preferPoppedOut.value = value;
 	}
 
+	function setSubNodeSelected(value: boolean) {
+		isSubNodeSelected.value = value;
+	}
+
 	function toggleInputOpen(open?: boolean) {
 		const statesWithInput: LogDetailsPanelState[] = [
 			LOG_DETAILS_PANEL_STATE.INPUT,
 			LOG_DETAILS_PANEL_STATE.BOTH,
 		];
-		const wasOpen = statesWithInput.includes(detailsState.value);
+		const stateRef = isSubNodeSelected.value ? detailsStateSubNode : detailsState;
+		const wasOpen = statesWithInput.includes(stateRef.value);
 
 		if (open === wasOpen) {
 			return;
 		}
 
-		detailsState.value = wasOpen ? LOG_DETAILS_PANEL_STATE.OUTPUT : LOG_DETAILS_PANEL_STATE.BOTH;
+		stateRef.value = wasOpen ? LOG_DETAILS_PANEL_STATE.OUTPUT : LOG_DETAILS_PANEL_STATE.BOTH;
 
 		telemetry.track('User toggled log view sub pane', {
 			pane: 'input',
 			newState: wasOpen ? 'hidden' : 'visible',
+			isSubNode: isSubNodeSelected.value,
 		});
 	}
 
@@ -66,17 +79,19 @@ export const useLogsStore = defineStore('logs', () => {
 			LOG_DETAILS_PANEL_STATE.OUTPUT,
 			LOG_DETAILS_PANEL_STATE.BOTH,
 		];
-		const wasOpen = statesWithOutput.includes(detailsState.value);
+		const stateRef = isSubNodeSelected.value ? detailsStateSubNode : detailsState;
+		const wasOpen = statesWithOutput.includes(stateRef.value);
 
 		if (open === wasOpen) {
 			return;
 		}
 
-		detailsState.value = wasOpen ? LOG_DETAILS_PANEL_STATE.INPUT : LOG_DETAILS_PANEL_STATE.BOTH;
+		stateRef.value = wasOpen ? LOG_DETAILS_PANEL_STATE.INPUT : LOG_DETAILS_PANEL_STATE.BOTH;
 
 		telemetry.track('User toggled log view sub pane', {
 			pane: 'output',
 			newState: wasOpen ? 'hidden' : 'visible',
+			isSubNode: isSubNodeSelected.value,
 		});
 	}
 
@@ -87,12 +102,15 @@ export const useLogsStore = defineStore('logs', () => {
 	return {
 		state,
 		isOpen: computed(() => state.value !== LOGS_PANEL_STATE.CLOSED),
-		detailsState: computed(() => detailsState.value),
+		detailsState: computed(() =>
+			isSubNodeSelected.value ? detailsStateSubNode.value : detailsState.value,
+		),
 		height: computed(() => height.value),
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
 		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,
+		setSubNodeSelected,
 		toggleInputOpen,
 		toggleOutputOpen,
 		toggleLogSelectionSync,

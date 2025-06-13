@@ -24,14 +24,14 @@ describe('Editors', () => {
 				.type('SELECT * FROM `testTable`', { delay: TYPING_DELAY })
 				.type('{esc}');
 			ndv.actions.close();
-			workflowPage.actions.openNode('Postgres');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
 				.type('{end} LIMIT 10', { delay: TYPING_DELAY })
 				.type('{esc}');
 			ndv.actions.close();
-			workflowPage.actions.openNode('Postgres');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.getters.sqlEditorContainer().should('contain', 'SELECT * FROM `testTable` LIMIT 10');
 		});
 
@@ -45,7 +45,7 @@ describe('Editors', () => {
 			ndv.actions.setPinnedData([{ table: 'test_table' }]);
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('MySQL');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
@@ -86,7 +86,7 @@ describe('Editors', () => {
 			ndv.actions.close();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.getters.isWorkflowSaved();
-			workflowPage.actions.openNode('Postgres');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.actions.close();
 			// Workflow should still be saved
 			workflowPage.getters.isWorkflowSaved();
@@ -100,7 +100,7 @@ describe('Editors', () => {
 			ndv.actions.close();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.getters.isWorkflowSaved();
-			workflowPage.actions.openNode('Postgres');
+			workflowPage.actions.openNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.click()
@@ -131,14 +131,14 @@ describe('Editors', () => {
 				.paste('SELECT * FROM `secondTable`');
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('Postgres');
-			ndv.actions.clickFloatingNode('Postgres1');
+			workflowPage.actions.openNode('Execute a SQL query');
+			ndv.actions.clickFloatingNode('Execute a SQL query1');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
 				.should('have.text', 'SELECT * FROM `secondTable`');
 
-			ndv.actions.clickFloatingNode('Postgres');
+			ndv.actions.clickFloatingNode('Execute a SQL query');
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')

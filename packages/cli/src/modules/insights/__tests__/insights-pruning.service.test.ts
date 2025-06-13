@@ -8,6 +8,7 @@ import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
+import * as testModules from '@test-integration/test-modules';
 
 import {
 	createCompactedInsightsEvent,
@@ -18,6 +19,7 @@ import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 
 beforeAll(async () => {
+	await testModules.load(['insights']);
 	await testDb.init();
 });
 
