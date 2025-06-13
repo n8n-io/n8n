@@ -1,4 +1,5 @@
 {
+	"baseDir": "packages/frontend/editor-ui/dist",
 	"defaultCompression": "gzip",
 	"reportOutput": [
 		[
@@ -12,18 +13,18 @@
 	],
 	"files": [
 		{
-			"path": "packages/frontend/editor-ui/dist/*.wasm",
+			"path": "*.wasm",
 			"friendlyName": "WASM Dependencies"
 		}
 	],
 	"groups": [
 		{
 			"groupName": "Editor UI - Total JS Size",
-			"path": "packages/frontend/editor-ui/dist/**/*.js"
+			"path": "**/*.js"
 		},
 		{
 			"groupName": "Editor UI - Total CSS Size",
-			"path": "packages/frontend/editor-ui/dist/**/*.css"
+			"path": "**/*.css"
 		}
 	]
 }
