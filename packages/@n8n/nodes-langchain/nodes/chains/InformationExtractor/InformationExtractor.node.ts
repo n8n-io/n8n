@@ -1,6 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { JSONSchema7 } from 'json-schema';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { StructuredOutputParser } from 'langchain/output_parsers';
 import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -231,7 +231,7 @@ export class InformationExtractor implements INodeType {
 			| 'fromJson'
 			| 'manual';
 
-		let parser: OutputFixingParser<object>;
+		let parser: StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>;
 
 		if (schemaType === 'fromAttributes') {
 			const attributes = this.getNodeParameter(
@@ -244,10 +244,7 @@ export class InformationExtractor implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'At least one attribute must be specified');
 			}
 
-			parser = OutputFixingParser.fromLLM(
-				llm,
-				StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes)),
-			);
+			parser = StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes));
 		} else {
 			let jsonSchema: JSONSchema7;
 
@@ -264,7 +261,7 @@ export class InformationExtractor implements INodeType {
 
 			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 
-			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
+			parser = StructuredOutputParser.fromZodSchema(zodSchema);
 		}
 
 		const resultData: INodeExecutionData[] = [];

@@ -149,11 +149,26 @@ export async function executeChain({
 		query,
 	});
 
-	const chain = promptWithInstructions
-		.pipe(llm)
-		.pipe(outputParser)
-		.withConfig(getTracingConfig(context));
+	const schema = outputParser.getSchema();
+	const llmWithStructure = llm.withStructuredOutput?.(schema!);
+	let chain;
+
+	if (llmWithStructure) {
+		chain = promptWithInstructions
+			.pipe(llmWithStructure)
+			// .pipe(outputParser)
+			.withConfig(getTracingConfig(context));
+	} else {
+		chain = promptWithInstructions
+			.pipe(llm)
+			.pipe(outputParser)
+			.withConfig(getTracingConfig(context));
+	}
+
 	const response = await chain.invoke({ query }, { signal: context.getExecutionCancelSignal() });
+
+	// Validate the response
+	schema!.parse(response);
 
 	// Ensure response is always returned as an array
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
