@@ -8,6 +8,7 @@ import {
 	type ITaskData,
 	type ITaskStartedData,
 	type Workflow,
+	type JsonObject,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
@@ -16,14 +17,21 @@ import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash-es/get';
 import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
-import z from 'zod';
 
-const SubExecutionIdentitySchema = z.object({
-	executionId: z.string(),
-	workflowId: z.string(),
-});
+type SubExecutionIdentity = {
+	executionId: string;
+	workflowId: string;
+};
 
-type SubExecutionIdentity = z.infer<typeof SubExecutionIdentitySchema>;
+function hasSubExecutionErrorIdentity(
+	errorResponse?: JsonObject,
+): errorResponse is SubExecutionIdentity {
+	return (
+		errorResponse !== undefined &&
+		typeof errorResponse.workflowId === 'string' &&
+		typeof errorResponse.executionId === 'string'
+	);
+}
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -412,7 +420,12 @@ export function findSubExecutionLocator(entry: LogEntry): SubExecutionIdentity |
 		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
 	}
 
-	return SubExecutionIdentitySchema.safeParse(entry.runData.error?.errorResponse).data;
+	if (hasSubExecutionErrorIdentity(entry.runData.error?.errorResponse)) {
+		const { workflowId, executionId } = entry.runData.error?.errorResponse;
+		return { workflowId, executionId };
+	}
+
+	return undefined;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
