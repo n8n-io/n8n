@@ -17,7 +17,8 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { IExecutionPushResponse, INodeUi } from '@/Interface';
-import { extractBotResponse, getInputKey } from '@/features/logs/logs.utils';
+
+import { extractBotResponse, getInputKey, processFiles } from '@/features/logs/logs.utils';
 
 export type RunWorkflowChatPayload = {
 	triggerNode: string;
@@ -33,6 +34,7 @@ export interface ChatMessagingDependencies {
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
+	ws: Ref<WebSocket | null>;
 }
 
 export function useChatMessaging({
@@ -41,11 +43,16 @@ export function useChatMessaging({
 	sessionId,
 	executionResultData,
 	onRunChatWorkflow,
+	ws,
 }: ChatMessagingDependencies) {
 	const locale = useI18n();
 	const { showError } = useToast();
 	const previousMessageIndex = ref(0);
 	const isLoading = ref(false);
+
+	const setLoadingState = (loading: boolean) => {
+		isLoading.value = loading;
+	};
 
 	/** Converts a file to binary data */
 	async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
@@ -140,6 +147,7 @@ export function useChatMessaging({
 			message,
 		});
 		isLoading.value = false;
+		ws.value = null;
 		if (!response?.executionId) {
 			return;
 		}
@@ -193,12 +201,25 @@ export function useChatMessaging({
 		};
 		messages.value.push(newMessage);
 
-		await startWorkflowWithMessage(newMessage.text, files);
+		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
+			ws.value.send(
+				JSON.stringify({
+					sessionId: sessionId.value,
+					action: 'sendMessage',
+					chatInput: message,
+					files: await processFiles(files),
+				}),
+			);
+			isLoading.value = true;
+		} else {
+			await startWorkflowWithMessage(newMessage.text, files);
+		}
 	}
 
 	return {
 		previousMessageIndex,
 		isLoading: computed(() => isLoading.value),
+		setLoadingState,
 		sendMessage,
 	};
 }

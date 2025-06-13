@@ -1,0 +1,103 @@
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
+import { WebSocket } from 'ws';
+
+import type { ChatExecutionManager } from '../chat-execution-manager';
+import { ChatService } from '../chat-service';
+import type { ChatRequest } from '../chat-service.types';
+
+jest.useFakeTimers();
+
+describe('ChatService', () => {
+	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;
+	let mockLogger: ReturnType<typeof mock<Logger>>;
+	let chatService: ChatService;
+	let mockWs: ReturnType<typeof mock<WebSocket>>;
+
+	beforeEach(() => {
+		mockExecutionManager = mock<ChatExecutionManager>();
+		mockLogger = mock<Logger>();
+		chatService = new ChatService(mockExecutionManager, mockLogger);
+		mockWs = mock<WebSocket>();
+	});
+
+	describe('startSession', () => {
+		it('should reject if sessionId or executionId is missing', () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: '',
+					executionId: '',
+					isPublic: false,
+				},
+			} as unknown as ChatRequest;
+
+			void chatService.startSession(req);
+
+			expect(mockWs.send).toHaveBeenCalledWith('The query parameter "sessionId" is missing');
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+		});
+
+		it('should start a session and store it in sessions map', () => {
+			const mockWs = mock<WebSocket>();
+			// @ts-ignore override private readonly
+			mockWs.readyState = WebSocket.OPEN;
+
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+				},
+			} as unknown as ChatRequest;
+
+			void chatService.startSession(req);
+
+			const sessionKey = 'abc|123|public';
+			const session = (chatService as any).sessions.get(sessionKey);
+
+			expect(session).toBeDefined();
+			expect(session?.sessionId).toBe('abc');
+			expect(session?.executionId).toBe('123');
+			expect(session?.isPublic).toBe(true);
+			expect(typeof session?.intervalId).toBe('object');
+		});
+
+		it('should terminate existing session if the same key is used and clear interval', async () => {
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval').mockImplementation();
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: false,
+				},
+			} as unknown as ChatRequest;
+
+			const previousConnection = mock<WebSocket>();
+			// @ts-ignore
+			previousConnection.readyState = WebSocket.OPEN;
+			const dummyInterval = setInterval(() => {}, 9999);
+			const sessionKey = 'abc|123|integrated';
+
+			// @ts-ignore
+			(chatService as any).sessions.set(sessionKey, {
+				connection: previousConnection,
+				executionId: '123',
+				sessionId: 'abc',
+				intervalId: dummyInterval,
+				waitingForResponse: false,
+				isPublic: false,
+			});
+
+			await chatService.startSession(req);
+
+			expect(previousConnection.terminate).toHaveBeenCalled();
+			expect(clearIntervalSpy).toHaveBeenCalledWith(dummyInterval);
+			console.log((chatService as any).sessions.get(sessionKey));
+			expect((chatService as any).sessions.get(sessionKey).connection).toBe(mockWs);
+			clearIntervalSpy.mockRestore();
+		});
+	});
+});
