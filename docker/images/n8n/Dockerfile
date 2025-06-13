@@ -1,73 +1,103 @@
 ARG NODE_VERSION=22
 ARG N8N_VERSION=snapshot
+ARG LAUNCHER_VERSION=1.1.2
+ARG BUILDER_PLATFORM_ARG=linux/amd64
 
-# 1. Create an image to build n8n
-FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
+# ==============================================================================
+# STAGE 1: System Dependencies & Base Setup
+# Provides the runtime environment base.
+# ==============================================================================
+FROM node:${NODE_VERSION}-alpine AS system-deps
 
-# Build the application from source
-WORKDIR /src
-COPY . /src
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
-RUN pnpm build
+# Install system dependencies
+RUN apk add --no-cache --virtual .build-deps-fonts \
+        msttcorefonts-installer \
+        fontconfig \
+    && apk add --no-cache \
+        git \
+        openssh \
+        graphicsmagick \
+        tini \
+        tzdata \
+        ca-certificates \
+        libc6-compat \
+        wget \
+    && update-ms-fonts \
+    && fc-cache -f \
+    && apk del .build-deps-fonts \
+    && find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; \
+    && rm -rf /var/cache/apk/* /tmp/*
 
-# Delete all dev dependencies
-RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
-RUN node .github/scripts/trim-fe-packageJson.js
+# Setup Node.js environment (global npm update)
+COPY .npmrc /usr/local/etc/npmrc
+RUN npm install -g \
+        corepack@0.31 \
+        full-icu@1.5.0 \
+        npm@11.4.1 \
+    && corepack enable pnpm \
+    && rm -rf /root/.npm /root/.cache
 
-# Delete any source code or typings
-RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
+# ==============================================================================
+# STAGE 2: Application Artifact Processor
+# A clean intermediate stage to hold pre-built application artifacts from the build context.
+# ==============================================================================
+FROM --platform=${BUILDER_PLATFORM_ARG} system-deps AS app-artifact-processor
 
-# Deploy the `n8n` package into /compiled
-RUN mkdir /compiled
-RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
+COPY ./compiled_app_output /app/
 
-# 2. Start with a new clean image with just the code that is needed to run n8n
-FROM n8nio/base:${NODE_VERSION}
-ENV NODE_ENV=production
+# ==============================================================================
+# STAGE 3: Task Runner Launcher (Multi-platform)
+# ==============================================================================
+FROM system-deps AS launcher-downloader
+ARG TARGETPLATFORM
+ARG LAUNCHER_VERSION
+RUN set -e; \
+    case "$TARGETPLATFORM" in \
+        "linux/amd64") ARCH_NAME="amd64" ;; \
+        "linux/arm64") ARCH_NAME="arm64" ;; \
+        *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
+    esac; \
+    mkdir /launcher-temp && cd /launcher-temp; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
+    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
+    sha256sum -c checksum.sha256; \
+    mkdir -p /launcher-bin; \
+    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
+    cd / && rm -rf /launcher-temp
 
+# ==============================================================================
+# STAGE 4: Final Runtime Image
+# Assembles the final image.
+# ==============================================================================
+FROM system-deps AS runtime
+
+ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+ENV SHELL=/bin/sh
 
-LABEL org.opencontainers.image.title="n8n"
-LABEL org.opencontainers.image.description="Workflow Automation Tool"
-LABEL org.opencontainers.image.source="https://github.com/n8n-io/n8n"
-LABEL org.opencontainers.image.url="https://n8n.io"
-LABEL org.opencontainers.image.version=${N8N_VERSION}
+LABEL org.opencontainers.image.title="n8n" \
+      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version=${N8N_VERSION}
 
 WORKDIR /home/node
-COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
+
+COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
-
-# Setup the Task Runner Launcher
-ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.1.2
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
-# Download, verify, then extract the launcher binary
-RUN \
-	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="amd64"; \
-	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="arm64"; fi; \
-	mkdir /launcher-temp && \
-	cd /launcher-temp && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256 && \
-	# The .sha256 does not contain the filename --> Form the correct checksum file
-	echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256 && \
-	sha256sum -c checksum.sha256 && \
-	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
-	cd - && \
-	rm -r /launcher-temp
 
-RUN \
-	cd /usr/local/lib/node_modules/n8n && \
-	npm rebuild sqlite3 && \
-	cd - && \
-	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
-	mkdir .n8n && \
-	chown node:node .n8n
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
 
-# Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
-RUN npm install -g npm@11.4.1
-
-ENV SHELL /bin/sh
+EXPOSE 5678/tcp
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

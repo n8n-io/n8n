@@ -18,3 +18,5 @@ docker/**/Dockerfile
 .vscode
 cypress
 test-workflows
+
+/.turbo

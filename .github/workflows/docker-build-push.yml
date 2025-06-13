@@ -1,0 +1,215 @@
+name: 'Docker: Build and Push'
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'N8N version to build'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type (stable, nightly, dev)'
+        required: true
+        type: string
+        default: 'dev'
+      push_enabled:
+        description: 'Whether to push the built images'
+        required: false
+        type: boolean
+        default: true
+
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - nightly
+          - dev
+          - stable
+          - branch
+        default: 'dev'
+      push_to_registry:
+        description: 'Push image to registry'
+        required: false
+        type: boolean
+        default: true
+
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+    paths:
+      - '.github/workflows/docker-build-push.yml'
+      - 'docker/images/n8n/Dockerfile'
+
+jobs:
+  build-and-push-docker:
+    name: Build App, then Build and Push Docker Image
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+    outputs:
+      image_ref: ${{ steps.determine-tags.outputs.primary_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment and Build Project
+        uses: ./.github/actions/setup-and-build
+        id: app_build
+
+      - name: Perform Pre-Deploy Cleanup
+        run: |
+          echo "Performing pre-deploy cleanup on package.json files..."
+          if [ -f "./package.json" ]; then
+            jq 'del(.pnpm.patchedDependencies)' "./package.json" > "./package.json.tmp" && mv "./package.json.tmp" "./package.json"
+            echo "  Applied jq patch to root package.json"
+          fi
+          echo "Running .github/scripts/trim-fe-packageJson.js..."
+          node .github/scripts/trim-fe-packageJson.js
+          echo "Cleanup scripts applied."
+        shell: bash
+
+      - name: Create Pruned n8n Deployment for Docker
+        run: |
+          echo "Creating pruned production deployment in ./compiled_app_output..."
+          rm -rf ./compiled_app_output
+          mkdir -p ./compiled_app_output
+          NODE_ENV=production DOCKER_BUILD=true \
+            pnpm --filter=n8n --prod --no-optional --legacy deploy ./compiled_app_output
+        shell: bash
+
+      - name: Determine build context values
+        id: context
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "release_type=nightly" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
+            echo "n8n_version=${{ inputs.n8n_version }}" >> $GITHUB_OUTPUT
+            echo "push_enabled=${{ inputs.push_enabled }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.release_type }}" == "branch" ]]; then
+              BRANCH_NAME="${{ github.ref_name }}"
+              SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
+              echo "release_type=branch" >> $GITHUB_OUTPUT
+              echo "n8n_version=branch-${SAFE_BRANCH_NAME}" >> $GITHUB_OUTPUT
+              echo "push_enabled=${{ inputs.push_to_registry }}" >> $GITHUB_OUTPUT
+            else
+              echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
+              echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+              echo "push_enabled=true" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> $GITHUB_OUTPUT
+          else
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine Docker tags
+        id: determine-tags
+        run: |
+          RELEASE_TYPE="${{ steps.context.outputs.release_type }}"
+          N8N_VERSION_TAG="${{ steps.context.outputs.n8n_version }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}/n8n"
+          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}/n8n"
+          if [[ "$RELEASE_TYPE" == "stable" && -z "$N8N_VERSION_TAG" ]]; then
+            echo "Error: N8N_VERSION_TAG is empty for a stable release."
+            exit 1
+          fi
+          case "$RELEASE_TYPE" in
+            "stable")
+              TAGS="${GHCR_BASE}:${N8N_VERSION_TAG}\n${DOCKER_BASE}:${N8N_VERSION_TAG}"
+              PRIMARY_TAG="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              ;;
+            "nightly")
+              TAGS="${GHCR_BASE}:nightly\n${DOCKER_BASE}:nightly"
+              PRIMARY_TAG="${GHCR_BASE}:nightly"
+              ;;
+            "branch")
+              # For branch builds, only push to GHCR with branch-specific tag
+              TAGS="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              PRIMARY_TAG="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              ;;
+            "dev"|*)
+              if [[ "$N8N_VERSION_TAG" == pr-* ]]; then
+                TAGS="${GHCR_BASE}:${N8N_VERSION_TAG}"
+                PRIMARY_TAG="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              else
+                TAGS="${GHCR_BASE}:dev\n${DOCKER_BASE}:dev"
+                PRIMARY_TAG="${GHCR_BASE}:dev"
+              fi
+              ;;
+          esac
+          echo "Generated Tags: $TAGS"
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "primary_tag=$PRIMARY_TAG" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to GitHub Container Registry
+        if: steps.context.outputs.push_enabled == 'true'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub
+        if: steps.context.outputs.push_enabled == 'true'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: useblacksmith/build-push-action@6fe3b1c3665ca911656e8249f6195103b7dc9782 # v1.2
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=20
+            N8N_VERSION=${{ steps.context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ steps.context.outputs.release_type }}
+            LAUNCHER_VERSION=1.1.2
+            BUILDER_PLATFORM_ARG=linux/amd64
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          push: ${{ steps.context.outputs.push_enabled }}
+          tags: ${{ steps.determine-tags.outputs.tags }}
+
+  security-scan:
+    name: Security Scan
+    needs: [build-and-push-docker]
+    if: |
+      success() &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_call' && inputs.release_type == 'stable'))
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
