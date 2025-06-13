@@ -126,7 +126,9 @@ export async function deleteUser(
 	await makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 }
 
-export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
+export async function getUsers(
+	context: IRestApiContext,
+): Promise<{ count: number; data: IUserResponse[] }> {
 	return await makeRestApiRequest(context, 'GET', '/users');
 }
 
