@@ -1,3 +1,4 @@
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -12,37 +13,24 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
-	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	INodeTypeData,
-	ICredentialTypeData,
 	LoadedClass,
 	ICredentialType,
 	INodeType,
 	IVersionedNodeType,
 	INodeProperties,
+	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
-
-interface LoadedNodesAndCredentials {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-}
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -71,7 +59,7 @@ export class LoadNodesAndCredentials {
 	) {}
 
 	async init() {
-		if (inTest) throw new ApplicationError('Not available in tests');
+		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -100,11 +88,13 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
+		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+			// Load nodes from any other `n8n-nodes-*` packages in the download directory
+			// This includes the community nodes
+			await this.loadNodesFromNodeModules(
+				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+			);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -293,7 +283,7 @@ export class LoadNodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
-			throw new ApplicationError(
+			throw new UserError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
 				),
@@ -312,15 +302,20 @@ export class LoadNodesAndCredentials {
 	 */
 	createAiTools() {
 		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+			this.types.nodes.filter((nodeType) => nodeType.usableAsTool);
 
 		for (const usableNode of usableNodes) {
-			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
+			const description =
+				typeof usableNode.usableAsTool === 'object'
+					? ({
+							...deepCopy(usableNode),
+							...usableNode.usableAsTool?.replacements,
+						} as INodeTypeBaseDescription)
+					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
+			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
 
 			const credentialNames = Object.entries(this.known.credentials)
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
@@ -401,6 +396,13 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
+	}
+
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;
@@ -444,7 +446,7 @@ export class LoadNodesAndCredentials {
 		if (isFullDescription(item.description)) {
 			item.description.name += 'Tool';
 			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionType.AiTool];
+			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
 			delete item.description.usableAsTool;
 
@@ -481,7 +483,6 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
 				};
 
 				item.description.properties.unshift(descProp);
@@ -506,7 +507,7 @@ export class LoadNodesAndCredentials {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
-				Tools: ['Other Tools'],
+				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
 			},
 			resources,
 		};
@@ -522,22 +523,15 @@ export class LoadNodesAndCredentials {
 		const push = Container.get(Push);
 
 		Object.values(this.loaders).forEach(async (loader) => {
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
 				return;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
@@ -548,11 +542,11 @@ export class LoadNodesAndCredentials {
 				? ['**/nodes.json', '**/credentials.json']
 				: ['**/*.js', '**/*.json'];
 			const files = await glob(toWatch, {
-				cwd: realModulePath,
+				cwd: directory,
 				ignore: ['node_modules/**'],
 			});
 			const watcher = watch(files, {
-				cwd: realModulePath,
+				cwd: directory,
 				ignoreInitial: true,
 			});
 			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);

@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { NodeConnectionType, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { cleanRunData } from '../clean-run-data';
@@ -140,7 +140,7 @@ describe('cleanRunData', () => {
 			.addNodes(node1, rootNode, subNode)
 			.addConnections(
 				{ from: node1, to: rootNode },
-				{ from: subNode, to: rootNode, type: NodeConnectionType.AiLanguageModel },
+				{ from: subNode, to: rootNode, type: NodeConnectionTypes.AiLanguageModel },
 			);
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
@@ -176,7 +176,7 @@ describe('cleanRunData', () => {
 			.addConnections(
 				{ from: node1, to: node2 },
 				{ from: node2, to: rootNode },
-				{ from: subNode, to: rootNode, type: NodeConnectionType.AiLanguageModel },
+				{ from: subNode, to: rootNode, type: NodeConnectionTypes.AiLanguageModel },
 			);
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
@@ -213,8 +213,8 @@ describe('cleanRunData', () => {
 			.addConnections(
 				{ from: node1, to: rootNode1 },
 				{ from: rootNode1, to: rootNode2 },
-				{ from: subNode, to: rootNode1, type: NodeConnectionType.AiLanguageModel },
-				{ from: subNode, to: rootNode2, type: NodeConnectionType.AiLanguageModel },
+				{ from: subNode, to: rootNode1, type: NodeConnectionTypes.AiLanguageModel },
+				{ from: subNode, to: rootNode2, type: NodeConnectionTypes.AiLanguageModel },
 			);
 		const runData: IRunData = {
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],

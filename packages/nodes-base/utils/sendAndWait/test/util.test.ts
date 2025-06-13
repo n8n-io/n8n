@@ -238,7 +238,6 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: '',
 				formDescription: 'Test message',
 				formDescriptionMetadata: 'Test message',
@@ -304,6 +303,7 @@ describe('Send and Wait utils tests', () => {
 						responseFormTitle: 'Test title',
 						responseFormDescription: 'Test description',
 						responseFormButtonLabel: 'Test button',
+						responseFormCustomCss: 'body { background-color: red; }',
 					},
 				};
 				return params[parameterName];
@@ -317,7 +317,6 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: 'Test title',
 				formDescription: 'Test description',
 				formDescriptionMetadata: 'Test description',
@@ -336,6 +335,7 @@ describe('Send and Wait utils tests', () => {
 				],
 				appendAttribution: true,
 				buttonLabel: 'Test button',
+				dangerousCustomCss: 'body { background-color: red; }',
 			});
 		});
 
@@ -343,6 +343,7 @@ describe('Send and Wait utils tests', () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
 			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
@@ -367,6 +368,34 @@ describe('Send and Wait utils tests', () => {
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
 			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
+		});
+
+		it('should return noWebhookResponse if method GET and user-agent is bot', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+				},
+				query: { approved: 'false' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

@@ -1,5 +1,6 @@
+import type { User } from '@n8n/db';
+
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { User } from '@/databases/entities/user';
 import { WaitTracker } from '@/wait-tracker';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
@@ -27,7 +28,7 @@ const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 };
 
 beforeEach(async () => {
-	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
 	owner = await createOwner();
 	member = await createMember();

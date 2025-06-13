@@ -10,17 +10,8 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
+            }
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 3
 }

@@ -1,85 +1,60 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"profileId": {
-			"type": "integer"
-		},
-		"recipientId": {
-			"type": "integer"
-		},
-		"creationTime": {
-			"type": "string"
-		},
-		"modificationTime": {
-			"type": "string"
-		},
-		"active": {
-			"type": "boolean"
-		},
-		"eligible": {
-			"type": "boolean"
-		},
-		"balances": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "integer"
-					},
-					"balanceType": {
-						"type": "string"
-					},
-					"currency": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "object",
-						"properties": {
-							"currency": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"value",
-							"currency"
-						]
-					},
-					"reservedAmount": {
-						"type": "object",
-						"properties": {
-							"currency": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"value",
-							"currency"
-						]
-					}
-				},
-				"required": [
-					"id",
-					"balanceType",
-					"currency",
-					"amount",
-					"reservedAmount",
-					"bankDetails"
-				]
-			}
-		}
-	},
-	"required": [
-		"id",
-		"profileId",
-		"recipientId",
-		"creationTime",
-		"modificationTime",
-		"active",
-		"eligible",
-		"balances"
-	]
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "balances": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "object",
+                        "properties": {
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "balanceType": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "reservedAmount": {
+                        "type": "object",
+                        "properties": {
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "creationTime": {
+            "type": "string"
+        },
+        "eligible": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "modificationTime": {
+            "type": "string"
+        },
+        "profileId": {
+            "type": "integer"
+        },
+        "recipientId": {
+            "type": "integer"
+        }
+    },
+    "version": 1
 }

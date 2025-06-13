@@ -13,10 +13,7 @@
                 "spotify": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "spotify"
-            ]
+            }
         },
         "followers": {
             "type": "object",
@@ -27,11 +24,7 @@
                 "total": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "href",
-                "total"
-            ]
+            }
         },
         "href": {
             "type": "string"
@@ -39,21 +32,23 @@
         "id": {
             "type": "string"
         },
-        "primary_color": {
-            "type": "null"
-        },
         "name": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "uri": {
             "type": "string"
         },
         "owner": {
             "type": "object",
             "properties": {
+                "display_name": {
+                    "type": "null"
+                },
+                "external_urls": {
+                    "type": "object",
+                    "properties": {
+                        "spotify": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "href": {
                     "type": "string"
                 },
@@ -65,30 +60,11 @@
                 },
                 "uri": {
                     "type": "string"
-                },
-                "display_name": {
-                    "type": "null"
-                },
-                "external_urls": {
-                    "type": "object",
-                    "properties": {
-                        "spotify": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
                 }
-            },
-            "required": [
-                "href",
-                "id",
-                "type",
-                "uri",
-                "display_name",
-                "external_urls"
-            ]
+            }
+        },
+        "primary_color": {
+            "type": "null"
         },
         "public": {
             "type": "boolean"
@@ -99,6 +75,9 @@
         "tracks": {
             "type": "object",
             "properties": {
+                "href": {
+                    "type": "string"
+                },
                 "limit": {
                     "type": "integer"
                 },
@@ -111,39 +90,17 @@
                 "previous": {
                     "type": "null"
                 },
-                "href": {
-                    "type": "string"
-                },
                 "total": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "limit",
-                "next",
-                "offset",
-                "previous",
-                "href",
-                "total",
-                "items"
-            ]
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
         }
     },
-    "required": [
-        "collaborative",
-        "description",
-        "external_urls",
-        "followers",
-        "href",
-        "id",
-        "images",
-        "primary_color",
-        "name",
-        "type",
-        "uri",
-        "owner",
-        "public",
-        "snapshot_id",
-        "tracks"
-    ]
+    "version": 1
 }

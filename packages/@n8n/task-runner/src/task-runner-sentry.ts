@@ -22,7 +22,7 @@ export class TaskRunnerSentry {
 		await this.errorReporter.init({
 			serverType: 'task_runner',
 			dsn,
-			release: n8nVersion,
+			release: `n8n@${n8nVersion}`,
 			environment,
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,

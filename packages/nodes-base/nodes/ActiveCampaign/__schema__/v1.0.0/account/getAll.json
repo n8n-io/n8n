@@ -1,57 +1,50 @@
 {
     "type": "object",
     "properties": {
-        "name": {
+        "contactCount": {
             "type": "string"
         },
         "createdTimestamp": {
             "type": "string"
         },
-        "updatedTimestamp": {
-            "type": "string"
-        },
-        "owner": {
-            "type": "string"
-        },
-        "contactCount": {
-            "type": "string"
-        },
         "dealCount": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "links": {
             "type": "object",
             "properties": {
-                "notes": {
+                "accountContacts": {
                     "type": "string"
                 },
                 "accountCustomFieldData": {
                     "type": "string"
                 },
-                "accountContacts": {
+                "contactEmails": {
                     "type": "string"
                 },
                 "emailActivities": {
                     "type": "string"
                 },
-                "contactEmails": {
+                "notes": {
                     "type": "string"
                 },
                 "owner": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "notes",
-                "accountCustomFieldData",
-                "accountContacts",
-                "emailActivities",
-                "contactEmails",
-                "owner"
-            ]
+            }
         },
-        "id": {
+        "name": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "updatedTimestamp": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

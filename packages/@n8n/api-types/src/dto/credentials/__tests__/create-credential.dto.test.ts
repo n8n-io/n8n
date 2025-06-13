@@ -34,6 +34,17 @@ describe('CreateCredentialDto', () => {
 					},
 				},
 			},
+			{
+				name: 'longer type',
+				request: {
+					name: 'LinkedIn Community Management OAuth2 API',
+					type: 'linkedInCommunityManagementOAuth2Api',
+					data: {
+						clientId: '123',
+						clientSecret: 'secret',
+					},
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateCredentialDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -110,7 +121,7 @@ describe('CreateCredentialDto', () => {
 				name: 'type too long',
 				request: {
 					name: 'My API Credentials',
-					type: 'a'.repeat(33),
+					type: 'a'.repeat(129),
 					data: {},
 				},
 				expectedErrorPath: ['type'],

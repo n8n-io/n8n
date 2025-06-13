@@ -7,55 +7,40 @@
                 ".tag": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
-                "path_lower": {
-                    "type": "string"
-                },
-                "path_display": {
-                    "type": "string"
-                },
                 "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "parent_shared_folder_id": {
                     "type": "string"
                 },
+                "path_display": {
+                    "type": "string"
+                },
+                "path_lower": {
+                    "type": "string"
+                },
                 "sharing_info": {
                     "type": "object",
                     "properties": {
-                        "read_only": {
+                        "no_access": {
                             "type": "boolean"
                         },
                         "parent_shared_folder_id": {
                             "type": "string"
                         },
-                        "traverse_only": {
+                        "read_only": {
                             "type": "boolean"
                         },
-                        "no_access": {
+                        "traverse_only": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "read_only",
-                        "parent_shared_folder_id",
-                        "traverse_only",
-                        "no_access"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                ".tag",
-                "name",
-                "path_lower",
-                "path_display",
-                "id"
-            ]
+            }
         }
     },
-    "required": [
-        "metadata"
-    ]
+    "version": 1
 }

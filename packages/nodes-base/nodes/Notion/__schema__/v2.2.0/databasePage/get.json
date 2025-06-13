@@ -10,5 +10,6 @@
         "url": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

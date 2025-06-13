@@ -1,0 +1,18 @@
+.executions-list-move,
+.executions-list-enter-active {
+	transition: all 1.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.executions-list-leave-active {
+	transition: none;
+	position: absolute;
+}
+
+.executions-list-enter-from {
+	opacity: 0;
+	transform: translateX(-100px);
+}
+
+.executions-list-leave-to {
+	opacity: 0;
+}

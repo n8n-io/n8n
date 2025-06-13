@@ -1,5 +1,5 @@
-import { ServiceA } from './fixtures/ServiceA';
-import { ServiceB } from './fixtures/ServiceB';
+import { ServiceA } from './fixtures/service-a';
+import { ServiceB } from './fixtures/service-b';
 import { Container } from '../di';
 
 describe('DI Container', () => {

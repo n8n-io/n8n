@@ -24,4 +24,18 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW')
 	daysAbandonedWorkflow: number = 90;
+
+	/**
+	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
+	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
+	 */
+	// TODO: create a new type that parses and validates this string into a strongly-typed object
+	@Env('N8N_CONTENT_SECURITY_POLICY')
+	contentSecurityPolicy: string = '{}';
+
+	/**
+	 * Whether to set the `Content-Security-Policy-Report-Only` header instead of `Content-Security-Policy`.
+	 */
+	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
+	contentSecurityPolicyReportOnly: boolean = false;
 }

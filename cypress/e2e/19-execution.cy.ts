@@ -9,7 +9,6 @@ import {
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
-import { isCanvasV2 } from '../utils/workflowUtils';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -127,15 +126,9 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
-		if (isCanvasV2()) {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
-		} else {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
-		}
+		workflowPage.getters
+			.canvasNodeByName('Wait')
+			.within(() => cy.get('.fa-sync-alt').should('not.exist'));
 
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -483,19 +476,16 @@ describe('Execution', () => {
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
-			.canvasNodeByName('do something with them')
+			.canvasNodeByName('Process The Data')
 			.findChildByTestId('execute-node-button')
 			.click({ force: true });
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			const expectedKeys = [
-				'When clicking ‘Test workflow’',
-				'fetch 5 random users',
-				'do something with them',
-			];
 
-			const { runData } = interception.request.body as Record<string, object>;
+			const expectedKeys = ['Start on Schedule', 'Edit Fields', 'Process The Data'];
+
+			const { runData } = interception.request.body;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);
 			expect(runData).to.include.all.keys(expectedKeys);
 		});
@@ -596,5 +586,23 @@ describe('Execution', () => {
 			.should('exist');
 
 		errorToast().should('contain', 'Problem in node ‘Telegram‘');
+	});
+
+	it('Paired items should be correctly mapped after passed through the merge node with more than two inputs', () => {
+		cy.createFixtureWorkflow('merge_node_inputs_paired_items.json');
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton().click();
+
+		workflowPage.getters
+			.canvasNodeByName('Edit Fields')
+			.within(() => cy.get('.fa-check'))
+			.should('exist');
+
+		workflowPage.getters.canvasNodeByName('Edit Fields').dblclick();
+		ndv.actions.switchOutputMode('JSON');
+		ndv.getters.outputPanel().contains('Branch 1 Value').should('be.visible');
+		ndv.getters.outputPanel().contains('Branch 2 Value').should('be.visible');
+		ndv.getters.outputPanel().contains('Branch 3 Value').should('be.visible');
 	});
 });

@@ -1,5 +1,10 @@
+import { GlobalConfig } from '@n8n/config';
+import type { WorkflowEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import type {
 	IExecuteWorkflowInfo,
@@ -12,18 +17,18 @@ import type PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import {
+	CredentialsPermissionChecker,
+	SubworkflowPolicyChecker,
+} from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import { SecretsHelper } from '@/secrets-helpers.ee';
+import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';
-import { PermissionChecker } from '@/user-management/permission-checker';
 import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import { mockInstance } from '@test/mocking';
 
 const EXECUTION_ID = '123';
@@ -81,19 +86,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 	const variablesService = mockInstance(VariablesService);
 	variablesService.getAllCached.mockResolvedValue([]);
 	const credentialsHelper = mockInstance(CredentialsHelper);
-	const secretsHelper = mockInstance(SecretsHelper);
+	const externalSecretsProxy = mockInstance(ExternalSecretsProxy);
 	const eventService = mockInstance(EventService);
 	mockInstance(ExternalHooks);
 	Container.set(VariablesService, variablesService);
 	Container.set(CredentialsHelper, credentialsHelper);
-	Container.set(SecretsHelper, secretsHelper);
+	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(PermissionChecker);
+	mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
+
+	const urlService = mockInstance(UrlService);
+	Container.set(UrlService, urlService);
 
 	test('logAiEvent should call MessageEventBus', async () => {
 		const additionalData = await getBase('user-id');
@@ -260,6 +268,69 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executionMode: 'integrated',
 				workflowData: workflow,
 			});
+		});
+	});
+
+	describe('getBase', () => {
+		const mockWebhookBaseUrl = 'webhook-base-url.com';
+		jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
+
+		const globalConfig = mockInstance(GlobalConfig);
+		Container.set(GlobalConfig, globalConfig);
+		globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
+			rest: '/rest/',
+			formWaiting: '/form-waiting/',
+			webhook: '/webhook/',
+			webhookWaiting: '/webhook-waiting/',
+			webhookTest: '/webhook-test/',
+		});
+
+		const mockVariables = { variable: 1 };
+		jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+
+		it('should return base additional data with default values', async () => {
+			const additionalData = await getBase();
+
+			expect(additionalData).toMatchObject({
+				currentNodeExecutionIndex: 0,
+				credentialsHelper,
+				executeWorkflow: expect.any(Function),
+				restApiUrl: `${mockWebhookBaseUrl}/rest/`,
+				instanceBaseUrl: mockWebhookBaseUrl,
+				formWaitingBaseUrl: `${mockWebhookBaseUrl}/form-waiting/`,
+				webhookBaseUrl: `${mockWebhookBaseUrl}/webhook/`,
+				webhookWaitingBaseUrl: `${mockWebhookBaseUrl}/webhook-waiting/`,
+				webhookTestBaseUrl: `${mockWebhookBaseUrl}/webhook-test/`,
+				currentNodeParameters: undefined,
+				executionTimeoutTimestamp: undefined,
+				userId: undefined,
+				setExecutionStatus: expect.any(Function),
+				variables: mockVariables,
+				externalSecretsProxy,
+				startRunnerTask: expect.any(Function),
+				logAiEvent: expect.any(Function),
+			});
+		});
+
+		it('should include userId when provided', async () => {
+			const userId = 'test-user-id';
+			const additionalData = await getBase(userId);
+
+			expect(additionalData.userId).toBe(userId);
+		});
+
+		it('should include currentNodeParameters when provided', async () => {
+			const currentNodeParameters = { param1: 'value1' };
+			const additionalData = await getBase(undefined, currentNodeParameters);
+
+			expect(additionalData.currentNodeParameters).toBe(currentNodeParameters);
+		});
+
+		it('should include executionTimeoutTimestamp when provided', async () => {
+			const executionTimeoutTimestamp = Date.now() + 1000;
+			const additionalData = await getBase(undefined, undefined, executionTimeoutTimestamp);
+
+			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
 		});
 	});
 });

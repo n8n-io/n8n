@@ -11,9 +11,10 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { commentFields, commentOperations } from './CommentDescription';
 import {
 	linearApiRequest,
 	linearApiRequestAllItems,
@@ -39,8 +40,8 @@ export class Linear implements INodeType {
 			name: 'Linear',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'linearApi',
@@ -86,12 +87,18 @@ export class Linear implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Comment',
+						value: 'comment',
+					},
+					{
 						name: 'Issue',
 						value: 'issue',
 					},
 				],
 				default: 'issue',
 			},
+			...commentOperations,
+			...commentFields,
 			...issueOperations,
 			...issueFields,
 		],
@@ -288,6 +295,39 @@ export class Linear implements INodeType {
 
 						responseData = await linearApiRequest.call(this, body);
 						responseData = responseData?.data?.issueUpdate?.issue;
+					}
+					if (operation === 'addLink') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body: IGraphqlBody = {
+							query: query.addIssueLink(),
+							variables: {
+								issueId,
+								url: this.getNodeParameter('link', i),
+							},
+						};
+
+						responseData = await linearApiRequest.call(this, body);
+						responseData = responseData?.data?.attachmentLinkURL;
+					}
+				} else if (resource === 'comment') {
+					if (operation === 'addComment') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body = this.getNodeParameter('comment', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const requestBody: IGraphqlBody = {
+							query: query.addComment(),
+							variables: {
+								issueId,
+								body,
+							},
+						};
+
+						if (additionalFields.parentId && (additionalFields.parentId as string).trim() !== '') {
+							requestBody.variables.parentId = additionalFields.parentId as string;
+						}
+
+						responseData = await linearApiRequest.call(this, requestBody);
+						responseData = responseData?.data?.commentCreate;
 					}
 				}
 

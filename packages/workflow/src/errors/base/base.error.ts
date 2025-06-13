@@ -3,8 +3,8 @@ import callsites from 'callsites';
 
 import type { ErrorTags, ErrorLevel, ReportingOptions } from '../error.types';
 
-export type BaseErrorOptions = { description?: undefined | null } & ErrorOptions & ReportingOptions;
-
+export type BaseErrorOptions = { description?: string | undefined | null } & ErrorOptions &
+	ReportingOptions;
 /**
  * Base class for all errors
  */
@@ -13,7 +13,7 @@ export abstract class BaseError extends Error {
 	 * Error level. Defines which level the error should be logged/reported
 	 * @default 'error'
 	 */
-	readonly level: ErrorLevel;
+	level: ErrorLevel;
 
 	/**
 	 * Whether the error should be reported to Sentry.

@@ -1,545 +1,409 @@
 {
-	"type": "object",
-	"properties": {
-		"portalId": {
-			"type": "integer"
-		},
-		"companyId": {
-			"type": "integer"
-		},
-		"isDeleted": {
-			"type": "boolean"
-		},
-		"properties": {
-			"type": "object",
-			"properties": {
-				"hs_object_source_id": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"hs_lastmodifieddate": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"source": {
-										"type": "string"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"requestId": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"hs_pipeline": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"hs_object_id": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"createdate": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"hs_object_source": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"lifecyclestage": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"requestId": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				},
-				"hs_object_source_label": {
-					"type": "object",
-					"properties": {
-						"value": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "integer"
-						},
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"updatedByUserId": {
-							"type": "null"
-						},
-						"versions": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									},
-									"timestamp": {
-										"type": "integer"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"requestId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"name",
-									"value",
-									"timestamp",
-									"sourceId",
-									"source",
-									"sourceVid"
-								]
-							}
-						}
-					},
-					"required": [
-						"value",
-						"timestamp",
-						"source",
-						"sourceId",
-						"updatedByUserId",
-						"versions"
-					]
-				}
-			},
-			"required": [
-				"hs_object_source_id",
-				"hs_lastmodifieddate",
-				"hs_pipeline",
-				"hs_object_id",
-				"createdate",
-				"hs_object_source",
-				"lifecyclestage",
-				"hs_object_source_label"
-			]
-		}
-	}
+    "type": "object",
+    "properties": {
+        "companyId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "createdate": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_lastmodifieddate": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_object_id": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_object_source": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_object_source_id": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_object_source_label": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_pipeline": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "lifecyclestage": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
 }

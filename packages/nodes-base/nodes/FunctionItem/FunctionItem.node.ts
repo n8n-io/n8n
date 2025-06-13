@@ -9,7 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 import { vmResolver } from '../Code/JavaScriptSandbox';
 
@@ -26,8 +26,8 @@ export class FunctionItem implements INodeType {
 			name: 'Function Item',
 			color: '#ddbb33',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'A newer version of this node type is available, called the ‘Code’ node',

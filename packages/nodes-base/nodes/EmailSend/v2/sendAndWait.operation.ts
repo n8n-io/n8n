@@ -8,7 +8,10 @@ import type {
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport } from './utils';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
-import { createEmailBody } from '../../../utils/sendAndWait/email-templates';
+import {
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
+} from '../../../utils/sendAndWait/email-templates';
 import {
 	createButton,
 	getSendAndWaitConfig,
@@ -30,9 +33,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
 
-	const instanceId = this.getInstanceId();
+	let htmlBody: string;
 
-	const htmlBody = createEmailBody(config.message, buttons.join('\n'), instanceId);
+	if (config.appendAttribution !== false) {
+		const instanceId = this.getInstanceId();
+		htmlBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		htmlBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const mailOptions: IDataObject = {
 		from: fromEmail,

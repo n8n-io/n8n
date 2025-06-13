@@ -1,5 +1,6 @@
-import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+import sanitizeHtml from 'sanitize-html';
 
+import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
 export function createPage({
 	instanceId,
 	webhookUrl,
@@ -10,6 +11,7 @@ export function createPage({
 	authentication,
 	allowFileUploads,
 	allowedFilesMimeTypes,
+	customCss,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -23,6 +25,7 @@ export function createPage({
 	authentication: AuthenticationChatOption;
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
+	customCss?: string;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -41,6 +44,11 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
+	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
+		allowedTags: ['style'],
+		allowedAttributes: false,
+	});
+
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
 	)
@@ -63,6 +71,7 @@ export function createPage({
 					height: 100%;
 				}
 			</style>
+			${sanitizedCustomCss}
 		</head>
 		<body>
 			<script type="module">

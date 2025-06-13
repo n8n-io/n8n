@@ -11,14 +11,6 @@ export class SentryConfig {
 	frontendDsn: string = '';
 
 	/**
-	 * Version of the n8n instance
-	 *
-	 * @example '1.73.0'
-	 */
-	@Env('N8N_VERSION')
-	n8nVersion: string = '';
-
-	/**
 	 * Environment of the n8n instance.
 	 *
 	 * @example 'production'

@@ -1,196 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "timeCreated": {
-            "type": "integer"
-        },
-        "timeLastModified": {
-            "type": "integer"
-        },
-        "organization": {
-            "type": "string"
-        },
-        "shortId": {
-            "type": "string"
-        },
-        "orderShortId": {
-            "type": "null"
-        },
-        "trackingURL": {
-            "type": "string"
-        },
-        "worker": {
-            "type": "string"
-        },
-        "merchant": {
-            "type": "string"
-        },
-        "executor": {
-            "type": "string"
-        },
-        "creator": {
-            "type": "string"
-        },
-        "state": {
-            "type": "integer"
-        },
-        "pickupTask": {
-            "type": "boolean"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "completionDetails": {
-            "type": "object",
-            "properties": {
-                "success": {
-                    "type": "boolean"
-                },
-                "notes": {
-                    "type": "string"
-                },
-                "failureNotes": {
-                    "type": "string"
-                },
-                "events": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "time": {
-                                "type": "integer"
-                            },
-                            "location": {
-                                "type": "array",
-                                "items": {
-                                    "type": "number"
-                                }
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "time"
-                        ]
-                    }
-                },
-                "successNotes": {
-                    "type": "string"
-                },
-                "failureReason": {
-                    "type": "string"
-                },
-                "actions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "createdAt": {
-                                "type": "string"
-                            },
-                            "actionType": {
-                                "type": "string"
-                            },
-                            "adminId": {
-                                "type": "string"
-                            },
-                            "prevState": {
-                                "type": "object",
-                                "properties": {
-                                    "success": {
-                                        "type": "boolean"
-                                    },
-                                    "notes": {
-                                        "type": "string"
-                                    },
-                                    "failureNotes": {
-                                        "type": "string"
-                                    },
-                                    "successNotes": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "success",
-                                    "notes",
-                                    "failureNotes",
-                                    "successNotes"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "createdAt",
-                            "actionType",
-                            "adminId",
-                            "prevState"
-                        ]
-                    }
-                },
-                "photoUploadId": {
-                    "type": "null"
-                },
-                "firstLocation": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "lastLocation": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                }
-            },
-            "required": [
-                "time",
-                "failureNotes",
-                "events",
-                "successNotes",
-                "failureReason",
-                "actions",
-                "signatureUploadId",
-                "photoUploadId",
-                "photoUploadIds",
-                "firstLocation",
-                "lastLocation",
-                "unavailableAttachments"
-            ]
-        },
-        "feedback": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "comments": {
-                        "type": "string"
-                    },
-                    "time": {
-                        "type": "string"
-                    },
-                    "recipient": {
-                        "type": "string"
-                    },
-                    "rating": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "comments",
-                    "time",
-                    "recipient",
-                    "rating"
-                ]
-            }
-        },
         "additionalQuantities": {
             "type": "object",
             "properties": {
@@ -203,30 +13,7 @@
                 "quantityC": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "quantityA",
-                "quantityB",
-                "quantityC"
-            ]
-        },
-        "serviceTime": {
-            "type": "integer"
-        },
-        "identity": {
-            "type": "object",
-            "properties": {
-                "failedScanCount": {
-                    "type": "integer"
-                },
-                "checksum": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "failedScanCount",
-                "checksum"
-            ]
+            }
         },
         "appearance": {
             "type": "object",
@@ -234,25 +21,224 @@
                 "triangleColor": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "triangleColor"
-            ]
+            }
         },
-        "scanOnlyRequiredBarcodes": {
-            "type": "boolean"
+        "completionDetails": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "actionType": {
+                                "type": "string"
+                            },
+                            "adminId": {
+                                "type": "string"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "prevState": {
+                                "type": "object",
+                                "properties": {
+                                    "failureNotes": {
+                                        "type": "string"
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    },
+                                    "success": {
+                                        "type": "boolean"
+                                    },
+                                    "successNotes": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "failureNotes": {
+                    "type": "string"
+                },
+                "failureReason": {
+                    "type": "string"
+                },
+                "firstLocation": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "lastLocation": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "successNotes": {
+                    "type": "string"
+                }
+            }
         },
-        "trackingViewed": {
-            "type": "boolean"
+        "creator": {
+            "type": "string"
         },
-        "estimatedCompletionTime": {
-            "type": "null"
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "destination": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "apartment": {
+                            "type": "string"
+                        },
+                        "city": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "number": {
+                            "type": "string"
+                        },
+                        "postalCode": {
+                            "type": "string"
+                        },
+                        "state": {
+                            "type": "string"
+                        },
+                        "street": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "timeCreated": {
+                    "type": "integer"
+                },
+                "timeLastModified": {
+                    "type": "integer"
+                },
+                "useGPS": {
+                    "type": "boolean"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "estimatedArrivalTime": {
             "type": "null"
         },
+        "estimatedCompletionTime": {
+            "type": "null"
+        },
         "eta": {
             "type": "null"
+        },
+        "executor": {
+            "type": "string"
+        },
+        "feedback": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "comments": {
+                        "type": "string"
+                    },
+                    "rating": {
+                        "type": "integer"
+                    },
+                    "recipient": {
+                        "type": "string"
+                    },
+                    "time": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "identity": {
+            "type": "object",
+            "properties": {
+                "checksum": {
+                    "type": "null"
+                },
+                "failedScanCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "orderShortId": {
+            "type": "null"
+        },
+        "organization": {
+            "type": "string"
+        },
+        "pickupTask": {
+            "type": "boolean"
         },
         "recipients": {
             "type": "array",
@@ -262,156 +248,60 @@
                     "id": {
                         "type": "string"
                     },
-                    "timeCreated": {
-                        "type": "integer"
-                    },
-                    "timeLastModified": {
-                        "type": "integer"
-                    },
                     "name": {
                         "type": "string"
                     },
-                    "phone": {
+                    "notes": {
                         "type": "string"
                     },
                     "organization": {
                         "type": "string"
                     },
+                    "phone": {
+                        "type": "string"
+                    },
                     "skipSMSNotifications": {
                         "type": "boolean"
                     },
-                    "notes": {
-                        "type": "string"
+                    "timeCreated": {
+                        "type": "integer"
+                    },
+                    "timeLastModified": {
+                        "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "timeCreated",
-                    "timeLastModified",
-                    "name",
-                    "phone",
-                    "organization",
-                    "skipSMSNotifications",
-                    "metadata"
-                ]
+                }
             }
         },
-        "destination": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "timeCreated": {
-                    "type": "integer"
-                },
-                "timeLastModified": {
-                    "type": "integer"
-                },
-                "location": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "address": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "number": {
-                            "type": "string"
-                        },
-                        "street": {
-                            "type": "string"
-                        },
-                        "city": {
-                            "type": "string"
-                        },
-                        "state": {
-                            "type": "string"
-                        },
-                        "postalCode": {
-                            "type": "string"
-                        },
-                        "country": {
-                            "type": "string"
-                        },
-                        "apartment": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "city",
-                        "state",
-                        "postalCode",
-                        "country",
-                        "apartment"
-                    ]
-                },
-                "notes": {
-                    "type": "string"
-                },
-                "warnings": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "useGPS": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "timeCreated",
-                "timeLastModified",
-                "location",
-                "address",
-                "notes",
-                "metadata",
-                "googlePlaceId",
-                "warnings",
-                "useGPS"
-            ]
+        "scanOnlyRequiredBarcodes": {
+            "type": "boolean"
+        },
+        "serviceTime": {
+            "type": "integer"
+        },
+        "shortId": {
+            "type": "string"
+        },
+        "state": {
+            "type": "integer"
+        },
+        "timeCreated": {
+            "type": "integer"
+        },
+        "timeLastModified": {
+            "type": "integer"
+        },
+        "trackingURL": {
+            "type": "string"
+        },
+        "trackingViewed": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "worker": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "timeCreated",
-        "timeLastModified",
-        "organization",
-        "shortId",
-        "orderShortId",
-        "trackingURL",
-        "worker",
-        "merchant",
-        "executor",
-        "creator",
-        "dependencies",
-        "state",
-        "completeAfter",
-        "completeBefore",
-        "pickupTask",
-        "notes",
-        "completionDetails",
-        "feedback",
-        "metadata",
-        "overrides",
-        "quantity",
-        "additionalQuantities",
-        "serviceTime",
-        "identity",
-        "appearance",
-        "scanOnlyRequiredBarcodes",
-        "customFields",
-        "trackingViewed",
-        "delayTime",
-        "estimatedCompletionTime",
-        "estimatedArrivalTime",
-        "eta",
-        "recipients",
-        "destination"
-    ]
+    "version": 1
 }

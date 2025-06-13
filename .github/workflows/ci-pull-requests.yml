@@ -13,39 +13,21 @@ jobs:
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-      - uses: useblacksmith/setup-node@v5
+      - name: Setup Environment and Build Project
+        uses: ./.github/actions/setup-and-build
         with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: useblacksmith/caching-for-turbo@v1
-
-      - name: Build
-        run: pnpm build
+          node-version: 22.x
+          enable-caching: true
 
       - name: Run formatcheck
         run: pnpm format:check
 
       - name: Run typecheck
         run: pnpm typecheck
-
-      - name: Cache build artifacts
-        uses: useblacksmith/cache/save@v5
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
 
   unit-test:
     name: Unit tests

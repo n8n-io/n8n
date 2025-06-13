@@ -49,6 +49,7 @@ describe('AI Assistant::enabled', () => {
 	it('should resize assistant chat up', () => {
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantSidebarResizer().should('be.visible');
+		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.askAssistantChat().then((element) => {
 			const { width, left } = element[0].getBoundingClientRect();
 			cy.drag(aiAssistant.getters.askAssistantSidebarResizer(), [left - 10, 0], {
@@ -65,6 +66,7 @@ describe('AI Assistant::enabled', () => {
 	it('should resize assistant chat down', () => {
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantSidebarResizer().should('be.visible');
+		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.askAssistantChat().then((element) => {
 			const { width, left } = element[0].getBoundingClientRect();
 			cy.drag(aiAssistant.getters.askAssistantSidebarResizer(), [left + 10, 0], {
@@ -362,7 +364,7 @@ describe('AI Assistant Credential Help', () => {
 		}).as('chatRequest');
 		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
-		wf.actions.openNode('Gmail');
+		wf.actions.openNode('Add label to message');
 		openCredentialSelect();
 		clickCreateNewCredential();
 		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');

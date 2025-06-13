@@ -1,30 +1,65 @@
 {
     "type": "object",
     "properties": {
+        "argumentText": {
+            "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "formattedText": {
+            "type": "string"
+        },
         "name": {
             "type": "string"
         },
         "sender": {
             "type": "object",
             "properties": {
-                "name": {
+                "displayName": {
                     "type": "string"
                 },
-                "displayName": {
+                "name": {
                     "type": "string"
                 },
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "displayName",
-                "type"
-            ]
+            }
         },
-        "createTime": {
-            "type": "string"
+        "space": {
+            "type": "object",
+            "properties": {
+                "lastActiveTime": {
+                    "type": "string"
+                },
+                "membershipCount": {
+                    "type": "object",
+                    "properties": {
+                        "joinedDirectHumanUserCount": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
         },
         "text": {
             "type": "string"
@@ -35,74 +70,8 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "spaceThreadingState": {
-                    "type": "string"
-                },
-                "spaceType": {
-                    "type": "string"
-                },
-                "spaceHistoryState": {
-                    "type": "string"
-                },
-                "createTime": {
-                    "type": "string"
-                },
-                "lastActiveTime": {
-                    "type": "string"
-                },
-                "membershipCount": {
-                    "type": "object",
-                    "properties": {
-                        "joinedDirectHumanUserCount": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "joinedDirectHumanUserCount"
-                    ]
-                },
-                "spaceUri": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "type",
-                "spaceThreadingState",
-                "spaceType",
-                "spaceHistoryState",
-                "spaceUri"
-            ]
-        },
-        "argumentText": {
-            "type": "string"
-        },
-        "formattedText": {
-            "type": "string"
+            }
         }
     },
-    "required": [
-        "name",
-        "sender",
-        "createTime",
-        "thread",
-        "space"
-    ]
+    "version": 2
 }

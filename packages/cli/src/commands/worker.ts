@@ -1,17 +1,17 @@
+import { inTest } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
 
 import config from '@/config';
-import { N8N_VERSION, inTest } from '@/constants';
-import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-key.error';
+import { N8N_VERSION } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import { BaseCommand } from './base-command';
 
@@ -40,6 +40,8 @@ export class Worker extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -58,8 +60,6 @@ export class Worker extends BaseCommand {
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
-		if (!process.env.N8N_ENCRYPTION_KEY) throw new WorkerMissingEncryptionKey();
-
 		if (config.getEnv('executions.mode') !== 'queue') {
 			config.set('executions.mode', 'queue');
 		}
@@ -94,8 +94,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
 		await this.initScalingService();
@@ -111,12 +109,7 @@ export class Worker extends BaseCommand {
 			}),
 		);
 
-		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			const taskRunnerModule = Container.get(TaskRunnerModule);
-			await taskRunnerModule.start();
-		}
+		await this.moduleRegistry.initModules();
 	}
 
 	async initEventBus() {
@@ -133,12 +126,10 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationService).init();
+		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
-
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {

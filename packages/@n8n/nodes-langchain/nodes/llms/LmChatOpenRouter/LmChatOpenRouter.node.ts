@@ -2,13 +2,14 @@
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -43,7 +44,7 @@ export class LmChatOpenRouter implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -56,7 +57,7 @@ export class LmChatOpenRouter implements INodeType {
 			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
@@ -114,7 +115,7 @@ export class LmChatOpenRouter implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'openai/gpt-4o-mini',
+				default: 'openai/gpt-4.1-mini',
 			},
 			{
 				displayName: 'Options',
@@ -227,6 +228,7 @@ export class LmChatOpenRouter implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			httpAgent: getHttpProxyAgent(),
 		};
 
 		const model = new ChatOpenAI({

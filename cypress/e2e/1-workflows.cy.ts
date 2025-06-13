@@ -1,9 +1,12 @@
+import { WorkflowSharingModal } from '../pages';
+import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
+const workflowSharingModal = new WorkflowSharingModal();
 
 const multipleWorkflowsCount = 5;
 
@@ -59,17 +62,14 @@ describe('Workflows', () => {
 		cy.contains('No workflows found').should('be.visible');
 	});
 
-	it('should delete all the workflows', () => {
+	it('should archive all the workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
-		WorkflowsPage.getters.workflowCards().each(($el) => {
-			const workflowName = $el.find('[data-test-id="workflow-card-name"]').text();
-
-			WorkflowsPage.getters.workflowCardActions(workflowName).click();
-			WorkflowsPage.getters.workflowDeleteButton().click();
-
-			cy.get('button').contains('delete').click();
-		});
+		for (let i = 0; i < multipleWorkflowsCount + 1; i++) {
+			cy.getByTestId('workflow-card-actions').first().click();
+			WorkflowsPage.getters.workflowArchiveButton().click();
+			successToast().should('be.visible');
+		}
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
 	});
@@ -98,7 +98,7 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', 1);
 	});
 
-	it('should preserve filters and pagination in URL', () => {
+	it('should preserve filters in URL', () => {
 		// Add a search query
 		WorkflowsPage.getters.searchBar().type('My');
 		// Add a tag filter
@@ -117,8 +117,6 @@ describe('Workflows', () => {
 		cy.url().should('include', 'search=My');
 		// Cannot really know tag id, so just check if it contains 'tags='
 		cy.url().should('include', 'tags=');
-		cy.url().should('include', 'sort=lastCreated');
-		cy.url().should('include', 'pageSize=25');
 
 		// Reload the page
 		cy.reload();
@@ -135,7 +133,45 @@ describe('Workflows', () => {
 		// Aso, check if the URL is preserved
 		cy.url().should('include', 'search=My');
 		cy.url().should('include', 'tags=');
-		cy.url().should('include', 'sort=lastCreated');
-		cy.url().should('include', 'pageSize=25');
+	});
+
+	it('should be able to share workflows from workflows list', () => {
+		WorkflowsPage.getters.workflowCardActions('Empty State Card Workflow').click();
+		WorkflowsPage.getters.workflowActionItem('share').click();
+		workflowSharingModal.getters.modal().should('be.visible');
+	});
+
+	it('should delete archived workflows', () => {
+		cy.visit(WorkflowsPage.url);
+
+		// Toggle "Show archived workflows" filter
+		WorkflowsPage.getters.workflowFilterButton().click();
+		WorkflowsPage.getters.workflowArchivedCheckbox().click();
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 3);
+
+		cy.reload();
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 3);
+
+		// Archive -> Unarchive -> Archive -> Delete on the first workflow
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowArchiveButton().click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowUnarchiveButton().click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowArchiveButton().click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowDeleteButton().click();
+		cy.get('button').contains('delete').click();
+		successToast().should('be.visible');
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 2);
 	});
 });

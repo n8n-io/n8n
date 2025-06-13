@@ -7,73 +7,66 @@
         "result": {
             "type": "object",
             "properties": {
-                "message_id": {
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
                     "type": "integer"
                 },
                 "from": {
                     "type": "object",
                     "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "integer"
                         },
                         "is_bot": {
                             "type": "boolean"
                         },
-                        "first_name": {
-                            "type": "string"
-                        },
                         "username": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
+                    }
                 },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "type": {
-                            "type": "string"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "last_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
-                },
-                "date": {
+                "message_id": {
                     "type": "integer"
                 },
                 "sticker": {
                     "type": "object",
                     "properties": {
-                        "width": {
-                            "type": "integer"
-                        },
-                        "height": {
-                            "type": "integer"
-                        },
                         "emoji": {
                             "type": "string"
                         },
-                        "set_name": {
+                        "file_id": {
                             "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "height": {
+                            "type": "integer"
                         },
                         "is_animated": {
                             "type": "boolean"
@@ -81,35 +74,8 @@
                         "is_video": {
                             "type": "boolean"
                         },
-                        "type": {
+                        "set_name": {
                             "type": "string"
-                        },
-                        "thumbnail": {
-                            "type": "object",
-                            "properties": {
-                                "file_id": {
-                                    "type": "string"
-                                },
-                                "file_unique_id": {
-                                    "type": "string"
-                                },
-                                "file_size": {
-                                    "type": "integer"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "file_id",
-                                "file_unique_id",
-                                "file_size",
-                                "width",
-                                "height"
-                            ]
                         },
                         "thumb": {
                             "type": "object",
@@ -117,61 +83,50 @@
                                 "file_id": {
                                     "type": "string"
                                 },
+                                "file_size": {
+                                    "type": "integer"
+                                },
                                 "file_unique_id": {
+                                    "type": "string"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "thumbnail": {
+                            "type": "object",
+                            "properties": {
+                                "file_id": {
                                     "type": "string"
                                 },
                                 "file_size": {
                                     "type": "integer"
                                 },
-                                "width": {
-                                    "type": "integer"
+                                "file_unique_id": {
+                                    "type": "string"
                                 },
                                 "height": {
                                     "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "file_id",
-                                "file_unique_id",
-                                "file_size",
-                                "width",
-                                "height"
-                            ]
+                            }
                         },
-                        "file_id": {
+                        "type": {
                             "type": "string"
                         },
-                        "file_unique_id": {
-                            "type": "string"
-                        },
-                        "file_size": {
+                        "width": {
                             "type": "integer"
                         }
-                    },
-                    "required": [
-                        "width",
-                        "height",
-                        "is_animated",
-                        "is_video",
-                        "type",
-                        "thumbnail",
-                        "thumb",
-                        "file_id",
-                        "file_unique_id",
-                        "file_size"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "message_id",
-                "from",
-                "chat",
-                "date"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

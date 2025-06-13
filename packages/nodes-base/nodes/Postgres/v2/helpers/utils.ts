@@ -19,6 +19,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function isJSON(str: string) {
 	try {
@@ -26,6 +27,16 @@ export function isJSON(str: string) {
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+export function evaluateExpression(expression: NodeParameterValueType) {
+	if (expression === undefined) {
+		return '';
+	} else if (expression === null) {
+		return 'null';
+	} else {
+		return typeof expression === 'object' ? JSON.stringify(expression) : expression.toString();
 	}
 }
 
@@ -251,15 +262,17 @@ export function configureQueryRunner(
 					.flat();
 
 				if (!returnData.length) {
+					const pairedItem = generatePairedItemData(queries.length);
+
 					if ((options?.nodeVersion as number) < 2.3) {
 						if (emptyReturnData.length) {
-							emptyReturnData[0].pairedItem = undefined;
+							emptyReturnData[0].pairedItem = pairedItem;
 						}
 						returnData = emptyReturnData;
 					} else {
 						returnData = queries.every((query) => isSelectQuery(query.query))
 							? []
-							: [{ json: { success: true } }];
+							: [{ json: { success: true }, pairedItem }];
 					}
 				}
 			} catch (err) {
@@ -401,7 +414,10 @@ export function convertValuesToJsonWithPgp(
 	values: IDataObject,
 ) {
 	schema
-		.filter(({ data_type }: { data_type: string }) => data_type === 'json')
+		.filter(
+			({ data_type, column_name }) =>
+				data_type === 'json' && values[column_name] !== null && values[column_name] !== undefined,
+		)
 		.forEach(({ column_name }) => {
 			values[column_name] = pgp.as.json(values[column_name], true);
 		});
@@ -603,3 +619,30 @@ export const convertArraysToPostgresFormat = (
 		}
 	}
 };
+
+export function addExecutionHints(
+	context: IExecuteFunctions,
+	items: INodeExecutionData[],
+	operation: string,
+	executeOnce: boolean | undefined,
+) {
+	if (operation === 'select' && items.length > 1 && !executeOnce) {
+		context.addExecutionHints({
+			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		operation === 'executeQuery' &&
+		items.length > 1 &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+}

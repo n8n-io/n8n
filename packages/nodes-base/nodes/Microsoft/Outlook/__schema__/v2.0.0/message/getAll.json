@@ -1,11 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "@odata.etag": {
             "type": "string"
         },
-        "conversationId": {
-            "type": "string"
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
         },
         "bodyPreview": {
             "type": "string"
@@ -16,29 +24,50 @@
                 "type": "string"
             }
         },
+        "conversationId": {
+            "type": "string"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "hasAttachments": {
             "type": "boolean"
         },
-        "@odata.etag": {
+        "id": {
             "type": "string"
         },
-        "body": {
+        "receivedDateTime": {
+            "type": "string"
+        },
+        "sender": {
             "type": "object",
             "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
                 }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+            }
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 4
 }

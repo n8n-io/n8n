@@ -1,5 +1,5 @@
 import { createWriteStream } from 'fs';
-import { BINARY_ENCODING, NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -19,7 +19,7 @@ import type { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 
-import { formatPrivateKey } from '@utils/utilities';
+import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -123,8 +123,8 @@ export class Ftp implements INodeType {
 			name: 'FTP',
 			color: '#303050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// nodelinter-ignore-next-line
@@ -550,7 +550,9 @@ export class Ftp implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message } }]];
+					const pairedItem = generatePairedItemData(items.length);
+
+					return [[{ json: { error: error.message }, pairedItem }]];
 				}
 				throw error;
 			}

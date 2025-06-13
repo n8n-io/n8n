@@ -1,0 +1,613 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1683532113975,
+            "executionTime": 1,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop": [
+          {
+            "startTime": 1683532113976,
+            "executionTime": 482,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "tfa": {
+                        "object": true
+                      },
+                      "files": {
+                        "object": true
+                      },
+                      "_id": 618756,
+                      "pro": false,
+                      "name": "nodeqa",
+                      "fullName": "nodeqa",
+                      "email": "nodeqa@n8n.io",
+                      "groups": [
+                        "json array"
+                      ],
+                      "lastAction": "2023-05-08T02:25:37.144Z",
+                      "lastVisit": "2023-05-08T02:23:04.375Z",
+                      "registered": "2021-03-24T08:38:18.892Z",
+                      "lastUpdate": "2023-05-08T02:25:37.144Z",
+                      "config": {
+                        "object": true
+                      },
+                      "avatar": "",
+                      "password": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop1": [
+          {
+            "startTime": 1683532114459,
+            "executionTime": 258,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Collection1683532114491",
+                      "description": "",
+                      "user": {
+                        "object": true
+                      },
+                      "public": false,
+                      "count": 0,
+                      "cover": [
+                        "json array"
+                      ],
+                      "expanded": true,
+                      "creatorRef": 618756,
+                      "lastAction": "2023-05-08T07:48:34.585Z",
+                      "created": "2023-05-08T07:48:34.586Z",
+                      "lastUpdate": "2023-05-08T07:48:34.586Z",
+                      "_id": 34146645,
+                      "sort": 34146645,
+                      "slug": "collection1683532114491",
+                      "__v": 0,
+                      "access": {
+                        "object": true
+                      },
+                      "author": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop2": [
+          {
+            "startTime": 1683532114718,
+            "executionTime": 136,
+            "source": [
+              {
+                "previousNode": "Raindrop1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "view": "list",
+                      "_id": 34146645,
+                      "title": "Collection1683532114491",
+                      "description": "",
+                      "user": {
+                        "object": true
+                      },
+                      "public": false,
+                      "count": 0,
+                      "cover": [
+                        "json array"
+                      ],
+                      "expanded": true,
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "lastAction": "2023-05-08T07:48:34.585Z",
+                      "created": "2023-05-08T07:48:34.586Z",
+                      "lastUpdate": "2023-05-08T07:48:34.586Z",
+                      "sort": 34146645,
+                      "slug": "collection1683532114491",
+                      "access": {
+                        "object": true
+                      },
+                      "author": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop3": [
+          {
+            "startTime": 1683532114854,
+            "executionTime": 165,
+            "source": [
+              {
+                "previousNode": "Raindrop2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": 34146645,
+                      "title": "UpdatedCollection1683532114491",
+                      "description": "",
+                      "slug": "updated-collection1683532114491",
+                      "user": {
+                        "object": true
+                      },
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "public": false,
+                      "view": "list",
+                      "count": 0,
+                      "cover": [
+                        "json array"
+                      ],
+                      "sort": 34146645,
+                      "expanded": true,
+                      "lastAction": "2023-05-08T07:48:34.585Z",
+                      "created": "2023-05-08T07:48:34.586Z",
+                      "lastUpdate": "2023-05-08T07:48:34.983Z",
+                      "access": {
+                        "object": true
+                      },
+                      "author": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop4": [
+          {
+            "startTime": 1683532115020,
+            "executionTime": 137,
+            "source": [
+              {
+                "previousNode": "Raindrop3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": 34146645,
+                      "title": "UpdatedCollection1683532114491",
+                      "description": "",
+                      "user": {
+                        "object": true
+                      },
+                      "public": false,
+                      "count": 0,
+                      "cover": [
+                        "json array"
+                      ],
+                      "expanded": true,
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "lastAction": "2023-05-08T07:48:34.585Z",
+                      "created": "2023-05-08T07:48:34.586Z",
+                      "lastUpdate": "2023-05-08T07:48:34.983Z",
+                      "sort": 34146645,
+                      "slug": "updated-collection1683532114491",
+                      "view": "list",
+                      "access": {
+                        "object": true
+                      },
+                      "author": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop6": [
+          {
+            "startTime": 1683532115158,
+            "executionTime": 191,
+            "source": [
+              {
+                "previousNode": "Raindrop4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "link": "https://n8n.io/",
+                      "title": "Bookmark1683532115161",
+                      "excerpt": "",
+                      "note": "",
+                      "type": "link",
+                      "user": {
+                        "object": true
+                      },
+                      "cover": "",
+                      "tags": [
+                        "json array"
+                      ],
+                      "removed": false,
+                      "collection": {
+                        "object": true
+                      },
+                      "media": [
+                        "json array"
+                      ],
+                      "created": "2023-05-08T07:48:35.288Z",
+                      "lastUpdate": "2023-05-08T07:48:35.288Z",
+                      "domain": "n8n.io",
+                      "_id": 569394745,
+                      "creatorRef": 618756,
+                      "sort": 569394745,
+                      "__v": 0,
+                      "collectionId": 34146645
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop7": [
+          {
+            "startTime": 1683532115349,
+            "executionTime": 132,
+            "source": [
+              {
+                "previousNode": "Raindrop6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": 569394745,
+                      "link": "https://n8n.io/",
+                      "title": "Bookmark1683532115161",
+                      "excerpt": "",
+                      "note": "",
+                      "type": "link",
+                      "user": {
+                        "object": true
+                      },
+                      "cover": "",
+                      "tags": [
+                        "json array"
+                      ],
+                      "removed": false,
+                      "collection": {
+                        "object": true
+                      },
+                      "media": [
+                        "json array"
+                      ],
+                      "created": "2023-05-08T07:48:35.288Z",
+                      "lastUpdate": "2023-05-08T07:48:35.288Z",
+                      "domain": "n8n.io",
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "sort": 569394745,
+                      "highlights": [
+                        "json array"
+                      ],
+                      "collectionId": 34146645
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop8": [
+          {
+            "startTime": 1683532115482,
+            "executionTime": 175,
+            "source": [
+              {
+                "previousNode": "Raindrop7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": 569394745,
+                      "link": "https://n8n.io/",
+                      "domain": "n8n.io",
+                      "title": "UpdatedBookmark1683532115161",
+                      "excerpt": "",
+                      "note": "",
+                      "type": "link",
+                      "user": {
+                        "object": true
+                      },
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "cover": "",
+                      "media": [
+                        "json array"
+                      ],
+                      "tags": [
+                        "json array"
+                      ],
+                      "highlights": [
+                        "json array"
+                      ],
+                      "removed": false,
+                      "sort": 569394745,
+                      "created": "2023-05-08T07:48:35.288Z",
+                      "lastUpdate": "2023-05-08T07:48:35.624Z",
+                      "collection": {
+                        "object": true
+                      },
+                      "__v": 1,
+                      "collectionId": 34146645
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop9": [
+          {
+            "startTime": 1683532115658,
+            "executionTime": 143,
+            "source": [
+              {
+                "previousNode": "Raindrop8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": 569394745,
+                      "link": "https://n8n.io/",
+                      "title": "UpdatedBookmark1683532115161",
+                      "excerpt": "",
+                      "note": "",
+                      "type": "link",
+                      "user": {
+                        "object": true
+                      },
+                      "cover": "",
+                      "tags": [
+                        "json array"
+                      ],
+                      "removed": false,
+                      "collection": {
+                        "object": true
+                      },
+                      "media": [
+                        "json array"
+                      ],
+                      "created": "2023-05-08T07:48:35.288Z",
+                      "lastUpdate": "2023-05-08T07:48:35.624Z",
+                      "domain": "n8n.io",
+                      "creatorRef": {
+                        "object": true
+                      },
+                      "sort": 569394745,
+                      "highlights": [
+                        "json array"
+                      ],
+                      "collectionId": 34146645
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop11": [
+          {
+            "startTime": 1683532115802,
+            "executionTime": 272,
+            "source": [
+              {
+                "previousNode": "Raindrop9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "automation",
+                      "count": 4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop12": [
+          {
+            "startTime": 1683532116075,
+            "executionTime": 153,
+            "source": [
+              {
+                "previousNode": "Raindrop11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop10": [
+          {
+            "startTime": 1683532116228,
+            "executionTime": 178,
+            "source": [
+              {
+                "previousNode": "Raindrop12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Raindrop5": [
+          {
+            "startTime": 1683532116406,
+            "executionTime": 227,
+            "source": [
+              {
+                "previousNode": "Raindrop10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Raindrop5"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-05-08T07:48:33.974Z",
+  "stoppedAt": "2023-05-08T07:48:36.634Z",
+  "status": "running",
+  "finished": true
+}

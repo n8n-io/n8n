@@ -1,4 +1,6 @@
-import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
+import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
+
+import { type InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -16,7 +18,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -32,6 +34,8 @@ export interface FrontendSettings {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
@@ -80,13 +84,17 @@ export interface FrontendSettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+		oidc: {
+			loginEnabled: boolean;
+			loginUrl: string;
+			callbackUrl: string;
+		};
 		ldap: {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
 	};
 	publicApi: {
-		apiKeysPerUserLimit: number;
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
@@ -104,8 +112,11 @@ export interface FrontendSettings {
 	};
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	/** Whether multi-main mode is enabled and licensed for this main instance. */
+	isMultiMain: boolean;
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
 	};
@@ -123,6 +134,7 @@ export interface FrontendSettings {
 		sharing: boolean;
 		ldap: boolean;
 		saml: boolean;
+		oidc: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
@@ -135,6 +147,7 @@ export interface FrontendSettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		apiKeyScopes: boolean;
 		projects: {
 			team: {
 				limit: number;
@@ -149,9 +162,6 @@ export interface FrontendSettings {
 	};
 	variables: {
 		limit: number;
-	};
-	expressions: {
-		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;
@@ -181,5 +191,14 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	partialExecution: {
 		version: 1 | 2;
+	};
+	insights: {
+		enabled: boolean;
+		summary: boolean;
+		dashboard: boolean;
+		dateRanges: InsightsDateRange[];
+	};
+	evaluation: {
+		quota: number;
 	};
 }

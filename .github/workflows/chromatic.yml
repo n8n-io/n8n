@@ -18,13 +18,13 @@ jobs:
     if: github.event.review.state == 'approved'
     steps:
       - name: Check out current commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
 
       - name: Determine changed files
-        uses: tomi/paths-filter-action@v3.0.2
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
         id: changed
         if: github.event_name == 'pull_request_review'
         with:
@@ -52,23 +52,23 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - run: pnpm install --frozen-lockfile
 
       - name: Publish to Chromatic
-        uses: chromaui/action@v11
+        uses: chromaui/action@c93e0bc3a63aa176e14a75b61a31847cbfdd341c # v11
         id: chromatic_tests
         continue-on-error: true
         with:
@@ -79,7 +79,7 @@ jobs:
 
       - name: Success comment
         if: steps.chromatic_tests.outcome == 'success' && github.ref != 'refs/heads/master'
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -89,7 +89,7 @@ jobs:
 
       - name: Fail comment
         if: steps.chromatic_tests.outcome != 'success' && github.ref != 'refs/heads/master'
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GITHUB_TOKEN }}

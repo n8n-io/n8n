@@ -40,7 +40,7 @@ jobs:
         shell: bash
 
   run-e2e-tests:
-    name: E2E [Electron/Node 18]
+    name: E2E
     uses: ./.github/workflows/e2e-reusable.yml
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
@@ -56,7 +56,7 @@ jobs:
     if: ${{ github.event.inputs.success-url != '' }}
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

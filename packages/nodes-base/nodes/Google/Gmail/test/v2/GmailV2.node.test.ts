@@ -1,13 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import nock from 'nock';
 
-import { testWorkflows } from '@test/nodes/Helpers';
-
-import labels from './fixtures/labels.json';
-import messages from './fixtures/messages.json';
 import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOptions';
+import labels from '../fixtures/labels.json';
+import messages from '../fixtures/messages.json';
 
 describe('Test Gmail Node v2', () => {
 	beforeAll(() => {
@@ -129,10 +128,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['messages.workflow.json'],
 		});
 	});
 
@@ -154,10 +153,10 @@ describe('Test Gmail Node v2', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['labels.workflow.json'],
 		});
 	});
 
@@ -244,10 +243,10 @@ describe('Test Gmail Node v2', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['drafts.workflow.json'],
 		});
 	});
 
@@ -307,10 +306,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['threads.workflow.json'],
 		});
 	});
 

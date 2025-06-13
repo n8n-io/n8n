@@ -1,22 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "price_unit": {
-            "type": "string"
-        },
-        "parent_call_sid": {
-            "type": "null"
-        },
-        "caller_name": {
-            "type": "null"
-        },
-        "duration": {
-            "type": "null"
-        },
-        "from": {
-            "type": "string"
-        },
-        "to": {
+        "account_sid": {
             "type": "string"
         },
         "annotation": {
@@ -25,26 +10,32 @@
         "answered_by": {
             "type": "null"
         },
-        "sid": {
-            "type": "string"
-        },
-        "queue_time": {
-            "type": "string"
-        },
-        "price": {
-            "type": "null"
-        },
         "api_version": {
             "type": "string"
         },
-        "status": {
-            "type": "string"
+        "caller_name": {
+            "type": "null"
+        },
+        "date_created": {
+            "type": "null"
+        },
+        "date_updated": {
+            "type": "null"
         },
         "direction": {
             "type": "string"
         },
-        "start_time": {
+        "duration": {
             "type": "null"
+        },
+        "end_time": {
+            "type": "null"
+        },
+        "forwarded_from": {
+            "type": "null"
+        },
+        "from": {
+            "type": "string"
         },
         "from_formatted": {
             "type": "string"
@@ -52,55 +43,71 @@
         "group_sid": {
             "type": "null"
         },
-        "trunk_sid": {
+        "parent_call_sid": {
             "type": "null"
         },
-        "forwarded_from": {
+        "price": {
             "type": "null"
         },
-        "uri": {
+        "price_unit": {
             "type": "string"
         },
-        "account_sid": {
+        "queue_time": {
             "type": "string"
         },
-        "end_time": {
+        "sid": {
+            "type": "string"
+        },
+        "start_time": {
             "type": "null"
         },
-        "to_formatted": {
+        "status": {
             "type": "string"
         },
         "subresource_uris": {
             "type": "object",
             "properties": {
+                "events": {
+                    "type": "string"
+                },
                 "notifications": {
-                    "type": "string"
-                },
-                "user_defined_messages": {
-                    "type": "string"
-                },
-                "transcriptions": {
-                    "type": "string"
-                },
-                "recordings": {
-                    "type": "string"
-                },
-                "streams": {
                     "type": "string"
                 },
                 "payments": {
                     "type": "string"
                 },
-                "user_defined_message_subscriptions": {
+                "recordings": {
                     "type": "string"
                 },
                 "siprec": {
                     "type": "string"
                 },
-                "events": {
+                "streams": {
+                    "type": "string"
+                },
+                "transcriptions": {
+                    "type": "string"
+                },
+                "user_defined_message_subscriptions": {
+                    "type": "string"
+                },
+                "user_defined_messages": {
                     "type": "string"
                 }
             }
+        },
+        "to": {
+            "type": "string"
+        },
+        "to_formatted": {
+            "type": "string"
+        },
+        "trunk_sid": {
+            "type": "null"
+        },
+        "uri": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

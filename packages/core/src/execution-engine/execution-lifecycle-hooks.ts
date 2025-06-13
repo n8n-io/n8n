@@ -5,14 +5,19 @@ import type {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-export type ExecutionLifecyleHookHandlers = {
+export type ExecutionLifecycleHookHandlers = {
 	nodeExecuteBefore: Array<
-		(this: ExecutionLifecycleHooks, nodeName: string) => Promise<void> | void
+		(
+			this: ExecutionLifecycleHooks,
+			nodeName: string,
+			data: ITaskStartedData,
+		) => Promise<void> | void
 	>;
 
 	nodeExecuteAfter: Array<
@@ -51,7 +56,7 @@ s	 */
 	>;
 };
 
-export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
+export type ExecutionLifecycleHookName = keyof ExecutionLifecycleHookHandlers;
 
 /**
  * Contains hooks that trigger at specific events in an execution's lifecycle. Every hook has an array of callbacks to run.
@@ -72,7 +77,7 @@ export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
  * ```
  */
 export class ExecutionLifecycleHooks {
-	readonly handlers: ExecutionLifecyleHookHandlers = {
+	readonly handlers: ExecutionLifecycleHookHandlers = {
 		nodeExecuteAfter: [],
 		nodeExecuteBefore: [],
 		nodeFetchedData: [],
@@ -87,18 +92,18 @@ export class ExecutionLifecycleHooks {
 		readonly workflowData: IWorkflowBase,
 	) {}
 
-	addHandler<Hook extends keyof ExecutionLifecyleHookHandlers>(
+	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(
 		hookName: Hook,
-		...handlers: Array<ExecutionLifecyleHookHandlers[Hook][number]>
+		...handlers: Array<ExecutionLifecycleHookHandlers[Hook][number]>
 	): void {
 		// @ts-expect-error FIX THIS
 		this.handlers[hookName].push(...handlers);
 	}
 
 	async runHook<
-		Hook extends keyof ExecutionLifecyleHookHandlers,
+		Hook extends keyof ExecutionLifecycleHookHandlers,
 		Params extends unknown[] = Parameters<
-			Exclude<ExecutionLifecyleHookHandlers[Hook], undefined>[number]
+			Exclude<ExecutionLifecycleHookHandlers[Hook], undefined>[number]
 		>,
 	>(hookName: Hook, parameters: Params) {
 		const hooks = this.handlers[hookName];
@@ -109,11 +114,5 @@ export class ExecutionLifecycleHooks {
 			) => Promise<void>;
 			await typedHookFunction.apply(this, parameters);
 		}
-	}
-}
-
-declare module 'n8n-workflow' {
-	interface IWorkflowExecuteAdditionalData {
-		hooks?: ExecutionLifecycleHooks;
 	}
 }

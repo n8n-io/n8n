@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

@@ -10,20 +10,11 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
             "type": "string"
-        },
-        "AccountId": {
-            "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 4
 }

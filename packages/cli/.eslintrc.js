@@ -1,10 +1,10 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/node'],
+	extends: ['@n8n/eslint-config/node'],
 
 	...sharedOptions(__dirname),
 
@@ -12,11 +12,7 @@ module.exports = {
 		project: './tsconfig.json',
 	},
 
-	ignorePatterns: [
-		'jest.config.js',
-		// TODO: Remove these
-		'src/databases/ormconfig.ts',
-	],
+	ignorePatterns: ['jest.config.js'],
 
 	rules: {
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
@@ -27,7 +23,6 @@ module.exports = {
 		complexity: 'error',
 
 		// TODO: Remove this
-		'import/no-cycle': 'warn',
 		'import/extensions': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/no-explicit-any': 'warn',
@@ -41,13 +36,12 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['./src/databases/migrations/**/*.ts'],
-			rules: {
-				'unicorn/filename-case': 'off',
-			},
-		},
-		{
-			files: ['./src/databases/**/*.ts', './test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			files: [
+				'./src/databases/**/*.ts',
+				'./src/modules/**/*.ts',
+				'./test/**/*.ts',
+				'./src/**/__tests__/**/*.ts',
+			],
 			rules: {
 				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
 			},

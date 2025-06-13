@@ -9,9 +9,9 @@ import type {
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import { encodingForModel } from '@langchain/core/utils/tiktoken';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
-import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
 
@@ -35,7 +35,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// This is crucial for the handleLLMError handler to work correctly (it should be called before the error is propagated to the root node)
 	awaitHandlers = true;
 
-	connectionType = NodeConnectionType.AiLanguageModel;
+	connectionType = NodeConnectionTypes.AiLanguageModel;
 
 	promptTokensEstimate = 0;
 

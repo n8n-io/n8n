@@ -1,7 +1,8 @@
+import { LicenseState } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -9,16 +10,16 @@ import { URL } from 'url';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { ControllerRegistry } from '@/decorators';
+import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
+import * as testModules from '@test-integration/test-modules';
 
-import { mockInstance } from '../../../shared/mocking';
+import { mockInstance, mockLogger } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import { LicenseMocker } from '../license';
 import * as testDb from '../test-db';
@@ -91,6 +92,7 @@ export const setupTestServer = ({
 	endpointGroups,
 	enabledFeatures,
 	quotas,
+	modules,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -101,7 +103,7 @@ export const setupTestServer = ({
 	});
 
 	// Mock all telemetry and logging
-	mockInstance(Logger);
+	mockLogger();
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
@@ -120,12 +122,15 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
+		if (modules) await testModules.load(modules);
 		await testDb.init();
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
+		testServer.license.mockLicenseState(Container.get(LicenseState));
+
 		if (enabledFeatures) {
 			testServer.license.setDefaults({
 				features: enabledFeatures,
@@ -248,10 +253,6 @@ export const setupTestServer = ({
 						await import('@/controllers/tags.controller');
 						break;
 
-					case 'externalSecrets':
-						await import('@/external-secrets.ee/external-secrets.controller.ee');
-						break;
-
 					case 'workflowHistory':
 						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
@@ -281,13 +282,20 @@ export const setupTestServer = ({
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation.ee/metrics.controller');
-						await import('@/evaluation.ee/test-definitions.controller.ee');
 						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+
+					case 'folder':
+						await import('@/controllers/folder.controller');
+
+					case 'externalSecrets':
+						await import('@/modules/external-secrets.ee/external-secrets.module');
+
+					case 'insights':
+						await import('@/modules/insights/insights.module');
 				}
 			}
 

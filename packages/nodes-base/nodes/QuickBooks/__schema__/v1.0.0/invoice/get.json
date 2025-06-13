@@ -4,41 +4,67 @@
         "AllowIPNPayment": {
             "type": "boolean"
         },
-        "AllowOnlinePayment": {
+        "AllowOnlineACHPayment": {
             "type": "boolean"
         },
         "AllowOnlineCreditCardPayment": {
             "type": "boolean"
         },
-        "AllowOnlineACHPayment": {
+        "AllowOnlinePayment": {
             "type": "boolean"
         },
-        "domain": {
-            "type": "string"
-        },
-        "sparse": {
+        "ApplyTaxAfterDiscount": {
             "type": "boolean"
         },
-        "Id": {
-            "type": "string"
-        },
-        "SyncToken": {
-            "type": "string"
-        },
-        "MetaData": {
+        "BillAddr": {
             "type": "object",
             "properties": {
-                "CreateTime": {
+                "City": {
                     "type": "string"
                 },
-                "LastUpdatedTime": {
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "PostalCode": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
+            }
+        },
+        "BillEmail": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "type": "string"
+                }
+            }
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "CustomerRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         },
         "CustomField": {
             "type": "array",
@@ -54,34 +80,78 @@
                     "Type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "DefinitionId",
-                    "Name",
-                    "Type"
-                ]
+                }
             }
         },
         "DocNumber": {
             "type": "string"
         },
-        "TxnDate": {
+        "domain": {
             "type": "string"
         },
-        "CurrencyRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
+        "DueDate": {
+            "type": "string"
+        },
+        "EmailStatus": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Description": {
+                        "type": "string"
+                    },
+                    "DetailType": {
+                        "type": "string"
+                    },
+                    "Id": {
+                        "type": "string"
+                    },
+                    "LineNum": {
+                        "type": "integer"
+                    },
+                    "SalesItemLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "ItemAccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "ItemRef": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
+            }
         },
         "LinkedTxn": {
             "type": "array",
@@ -94,152 +164,103 @@
                     "TxnType": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "TxnId",
-                    "TxnType"
-                ]
+                }
             }
         },
-        "Line": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "Id": {
-                        "type": "string"
-                    },
-                    "LineNum": {
-                        "type": "integer"
-                    },
-                    "Description": {
-                        "type": "string"
-                    },
-                    "DetailType": {
-                        "type": "string"
-                    },
-                    "SalesItemLineDetail": {
-                        "type": "object",
-                        "properties": {
-                            "ItemRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value"
-                                ]
-                            },
-                            "TaxCodeRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "ItemRef"
-                        ]
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastModifiedByRef": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
                     }
                 },
-                "required": [
-                    "Amount",
-                    "DetailType"
-                ]
-            }
-        },
-        "CustomerRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
+                "LastUpdatedTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
+            }
         },
-        "BillAddr": {
+        "PrintStatus": {
+            "type": "string"
+        },
+        "SalesTermRef": {
             "type": "object",
             "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
                 "Id": {
                     "type": "string"
                 },
                 "Line1": {
                     "type": "string"
                 },
-                "City": {
-                    "type": "string"
-                },
                 "PostalCode": {
                     "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "Id"
-            ]
+            }
         },
-        "DueDate": {
-            "type": "string"
-        },
-        "ApplyTaxAfterDiscount": {
+        "sparse": {
             "type": "boolean"
         },
-        "PrintStatus": {
+        "SyncToken": {
             "type": "string"
         },
-        "EmailStatus": {
+        "TxnDate": {
             "type": "string"
         },
-        "BillEmail": {
+        "TxnTaxDetail": {
             "type": "object",
             "properties": {
-                "Address": {
-                    "type": "string"
+                "TaxLine": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "DetailType": {
+                                "type": "string"
+                            },
+                            "TaxLineDetail": {
+                                "type": "object",
+                                "properties": {
+                                    "PercentBased": {
+                                        "type": "boolean"
+                                    },
+                                    "TaxRateRef": {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-            },
-            "required": [
-                "Address"
-            ]
+            }
         }
     },
-    "required": [
-        "AllowIPNPayment",
-        "AllowOnlinePayment",
-        "AllowOnlineCreditCardPayment",
-        "AllowOnlineACHPayment",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData",
-        "CustomField",
-        "TxnDate",
-        "CurrencyRef",
-        "LinkedTxn",
-        "Line",
-        "CustomerRef",
-        "DueDate",
-        "TotalAmt",
-        "PrintStatus",
-        "EmailStatus",
-        "Balance"
-    ]
+    "version": 1
 }

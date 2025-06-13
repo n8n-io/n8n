@@ -6,12 +6,10 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 } from '../constants';
-import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
-const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
@@ -22,7 +20,11 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME, {
+			method: 'right-click',
+			anchor: 'topLeft',
+		});
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
@@ -92,19 +94,10 @@ describe('Undo/Redo', () => {
 			.then(($node) => {
 				const { x: x1, y: y1 } = $node[0].getBoundingClientRect();
 
-				cy.ifCanvasVersion(
-					() => {
-						cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
-							clickToFinish: true,
-						});
-					},
-					() => {
-						cy.drag(getCanvasNodes().last(), [50, 150], {
-							realMouse: true,
-							abs: true,
-						});
-					},
-				);
+				cy.drag(getCanvasNodes().last(), [50, 150], {
+					realMouse: true,
+					abs: true,
+				});
 
 				getCanvasNodes()
 					.last()
@@ -216,6 +209,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 
+		cy.wait(1000); // Clipboard paste is throttled
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -252,11 +246,11 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
 		// Try while prompt is open
-		messageBox.getters.header().click();
+		WorkflowPage.getters.inputURLImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		// Close prompt and try again
-		messageBox.actions.cancel();
+		WorkflowPage.getters.cancelActionImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});

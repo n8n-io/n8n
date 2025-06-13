@@ -1,6 +1,8 @@
+import { Logger } from '@n8n/backend-common';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { Logger } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -10,10 +12,8 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -121,12 +121,6 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
-
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -178,7 +172,7 @@ export class WaitingWebhooks implements IWebhookManager {
 					webhook.httpMethod === req.method &&
 					webhook.path === (suffix ?? '') &&
 					webhook.webhookDescription.restartWebhook === true &&
-					(webhook.webhookDescription.isForm || false) === this.includeForms,
+					(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
 			);
 
 		if (webhookData === undefined) {
@@ -213,13 +207,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		const runExecutionData = execution.data;
 
 		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,
 				workflowStartNode,
-				executionMode,
+				execution.mode,
 				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,

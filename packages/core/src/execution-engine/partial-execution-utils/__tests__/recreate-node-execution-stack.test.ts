@@ -16,7 +16,7 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 } from 'n8n-workflow';
-import { NodeConnectionType, type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type IPinData, type IRunData } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -516,7 +516,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				1, // inputIndex
 				executionData,
 			);
@@ -524,7 +524,7 @@ describe('addWaitingExecution', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [undefined, executionData],
+						[NodeConnectionTypes.Main]: [undefined, executionData],
 					},
 				},
 			});
@@ -536,7 +536,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				0, // inputIndex
 				executionData,
 			);
@@ -544,7 +544,7 @@ describe('addWaitingExecution', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [executionData, executionData],
+						[NodeConnectionTypes.Main]: [executionData, executionData],
 					},
 				},
 			});
@@ -556,7 +556,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.AiMemory,
+				NodeConnectionTypes.AiMemory,
 				0, // inputIndex
 				executionData,
 			);
@@ -564,8 +564,8 @@ describe('addWaitingExecution', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [executionData, executionData],
-						[NodeConnectionType.AiMemory]: [executionData],
+						[NodeConnectionTypes.Main]: [executionData, executionData],
+						[NodeConnectionTypes.AiMemory]: [executionData],
 					},
 				},
 			});
@@ -577,7 +577,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName1,
 				0, // runIndex
-				NodeConnectionType.AiChain,
+				NodeConnectionTypes.AiChain,
 				0, // inputIndex
 				executionData,
 			);
@@ -585,11 +585,11 @@ describe('addWaitingExecution', () => {
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [executionData],
+						[NodeConnectionTypes.AiChain]: [executionData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [executionData, executionData],
-						[NodeConnectionType.AiMemory]: [executionData],
+						[NodeConnectionTypes.Main]: [executionData, executionData],
+						[NodeConnectionTypes.AiMemory]: [executionData],
 					},
 				},
 			});
@@ -601,7 +601,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName2,
 				0, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				2, // inputIndex
 				executionData,
 			);
@@ -609,17 +609,17 @@ describe('addWaitingExecution', () => {
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [executionData],
+						[NodeConnectionTypes.AiChain]: [executionData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [executionData, executionData],
-						[NodeConnectionType.AiMemory]: [executionData],
+						[NodeConnectionTypes.Main]: [executionData, executionData],
+						[NodeConnectionTypes.AiMemory]: [executionData],
 					},
 				},
 				[nodeName2]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.Main]: [undefined, undefined, executionData],
+						[NodeConnectionTypes.Main]: [undefined, undefined, executionData],
 					},
 				},
 			});
@@ -631,7 +631,7 @@ describe('addWaitingExecution', () => {
 				waitingExecution,
 				nodeName2,
 				0, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				0, // inputIndex
 				null,
 			);
@@ -639,17 +639,17 @@ describe('addWaitingExecution', () => {
 				[nodeName2]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.Main]: [null, undefined, executionData],
+						[NodeConnectionTypes.Main]: [null, undefined, executionData],
 					},
 				},
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [executionData],
+						[NodeConnectionTypes.AiChain]: [executionData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [executionData, executionData],
-						[NodeConnectionType.AiMemory]: [executionData],
+						[NodeConnectionTypes.Main]: [executionData, executionData],
+						[NodeConnectionTypes.AiMemory]: [executionData],
 					},
 				},
 			});
@@ -674,7 +674,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				1, // inputIndex
 				sourceData,
 			);
@@ -682,7 +682,7 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [undefined, sourceData],
+						[NodeConnectionTypes.Main]: [undefined, sourceData],
 					},
 				},
 			});
@@ -694,7 +694,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				0, // inputIndex
 				sourceData,
 			);
@@ -702,7 +702,7 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [sourceData, sourceData],
+						[NodeConnectionTypes.Main]: [sourceData, sourceData],
 					},
 				},
 			});
@@ -714,7 +714,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName1,
 				1, // runIndex
-				NodeConnectionType.AiMemory,
+				NodeConnectionTypes.AiMemory,
 				0, // inputIndex
 				sourceData,
 			);
@@ -722,8 +722,8 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					1: {
-						[NodeConnectionType.Main]: [sourceData, sourceData],
-						[NodeConnectionType.AiMemory]: [sourceData],
+						[NodeConnectionTypes.Main]: [sourceData, sourceData],
+						[NodeConnectionTypes.AiMemory]: [sourceData],
 					},
 				},
 			});
@@ -735,7 +735,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName1,
 				0, // runIndex
-				NodeConnectionType.AiChain,
+				NodeConnectionTypes.AiChain,
 				0, // inputIndex
 				sourceData,
 			);
@@ -743,11 +743,11 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [sourceData],
+						[NodeConnectionTypes.AiChain]: [sourceData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [sourceData, sourceData],
-						[NodeConnectionType.AiMemory]: [sourceData],
+						[NodeConnectionTypes.Main]: [sourceData, sourceData],
+						[NodeConnectionTypes.AiMemory]: [sourceData],
 					},
 				},
 			});
@@ -759,7 +759,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName2,
 				0, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				2, // inputIndex
 				sourceData,
 			);
@@ -767,17 +767,17 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [sourceData],
+						[NodeConnectionTypes.AiChain]: [sourceData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [sourceData, sourceData],
-						[NodeConnectionType.AiMemory]: [sourceData],
+						[NodeConnectionTypes.Main]: [sourceData, sourceData],
+						[NodeConnectionTypes.AiMemory]: [sourceData],
 					},
 				},
 				[nodeName2]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.Main]: [undefined, undefined, sourceData],
+						[NodeConnectionTypes.Main]: [undefined, undefined, sourceData],
 					},
 				},
 			});
@@ -789,7 +789,7 @@ describe('addWaitingExecutionSource', () => {
 				waitingExecutionSource,
 				nodeName2,
 				0, // runIndex
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				0, // inputIndex
 				null,
 			);
@@ -797,17 +797,17 @@ describe('addWaitingExecutionSource', () => {
 				[nodeName1]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.AiChain]: [sourceData],
+						[NodeConnectionTypes.AiChain]: [sourceData],
 					},
 					1: {
-						[NodeConnectionType.Main]: [sourceData, sourceData],
-						[NodeConnectionType.AiMemory]: [sourceData],
+						[NodeConnectionTypes.Main]: [sourceData, sourceData],
+						[NodeConnectionTypes.AiMemory]: [sourceData],
 					},
 				},
 				[nodeName2]: {
 					// runIndex
 					0: {
-						[NodeConnectionType.Main]: [null, undefined, sourceData],
+						[NodeConnectionTypes.Main]: [null, undefined, sourceData],
 					},
 				},
 			});

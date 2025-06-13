@@ -8,7 +8,7 @@
 // PD denotes that the node has pinned data
 
 import type { IPinData } from 'n8n-workflow';
-import { NodeConnectionType, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -56,14 +56,14 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
 		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 1,
 			to: node,
 		});
@@ -73,7 +73,7 @@ describe('getSourceDataGroups', () => {
 		expect(group2.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
@@ -120,14 +120,14 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
 		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 1,
 			to: node,
 		});
@@ -137,7 +137,7 @@ describe('getSourceDataGroups', () => {
 		expect(group2.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
@@ -184,14 +184,14 @@ describe('getSourceDataGroups', () => {
 			expect(group1.connections[0]).toEqual({
 				from: source2,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node,
 			});
 			expect(group1.connections[1]).toEqual({
 				from: source3,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 1,
 				to: node,
 			});
@@ -205,7 +205,7 @@ describe('getSourceDataGroups', () => {
 			expect(group1.connections[0]).toEqual({
 				from: source1,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node,
 			});
@@ -261,14 +261,14 @@ describe('getSourceDataGroups', () => {
 			expect(group1.connections[0]).toEqual({
 				from: source2,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node,
 			});
 			expect(group1.connections[1]).toEqual({
 				from: source3,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 1,
 				to: node,
 			});
@@ -282,14 +282,14 @@ describe('getSourceDataGroups', () => {
 			expect(group1.connections[0]).toEqual({
 				from: source1,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node,
 			});
 			expect(group1.connections[1]).toEqual({
 				from: source4,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 1,
 				to: node,
 			});
@@ -341,14 +341,14 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
 		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 1,
 			to: node,
 		});
@@ -358,7 +358,7 @@ describe('getSourceDataGroups', () => {
 		expect(group2.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 0,
 			to: node,
 		});
@@ -461,7 +461,7 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: -1,
 			to: node,
 		});
@@ -490,7 +490,7 @@ describe('getSourceDataGroups', () => {
 		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			inputIndex: 1,
 			to: node,
 		});

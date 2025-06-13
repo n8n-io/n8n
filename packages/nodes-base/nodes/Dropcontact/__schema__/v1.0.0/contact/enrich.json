@@ -1,19 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
         "civility": {
             "type": "string"
         },
-        "linkedin": {
+        "company": {
+            "type": "string"
+        },
+        "company_linkedin": {
+            "type": "string"
+        },
+        "country": {
             "type": "string"
         },
         "email": {
@@ -27,30 +24,48 @@
                     "qualification": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "email",
-                    "qualification"
-                ]
+                }
             }
         },
-        "company": {
+        "first_name": {
             "type": "string"
         },
-        "website": {
+        "full_name": {
             "type": "string"
         },
-        "country": {
+        "last_name": {
             "type": "string"
         },
-        "company_linkedin": {
+        "linkedin": {
+            "type": "string"
+        },
+        "naf5_code": {
+            "type": "string"
+        },
+        "naf5_des": {
+            "type": "string"
+        },
+        "nb_employees": {
             "type": "string"
         },
         "phone": {
             "type": "string"
         },
-        "nb_employees": {
+        "siren": {
+            "type": "string"
+        },
+        "siret": {
+            "type": "string"
+        },
+        "siret_address": {
+            "type": "string"
+        },
+        "vat": {
+            "type": "string"
+        },
+        "website": {
             "type": "string"
         }
-    }
+    },
+    "version": 3
 }

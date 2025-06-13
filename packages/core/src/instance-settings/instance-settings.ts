@@ -1,3 +1,7 @@
+import { inTest, Logger } from '@n8n/backend-common';
+import { InstanceSettingsConfig } from '@n8n/config';
+import type { InstanceRole, InstanceType } from '@n8n/constants';
+import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
@@ -5,10 +9,7 @@ import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
 
-import { Memoized } from '@/decorators';
-import { Logger } from '@/logging/logger';
-
-import { InstanceSettingsConfig } from './instance-settings-config';
+import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
 
@@ -21,12 +22,6 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
-
-type InstanceRole = 'unset' | 'leader' | 'follower';
-
-export type InstanceType = 'main' | 'webhook' | 'worker';
-
-const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
 export class InstanceSettings {
@@ -46,7 +41,7 @@ export class InstanceSettings {
 
 	readonly enforceSettingsFilePermissions = this.loadEnforceSettingsFilePermissionsFlag();
 
-	private settings = this.loadOrCreate();
+	private settings: Settings;
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
@@ -54,7 +49,7 @@ export class InstanceSettings {
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
 	 */
-	readonly instanceId = this.generateInstanceId();
+	readonly instanceId: string;
 
 	readonly instanceType: InstanceType;
 
@@ -62,12 +57,12 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2];
-		this.instanceType = ['webhook', 'worker'].includes(command)
-			? (command as InstanceType)
-			: 'main';
+		const command = process.argv[2] as InstanceType;
+		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${nanoid()}`;
+		this.settings = this.loadOrCreate();
+		this.instanceId = this.generateInstanceId();
 	}
 
 	/**
@@ -177,6 +172,7 @@ export class InstanceSettings {
 	 * settings file with an auto-generated encryption key.
 	 */
 	private loadOrCreate(): Settings {
+		const encryptionKeyFromEnv = process.env.N8N_ENCRYPTION_KEY;
 		if (existsSync(this.settingsFile)) {
 			const content = readFileSync(this.settingsFile, 'utf8');
 			this.ensureSettingsFilePermissions();
@@ -185,11 +181,11 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) this.logger.info(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 
-			if (process.env.N8N_ENCRYPTION_KEY && encryptionKey !== process.env.N8N_ENCRYPTION_KEY) {
+			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
 				throw new ApplicationError(
 					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
 				);
@@ -198,19 +194,25 @@ export class InstanceSettings {
 			return { encryptionKey, tunnelSubdomain };
 		}
 
+		if (!encryptionKeyFromEnv) {
+			if (this.instanceType === 'worker') {
+				throw new WorkerMissingEncryptionKey();
+			}
+
+			if (!inTest) {
+				this.logger.info(
+					`No encryption key found - Auto-generating and saving to: ${this.settingsFile}`,
+				);
+			}
+		}
+
 		mkdirSync(this.n8nFolder, { recursive: true });
 
-		const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
+		const encryptionKey = encryptionKeyFromEnv ?? randomBytes(24).toString('base64');
 
 		const settings: Settings = { encryptionKey };
 
 		this.save(settings);
-
-		if (!inTest && !process.env.N8N_ENCRYPTION_KEY) {
-			this.logger.info(
-				`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`,
-			);
-		}
 		this.ensureSettingsFilePermissions();
 
 		return settings;

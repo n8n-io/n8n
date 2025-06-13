@@ -4,30 +4,6 @@
         "@microsoft.graph.downloadUrl": {
             "type": "string"
         },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "cTag": {
-            "type": "string"
-        },
-        "eTag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "webUrl": {
-            "type": "string"
-        },
         "createdBy": {
             "type": "object",
             "properties": {
@@ -37,26 +13,59 @@
                         "displayName": {
                             "type": "string"
                         },
-                        "id": {
-                            "type": "string"
-                        },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "user"
-            ]
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "file": {
+            "type": "object",
+            "properties": {
+                "hashes": {
+                    "type": "object",
+                    "properties": {
+                        "quickXorHash": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "mimeType": {
+                    "type": "string"
+                }
+            }
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
         },
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "user": {
+                "application": {
                     "type": "object",
                     "properties": {
                         "displayName": {
@@ -64,19 +73,30 @@
                         },
                         "id": {
                             "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "user"
-            ]
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
         },
         "parentReference": {
             "type": "object",
@@ -99,51 +119,7 @@
                 "siteId": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "driveId",
-                "driveType",
-                "id",
-                "path"
-            ]
-        },
-        "file": {
-            "type": "object",
-            "properties": {
-                "mimeType": {
-                    "type": "string"
-                },
-                "hashes": {
-                    "type": "object",
-                    "properties": {
-                        "quickXorHash": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "quickXorHash"
-                    ]
-                }
-            },
-            "required": [
-                "mimeType",
-                "hashes"
-            ]
-        },
-        "fileSystemInfo": {
-            "type": "object",
-            "properties": {
-                "createdDateTime": {
-                    "type": "string"
-                },
-                "lastModifiedDateTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
+            }
         },
         "shared": {
             "type": "object",
@@ -151,24 +127,14 @@
                 "scope": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "scope"
-            ]
+            }
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
         }
     },
-    "required": [
-        "createdDateTime",
-        "cTag",
-        "eTag",
-        "id",
-        "lastModifiedDateTime",
-        "name",
-        "size",
-        "webUrl",
-        "createdBy",
-        "lastModifiedBy",
-        "parentReference",
-        "fileSystemInfo"
-    ]
+    "version": 1
 }

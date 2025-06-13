@@ -1,6 +1,6 @@
 import * as a from 'assert';
-import type { IConnections, INode, WorkflowParameters } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IConnections, INode, WorkflowParameters, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 export type GraphConnection = {
 	from: INode;
@@ -48,6 +48,25 @@ export class DirectedGraph {
 
 	getNodes() {
 		return new Map(this.nodes.entries());
+	}
+
+	/**
+	 * Returns a set of nodes whose names match the provided array of names.
+	 *
+	 * Only nodes that exist in the graph will be included in the result.
+	 */
+	getNodesByNames(names: string[]) {
+		const nodes: Set<INode> = new Set();
+
+		for (const name of names) {
+			const node = this.nodes.get(name);
+
+			if (node) {
+				nodes.add(node);
+			}
+		}
+
+		return nodes;
 	}
 
 	getConnections(filter: { to?: INode } = {}) {
@@ -167,7 +186,7 @@ export class DirectedGraph {
 
 		const connection: GraphConnection = {
 			...connectionInput,
-			type: connectionInput.type ?? NodeConnectionType.Main,
+			type: connectionInput.type ?? NodeConnectionTypes.Main,
 			outputIndex: connectionInput.outputIndex ?? 0,
 			inputIndex: connectionInput.inputIndex ?? 0,
 		};

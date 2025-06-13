@@ -10,6 +10,7 @@ export class ToolWorkflow extends VersionedNodeType {
 			displayName: 'Call n8n Sub-Workflow Tool',
 			name: 'toolWorkflow',
 			icon: 'fa:network-wired',
+			iconColor: 'black',
 			group: ['transform'],
 			description:
 				'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
@@ -27,7 +28,7 @@ export class ToolWorkflow extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -36,6 +37,8 @@ export class ToolWorkflow extends VersionedNodeType {
 			1.2: new ToolWorkflowV1(baseDescription),
 			1.3: new ToolWorkflowV1(baseDescription),
 			2: new ToolWorkflowV2(baseDescription),
+			2.1: new ToolWorkflowV2(baseDescription),
+			2.2: new ToolWorkflowV2(baseDescription),
 		};
 		super(nodeVersions, baseDescription);
 	}

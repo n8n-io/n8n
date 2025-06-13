@@ -5,7 +5,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 2
 }

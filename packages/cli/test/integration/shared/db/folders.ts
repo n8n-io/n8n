@@ -1,9 +1,9 @@
+import type { Folder } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { TagEntity } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { Folder } from '@/databases/entities/folder';
-import type { Project } from '@/databases/entities/project';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { randomName } from '@test-integration/random';
 
 export const createFolder = async (
@@ -20,7 +20,7 @@ export const createFolder = async (
 	const folder = await folderRepository.save(
 		folderRepository.create({
 			name: options.name ?? randomName(),
-			project,
+			homeProject: project,
 			parentFolder: options.parentFolder ?? null,
 			tags: options.tags ?? [],
 			updatedAt: options.updatedAt ?? new Date(),

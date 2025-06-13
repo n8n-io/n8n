@@ -17,11 +17,6 @@ on:
         required: false
         default: 'e2e/*'
         type: string
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node18.12.0-chrome107'
-        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -64,30 +59,48 @@ jobs:
         # "sha-5d3fe...35d3-time-1620841214"
         run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
 
-  install:
-    runs-on: ubuntu-latest
-    needs: ['prepare']
-    container:
-      image: cypress/${{ inputs.run-env }}
-      options: --user 1001
-    steps:
-      - uses: actions/checkout@v4.1.1
-        with:
-          ref: ${{ inputs.branch }}
-
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
+      - name: Calculate Git Ref 🤔
+        id: calculate_ref
         run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+          if [ -n "${{ inputs.pr_number }}" ]; then
+            echo "value=refs/pull/${{ inputs.pr_number }}/head" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          fi
+  install:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: ['prepare']
 
-      - uses: pnpm/action-setup@v4.0.0
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ steps.calculate_ref.outputs.value }}
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+
+      - name: Cache build artifacts
+        id: cache-build-artifacts
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+        with:
+          path: |
+            /home/runner/.cache/Cypress
+            /github/home/.pnpm-store
+            ./packages/**/dist
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
+        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        uses: cypress-io/github-action@v6.6.1
+        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           # Disable running of tests within install job
           runTests: false
@@ -95,23 +108,12 @@ jobs:
           build: pnpm build
 
       - name: Cypress install
+        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
         working-directory: cypress
         run: pnpm cypress:install
 
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4.2.0
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./packages/**/dist
-          key: ${{ github.sha }}-e2e
-
   testing:
-    runs-on: ubuntu-latest
-    container:
-      image: cypress/${{ inputs.run-env }}
-      options: --user 1001
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     needs: ['prepare', 'install']
     strategy:
       fail-fast: false
@@ -120,32 +122,33 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ steps.calculate_ref.outputs.value }}
 
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
-        run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
 
-      - uses: pnpm/action-setup@v4.0.0
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v4.2.0
+        id: cache-build-artifacts
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
-            /github/home/.cache
+            /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-e2e
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v6.6.1
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           working-directory: cypress
           install: false
@@ -160,11 +163,10 @@ jobs:
           spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
-          CYPRESS_NODE_VIEW_VERSION: 2
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable

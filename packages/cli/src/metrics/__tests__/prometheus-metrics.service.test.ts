@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -22,6 +23,8 @@ jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
 describe('PrometheusMetricsService', () => {
+	promClient.Counter.prototype.inc = jest.fn();
+
 	const globalConfig = mockInstance(GlobalConfig, {
 		endpoints: {
 			metrics: {
@@ -52,12 +55,14 @@ describe('PrometheusMetricsService', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = mock<EventService>();
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
+	const workflowRepository = mock<WorkflowRepository>();
 	const prometheusMetricsService = new PrometheusMetricsService(
 		mock(),
 		eventBus,
 		globalConfig,
 		eventService,
 		instanceSettings,
+		workflowRepository,
 	);
 
 	afterEach(() => {
@@ -75,6 +80,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 			);
 
 			await customPrometheusMetricsService.init(app);
@@ -145,6 +151,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
+				httpDurationMetricName: 'n8n_http_request_duration_seconds',
 				autoregister: false,
 				includeUp: false,
 				includePath: false,
@@ -154,8 +161,7 @@ describe('PrometheusMetricsService', () => {
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_last_activity',
-				help: 'last instance activity (backend request).',
-				labelNames: ['timestamp'],
+				help: 'last instance activity (backend request) in Unix time (seconds).',
 			});
 
 			expect(app.use).toHaveBeenCalledWith(
@@ -217,7 +223,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -230,9 +236,22 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
+		});
+
+		it('should setup active workflow count metric', async () => {
+			await prometheusMetricsService.init(app);
+
+			// First call is n8n version metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+				name: 'n8n_active_workflow_count',
+				help: 'Total number of active workflows.',
+				collect: expect.any(Function),
+			});
 		});
 	});
 });

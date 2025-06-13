@@ -1,3 +1,7 @@
+import type { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import type { InvalidAuthTokenRepository } from '@n8n/db';
+import type { UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -5,9 +9,6 @@ import jwt from 'jsonwebtoken';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import type { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
@@ -24,11 +25,13 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const user = mock<User>(userData);
+	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const authService = new AuthService(
+		globalConfig,
 		mock(),
 		mock(),
 		jwtService,
@@ -44,23 +47,46 @@ describe('AuthService', () => {
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 		jest.setSystemTime(now);
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 	});
 
 	describe('createJWTHash', () => {
 		it('should generate unique hashes', () => {
 			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
 			expect(
-				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
+				authService.createJWTHash(
+					mock<User>({ email: user.email, password: 'newPasswordHash', mfaEnabled: false }),
+				),
 			).toEqual('FVALtU7AE0');
 			expect(
 				authService.createJWTHash(
-					mock<User>({ email: 'test1@example.com', password: user.password }),
+					mock<User>({ email: 'test1@example.com', password: user.password, mfaEnabled: false }),
 				),
 			).toEqual('y8ha6X01jd');
+			expect(
+				authService.createJWTHash(
+					mock<User>({
+						email: user.email,
+						password: user.password,
+						mfaEnabled: true,
+						mfaSecret: 'secret',
+					}),
+				),
+			).toEqual('WUXEVFet9W');
+			expect(
+				authService.createJWTHash(
+					mock<User>({
+						email: user.email,
+						password: 'newPasswordHash',
+						mfaEnabled: true,
+						mfaSecret: 'secret',
+					}),
+				),
+			).toEqual('toYQYKufH6');
 		});
 	});
 
@@ -127,6 +153,33 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: true,
+			});
+		});
+	});
+
+	describe('issueCookie', () => {
+		const res = mock<Response>();
+		it('should issue a cookie with the correct options', () => {
+			authService.issueCookie(res, user, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
+		it('should allow changing cookie options', () => {
+			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
+
+			authService.issueCookie(res, user, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'none',
 				secure: false,
 			});
 		});
@@ -214,6 +267,10 @@ describe('AuthService', () => {
 				'user email does not match the one on the token',
 				{ ...userData, email: 'someone@example.com' },
 			],
+			[
+				'user mfa secret does not match the one on the token',
+				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
+			],
 		])('should throw if %s', async (_, data) => {
 			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
@@ -231,7 +288,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
-				secure: false,
+				secure: true,
 			});
 
 			const newToken = res.cookie.mock.calls[0].at(1);

@@ -1,79 +1,84 @@
 {
     "type": "object",
     "properties": {
+        "community_data": {
+            "type": "object",
+            "properties": {
+                "facebook_likes": {
+                    "type": "null"
+                },
+                "reddit_average_comments_48h": {
+                    "type": "integer"
+                },
+                "reddit_average_posts_48h": {
+                    "type": "integer"
+                },
+                "reddit_subscribers": {
+                    "type": "null"
+                }
+            }
+        },
+        "developer_data": {
+            "type": "object",
+            "properties": {
+                "closed_issues": {
+                    "type": "null"
+                },
+                "code_additions_deletions_4_weeks": {
+                    "type": "object",
+                    "properties": {
+                        "additions": {
+                            "type": "null"
+                        },
+                        "deletions": {
+                            "type": "null"
+                        }
+                    }
+                },
+                "commit_count_4_weeks": {
+                    "type": "null"
+                },
+                "forks": {
+                    "type": "null"
+                },
+                "pull_request_contributors": {
+                    "type": "null"
+                },
+                "pull_requests_merged": {
+                    "type": "null"
+                },
+                "stars": {
+                    "type": "null"
+                },
+                "subscribers": {
+                    "type": "null"
+                },
+                "total_issues": {
+                    "type": "null"
+                }
+            }
+        },
         "id": {
             "type": "string"
         },
-        "symbol": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
+        "image": {
+            "type": "object",
+            "properties": {
+                "small": {
+                    "type": "string"
+                },
+                "thumb": {
+                    "type": "string"
+                }
+            }
         },
         "localization": {
             "type": "object",
             "properties": {
-                "en": {
-                    "type": "string"
-                },
-                "de": {
-                    "type": "string"
-                },
-                "es": {
-                    "type": "string"
-                },
-                "fr": {
-                    "type": "string"
-                },
-                "it": {
-                    "type": "string"
-                },
-                "pl": {
-                    "type": "string"
-                },
-                "ro": {
-                    "type": "string"
-                },
-                "hu": {
-                    "type": "string"
-                },
-                "nl": {
-                    "type": "string"
-                },
-                "pt": {
-                    "type": "string"
-                },
-                "sv": {
-                    "type": "string"
-                },
-                "vi": {
-                    "type": "string"
-                },
-                "tr": {
-                    "type": "string"
-                },
-                "ru": {
-                    "type": "string"
-                },
-                "ja": {
-                    "type": "string"
-                },
-                "zh": {
-                    "type": "string"
-                },
-                "zh-tw": {
-                    "type": "string"
-                },
-                "ko": {
-                    "type": "string"
-                },
                 "ar": {
                     "type": "string"
                 },
-                "th": {
-                    "type": "string"
-                },
-                "id": {
+                "bg": {
                     "type": "string"
                 },
                 "cs": {
@@ -82,91 +87,97 @@
                 "da": {
                     "type": "string"
                 },
+                "de": {
+                    "type": "string"
+                },
                 "el": {
                     "type": "string"
                 },
-                "hi": {
+                "en": {
                     "type": "string"
                 },
-                "no": {
-                    "type": "string"
-                },
-                "sk": {
-                    "type": "string"
-                },
-                "uk": {
-                    "type": "string"
-                },
-                "he": {
+                "es": {
                     "type": "string"
                 },
                 "fi": {
                     "type": "string"
                 },
-                "bg": {
+                "fr": {
+                    "type": "string"
+                },
+                "he": {
+                    "type": "string"
+                },
+                "hi": {
                     "type": "string"
                 },
                 "hr": {
                     "type": "string"
                 },
+                "hu": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "it": {
+                    "type": "string"
+                },
+                "ja": {
+                    "type": "string"
+                },
+                "ko": {
+                    "type": "string"
+                },
                 "lt": {
+                    "type": "string"
+                },
+                "nl": {
+                    "type": "string"
+                },
+                "no": {
+                    "type": "string"
+                },
+                "pl": {
+                    "type": "string"
+                },
+                "pt": {
+                    "type": "string"
+                },
+                "ro": {
+                    "type": "string"
+                },
+                "ru": {
+                    "type": "string"
+                },
+                "sk": {
                     "type": "string"
                 },
                 "sl": {
                     "type": "string"
-                }
-            },
-            "required": [
-                "en",
-                "de",
-                "es",
-                "fr",
-                "it",
-                "pl",
-                "ro",
-                "hu",
-                "nl",
-                "pt",
-                "sv",
-                "vi",
-                "tr",
-                "ru",
-                "ja",
-                "zh",
-                "zh-tw",
-                "ko",
-                "ar",
-                "th",
-                "id",
-                "cs",
-                "da",
-                "el",
-                "hi",
-                "no",
-                "sk",
-                "uk",
-                "he",
-                "fi",
-                "bg",
-                "hr",
-                "lt",
-                "sl"
-            ]
-        },
-        "image": {
-            "type": "object",
-            "properties": {
-                "thumb": {
+                },
+                "sv": {
                     "type": "string"
                 },
-                "small": {
+                "th": {
+                    "type": "string"
+                },
+                "tr": {
+                    "type": "string"
+                },
+                "uk": {
+                    "type": "string"
+                },
+                "vi": {
+                    "type": "string"
+                },
+                "zh": {
+                    "type": "string"
+                },
+                "zh-tw": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "thumb",
-                "small"
-            ]
+            }
         },
         "market_data": {
             "type": "object",
@@ -190,6 +201,9 @@
                             "type": "number"
                         },
                         "bhd": {
+                            "type": "number"
+                        },
+                        "bits": {
                             "type": "number"
                         },
                         "bmd": {
@@ -261,6 +275,9 @@
                         "kwd": {
                             "type": "number"
                         },
+                        "link": {
+                            "type": "number"
+                        },
                         "lkr": {
                             "type": "number"
                         },
@@ -298,6 +315,9 @@
                             "type": "number"
                         },
                         "sar": {
+                            "type": "number"
+                        },
+                        "sats": {
                             "type": "number"
                         },
                         "sek": {
@@ -347,81 +367,8 @@
                         },
                         "zar": {
                             "type": "number"
-                        },
-                        "bits": {
-                            "type": "number"
-                        },
-                        "link": {
-                            "type": "number"
-                        },
-                        "sats": {
-                            "type": "number"
                         }
-                    },
-                    "required": [
-                        "aed",
-                        "ars",
-                        "aud",
-                        "bch",
-                        "bdt",
-                        "bhd",
-                        "bmd",
-                        "bnb",
-                        "brl",
-                        "btc",
-                        "cad",
-                        "chf",
-                        "clp",
-                        "cny",
-                        "czk",
-                        "dkk",
-                        "dot",
-                        "eos",
-                        "eth",
-                        "eur",
-                        "gbp",
-                        "gel",
-                        "hkd",
-                        "huf",
-                        "idr",
-                        "ils",
-                        "inr",
-                        "jpy",
-                        "krw",
-                        "kwd",
-                        "lkr",
-                        "ltc",
-                        "mmk",
-                        "mxn",
-                        "myr",
-                        "ngn",
-                        "nok",
-                        "nzd",
-                        "php",
-                        "pkr",
-                        "pln",
-                        "rub",
-                        "sar",
-                        "sek",
-                        "sgd",
-                        "thb",
-                        "try",
-                        "twd",
-                        "uah",
-                        "usd",
-                        "vef",
-                        "vnd",
-                        "xag",
-                        "xau",
-                        "xdr",
-                        "xlm",
-                        "xrp",
-                        "yfi",
-                        "zar",
-                        "bits",
-                        "link",
-                        "sats"
-                    ]
+                    }
                 },
                 "total_volume": {
                     "type": "object",
@@ -439,6 +386,9 @@
                             "type": "number"
                         },
                         "bhd": {
+                            "type": "number"
+                        },
+                        "bits": {
                             "type": "number"
                         },
                         "bmd": {
@@ -510,6 +460,9 @@
                         "kwd": {
                             "type": "number"
                         },
+                        "link": {
+                            "type": "number"
+                        },
                         "lkr": {
                             "type": "number"
                         },
@@ -547,6 +500,9 @@
                             "type": "number"
                         },
                         "sar": {
+                            "type": "number"
+                        },
+                        "sats": {
                             "type": "number"
                         },
                         "sek": {
@@ -593,168 +549,13 @@
                         },
                         "zar": {
                             "type": "number"
-                        },
-                        "bits": {
-                            "type": "number"
-                        },
-                        "link": {
-                            "type": "number"
-                        },
-                        "sats": {
-                            "type": "number"
                         }
-                    },
-                    "required": [
-                        "aed",
-                        "ars",
-                        "aud",
-                        "bch",
-                        "bdt",
-                        "bhd",
-                        "bmd",
-                        "bnb",
-                        "brl",
-                        "btc",
-                        "cad",
-                        "chf",
-                        "clp",
-                        "cny",
-                        "czk",
-                        "dkk",
-                        "dot",
-                        "eos",
-                        "eth",
-                        "eur",
-                        "gbp",
-                        "gel",
-                        "hkd",
-                        "huf",
-                        "idr",
-                        "ils",
-                        "inr",
-                        "jpy",
-                        "krw",
-                        "kwd",
-                        "lkr",
-                        "ltc",
-                        "mmk",
-                        "mxn",
-                        "myr",
-                        "ngn",
-                        "nok",
-                        "nzd",
-                        "php",
-                        "pkr",
-                        "pln",
-                        "rub",
-                        "sar",
-                        "sek",
-                        "sgd",
-                        "thb",
-                        "try",
-                        "twd",
-                        "uah",
-                        "usd",
-                        "vef",
-                        "vnd",
-                        "xag",
-                        "xau",
-                        "xdr",
-                        "xlm",
-                        "xrp",
-                        "yfi",
-                        "zar",
-                        "bits",
-                        "link",
-                        "sats"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "current_price",
-                "market_cap",
-                "total_volume"
-            ]
+            }
         },
-        "community_data": {
-            "type": "object",
-            "properties": {
-                "facebook_likes": {
-                    "type": "null"
-                },
-                "reddit_average_posts_48h": {
-                    "type": "integer"
-                },
-                "reddit_average_comments_48h": {
-                    "type": "integer"
-                },
-                "reddit_subscribers": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "facebook_likes",
-                "twitter_followers",
-                "reddit_average_posts_48h",
-                "reddit_average_comments_48h",
-                "reddit_subscribers",
-                "reddit_accounts_active_48h"
-            ]
-        },
-        "developer_data": {
-            "type": "object",
-            "properties": {
-                "forks": {
-                    "type": "null"
-                },
-                "stars": {
-                    "type": "null"
-                },
-                "subscribers": {
-                    "type": "null"
-                },
-                "total_issues": {
-                    "type": "null"
-                },
-                "closed_issues": {
-                    "type": "null"
-                },
-                "pull_requests_merged": {
-                    "type": "null"
-                },
-                "pull_request_contributors": {
-                    "type": "null"
-                },
-                "code_additions_deletions_4_weeks": {
-                    "type": "object",
-                    "properties": {
-                        "additions": {
-                            "type": "null"
-                        },
-                        "deletions": {
-                            "type": "null"
-                        }
-                    },
-                    "required": [
-                        "additions",
-                        "deletions"
-                    ]
-                },
-                "commit_count_4_weeks": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "forks",
-                "stars",
-                "subscribers",
-                "total_issues",
-                "closed_issues",
-                "pull_requests_merged",
-                "pull_request_contributors",
-                "code_additions_deletions_4_weeks",
-                "commit_count_4_weeks"
-            ]
+        "name": {
+            "type": "string"
         },
         "public_interest_stats": {
             "type": "object",
@@ -765,17 +566,11 @@
                 "bing_matches": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "alexa_rank",
-                "bing_matches"
-            ]
+            }
+        },
+        "symbol": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "symbol",
-        "name",
-        "image"
-    ]
+    "version": 1
 }

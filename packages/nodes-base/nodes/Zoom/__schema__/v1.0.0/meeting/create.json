@@ -1,122 +1,62 @@
 {
     "type": "object",
     "properties": {
-        "uuid": {
+        "created_at": {
             "type": "string"
         },
-        "id": {
-            "type": "integer"
-        },
-        "host_id": {
-            "type": "string"
-        },
-        "host_email": {
-            "type": "string"
-        },
-        "topic": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "string"
-        },
-        "start_time": {
+        "creation_source": {
             "type": "string"
         },
         "duration": {
             "type": "integer"
         },
-        "timezone": {
+        "encrypted_password": {
             "type": "string"
         },
-        "created_at": {
+        "h323_password": {
             "type": "string"
         },
-        "start_url": {
+        "host_email": {
             "type": "string"
+        },
+        "host_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
         },
         "join_url": {
+            "type": "string"
+        },
+        "password": {
+            "type": "string"
+        },
+        "pre_schedule": {
+            "type": "boolean"
+        },
+        "pstn_password": {
             "type": "string"
         },
         "settings": {
             "type": "object",
             "properties": {
-                "host_video": {
-                    "type": "boolean"
-                },
-                "participant_video": {
-                    "type": "boolean"
-                },
-                "cn_meeting": {
-                    "type": "boolean"
-                },
-                "in_meeting": {
-                    "type": "boolean"
-                },
-                "join_before_host": {
-                    "type": "boolean"
-                },
-                "jbh_time": {
-                    "type": "integer"
-                },
-                "mute_upon_entry": {
-                    "type": "boolean"
-                },
-                "watermark": {
-                    "type": "boolean"
-                },
-                "use_pmi": {
-                    "type": "boolean"
-                },
-                "approval_type": {
-                    "type": "integer"
-                },
-                "audio": {
-                    "type": "string"
-                },
-                "auto_recording": {
-                    "type": "string"
-                },
-                "enforce_login": {
-                    "type": "boolean"
-                },
-                "enforce_login_domains": {
-                    "type": "string"
-                },
-                "alternative_hosts": {
-                    "type": "string"
-                },
-                "alternative_host_update_polls": {
-                    "type": "boolean"
-                },
-                "close_registration": {
-                    "type": "boolean"
-                },
-                "show_share_button": {
+                "allow_host_control_participant_mute_state": {
                     "type": "boolean"
                 },
                 "allow_multiple_devices": {
                     "type": "boolean"
                 },
-                "registrants_confirmation_email": {
+                "alternative_host_update_polls": {
                     "type": "boolean"
                 },
-                "waiting_room": {
-                    "type": "boolean"
-                },
-                "request_permission_to_unmute_participants": {
-                    "type": "boolean"
-                },
-                "registrants_email_notification": {
-                    "type": "boolean"
-                },
-                "meeting_authentication": {
-                    "type": "boolean"
-                },
-                "encryption_type": {
+                "alternative_hosts": {
                     "type": "string"
+                },
+                "alternative_hosts_email_notification": {
+                    "type": "boolean"
+                },
+                "approval_type": {
+                    "type": "integer"
                 },
                 "approved_or_denied_countries_or_regions": {
                     "type": "object",
@@ -124,10 +64,13 @@
                         "enable": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "enable"
-                    ]
+                    }
+                },
+                "audio": {
+                    "type": "string"
+                },
+                "auto_recording": {
+                    "type": "string"
                 },
                 "breakout_room": {
                     "type": "object",
@@ -135,20 +78,17 @@
                         "enable": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "enable"
-                    ]
+                    }
                 },
-                "internal_meeting": {
+                "close_registration": {
+                    "type": "boolean"
+                },
+                "cn_meeting": {
                     "type": "boolean"
                 },
                 "continuous_meeting_chat": {
                     "type": "object",
                     "properties": {
-                        "enable": {
-                            "type": "boolean"
-                        },
                         "auto_add_invited_external_users": {
                             "type": "boolean"
                         },
@@ -157,45 +97,82 @@
                         },
                         "channel_id": {
                             "type": "string"
+                        },
+                        "enable": {
+                            "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "enable",
-                        "auto_add_invited_external_users",
-                        "channel_id"
-                    ]
-                },
-                "participant_focused_meeting": {
-                    "type": "boolean"
-                },
-                "push_change_to_calendar": {
-                    "type": "boolean"
-                },
-                "auto_start_meeting_summary": {
-                    "type": "boolean"
-                },
-                "auto_start_ai_companion_questions": {
-                    "type": "boolean"
-                },
-                "alternative_hosts_email_notification": {
-                    "type": "boolean"
-                },
-                "show_join_info": {
-                    "type": "boolean"
+                    }
                 },
                 "device_testing": {
                     "type": "boolean"
                 },
-                "focus_mode": {
-                    "type": "boolean"
-                },
-                "private_meeting": {
+                "email_in_attendee_report": {
                     "type": "boolean"
                 },
                 "email_notification": {
                     "type": "boolean"
                 },
+                "encryption_type": {
+                    "type": "string"
+                },
+                "enforce_login": {
+                    "type": "boolean"
+                },
+                "enforce_login_domains": {
+                    "type": "string"
+                },
+                "focus_mode": {
+                    "type": "boolean"
+                },
                 "host_save_video_order": {
+                    "type": "boolean"
+                },
+                "host_video": {
+                    "type": "boolean"
+                },
+                "in_meeting": {
+                    "type": "boolean"
+                },
+                "internal_meeting": {
+                    "type": "boolean"
+                },
+                "jbh_time": {
+                    "type": "integer"
+                },
+                "join_before_host": {
+                    "type": "boolean"
+                },
+                "meeting_authentication": {
+                    "type": "boolean"
+                },
+                "mute_upon_entry": {
+                    "type": "boolean"
+                },
+                "participant_focused_meeting": {
+                    "type": "boolean"
+                },
+                "participant_video": {
+                    "type": "boolean"
+                },
+                "private_meeting": {
+                    "type": "boolean"
+                },
+                "push_change_to_calendar": {
+                    "type": "boolean"
+                },
+                "registrants_confirmation_email": {
+                    "type": "boolean"
+                },
+                "registrants_email_notification": {
+                    "type": "boolean"
+                },
+                "request_permission_to_unmute_participants": {
+                    "type": "boolean"
+                },
+                "show_join_info": {
+                    "type": "boolean"
+                },
+                "show_share_button": {
                     "type": "boolean"
                 },
                 "sign_language_interpretation": {
@@ -204,100 +181,43 @@
                         "enable": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "enable"
-                    ]
+                    }
                 },
-                "email_in_attendee_report": {
+                "use_pmi": {
                     "type": "boolean"
                 },
-                "enable_dedicated_group_chat": {
+                "waiting_room": {
+                    "type": "boolean"
+                },
+                "watermark": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "host_video",
-                "participant_video",
-                "cn_meeting",
-                "in_meeting",
-                "join_before_host",
-                "jbh_time",
-                "mute_upon_entry",
-                "watermark",
-                "use_pmi",
-                "approval_type",
-                "audio",
-                "auto_recording",
-                "enforce_login",
-                "enforce_login_domains",
-                "alternative_hosts",
-                "alternative_host_update_polls",
-                "close_registration",
-                "show_share_button",
-                "allow_multiple_devices",
-                "registrants_confirmation_email",
-                "waiting_room",
-                "request_permission_to_unmute_participants",
-                "registrants_email_notification",
-                "meeting_authentication",
-                "encryption_type",
-                "approved_or_denied_countries_or_regions",
-                "breakout_room",
-                "internal_meeting",
-                "continuous_meeting_chat",
-                "participant_focused_meeting",
-                "push_change_to_calendar",
-                "resources",
-                "alternative_hosts_email_notification",
-                "show_join_info",
-                "device_testing",
-                "focus_mode",
-                "meeting_invitees",
-                "private_meeting",
-                "email_notification",
-                "host_save_video_order",
-                "sign_language_interpretation",
-                "email_in_attendee_report"
-            ]
+            }
+        },
+        "start_time": {
+            "type": "string"
+        },
+        "start_url": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
         },
         "supportGoLive": {
             "type": "boolean"
         },
-        "creation_source": {
+        "timezone": {
             "type": "string"
         },
-        "pre_schedule": {
-            "type": "boolean"
-        },
-        "password": {
+        "topic": {
             "type": "string"
         },
-        "h323_password": {
-            "type": "string"
+        "type": {
+            "type": "integer"
         },
-        "pstn_password": {
-            "type": "string"
-        },
-        "encrypted_password": {
+        "uuid": {
             "type": "string"
         }
     },
-    "required": [
-        "uuid",
-        "id",
-        "host_id",
-        "host_email",
-        "topic",
-        "type",
-        "status",
-        "start_time",
-        "duration",
-        "timezone",
-        "created_at",
-        "start_url",
-        "join_url",
-        "settings",
-        "pre_schedule"
-    ]
+    "version": 1
 }

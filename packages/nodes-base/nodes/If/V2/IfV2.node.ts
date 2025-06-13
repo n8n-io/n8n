@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getTypeValidationParameter, getTypeValidationStrictness } from './utils';
@@ -25,8 +25,8 @@ export class IfV2 implements INodeType {
 				name: 'If',
 				color: '#408000',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
 			properties: [

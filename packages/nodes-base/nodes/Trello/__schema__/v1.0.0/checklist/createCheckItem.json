@@ -1,41 +1,30 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"pos": {
-			"type": "integer"
-		},
-		"state": {
-			"type": "string"
-		},
-		"due": {
-			"type": "null"
-		},
-		"dueReminder": {
-			"type": "null"
-		},
-		"idMember": {
-			"type": "null"
-		},
-		"idChecklist": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"name",
-		"nameData",
-		"pos",
-		"state",
-		"due",
-		"dueReminder",
-		"idMember",
-		"idChecklist",
-		"limits"
-	]
+    "type": "object",
+    "properties": {
+        "due": {
+            "type": "null"
+        },
+        "dueReminder": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idChecklist": {
+            "type": "string"
+        },
+        "idMember": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

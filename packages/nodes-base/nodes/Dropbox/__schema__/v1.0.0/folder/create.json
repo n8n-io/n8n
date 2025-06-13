@@ -4,51 +4,20 @@
         "metadata": {
             "type": "object",
             "properties": {
-                "name": {
+                "id": {
                     "type": "string"
                 },
-                "path_lower": {
+                "name": {
                     "type": "string"
                 },
                 "path_display": {
                     "type": "string"
                 },
-                "id": {
+                "path_lower": {
                     "type": "string"
-                },
-                "parent_shared_folder_id": {
-                    "type": "string"
-                },
-                "sharing_info": {
-                    "type": "object",
-                    "properties": {
-                        "read_only": {
-                            "type": "boolean"
-                        },
-                        "parent_shared_folder_id": {
-                            "type": "string"
-                        },
-                        "traverse_only": {
-                            "type": "boolean"
-                        },
-                        "no_access": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "read_only",
-                        "parent_shared_folder_id",
-                        "traverse_only",
-                        "no_access"
-                    ]
                 }
-            },
-            "required": [
-                "name",
-                "path_lower",
-                "path_display",
-                "id"
-            ]
+            }
         }
-    }
+    },
+    "version": 1
 }

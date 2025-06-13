@@ -4,14 +4,14 @@ import {
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 type CollectionOptions = {
 	useCollection?: boolean;
