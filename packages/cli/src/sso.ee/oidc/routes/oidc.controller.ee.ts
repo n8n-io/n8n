@@ -57,6 +57,6 @@ export class OidcController {
 
 		this.authService.issueCookie(res, user);
 
-		res.redirect('/workflows');
+		res.redirect('/');
 	}
 }

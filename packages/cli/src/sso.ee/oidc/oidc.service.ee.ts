@@ -131,8 +131,8 @@ export class OidcService {
 		return await this.userRepository.manager.transaction(async (trx) => {
 			const { user } = await this.userRepository.createUserWithProject(
 				{
-					firstName: userInfo.given_name ?? '',
-					lastName: userInfo.family_name ?? '',
+					firstName: userInfo.given_name,
+					lastName: userInfo.family_name,
 					email: userInfo.email,
 					authIdentities: [],
 					role: 'global:member',
