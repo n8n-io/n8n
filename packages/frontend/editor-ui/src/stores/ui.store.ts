@@ -1,4 +1,3 @@
-import * as onboardingApi from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -58,7 +57,6 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import {
@@ -233,7 +231,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const userStore = useUsersStore();
 
 	// Keep track of the preferred theme and update it when the system preference changes
 	const preferredTheme = getPreferredTheme();
@@ -425,20 +422,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const submitContactEmail = async (email: string, agree: boolean) => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.submitEmailOnSignup(
-				instanceId,
-				currentUser,
-				email ?? currentUser.email,
-				agree,
-			);
-		}
-		return null;
-	};
-
 	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -582,7 +565,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
-		submitContactEmail,
 		openCommunityPackageUninstallConfirmModal,
 		openCommunityPackageUpdateConfirmModal,
 		addActiveAction,
