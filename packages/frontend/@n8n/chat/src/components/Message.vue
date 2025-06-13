@@ -72,8 +72,7 @@ const markdownOptions = {
 				return hljs.highlight(str, { language: lang }).value;
 			} catch {}
 		}
-
-		return ''; // use external default escaping
+		return ''; // fallback
 	},
 };
 
@@ -105,13 +104,15 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
-		<div v-if="$slots.beforeMessage" class="chat-message-actions">
-			<slot name="beforeMessage" v-bind="{ message }" />
+		<div class="chat-message-actions">
+			<slot name="beforeMessage" :message="message" />
 		</div>
+
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
 			</template>
+
 			<VueMarkdown
 				v-else
 				class="chat-message-markdown"
@@ -119,6 +120,7 @@ onMounted(async () => {
 				:options="markdownOptions"
 				:plugins="[linksNewTabPlugin]"
 			/>
+
 			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
 				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
 					<ChatFile :file="file" :is-removable="false" :is-previewable="true" />
@@ -164,12 +166,10 @@ onMounted(async () => {
 		word-wrap: break-word;
 	}
 
-	// Default message gap is half of the spacing
 	+ .chat-message {
 		margin-top: var(--chat--message--margin-bottom);
 	}
 
-	// Spacing between messages from different senders is double the individual message gap
 	&.chat-message-from-user + &.chat-message-from-bot,
 	&.chat-message-from-bot + &.chat-message-from-user {
 		margin-top: var(--chat--spacing);
@@ -217,6 +217,7 @@ onMounted(async () => {
 			border-radius: var(--chat--border-radius);
 		}
 	}
+
 	.chat-message-files {
 		display: flex;
 		flex-wrap: wrap;
