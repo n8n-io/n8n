@@ -18,7 +18,7 @@ import type {
 	NodeConnectionType,
 	ISourceData,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -134,7 +134,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
-		//context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
 	}
 
