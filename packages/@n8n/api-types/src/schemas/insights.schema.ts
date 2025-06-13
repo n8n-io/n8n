@@ -1,3 +1,4 @@
+import { INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
 import { z } from 'zod';
 
 export const insightsSummaryTypeSchema = z.enum([
@@ -85,15 +86,6 @@ export const insightsByTimeDataSchemas = {
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
-export const INSIGHTS_DATE_RANGE_KEYS = [
-	'day',
-	'week',
-	'2weeks',
-	'month',
-	'quarter',
-	'6months',
-	'year',
-] as const;
 export const insightsDateRangeSchema = z
 	.object({
 		key: z.enum(INSIGHTS_DATE_RANGE_KEYS),

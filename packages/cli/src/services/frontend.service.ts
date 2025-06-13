@@ -17,7 +17,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { getAvailableDateRanges as getInsightsAvailableDateRanges } from '@/modules/insights/insights-helpers';
+import { ModuleRegistry } from '@/modules/module-registry';
 import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
@@ -53,6 +53,7 @@ export class FrontendService {
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -246,15 +247,16 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
-			insights: {
-				enabled: this.modulesConfig.modules.includes('insights'),
-				summary: true,
-				dashboard: false,
-				dateRanges: [],
-			},
+			// insights: {
+			// 	enabled: this.modulesConfig.modules.includes('insights'),
+			// 	summary: true,
+			// 	dashboard: false,
+			// 	dateRanges: [],
+			// },
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
+			loadedModules: this.modulesConfig.modules,
 		};
 	}
 
@@ -375,12 +377,12 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		Object.assign(this.settings.insights, {
-			enabled: this.modulesConfig.loadedModules.has('insights'),
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: getInsightsAvailableDateRanges(this.licenseState),
-		});
+		// Object.assign(this.settings.insights, {
+		// 	enabled: this.modulesConfig.loadedModules.has('insights'),
+		// 	summary: this.licenseState.isInsightsSummaryLicensed(),
+		// 	dashboard: this.licenseState.isInsightsDashboardLicensed(),
+		// 	dateRanges: this.licenseState.getInsightsAvailableDateRanges(),
+		// });
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
@@ -396,6 +398,16 @@ export class FrontendService {
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
 
 		return this.settings;
+	}
+
+	getAllModulesSettings() {
+		const allModulesSettings = {};
+
+		for (const [moduleName, moduleSettings] of this.moduleRegistry.settings) {
+			Object.assign(allModulesSettings, { [moduleName]: moduleSettings });
+		}
+
+		return allModulesSettings;
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {

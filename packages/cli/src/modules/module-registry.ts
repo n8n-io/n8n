@@ -1,20 +1,31 @@
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
-import type { LifecycleContext, EntityClass } from '@n8n/decorators';
+import type { LifecycleContext, EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type {
-	IDataObject,
-	IRun,
-	IRunExecutionData,
-	ITaskData,
-	ITaskStartedData,
-	IWorkflowBase,
-	Workflow,
+import {
+	UserError,
+	type IDataObject,
+	type IRun,
+	type IRunExecutionData,
+	type ITaskData,
+	type ITaskStartedData,
+	type IWorkflowBase,
+	type Workflow,
 } from 'n8n-workflow';
+
+class DuplicateModuleNameError extends UserError {
+	constructor(moduleName: string) {
+		super(
+			`Module "${moduleName}" already exists. Please ensure all your module class names are unique.`,
+		);
+	}
+}
 
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
+
+	readonly settings: Map<string, ModuleSettings> = new Map();
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
@@ -22,8 +33,14 @@ export class ModuleRegistry {
 	) {}
 
 	async initModules() {
-		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			await Container.get(ModuleClass).init?.();
+		for (const [moduleName, ModuleClass] of this.moduleMetadata.getEntries()) {
+			const moduleSettings = await Container.get(ModuleClass).init?.();
+
+			if (!moduleSettings) continue;
+
+			if (this.settings.has(moduleName)) throw new DuplicateModuleNameError(moduleName);
+
+			this.settings.set(moduleName, moduleSettings);
 		}
 	}
 

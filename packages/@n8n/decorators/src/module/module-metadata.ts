@@ -4,13 +4,17 @@ import type { ModuleClass } from './module';
 
 @Service()
 export class ModuleMetadata {
-	private readonly modules: Set<ModuleClass> = new Set();
+	private readonly modules: Map<string, ModuleClass> = new Map();
 
-	register(module: ModuleClass) {
-		this.modules.add(module);
+	register(moduleName: string, moduleClass: ModuleClass) {
+		this.modules.set(moduleName, moduleClass);
+	}
+
+	getEntries() {
+		return this.modules.entries();
 	}
 
 	getModules() {
-		return this.modules.keys();
+		return this.modules.values();
 	}
 }

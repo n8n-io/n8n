@@ -99,3 +99,13 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
+
+export const INSIGHTS_DATE_RANGE_KEYS = [
+	'day',
+	'week',
+	'2weeks',
+	'month',
+	'quarter',
+	'6months',
+	'year',
+] as const;

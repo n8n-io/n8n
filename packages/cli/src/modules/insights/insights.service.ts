@@ -27,6 +27,14 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	settings() {
+		return {
+			summary: this.licenseState.isInsightsSummaryLicensed(),
+			dashboard: this.licenseState.isInsightsDashboardLicensed(),
+			dateRanges: this.licenseState.getInsightsAvailableDateRanges(),
+		};
+	}
+
 	@OnLeaderTakeover()
 	startTimers() {
 		this.collectionService.startFlushingTimer();

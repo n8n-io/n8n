@@ -1,7 +1,8 @@
-import { type InsightsDateRange, INSIGHTS_DATE_RANGE_KEYS } from '@n8n/api-types';
+import { type InsightsDateRange } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
+import { INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
 
-export const keyRangeToDays: Record<InsightsDateRange['key'], number> = {
+export const keyRangeToDays: Record<(typeof INSIGHTS_DATE_RANGE_KEYS)[number], number> = {
 	day: 1,
 	week: 7,
 	'2weeks': 14,

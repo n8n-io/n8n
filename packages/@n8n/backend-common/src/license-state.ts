@@ -1,4 +1,5 @@
-import { UNLIMITED_LICENSE_QUOTA, type BooleanLicenseFeature } from '@n8n/constants';
+import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA, INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -9,6 +10,16 @@ class ProviderNotSetError extends UnexpectedError {
 		super('Cannot query license state because license provider has not been set');
 	}
 }
+
+export const keyRangeToDays: Record<(typeof INSIGHTS_DATE_RANGE_KEYS)[number], number> = {
+	day: 1,
+	week: 7,
+	'2weeks': 14,
+	month: 30,
+	quarter: 90,
+	'6months': 180,
+	year: 365,
+};
 
 @Service()
 export class LicenseState {
@@ -192,5 +203,22 @@ export class LicenseState {
 
 	getMaxWorkflowsWithEvaluations() {
 		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
+	}
+
+	/**
+	 * Returns the available date ranges with their license authorization and time granularity
+	 * when grouped by time.
+	 */
+	getInsightsAvailableDateRanges() {
+		const maxHistoryInDays =
+			this.getInsightsMaxHistory() === -1 ? Number.MAX_SAFE_INTEGER : this.getInsightsMaxHistory();
+		const isHourlyDateLicensed = this.isInsightsHourlyDataLicensed();
+
+		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
+			key,
+			licensed:
+				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
+			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
+		}));
 	}
 }

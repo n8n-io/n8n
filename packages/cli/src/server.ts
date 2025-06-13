@@ -257,6 +257,11 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
 
+			this.app.get(
+				`/${this.restEndpoint}/modules-settings`,
+				ResponseHelper.send(async () => frontendService.getAllModulesSettings()),
+			);
+
 			// Return Sentry config as a static file
 			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
 				res.type('js');
