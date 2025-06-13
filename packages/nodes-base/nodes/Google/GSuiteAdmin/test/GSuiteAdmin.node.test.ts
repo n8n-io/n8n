@@ -114,7 +114,7 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			customer: 'my_customer',
 			domain: 'example.com',
 			query: 'name:admin',
-			userId: 'user@example.com',
+			userKey: 'user@example.com',
 			showDeleted: true,
 		};
 		const sort = {
@@ -135,7 +135,7 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			}
 			qs.query = query;
 		}
-		if (filter.userId) qs.userId = filter.userId;
+		if (filter.userKey) qs.userKey = filter.userKey;
 		if (filter.showDeleted) qs.showDeleted = 'true';
 		if (sort.sortRules) {
 			const { orderBy, sortOrder } = sort.sortRules;
@@ -147,7 +147,7 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			customer: 'my_customer',
 			domain: 'example.com',
 			query: 'name:admin',
-			userId: 'user@example.com',
+			userKey: 'user@example.com',
 			showDeleted: 'true',
 			orderBy: 'email',
 			sortOrder: 'ASCENDING',
