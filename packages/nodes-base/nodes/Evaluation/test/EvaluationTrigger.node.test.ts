@@ -306,7 +306,7 @@ describe('Evaluation Trigger Node', () => {
 		});
 	});
 
-	describe('requestDataset', () => {
+	describe('customOperations.dataset.getRows', () => {
 		beforeEach(() => {
 			jest.resetAllMocks();
 
@@ -363,7 +363,7 @@ describe('Evaluation Trigger Node', () => {
 				},
 			);
 
-			const result = await new EvaluationTrigger().customOperations.testRunner.requestDataset.call(
+			const result = await new EvaluationTrigger().customOperations.dataset.getRows.call(
 				mockExecuteFunctions,
 			);
 
@@ -435,9 +435,7 @@ describe('Evaluation Trigger Node', () => {
 			const evaluationTrigger = new EvaluationTrigger();
 
 			const result =
-				await evaluationTrigger.customOperations.testRunner.requestDataset.call(
-					mockExecuteFunctions,
-				);
+				await evaluationTrigger.customOperations.dataset.getRows.call(mockExecuteFunctions);
 
 			expect(result).toEqual([
 				[

@@ -176,8 +176,8 @@ export class EvaluationTrigger implements INodeType {
 	}
 
 	customOperations = {
-		testRunner: {
-			async requestDataset(
+		dataset: {
+			async getRows(
 				this: IExecuteFunctions,
 			): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
 				try {
@@ -186,18 +186,10 @@ export class EvaluationTrigger implements INodeType {
 						: MAX_ROWS;
 
 					const googleSheetInstance = getGoogleSheet.call(this);
-
 					const googleSheet = await getSheet.call(this, googleSheetInstance);
 
-					const testRunnerResult = await getResults.call(
-						this,
-						[],
-						googleSheetInstance,
-						googleSheet,
-						{},
-					);
-
-					const result = testRunnerResult.slice(0, maxRows - 1);
+					const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
+					const result = results.slice(0, maxRows - 1);
 
 					return [result];
 				} catch (error) {

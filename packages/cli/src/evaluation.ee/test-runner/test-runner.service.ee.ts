@@ -261,8 +261,8 @@ export class TestRunnerService {
 
 		// Call custom operation to fetch the whole dataset
 		triggerNode.forceCustomOperation = {
-			resource: 'testRunner',
-			operation: 'requestDataset',
+			resource: 'dataset',
+			operation: 'getRows',
 		};
 
 		const data: IWorkflowExecutionDataProcess = {

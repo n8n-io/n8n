@@ -460,20 +460,19 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
-			// Verify node execution stack contains the requestDataset flag
 			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
 			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
 			expect(nodeExecutionStack).toBeInstanceOf(Array);
 			expect(nodeExecutionStack).toHaveLength(1);
 			expect(nodeExecutionStack?.[0]).toHaveProperty('node.name', triggerNodeName);
 			expect(nodeExecutionStack?.[0]).toHaveProperty('node.forceCustomOperation', {
-				operation: 'requestDataset',
-				resource: 'testRunner',
+				resource: 'dataset',
+				operation: 'getRows',
 			});
 			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json', {});
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
-				operation: 'requestDataset',
-				resource: 'testRunner',
+				resource: 'dataset',
+				operation: 'getRows',
 			});
 		});
 
@@ -524,12 +523,11 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
-			// Verify node execution stack contains the requestDataset flag
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
-				operation: 'requestDataset',
-				resource: 'testRunner',
+				resource: 'dataset',
+				operation: 'getRows',
 			});
 
 			// after reset
