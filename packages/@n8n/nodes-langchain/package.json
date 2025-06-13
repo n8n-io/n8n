@@ -160,7 +160,7 @@
     "@google/generative-ai": "0.21.0",
     "@huggingface/inference": "2.8.0",
     "@langchain/anthropic": "catalog:",
-    "@langchain/aws": "0.1.3",
+    "@langchain/aws": "0.1.10",
     "@langchain/cohere": "0.3.2",
     "@langchain/community": "catalog:",
     "@langchain/core": "catalog:",
