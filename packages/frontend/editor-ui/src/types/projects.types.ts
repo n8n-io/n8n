@@ -19,6 +19,7 @@ export type ProjectSharingData = {
 	name: string | null;
 	icon: ProjectIcon | null;
 	type: ProjectType;
+	description?: string | null;
 	createdAt: string;
 	updatedAt: string;
 };

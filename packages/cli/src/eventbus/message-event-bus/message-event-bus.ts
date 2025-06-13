@@ -32,6 +32,8 @@ import {
 } from '../event-message-classes/event-message-generic';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
+import type { EventMessageRunnerOptions } from '../event-message-classes/event-message-runner';
+import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
 import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
@@ -158,8 +160,6 @@ export class MessageEventBus extends EventEmitter {
 			}
 
 			if (unfinishedExecutionIds.length > 0) {
-				this.logger.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
-				this.logger.info('This could be due to a crash of an active workflow or a restart of n8n.');
 				const activeWorkflows = await this.workflowRepository.find({
 					where: { active: true },
 					select: ['id', 'name'],
@@ -181,11 +181,25 @@ export class MessageEventBus extends EventEmitter {
 				} else {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
+					const recoveredIds: string[] = [];
+
 					for (const executionId of unfinishedExecutionIds) {
 						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
-						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
+						const recoveredExecution = await this.recoveryService.recoverFromLogs(
+							executionId,
+							logMesssages ?? [],
+						);
+						if (recoveredExecution) recoveredIds.push(executionId);
+					}
+
+					if (recoveredIds.length > 0) {
+						this.logger.warn(`Found unfinished executions: ${recoveredIds.join(', ')}`);
+						this.logger.info(
+							'This could be due to a crash of an active workflow or a restart of n8n',
+						);
 					}
 				}
+
 				// remove the recovery process flag file
 				this.logWriter?.endRecoveryProcess();
 			}
@@ -406,5 +420,9 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendExecutionEvent(options: EventMessageExecutionOptions) {
 		await this.send(new EventMessageExecution(options));
+	}
+
+	async sendRunnerEvent(options: EventMessageRunnerOptions) {
+		await this.send(new EventMessageRunner(options));
 	}
 }

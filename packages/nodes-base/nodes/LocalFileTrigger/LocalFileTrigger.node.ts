@@ -146,9 +146,9 @@ export class LocalFileTrigger implements INodeType {
 						name: 'ignored',
 						type: 'string',
 						default: '',
-						placeholder: '**/*.txt',
+						placeholder: '**/*.txt or ignore-me/subfolder',
 						description:
-							'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
+							"Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a>- syntax. Regex patterns may not work on macOS. To ignore files based on substring matching, use the 'Ignore Mode' option with 'Contain'.",
 					},
 					{
 						displayName: 'Ignore Existing Files/Folders',
@@ -202,6 +202,27 @@ export class LocalFileTrigger implements INodeType {
 						description:
 							'Whether to use polling for watching. Typically necessary to successfully watch files over a network.',
 					},
+					{
+						displayName: 'Ignore Mode',
+						name: 'ignoreMode',
+						type: 'options',
+						options: [
+							{
+								name: 'Match',
+								value: 'match',
+								description:
+									'Ignore files using regex patterns (e.g., **/*.txt), Not supported on macOS',
+							},
+							{
+								name: 'Contain',
+								value: 'contain',
+								description: 'Ignore files if their path contains the specified value',
+							},
+						],
+						default: 'match',
+						description:
+							'Whether to ignore files using regex matching (Anymatch patterns) or by checking if the path contains a specified value',
+					},
 				],
 			},
 		],
@@ -218,9 +239,9 @@ export class LocalFileTrigger implements INodeType {
 		} else {
 			events = this.getNodeParameter('events', []) as string[];
 		}
-
+		const ignored = options.ignored === '' ? undefined : (options.ignored as string);
 		const watcher = watch(path, {
-			ignored: options.ignored === '' ? undefined : (options.ignored as string),
+			ignored: options.ignoreMode === 'match' ? ignored : (x) => x.includes(ignored as string),
 			persistent: true,
 			ignoreInitial:
 				options.ignoreInitial === undefined ? true : (options.ignoreInitial as boolean),

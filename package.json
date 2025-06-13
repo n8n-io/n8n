@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.97.0",
+  "version": "1.98.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
     "pnpm": ">=10.2.1"
   },
-  "packageManager": "pnpm@10.11.1",
+  "packageManager": "pnpm@10.12.1",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -84,6 +84,7 @@
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "multer": "^2.0.1",
+      "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
       "semver": "^7.5.4",
       "tar-fs": "2.1.3",

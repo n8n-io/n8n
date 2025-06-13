@@ -364,7 +364,7 @@ describe('AI Assistant Credential Help', () => {
 		}).as('chatRequest');
 		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
-		wf.actions.openNode('Gmail');
+		wf.actions.openNode('Add label to message');
 		openCredentialSelect();
 		clickCreateNewCredential();
 		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');

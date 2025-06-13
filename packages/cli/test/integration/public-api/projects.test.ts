@@ -143,6 +143,7 @@ describe('Projects in Public API', () => {
 				name: 'some-project',
 				icon: null,
 				type: 'team',
+				description: null,
 				id: expect.any(String),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),

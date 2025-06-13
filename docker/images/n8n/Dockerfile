@@ -67,7 +67,6 @@ RUN \
 
 # Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
 RUN npm install -g npm@11.4.1
-RUN apk --purge del apk-tools
 
 ENV SHELL /bin/sh
 USER node

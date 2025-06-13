@@ -12,7 +12,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 import { nextTick } from 'vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import type { SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 
 const renderView = createComponentRenderer(SettingsSso);
 

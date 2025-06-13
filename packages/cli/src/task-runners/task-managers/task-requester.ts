@@ -20,6 +20,7 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
@@ -58,7 +59,10 @@ export abstract class TaskRequester {
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly eventService: EventService,
+	) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -130,6 +134,13 @@ export abstract class TaskRequester {
 		};
 		this.tasks.set(task.taskId, task);
 
+		this.eventService.emit('runner-task-requested', {
+			taskId: task.taskId,
+			nodeId: task.data.node.id,
+			workflowId: task.data.workflow.id,
+			executionId: task.data.additionalData.executionId ?? 'unknown',
+		});
+
 		try {
 			const dataPromise = new Promise<TaskResultData>((resolve, reject) => {
 				this.taskAcceptRejects.set(task.taskId, {
@@ -145,6 +156,14 @@ export abstract class TaskRequester {
 			});
 
 			const resultData = await dataPromise;
+
+			this.eventService.emit('runner-response-received', {
+				taskId: task.taskId,
+				nodeId: task.data.node.id,
+				workflowId: task.data.workflow.id,
+				executionId: task.data.additionalData.executionId ?? 'unknown',
+			});
+
 			// Set custom execution data (`$execution.customData`) if sent
 			if (resultData.customData) {
 				Object.entries(resultData.customData).forEach(([k, v]) => {
