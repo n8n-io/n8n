@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
 import { N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	entityType: 'credential' | 'workflow';
