@@ -323,6 +323,7 @@ describe('ExecutionRecoveryService', () => {
 							workflowName: workflow.name,
 							nodeName: 'DebugHelper',
 							nodeType: 'n8n-nodes-base.debugHelper',
+							nodeId: '123',
 						},
 					}),
 				);

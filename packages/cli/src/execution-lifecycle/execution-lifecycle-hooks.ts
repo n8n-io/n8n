@@ -52,11 +52,27 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-pre-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-post-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 }
 
