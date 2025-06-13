@@ -72,7 +72,9 @@ const isExternalAuthEnabled = computed((): boolean => {
 		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled =
 		settingsStore.isSamlLoginEnabled && settingsStore.isDefaultAuthenticationSaml;
-	return isLdapEnabled || isSamlEnabled;
+	const isOidcEnabled =
+		settingsStore.settings.enterprise.oidc && currentUser.value?.signInType === 'oidc';
+	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
 const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
