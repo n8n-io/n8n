@@ -26,7 +26,7 @@ describe('BinaryDataController', () => {
 			await controller.get(request, response, query);
 
 			expect(response.status).toHaveBeenCalledWith(400);
-			expect(response.end).toHaveBeenCalledWith('Missing binary data mode');
+			expect(response.end).toHaveBeenCalledWith('Malformed binary data ID');
 		});
 
 		it('should return 400 if binary data mode is invalid', async () => {
@@ -152,6 +152,24 @@ describe('BinaryDataController', () => {
 			expect(result).toBe(stream);
 			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('filesystem:123');
 		});
+
+		describe('with malicious binary data IDs', () => {
+			it.each([
+				['filesystem:'],
+				['filesystem-v2:'],
+				['filesystem:/'],
+				['filesystem-v2:/'],
+				['filesystem://'],
+				['filesystem-v2://'],
+			])('should return 400 for ID "%s"', async (maliciousId) => {
+				const query = { id: maliciousId, action: 'download' } as BinaryDataQueryDto;
+
+				await controller.get(request, response, query);
+
+				expect(response.status).toHaveBeenCalledWith(400);
+				expect(response.end).toHaveBeenCalledWith('Malformed binary data ID');
+			});
+		});
 	});
 
 	describe('getSigned', () => {
@@ -162,7 +180,7 @@ describe('BinaryDataController', () => {
 			await controller.getSigned(request, response, query);
 
 			expect(response.status).toHaveBeenCalledWith(400);
-			expect(response.end).toHaveBeenCalledWith('Missing binary data mode');
+			expect(response.end).toHaveBeenCalledWith('Malformed binary data ID');
 		});
 
 		it('should return 400 if binary data mode is invalid', async () => {
