@@ -74,7 +74,7 @@ const plugins = [
 		dts: './src/components.d.ts',
 		resolvers: [
 			iconsResolver({
-				prefix: 'icon',
+				prefix: 'Icon',
 			}),
 		],
 	}),

@@ -33,7 +33,7 @@ FontIcon.args = {
 export const Hoverable = DefaultTemplate.bind({});
 Hoverable.args = {
 	type: 'icon',
-	name: 'heart',
+	name: 'home',
 	color: 'red',
 	size: 200,
 	nodeTypeName: 'We ❤️ n8n',

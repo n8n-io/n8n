@@ -6,6 +6,7 @@ import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
+import { type IconName } from '../N8nIcon/icons';
 
 interface ActionBoxProps {
 	emoji: string;
@@ -13,11 +14,11 @@ interface ActionBoxProps {
 	buttonText?: string;
 	buttonType?: ButtonType;
 	buttonDisabled?: boolean;
-	buttonIcon?: string;
+	buttonIcon?: IconName;
 	description: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
-	calloutIcon?: string;
+	calloutIcon?: IconName;
 }
 
 defineOptions({ name: 'N8nActionBox' });

@@ -2,12 +2,14 @@ import type { ElTooltipProps } from 'element-plus';
 import type { AnchorHTMLAttributes } from 'vue';
 import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 
+import type { IconName } from '../components/N8nIcon/icons';
+
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: string | { type: 'icon' | 'emoji'; value: string };
+	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 	secondaryIcon?: {
-		name: string;
+		name: IconName;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';
 		tooltip?: Partial<ElTooltipProps>;
 	};
