@@ -4,7 +4,6 @@ import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { Project, ProjectRelation, User } from '../entities';
-import type { ListQuery } from '../entities/types-db';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -73,41 +72,6 @@ export class UserRepository extends Repository<User> {
 			},
 			{} as Record<GlobalRole, number>,
 		);
-	}
-
-	async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<User> = {};
-
-		if (!listQueryOptions) {
-			findManyOptions.relations = ['authIdentities'];
-			return findManyOptions;
-		}
-
-		const { filter, select, take, skip } = listQueryOptions;
-
-		if (select) findManyOptions.select = select;
-		if (take) findManyOptions.take = take;
-		if (skip) findManyOptions.skip = skip;
-
-		if (take && !select) {
-			findManyOptions.relations = ['authIdentities'];
-		}
-
-		if (take && select && !select?.id) {
-			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-		}
-
-		if (filter) {
-			const { isOwner, ...otherFilters } = filter;
-
-			findManyOptions.where = otherFilters;
-
-			if (isOwner !== undefined) {
-				findManyOptions.where.role = isOwner ? 'global:owner' : Not('global:owner');
-			}
-		}
-
-		return findManyOptions;
 	}
 
 	/**
