@@ -735,7 +735,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/entity-not-authorized/:entityType(credential|workflow)',
 		props: true,
-		name: VIEWS.ENTITY_UN_AUTHORIZED,
+		name: VIEWS.ENTITY_UNAUTHORIZED,
 		components: {
 			default: EntityUnAuthorised,
 			sidebar: MainSidebar,

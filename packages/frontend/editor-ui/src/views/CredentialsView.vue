@@ -186,7 +186,7 @@ const maybeEditCredential = async () => {
 		}
 
 		return await router.replace({
-			name: VIEWS.ENTITY_UN_AUTHORIZED,
+			name: VIEWS.ENTITY_UNAUTHORIZED,
 			params: { entityType: 'credential' },
 		});
 	}

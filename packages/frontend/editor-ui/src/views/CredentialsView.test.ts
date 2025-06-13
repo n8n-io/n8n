@@ -34,7 +34,7 @@ const router = createRouter({
 		},
 		{
 			path: '/entity-un-authorized',
-			name: VIEWS.ENTITY_UN_AUTHORIZED,
+			name: VIEWS.ENTITY_UNAUTHORIZED,
 			component: { template: '<div></div>' },
 		},
 		{
@@ -214,7 +214,7 @@ describe('CredentialsView', () => {
 		await rerender({ credentialId: 'abc123' });
 		expect(replaceSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: VIEWS.ENTITY_UN_AUTHORIZED,
+				name: VIEWS.ENTITY_UNAUTHORIZED,
 				params: { entityType: 'credential' },
 			}),
 		);
