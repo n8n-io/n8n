@@ -1,0 +1,10 @@
+{
+	"id": 42,
+	"name": "file.csv",
+	"url": "https://storage.googleapis.com/my-bucket/manifest.json",
+	"provider": "gcp",
+	"region": "us-central1",
+	"gcsCredentials": {
+		"access_token": "abc"
+	}
+}

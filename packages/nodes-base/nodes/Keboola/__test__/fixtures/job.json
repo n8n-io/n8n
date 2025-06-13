@@ -1,0 +1,19 @@
+{
+	"inProgress": {
+		"id": "123",
+		"status": "processing"
+	},
+	"success": {
+		"id": "123",
+		"status": "success"
+	},
+	"successWithFile": {
+		"id": "123",
+		"status": "success",
+		"results": {
+			"file": {
+				"id": 42
+			}
+		}
+	}
+}

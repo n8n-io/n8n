@@ -1,0 +1,9 @@
+{
+	"csvContent": "id,name\n1,Alice",
+	"parsedData": [
+		{
+			"id": "1",
+			"name": "Alice"
+		}
+	]
+}
