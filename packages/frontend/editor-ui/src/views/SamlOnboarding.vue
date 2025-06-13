@@ -6,13 +6,13 @@ import AuthView from '@/views/AuthView.vue';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useSSOStore } from '@/stores/sso.store';
+import { useUsersStore } from '@/stores/users.store';
 
 const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 
-const ssoStore = useSSOStore();
+const usersStore = useUsersStore();
 
 const loading = ref(false);
 const FORM_CONFIG: IFormBoxConfig = reactive({
@@ -21,7 +21,7 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 	inputs: [
 		{
 			name: 'firstName',
-			initialValue: ssoStore.userData?.firstName,
+			initialValue: usersStore.currentUser?.firstName,
 			properties: {
 				label: locale.baseText('auth.firstName'),
 				maxlength: 32,
@@ -32,7 +32,7 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 		},
 		{
 			name: 'lastName',
-			initialValue: ssoStore.userData?.lastName,
+			initialValue: usersStore.currentUser?.lastName,
 			properties: {
 				label: locale.baseText('auth.lastName'),
 				maxlength: 32,
@@ -54,7 +54,7 @@ const onSubmit = async (values: { [key: string]: string }) => {
 	if (!isFormWithFirstAndLastName(values)) return;
 	try {
 		loading.value = true;
-		await ssoStore.updateUser(values);
+		await usersStore.updateUserName(values);
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		loading.value = false;

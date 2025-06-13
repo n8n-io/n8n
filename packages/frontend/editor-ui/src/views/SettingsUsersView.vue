@@ -71,13 +71,12 @@ const usersListActions = computed((): IUserListAction[] => {
 		{
 			label: i18n.baseText('settings.users.actions.allowSSOManualLogin'),
 			value: 'allowSSOManualLogin',
-			guard: (user) => settingsStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.disallowSSOManualLogin'),
 			value: 'disallowSSOManualLogin',
-			guard: (user) =>
-				settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
 		},
 	];
 });

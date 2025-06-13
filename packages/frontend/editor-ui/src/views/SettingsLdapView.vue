@@ -19,6 +19,7 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSSOStore } from '@/stores/sso.store';
 
 type TableRow = {
 	status: string;
@@ -65,6 +66,7 @@ const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const settingsStore = useSettingsStore();
+const ssoStore = useSSOStore();
 
 const dataTable = ref<LdapSyncTable[]>([]);
 const tableKey = ref(0);
@@ -192,7 +194,7 @@ const onSubmit = async () => {
 			hasAnyChanges.value = true;
 		}
 
-		adConfig.value = await settingsStore.updateLdapConfig(newConfiguration);
+		adConfig.value = await ssoStore.updateLdapConfig(newConfiguration);
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.updateConfiguration'),
 			message: '',
@@ -214,7 +216,7 @@ const onSaveClick = () => {
 const onTestConnectionClick = async () => {
 	loadingTestConnection.value = true;
 	try {
-		await settingsStore.testLdapConnection();
+		await ssoStore.testLdapConnection();
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.connectionTest'),
 			message: i18n.baseText('settings.ldap.toast.connection.success'),
@@ -234,7 +236,7 @@ const onTestConnectionClick = async () => {
 const onDryRunClick = async () => {
 	loadingDryRun.value = true;
 	try {
-		await settingsStore.runLdapSync({ type: 'dry' });
+		await ssoStore.runLdapSync({ type: 'dry' });
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.runSync.title'),
 			message: i18n.baseText('settings.ldap.toast.sync.success'),
@@ -251,7 +253,7 @@ const onDryRunClick = async () => {
 const onLiveRunClick = async () => {
 	loadingLiveRun.value = true;
 	try {
-		await settingsStore.runLdapSync({ type: 'live' });
+		await ssoStore.runLdapSync({ type: 'live' });
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.runSync.title'),
 			message: i18n.baseText('settings.ldap.toast.sync.success'),
@@ -267,7 +269,7 @@ const onLiveRunClick = async () => {
 
 const getLdapConfig = async () => {
 	try {
-		adConfig.value = await settingsStore.getLdapConfig();
+		adConfig.value = await ssoStore.getLdapConfig();
 		loginEnabled.value = adConfig.value.loginEnabled;
 		syncEnabled.value = adConfig.value.synchronizationEnabled;
 		const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) => values.loginEnabled === true;
@@ -554,7 +556,7 @@ const getLdapConfig = async () => {
 const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
 	try {
 		loadingTable.value = true;
-		const data = await settingsStore.getLdapSynchronizations({
+		const data = await ssoStore.getLdapSynchronizations({
 			page: page.value,
 		});
 
