@@ -19,10 +19,9 @@ import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, Agent as HttpAgent } from 'http';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { type AgentOptions, Agent as HttpsAgent } from 'https';
-import { Agent as HttpAgent } from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';

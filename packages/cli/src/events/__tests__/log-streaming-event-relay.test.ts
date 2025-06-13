@@ -1258,4 +1258,48 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 	});
+
+	describe('runner events', () => {
+		it('should log on `runner-task-requested` event', () => {
+			const event: RelayEventMap['runner-task-requested'] = {
+				taskId: 't-1',
+				nodeId: 'n-2',
+				executionId: 'e-3',
+				workflowId: 'w-4',
+			};
+
+			eventService.emit('runner-task-requested', event);
+
+			expect(eventBus.sendRunnerEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.runner.task.requested',
+				payload: {
+					taskId: 't-1',
+					nodeId: 'n-2',
+					executionId: 'e-3',
+					workflowId: 'w-4',
+				},
+			});
+		});
+
+		it('should log on `runner-response-received` event', () => {
+			const event: RelayEventMap['runner-response-received'] = {
+				taskId: 't-1',
+				nodeId: 'n-2',
+				executionId: 'e-3',
+				workflowId: 'w-4',
+			};
+
+			eventService.emit('runner-response-received', event);
+
+			expect(eventBus.sendRunnerEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.runner.response.received',
+				payload: {
+					taskId: 't-1',
+					nodeId: 'n-2',
+					executionId: 'e-3',
+					workflowId: 'w-4',
+				},
+			});
+		});
+	});
 });

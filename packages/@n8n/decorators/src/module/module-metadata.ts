@@ -1,12 +1,12 @@
 import { Service } from '@n8n/di';
 
-import type { Module } from './module';
+import type { ModuleClass } from './module';
 
 @Service()
 export class ModuleMetadata {
-	private readonly modules: Set<Module> = new Set();
+	private readonly modules: Set<ModuleClass> = new Set();
 
-	register(module: Module) {
+	register(module: ModuleClass) {
 		this.modules.add(module);
 	}
 

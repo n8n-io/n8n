@@ -5,6 +5,8 @@ import { sqliteMigrations } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
 
+import type { ModuleRegistry } from '@/modules/module-registry';
+
 import { DbConnectionOptions } from '../db-connection-options';
 
 describe('DbConnectionOptions', () => {
@@ -17,7 +19,12 @@ describe('DbConnectionOptions', () => {
 	});
 	const n8nFolder = '/test/n8n';
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
-	const dbConnectionOptions = new DbConnectionOptions(dbConfig, instanceSettingsConfig);
+	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
+	const dbConnectionOptions = new DbConnectionOptions(
+		dbConfig,
+		instanceSettingsConfig,
+		moduleRegistry,
+	);
 
 	beforeEach(() => jest.resetAllMocks());
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -14,6 +15,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
+import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 
 const route = useRoute();
 const router = useRouter();
@@ -155,7 +157,7 @@ const pageType = computed(() => {
 	}
 });
 
-const subtitle = computed(() => {
+const sectionDescription = computed(() => {
 	if (projectPages.isOverviewSubPage) {
 		return i18n.baseText('projects.header.overview.subtitle');
 	} else if (projectPages.isSharedSubPage) {
@@ -163,7 +165,49 @@ const subtitle = computed(() => {
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
 	}
+
 	return null;
+});
+
+const projectDescription = computed(() => {
+	if (projectPages.isProjectsSubPage) {
+		return projectsStore.currentProject?.description;
+	}
+
+	return null;
+});
+
+const projectHeaderRef = ref<HTMLElement | null>(null);
+const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
+
+const headerActionsRef = ref<HTMLElement | null>(null);
+const { width: headerActionsWidth } = useElementSize(headerActionsRef);
+
+const projectSubtitleFontSizeInPxs = ref<number | null>(null);
+
+useResizeObserver(projectHeaderRef, () => {
+	if (!projectHeaderRef.value) {
+		return;
+	}
+
+	const projectSubtitleEl = projectHeaderRef.value.querySelector(
+		'span[data-test-id="project-subtitle"]',
+	);
+	if (projectSubtitleEl) {
+		const computedStyle = window.getComputedStyle(projectSubtitleEl);
+		projectSubtitleFontSizeInPxs.value = parseFloat(computedStyle.fontSize);
+	}
+});
+
+const projectDescriptionTruncated = computed(() => {
+	if (!projectDescription.value) {
+		return '';
+	}
+
+	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
+	// Fallback to N8nText component default font-size, small
+	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
+	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
 const onSelect = (action: string) => {
@@ -177,23 +221,33 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
-		<div :class="$style.projectHeader">
+		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
 					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
 						projectName
 					}}</N8nHeading>
-					<N8nText color="text-light">
-						<slot name="subtitle">
-							<N8nText v-if="subtitle" color="text-light" data-test-id="project-subtitle">{{
-								subtitle
-							}}</N8nText>
-						</slot>
+					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
+						{{ sectionDescription }}
 					</N8nText>
+					<template v-else-if="projectDescription">
+						<div :class="$style.projectDescriptionWrapper">
+							<N8nText color="text-light" data-test-id="project-subtitle">
+								{{ projectDescriptionTruncated || projectDescription }}
+							</N8nText>
+							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
+								<N8nText color="text-light">{{ projectDescription }}</N8nText>
+							</div>
+						</div>
+					</template>
 				</div>
 			</div>
-			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
+			<div
+				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
+				ref="headerActionsRef"
+				:class="[$style.headerActions]"
+			>
 				<N8nTooltip
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
@@ -225,8 +279,7 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader,
-.projectDescription {
+.projectHeader {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
@@ -241,6 +294,28 @@ const onSelect = (action: string) => {
 
 .actions {
 	padding: var(--spacing-2xs) 0 var(--spacing-xs);
+}
+
+.projectDescriptionWrapper {
+	position: relative;
+	display: inline-block;
+
+	&:hover .tooltip {
+		display: block;
+	}
+}
+
+.tooltip {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: calc(-1 * var(--spacing-3xs));
+	background-color: var(--color-background-light);
+	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
+	z-index: 10;
+	white-space: normal;
+	border-radius: 6px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 @include mixins.breakpoint('xs-only') {
