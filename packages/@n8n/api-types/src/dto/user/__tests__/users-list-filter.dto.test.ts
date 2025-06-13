@@ -19,9 +19,9 @@ describe('UsersListFilterDto', () => {
 				parsedResult: { skip: 0, take: 10, sortBy: 'name:asc' },
 			},
 			{
-				name: 'sort by last active descending and pagination',
-				request: { skip: '5', take: '20', sortBy: 'lastActive:desc' },
-				parsedResult: { skip: 5, take: 20, sortBy: 'lastActive:desc' },
+				name: 'sort by last active descending and pagination with search',
+				request: { skip: '5', take: '20', sortBy: 'lastActive:desc', search: 'john' },
+				parsedResult: { skip: 5, take: 20, sortBy: 'lastActive:desc', search: 'john' },
 			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = UsersListFilterDto.safeParse(request);
@@ -56,6 +56,13 @@ describe('UsersListFilterDto', () => {
 					sortBy: 'invalid-value',
 				},
 				expectedErrorPath: ['sortBy'],
+			},
+			{
+				name: 'invalid search value',
+				request: {
+					search: 123,
+				},
+				expectedErrorPath: ['search'],
 			},
 		])('should invalidate $name', ({ request, expectedErrorPath }) => {
 			const result = UsersListFilterDto.safeParse(request);
