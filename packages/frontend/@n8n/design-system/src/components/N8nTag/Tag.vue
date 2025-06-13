@@ -36,7 +36,8 @@ withDefaults(defineProps<TagProps>(), {
 		cursor: pointer;
 
 		&:hover {
-			background-color: var(--color-background-medium);
+			background-color: var(--tag-background-hover-color);
+			border-color: var(--tag-border-hover-color);
 		}
 	}
 }
