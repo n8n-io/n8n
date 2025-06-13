@@ -72,10 +72,6 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	FUNCTION_ITEM_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ]);
-/**
- * Nodes which contain formField parameters whose HTML fields support expressions
- * without following common notation
- */
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
 export const NODES_WITH_TOPLEVEL_HTML_CONTENT = new Set([MAILGUN_NODE_TYPE, HTML_NODE_TYPE]);
 
