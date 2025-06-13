@@ -19,7 +19,7 @@ describe('@BackendModule decorator', () => {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
@@ -41,7 +41,7 @@ describe('@BackendModule decorator', () => {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
 
 		expect(registeredModules).toContain(FirstModule);
 		expect(registeredModules).toContain(SecondModule);
@@ -53,7 +53,7 @@ describe('@BackendModule decorator', () => {
 		@BackendModule()
 		class TestModule {}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
@@ -69,7 +69,7 @@ describe('@BackendModule decorator', () => {
 			}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
 
 		expect(registeredModules).toContain(TestModule);
 
@@ -87,7 +87,7 @@ describe('@BackendModule decorator', () => {
 			@BackendModule()
 			class SecondModule {}
 
-			const registeredModules = Array.from(moduleMetadata.getModules());
+			const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
 
 			expect(registeredModules).toContain(FirstModule);
 			expect(registeredModules).toContain(SecondModule);
