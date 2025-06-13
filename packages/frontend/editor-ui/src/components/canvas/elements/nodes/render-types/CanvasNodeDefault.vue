@@ -167,7 +167,11 @@ function onActivate(event: MouseEvent) {
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeStatusIcons
+				v-if="!isDisabled"
+				:class="$style.statusIcons"
+				:with-count-class="$style.statusIconsWithCount"
+			/>
 		</template>
 	</div>
 </template>
@@ -280,10 +284,15 @@ function onActivate(event: MouseEvent) {
 
 			.statusIcons {
 				position: static;
-				margin-right: var(--spacing-s);
+				margin-right: var(--spacing-m);
+
+				&.statusIconsWithCount {
+					margin-right: var(--spacing-s);
+				}
 			}
 
 			.description {
+				flex-grow: 1;
 				margin-right: var(--spacing-xs);
 			}
 		}
