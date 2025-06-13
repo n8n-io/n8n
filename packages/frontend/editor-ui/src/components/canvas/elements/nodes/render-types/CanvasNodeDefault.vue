@@ -184,8 +184,8 @@ function onActivate(event: MouseEvent) {
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 24px;
-	--configurable-node--icon-size: 32px;
+	--configurable-node--icon-offset: var(--spacing-l);
+	--configurable-node--icon-size: var(--spacing-xl);
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -280,7 +280,7 @@ function onActivate(event: MouseEvent) {
 
 			.statusIcons {
 				position: static;
-				margin-right: 16px;
+				margin-right: var(--spacing-s);
 			}
 
 			.description {
