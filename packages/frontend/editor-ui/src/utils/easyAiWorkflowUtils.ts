@@ -139,8 +139,8 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 					options: {},
 				},
 				type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-				typeVersion: 1,
-				position: [200, 160],
+				typeVersion: 1.1,
+				position: [320, 160],
 				id: '94aecac0-03f9-4915-932b-d14a2576607b',
 				name: 'Default Data Loader',
 			},
@@ -259,17 +259,6 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 				id: '28bc73a1-e64a-47bf-ac1c-ffe644894ea5',
 				name: 'Sticky Note2',
 			},
-			{
-				parameters: {
-					chunkOverlap: 100,
-					options: {},
-				},
-				type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-				typeVersion: 1,
-				position: [200, 340],
-				id: '2556bd2a-5b76-441c-9d07-df7af38b94c0',
-				name: 'Recursive Character Text Splitter',
-			},
 		],
 		connections: {
 			'Upload your file here': {
@@ -338,17 +327,6 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 						{
 							node: 'AI Agent',
 							type: 'ai_languageModel',
-							index: 0,
-						},
-					],
-				],
-			},
-			'Recursive Character Text Splitter': {
-				ai_textSplitter: [
-					[
-						{
-							node: 'Default Data Loader',
-							type: 'ai_textSplitter',
 							index: 0,
 						},
 					],
