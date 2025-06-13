@@ -42,6 +42,8 @@ export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
+export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -75,6 +77,7 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
  * without following common notation
  */
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
+export const NODES_WITH_TOPLEVEL_HTML_CONTENT = new Set([MAILGUN_NODE_TYPE, HTML_NODE_TYPE]);
 
 //@n8n/n8n-nodes-langchain
 export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';

@@ -7,6 +7,7 @@ import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
+	NODES_WITH_TOPLEVEL_HTML_CONTENT as NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
@@ -425,6 +426,14 @@ export class Workflow {
 			if (NODES_WITH_RENAMABLE_CONTENT.has(node.type)) {
 				node.parameters.jsCode = this.renameNodeInParameterValue(
 					node.parameters.jsCode,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
+			if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type)) {
+				node.parameters.html = this.renameNodeInParameterValue(
+					node.parameters.html,
 					currentName,
 					newName,
 					{ hasRenamableContent: true },
