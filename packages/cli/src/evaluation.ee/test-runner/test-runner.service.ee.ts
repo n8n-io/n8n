@@ -298,8 +298,6 @@ export class TestRunnerService {
 		) {
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({
-				// workflow does not evaluate correctly if this is passed
-				// in queue mode with offload manual executions
 				node: triggerNode,
 				data: {
 					main: [[{ json: {} }]],
@@ -310,6 +308,9 @@ export class TestRunnerService {
 			data.executionData.executionData = {
 				contextData: {},
 				metadata: {},
+				// workflow does not evaluate correctly if this is passed
+				// in queue mode with offload manual executions
+				// but this is expected otherwise and will fail if not passed
 				nodeExecutionStack,
 				waitingExecution: {},
 				waitingExecutionSource: {},
