@@ -1,9 +1,8 @@
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import * as a from 'assert/strict';
 import { type AiAgentRequest, type INode, NodeConnectionTypes } from 'n8n-workflow';
 
 import { type DirectedGraph } from './directed-graph';
-
-export const TOOL_EXECUTOR_NODE_NAME = 'PartialExecutionToolExecutor';
 
 export function rewireGraph(
 	tool: INode,
