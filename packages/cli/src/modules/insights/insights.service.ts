@@ -35,7 +35,6 @@ export class InsightsService {
 		};
 	}
 
-	@OnLeaderTakeover()
 	startTimers() {
 		this.collectionService.startFlushingTimer();
 
