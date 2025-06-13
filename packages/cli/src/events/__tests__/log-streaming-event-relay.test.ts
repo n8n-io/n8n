@@ -561,6 +561,8 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'exec456',
 				nodeName: 'HTTP Request',
 				workflow,
+				nodeId: 'node2',
+				nodeType: 'n8n-nodes-base.httpRequest',
 			};
 
 			eventService.emit('node-pre-execute', event);
@@ -573,6 +575,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf303',
 					workflowName: 'Test Workflow with Nodes',
 					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeId: 'node2',
 				},
 			});
 		});
@@ -606,6 +609,8 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'exec789',
 				nodeName: 'HTTP Response',
 				workflow,
+				nodeId: 'node2',
+				nodeType: 'n8n-nodes-base.httpResponse',
 			};
 
 			eventService.emit('node-post-execute', event);
@@ -618,6 +623,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf404',
 					workflowName: 'Test Workflow with Completed Node',
 					nodeType: 'n8n-nodes-base.httpResponse',
+					nodeId: 'node2',
 				},
 			});
 		});
