@@ -1,5 +1,6 @@
 import { IsInPiPWindowSymbol } from '@/constants';
-import { addThemeToBody, useAppliedTheme } from '@/stores/ui.utils';
+import { useUIStore } from '@/stores/ui.store';
+import { applyThemeToBody } from '@/stores/ui.utils';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
@@ -79,7 +80,7 @@ export function usePiPWindow({
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
-	const theme = useAppliedTheme();
+	const uiStore = useUIStore();
 	const observer = new MutationObserver((mutations) => {
 		if (pipWindow.value) {
 			syncStyleMutations(pipWindow.value, mutations);
@@ -147,10 +148,10 @@ export function usePiPWindow({
 	// It seems "prefers-color-scheme: dark" media query matches in PiP window by default
 	// So we're enforcing currently applied theme in the main window by setting data-theme in PiP's body element
 	watch(
-		[theme, pipWindow],
-		([theTheme, pip]) => {
+		[() => uiStore.appliedTheme, pipWindow],
+		([theme, pip]) => {
 			if (pip) {
-				addThemeToBody(theTheme, pip);
+				applyThemeToBody(theme, pip);
 			}
 		},
 		{ immediate: true },
