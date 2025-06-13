@@ -54,28 +54,24 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 		const { executionId, workflowData: workflow } = this;
 		const node = workflow.nodes.find((n) => n.name === nodeName);
 
-		if (!node) return; // to satisfy typechecker
-
 		eventService.emit('node-pre-execute', {
 			executionId,
 			workflow,
-			nodeId: node.id,
+			nodeId: node?.id,
 			nodeName,
-			nodeType: node.type,
+			nodeType: node?.type,
 		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
 		const node = workflow.nodes.find((n) => n.name === nodeName);
 
-		if (!node) return; // to satisfy typechecker
-
 		eventService.emit('node-post-execute', {
 			executionId,
 			workflow,
-			nodeId: node.id,
+			nodeId: node?.id,
 			nodeName,
-			nodeType: node.type,
+			nodeType: node?.type,
 		});
 	});
 }

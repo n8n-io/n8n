@@ -111,17 +111,17 @@ export type RelayEventMap = {
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
-		nodeId: string;
+		nodeId?: string;
 		nodeName: string;
-		nodeType: string;
+		nodeType?: string;
 	};
 
 	'node-post-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
-		nodeId: string;
+		nodeId?: string;
 		nodeName: string;
-		nodeType: string;
+		nodeType?: string;
 	};
 
 	// #endregion
