@@ -1,7 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, Logger, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
@@ -51,11 +52,27 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-pre-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-post-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 }
 

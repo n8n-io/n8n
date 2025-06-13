@@ -1,9 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import { Logger } from 'n8n-core';
 
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -53,7 +53,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				? this.createClusterClient(arg)
 				: this.createRegularClient(arg);
 
-		client.on('error', (error) => {
+		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
 
 			this.logger.error(`[Redis client] ${error.message}`, { error });

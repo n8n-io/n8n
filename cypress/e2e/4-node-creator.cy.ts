@@ -316,7 +316,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.actions.deleteNode('When clicking ‘Execute workflow’');
-			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
+			WorkflowPage.getters.canvasNodePlusEndpointByName('Create a credential').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
@@ -324,7 +324,11 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes(
+				'Create a credential',
+				'Create a credential1',
+				'Summarize',
+			);
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
@@ -548,7 +552,7 @@ describe('Node Creator', () => {
 	});
 
 	it('should add node directly for sub-connection as tool', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		clickGetBackToCanvas();
 

@@ -1,4 +1,3 @@
-import * as onboardingApi from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -41,6 +40,7 @@ import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -57,8 +57,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { dismissBannerPermanently } from '@/api/ui';
+import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import {
 	addThemeToBody,
@@ -71,6 +70,7 @@ import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -198,6 +198,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				url: '',
 			},
 		},
+		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowName: '',
+			},
+		},
 	});
 
 	const modalStack = ref<string[]>([]);
@@ -225,7 +231,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const userStore = useUsersStore();
 
 	// Keep track of the preferred theme and update it when the system preference changes
 	const preferredTheme = getPreferredTheme();
@@ -417,20 +422,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const submitContactEmail = async (email: string, agree: boolean) => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.submitEmailOnSignup(
-				instanceId,
-				currentUser,
-				email ?? currentUser.email,
-				agree,
-			);
-		}
-		return null;
-	};
-
 	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -454,7 +445,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openMoveToFolderModal = (
 		resourceType: 'folder' | 'workflow',
-		resource: { id: string; name: string; parentFolderId?: string },
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
 		workflowListEventBus: EventBus,
 	) => {
 		openModalWithData({
@@ -569,7 +565,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
-		submitContactEmail,
 		openCommunityPackageUninstallConfirmModal,
 		openCommunityPackageUpdateConfirmModal,
 		addActiveAction,

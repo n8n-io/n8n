@@ -24,12 +24,13 @@ import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
+const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
+const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const CanvasChatSwitch = async () => await import('@/components/CanvasChat/CanvasChatSwitch.vue');
-const DemoFooter = async () =>
-	await import('@/components/CanvasChat/future/components/DemoFooter.vue');
+const LogsPanel = async () => await import('@/features/logs/components/LogsPanel.vue');
+const DemoFooter = async () => await import('@/features/logs/components/DemoFooter.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -208,6 +209,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -343,7 +345,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChatSwitch,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -377,7 +379,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChatSwitch,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -721,6 +723,24 @@ export const routes: RouteRecordRaw[] = [
 	},
 	...projectsRoutes,
 	...insightsRoutes,
+	{
+		path: '/entity-not-found/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_NOT_FOUND,
+		components: {
+			default: EntityNotFound,
+			sidebar: MainSidebar,
+		},
+	},
+	{
+		path: '/entity-not-authorized/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_UNAUTHORIZED,
+		components: {
+			default: EntityUnAuthorised,
+			sidebar: MainSidebar,
+		},
+	},
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

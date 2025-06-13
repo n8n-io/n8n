@@ -1,12 +1,12 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { BinaryDataConfig, InstanceSettings, Logger } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -17,7 +17,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { getAvailableDateRanges as getInsightsAvailableDateRanges } from '@/modules/insights/insights-helpers';
 import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
@@ -52,7 +52,6 @@ export class FrontendService {
 		private readonly modulesConfig: ModulesConfig,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
-		private readonly insightsService: InsightsService,
 		private readonly licenseState: LicenseState,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
@@ -253,9 +252,6 @@ export class FrontendService {
 				dashboard: false,
 				dateRanges: [],
 			},
-			logsView: {
-				enabled: false,
-			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
@@ -383,7 +379,7 @@ export class FrontendService {
 			enabled: this.modulesConfig.loadedModules.has('insights'),
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: this.insightsService.getAvailableDateRanges(),
+			dateRanges: getInsightsAvailableDateRanges(this.licenseState),
 		});
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
@@ -395,8 +391,6 @@ export class FrontendService {
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
-
-		this.settings.logsView.enabled = config.get('logs_view.enabled');
 
 		// Refresh evaluation settings
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();

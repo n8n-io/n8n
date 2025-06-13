@@ -1,6 +1,6 @@
 import { getManualChatModal } from './modals/chat-modal';
 import { clickGetBackToCanvas, getParameterInputByName } from './ndv';
-import { ROUTES } from '../constants';
+import { META_KEY, ROUTES } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 
 /**
@@ -179,35 +179,52 @@ export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
 	}
 }
 
+/**
+ * @param nodeDisplayName - The name of the node to add to the canvas
+ * @param plusButtonClick - Whether to click the plus button to open the node creator
+ * @param preventNdvClose - Whether to prevent the Ndv from closing
+ * @param action - The action to select in the node creator
+ * @param useExactMatch - Whether to use an exact match for the node name will use selector instead of enter key
+ */
 export function addNodeToCanvas(
 	nodeDisplayName: string,
 	plusButtonClick = true,
 	preventNdvClose?: boolean,
 	action?: string,
+	useExactMatch = false,
 ) {
 	if (plusButtonClick) {
 		getNodeCreatorPlusButton().click();
 	}
 
 	getNodeCreatorSearchBar().type(nodeDisplayName);
-	getNodeCreatorSearchBar().type('{enter}');
+
+	if (useExactMatch) {
+		cy.getByTestId('node-creator-item-name').contains(nodeDisplayName).click();
+	} else {
+		getNodeCreatorSearchBar().type('{enter}');
+	}
+
 	cy.wait(500);
+
 	cy.get('body').then((body) => {
 		if (body.find('[data-test-id=node-creator]').length > 0) {
 			if (action) {
 				cy.contains(action).click();
 			} else {
-				// Select the first action
 				cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
 			}
 		}
 	});
 
-	if (!preventNdvClose) cy.get('body').type('{esc}');
+	if (!preventNdvClose) {
+		cy.get('body').type('{esc}');
+	}
 }
 
 export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {
 	cy.visit(ROUTES.NEW_WORKFLOW_PAGE);
+	cy.getByTestId('node-creator-plus-button').should('be.visible');
 	cy.waitForLoad();
 	cy.window().then((win) => {
 		win.preventNodeViewBeforeUnload = preventNodeViewUnload;
@@ -346,4 +363,49 @@ export function openExecutions() {
 
 export function clickClearExecutionDataButton() {
 	cy.getByTestId('clear-execution-data-button').click();
+}
+
+/**
+ * Undo/Redo
+ */
+
+export function hitComboShortcut(modifier: string, key: string) {
+	cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
+}
+export function hitUndo() {
+	hitComboShortcut(`{${META_KEY}}`, 'z');
+}
+export function hitRedo() {
+	cy.get('body').type(`{${META_KEY}+shift+z}`);
+}
+export function hitSelectAll() {
+	hitComboShortcut(`{${META_KEY}}`, 'a');
+}
+export function hitDeleteAllNodes() {
+	hitSelectAll();
+	cy.get('body').type('{backspace}');
+}
+export function hitDisableNodeShortcut() {
+	cy.get('body').type('d');
+}
+export function hitCopy() {
+	hitComboShortcut(`{${META_KEY}}`, 'c');
+}
+export function hitPinNodeShortcut() {
+	cy.get('body').type('p');
+}
+export function hitSaveWorkflow() {
+	cy.get('body').type(`{${META_KEY}+s}`);
+}
+export function hitExecuteWorkflow() {
+	cy.get('body').type(`{${META_KEY}+enter}`);
+}
+export function hitDuplicateNode() {
+	cy.get('body').type(`{${META_KEY}+d}`);
+}
+export function hitAddSticky() {
+	cy.get('body').type('{shift+S}');
+}
+export function selectRight() {
+	cy.get('body').type('{shift+rightArrow}');
 }

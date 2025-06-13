@@ -1,4 +1,4 @@
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 const TEST_CASE_EXECUTION_ERROR_CODE = {
 	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',

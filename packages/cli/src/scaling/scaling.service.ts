@@ -1,9 +1,9 @@
-import { isObjectLiteral } from '@n8n/backend-common';
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	sleep,
@@ -57,6 +57,9 @@ export class ScalingService {
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
+
+		if (this.queue) return;
+
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -305,6 +308,7 @@ export class ScalingService {
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
+					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
@@ -379,7 +383,7 @@ export class ScalingService {
 	private readonly jobCounters = { completed: 0, failed: 0 };
 
 	/** Interval for collecting queue metrics to expose via Prometheus. */
-	private queueMetricsInterval: NodeJS.Timer | undefined;
+	private queueMetricsInterval: NodeJS.Timeout | undefined;
 
 	get isQueueMetricsEnabled() {
 		return (

@@ -9,11 +9,15 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Interface';
+import type {
+	AddedNodesAndConnections,
+	NodeTypeSelectedPayload,
+	ToggleNodeCreatorOptions,
+} from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 type Props = {
 	nodeViewScale: number;
@@ -83,8 +87,8 @@ function closeNodeCreator(hasAddedNodes = false) {
 	}
 }
 
-function nodeTypeSelected(nodeTypes: string[]) {
-	emit('addNodes', getAddedNodesAndConnections(nodeTypes.map((type) => ({ type }))));
+function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
+	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
 

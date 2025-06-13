@@ -1,5 +1,5 @@
-import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest, request } from '@/utils/apiUtils';
+import type { IRestApiContext } from '@n8n/rest-api-client';
+import { makeRestApiRequest, request } from '@n8n/rest-api-client';
 
 export interface TestRunRecord {
 	id: string;

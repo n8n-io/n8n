@@ -196,7 +196,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$("D")'])];
 			nodeNames = ['B', 'D'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([]);
 			expect(result.nodes).toEqual([
 				{
@@ -210,7 +210,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$("E").item.json.x'])];
 			nodeNames = ['B'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([]);
 			expect(result.nodes).toEqual([
 				{
@@ -249,7 +249,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$json.a.b.c_d["e"]["f"]']), makeNode('C', ['$json.x.y.z'])];
 			nodeNames = ['A', 'B', 'C'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([['a_b_c_d', '$json.a.b.c_d']]);
 			expect(result.nodes).toEqual([
 				{
@@ -259,6 +259,31 @@ describe('NodeReferenceParserUtils', () => {
 				{
 					name: 'C',
 					parameters: { p0: '={{ $json.x.y.z }}' },
+				},
+			]);
+		});
+		it('should handle complex $json case for first node', () => {
+			nodes = [
+				{
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
+					name: 'A',
+				} as unknown as INode,
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([
+				['repo', '$json.repo'],
+				['org', '$json.org'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
 				},
 			]);
 		});
@@ -483,6 +508,8 @@ describe('NodeReferenceParserUtils', () => {
 					'$("A").last().json.myField',
 					'$("A").all().json.myField',
 					'$("A").item.json.myField',
+					'$("A").first()',
+					'$("A").all()',
 				]),
 			];
 			nodeNames = ['A', 'B'];
@@ -492,6 +519,8 @@ describe('NodeReferenceParserUtils', () => {
 				['myField_lastItem', '$("A").last().json.myField'],
 				['myField_allItems', '$("A").all().json.myField'],
 				['myField', '$("A").item.json.myField'],
+				['A_firstItem', '$("A").first()'],
+				['A_allItems', '$("A").all()'],
 			]);
 			expect(result.nodes).toEqual([
 				{
@@ -501,6 +530,8 @@ describe('NodeReferenceParserUtils', () => {
 						p1: "={{ $('Start').last().json.myField_lastItem }}",
 						p2: "={{ $('Start').first().json.myField_allItems }}",
 						p3: "={{ $('Start').item.json.myField }}",
+						p4: "={{ $('Start').first().json.A_firstItem }}",
+						p5: "={{ $('Start').first().json.A_allItems }}",
 					},
 				},
 			]);
@@ -618,6 +649,69 @@ describe('NodeReferenceParserUtils', () => {
 				{
 					name: 'A node with spaces',
 					parameters: { p0: "={{ $('Start').item.json.A__weir$d__ode__$_Name__myField }}" },
+				},
+			]);
+		});
+		it('should handle assignments format of Set node correctly', () => {
+			nodes = [
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'cf8bd6cb-f28a-4a73-b141-02e5c22cfe74',
+									name: 'ghApiBaseUrl',
+									value: '={{ $("A").item.json.x.y.z }}',
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [80, 80],
+					id: '6e2fd284-2aba-4dee-8921-18be9a291484',
+					name: 'Params',
+				},
+			];
+			nodeNames = ['A', 'Params'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['x_y_z', '$("A").item.json.x.y.z']]);
+			expect(result.nodes).toEqual([
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'cf8bd6cb-f28a-4a73-b141-02e5c22cfe74',
+									name: 'ghApiBaseUrl',
+									value: "={{ $('Start').item.json.x_y_z }}",
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [80, 80],
+					id: '6e2fd284-2aba-4dee-8921-18be9a291484',
+					name: 'Params',
+				},
+			]);
+		});
+		it('should support handle unexpected code after the data accessor', () => {
+			nodes = [makeNode('A', ['$("B").all()[0].json.first_node_variable'])];
+			nodeNames = ['A', 'B'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['B_allItems', '$("B").all()']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: "={{ $('Start').first().json.B_allItems[0].json.first_node_variable }}",
+					},
 				},
 			]);
 		});

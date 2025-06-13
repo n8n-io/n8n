@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { UserAction } from '@n8n/design-system';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 	WorkflowHistoryRequestParams,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 
 const props = defineProps<{

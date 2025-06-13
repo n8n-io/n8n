@@ -240,3 +240,18 @@ Cypress.Commands.add('resetDatabase', () => {
 		admin: INSTANCE_ADMIN,
 	});
 });
+
+Cypress.Commands.add('interceptNewTab', () => {
+	cy.window().then((win) => {
+		cy.stub(win, 'open').as('windowOpen');
+	});
+});
+
+Cypress.Commands.add('visitInterceptedTab', () => {
+	cy.get('@windowOpen')
+		.should('have.been.called')
+		.then((stub: any) => {
+			const url = stub.firstCall.args[0];
+			cy.visit(url);
+		});
+});

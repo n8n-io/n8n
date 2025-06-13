@@ -1,5 +1,5 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -11,7 +11,7 @@ import { InsightsConfig } from './insights.config';
  */
 @Service()
 export class InsightsCompactionService {
-	private compactInsightsTimer: NodeJS.Timer | undefined;
+	private compactInsightsTimer: NodeJS.Timeout | undefined;
 
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,

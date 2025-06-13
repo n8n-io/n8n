@@ -16,9 +16,6 @@
                 "createdate": {
                     "type": "string"
                 },
-                "dealname": {
-                    "type": "string"
-                },
                 "hs_lastmodifieddate": {
                     "type": "string"
                 },
@@ -31,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

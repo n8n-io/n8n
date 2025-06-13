@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
@@ -57,7 +57,7 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 
 const fetchPaginatedTableData = ({
 	page = 0,
-	itemsPerPage = 20,
+	itemsPerPage = 25,
 	sortBy,
 	dateRange = selectedDateRange.value,
 }: {
