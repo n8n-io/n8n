@@ -108,6 +108,18 @@ Object.defineProperty(window, 'DataTransfer', {
 	value: DataTransfer,
 });
 
+Object.defineProperty(window, 'matchMedia', {
+	writable: true,
+	value: vi.fn(() => ({
+		matches: false,
+		media: '',
+		addListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeListener: vi.fn(),
+		removeEventListener: vi.fn(),
+	})),
+});
+
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 	writable: true,
 	value: vi.fn(),
