@@ -1050,8 +1050,7 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (!node.parameters || !node.forceCustomOperation) return undefined;
+		if (!node.parameters && !node.forceCustomOperation) return undefined;
 
 		const { customOperations } = type;
 		const { resource, operation } = node.forceCustomOperation ?? node.parameters;

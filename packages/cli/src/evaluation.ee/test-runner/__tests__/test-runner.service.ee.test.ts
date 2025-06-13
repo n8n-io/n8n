@@ -466,7 +466,7 @@ describe('TestRunnerService', () => {
 			expect(nodeExecutionStack).toBeInstanceOf(Array);
 			expect(nodeExecutionStack).toHaveLength(1);
 			expect(nodeExecutionStack?.[0]).toHaveProperty('node.name', triggerNodeName);
-			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json.requestDataset', true);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json', {});
 		});
 
 		test('should wait for execution to finish and return result', async () => {
