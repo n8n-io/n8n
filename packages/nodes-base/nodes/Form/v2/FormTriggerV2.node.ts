@@ -21,7 +21,7 @@ import {
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
