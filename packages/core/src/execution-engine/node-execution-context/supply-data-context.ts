@@ -18,7 +18,7 @@ import type {
 	NodeConnectionType,
 	ISourceData,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -324,13 +324,13 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				runExecutionData.executionData!.metadata[sourceNodeName] = [];
 				sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
 			}
-			if (!sourceTaskData[currentRunIndex]) {
-				sourceTaskData[currentRunIndex] = {
+			if (!sourceTaskData[currentNodeRunIndex]) {
+				sourceTaskData[currentNodeRunIndex] = {
 					subRun: [],
 				};
 			}
 
-			sourceTaskData[currentRunIndex].subRun!.push({
+			sourceTaskData[currentNodeRunIndex].subRun!.push({
 				node: nodeName,
 				runIndex: currentNodeRunIndex,
 			});

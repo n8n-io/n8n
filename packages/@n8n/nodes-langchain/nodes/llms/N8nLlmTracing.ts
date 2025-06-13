@@ -41,7 +41,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	completionTokensEstimate = 0;
 
-	parentRunIndex?: number;
+	#parentRunIndex?: number;
 
 	/**
 	 * A map to associate LLM run IDs to run details.
@@ -144,7 +144,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 					});
 
 		const sourceNodeRunIndex =
-			this.parentRunIndex !== undefined ? this.parentRunIndex + runDetails.index : undefined;
+			this.#parentRunIndex !== undefined ? this.#parentRunIndex + runDetails.index : undefined;
+
 		this.executionFunctions.addOutputData(
 			this.connectionType,
 			runDetails.index,
@@ -163,10 +164,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
-			this.parentRunIndex !== undefined
-				? this.parentRunIndex + this.executionFunctions.getNextRunIndex()
+			this.#parentRunIndex !== undefined
+				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
-		console.log('sourceNodeRunIndex', sourceNodeRunIndex);
 
 		const options = llm.type === 'constructor' ? llm.kwargs : llm;
 		const { index } = this.executionFunctions.addInputData(
@@ -234,5 +234,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			runId,
 			parentRunId,
 		});
+	}
+
+	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
+	setParentRunIndex(runIndex: number) {
+		this.#parentRunIndex = runIndex;
 	}
 }
