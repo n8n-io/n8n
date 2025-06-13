@@ -64,6 +64,16 @@ describe('FormTrigger, sanitizeHtml', () => {
 				html: '<input type="text" value="test">',
 				expected: '',
 			},
+			{
+				html: '<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></source>Your browser does not support the video tag.</video>',
+				expected:
+					'<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></source>Your browser does not support the video tag.</video>',
+			},
+			{
+				html: '<video controls width="640" height="360" onclick="alert(\'XSS\')" style="border:10px solid red;"><source src="javascript:alert(\'XSS\')" type="video/mp4"></source>Fallback text</video>',
+				expected:
+					'<video controls width="640" height="360"><source type="video/mp4"></source>Fallback text</video>',
+			},
 		];
 
 		givenHtml.forEach(({ html, expected }) => {

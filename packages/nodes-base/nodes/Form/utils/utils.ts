@@ -18,11 +18,11 @@ import {
 } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
 
-import type { FormTriggerData, FormTriggerInput } from '../interfaces';
-import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import type { FormTriggerData, FormTriggerInput } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -58,10 +58,15 @@ export function sanitizeHtml(text: string) {
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
 			img: ['src', 'alt', 'width', 'height'],
-			video: ['*'],
+			video: ['controls', 'autoplay', 'loop', 'muted', 'poster', 'width', 'height'],
 			iframe: ['*'],
-			source: ['*'],
+			source: ['src', 'type'],
 		},
+		allowedSchemes: ['https', 'http'],
+		allowedSchemesByTag: {
+			source: ['https', 'http'],
+		},
+		allowProtocolRelative: false,
 		transformTags: {
 			iframe: sanitize.simpleTransform('iframe', {
 				sandbox: '',
