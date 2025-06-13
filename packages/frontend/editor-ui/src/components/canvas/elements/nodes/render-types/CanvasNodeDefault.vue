@@ -157,7 +157,6 @@ function onActivate(event: MouseEvent) {
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 			<div :class="$style.description">
 				<div v-if="label" :class="$style.label">
@@ -168,6 +167,7 @@ function onActivate(event: MouseEvent) {
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		</template>
 	</div>
 </template>
@@ -184,8 +184,8 @@ function onActivate(event: MouseEvent) {
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 30px;
-	--configurable-node--icon-size: 30px;
+	--configurable-node--icon-offset: 24px;
+	--configurable-node--icon-size: 32px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -279,8 +279,12 @@ function onActivate(event: MouseEvent) {
 			--canvas-node--height: 75px;
 
 			.statusIcons {
-				right: calc(-1 * var(--spacing-2xs));
-				bottom: 0;
+				position: static;
+				margin-right: 16px;
+			}
+
+			.description {
+				margin-right: var(--spacing-xs);
 			}
 		}
 	}
