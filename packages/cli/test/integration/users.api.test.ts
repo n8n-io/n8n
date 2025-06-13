@@ -238,6 +238,36 @@ describe('GET /users', () => {
 				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
 			});
 		});
+
+		describe('expand', () => {
+			/**
+			 * Some list query options require auxiliary fields:
+			 *
+			 * - `select` with `take` requires `id` (for pagination)
+			 */
+			test('should expand on projects', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(
+						'filter={ "isOwner": true }&select=["firstName"]&take=1&expand={"projectRelations": true}',
+					)
+					.expect(200);
+
+				expect(response.body).toEqual({
+					data: [
+						{
+							firstName: expect.any(String),
+							projectRelations: expect.arrayContaining([
+								expect.objectContaining({
+									id: expect.any(String),
+									role: expect.any(String),
+								}),
+							]),
+						},
+					],
+				});
+			});
+		});
 	});
 });
 

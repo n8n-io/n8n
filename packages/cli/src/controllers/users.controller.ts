@@ -1,4 +1,4 @@
-import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import { RoleChangeRequestDto, SettingsUpdateRequestDto, UsersListFilterDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -19,6 +19,7 @@ import {
 	Licensed,
 	Body,
 	Param,
+	Query,
 } from '@n8n/decorators';
 import { Response } from 'express';
 
@@ -35,6 +36,9 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { FindManyOptions, Not } from '@n8n/typeorm';
+import { parseUsersListFilterDto } from '@n8n/api-types/src/dto/user/users-list-filter.dto';
+import { userListItemSchema, usersListSchema } from '@n8n/api-types/src/schemas/user.schema';
 
 @RestController('/users')
 export class UsersController {
@@ -64,13 +68,13 @@ export class UsersController {
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: UsersListFilterDto,
 	) {
 		const { take, select, filter } = listQueryOptions;
 
 		// remove fields added to satisfy query
 
-		if (take && select && !select?.id) {
+		if (take && select && !select.includes('id')) {
 			for (const user of publicUsers) delete user.id;
 		}
 
@@ -91,25 +95,97 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Get('/', { middlewares: listQueryMiddleware })
+	async toFindManyOptions(listQueryOptions?: UsersListFilterDto) {
+		const findManyOptions: FindManyOptions<User> = {};
+
+		if (!listQueryOptions) {
+			findManyOptions.relations = { authIdentities: true };
+			return findManyOptions;
+		}
+
+		const { filter, select, take, skip, expand } = listQueryOptions;
+
+		console.log('listQueryOptions.select', select);
+
+		if (select)
+			findManyOptions.select = select.reduce((acc, field) => {
+				acc[field] = true; // include other selected fields
+				return acc;
+			}, {}) as FindManyOptions<User>['select'];
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		console.log('findManyOptions.select', findManyOptions.select);
+
+		if (take && !select) {
+			findManyOptions.relations = { authIdentities: true };
+		}
+
+		if (expand) {
+			findManyOptions.relations = {
+				...(findManyOptions.relations ?? {}),
+				...expand,
+			};
+		}
+
+		if (take && findManyOptions.select) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		if (filter) {
+			const { isOwner, ...otherFilters } = filter;
+
+			findManyOptions.where = otherFilters;
+
+			if (isOwner !== undefined) {
+				findManyOptions.where.role = isOwner ? 'global:owner' : Not('global:owner');
+			}
+		}
+
+		return findManyOptions;
+	}
+
+	@Get('/')
 	@GlobalScope('user:list')
-	async listUsers(req: ListQuery.Request) {
-		const { listQueryOptions } = req;
+	async listUsers(req: AuthenticatedRequest) {
+		try {
+			const listQueryOptions = parseUsersListFilterDto(req.query as Record<string, string>);
 
-		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
+			const findManyOptions = await this.toFindManyOptions(listQueryOptions);
 
-		const users = await this.userRepository.find(findManyOptions);
+			console.log('findManyOptions', findManyOptions);
 
-		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(
-				async (u) =>
-					await this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
-			),
-		);
+			const users = await this.userRepository.find({
+				...findManyOptions,
+			});
 
-		return listQueryOptions
-			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
-			: publicUsers;
+			console.log('users', users);
+
+			const publicUsers = await Promise.all(
+				users.map(async (u) => {
+					const user = await this.userService.toPublic(u, {
+						withInviteUrl: true,
+						inviterId: req.user.id,
+					});
+					return {
+						...user,
+						projectRelations: u.projectRelations?.map((pr) => ({
+							id: pr.projectId,
+							role: pr.role, // normalize role for frontend
+						})),
+					};
+				}),
+			);
+
+			return usersListSchema.parse(
+				listQueryOptions
+					? this.removeSupplementaryFields(publicUsers, listQueryOptions)
+					: publicUsers,
+			);
+		} catch (error) {
+			console.log('Error listing users', { error });
+			throw new BadRequestError('Failed to list users');
+		}
 	}
 
 	@Get('/:id/password-reset-link')
