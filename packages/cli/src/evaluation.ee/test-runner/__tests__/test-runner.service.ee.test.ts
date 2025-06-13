@@ -534,7 +534,7 @@ describe('TestRunnerService', () => {
 
 			// after reset
 			config.set('executions.mode', 'regular');
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = undefined;
+			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
 		test('should wait for execution to finish and return result', async () => {
