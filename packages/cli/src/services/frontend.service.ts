@@ -133,12 +133,12 @@ export class FrontendService {
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
-				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
+				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
-				config.getEnv('personalization.enabled') && this.globalConfig.diagnostics.enabled,
-			defaultLocale: config.getEnv('defaultLocale'),
+				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
+			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
@@ -170,7 +170,7 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
-			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 			},
@@ -184,7 +184,7 @@ export class FrontendService {
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
-				type: config.getEnv('deployment.type'),
+				type: this.globalConfig.deployment.type,
 			},
 			allowedModules: {
 				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
@@ -217,7 +217,7 @@ export class FrontendService {
 			mfa: {
 				enabled: false,
 			},
-			hideUsagePage: config.getEnv('hideUsagePage'),
+			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
 				consumerId: 'unknown',
 				environment: this.globalConfig.license.tenantId === 1 ? 'production' : 'staging',
@@ -395,7 +395,7 @@ export class FrontendService {
 			dateRanges: getInsightsAvailableDateRanges(this.licenseState),
 		});
 
-		this.settings.mfa.enabled = config.get('mfa.enabled');
+		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 

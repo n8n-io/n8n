@@ -72,7 +72,7 @@ export abstract class AbstractServer {
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
-		const proxyHops = config.getEnv('proxy_hops');
+		const proxyHops = this.globalConfig.proxy_hops;
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
 		this.sslKey = config.getEnv('ssl_key');
@@ -260,7 +260,7 @@ export abstract class AbstractServer {
 		if (!inTest) {
 			this.logger.info(`Version: ${N8N_VERSION}`);
 
-			const defaultLocale = config.getEnv('defaultLocale');
+			const { defaultLocale } = this.globalConfig;
 			if (defaultLocale !== 'en') {
 				this.logger.info(`Locale: ${defaultLocale}`);
 			}

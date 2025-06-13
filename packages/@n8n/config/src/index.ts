@@ -5,17 +5,21 @@ import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
+import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
+import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PartialExecutionsConfig } from './configs/partial-executions.config';
+import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
@@ -39,6 +43,10 @@ export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
+export { DeploymentConfig } from './configs/deployment.config';
+export { MfaConfig } from './configs/mfa.config';
+export { HiringBannerConfig } from './configs/hiring-banner.config';
+export { PersonalizationConfig } from './configs/personalization.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -146,4 +154,28 @@ export class GlobalConfig {
 
 	@Nested
 	workflowHistory: WorkflowHistoryConfig;
+
+	@Nested
+	deployment: DeploymentConfig;
+
+	@Nested
+	mfa: MfaConfig;
+
+	@Nested
+	hiringBanner: HiringBannerConfig;
+
+	@Nested
+	personalization: PersonalizationConfig;
+
+	/** Default locale for the UI. */
+	@Env('N8N_DEFAULT_LOCALE')
+	defaultLocale: string = 'en';
+
+	/** Whether to hide the page that shows active workflows and executions count. */
+	@Env('N8N_HIDE_USAGE_PAGE')
+	hideUsagePage: boolean = false;
+
+	/** Number of reverse proxies n8n is running behind. */
+	@Env('N8N_PROXY_HOPS')
+	proxy_hops: number = 0;
 }
