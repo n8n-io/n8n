@@ -627,9 +627,9 @@ export function resolveVectorStoreMetrics(
 
 	if (vectorStores.length === 0) return {};
 
-	const runData = run.data.resultData.runData;
+	const runData = run?.data?.resultData?.runData;
 	const succeededVectorStores = vectorStores.filter((x) =>
-		runData[x[0].name]?.some((execution) => execution.executionStatus === 'success'),
+		runData?.[x[0].name]?.some((execution) => execution.executionStatus === 'success'),
 	);
 
 	const insertingVectorStores = succeededVectorStores.filter(
