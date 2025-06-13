@@ -119,7 +119,7 @@ export class AgentV2 implements INodeType {
 			properties: [
 				{
 					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
+						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
 					name: 'aiAgentStarterCallout',
 					type: 'callout',
 					default: '',
