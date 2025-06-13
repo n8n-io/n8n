@@ -345,8 +345,6 @@ describe('Evaluation Trigger Node', () => {
 			});
 
 			test('should return the sheet with limits applied, without filters', async () => {
-				mockExecuteFunctions.getInputData.mockReturnValue([{ json: { requestDataset: true } }]);
-
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
@@ -413,7 +411,7 @@ describe('Evaluation Trigger Node', () => {
 			});
 
 			test('should return all relevant rows from google sheet using filters', async () => {
-				mockExecuteFunctions.getInputData.mockReturnValue([{ json: { requestDataset: true } }]);
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 
 				jest
 					.spyOn(GoogleSheet.prototype, 'getData')
