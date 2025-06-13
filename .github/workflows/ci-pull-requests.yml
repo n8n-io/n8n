@@ -44,6 +44,14 @@ jobs:
       - name: Run typecheck
         run: pnpm typecheck
 
+      - name: Upload Frontend Build Artifacts
+        if: steps.paths-filter.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-ui-dist
+          path: packages/frontend/editor-ui/dist/
+          retention-days: 1
+
   bundle-size-check:
     name: Bundle Size Check
     needs: install-and-build
@@ -65,12 +73,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Restore cached build artifacts
-        uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+
+      - name: Download Frontend Build Artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
-          fail-on-cache-miss: true
+          name: editor-ui-dist
+          path: packages/frontend/editor-ui/dist/
 
       - name: BundleMon
         uses: lironer/bundlemon-action@v1.2.0
