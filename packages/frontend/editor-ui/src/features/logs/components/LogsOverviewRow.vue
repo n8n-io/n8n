@@ -192,8 +192,9 @@ watch(
 		<N8nIconButton
 			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
-			size="medium"
+			size="small"
 			icon="edit"
+			icon-size="medium"
 			style="color: var(--color-text-base)"
 			:style="{
 				visibility: props.canOpenNdv ? '' : 'hidden',
@@ -222,6 +223,8 @@ watch(
 			v-if="!isCompact || hasChildren"
 			type="secondary"
 			size="small"
+			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
+			icon-size="medium"
 			:square="true"
 			:style="{
 				visibility: hasChildren ? '' : 'hidden',
@@ -230,9 +233,7 @@ watch(
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded')"
-		>
-			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
-		</N8nButton>
+		/>
 	</div>
 </template>
 
@@ -244,6 +245,7 @@ watch(
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
+	padding-inline-end: var(--spacing-5xs);
 
 	& > * {
 		overflow: hidden;
@@ -271,7 +273,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--color-danger-tint-2);
+		background-color: var(--color-callout-danger-background);
 	}
 }
 
@@ -344,6 +346,10 @@ watch(
 .compactErrorIcon {
 	flex-grow: 0;
 	flex-shrink: 0;
+	width: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	.container:hover & {
 		display: none;
@@ -378,10 +384,6 @@ watch(
 	color: var(--color-text-base);
 	align-items: center;
 	justify-content: center;
-
-	&:last-child {
-		margin-inline-end: var(--spacing-5xs);
-	}
 
 	&:hover {
 		background: transparent;

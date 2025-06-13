@@ -1,9 +1,12 @@
 import { IsInPiPWindowSymbol } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { applyThemeToBody } from '@/stores/ui.utils';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
 	type ComputedRef,
 	onBeforeUnmount,
+	onScopeDispose,
 	provide,
 	type Ref,
 	ref,
@@ -24,6 +27,35 @@ interface UsePiPWindowReturn {
 	isPoppedOut: ComputedRef<boolean>;
 	canPopOut: ComputedRef<boolean>;
 	pipWindow?: Ref<Window | undefined>;
+}
+
+function isStyle(node: Node): node is HTMLElement {
+	return (
+		node instanceof HTMLStyleElement ||
+		(node instanceof HTMLLinkElement && node.rel === 'stylesheet')
+	);
+}
+
+function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
+	const currentStyles = destination.document.head.querySelectorAll('style, link[rel="stylesheet"]');
+
+	for (const mutation of mutations) {
+		for (const node of mutation.addedNodes) {
+			if (isStyle(node)) {
+				destination.document.head.appendChild(node.cloneNode(true));
+			}
+		}
+
+		for (const node of mutation.removedNodes) {
+			if (isStyle(node)) {
+				for (const found of currentStyles) {
+					if (found.isEqualNode(node)) {
+						found.remove();
+					}
+				}
+			}
+		}
+	}
 }
 
 /**
@@ -48,6 +80,15 @@ export function usePiPWindow({
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
+	const uiStore = useUIStore();
+	const observer = new MutationObserver((mutations) => {
+		if (pipWindow.value) {
+			syncStyleMutations(pipWindow.value, mutations);
+		}
+	});
+
+	// Copy over dynamic styles to PiP window to support lazily imported modules
+	observer.observe(document.head, { childList: true, subtree: true });
 
 	provide(IsInPiPWindowSymbol, isPoppedOut);
 	useProvideTooltipAppendTo(tooltipContainer);
@@ -102,6 +143,22 @@ export function usePiPWindow({
 	// `requestAnimationFrame()` to make sure the content is already rendered
 	watch(shouldPopOut, (value) => (value ? requestAnimationFrame(showPip) : hidePiP()), {
 		immediate: true,
+	});
+
+	// It seems "prefers-color-scheme: dark" media query matches in PiP window by default
+	// So we're enforcing currently applied theme in the main window by setting data-theme in PiP's body element
+	watch(
+		[() => uiStore.appliedTheme, pipWindow],
+		([theme, pip]) => {
+			if (pip) {
+				applyThemeToBody(theme, pip);
+			}
+		},
+		{ immediate: true },
+	);
+
+	onScopeDispose(() => {
+		observer.disconnect();
 	});
 
 	onBeforeUnmount(() => {
