@@ -36,7 +36,6 @@ function setCurrentUser() {
 		{
 			id: CURRENT_USER_ID,
 			isPending: false,
-			createdAt: '2023-03-17T14:01:36.432Z',
 		},
 	]);
 
