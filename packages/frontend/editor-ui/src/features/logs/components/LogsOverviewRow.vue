@@ -266,7 +266,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--color-danger-tint-2);
+		background-color: var(--color-callout-danger-background);
 	}
 }
 
