@@ -29,7 +29,7 @@ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -node
 Navigate to the chat package and build it:
 
 ```bash
-cd n8n/packages/frontend/@n8n/chat && pnpm run build 
+cd packages/frontend/@n8n/chat && pnpm run build 
 ```
 
 ### 4. Start HTTPS Server
@@ -37,7 +37,7 @@ cd n8n/packages/frontend/@n8n/chat && pnpm run build
 Run the HTTPS server to serve the chat bundle:
 
 ```bash
-http-server n8n/packages/frontend/@n8n/chat/dist -g -S -C cert.pem -K key.pem --port 8443 --cors
+http-server packages/frontend/@n8n/chat/dist -g -S -C cert.pem -K key.pem --port 8443 --cors
 ```
 
 ### 5. Update Import Paths
