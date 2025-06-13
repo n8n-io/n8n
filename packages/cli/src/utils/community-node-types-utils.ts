@@ -17,6 +17,12 @@ export type StrapiCommunityNodeType = {
 	npmVersion: string;
 	isOfficialNode: boolean;
 	companyName?: string;
+	nodeVersions: [
+		{
+			checksum: string;
+			npmVersion: string;
+		},
+	];
 	nodeDescription: INodeTypeDescription;
 };
 
