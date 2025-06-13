@@ -229,29 +229,28 @@ export class OidcService {
 	}
 
 	private cachedOidcConfiguration:
-		| Promise<{
-				configuration: client.Configuration;
+		| {
+				configuration: Promise<client.Configuration>;
 				validTill: Date;
-		  }>
+		  }
 		| undefined;
 
 	private async getOidcConfiguration(): Promise<client.Configuration> {
 		const now = Date.now();
 		if (
 			this.cachedOidcConfiguration === undefined ||
-			now >= (await this.cachedOidcConfiguration).validTill.getTime()
+			now >= this.cachedOidcConfiguration.validTill.getTime()
 		) {
-			this.cachedOidcConfiguration = (async () => {
-				const configuration = await client.discovery(
+			this.cachedOidcConfiguration = {
+				configuration: client.discovery(
 					this.oidcConfig.discoveryEndpoint,
 					this.oidcConfig.clientId,
 					this.oidcConfig.clientSecret,
-				);
-				const validTill = new Date(Date.now() + 60 * 60 * 1000); // Cache for 1 hour
-				return { configuration, validTill };
-			})();
+				),
+				validTill: new Date(Date.now() + 60 * 60 * 1000), // Cache for 1 hour
+			};
 		}
 
-		return (await this.cachedOidcConfiguration).configuration;
+		return await this.cachedOidcConfiguration.configuration;
 	}
 }

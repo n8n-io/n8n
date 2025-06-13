@@ -23,7 +23,10 @@ import { MfaService } from '@/mfa/mfa.service';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import {
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -77,17 +80,18 @@ export class PasswordResetController {
 		}
 
 		if (
-			isSamlCurrentAuthenticationMethod() &&
+			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
 			!(
 				user &&
 				(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 			)
 		) {
+			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
 			);
 			throw new ForbiddenError(
-				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
+				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
 			);
 		}
 
@@ -102,12 +106,6 @@ export class PasswordResetController {
 
 		if (this.license.isLdapEnabled() && ldapIdentity) {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
-		}
-
-		const oidcIdentity = user.authIdentities?.find((i) => i.providerType === 'oidc');
-
-		if (this.licenseState.isOidcLicensed() && oidcIdentity) {
-			throw new UnprocessableRequestError('forgotPassword.oidcUserPasswordResetUnavailable');
 		}
 
 		const url = this.authService.generatePasswordResetUrl(user);
