@@ -249,6 +249,10 @@ export class Start extends BaseCommand {
 		}
 
 		await this.moduleRegistry.initModules();
+
+		if (this.instanceSettings.isMultiMain) {
+			Container.get(MultiMainSetup).registerEventHandlers();
+		}
 	}
 
 	async initOrchestration() {
