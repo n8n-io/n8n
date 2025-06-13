@@ -16,12 +16,10 @@ import type {
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
-	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
@@ -197,24 +195,6 @@ export class TestRunnerService {
 			},
 		};
 
-		// When in queue mode, we need to pass additional data to the execution
-		// the same way as it would be passed in manual mode
-		if (config.getEnv('executions.mode') === 'queue') {
-			data.executionData = {
-				resultData: {
-					pinData,
-					runData: {},
-				},
-				manualData: {
-					userId: metadata.userId,
-					partialExecutionVersion: 2,
-					triggerToStartFrom: {
-						name: triggerNode.name,
-					},
-				},
-			};
-		}
-
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
@@ -269,53 +249,10 @@ export class TestRunnerService {
 			},
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
-			// executionData: {
-			// 	startData: {
-			// 		destinationNode: triggerNode.name,
-			// 	},
-			// 	resultData: {
-			// 		runData: {},
-			// 	},
-			// 	manualData: {
-			// 		userId: metadata.userId,
-			// 		partialExecutionVersion: 2,
-			// 		triggerToStartFrom: {
-			// 			name: triggerNode.name,
-			// 		},
-			// 	},
-			// },
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
 		};
-
-		// if (
-		// 	!(
-		// 		config.get('executions.mode') === 'queue' &&
-		// 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-		// 	) &&
-		// 	data.executionData
-		// ) {
-		// 	const nodeExecutionStack: IExecuteData[] = [];
-		// 	nodeExecutionStack.push({
-		// 		node: triggerNode,
-		// 		data: {
-		// 			main: [[{ json: {} }]],
-		// 		},
-		// 		source: null,
-		// 	});
-
-		// 	data.executionData.executionData = {
-		// 		contextData: {},
-		// 		metadata: {},
-		// 		// workflow does not evaluate correctly if this is passed
-		// 		// in queue mode with offload manual executions
-		// 		// but this is expected otherwise and will fail if not passed
-		// 		nodeExecutionStack,
-		// 		waitingExecution: {},
-		// 		waitingExecutionSource: {},
-		// 	};
-		// }
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
