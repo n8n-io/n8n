@@ -6,7 +6,6 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
@@ -31,6 +30,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
@@ -186,7 +186,7 @@ const maybeEditCredential = async () => {
 		}
 
 		return await router.replace({
-			name: VIEWS.ENTITY_UN_AUTHORISED,
+			name: VIEWS.ENTITY_UN_AUTHORIZED,
 			params: { entityType: 'credential' },
 		});
 	}
@@ -236,7 +236,7 @@ watch(
 	() => props.credentialId,
 	() => {
 		maybeCreateCredential();
-		maybeEditCredential();
+		void maybeEditCredential();
 	},
 );
 

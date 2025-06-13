@@ -476,7 +476,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		}
 		if (error.httpStatusCode === 403) {
 			return await router.replace({
-				name: VIEWS.ENTITY_UN_AUTHORISED,
+				name: VIEWS.ENTITY_UN_AUTHORIZED,
 				params: { entityType: 'workflow' },
 			});
 		}
