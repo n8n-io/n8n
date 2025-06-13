@@ -126,8 +126,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowW2Url);
 		cy.waitForLoad();
-		cy.wait(1000);
-		cy.get('.el-notification').contains('Could not find workflow').should('be.visible');
+		cy.location('pathname', { timeout: 10000 }).should('eq', '/entity-not-authorized/workflow');
 	});
 
 	it('should have access to W1, W2, as U1', () => {
