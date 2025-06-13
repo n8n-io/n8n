@@ -1148,6 +1148,15 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
+
+	// forces the node to execute a particular custom operation
+	// based on resource and operation
+	// instead of calling default execute function
+	// used by evaluations test-runner
+	forceCustomOperation?: {
+		resource: string;
+		operation: string;
+	};
 }
 
 export interface IPinData {
