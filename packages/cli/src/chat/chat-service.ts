@@ -53,7 +53,8 @@ export class ChatService {
 		} = req;
 
 		if (!sessionId || !executionId) {
-			ws.send(`The query parameter "${sessionId ? 'sessionId' : 'executionId'}" is missing`);
+			const parameter = sessionId ? 'executionId' : 'sessionId';
+			ws.send(`The query parameter "${parameter}" is missing`);
 			ws.close(1008);
 			return;
 		}

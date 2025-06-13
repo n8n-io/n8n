@@ -165,8 +165,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		const response = await runWorkflow(runWorkflowOptions);
 
 		if (response) {
+			const wsProtocol = rootStore.urlBaseEditor.startsWith('https') ? 'wss' : 'ws';
+			const wsUrl = rootStore.urlBaseEditor.replace(/^https?/, wsProtocol).replace(/\/$/, '');
 			ws.value = new WebSocket(
-				`${rootStore.urlBaseEditor.replace(/\/$/, '')}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+				`${wsUrl}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 			);
 			ws.value.onmessage = (event) => {
 				if (event.data === 'n8n|continue') {

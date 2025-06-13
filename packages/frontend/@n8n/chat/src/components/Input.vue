@@ -147,8 +147,10 @@ function setupWebsocketConnection(executionId: string) {
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
 		const baseUrl = new URL(options.webhookUrl).origin;
+		const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
+		const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
 		chatStore.ws = new WebSocket(
-			`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}&executionId=${executionId}&isPublic=true`,
+			`${wsUrl}/chat?sessionId=${chatStore.currentSessionId.value}&executionId=${executionId}&isPublic=true`,
 		);
 		chatStore.ws.onmessage = (e) => {
 			if (e.data === 'n8n|continue') {

@@ -1,14 +1,16 @@
-import type { Request } from 'express';
+// import type { Request } from 'express';
+import type { IncomingMessage } from 'http';
 import type { WebSocket } from 'ws';
 
-export type ChatRequest = Request<
-	{ workflowId: string },
-	{},
-	{},
-	{ sessionId: string; executionId: string; isPublic?: boolean }
-> & {
+export interface ChatRequest extends IncomingMessage {
+	url: string;
+	query: {
+		sessionId: string;
+		executionId: string;
+		isPublic?: boolean;
+	};
 	ws: WebSocket;
-};
+}
 
 export type Session = {
 	connection: WebSocket;

@@ -6,7 +6,7 @@ export function getMessage(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
 	const nodeExecutionData =
-		execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main[0];
+		execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main?.[0];
 	return nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
 }
 
@@ -17,7 +17,7 @@ export function getLastNodeExecuted(execution: IExecutionResponse) {
 
 export function prepareMessageFromLastNode(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-	const nodeExecutionData = execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main[0];
+	const nodeExecutionData = execution.data.resultData.runData[lastNodeExecuted][0]?.data?.main?.[0];
 	const json = nodeExecutionData?.[0] ? nodeExecutionData[0].json : {};
 
 	let textMessage = json.output ?? json.text ?? json.message ?? '';
@@ -43,7 +43,7 @@ export function shouldResumeImmediately(lastNode: INode) {
 		return true;
 	}
 
-	const waitResponseFromChat = (lastNode?.parameters.options as IDataObject).waitResponseFromChat;
+	const waitResponseFromChat = (lastNode?.parameters?.options as IDataObject)?.waitResponseFromChat;
 
 	if (waitResponseFromChat === false) {
 		return true;
