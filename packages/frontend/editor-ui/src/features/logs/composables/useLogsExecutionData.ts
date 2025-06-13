@@ -68,8 +68,8 @@ export function useLogsExecutionData() {
 	}
 
 	async function loadSubExecution(logEntry: LogEntry) {
-		const executionId = logEntry.runData.metadata?.subExecution?.executionId;
-		const workflowId = logEntry.runData.metadata?.subExecution?.workflowId;
+		const executionId = logEntry.runData?.metadata?.subExecution?.executionId;
+		const workflowId = logEntry.runData?.metadata?.subExecution?.workflowId;
 
 		if (!execData.value?.data || !executionId || !workflowId) {
 			return;

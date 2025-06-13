@@ -28,7 +28,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ModuleRegistry } from '@/modules/module-registry';
-import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -39,7 +38,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DbConnection);
+	protected dbConnection: DbConnection;
 
 	protected errorReporter: ErrorReporter;
 
@@ -59,6 +58,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
+	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -73,27 +74,18 @@ export abstract class BaseCommand extends Command {
 
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
+			// add module to the registry for dependency injection
 			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
 				await import(`../modules/${moduleName}/${moduleName}.module`);
-
-				this.modulesConfig.addLoadedModule(moduleName);
-				this.logger.debug(`Loaded module "${moduleName}"`);
+			} catch {
+				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
 			}
+
+			this.modulesConfig.addLoadedModule(moduleName);
+			this.logger.debug(`Loaded module "${moduleName}"`);
 		}
 
-		await Container.get(ModuleRegistry).initializeModules();
+		this.moduleRegistry.addEntities();
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
@@ -101,6 +93,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async init(): Promise<void> {
+		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
