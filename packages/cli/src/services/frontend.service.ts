@@ -400,14 +400,14 @@ export class FrontendService {
 		return this.settings;
 	}
 
-	getAllModulesSettings() {
-		const allModulesSettings = {};
+	getModulesSettings() {
+		const modulesSettings = {};
 
 		for (const [moduleName, moduleSettings] of this.moduleRegistry.settings) {
-			Object.assign(allModulesSettings, { [moduleName]: moduleSettings });
+			Object.assign(modulesSettings, { [moduleName]: moduleSettings });
 		}
 
-		return allModulesSettings;
+		return modulesSettings;
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {

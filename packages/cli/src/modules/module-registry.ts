@@ -17,7 +17,7 @@ import {
 class DuplicateModuleNameError extends UserError {
 	constructor(moduleName: string) {
 		super(
-			`Module "${moduleName}" already exists. Please ensure all your module class names are unique.`,
+			`Module "${moduleName}" exists more than once. Please ensure all your module classes are uniquely named.`,
 		);
 	}
 }
@@ -36,7 +36,9 @@ export class ModuleRegistry {
 	) {}
 
 	async initModules() {
-		for (const { class: ModuleClass, licenseFlag } of this.moduleMetadata.getEntries()) {
+		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
+			const { licenseFlag, class: ModuleClass } = moduleEntry;
+
 			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${ModuleClass.name}"`);
 				continue;
@@ -52,7 +54,9 @@ export class ModuleRegistry {
 	}
 
 	addEntities() {
-		for (const { class: ModuleClass } of this.moduleMetadata.getEntries()) {
+		for (const [_, moduleEntry] of this.moduleMetadata.getEntries()) {
+			const { class: ModuleClass } = moduleEntry;
+
 			const entities = Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
