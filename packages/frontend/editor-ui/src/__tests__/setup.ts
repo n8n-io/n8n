@@ -55,7 +55,7 @@ global.IntersectionObserver = IntersectionObserver;
 // Mocks for useDeviceSupport
 Object.defineProperty(window, 'matchMedia', {
 	writable: true,
-	value: vi.fn().mockImplementation((query) => ({
+	value: vi.fn((query) => ({
 		matches: true,
 		media: query,
 		onchange: null,
@@ -106,18 +106,6 @@ Object.defineProperty(window, 'Worker', {
 Object.defineProperty(window, 'DataTransfer', {
 	writable: true,
 	value: DataTransfer,
-});
-
-Object.defineProperty(window, 'matchMedia', {
-	writable: true,
-	value: vi.fn(() => ({
-		matches: false,
-		media: '',
-		addListener: vi.fn(),
-		addEventListener: vi.fn(),
-		removeListener: vi.fn(),
-		removeEventListener: vi.fn(),
-	})),
 });
 
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
