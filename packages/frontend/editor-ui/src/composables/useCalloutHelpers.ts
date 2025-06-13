@@ -1,6 +1,5 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from '@/stores/posthog.store';
@@ -19,9 +18,9 @@ export function useCalloutHelpers() {
 	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
 
-	const openRagStarterTemplate = async (nodeType?: INodeTypeDescription) => {
+	const openRagStarterTemplate = async (nodeType?: string) => {
 		telemetry.track('User clicked on RAG callout', {
-			node_type: nodeType?.name ?? 'unknown',
+			node_type: nodeType ?? 'not provided',
 		});
 
 		const template = getRagStarterWorkflowJson();

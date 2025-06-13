@@ -557,7 +557,7 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 
 async function onCalloutAction(action: CalloutActionType) {
 	if (action === 'openRagStarterTemplate') {
-		await openRagStarterTemplate();
+		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
 	}
 }
 

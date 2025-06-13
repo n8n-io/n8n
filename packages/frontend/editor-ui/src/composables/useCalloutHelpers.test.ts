@@ -1,5 +1,4 @@
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { updateCurrentUserSettings } from '@/api/users';
 
 const mocks = vi.hoisted(() => ({
@@ -69,13 +68,13 @@ describe('useCalloutHelpers()', () => {
 			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
 
 			const { openRagStarterTemplate } = useCalloutHelpers();
-			const nodeType = { name: 'testNode' } as INodeTypeDescription;
+			const nodeType = 'testNode';
 
-			await openRagStarterTemplate(nodeType);
+			await openRagStarterTemplate('testNode');
 
 			expect(window.open).toHaveBeenCalledWith('n8n.io', '_blank');
 			expect(mocks.track).toHaveBeenCalledWith('User clicked on RAG callout', {
-				node_type: nodeType.name,
+				node_type: nodeType,
 			});
 		});
 	});
