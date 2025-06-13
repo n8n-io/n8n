@@ -21,10 +21,10 @@ import {
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { renderFormNode } from './utils/formNodeUtils';
+import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
