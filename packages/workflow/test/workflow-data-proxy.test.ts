@@ -835,4 +835,14 @@ describe('WorkflowDataProxy', () => {
 			expect(tools[0].aiDefinedFields).toEqual(['Start']);
 		});
 	});
+
+	describe('multiple inputs', () => {
+		const fixture = loadFixture('multiple_inputs');
+
+		it('should correctly resolve expressions with multiple inputs (using paired item)', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Output');
+			expect(proxy.$('Set variable_3').item.json.variable_3).toEqual('3456');
+			expect(proxy.$('Set main variable').item.json.main_variable).toEqual(2);
+		});
+	});
 });
