@@ -2,6 +2,8 @@ import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UsersList,
+	UsersListFilterDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type {
@@ -162,3 +164,8 @@ export async function updateGlobalRole(
 ): Promise<IUserResponse> {
 	return await makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRoleName });
 }
+
+export const getUsersList = async (
+	context: IRestApiContext,
+	filter?: UsersListFilterDto,
+): Promise<UsersList> => await makeRestApiRequest(context, 'GET', '/users/list', filter);

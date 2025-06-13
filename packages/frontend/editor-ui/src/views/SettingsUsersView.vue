@@ -14,6 +14,7 @@ import { computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import SettingsUsersTable from '@/components/SettingsUsersTable.vue';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -236,6 +237,25 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+const updateUsersTableData = ({
+	page = 0,
+	itemsPerPage = 20,
+	sortBy,
+}: {
+	page?: number;
+	itemsPerPage?: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+}) => {
+	const skip = page * itemsPerPage;
+	const take = itemsPerPage;
+
+	void usersStore.usersList.execute(0, {
+		skip,
+		take,
+		sortBy: sortBy[0]?.id ? `${sortBy[0].id}:${sortBy[0].desc ? 'desc' : 'asc'}` : undefined,
+	});
+};
 </script>
 
 <template>
@@ -288,6 +308,12 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
 			:class="$style.usersContainer"
 		>
+			<SettingsUsersTable
+				:data="usersStore.usersList.state"
+				:loading="usersStore.usersList.isLoading"
+				@update:options="updateUsersTableData"
+			/>
+
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
