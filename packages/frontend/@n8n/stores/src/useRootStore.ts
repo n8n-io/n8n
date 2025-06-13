@@ -33,7 +33,7 @@ export type RootStoreState = {
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 };
 
-let currLanguage = localStorage.getItem('n8n-language') ?? 'English';
+let currLanguage = localStorage.getItem('n8n-language') ?? 'Chinese';
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref<RootStoreState>({
@@ -194,7 +194,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const setDefaultLocale = (locale: string) => {
 		state.value.defaultLocale = locale;
 		currentLocale.value = locale;
-		currLanguage = locale;
+		currLanguage = locale === 'zh' ? 'Chinese' : 'English';
 	};
 
 	const setBinaryDataMode = (value: RootStoreState['binaryDataMode']) => {

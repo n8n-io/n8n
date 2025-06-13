@@ -290,7 +290,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			const locale = clientLanguage === 'Chinese' ? 'zh' : 'en';
 			rootStore.setDefaultLocale(locale);
 		} else {
-			rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+			// 当没有localStorage时，设置默认语言为中文
+			localStorage.setItem('n8n-language', 'Chinese');
+			rootStore.setDefaultLocale('zh');
 		}
 
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);

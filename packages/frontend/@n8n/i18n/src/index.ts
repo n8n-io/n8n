@@ -15,11 +15,11 @@ import {
 export * from './types';
 
 let defaultLanguage: LanguageOption =
-	(localStorage.getItem('n8n-language') as LanguageOption) ?? 'English';
+	(localStorage.getItem('n8n-language') as LanguageOption) ?? 'Chinese';
 
 export const i18nInstance = createI18n({
-	locale: defaultLanguage == 'English' ? 'en' : 'zh',
-	fallbackLocale: defaultLanguage == 'English' ? 'en' : 'zh',
+	locale: defaultLanguage === 'English' ? 'en' : 'zh',
+	fallbackLocale: defaultLanguage === 'English' ? 'en' : 'zh',
 	messages: {
 		en: englishBaseText,
 		zh: chineseBaseText,
