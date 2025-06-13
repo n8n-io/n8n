@@ -70,6 +70,11 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	FUNCTION_ITEM_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ]);
+/**
+ * Nodes which contain formField parameters whose HTML fields support expressions
+ * without following common notation
+ */
+export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
 
 //@n8n/n8n-nodes-langchain
 export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
