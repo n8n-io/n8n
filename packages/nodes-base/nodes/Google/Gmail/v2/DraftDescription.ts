@@ -67,8 +67,7 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
-		displayName:
-			'To reply to an existing thread, specify the exact subject title of that thread.',
+		displayName: 'To reply to an existing thread, specify the exact subject title of that thread.',
 		name: 'threadNotice',
 		type: 'notice',
 		default: '',
