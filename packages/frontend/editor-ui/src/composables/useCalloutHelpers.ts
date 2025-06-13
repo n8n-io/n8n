@@ -20,7 +20,7 @@ export function useCalloutHelpers() {
 
 	const openRagStarterTemplate = async (nodeType?: string) => {
 		telemetry.track('User clicked on RAG callout', {
-			node_type: nodeType ?? 'not provided',
+			node_type: nodeType ?? null,
 		});
 
 		const template = getRagStarterWorkflowJson();
