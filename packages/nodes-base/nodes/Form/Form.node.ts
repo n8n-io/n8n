@@ -19,12 +19,12 @@ import {
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
-import { renderFormCompletion } from './formCompletionUtils';
-import { renderFormNode } from './formNodeUtils';
+import { renderFormCompletion } from './utils/formCompletionUtils';
+import { renderFormNode } from './utils/formNodeUtils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, resolveRawData } from '../Form/utils';
+import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{

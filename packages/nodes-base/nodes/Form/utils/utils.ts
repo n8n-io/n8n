@@ -18,11 +18,11 @@ import {
 } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
 
-import type { FormTriggerData, FormTriggerInput } from './interfaces';
-import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
-import { getResolvables } from '../../utils/utilities';
-import { WebhookAuthorizationError } from '../Webhook/error';
-import { validateWebhookAuthentication } from '../Webhook/utils';
+import type { FormTriggerData, FormTriggerInput } from '../interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { getResolvables } from '../../../utils/utilities';
+import { WebhookAuthorizationError } from '../../Webhook/error';
+import { validateWebhookAuthentication } from '../../Webhook/utils';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
