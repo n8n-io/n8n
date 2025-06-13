@@ -23,7 +23,10 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
-import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
+import {
+	checkNodeParameterNotEmpty,
+	extractTokenUsage,
+} from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -367,7 +370,7 @@ export class TestRunnerService {
 	/**
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
-	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
+	private extractUserDefinedMetrics(execution: IRun, workflow: IWorkflowBase): IDataObject {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 
 		// If a metrics node did not execute, ignore it.
@@ -379,6 +382,23 @@ export class TestRunnerService {
 			.map((data) => data.data?.main?.[0]?.[0]?.json ?? {});
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 		return metricsResult;
+	}
+
+	/**
+	 * Extracts predefined metrics from the execution data.
+	 * Currently, it extracts token usage and execution time.
+	 */
+	private extractPredefinedMetrics(execution: IRun) {
+		const metricValues: Record<string, number> = {};
+
+		const tokenUsageMetrics = extractTokenUsage(execution.data.resultData.runData);
+		Object.assign(metricValues, tokenUsageMetrics.total);
+
+		if (execution.startedAt && execution.stoppedAt) {
+			metricValues.executionTime = execution.stoppedAt.getTime() - execution.startedAt.getTime();
+		}
+
+		return metricValues;
 	}
 
 	/**
@@ -511,11 +531,18 @@ export class TestRunnerService {
 					}
 					const completedAt = new Date();
 
-					const { addedMetrics } = metrics.addResults(
-						this.extractEvaluationResult(testCaseExecution, workflow),
+					// Collect common metrics
+					const { addedMetrics: addedPredefinedMetrics } = metrics.addResults(
+						this.extractPredefinedMetrics(testCaseExecution),
+					);
+					this.logger.debug('Test case common metrics extracted', addedPredefinedMetrics);
+
+					// Collect user-defined metrics
+					const { addedMetrics: addedUserDefinedMetrics } = metrics.addResults(
+						this.extractUserDefinedMetrics(testCaseExecution, workflow),
 					);
 
-					if (Object.keys(addedMetrics).length === 0) {
+					if (Object.keys(addedUserDefinedMetrics).length === 0) {
 						await this.testCaseExecutionRepository.createTestCaseExecution({
 							executionId: testCaseExecutionId,
 							testRun: {
@@ -528,7 +555,16 @@ export class TestRunnerService {
 						});
 						telemetryMeta.errored_test_case_count++;
 					} else {
-						this.logger.debug('Test case metrics extracted', addedMetrics);
+						const combinedMetrics = {
+							...addedUserDefinedMetrics,
+							...addedPredefinedMetrics,
+						};
+
+						this.logger.debug(
+							'Test case metrics extracted (user-defined)',
+							addedUserDefinedMetrics,
+						);
+
 						// Create a new test case execution in DB
 						await this.testCaseExecutionRepository.createTestCaseExecution({
 							executionId: testCaseExecutionId,
@@ -538,7 +574,7 @@ export class TestRunnerService {
 							runAt,
 							completedAt,
 							status: 'success',
-							metrics: addedMetrics,
+							metrics: combinedMetrics,
 						});
 					}
 				} catch (e) {
