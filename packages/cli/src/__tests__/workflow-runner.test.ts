@@ -261,12 +261,13 @@ describe('run', () => {
 
 describe('enqueueExecution', () => {
 	const setupQueue = jest.fn();
+	const addJob = jest.fn();
 
 	@Service()
 	class MockScalingService {
 		setupQueue = setupQueue;
 
-		addJob = jest.fn();
+		addJob = addJob;
 	}
 
 	beforeAll(() => {
@@ -287,9 +288,14 @@ describe('enqueueExecution', () => {
 			workflowData: { nodes: [] },
 			executionData: undefined,
 		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
-		await runner.enqueueExecution('1', data);
+		await expect(runner.enqueueExecution('1', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
