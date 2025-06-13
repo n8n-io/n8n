@@ -73,7 +73,10 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	AI_TRANSFORM_NODE_TYPE,
 ]);
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
-export const NODES_WITH_TOPLEVEL_HTML_CONTENT = new Set([MAILGUN_NODE_TYPE, HTML_NODE_TYPE]);
+export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
+	MAILGUN_NODE_TYPE,
+	HTML_NODE_TYPE,
+]);
 
 //@n8n/n8n-nodes-langchain
 export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
