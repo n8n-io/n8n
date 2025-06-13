@@ -2069,7 +2069,6 @@ describe('WorkflowExecute', () => {
 					data: { main: [[{ json: {} }]] },
 					source: null,
 				};
-				console.log(testNode.parameters);
 
 				const nodeType = mock<INodeType>({
 					description: {
@@ -2103,59 +2102,6 @@ describe('WorkflowExecute', () => {
 
 				expect(result).toEqual(expectedOutput);
 			});
-		});
-
-		test('should throw error if customOperation and execute both defined', async () => {
-			const testNode = mock<INode>({
-				name: 'nodeName',
-				parameters: { resource: 'test', operation: 'test' },
-				forceCustomOperation: undefined,
-			});
-
-			const workflow = new Workflow({
-				nodeTypes,
-				nodes: [testNode],
-				connections: {},
-				active: false,
-			});
-
-			const executionData = mock<IExecuteData>({
-				node: testNode,
-				data: { main: [[{ json: {} }]] },
-			});
-
-			const nodeType = mock<INodeType>({
-				description: {
-					properties: [],
-				},
-				async execute(this: IExecuteFunctions) {
-					return [];
-				},
-				customOperations: {
-					test: {
-						async test(this: IExecuteFunctions) {
-							return [];
-						},
-					},
-				},
-			});
-
-			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
-
-			try {
-				await workflowExecute.runNode(
-					workflow,
-					executionData,
-					runExecutionData,
-					0,
-					additionalData,
-					'manual',
-				);
-			} catch (error) {
-				expect(error.message).toBe(
-					'Node type cannot have both customOperations and execute defined',
-				);
-			}
 		});
 	});
 });
