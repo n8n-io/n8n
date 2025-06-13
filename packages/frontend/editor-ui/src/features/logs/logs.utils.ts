@@ -16,6 +16,14 @@ import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash-es/get';
 import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
+import z from 'zod';
+
+const SubExecutionIdentitySchema = z.object({
+	executionId: z.string(),
+	workflowId: z.string(),
+});
+
+type SubExecutionIdentity = z.infer<typeof SubExecutionIdentitySchema>;
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -78,13 +86,13 @@ function getChildNodes(
 	runIndex: number | undefined,
 	context: LogTreeCreationContext,
 ) {
-	if (hasSubExecution(treeNode)) {
-		const workflowId = treeNode.runData.metadata?.subExecution?.workflowId;
-		const executionId = treeNode.runData.metadata?.subExecution?.executionId;
-		const workflow = workflowId ? context.workflows[workflowId] : undefined;
-		const subWorkflowRunData = executionId ? context.subWorkflowData[executionId] : undefined;
+	const subExecutionLocator = findSubExecutionLocator(treeNode);
 
-		if (!workflow || !subWorkflowRunData || !executionId) {
+	if (subExecutionLocator !== undefined) {
+		const workflow = context.workflows[subExecutionLocator.workflowId];
+		const subWorkflowRunData = context.subWorkflowData[subExecutionLocator.executionId];
+
+		if (!workflow || !subWorkflowRunData) {
 			return [];
 		}
 
@@ -93,7 +101,7 @@ function getChildNodes(
 			parent: treeNode,
 			depth: context.depth + 1,
 			workflow,
-			executionId,
+			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
 		});
 	}
@@ -394,7 +402,17 @@ export function mergeStartData(
 }
 
 export function hasSubExecution(entry: LogEntry): boolean {
-	return !!entry.runData.metadata?.subExecution;
+	return findSubExecutionLocator(entry) !== undefined;
+}
+
+export function findSubExecutionLocator(entry: LogEntry): SubExecutionIdentity | undefined {
+	const metadata = entry.runData.metadata?.subExecution;
+
+	if (metadata) {
+		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
+	}
+
+	return SubExecutionIdentitySchema.safeParse(entry.runData.error?.errorResponse).data;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {

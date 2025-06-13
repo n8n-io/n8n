@@ -38,7 +38,7 @@ catalog:
   xml2js: 0.6.2
   xss: 1.0.15
   zod: 3.24.1
-  'zod-to-json-schema': 3.23.3
+  zod-to-json-schema: 3.23.3
   '@langchain/core': 0.3.48
   '@langchain/openai': 0.5.0
   '@langchain/anthropic': 0.3.21
@@ -66,4 +66,4 @@ catalogs:
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
-    'element-plus': 2.4.3
+    element-plus: 2.4.3
