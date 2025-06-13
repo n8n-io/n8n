@@ -165,23 +165,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	deployment: {
-		type: {
-			format: String,
-			default: 'default',
-			env: 'N8N_DEPLOYMENT_TYPE',
-		},
-	},
-
-	mfa: {
-		enabled: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to enable MFA feature in instance.',
-			env: 'N8N_MFA_ENABLED',
-		},
-	},
-
 	sso: {
 		justInTimeProvisioning: {
 			format: Boolean,
@@ -223,38 +206,6 @@ export const schema = {
 		},
 	},
 
-	hiringBanner: {
-		enabled: {
-			doc: 'Whether hiring banner in browser console is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_HIRING_BANNER_ENABLED',
-		},
-	},
-
-	personalization: {
-		enabled: {
-			doc: 'Whether personalization is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_PERSONALIZATION_ENABLED',
-		},
-	},
-
-	defaultLocale: {
-		doc: 'Default locale for the UI',
-		format: String,
-		default: 'en',
-		env: 'N8N_DEFAULT_LOCALE',
-	},
-
-	hideUsagePage: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_HIDE_USAGE_PAGE',
-		doc: 'Hide or show the usage page',
-	},
-
 	redis: {
 		prefix: {
 			doc: 'Prefix for all n8n related keys',
@@ -284,12 +235,5 @@ export const schema = {
 			default: false,
 			env: 'N8N_AI_ENABLED',
 		},
-	},
-
-	proxy_hops: {
-		format: Number,
-		default: 0,
-		env: 'N8N_PROXY_HOPS',
-		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 };
