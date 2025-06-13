@@ -369,6 +369,10 @@ export async function prepareFormReturnItem(
 
 	returnItem.json.formMode = mode;
 
+	if (context.getNodeParameter('options.showHeaders', false)) {
+		returnItem.json.headers = context.getHeaderData();
+	}
+
 	if (
 		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
 		Object.keys(context.getRequestObject().query || {}).length
