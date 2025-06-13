@@ -10,11 +10,10 @@ const toast = useToast();
 const settingsStore = useSettingsStore();
 
 const onSSOLogin = async () => {
-	const redirectUrl = ssoStore.isDefaultAuthenticationSaml
-		? await ssoStore.getSSORedirectUrl()
-		: settingsStore.settings.sso.oidc.loginUrl;
-
 	try {
+		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
+			? await ssoStore.getSSORedirectUrl()
+			: settingsStore.settings.sso.oidc.loginUrl;
 		window.location.href = redirectUrl;
 	} catch (error) {
 		toast.showError(error, 'Error', error.message);
