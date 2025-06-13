@@ -41,15 +41,13 @@ export class ModulesConfig {
 	// Loaded modules are the ones that have been loaded so far by the instance
 	readonly loadedModules = new Set<ModuleName>();
 
-	// Get all modules by merging default and enabled, and filtering out disabled and unlicensed modules
+	// Get all modules by merging default and enabled, and filtering out disabled modules
 	get modules(): ModuleName[] {
 		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
 			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
 		}
 
 		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
-
-		// TODO: Filter out unlicensed modules, even if enabled
 
 		return enabledModules.filter((module) => !this.disabledModules.includes(module));
 	}
