@@ -18,8 +18,11 @@ export interface BaseEntity {
 
 export type EntityClass = new () => BaseEntity;
 
+export type ModuleSettings = Record<string, unknown>;
+
 export interface ModuleInterface {
-	init?(): void | Promise<void>;
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	init?(): Promise<ModuleSettings | void>;
 	entities?(): EntityClass[];
 }
 

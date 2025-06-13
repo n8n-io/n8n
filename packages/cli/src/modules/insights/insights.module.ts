@@ -23,6 +23,8 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service');
 		Container.get(InsightsService).startTimers();
+
+		return Container.get(InsightsService).settings();
 	}
 
 	entities() {

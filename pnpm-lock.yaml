@@ -387,6 +387,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../constants
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions

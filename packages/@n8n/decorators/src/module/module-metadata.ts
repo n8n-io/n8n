@@ -16,6 +16,10 @@ export class ModuleMetadata {
 	}
 
 	getEntries() {
-		return [...this.modules.values()];
+		return [...this.modules.entries()];
+	}
+
+	getClasses() {
+		return [...this.modules.values()].map((entry) => entry.class);
 	}
 }

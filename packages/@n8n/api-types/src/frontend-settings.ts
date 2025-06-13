@@ -192,7 +192,7 @@ export interface FrontendSettings {
 	partialExecution: {
 		version: 1 | 2;
 	};
-	insights: {
+	insights?: {
 		enabled: boolean;
 		summary: boolean;
 		dashboard: boolean;
@@ -201,4 +201,5 @@ export interface FrontendSettings {
 	evaluation: {
 		quota: number;
 	};
+	loadedModules: string[];
 }
