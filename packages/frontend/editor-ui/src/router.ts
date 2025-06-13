@@ -786,7 +786,6 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
-	console.log(`Navigating to: ${to.fullPath} from: ${from.fullPath}`);
 	try {
 		/**
 		 * Initialize application core
@@ -833,7 +832,6 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 		return next();
 	} catch (failure) {
-		console.error(failure);
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
 		} else {
