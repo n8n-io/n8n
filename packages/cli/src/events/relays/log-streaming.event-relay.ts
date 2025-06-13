@@ -180,28 +180,42 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Node
 
-	private nodePreExecute({ workflow, executionId, nodeName }: RelayEventMap['node-pre-execute']) {
+	private nodePreExecute({
+		workflow,
+		executionId,
+		nodeId,
+		nodeName,
+		nodeType,
+	}: RelayEventMap['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
 
-	private nodePostExecute({ workflow, executionId, nodeName }: RelayEventMap['node-post-execute']) {
+	private nodePostExecute({
+		workflow,
+		executionId,
+		nodeType,
+		nodeName,
+		nodeId,
+	}: RelayEventMap['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
