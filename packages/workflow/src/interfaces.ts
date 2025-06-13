@@ -1147,6 +1147,10 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
+	forceCustomOperation?: {
+		resource: string;
+		operation: string;
+	};
 }
 
 export interface IPinData {
