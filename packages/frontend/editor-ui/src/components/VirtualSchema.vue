@@ -193,7 +193,8 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const fields: Renders[] = flattenSchema({ schema, depth: 1 }).flatMap((renderItem) => {
+	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
 
@@ -320,7 +321,14 @@ const flattenedNodes = computed(() =>
 );
 
 const flattenNodeSchema = computed(() =>
-	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
+	nodeSchema.value
+		? flattenSchema({
+				schema: nodeSchema.value,
+				depth: 0,
+				level: -1,
+				isDataEmpty: props.data.length === 0,
+			})
+		: [],
 );
 
 /**
