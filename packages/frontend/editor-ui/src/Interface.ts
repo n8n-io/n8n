@@ -798,11 +798,10 @@ export interface LinkItemProps {
 }
 
 export interface OpenTemplateItemProps {
-	key: string;
+	key: 'rag-starter-template';
 	title: string;
 	description: string;
 	icon: string;
-	templateId: 'rag';
 	tag?: NodeCreatorTag;
 }
 

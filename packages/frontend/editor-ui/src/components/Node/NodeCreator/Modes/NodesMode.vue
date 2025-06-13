@@ -225,7 +225,7 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'openTemplate') {
-		if (item.properties.templateId === 'rag') {
+		if (item.properties.key === 'rag-starter-template') {
 			void calloutHelpers.openRagStarterTemplate();
 		}
 	}

@@ -312,14 +312,13 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	const ragKeywords = ['rag', 'vector', 'know'];
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push({
-			key: 'rag_starter_template',
+			key: 'rag-starter-template',
 			type: 'openTemplate',
 			properties: {
+				key: 'rag-starter-template',
 				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
 				icon: 'database',
 				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
-				key: 'rag_starter_template',
-				templateId: 'rag',
 				tag: {
 					type: 'info',
 					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
