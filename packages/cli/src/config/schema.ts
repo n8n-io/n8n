@@ -204,6 +204,13 @@ export const schema = {
 				default: '',
 			},
 		},
+		oidc: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable OIDC SSO.',
+			},
+		},
 		ldap: {
 			loginEnabled: {
 				format: Boolean,
