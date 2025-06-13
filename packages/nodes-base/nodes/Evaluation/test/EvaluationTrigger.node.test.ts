@@ -305,174 +305,156 @@ describe('Evaluation Trigger Node', () => {
 			});
 		});
 	});
+
 	describe('requestDataset', () => {
-		describe('Without filters', () => {
-			beforeEach(() => {
-				jest.resetAllMocks();
+		beforeEach(() => {
+			jest.resetAllMocks();
 
-				mockExecuteFunctions = mock<IExecuteFunctions>({
-					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
-				});
-
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
-					return { sheetId: 1, title: sheetName };
-				});
-
-				// Mocks getResults() and getRowsLeft()
-				jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
-					if (range === `${sheetName}!1:1`) {
-						return [['Header1', 'Header2']];
-					} else if (range === `${sheetName}!2:1000`) {
-						return [
-							['Header1', 'Header2'],
-							['Value1', 'Value2'],
-							['Value3', 'Value4'],
-						];
-					} else if (range === `${sheetName}!2:2`) {
-						// getRowsLeft with limit
-						return [];
-					} else if (range === sheetName) {
-						return [
-							['Header1', 'Header2'],
-							['Value1', 'Value2'],
-							['Value3', 'Value4'],
-						];
-					} else {
-						return [];
-					}
-				});
+			mockExecuteFunctions = mock<IExecuteFunctions>({
+				getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
 			});
 
-			test('should return the sheet with limits applied, without filters', async () => {
-				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-						const mockParams: { [key: string]: unknown } = {
-							options: {},
-							'filtersUI.values': [],
-							combineFilters: 'AND',
-							documentId: {
-								mode: 'id',
-								value: spreadsheetId,
-							},
-							sheetName,
-							sheetMode: 'id',
-							limitRows: true,
-							maxRows: 2,
-						};
-						return mockParams[key] ?? fallbackValue;
-					},
-				);
+			jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+				return { sheetId: 1, title: sheetName };
+			});
 
-				const result =
-					await new EvaluationTrigger().customOperations.testRunner.requestDataset.call(
-						mockExecuteFunctions,
-					);
-
-				expect(result).toEqual([
-					[
-						{
-							json: {
-								row_number: 2,
-								Header1: 'Value1',
-								Header2: 'Value2',
-							},
-							pairedItem: {
-								item: 0,
-							},
-						},
-						{
-							json: {
-								row_number: 3,
-								Header1: 'Value3',
-								Header2: 'Value4',
-							},
-							pairedItem: {
-								item: 0,
-							},
-						},
-					],
-				]);
+			// Mocks getResults() and getRowsLeft()
+			jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
+				if (range === `${sheetName}!1:1`) {
+					return [['Header1', 'Header2']];
+				} else if (range === `${sheetName}!2:1000`) {
+					return [
+						['Header1', 'Header2'],
+						['Value1', 'Value2'],
+						['Value3', 'Value4'],
+					];
+				} else if (range === `${sheetName}!2:2`) {
+					// getRowsLeft with limit
+					return [];
+				} else if (range === sheetName) {
+					return [
+						['Header1', 'Header2'],
+						['Value1', 'Value2'],
+						['Value3', 'Value4'],
+					];
+				} else {
+					return [];
+				}
 			});
 		});
 
-		describe('With filters', () => {
-			beforeEach(() => {
-				jest.resetAllMocks();
+		test('should return the sheet with limits applied, without filters', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						options: {},
+						'filtersUI.values': [],
+						combineFilters: 'AND',
+						documentId: {
+							mode: 'id',
+							value: spreadsheetId,
+						},
+						sheetName,
+						sheetMode: 'id',
+						limitRows: true,
+						maxRows: 2,
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
 
-				mockExecuteFunctions = mock<IExecuteFunctions>({
-					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-					getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
-				});
+			const result = await new EvaluationTrigger().customOperations.testRunner.requestDataset.call(
+				mockExecuteFunctions,
+			);
 
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
-					return { sheetId: 1, title: sheetName };
-				});
-			});
-
-			test('should return all relevant rows from google sheet using filters', async () => {
-				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
-
-				jest
-					.spyOn(GoogleSheet.prototype, 'getData')
-					.mockResolvedValueOnce([
-						// operationResult
-						['Header1', 'Header2'],
-						['Value1', 'Value2'],
-						['Value3', 'Value4'],
-						['Value1', 'Value4'],
-					])
-					.mockResolvedValueOnce([
-						// rowsLeft
-						['Header1', 'Header2'],
-						['Value1', 'Value2'],
-						['Value3', 'Value4'],
-						['Value1', 'Value4'],
-					]);
-
-				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-						const mockParams: { [key: string]: unknown } = {
-							'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
-							options: {},
-							combineFilters: 'AND',
-							documentId: {
-								mode: 'id',
-								value: spreadsheetId,
-							},
-							sheetName,
-							sheetMode: 'id',
-						};
-						return mockParams[key] ?? fallbackValue;
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							row_number: 2,
+							Header1: 'Value1',
+							Header2: 'Value2',
+						},
+						pairedItem: {
+							item: 0,
+						},
 					},
+					{
+						json: {
+							row_number: 3,
+							Header1: 'Value3',
+							Header2: 'Value4',
+						},
+						pairedItem: {
+							item: 0,
+						},
+					},
+				],
+			]);
+		});
+
+		test('should return all relevant rows from google sheet using filters', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+
+			jest
+				.spyOn(GoogleSheet.prototype, 'getData')
+				.mockResolvedValueOnce([
+					// operationResult
+					['Header1', 'Header2'],
+					['Value1', 'Value2'],
+					['Value3', 'Value4'],
+					['Value1', 'Value4'],
+				])
+				.mockResolvedValueOnce([
+					// rowsLeft
+					['Header1', 'Header2'],
+					['Value1', 'Value2'],
+					['Value3', 'Value4'],
+					['Value1', 'Value4'],
+				]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
+						options: {},
+						combineFilters: 'AND',
+						documentId: {
+							mode: 'id',
+							value: spreadsheetId,
+						},
+						sheetName,
+						sheetMode: 'id',
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
+
+			jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
+
+			const evaluationTrigger = new EvaluationTrigger();
+
+			const result =
+				await evaluationTrigger.customOperations.testRunner.requestDataset.call(
+					mockExecuteFunctions,
 				);
 
-				jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
-
-				const evaluationTrigger = new EvaluationTrigger();
-
-				const result =
-					await evaluationTrigger.customOperations.testRunner.requestDataset.call(
-						mockExecuteFunctions,
-					);
-
-				expect(result).toEqual([
-					[
-						{
-							json: { row_number: 2, Header1: 'Value1', Header2: 'Value2' },
-							pairedItem: {
-								item: 0,
-							},
+			expect(result).toEqual([
+				[
+					{
+						json: { row_number: 2, Header1: 'Value1', Header2: 'Value2' },
+						pairedItem: {
+							item: 0,
 						},
-						{
-							json: { row_number: 4, Header1: 'Value1', Header2: 'Value4' },
-							pairedItem: {
-								item: 0,
-							},
+					},
+					{
+						json: { row_number: 4, Header1: 'Value1', Header2: 'Value4' },
+						pairedItem: {
+							item: 0,
 						},
-					],
-				]);
-			});
+					},
+				],
+			]);
 		});
 	});
 });
