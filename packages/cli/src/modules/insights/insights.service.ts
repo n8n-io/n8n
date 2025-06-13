@@ -1,8 +1,4 @@
-import {
-	type InsightsSummary,
-	type InsightsDateRange,
-	INSIGHTS_DATE_RANGE_KEYS,
-} from '@n8n/api-types';
+import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -14,17 +10,8 @@ import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
+import { getAvailableDateRanges, keyRangeToDays } from './insights-helpers';
 import { InsightsPruningService } from './insights-pruning.service';
-
-const keyRangeToDays: Record<InsightsDateRange['key'], number> = {
-	day: 1,
-	week: 7,
-	'2weeks': 14,
-	month: 30,
-	quarter: 90,
-	'6months': 180,
-	year: 365,
-};
 
 @Service()
 export class InsightsService {
@@ -42,30 +29,22 @@ export class InsightsService {
 
 	startTimers() {
 		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started flushing timer');
 
-		// Start compaction and pruning timers for main leader instance only
-		if (this.instanceSettings.isLeader) {
-			this.startCompactionAndPruningTimers();
-		}
+		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
 
 	@OnLeaderTakeover()
 	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		this.logger.debug('Started compaction timer');
 		if (this.pruningService.isPruningEnabled) {
 			this.pruningService.startPruningTimer();
-			this.logger.debug('Started pruning timer');
 		}
 	}
 
 	@OnLeaderStepdown()
 	stopCompactionAndPruningTimers() {
 		this.compactionService.stopCompactionTimer();
-		this.logger.debug('Stopped compaction timer');
 		this.pruningService.stopPruningTimer();
-		this.logger.debug('Stopped pruning timer');
 	}
 
 	@OnShutdown()
@@ -209,31 +188,12 @@ export class InsightsService {
 		});
 	}
 
-	/**
-	 * Returns the available date ranges with their license authorization and time granularity
-	 * when grouped by time.
-	 */
-	getAvailableDateRanges(): InsightsDateRange[] {
-		const maxHistoryInDays =
-			this.licenseState.getInsightsMaxHistory() === -1
-				? Number.MAX_SAFE_INTEGER
-				: this.licenseState.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
-
-		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
-			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
-		}));
-	}
-
 	getMaxAgeInDaysAndGranularity(
 		dateRangeKey: InsightsDateRange['key'],
 	): InsightsDateRange & { maxAgeInDays: number } {
-		const availableDateRanges = this.getAvailableDateRanges();
-
-		const dateRange = availableDateRanges.find((range) => range.key === dateRangeKey);
+		const dateRange = getAvailableDateRanges(this.licenseState).find(
+			(range) => range.key === dateRangeKey,
+		);
 		if (!dateRange) {
 			// Not supposed to happen if we trust the dateRangeKey type
 			throw new UserError('The selected date range is not available');

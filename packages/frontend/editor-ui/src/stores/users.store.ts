@@ -1,13 +1,14 @@
-import type {
-	LoginRequestDto,
-	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
-	UserUpdateRequestDto,
+import {
+	type LoginRequestDto,
+	type PasswordUpdateRequestDto,
+	type SettingsUpdateRequestDto,
+	type UserUpdateRequestDto,
+	ROLE,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
-import { PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
 	IPersonalizationLatestVersion,
@@ -32,6 +33,7 @@ import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
+import * as onboardingApi from '@/api/workflow-webhooks';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -375,6 +377,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		currentUserCloudInfo.value = null;
 	};
 
+	const submitContactEmail = async (email: string, agree: boolean) => {
+		if (currentUser.value) {
+			return await onboardingApi.submitEmailOnSignup(
+				rootStore.instanceId,
+				currentUser.value,
+				email ?? currentUser.value.email,
+				agree,
+			);
+		}
+		return null;
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -423,5 +437,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		submitContactEmail,
 	};
 });

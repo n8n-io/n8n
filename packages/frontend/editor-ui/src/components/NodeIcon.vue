@@ -62,7 +62,9 @@ const badge = computed(() => {
 	return iconSource.value.badge;
 });
 
-const nodeTypeName = computed(() => props.nodeName ?? props.nodeType?.displayName);
+const nodeTypeName = computed(() =>
+	props.nodeName && props.nodeName !== '' ? props.nodeName : props.nodeType?.displayName,
+);
 </script>
 
 <template>

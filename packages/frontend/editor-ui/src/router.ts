@@ -24,6 +24,8 @@ import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
+const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
+const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
@@ -721,6 +723,24 @@ export const routes: RouteRecordRaw[] = [
 	},
 	...projectsRoutes,
 	...insightsRoutes,
+	{
+		path: '/entity-not-found/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_NOT_FOUND,
+		components: {
+			default: EntityNotFound,
+			sidebar: MainSidebar,
+		},
+	},
+	{
+		path: '/entity-not-authorized/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_UNAUTHORIZED,
+		components: {
+			default: EntityUnAuthorised,
+			sidebar: MainSidebar,
+		},
+	},
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

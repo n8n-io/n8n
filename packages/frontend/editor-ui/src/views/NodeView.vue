@@ -468,8 +468,20 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+		if (error.httpStatusCode === 404) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'workflow' },
+			});
+		}
+		if (error.httpStatusCode === 403) {
+			return await router.replace({
+				name: VIEWS.ENTITY_UNAUTHORIZED,
+				params: { entityType: 'workflow' },
+			});
+		}
 
+		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
 		});

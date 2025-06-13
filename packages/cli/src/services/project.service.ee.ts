@@ -242,10 +242,13 @@ export class ProjectService {
 		}
 	}
 
-	async updateProject(projectId: string, { name, icon }: UpdateProjectDto): Promise<void> {
+	async updateProject(
+		projectId: string,
+		{ name, icon, description }: UpdateProjectDto,
+	): Promise<void> {
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon },
+			{ name, icon, description },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);

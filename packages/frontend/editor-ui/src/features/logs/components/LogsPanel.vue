@@ -90,7 +90,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
 	await nextTick(() => {
-		const source = treeNode.runData.source[0];
+		const source = treeNode.runData?.source[0];
 		const inputBranch = source?.previousNodeOutput ?? 0;
 
 		ndvEventBus.emit('updateInputNodeName', source?.previousNode);

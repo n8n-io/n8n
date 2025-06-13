@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, ROLE } from '@/constants';
-
-import type { IRole, IUser, IUserListAction, InvitableRoleName } from '@/Interface';
+import { ROLE, type Role } from '@n8n/api-types';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
+import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -85,7 +85,7 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
-const userRoles = computed((): Array<{ value: IRole; label: string; disabled?: boolean }> => {
+const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
 		{
 			value: ROLE.Member,

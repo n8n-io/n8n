@@ -6,7 +6,6 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
@@ -31,6 +30,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
@@ -169,15 +169,26 @@ const maybeCreateCredential = () => {
 	}
 };
 
-const maybeEditCredential = () => {
+const maybeEditCredential = async () => {
 	if (!!props.credentialId && props.credentialId !== 'create') {
 		const credential = credentialsStore.getCredentialById(props.credentialId);
 		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
-			uiStore.openExistingCredential(props.credentialId);
-		} else {
-			void router.replace({ name: VIEWS.HOMEPAGE });
+		if (!credential) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'credential' },
+			});
 		}
+
+		if (credentialPermissions.update || credentialPermissions.read) {
+			uiStore.openExistingCredential(props.credentialId);
+			return;
+		}
+
+		return await router.replace({
+			name: VIEWS.ENTITY_UNAUTHORIZED,
+			params: { entityType: 'credential' },
+		});
 	}
 };
 
@@ -200,7 +211,7 @@ const initialize = async () => {
 
 	await Promise.all(loadPromises);
 	maybeCreateCredential();
-	maybeEditCredential();
+	await maybeEditCredential();
 	loading.value = false;
 };
 
@@ -225,7 +236,7 @@ watch(
 	() => props.credentialId,
 	() => {
 		maybeCreateCredential();
-		maybeEditCredential();
+		void maybeEditCredential();
 	},
 );
 

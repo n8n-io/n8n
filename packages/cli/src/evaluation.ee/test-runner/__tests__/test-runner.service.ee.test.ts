@@ -3,6 +3,7 @@ import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
 import { readFileSync } from 'fs';
+import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -11,6 +12,7 @@ import type { IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
@@ -616,7 +618,16 @@ describe('TestRunnerService', () => {
 					pinData: {
 						[triggerNodeName]: [testCase],
 					},
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							saveExecutionProgress: false,
+						},
+					},
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
 					triggerToStartFrom: {
@@ -678,6 +689,101 @@ describe('TestRunnerService', () => {
 				// Restore original method
 				abortController.signal.addEventListener = originalAddEventListener;
 			}
+		});
+
+		describe('runTestCase - Queue Mode', () => {
+			beforeEach(() => {
+				// Mock config to return 'queue' mode
+				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+					if (key === 'executions.mode') {
+						return 'queue';
+					}
+					return undefined;
+				});
+			});
+
+			afterEach(() => {
+				(config.getEnv as unknown as Mock).mockRestore();
+			});
+
+			test('should call workflowRunner.run with correct data in queue mode', async () => {
+				// Setup test data
+				const triggerNodeName = 'TriggerNode';
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: triggerNodeName,
+							type: EVALUATION_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				const metadata = {
+					testRunId: 'test-run-id',
+					userId: 'user-id',
+				};
+
+				const testCase = { json: { id: 1, name: 'Test 1' } };
+				const abortController = new AbortController();
+
+				// Call the method
+				await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify workflowRunner.run was called with the correct data
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+				// Verify the expected structure for queue mode
+				expect(runCallArg).toEqual(
+					expect.objectContaining({
+						executionMode: 'evaluation',
+						pinData: {
+							[triggerNodeName]: [testCase],
+						},
+						workflowData: {
+							...workflow,
+							settings: {
+								...workflow.settings,
+								saveManualExecutions: true,
+								saveDataErrorExecution: 'all',
+								saveDataSuccessExecution: 'all',
+								saveExecutionProgress: false,
+							},
+						},
+						userId: metadata.userId,
+						partialExecutionVersion: 2,
+						triggerToStartFrom: {
+							name: triggerNodeName,
+						},
+						executionData: {
+							resultData: {
+								pinData: {
+									[triggerNodeName]: [testCase],
+								},
+								runData: {},
+							},
+							manualData: {
+								userId: metadata.userId,
+								partialExecutionVersion: 2,
+								triggerToStartFrom: {
+									name: triggerNodeName,
+								},
+							},
+						},
+					}),
+				);
+			});
 		});
 	});
 
