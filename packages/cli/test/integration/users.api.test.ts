@@ -520,9 +520,7 @@ describe('GET /users', () => {
 				expect(response.body.data.items[3].lastName).toBe('OwnerLastName');
 			});
 			test('should sort by lastName:desc', async () => {
-				const response = await ownerAgent.get('/users').query('sortBy=lastName:desc'); //.expect(200);
-
-				console.log(response.body);
+				const response = await ownerAgent.get('/users').query('sortBy=lastName:desc').expect(200);
 
 				expect(response.body.data.items).toHaveLength(4);
 				expect(response.body.data.items[0].lastName).toBe('OwnerLastName');

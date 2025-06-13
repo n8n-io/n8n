@@ -8,6 +8,7 @@ import type {
 	IVersionNotificationSettings,
 	ROLE,
 	Role,
+	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -53,7 +54,6 @@ import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -571,18 +571,10 @@ export type IPersonalizationSurveyVersions =
 
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
-export interface IUserResponse {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email?: string;
-	createdAt?: string;
-	role?: Role;
+export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	isPending: boolean;
-	signInType?: SignInType;
-	settings?: IUserSettings;
+	settings?: IUserSettings | null;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
