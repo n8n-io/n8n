@@ -636,7 +636,7 @@ export function resolveVectorStoreMetrics(
 		(x) => x[0].parameters?.mode === 'insert',
 	);
 	const retrievingVectorStores = succeededVectorStores.filter((x) =>
-		['retrieve-as-tool', 'retrieve'].find((y) => y === x[0].parameters?.mode),
+		['retrieve-as-tool', 'retrieve', 'load'].find((y) => y === x[0].parameters?.mode),
 	);
 
 	return {
