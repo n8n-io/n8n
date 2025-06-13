@@ -3,7 +3,7 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
+import { state, initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -11,6 +11,10 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { STORES } from '@n8n/stores';
+import { useSSOStore } from '@/stores/sso.store';
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import { EnterpriseEditionFeature } from '@/constants';
 
 const showMessage = vi.fn();
 
@@ -33,12 +37,13 @@ describe('Init', () => {
 	let usersStore: ReturnType<typeof useUsersStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let versionsStore: ReturnType<typeof useVersionsStore>;
+	let ssoStore: ReturnType<typeof useSSOStore>;
 
 	beforeEach(() => {
 		setActivePinia(
 			createTestingPinia({
 				initialState: {
-					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+					[STORES.SETTINGS]: merge({}, SETTINGS_STORE_DEFAULT_STATE),
 				},
 			}),
 		);
@@ -50,9 +55,14 @@ describe('Init', () => {
 		usersStore = useUsersStore();
 		versionsStore = useVersionsStore();
 		versionsStore = useVersionsStore();
+		ssoStore = useSSOStore();
 	});
 
 	describe('initializeCore()', () => {
+		beforeEach(() => {
+			state.initialized = false;
+		});
+
 		afterEach(() => {
 			vi.clearAllMocks();
 		});
@@ -71,6 +81,26 @@ describe('Init', () => {
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should initialize ssoStore with settings SSO configuration', async () => {
+			const saml = { loginEnabled: true, loginLabel: '' };
+			const ldap = { loginEnabled: false, loginLabel: '' };
+
+			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
+			settingsStore.settings.sso = { saml, ldap };
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
+
+			await initializeCore();
+
+			expect(ssoStore.initialize).toHaveBeenCalledWith({
+				authenticationMethod: UserManagementAuthenticationMethod.Saml,
+				config: { saml, ldap },
+				features: {
+					saml: true,
+					ldap: false,
+				},
+			});
 		});
 	});
 

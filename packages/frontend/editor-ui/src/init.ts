@@ -17,7 +17,9 @@ import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 
-let coreInitialized = false;
+export const state = {
+	initialized: false,
+};
 let authenticatedFeaturesInitialized = false;
 
 /**
@@ -25,7 +27,7 @@ let authenticatedFeaturesInitialized = false;
  * This is called once, when the first route is loaded.
  */
 export async function initializeCore() {
-	if (coreInitialized) {
+	if (state.initialized) {
 		return;
 	}
 
@@ -54,7 +56,7 @@ export async function initializeCore() {
 		void versionsStore.checkForNewVersions();
 	}
 
-	coreInitialized = true;
+	state.initialized = true;
 }
 
 /**
