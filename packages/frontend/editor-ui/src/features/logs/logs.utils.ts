@@ -8,6 +8,8 @@ import {
 	type ITaskData,
 	type ITaskStartedData,
 	type Workflow,
+	type INode,
+	type ISourceData,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
@@ -16,6 +18,7 @@ import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash-es/get';
 import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -43,7 +46,7 @@ function createNode(
 	node: INodeUi,
 	context: LogTreeCreationContext,
 	runIndex: number,
-	runData: ITaskData,
+	runData: ITaskData | undefined,
 	children: LogEntry[] = [],
 ): LogEntry {
 	return {
@@ -54,22 +57,11 @@ function createNode(
 		runIndex,
 		runData,
 		children,
-		consumedTokens: getConsumedTokens(runData),
+		consumedTokens: runData ? getConsumedTokens(runData) : emptyTokenUsageData,
 		workflow: context.workflow,
 		executionId: context.executionId,
 		execution: context.data,
 	};
-}
-
-export function getTreeNodeData(
-	nodeName: string,
-	runData: ITaskData,
-	runIndex: number | undefined,
-	context: LogTreeCreationContext,
-): LogEntry[] {
-	const node = context.workflow.getNode(nodeName);
-
-	return node ? getTreeNodeDataRec(node, runData, context, runIndex) : [];
 }
 
 function getChildNodes(
@@ -79,8 +71,8 @@ function getChildNodes(
 	context: LogTreeCreationContext,
 ) {
 	if (hasSubExecution(treeNode)) {
-		const workflowId = treeNode.runData.metadata?.subExecution?.workflowId;
-		const executionId = treeNode.runData.metadata?.subExecution?.executionId;
+		const workflowId = treeNode.runData?.metadata?.subExecution?.workflowId;
+		const executionId = treeNode.runData?.metadata?.subExecution?.executionId;
 		const workflow = workflowId ? context.workflows[workflowId] : undefined;
 		const subWorkflowRunData = executionId ? context.subWorkflowData[executionId] : undefined;
 
@@ -102,6 +94,14 @@ function getChildNodes(
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
 	const isExecutionRoot = !isSubNodeLog(treeNode);
 
+	function isMatchedSource(source: ISourceData | null): boolean {
+		return (
+			(source?.previousNode === node.name ||
+				(isPlaceholderLog(treeNode) && source?.previousNode === TOOL_EXECUTOR_NODE_NAME)) &&
+			(runIndex === undefined || source.previousNodeRun === runIndex)
+		);
+	}
+
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
 			// At root depth, filter out node executions that weren't triggered by this node
@@ -109,11 +109,7 @@ function getChildNodes(
 			// Only filter nodes that have source information with valid previousNode references
 			const isMatched =
 				isExecutionRoot && t.source.some((source) => source !== null)
-					? t.source.some(
-							(source) =>
-								source?.previousNode === node.name &&
-								(runIndex === undefined || source.previousNodeRun === runIndex),
-						)
+					? t.source.some(isMatchedSource)
 					: runIndex === undefined || index === runIndex;
 
 			if (!isMatched) {
@@ -123,25 +119,28 @@ function getChildNodes(
 			const subNode = context.workflow.getNode(subNodeName);
 
 			return subNode
-				? getTreeNodeDataRec(
-						subNode,
-						t,
-						{ ...context, depth: context.depth + 1, parent: treeNode },
-						index,
-					)
+				? getTreeNodeData(subNode, t, index, {
+						...context,
+						depth: context.depth + 1,
+						parent: treeNode,
+					})
 				: [];
 		}),
 	);
 }
 
-function getTreeNodeDataRec(
+export function getTreeNodeData(
 	node: INodeUi,
-	runData: ITaskData,
-	context: LogTreeCreationContext,
+	runData: ITaskData | undefined,
 	runIndex: number | undefined,
+	context: LogTreeCreationContext,
 ): LogEntry[] {
 	const treeNode = createNode(node, context, runIndex ?? 0, runData);
 	const children = getChildNodes(treeNode, node, runIndex, context).sort(sortLogEntries);
+
+	if ((runData === undefined || node.disabled) && children.length === 0) {
+		return [];
+	}
 
 	treeNode.children = children;
 
@@ -185,6 +184,10 @@ function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEnt
 		}
 
 		if (entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			if (isPlaceholderLog(entry) && entry.children.length > 0) {
+				return entry.children[0];
+			}
+
 			return entry;
 		}
 	}
@@ -210,23 +213,52 @@ export function createLogTree(
 }
 
 function createLogTreeRec(context: LogTreeCreationContext) {
-	const runs = Object.entries(context.data.resultData.runData)
-		.flatMap(([nodeName, taskData]) =>
-			context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
-			context.workflow.getNode(nodeName)?.disabled
-				? [] // skip sub nodes and disabled nodes
-				: taskData.map((task, runIndex) => ({
-						nodeName,
-						runData: task,
-						runIndex,
-						nodeHasMultipleRuns: taskData.length > 1,
-					})),
+	const runData = context.data.resultData.runData;
+
+	return Object.entries(runData)
+		.flatMap<{
+			node: INode;
+			task?: ITaskData;
+			runIndex?: number;
+			nodeHasMultipleRuns: boolean;
+		}>(([nodeName, taskData]) => {
+			const node = context.workflow.getNode(nodeName);
+
+			if (node === null) {
+				return [];
+			}
+
+			const childNodes = context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN');
+
+			if (childNodes.length === 0) {
+				// The node is root node
+				return taskData.map((task, runIndex) => ({
+					node,
+					task,
+					runIndex,
+					nodeHasMultipleRuns: taskData.length > 1,
+				}));
+			}
+
+			// The node is sub node
+			if (childNodes.some((child) => (runData[child] ?? []).length > 0)) {
+				return [];
+			}
+
+			// The sub node has data but its children don't: this can happen for partial execution of tools.
+			// In this case, we insert first child as placeholder so that the node is included in the tree.
+			const firstChild = context.workflow.getNode(childNodes[0]);
+
+			if (firstChild === null) {
+				return [];
+			}
+
+			return [{ node: firstChild, nodeHasMultipleRuns: false }];
+		})
+		.flatMap(({ node, runIndex, task, nodeHasMultipleRuns }) =>
+			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
-
-	return runs.flatMap(({ nodeName, runIndex, runData, nodeHasMultipleRuns }) =>
-		getTreeNodeData(nodeName, runData, nodeHasMultipleRuns ? runIndex : undefined, context),
-	);
 }
 
 export function findLogEntryRec(
@@ -334,7 +366,15 @@ export function getEntryAtRelativeIndex(
 	return offset === -1 ? undefined : entries[offset + relativeIndex];
 }
 
-function sortLogEntries<T extends { runData: ITaskData }>(a: T, b: T) {
+function sortLogEntries(a: LogEntry, b: LogEntry): number {
+	if (a.runData === undefined) {
+		return a.children.length > 0 ? sortLogEntries(a.children[0], b) : 0;
+	}
+
+	if (b.runData === undefined) {
+		return b.children.length > 0 ? sortLogEntries(a, b.children[0]) : 0;
+	}
+
 	// We rely on execution index only when startTime is different
 	// Because it is reset to 0 when execution is waited, and therefore not necessarily unique
 	if (a.runData.startTime === b.runData.startTime) {
@@ -394,7 +434,7 @@ export function mergeStartData(
 }
 
 export function hasSubExecution(entry: LogEntry): boolean {
-	return !!entry.runData.metadata?.subExecution;
+	return !!entry.runData?.metadata?.subExecution;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
@@ -541,4 +581,8 @@ export function restoreChatHistory(
 
 export function isSubNodeLog(logEntry: LogEntry): boolean {
 	return logEntry.parent !== undefined && logEntry.parent.executionId === logEntry.executionId;
+}
+
+export function isPlaceholderLog(treeNode: LogEntry): boolean {
+	return treeNode.runData === undefined;
 }

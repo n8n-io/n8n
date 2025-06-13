@@ -10,7 +10,7 @@ export type ModulePreInit = {
 	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
 };
 
-const moduleNames = ['insights', 'external-secrets.ee'] as const;
+const moduleNames = ['insights', 'external-secrets'] as const;
 export type ModuleName = (typeof moduleNames)[number];
 
 class Modules extends CommaSeparatedStringArray<ModuleName> {
@@ -36,7 +36,7 @@ export class ModulesConfig {
 	disabledModules: Modules = [];
 
 	// Default modules are always enabled unless explicitly disabled
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets.ee'];
+	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
 
 	// Loaded modules are the ones that have been loaded so far by the instance
 	readonly loadedModules = new Set<ModuleName>();

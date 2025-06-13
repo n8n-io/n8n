@@ -686,7 +686,16 @@ describe('TestRunnerService', () => {
 					pinData: {
 						[triggerNodeName]: [testCase],
 					},
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							saveExecutionProgress: false,
+						},
+					},
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
 					triggerToStartFrom: {
@@ -811,7 +820,16 @@ describe('TestRunnerService', () => {
 						pinData: {
 							[triggerNodeName]: [testCase],
 						},
-						workflowData: workflow,
+						workflowData: {
+							...workflow,
+							settings: {
+								...workflow.settings,
+								saveManualExecutions: true,
+								saveDataErrorExecution: 'all',
+								saveDataSuccessExecution: 'all',
+								saveExecutionProgress: false,
+							},
+						},
 						userId: metadata.userId,
 						partialExecutionVersion: 2,
 						triggerToStartFrom: {
