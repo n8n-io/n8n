@@ -284,8 +284,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const fetchUsers = async () => {
-		const users = await usersApi.getUsers(rootStore.restApiContext);
-		addUsers(users);
+		const { data } = await usersApi.getUsers(rootStore.restApiContext);
+		addUsers(data);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
