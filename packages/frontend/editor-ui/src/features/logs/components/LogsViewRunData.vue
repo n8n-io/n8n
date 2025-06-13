@@ -19,7 +19,9 @@ const locale = useI18n();
 const ndvStore = useNDVStore();
 
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
-const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
+const isMultipleInput = computed(
+	() => paneType === 'input' && (logEntry.runData?.source.length ?? 0) > 1,
+);
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
@@ -27,7 +29,7 @@ const runDataProps = computed<
 		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
-	const source = logEntry.runData.source[0];
+	const source = logEntry.runData?.source[0];
 	const node = source && logEntry.workflow.getNode(source.previousNode);
 
 	if (!source || !node) {
@@ -46,8 +48,8 @@ const runDataProps = computed<
 const isExecuting = computed(
 	() =>
 		paneType === 'output' &&
-		(logEntry.runData.executionStatus === 'running' ||
-			logEntry.runData.executionStatus === 'waiting'),
+		(logEntry.runData?.executionStatus === 'running' ||
+			logEntry.runData?.executionStatus === 'waiting'),
 );
 
 function handleClickOpenNdv() {

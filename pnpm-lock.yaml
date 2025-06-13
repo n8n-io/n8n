@@ -832,8 +832,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@modelcontextprotocol/sdk':
-        specifier: 1.11.0
-        version: 1.11.0
+        specifier: 1.12.0
+        version: 1.12.0
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
@@ -5066,8 +5066,8 @@ packages:
     peerDependencies:
       zod: '>= 3'
 
-  '@modelcontextprotocol/sdk@1.11.0':
-    resolution: {integrity: sha512-k/1pb70eD638anoi0e8wUGAlbMJXyvdV4p62Ko+EZ7eBe1xMx8Uhak1R5DgfoofsK5IBBnRwsYGTaLZl+6/+RQ==}
+  '@modelcontextprotocol/sdk@1.12.0':
+    resolution: {integrity: sha512-m//7RlINx1F3sz3KqwY1WWzVgTcYX52HYk4bJ1hkBXV3zccAEth+jRvG8DBRrdaQuRsPAJOx2MH3zaHNCKL7Zg==}
     engines: {node: '>=18'}
 
   '@mongodb-js/saslprep@1.1.9':
@@ -17706,8 +17706,9 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
-  '@modelcontextprotocol/sdk@1.11.0':
+  '@modelcontextprotocol/sdk@1.12.0':
     dependencies:
+      ajv: 6.12.6
       content-type: 1.0.5
       cors: 2.8.5
       cross-spawn: 7.0.6
