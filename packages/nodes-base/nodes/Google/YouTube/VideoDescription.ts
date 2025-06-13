@@ -241,7 +241,7 @@ export const videoFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+					'Keyword tags associated with the playlist. Multiple can be defined separated by comma.',
 			},
 		],
 	},
@@ -819,7 +819,7 @@ export const videoFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+					'Keyword tags associated with the playlist. Multiple can be defined separated by comma.',
 			},
 		],
 	},
