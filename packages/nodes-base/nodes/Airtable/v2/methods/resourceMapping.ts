@@ -111,6 +111,8 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 			options,
 			readOnly: isReadOnly,
 			removed: isReadOnly,
+			// Store the actual field ID in the hint property
+			hint: field.id,
 		});
 	}
 

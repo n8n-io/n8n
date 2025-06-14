@@ -171,3 +171,45 @@ export async function batchUpdate(
 
 	return responseData;
 }
+
+export async function getFieldNamesAndIds(
+	this: IExecuteFunctions | IPollFunctions,
+	base: string,
+	table: string,
+): Promise<Map<string, string>> {
+	try {
+		const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+
+		const tableData = ((response.tables as IDataObject[]) || []).find((t: IDataObject) => {
+			return t.id === table;
+		});
+
+		if (!tableData || !tableData.fields) {
+			throw new ApplicationError(`Table schema not found for table ID: ${table}`, {
+				level: 'warning',
+				description:
+					'Unable to retrieve field mappings. Make sure the table exists and you have permission to access it.',
+			});
+		}
+
+		const fieldMapping = new Map<string, string>();
+
+		for (const field of tableData.fields as IDataObject[]) {
+			if (field.name && field.id) {
+				fieldMapping.set(field.name as string, field.id as string);
+			}
+		}
+
+		return fieldMapping;
+	} catch (error) {
+		if (error instanceof ApplicationError) {
+			throw error;
+		}
+		throw new ApplicationError('Failed to fetch field mappings from Airtable', {
+			level: 'warning',
+			description:
+				'Could not retrieve field IDs. Check your API credentials and table permissions.',
+			cause: error,
+		});
+	}
+}
