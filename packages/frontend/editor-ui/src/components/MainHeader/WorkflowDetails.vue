@@ -60,6 +60,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { sanitizeFilename } from '@/utils/fileUtils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -466,12 +467,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 
 			let name = props.name || 'unsaved_workflow';
-			name = name
-				.replace(
-					/[^a-zA-Z0-9\u4e00-\u9fa5\uAC00-\uD7A3\u3040-\u30FF\u0E00-\u0E7F\u0600-\u06FF\u0370-\u03FF\u0400-\u04FF\u0100-\u017F._-]/g,
-					'_',
-				)
-				.replace(/^\.+/, '_');
+			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');
