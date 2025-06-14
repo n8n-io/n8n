@@ -10,7 +10,8 @@ import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -28,9 +29,13 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const i18n = useI18n();
 
-const showUMSetupWarning = computed(() => {
-	return hasPermission(['defaultUser']);
+const search = ref('');
+const usersTableState = ref({
+	page: 0,
+	itemsPerPage: 25,
+	sortBy: [{ id: 'name', desc: true }],
 });
+const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -247,6 +252,12 @@ const updateUsersTableData = ({
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 }) => {
+	usersTableState.value = {
+		page,
+		itemsPerPage,
+		sortBy,
+	};
+
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
 
@@ -254,30 +265,50 @@ const updateUsersTableData = ({
 		skip,
 		take,
 		sortBy: sortBy[0]?.id ? `${sortBy[0].id}:${sortBy[0].desc ? 'desc' : 'asc'}` : undefined,
+		search: search.value.trim() || undefined,
 	});
+};
+
+const debouncedUpdateUsersTableData = useDebounceFn(() => {
+	updateUsersTableData(usersTableState.value);
+}, 300);
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedUpdateUsersTableData();
 };
 </script>
 
 <template>
 	<div :class="$style.container">
-		<div>
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
-			<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
-				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
-					<template #content>
-						<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
-					</template>
-					<div>
-						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
-							:label="i18n.baseText('settings.users.invite')"
-							size="large"
-							data-test-id="settings-users-invite-button"
-							@click="onInvite"
-						/>
-					</div>
-				</n8n-tooltip>
-			</div>
+		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
+		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
+			<n8n-input
+				:class="$style.search"
+				:model-value="search"
+				:placeholder="i18n.baseText('settings.users.search.placeholder')"
+				clearable
+				data-test-id="users-list-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
+			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+				<template #content>
+					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
+				</template>
+				<div>
+					<n8n-button
+						:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
+						:label="i18n.baseText('settings.users.invite')"
+						size="large"
+						data-test-id="settings-users-invite-button"
+						@click="onInvite"
+					/>
+				</div>
+			</n8n-tooltip>
 		</div>
 		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
@@ -345,24 +376,20 @@ const updateUsersTableData = ({
 
 <style lang="scss" module>
 .container {
-	height: 100%;
-	padding-right: var(--spacing-2xs);
-
-	> * {
-		margin-bottom: var(--spacing-2xl);
-	}
 }
 
 .usersContainer {
-	> * {
-		margin-bottom: var(--spacing-2xs);
-	}
 }
 
 .buttonContainer {
-	display: inline-block;
-	float: right;
-	margin-bottom: var(--spacing-l);
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing-s);
+	margin: var(--spacing-2xl) 0 var(--spacing-s);
+}
+
+.search {
+	max-width: 300px;
 }
 
 .setupInfoContainer {

@@ -22,10 +22,6 @@ const emit = defineEmits<{
 	];
 }>();
 
-const sortBy = ref<Array<{ id: string; desc: boolean }>>([]);
-const currentPage = ref(0);
-const itemsPerPage = ref(25);
-
 const rows = computed(() => props.data.data);
 const headers = ref<Array<TableHeader<Item>>>([]);
 </script>
@@ -33,9 +29,6 @@ const headers = ref<Array<TableHeader<Item>>>([]);
 <template>
 	<div>
 		<N8nDataTableServer
-			v-model:sort-by="sortBy"
-			v-model:page="currentPage"
-			v-model:items-per-page="itemsPerPage"
 			:items="rows"
 			:headers="headers"
 			:items-length="data.count"
