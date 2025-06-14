@@ -8,9 +8,14 @@ import type {
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { UpdateRecord } from '../../helpers/interfaces';
-import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';
-import { apiRequestAllItems, batchUpdate } from '../../transport';
-import { insertUpdateOptions } from '../common.descriptions';
+import {
+	findMatches,
+	processAirtableError,
+	removeIgnored,
+	mapFieldNamesToIds,
+} from '../../helpers/utils';
+import { apiRequestAllItems, batchUpdate, getFieldNamesAndIds } from '../../transport';
+import { insertUpdateOptions, useFieldIdsOption } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -37,6 +42,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	useFieldIdsOption,
 	...insertUpdateOptions,
 ];
 
@@ -63,6 +69,13 @@ export async function execute(
 
 	const columnsToMatchOn = this.getNodeParameter('columns.matchingColumns', 0) as string[];
 
+	// Get field mapping once if useFieldIds is enabled
+	let fieldMapping: Map<string, string> | undefined;
+	const useFieldIds = this.getNodeParameter('useFieldIds', 0, false) as boolean;
+	if (useFieldIds) {
+		fieldMapping = await getFieldNamesAndIds.call(this, base, table);
+	}
+
 	let tableData: UpdateRecord[] = [];
 	if (!columnsToMatchOn.includes('id')) {
 		const response = await apiRequestAllItems.call(
@@ -87,9 +100,14 @@ export async function execute(
 					const { id, ...fields } = items[i].json;
 					recordId = id as string;
 
+					let fieldsToUpdate = removeIgnored(fields, options.ignoreFields as string);
+					if (useFieldIds && fieldMapping) {
+						fieldsToUpdate = mapFieldNamesToIds(fieldsToUpdate, fieldMapping);
+					}
+
 					records.push({
 						id: recordId,
-						fields: removeIgnored(fields, options.ignoreFields as string),
+						fields: fieldsToUpdate,
 					});
 				} else {
 					const matches = findMatches(
@@ -101,8 +119,11 @@ export async function execute(
 
 					for (const match of matches) {
 						const id = match.id as string;
-						const fields = items[i].json;
-						records.push({ id, fields: removeIgnored(fields, options.ignoreFields as string) });
+						let fields = removeIgnored(items[i].json, options.ignoreFields as string);
+						if (useFieldIds && fieldMapping) {
+							fields = mapFieldNamesToIds(fields, fieldMapping);
+						}
+						records.push({ id, fields });
 					}
 				}
 			}
@@ -116,7 +137,13 @@ export async function execute(
 						[],
 						getNodeParameterOptions,
 					) as IDataObject;
-					records.push({ id: id as string, fields });
+
+					let fieldsToUpdate = fields;
+					if (useFieldIds && fieldMapping) {
+						fieldsToUpdate = mapFieldNamesToIds(fieldsToUpdate, fieldMapping);
+					}
+
+					records.push({ id: id as string, fields: fieldsToUpdate });
 				} else {
 					const fields = this.getNodeParameter(
 						'columns.value',
@@ -134,7 +161,11 @@ export async function execute(
 
 					for (const match of matches) {
 						const id = match.id as string;
-						records.push({ id, fields: removeIgnored(fields, columnsToMatchOn) });
+						let fieldsToUpdate = removeIgnored(fields, columnsToMatchOn);
+						if (useFieldIds && fieldMapping) {
+							fieldsToUpdate = mapFieldNamesToIds(fieldsToUpdate, fieldMapping);
+						}
+						records.push({ id, fields: fieldsToUpdate });
 					}
 				}
 			}

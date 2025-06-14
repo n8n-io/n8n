@@ -42,7 +42,7 @@ describe('Test AirtableV2, create operation', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'appYoLbase/tblltable/recXXX');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'appYoLbase/tblltable/recXXX', {}, {});
 
 		expect(responce).toEqual([
 			{

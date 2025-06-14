@@ -9,7 +9,7 @@ import { generatePairedItemData, updateDisplayOptions } from '../../../../../uti
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
-import { viewRLC } from '../common.descriptions';
+import { viewRLC, searchOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -45,6 +45,7 @@ const properties: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
+	searchOptions,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -192,6 +193,15 @@ export async function execute(
 
 			if (options.view) {
 				qs.view = (options.view as IDataObject).value as string;
+			}
+
+			const returnFieldsByFieldId = this.getNodeParameter(
+				'returnFieldsByFieldId',
+				i,
+				false,
+			) as boolean;
+			if (returnFieldsByFieldId) {
+				qs.returnFieldsByFieldId = true;
 			}
 
 			let responseData;

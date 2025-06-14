@@ -90,3 +90,20 @@ export const flattenOutput = (record: IDataObject) => {
 		...(fields as IDataObject),
 	};
 };
+
+export function mapFieldNamesToIds(
+	fields: IDataObject,
+	fieldMapping: Map<string, string>,
+): IDataObject {
+	const mappedFields: IDataObject = {};
+	for (const [fieldName, value] of Object.entries(fields)) {
+		const fieldId = fieldMapping.get(fieldName);
+		if (fieldId) {
+			mappedFields[fieldId] = value;
+		} else {
+			// If no mapping found, use the original field name
+			mappedFields[fieldName] = value;
+		}
+	}
+	return mappedFields;
+}

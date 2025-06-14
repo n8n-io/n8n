@@ -163,6 +163,20 @@ export const viewRLC: INodeProperties = {
 	],
 };
 
+export const useFieldIdsOption: INodeProperties = {
+	displayName: 'Use Field IDs',
+	name: 'useFieldIds',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether to use field IDs instead of field names in API calls. This makes workflows more resilient to field name changes.',
+	displayOptions: {
+		hide: {
+			'/columns.mappingMode': ['nothing'],
+		},
+	},
+};
+
 export const insertUpdateOptions: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -208,3 +222,12 @@ export const insertUpdateOptions: INodeProperties[] = [
 		],
 	},
 ];
+
+export const searchOptions: INodeProperties = {
+	displayName: 'Return Fields By Field ID',
+	name: 'returnFieldsByFieldId',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether to return fields using their field IDs instead of field names. This option is available in all operations that retrieve records.',
+};

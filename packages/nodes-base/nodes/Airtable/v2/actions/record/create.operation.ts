@@ -7,9 +7,9 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { processAirtableError, removeIgnored } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
-import { insertUpdateOptions } from '../common.descriptions';
+import { processAirtableError, removeIgnored, mapFieldNamesToIds } from '../../helpers/utils';
+import { apiRequest, getFieldNamesAndIds } from '../../transport';
+import { insertUpdateOptions, useFieldIdsOption } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -36,6 +36,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	useFieldIdsOption,
 	...insertUpdateOptions,
 ];
 
@@ -60,6 +61,13 @@ export async function execute(
 
 	const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
 
+	// Get field mapping once if useFieldIds is enabled
+	let fieldMapping: Map<string, string> | undefined;
+	const useFieldIds = this.getNodeParameter('useFieldIds', 0, false) as boolean;
+	if (useFieldIds) {
+		fieldMapping = await getFieldNamesAndIds.call(this, base, table);
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const options = this.getNodeParameter('options', i, {});
@@ -69,12 +77,18 @@ export async function execute(
 			};
 
 			if (dataMode === 'autoMapInputData') {
-				body.fields = removeIgnored(items[i].json, options.ignoreFields as string);
+				let fields = removeIgnored(items[i].json, options.ignoreFields as string);
+				if (useFieldIds && fieldMapping) {
+					fields = mapFieldNamesToIds(fields, fieldMapping);
+				}
+				body.fields = fields;
 			}
 
 			if (dataMode === 'defineBelow') {
-				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
-
+				let fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
+				if (useFieldIds && fieldMapping) {
+					fields = mapFieldNamesToIds(fields, fieldMapping);
+				}
 				body.fields = fields;
 			}
 

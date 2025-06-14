@@ -1,4 +1,4 @@
-import { findMatches, removeIgnored } from '../../v2/helpers/utils';
+import { findMatches, removeIgnored, mapFieldNamesToIds } from '../../v2/helpers/utils';
 
 describe('test AirtableV2, removeIgnored', () => {
 	it('should remove ignored fields', () => {
@@ -121,5 +121,61 @@ describe('test AirtableV2, findMatches', () => {
 				},
 			},
 		]);
+	});
+});
+
+describe('test AirtableV2, mapFieldNamesToIds', () => {
+	it('should map field names to field IDs', () => {
+		const fieldMapping = new Map([
+			['Name', 'fld1234'],
+			['Email', 'fld5678'],
+			['Status', 'fld9012'],
+		]);
+
+		const fields = {
+			Name: 'John Doe',
+			Email: 'john@example.com',
+			Status: 'Active',
+		};
+
+		const result = mapFieldNamesToIds(fields, fieldMapping);
+
+		expect(result).toEqual({
+			fld1234: 'John Doe',
+			fld5678: 'john@example.com',
+			fld9012: 'Active',
+		});
+	});
+
+	it('should keep original field name if no mapping exists', () => {
+		const fieldMapping = new Map([['Name', 'fld1234']]);
+
+		const fields = {
+			Name: 'John Doe',
+			UnmappedField: 'some value',
+		};
+
+		const result = mapFieldNamesToIds(fields, fieldMapping);
+
+		expect(result).toEqual({
+			fld1234: 'John Doe',
+			UnmappedField: 'some value',
+		});
+	});
+
+	it('should handle empty field mapping', () => {
+		const fieldMapping = new Map();
+
+		const fields = {
+			Name: 'John Doe',
+			Email: 'john@example.com',
+		};
+
+		const result = mapFieldNamesToIds(fields, fieldMapping);
+
+		expect(result).toEqual({
+			Name: 'John Doe',
+			Email: 'john@example.com',
+		});
 	});
 });

@@ -10,6 +10,7 @@ import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput, processAirtableError } from '../../helpers/utils';
 import { apiRequest, downloadRecordAttachments } from '../../transport';
+import { searchOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -23,6 +24,7 @@ const properties: INodeProperties[] = [
 		description:
 			'ID of the record to get. <a href="https://support.airtable.com/docs/record-id" target="_blank">More info</a>.',
 	},
+	searchOptions,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -70,9 +72,19 @@ export async function execute(
 		try {
 			id = this.getNodeParameter('id', i) as string;
 
-			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
+			const options = this.getNodeParameter('options', i, {});
+			const query: IDataObject = {};
 
-			const options = this.getNodeParameter('options', 0, {});
+			const returnFieldsByFieldId = this.getNodeParameter(
+				'returnFieldsByFieldId',
+				i,
+				false,
+			) as boolean;
+			if (returnFieldsByFieldId) {
+				query.returnFieldsByFieldId = true;
+			}
+
+			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`, {}, query);
 
 			if (options.downloadFields) {
 				const itemWithAttachments = await downloadRecordAttachments.call(
