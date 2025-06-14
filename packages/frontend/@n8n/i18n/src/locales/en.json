@@ -1248,6 +1248,7 @@
 	"node.discovery.pinData.ndv": "You can pin this output instead of waiting for a test event.",
 	"node.executionError.openNode": "Open node",
 	"node.settings.continuesOnError": "This node continues on error",
+	"node.settings.continuesOnError.title": "Continue On Fail",
 	"node.settings.retriesOnFailure": "This node will automatically retry if it fails",
 	"node.settings.executeOnce": "This node executes only once, no matter how many input items there are",
 	"node.settings.alwaysOutputData": "This node will output an empty item if nothing would normally be returned",
