@@ -1,9 +1,4 @@
-import { updateDisplayOptions } from '../../../utils/utilities';
-import {
-	useFieldIdsOption,
-	insertUpdateOptions,
-	searchOptions,
-} from '../v2/actions/common.descriptions';
+import { useFieldIdsOption, searchOptions } from '../v2/actions/common.descriptions';
 import * as createOperation from '../v2/actions/record/create.operation';
 import * as getOperation from '../v2/actions/record/get.operation';
 import * as searchOperation from '../v2/actions/record/search.operation';

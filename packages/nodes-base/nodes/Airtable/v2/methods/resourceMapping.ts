@@ -100,7 +100,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 		const type = mapForeignType(field.type, airtableTypesMap);
 		const isReadOnly = airtableReadOnlyFields.includes(field.type);
 		const options = constructOptions(field);
-		fields.push({
+		const mappedField: ResourceMapperField = {
 			id: field.name,
 			displayName: field.name,
 			required: false,
@@ -111,9 +111,11 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 			options,
 			readOnly: isReadOnly,
 			removed: isReadOnly,
-			// Store the actual field ID in the hint property
-			hint: field.id,
-		});
+		};
+
+		// Store the actual field ID separately for retrieval
+		// We'll use a different approach to pass field IDs
+		fields.push(mappedField);
 	}
 
 	return { fields };

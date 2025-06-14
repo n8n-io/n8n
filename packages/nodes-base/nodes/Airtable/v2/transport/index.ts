@@ -185,11 +185,12 @@ export async function getFieldNamesAndIds(
 		});
 
 		if (!tableData || !tableData.fields) {
-			throw new ApplicationError(`Table schema not found for table ID: ${table}`, {
-				level: 'warning',
-				description:
-					'Unable to retrieve field mappings. Make sure the table exists and you have permission to access it.',
-			});
+			throw new ApplicationError(
+				`Table schema not found for table ID: ${table}. Unable to retrieve field mappings. Make sure the table exists and you have permission to access it.`,
+				{
+					level: 'warning',
+				},
+			);
 		}
 
 		const fieldMapping = new Map<string, string>();
@@ -205,11 +206,12 @@ export async function getFieldNamesAndIds(
 		if (error instanceof ApplicationError) {
 			throw error;
 		}
-		throw new ApplicationError('Failed to fetch field mappings from Airtable', {
-			level: 'warning',
-			description:
-				'Could not retrieve field IDs. Check your API credentials and table permissions.',
-			cause: error,
-		});
+		throw new ApplicationError(
+			'Failed to fetch field mappings from Airtable. Could not retrieve field IDs. Check your API credentials and table permissions.',
+			{
+				level: 'warning',
+				cause: error,
+			},
+		);
 	}
 }

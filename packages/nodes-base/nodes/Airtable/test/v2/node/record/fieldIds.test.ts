@@ -69,9 +69,9 @@ jest.mock('../../../../v2/transport', () => {
 			return mapping;
 		}),
 		apiRequestAllItems: jest.fn(async function (
-			method: string,
-			endpoint: string,
-			body: any,
+			_method: string,
+			_endpoint: string,
+			_body: any,
 			query: any,
 		) {
 			return {
@@ -91,7 +91,7 @@ jest.mock('../../../../v2/transport', () => {
 				],
 			};
 		}),
-		batchUpdate: jest.fn(async function (endpoint: string, body: any, records: any[]) {
+		batchUpdate: jest.fn(async function (_endpoint: string, _body: any, records: any[]) {
 			return {
 				records: records.map((record) => ({
 					id: record.id,
