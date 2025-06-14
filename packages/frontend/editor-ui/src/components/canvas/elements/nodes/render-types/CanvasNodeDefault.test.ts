@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { fireEvent } from '@testing-library/vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestWorkflowObject } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	global: {
@@ -18,6 +20,9 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(workflowObject);
 });
 
 describe('CanvasNodeDefault', () => {

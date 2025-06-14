@@ -2,6 +2,11 @@
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
+import AlwaysOutputData from 'virtual:icons/mdi/arrow-right-circle';
+import ExecuteOnce from 'virtual:icons/mdi/numeric-1-box';
+import RetryOnFail from 'virtual:icons/mdi/repeat';
+import ContinuesOnError from 'virtual:icons/material-symbols/tab-close-right';
+import Disabled from 'virtual:icons/material-symbols/power-settings-new';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -810,7 +815,103 @@ function getNodeHints(): NodeHint[] {
 
 	return [];
 }
+function getConsolidatedHint(): { message: string; type: string } | null {
+	if (node.value?.disabled) {
+		return {
+			message: i18n.baseText('ndv.nodeHints.disabled'),
+			type: 'info',
+		};
+	}
+	if (
+		canPinData &&
+		pinnedData.hasData.value &&
+		!editMode.value?.enabled &&
+		!props.isProductionExecutionPreview
+	) {
+		return null;
+	}
+	const activeSettings = [];
 
+	if (node.value?.alwaysOutputData) {
+		activeSettings.push({
+			key: 'alwaysOutputData',
+			message: i18n.baseText('ndv.nodeHints.alwaysOutputData'),
+			shortMessage: i18n.baseText('ndv.nodeHints.alwaysOutputData.short'),
+		});
+	}
+
+	if (node.value?.executeOnce) {
+		activeSettings.push({
+			key: 'executeOnce',
+			message: i18n.baseText('ndv.nodeHints.executeOnce'),
+			shortMessage: i18n.baseText('ndv.nodeHints.executeOnce.short'),
+		});
+	}
+
+	if (node.value?.retryOnFail) {
+		activeSettings.push({
+			key: 'retryOnFail',
+			message: i18n.baseText('ndv.nodeHints.retryOnFail'),
+			shortMessage: i18n.baseText('ndv.nodeHints.retryOnFail.short'),
+		});
+	}
+
+	if (
+		node.value?.onError === 'continueRegularOutput' ||
+		node.value?.onError === 'continueErrorOutput'
+	) {
+		activeSettings.push({
+			key: 'continueOnError',
+			message: i18n.baseText('ndv.nodeHints.continueOnError'),
+			shortMessage: i18n.baseText('ndv.nodeHints.continueOnError.short'),
+		});
+	}
+
+	if (activeSettings.length === 0) {
+		return null;
+	}
+
+	if (activeSettings.length === 1) {
+		return {
+			message: activeSettings[0].message,
+			type: 'info',
+		};
+	}
+
+	const shortMessages = activeSettings.map((setting) => setting.shortMessage);
+	let consolidatedMessage = '';
+
+	if (shortMessages.length === 2) {
+		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.two', {
+			interpolate: {
+				first: shortMessages[0],
+				second: shortMessages[1],
+			},
+		});
+	} else if (shortMessages.length === 3) {
+		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.three', {
+			interpolate: {
+				first: shortMessages[0],
+				second: shortMessages[1],
+				third: shortMessages[2],
+			},
+		});
+	} else if (shortMessages.length === 4) {
+		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.four', {
+			interpolate: {
+				first: shortMessages[0],
+				second: shortMessages[1],
+				third: shortMessages[2],
+				fourth: shortMessages[3],
+			},
+		});
+	}
+
+	return {
+		message: consolidatedMessage,
+		type: 'info',
+	};
+}
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
 		emit('itemHover', null);
@@ -1548,7 +1649,25 @@ defineExpose({ enterEditMode });
 				</slot>
 			</N8nCallout>
 		</div>
-
+		<div
+			v-if="getConsolidatedHint() && props.paneType === 'output'"
+			:class="[$style.hintCallout, $style.customHint]"
+		>
+			<div :class="$style.iconStack">
+				<Disabled v-if="node?.disabled" />
+				<template v-else>
+					<AlwaysOutputData v-if="node?.alwaysOutputData" />
+					<ExecuteOnce v-if="node?.executeOnce" />
+					<RetryOnFail v-if="node?.retryOnFail" />
+					<ContinuesOnError
+						v-if="
+							node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
+						"
+					/>
+				</template>
+			</div>
+			<N8nText size="small" v-n8n-html="getConsolidatedHint()?.message"></N8nText>
+		</div>
 		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
@@ -2306,6 +2425,28 @@ defineExpose({ enterEditMode });
 	.compact:hover & {
 		opacity: 1;
 	}
+}
+
+.customHint {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2xs, 8px);
+	padding: var(--spacing-xs, 12px) var(--spacing-s, 16px);
+	margin-bottom: var(--spacing-2xs, 8px);
+	background-color: var(--color-callout-info-background);
+	border-radius: var(--border-radius-base, 6px);
+	font-size: var(--font-size-2xs, 13px);
+	line-height: var(--font-line-height-xloose);
+	border: var(--border-width-base) var(--border-style-base);
+	border-color: var(--color-callout-info-border);
+	color: var(--color-callout-info-font);
+}
+
+.iconStack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs, 4px);
+	flex-shrink: 0;
 }
 
 @container (max-width: 240px) {
