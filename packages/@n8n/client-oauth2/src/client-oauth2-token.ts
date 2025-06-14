@@ -4,12 +4,14 @@ import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } fro
 import { DEFAULT_HEADERS } from './constants';
 import { auth, expects, getRequestOptions } from './utils';
 
+type GrantType = 'authorization_code' | 'client_credentials';
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;
 	access_token: string;
 	refresh_token: string;
 	expires_in?: string;
 	scope?: string | undefined;
+	grant_type?: GrantType;
 }
 
 /**
@@ -22,6 +24,8 @@ export class ClientOAuth2Token {
 
 	readonly refreshToken: string;
 
+	readonly grantType?: GrantType;
+
 	private expires: Date;
 
 	constructor(
@@ -31,6 +35,7 @@ export class ClientOAuth2Token {
 		this.tokenType = data.token_type?.toLowerCase() ?? 'bearer';
 		this.accessToken = data.access_token;
 		this.refreshToken = data.refresh_token;
+		this.grantType = data.grant_type;
 
 		this.expires = new Date();
 		this.expires.setSeconds(this.expires.getSeconds() + Number(data.expires_in));
@@ -74,14 +79,20 @@ export class ClientOAuth2Token {
 		const options = { ...this.client.options, ...opts };
 
 		expects(options, 'clientSecret');
-		a.ok(this.refreshToken, 'refreshToken is required');
+		a.ok(this.refreshToken || this.grantType === 'client_credentials', 'refreshToken is required');
 
 		const { clientId, clientSecret } = options;
 		const headers = { ...DEFAULT_HEADERS };
-		const body: Record<string, string> = {
-			refresh_token: this.refreshToken,
-			grant_type: 'refresh_token',
-		};
+		const body: Record<string, string> = this.refreshToken
+			? {
+					refresh_token: this.refreshToken,
+					grant_type: 'refresh_token',
+				}
+			: {
+					grant_type: 'client_credentials',
+					...(options.scopes ? { scope: options.scopes.join(options.scopesSeparator ?? ' ') } : {}),
+					...(options.additionalBodyProperties ?? {}),
+				};
 
 		if (options.authentication === 'body') {
 			body.client_id = clientId;
@@ -101,7 +112,7 @@ export class ClientOAuth2Token {
 		);
 
 		const responseData = await this.client.accessTokenRequest(requestOptions);
-		return this.client.createToken({ ...this.data, ...responseData });
+		return this.client.createToken({ ...this.data, ...responseData, grant_type: this.grantType });
 	}
 
 	/**
