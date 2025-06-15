@@ -570,7 +570,6 @@ describe('Test PostgresV2, stringToArray', () => {
 		expect(stringToArray('value1,,value3')).toEqual(['value1', 'value3']);
 	});
 
-	// THIS TEST DEMONSTRATES THE BUG - it currently fails because stringToArray splits on ALL commas
 	it('should handle values containing commas when properly quoted', () => {
 		// This is the issue reported in #16354 - comma inside quoted parameter breaks parsing
 		expect(stringToArray('"Smith, John","Doe, Jane",SingleName')).toEqual([
