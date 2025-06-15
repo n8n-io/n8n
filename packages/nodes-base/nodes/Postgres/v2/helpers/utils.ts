@@ -42,10 +42,61 @@ export function evaluateExpression(expression: NodeParameterValueType) {
 
 export function stringToArray(str: NodeParameterValueType | undefined) {
 	if (str === undefined) return [];
-	return String(str)
-		.split(',')
-		.filter((entry) => entry)
-		.map((entry) => entry.trim());
+
+	const input = String(str);
+	if (input === '') return [];
+
+	const result: string[] = [];
+	let current = '';
+	let inQuotes = false;
+	let quoteChar = '';
+	let wasQuoted = false;
+	let i = 0;
+
+	while (i < input.length) {
+		const char = input[i];
+
+		if (!inQuotes) {
+			if (char === '"' || char === "'") {
+				inQuotes = true;
+				quoteChar = char;
+				wasQuoted = true;
+			} else if (char === ',') {
+				const trimmed = current.trim();
+				// Include empty strings if they were quoted, otherwise filter them out
+				if (trimmed || wasQuoted) {
+					result.push(trimmed);
+				}
+				current = '';
+				wasQuoted = false;
+			} else {
+				current += char;
+			}
+		} else {
+			if (char === quoteChar) {
+				// Check if next character is the same quote (escaped quote)
+				if (i + 1 < input.length && input[i + 1] === quoteChar) {
+					current += quoteChar;
+					i++; // Skip the next quote character
+				} else {
+					inQuotes = false;
+					quoteChar = '';
+				}
+			} else {
+				current += char;
+			}
+		}
+		i++;
+	}
+
+	// Add the last value
+	const trimmed = current.trim();
+	// Include empty strings if they were quoted, otherwise filter them out
+	if (trimmed || wasQuoted) {
+		result.push(trimmed);
+	}
+
+	return result;
 }
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {

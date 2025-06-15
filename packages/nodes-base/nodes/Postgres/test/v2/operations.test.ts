@@ -475,6 +475,37 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.isJSON).toHaveBeenCalledTimes(1);
 		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
+
+	it('should handle query parameters with commas correctly (issue #16354)', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT * FROM users WHERE name IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '"Smith, John","Doe, Jane",SingleName',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM users WHERE name IN ($1, $2, $3)',
+					values: ['Smith, John', 'Doe, Jane', 'SingleName'],
+					options: { partial: true },
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {

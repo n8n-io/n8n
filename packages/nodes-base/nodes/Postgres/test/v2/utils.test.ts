@@ -19,6 +19,7 @@ import {
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
 	addExecutionHints,
+	stringToArray,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -545,6 +546,64 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			text_array: '{"one","t\\"w\\"o"}',
 			bool_array: '{"true","false"}',
 		});
+	});
+});
+
+describe('Test PostgresV2, stringToArray', () => {
+	it('should handle basic comma-separated values', () => {
+		expect(stringToArray('value1,value2,value3')).toEqual(['value1', 'value2', 'value3']);
+	});
+
+	it('should trim whitespace', () => {
+		expect(stringToArray('value1, value2 , value3')).toEqual(['value1', 'value2', 'value3']);
+	});
+
+	it('should handle empty string', () => {
+		expect(stringToArray('')).toEqual([]);
+	});
+
+	it('should handle undefined', () => {
+		expect(stringToArray(undefined)).toEqual([]);
+	});
+
+	it('should filter out empty entries', () => {
+		expect(stringToArray('value1,,value3')).toEqual(['value1', 'value3']);
+	});
+
+	// THIS TEST DEMONSTRATES THE BUG - it currently fails because stringToArray splits on ALL commas
+	it('should handle values containing commas when properly quoted', () => {
+		// This is the issue reported in #16354 - comma inside quoted parameter breaks parsing
+		expect(stringToArray('"Smith, John","Doe, Jane",SingleName')).toEqual([
+			'Smith, John',
+			'Doe, Jane',
+			'SingleName',
+		]);
+	});
+
+	it('should handle mixed quoted and unquoted values', () => {
+		expect(stringToArray('simple,"quoted, with comma",another')).toEqual([
+			'simple',
+			'quoted, with comma',
+			'another',
+		]);
+	});
+
+	it('should handle values with escaped quotes', () => {
+		expect(stringToArray('"He said ""Hello""","Simple value"')).toEqual([
+			'He said "Hello"',
+			'Simple value',
+		]);
+	});
+
+	it('should handle single quotes', () => {
+		expect(stringToArray("'O''Reilly, Patrick','Smith, John'")).toEqual([
+			"O'Reilly, Patrick",
+			'Smith, John',
+		]);
+	});
+
+	it('should handle empty quoted values', () => {
+		expect(stringToArray('value1,"",value3')).toEqual(['value1', '', 'value3']);
 	});
 });
 
