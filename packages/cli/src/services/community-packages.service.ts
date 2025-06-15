@@ -159,6 +159,7 @@ export class CommunityPackagesService {
 			env: {
 				NODE_PATH: process.env.NODE_PATH,
 				PATH: process.env.PATH,
+				HOME: process.env.HOME,
 				APPDATA: process.env.APPDATA,
 				NODE_ENV: 'production',
 			},
