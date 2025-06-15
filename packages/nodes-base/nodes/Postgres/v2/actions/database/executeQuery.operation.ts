@@ -92,32 +92,32 @@ export async function execute(
 							const evaluatedExpression = evaluateExpression(
 								this.evaluateExpression(`${resolvable}`, index),
 							);
-							const evaluatedValues = isJSON(evaluatedExpression)
-								? [evaluatedExpression]
-								: stringToArray(evaluatedExpression);
-
-							if (evaluatedValues.length) values.push(...evaluatedValues);
+							// Ensure each resolvable contributes exactly one value
+							if (Array.isArray(evaluatedExpression) && evaluatedExpression.length > 0) {
+								values.push(evaluatedExpression[0]); // Take the first value to match parameter count
+							} else if (typeof evaluatedExpression === 'string') {
+								values.push(evaluatedExpression);
+							} else {
+								values.push(evaluatedExpression);
+							}
 						}
 					} else {
-						values.push(...stringToArray(rawValues));
+						values.push(...parseCSVWithQuotes(rawValues).map((v) => v)); // Ensure single values
 					}
 				} else {
-					const rawValues = rawReplacements
-						.replace(/^=+/, '')
-						.split(',')
-						.filter((entry) => entry)
-						.map((entry) => entry.trim());
-
-					for (const rawValue of rawValues) {
-						const resolvables = getResolvables(rawValue);
-
-						if (resolvables.length) {
-							for (const resolvable of resolvables) {
-								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
-							}
-						} else {
-							values.push(rawValue);
-						}
+					const evaluatedValue = evaluateExpression(this.evaluateExpression(rawValues, index));
+					if (Array.isArray(evaluatedValue) && evaluatedValue.length > 0) {
+						values.push(evaluatedValue[0]); // Take the first value
+					} else if (typeof evaluatedValue === 'string') {
+						values.push(evaluatedValue);
+					} else if (typeof evaluatedValue === 'number') {
+						values.push(evaluatedValue);
+					} else {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Query Parameters must be a string, number or array',
+							{ itemIndex: index },
+						);
 					}
 				}
 			}
