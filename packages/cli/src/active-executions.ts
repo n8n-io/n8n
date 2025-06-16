@@ -8,6 +8,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
@@ -97,6 +98,7 @@ export class ActiveExecutions {
 			postExecutePromise,
 			status: executionStatus,
 			responsePromise: resumingExecution?.responsePromise,
+			httpResponse: executionData.httpResponse ?? undefined,
 		};
 		this.activeExecutions[executionId] = execution;
 
@@ -140,6 +142,15 @@ export class ActiveExecutions {
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
 		const execution = this.activeExecutions[executionId];
 		execution?.responsePromise?.resolve(response);
+	}
+
+	/** Used for sending a chunk toa a streaming response */
+	sendChunk(executionId: string, chunkText: StructuredChunk): void {
+		const execution = this.activeExecutions[executionId];
+		if (execution.httpResponse) {
+			execution?.httpResponse.write(JSON.stringify(chunkText) + '\n');
+			execution?.httpResponse.flush();
+		}
 	}
 
 	/** Cancel the execution promise and reject its post-execution promise. */

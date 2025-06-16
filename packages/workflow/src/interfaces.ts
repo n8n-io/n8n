@@ -919,6 +919,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendChunk(type: ChunkType, content?: IDataObject | string): void;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -2922,3 +2923,14 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSource?: string | null;
 	reportedSourceOther?: string | null;
 };
+
+export type ChunkType = 'begin' | 'item' | 'end';
+export interface StructuredChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		nodeId: string;
+		nodeName: string;
+		timestamp: number;
+	};
+}

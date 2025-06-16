@@ -1,6 +1,11 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
-import type { ExecutionError, IDataObject, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IExecuteResponsePromiseData,
+	IRun,
+	StructuredChunk,
+} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 export type JobQueue = Bull.Queue<JobData>;
@@ -56,7 +61,7 @@ export type JobFinishedMessage = {
 export type SendChunkMessage = {
 	kind: 'send-chunk';
 	executionId: string;
-	chunkText: IDataObject;
+	chunkText: StructuredChunk;
 	workerId: string;
 };
 

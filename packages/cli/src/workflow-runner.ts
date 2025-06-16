@@ -251,10 +251,6 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 
-		if (data.streamingEnabled) {
-			// TODO: Add stream handling
-		}
-
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },
@@ -269,6 +265,15 @@ export class WorkflowRunner {
 			lifecycleHooks.addHandler('sendResponse', (response) => {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
 			});
+
+			if (data.streamingEnabled) {
+				if (data.executionMode !== 'manual') {
+					lifecycleHooks.addHandler('sendChunk', (chunk) => {
+						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+						data.httpResponse?.flush();
+					});
+				}
+			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
