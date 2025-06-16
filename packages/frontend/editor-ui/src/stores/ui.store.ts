@@ -527,9 +527,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const initialize = (options: { banners: BannerName[] }) => {
-		options.banners.forEach((banner) => {
-			pushBannerToStack(banner);
-		});
+		options.banners.forEach(pushBannerToStack);
 	};
 
 	return {
