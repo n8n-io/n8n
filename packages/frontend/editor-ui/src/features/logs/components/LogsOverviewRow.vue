@@ -37,11 +37,15 @@ const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
 const isSettled = computed(
 	() =>
-		props.data.runData.executionStatus &&
+		props.data.runData?.executionStatus &&
 		!['running', 'waiting'].includes(props.data.runData.executionStatus),
 );
-const isError = computed(() => !!props.data.runData.error);
+const isError = computed(() => !!props.data.runData?.error);
 const startedAtText = computed(() => {
+	if (props.data.runData === undefined) {
+		return '—';
+	}
+
 	const time = new Date(props.data.runData.startTime);
 
 	return locale.baseText('logs.overview.body.started', {
@@ -50,14 +54,16 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(props.data.runData.executionStatus));
+const statusText = computed(() => upperFirst(props.data.runData?.executionStatus ?? ''));
 const timeText = computed(() =>
-	locale.displayTimer(
-		isSettled.value
-			? props.data.runData.executionTime
-			: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
-		true,
-	),
+	props.data.runData
+		? locale.displayTimer(
+				isSettled.value
+					? props.data.runData.executionTime
+					: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
+				true,
+			)
+		: undefined,
 );
 
 const subtreeConsumedTokens = computed(() =>
@@ -65,7 +71,7 @@ const subtreeConsumedTokens = computed(() =>
 );
 
 const hasChildren = computed(
-	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
+	() => props.data.children.length > 0 || !!props.data.runData?.metadata?.subExecution,
 );
 
 function isLastChild(level: number) {
@@ -144,13 +150,14 @@ watch(
 				</template>
 				<template #time>{{ timeText }}</template>
 			</I18nT>
-			<template v-else>
+			<template v-else-if="timeText !== undefined">
 				{{
 					locale.baseText('logs.overview.body.summaryText.for', {
 						interpolate: { status: statusText, time: timeText },
 					})
 				}}
 			</template>
+			<template v-else>—</template>
 		</N8nText>
 		<N8nText
 			v-if="!isCompact"

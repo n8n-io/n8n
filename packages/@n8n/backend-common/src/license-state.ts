@@ -58,6 +58,10 @@ export class LicenseState {
 		return this.isLicensed('feat:saml');
 	}
 
+	isOidcLicensed() {
+		return this.isLicensed('feat:oidc');
+	}
+
 	isApiKeyScopesLicensed() {
 		return this.isLicensed('feat:apiKeyScopes');
 	}

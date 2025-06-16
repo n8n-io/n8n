@@ -121,7 +121,7 @@ import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getEasyAiWorkflowJson, getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -374,7 +374,22 @@ async function initializeRoute(force = false) {
 
 		if (loadWorkflowFromJSON) {
 			const easyAiWorkflowJson = getEasyAiWorkflowJson();
-			await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
+			const ragStarterWorkflowJson = getRagStarterWorkflowJson();
+
+			switch (templateId) {
+				case easyAiWorkflowJson.meta.templateId:
+					await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
+					break;
+				case ragStarterWorkflowJson.meta.templateId:
+					await openTemplateFromWorkflowJSON(ragStarterWorkflowJson);
+					break;
+				default:
+					toast.showError(
+						new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+						i18n.baseText('nodeView.couldntImportWorkflow'),
+					);
+					await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -468,8 +483,20 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+		if (error.httpStatusCode === 404) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'workflow' },
+			});
+		}
+		if (error.httpStatusCode === 403) {
+			return await router.replace({
+				name: VIEWS.ENTITY_UNAUTHORIZED,
+				params: { entityType: 'workflow' },
+			});
+		}
 
+		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
 		});

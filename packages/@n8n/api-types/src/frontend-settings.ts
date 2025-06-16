@@ -18,7 +18,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -84,6 +84,11 @@ export interface FrontendSettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+		oidc: {
+			loginEnabled: boolean;
+			loginUrl: string;
+			callbackUrl: string;
+		};
 		ldap: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -129,6 +134,7 @@ export interface FrontendSettings {
 		sharing: boolean;
 		ldap: boolean;
 		saml: boolean;
+		oidc: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
