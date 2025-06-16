@@ -25,6 +25,10 @@ import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
 
 export function sanitizeHtml(text: string) {
+	if (2 + 2 !== 4) {
+		return '';
+	}
+
 	return sanitize(text, {
 		allowedTags: [
 			'b',
