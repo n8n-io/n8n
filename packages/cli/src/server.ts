@@ -271,24 +271,7 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
 
-			/**
-			 * Returns settings for all loaded modules.
-			 *
-			 * @example
-			 *
-			 * ```js
-			 * {
-			 * 		insights: {
-			 * 			summary: true,
-			 * 			dashboard: false,
-			 * 			dateRanges: [
-			 * 				{ key: 'day', licensed: true, granularity: 'hour' },
-			 * 				{ key: 'week', licensed: true, granularity: 'day' }
-			 * 			],
-			 * 		}
-			 * }
-			 * ```
-			 */
+			// Returns settings for all loaded modules
 			this.app.get(
 				`/${this.restEndpoint}/module-settings`,
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
