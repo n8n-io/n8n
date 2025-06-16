@@ -1564,9 +1564,6 @@ importers:
       chardet:
         specifier: 2.0.0
         version: 2.0.0
-      cron:
-        specifier: 3.1.7
-        version: 3.1.7
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -2524,9 +2521,6 @@ importers:
       chokidar:
         specifier: ^4.0.1
         version: 4.0.1
-      cron:
-        specifier: 3.1.7
-        version: 3.1.7
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -6753,9 +6747,6 @@ packages:
   '@types/luxon@3.2.0':
     resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
 
-  '@types/luxon@3.4.2':
-    resolution: {integrity: sha512-TifLZlFudklWlMBfhubvgqTXRzLDI5pCbGa4P8a3wPyUQSW+1xQ5eDsreP9DWHX3tjq1ke96uYG/nwundroWcA==}
-
   '@types/mailparser@3.4.4':
     resolution: {integrity: sha512-C6Znp2QVS25JqtuPyxj38Qh+QoFcLycdxsvcc6IZCGekhaMBzbdTXzwGzhGoYb3TfKu8IRCNV0sV1o3Od97cEQ==}
 
@@ -8392,9 +8383,6 @@ packages:
   cron-parser@4.9.0:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
-
-  cron@3.1.7:
-    resolution: {integrity: sha512-tlBg7ARsAMQLzgwqVxy8AZl/qlTc5nibqYwtNGoCrd+cV+ugI+tvZC1oT/8dFH8W455YrywGykx/KMmAqOr7Jw==}
 
   cross-env@7.0.3:
     resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
@@ -19916,8 +19904,6 @@ snapshots:
 
   '@types/luxon@3.2.0': {}
 
-  '@types/luxon@3.4.2': {}
-
   '@types/mailparser@3.4.4':
     dependencies:
       '@types/node': 20.17.57
@@ -21899,11 +21885,6 @@ snapshots:
   cron-parser@4.9.0:
     dependencies:
       luxon: 3.5.0
-
-  cron@3.1.7:
-    dependencies:
-      '@types/luxon': 3.4.2
-      luxon: 3.4.4
 
   cross-env@7.0.3:
     dependencies:

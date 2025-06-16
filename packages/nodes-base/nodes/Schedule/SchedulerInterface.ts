@@ -1,15 +1,6 @@
 import type { CronExpression } from 'n8n-workflow';
 
-export type IRecurrenceRule =
-	| { activated: false }
-	| {
-			activated: true;
-			index: number;
-			intervalSize: number;
-			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
-	  };
-
-export type ScheduleInterval =
+export type ScheduleTriggerInterval =
 	| {
 			field: 'cronExpression';
 			expression: CronExpression;
@@ -49,5 +40,5 @@ export type ScheduleInterval =
 	  };
 
 export interface Rule {
-	interval: ScheduleInterval[];
+	interval: ScheduleTriggerInterval[];
 }

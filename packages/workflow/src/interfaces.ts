@@ -22,6 +22,7 @@ import type { WorkflowActivationError } from './errors/workflow-activation.error
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
+import type { CronExpression, ScheduleInterval } from './scheduling';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 
@@ -833,12 +834,10 @@ export interface SSHTunnelFunctions {
 	updateLastUsed(client: SSHClient): void;
 }
 
-type CronUnit = number | '*' | `*/${number}`;
-export type CronExpression =
-	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
-
 export interface SchedulingFunctions {
+	/** @deprecated Use `registerScheduledTask` instead */
 	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+	registerScheduledTask(interval: ScheduleInterval, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {

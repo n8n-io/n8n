@@ -1,15 +1,49 @@
-import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
 	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	ScheduleInterval,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, parseCronExpression } from 'n8n-workflow';
 
-import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
-import type { IRecurrenceRule, Rule } from './SchedulerInterface';
+import type { Rule, ScheduleTriggerInterval } from './SchedulerInterface';
+
+const parseInterval = (interval: ScheduleTriggerInterval): ScheduleInterval => {
+	const normalize = (value?: number) => (value !== undefined ? [value] : []);
+
+	switch (interval.field) {
+		case 'cronExpression':
+			return parseCronExpression(interval.expression);
+		case 'hours':
+			return {
+				...interval,
+				triggerAtMinute: normalize(interval.triggerAtMinute),
+			};
+		case 'days':
+			return {
+				...interval,
+				triggerAtMinute: normalize(interval.triggerAtMinute),
+				triggerAtHour: normalize(interval.triggerAtHour),
+			};
+		case 'weeks':
+			return {
+				...interval,
+				triggerAtDayOfWeek: interval.triggerAtDay,
+				triggerAtMinute: normalize(interval.triggerAtMinute),
+				triggerAtHour: normalize(interval.triggerAtHour),
+			};
+		case 'months':
+			return {
+				...interval,
+				triggerAtDayOfMonth: normalize(interval.triggerAtDayOfMonth),
+				triggerAtMinute: normalize(interval.triggerAtMinute),
+				triggerAtHour: normalize(interval.triggerAtHour),
+			};
+	}
+	return interval;
+};
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -411,19 +445,10 @@ export class ScheduleTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
+		const { interval: intervals } = this.getNodeParameter('rule') as Rule;
 		const timezone = this.getTimezone();
-		const staticData = this.getWorkflowStaticData('node') as {
-			recurrenceRules: number[];
-		};
-		if (!staticData.recurrenceRules) {
-			staticData.recurrenceRules = [];
-		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule) => {
-			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
-			if (!shouldTrigger) return;
-
+		const executeTrigger = () => {
 			const momentTz = moment.tz(timezone);
 			const resultData = {
 				timestamp: momentTz.toISOString(true),
@@ -442,16 +467,10 @@ export class ScheduleTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
-		const rules = intervals.map((interval, i) => ({
-			interval,
-			cronExpression: toCronExpression(interval),
-			recurrence: intervalToRecurrence(interval, i),
-		}));
-
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const interval of intervals) {
 				try {
-					this.helpers.registerCron(cronExpression, () => executeTrigger(recurrence));
+					this.helpers.registerScheduledTask(parseInterval(interval), executeTrigger);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
@@ -465,17 +484,17 @@ export class ScheduleTrigger implements INodeType {
 			return {};
 		} else {
 			const manualTriggerFunction = async () => {
-				const { interval, cronExpression, recurrence } = rules[0];
+				const interval = intervals[0];
 				if (interval.field === 'cronExpression') {
 					try {
-						sendAt(cronExpression);
+						parseCronExpression(interval.expression);
 					} catch (error) {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
 							description: 'More information on how to build them at https://crontab.guru/',
 						});
 					}
 				}
-				executeTrigger(recurrence);
+				executeTrigger();
 			};
 
 			return { manualTriggerFunction };

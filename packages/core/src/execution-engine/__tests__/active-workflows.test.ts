@@ -7,7 +7,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	TriggerTime,
-	CronExpression,
 } from 'n8n-workflow';
 import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
 
@@ -16,12 +15,12 @@ import type { ErrorReporter } from '@/errors/error-reporter';
 import { ActiveWorkflows } from '../active-workflows';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
-import type { ScheduledTaskManager } from '../scheduled-task-manager';
+import type { ScheduledTaskManager } from '../scheduling';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
 describe('ActiveWorkflows', () => {
 	const workflowId = 'test-workflow-id';
-	const workflow = mock<Workflow>();
+	const workflow = mock<Workflow>({ timezone: 'UTC' });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 	const mode: WorkflowExecuteMode = 'trigger';
 	const activation: WorkflowActivateMode = 'init';
@@ -116,7 +115,7 @@ describe('ActiveWorkflows', () => {
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getPollNodes).toHaveBeenCalled();
-				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(scheduledTaskManager.register).toHaveBeenCalled();
 			});
 
 			it('with both trigger and polling nodes', async () => {
@@ -133,7 +132,7 @@ describe('ActiveWorkflows', () => {
 					mode,
 					activation,
 				);
-				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(scheduledTaskManager.register).toHaveBeenCalled();
 				expect(triggersAndPollers.runPoll).toHaveBeenCalledWith(workflow, pollNode, pollFunctions);
 			});
 		});
@@ -160,7 +159,7 @@ describe('ActiveWorkflows', () => {
 					item: [
 						{
 							mode: 'custom',
-							cronExpression: '* * * * *' as CronExpression,
+							cronExpression: '*/10 * * * * *',
 						},
 					],
 				};
@@ -169,7 +168,7 @@ describe('ActiveWorkflows', () => {
 					'The polling interval is too short. It has to be at least a minute.',
 				);
 
-				expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+				expect(scheduledTaskManager.register).not.toHaveBeenCalled();
 			});
 		});
 
@@ -195,8 +194,8 @@ describe('ActiveWorkflows', () => {
 				await addWorkflow({ pollNodes: [pollNode] });
 
 				// Get the executeTrigger function that was registered
-				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
-				const executeTrigger = registerCronCall[2] as () => Promise<void>;
+				const registerCronCall = scheduledTaskManager.register.mock.calls[0];
+				const executeTrigger = registerCronCall[1] as () => Promise<void>;
 
 				// Execute the trigger function to simulate a regular poll
 				await executeTrigger();
@@ -219,7 +218,7 @@ describe('ActiveWorkflows', () => {
 
 			expect(result).toBe(true);
 			expect(activeWorkflows.isActive(workflowId)).toBe(false);
-			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			expect(scheduledTaskManager.deregister).toHaveBeenCalledWith(workflowId);
 			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 		});
 
@@ -227,7 +226,7 @@ describe('ActiveWorkflows', () => {
 			const result = await activeWorkflows.remove('non-existent');
 
 			expect(result).toBe(false);
-			expect(scheduledTaskManager.deregisterCrons).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.deregister).not.toHaveBeenCalled();
 		});
 
 		it('should handle TriggerCloseError when closing trigger', async () => {
@@ -290,7 +289,7 @@ describe('ActiveWorkflows', () => {
 			await activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 
 			expect(activeWorkflows.allActiveWorkflows()).toEqual([]);
-			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			expect(scheduledTaskManager.deregister).toHaveBeenCalledWith(workflowId);
 		});
 	});
 });

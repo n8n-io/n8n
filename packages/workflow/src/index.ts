@@ -5,7 +5,6 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
-export * from './cron';
 export * from './deferred-promise';
 export * from './global-state';
 export * from './interfaces';
@@ -16,6 +15,7 @@ export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
+export * from './scheduling';
 export * from './workflow';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';

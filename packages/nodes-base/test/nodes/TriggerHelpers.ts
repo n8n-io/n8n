@@ -6,7 +6,7 @@ import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
+import { ScheduledTask, ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduling';
 import {
 	createDeferredPromise,
 	type IBinaryData,
@@ -74,8 +74,10 @@ export async function testTriggerNode(
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerScheduledTask: (interval, onTick) => {
+			const scheduledTask = new ScheduledTask(interval, workflow);
+			scheduledTaskManager.register(scheduledTask, onTick);
+		},
 	});
 
 	const triggerFunctions = mock<ITriggerFunctions>({
@@ -133,8 +135,10 @@ export async function testWebhookTriggerNode(
 	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerScheduledTask: (interval, onTick) => {
+			const scheduledTask = new ScheduledTask(interval, workflow);
+			scheduledTaskManager.register(scheduledTask, onTick);
+		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
 	});
 
