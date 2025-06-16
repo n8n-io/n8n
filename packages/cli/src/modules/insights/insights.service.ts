@@ -1,6 +1,5 @@
 import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -11,8 +10,8 @@ import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
-import { keyRangeToDays } from './insights-helpers';
 import { InsightsPruningService } from './insights-pruning.service';
+import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
 
 @Service()
 export class InsightsService {

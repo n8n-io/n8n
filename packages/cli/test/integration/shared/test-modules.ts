@@ -9,6 +9,7 @@ export async function load(moduleNames: string[]) {
 
 	for (const moduleName of moduleNames) {
 		try {
+			console.log('process.cwd()', process.cwd());
 			await import(`../../../src/modules/${moduleName}/${moduleName}.module`);
 		} catch {
 			await import(`../../../src/modules/${moduleName}.ee/${moduleName}.module`);
