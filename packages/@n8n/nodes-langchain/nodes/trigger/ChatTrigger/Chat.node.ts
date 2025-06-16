@@ -1,11 +1,108 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionTypes, WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { BaseChatMemory } from 'langchain/memory';
+import { CHAT_WAIT_USER_REPLY, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
+	INodeProperties,
 } from 'n8n-workflow';
+
+import { configureWaitTillDate } from './util';
+
+const limitWaitTimeProperties: INodeProperties[] = [
+	{
+		displayName: 'Limit Type',
+		name: 'limitType',
+		type: 'options',
+		default: 'afterTimeInterval',
+		description:
+			'Sets the condition for the execution to resume. Can be a specified date or after some time.',
+		options: [
+			{
+				name: 'After Time Interval',
+				description: 'Waits for a certain amount of time',
+				value: 'afterTimeInterval',
+			},
+			{
+				name: 'At Specified Time',
+				description: 'Waits until the set date and time to continue',
+				value: 'atSpecifiedTime',
+			},
+		],
+	},
+	{
+		displayName: 'Amount',
+		name: 'resumeAmount',
+		type: 'number',
+		displayOptions: {
+			show: {
+				limitType: ['afterTimeInterval'],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+			numberPrecision: 2,
+		},
+		default: 1,
+		description: 'The time to wait',
+	},
+	{
+		displayName: 'Unit',
+		name: 'resumeUnit',
+		type: 'options',
+		displayOptions: {
+			show: {
+				limitType: ['afterTimeInterval'],
+			},
+		},
+		options: [
+			{
+				name: 'Minutes',
+				value: 'minutes',
+			},
+			{
+				name: 'Hours',
+				value: 'hours',
+			},
+			{
+				name: 'Days',
+				value: 'days',
+			},
+		],
+		default: 'hours',
+		description: 'Unit of the interval value',
+	},
+	{
+		displayName: 'Max Date and Time',
+		name: 'maxDateAndTime',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				limitType: ['atSpecifiedTime'],
+			},
+		},
+		default: '',
+		description: 'Continue execution after the specified date and time',
+	},
+];
+
+const limitWaitTimeOption: INodeProperties = {
+	displayName: 'Limit Wait Time',
+	name: 'limitWaitTime',
+	type: 'fixedCollection',
+	description:
+		'Whether the workflow will automatically resume execution after the specified limit type',
+	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: limitWaitTimeProperties,
+		},
+	],
+};
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +126,10 @@ export class Chat implements INodeType {
 				],
 			},
 		},
-		inputs: [NodeConnectionTypes.Main],
+		inputs: [
+			NodeConnectionTypes.Main,
+			{ type: NodeConnectionTypes.AiMemory, displayName: 'Memory', maxConnections: 1 },
+		],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
@@ -50,11 +150,12 @@ export class Chat implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Wait Response From Chat',
-						name: 'waitResponseFromChat',
+						displayName: 'Wait for User Reply',
+						name: CHAT_WAIT_USER_REPLY,
 						type: 'boolean',
 						default: true,
 					},
+					limitWaitTimeOption,
 				],
 			},
 		],
@@ -65,20 +166,40 @@ export class Chat implements INodeType {
 		data: INodeExecutionData,
 	): Promise<INodeExecutionData[][]> {
 		const options = context.getNodeParameter('options', 0, {}) as {
-			waitResponseFromChat?: boolean;
+			[CHAT_WAIT_USER_REPLY]?: boolean;
 		};
 
-		if (options.waitResponseFromChat === false) {
+		if (options[CHAT_WAIT_USER_REPLY] === false) {
 			const inputData = context.getInputData();
 			return [inputData];
 		}
+
+		const memory = (await context.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
+
+		const message = data.json?.chatInput;
+
+		if (memory && message) {
+			await memory.chatHistory.addUserMessage(message as string);
+		}
+
 		return [[data]];
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const message = this.getNodeParameter('message', 0) as string;
+		const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
 
-		await this.putExecutionToWait(WAIT_INDEFINITELY);
+		if (memory) {
+			await memory.chatHistory.addAIChatMessage(message);
+		}
+
+		const waitTill = configureWaitTillDate(this);
+
+		await this.putExecutionToWait(waitTill);
 		return [[{ json: {}, sendMessage: message }]];
 	}
 }

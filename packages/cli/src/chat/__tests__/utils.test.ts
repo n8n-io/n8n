@@ -1,6 +1,10 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, INode } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_WAIT_USER_REPLY,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 import {
 	getMessage,
@@ -392,11 +396,11 @@ describe('shouldResumeImmediately', () => {
 		expect(result).toBe(true);
 	});
 
-	it('should return true when waitResponseFromChat is false', () => {
+	it('should return true when CHAT_WAIT_USER_REPLY is false', () => {
 		const node = createMockNode({
 			parameters: {
 				options: {
-					waitResponseFromChat: false,
+					[CHAT_WAIT_USER_REPLY]: false,
 				},
 			},
 		});
@@ -404,11 +408,11 @@ describe('shouldResumeImmediately', () => {
 		expect(result).toBe(true);
 	});
 
-	it('should return false when waitResponseFromChat is true', () => {
+	it('should return false when CHAT_WAIT_USER_REPLY is true', () => {
 		const node = createMockNode({
 			parameters: {
 				options: {
-					waitResponseFromChat: true,
+					[CHAT_WAIT_USER_REPLY]: true,
 				},
 			},
 		});
@@ -416,7 +420,7 @@ describe('shouldResumeImmediately', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return false when waitResponseFromChat is undefined', () => {
+	it('should return false when CHAT_WAIT_USER_REPLY is undefined', () => {
 		const node = createMockNode({
 			parameters: {
 				options: {},

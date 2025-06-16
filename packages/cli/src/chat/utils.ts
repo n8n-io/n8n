@@ -1,6 +1,10 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, INode } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_WAIT_USER_REPLY,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 export function getMessage(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -44,9 +48,11 @@ export function shouldResumeImmediately(lastNode: INode) {
 		return true;
 	}
 
-	const waitResponseFromChat = (lastNode?.parameters?.options as IDataObject)?.waitResponseFromChat;
+	const options = lastNode?.parameters?.options as {
+		[CHAT_WAIT_USER_REPLY]?: boolean;
+	};
 
-	if (waitResponseFromChat === false) {
+	if (options && options[CHAT_WAIT_USER_REPLY] === false) {
 		return true;
 	}
 

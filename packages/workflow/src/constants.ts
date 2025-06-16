@@ -109,3 +109,5 @@ export const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-overri
 export const PROJECT_ROOT = '0';
 
 export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';
+
+export const CHAT_WAIT_USER_REPLY = 'waitUserReply';
