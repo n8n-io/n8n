@@ -2091,44 +2091,44 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		} as any,
 	});
 
-	it('should return null when there is no error', () => {
+	it('should return empty object when there is no error', () => {
 		const workflow = mockWorkflow([mockAgentNode()]);
 		const runData = mockRunData('Agent');
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
-		expect(result).toBeNull();
+		expect(result).toEqual({});
 	});
 
-	it('should return null when lastNodeExecuted is not defined', () => {
+	it('should return empty object when lastNodeExecuted is not defined', () => {
 		const workflow = mockWorkflow([mockAgentNode()]);
 		const runData = mockRunData('', new Error('Some error'));
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
-		expect(result).toBeNull();
+		expect(result).toEqual({});
 	});
 
-	it('should return null when last executed node is not found in workflow', () => {
+	it('should return empty object when last executed node is not found in workflow', () => {
 		const workflow = mockWorkflow([mockAgentNode('Agent')]);
 		const runData = mockRunData('NonExistentNode', new Error('Some error'));
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
-		expect(result).toBeNull();
+		expect(result).toEqual({});
 	});
 
-	it('should return null when last executed node is not an agent node', () => {
+	it('should return empty object when last executed node is not an agent node', () => {
 		const workflow = mockWorkflow([mockLanguageModelNode('Model')]);
 		const runData = mockRunData('Model', new Error('Some error'));
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
-		expect(result).toBeNull();
+		expect(result).toEqual({});
 	});
 
-	it('should return null when agent node does not have output parser', () => {
+	it('should return empty object when agent node does not have output parser', () => {
 		const workflow = mockWorkflow([mockAgentNode('Agent', false)]);
 		const runData = mockRunData('Agent', new Error('Some error'));
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
-		expect(result).toBeNull();
+		expect(result).toEqual({});
 	});
 
 	it('should return error info without output parser fail reason when error is not output parser error', () => {
@@ -2269,6 +2269,90 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			output_parser_fail_reason: 'Invalid JSON structure: Expected object, got string',
 			num_tools: 3,
 			model_name: 'gpt-4.1-mini',
+		});
+	});
+
+	it('should pick correct model when workflow has multiple model nodes but only one connected to agent', () => {
+		const agentNode = mockAgentNode();
+		const connectedModel = mockLanguageModelNode('Connected Model', 'gpt-4');
+		const unconnectedModel = mockLanguageModelNode('Unconnected Model', 'claude-3');
+
+		const workflow = mockWorkflow([agentNode, connectedModel, unconnectedModel], {
+			'Connected Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+			// Unconnected Model is not connected to anything
+		});
+
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		jest
+			.spyOn(nodeHelpers, 'getNodeParameters')
+			.mockReturnValueOnce(mock<INodeParameters>({ model: 'gpt-4' }));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gpt-4',
+		});
+	});
+
+	it('should only count tools connected to the agent when workflow has multiple tool nodes', () => {
+		const agentNode = mockAgentNode();
+		const connectedTool1 = mockToolNode('ConnectedTool1');
+		const connectedTool2 = mockToolNode('ConnectedTool2');
+		const unconnectedTool1 = mockToolNode('UnconnectedTool1');
+		const unconnectedTool2 = mockToolNode('UnconnectedTool2');
+		const someOtherNode = {
+			id: 'other-node',
+			name: 'SomeOtherNode',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [400, 400],
+			parameters: {},
+		};
+
+		const workflow = mockWorkflow(
+			[
+				agentNode,
+				connectedTool1,
+				connectedTool2,
+				unconnectedTool1,
+				unconnectedTool2,
+				someOtherNode,
+			],
+			{
+				ConnectedTool1: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				ConnectedTool2: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				// UnconnectedTool1 and UnconnectedTool2 are connected to SomeOtherNode, not to Agent
+				UnconnectedTool1: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'SomeOtherNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				UnconnectedTool2: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'SomeOtherNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			},
+		);
+
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 2, // Only ConnectedTool1 and ConnectedTool2
 		});
 	});
 });

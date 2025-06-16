@@ -660,14 +660,14 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
 	runData: IRun,
-): AgentNodeStructuredOutputErrorInfo | null {
+): AgentNodeStructuredOutputErrorInfo {
+	const info: AgentNodeStructuredOutputErrorInfo = {};
+
 	if (runData?.data.resultData.error && runData.data.resultData.lastNodeExecuted) {
 		const lastNode = getNodeTypeForName(workflow, runData.data.resultData.lastNodeExecuted);
 
 		if (lastNode !== undefined) {
 			if (lastNode.type === AGENT_LANGCHAIN_NODE_TYPE && lastNode.parameters.hasOutputParser) {
-				const info: AgentNodeStructuredOutputErrorInfo = {};
-
 				// Add additional debug info for agent node structured output errors
 				const agentOutputError = runData.data.resultData.runData[lastNode.name]?.[0]?.error;
 				if (
@@ -688,8 +688,10 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 						)?.length ?? 0;
 
 					// Extract model name from the language model node if connected
-					const languageModelNodeName = Object.keys(workflow.connections).find(
-						(node) => workflow.connections[node]?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.[0],
+					const languageModelNodeName = Object.keys(workflow.connections).find((node) =>
+						workflow.connections[node]?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.some(
+							(connectedNode) => connectedNode.node === lastNode.name,
+						),
 					);
 					if (languageModelNodeName) {
 						const languageModelNode = getNodeTypeForName(workflow, languageModelNodeName);
@@ -719,11 +721,9 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 						}
 					}
 				}
-
-				return info;
 			}
 		}
 	}
 
-	return null;
+	return info;
 }
