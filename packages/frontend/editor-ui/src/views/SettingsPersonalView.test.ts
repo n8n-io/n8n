@@ -59,6 +59,7 @@ describe('SettingsPersonalView', () => {
 			features: {
 				saml: true,
 				ldap: true,
+				oidc: true,
 			},
 		});
 	});

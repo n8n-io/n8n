@@ -10,7 +10,6 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { MODAL_CONFIRM } from '@/constants';
-import { useSettingsStore } from '@/stores/settings.store';
 
 type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
 
@@ -29,7 +28,6 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const ssoStore = useSSOStore();
 const message = useMessage();
-const settingsStore = useSettingsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();

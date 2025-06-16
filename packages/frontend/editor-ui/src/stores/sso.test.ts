@@ -29,6 +29,7 @@ describe('SSO store', () => {
 				features: {
 					saml,
 					ldap: false,
+					oidc: false,
 				},
 			});
 

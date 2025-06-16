@@ -15,8 +15,8 @@ const onSSOLogin = async () => {
 			? await ssoStore.getSSORedirectUrl(
 					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
 				)
-			: ssoStore.oidcConfig.loginUrl;
-		window.location.href = redirectUrl;
+			: ssoStore.oidc.loginUrl;
+		window.location.href = redirectUrl ?? '';
 	} catch (error) {
 		toast.showError(error, 'Error', error.message);
 	}
