@@ -4,7 +4,7 @@ import nock from 'nock';
 import getResult from './fixtures/get.json';
 import getManyResult from './fixtures/getMany.json';
 
-describe('JinaAI Node', () => {
+describe('Google Ads Node', () => {
 	const credentials = {
 		googleAdsOAuth2Api: {
 			oauthTokenData: {
