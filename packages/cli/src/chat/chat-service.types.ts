@@ -17,7 +17,7 @@ export type Session = {
 	executionId: string;
 	sessionId: string;
 	intervalId: NodeJS.Timeout;
-	waitingForResponse: boolean;
+	waitingNodeName?: string;
 	isPublic?: boolean;
 	isProcessing?: boolean;
 };

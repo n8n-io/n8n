@@ -89,7 +89,6 @@ export class ChatService {
 			executionId,
 			sessionId,
 			intervalId,
-			waitingForResponse: false,
 			isPublic,
 		};
 
@@ -108,9 +107,9 @@ export class ChatService {
 				}
 				session.isProcessing = true;
 
-				const { connection, executionId, sessionId, waitingForResponse, isPublic } = session;
+				const { connection, executionId, sessionId, waitingNodeName, isPublic } = session;
 
-				if (!executionId || !connection || waitingForResponse) {
+				if (!executionId || !connection) {
 					session.isProcessing = false;
 					return;
 				}
@@ -118,6 +117,17 @@ export class ChatService {
 				const execution = await this.getExecution(executionId, sessionKey);
 
 				if (!execution) {
+					session.isProcessing = false;
+					return;
+				}
+
+				if (waitingNodeName) {
+					const lastNode = getLastNodeExecuted(execution);
+
+					if (execution.status === 'waiting' && lastNode?.name !== waitingNodeName) {
+						connection.send('n8n|continue');
+						session.waitingNodeName = undefined;
+					}
 					session.isProcessing = false;
 					return;
 				}
@@ -134,9 +144,9 @@ export class ChatService {
 							connection.send('n8n|continue');
 							const data = { action: 'user', chatInput: '', sessionId };
 							await this.resumeExecution(executionId, data, sessionKey);
-							session.waitingForResponse = false;
+							session.waitingNodeName = undefined;
 						} else {
-							session.waitingForResponse = true;
+							session.waitingNodeName = lastNode?.name;
 						}
 					}
 
@@ -184,7 +194,7 @@ export class ChatService {
 				const executionId = session.executionId;
 
 				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
-				session.waitingForResponse = false;
+				session.waitingNodeName = undefined;
 			} catch (error) {
 				this.logger.error(
 					`Error processing message from chat in session ${sessionKey}: ${(error as Error).message}`,

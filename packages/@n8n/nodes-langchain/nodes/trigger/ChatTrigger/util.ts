@@ -1,4 +1,4 @@
-import { ApplicationError, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeOperationError, UserError, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 export function configureWaitTillDate(context: IExecuteFunctions) {
@@ -33,7 +33,7 @@ export function configureWaitTillDate(context: IExecuteFunctions) {
 			}
 
 			if (isNaN(waitTill.getTime())) {
-				throw new ApplicationError('Invalid date format');
+				throw new UserError('Invalid date format');
 			}
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), 'Could not configure Limit Wait Time', {
@@ -44,3 +44,24 @@ export function configureWaitTillDate(context: IExecuteFunctions) {
 
 	return waitTill;
 }
+
+export const configureInputs = (parameters: { options?: { memoryConnection?: boolean } }) => {
+	const inputs = [
+		{
+			type: 'main',
+			displayName: 'User Response',
+		},
+	];
+	if (parameters.options?.memoryConnection) {
+		return [
+			...inputs,
+			{
+				type: 'ai_memory',
+				displayName: 'Memory',
+				maxConnections: 1,
+			},
+		];
+	}
+
+	return inputs;
+};

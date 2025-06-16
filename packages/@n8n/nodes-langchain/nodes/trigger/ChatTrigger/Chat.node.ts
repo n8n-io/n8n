@@ -9,7 +9,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { configureWaitTillDate } from './util';
+import { configureInputs, configureWaitTillDate } from './util';
 
 const limitWaitTimeProperties: INodeProperties[] = [
 	{
@@ -126,10 +126,7 @@ export class Chat implements INodeType {
 				],
 			},
 		},
-		inputs: [
-			NodeConnectionTypes.Main,
-			{ type: NodeConnectionTypes.AiMemory, displayName: 'Memory', maxConnections: 1 },
-		],
+		inputs: `={{ (${configureInputs})($parameter) }}`,
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
@@ -150,12 +147,18 @@ export class Chat implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Add Memory Input Connection',
+						name: 'memoryConnection',
+						type: 'boolean',
+						default: false,
+					},
+					limitWaitTimeOption,
+					{
 						displayName: 'Wait for User Reply',
 						name: CHAT_WAIT_USER_REPLY,
 						type: 'boolean',
 						default: true,
 					},
-					limitWaitTimeOption,
 				],
 			},
 		],
@@ -167,6 +170,7 @@ export class Chat implements INodeType {
 	): Promise<INodeExecutionData[][]> {
 		const options = context.getNodeParameter('options', 0, {}) as {
 			[CHAT_WAIT_USER_REPLY]?: boolean;
+			memoryConnection?: boolean;
 		};
 
 		if (options[CHAT_WAIT_USER_REPLY] === false) {
@@ -174,14 +178,16 @@ export class Chat implements INodeType {
 			return [inputData];
 		}
 
-		const memory = (await context.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-			| BaseChatMemory
-			| undefined;
+		if (options.memoryConnection) {
+			const memory = (await context.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+				| BaseChatMemory
+				| undefined;
 
-		const message = data.json?.chatInput;
+			const message = data.json?.chatInput;
 
-		if (memory && message) {
-			await memory.chatHistory.addUserMessage(message as string);
+			if (memory && message) {
+				await memory.chatHistory.addUserMessage(message as string);
+			}
 		}
 
 		return [[data]];
@@ -189,12 +195,18 @@ export class Chat implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const message = this.getNodeParameter('message', 0) as string;
-		const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-			| BaseChatMemory
-			| undefined;
+		const options = this.getNodeParameter('options', 0, {}) as {
+			memoryConnection?: boolean;
+		};
 
-		if (memory) {
-			await memory.chatHistory.addAIChatMessage(message);
+		if (options.memoryConnection) {
+			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+				| BaseChatMemory
+				| undefined;
+
+			if (memory) {
+				await memory.chatHistory.addAIChatMessage(message);
+			}
 		}
 
 		const waitTill = configureWaitTillDate(this);
