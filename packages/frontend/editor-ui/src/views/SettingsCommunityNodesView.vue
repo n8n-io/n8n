@@ -18,6 +18,7 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 

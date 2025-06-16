@@ -6,6 +6,9 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { computed, ref, watch, watchEffect } from 'vue';
+import semver from 'semver';
 
 interface Props {
 	communityPackage?: PublicInstalledPackage | null;
@@ -23,7 +26,22 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 
-const packageActions: Array<UserAction<IUser>> = [
+const nodeTypesStore = useNodeTypesStore();
+const latestVerifiedVersion = ref<string>();
+const currVersion = computed(() => props.communityPackage?.installedVersion || '');
+
+const hasUnverifiedPackagesUpdate = computed(() => {
+	return settingsStore.isUnverifiedPackagesEnabled && props.communityPackage?.updateAvailable;
+});
+
+const hasVerifiedPackageUpdate = computed(() => {
+	const canUpdate =
+		latestVerifiedVersion.value && semver.gt(latestVerifiedVersion.value || '', currVersion.value);
+
+	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
+});
+
+const packageActions = [
 	{
 		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
 		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
@@ -57,6 +75,24 @@ function onUpdateClick() {
 	if (!props.communityPackage) return;
 	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName);
 }
+
+watch(
+	() => props.communityPackage?.packageName,
+	async (packageName) => {
+		if (packageName) {
+			await nodeTypesStore.loadNodeTypesIfNotLoaded();
+			const nodeType = nodeTypesStore.visibleNodeTypes.find((node) =>
+				node.name.includes(packageName),
+			);
+
+			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name || '');
+			if (attributes?.npmVersion) {
+				latestVerifiedVersion.value = attributes.npmVersion;
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -99,7 +135,7 @@ function onUpdateClick() {
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip
-					v-else-if="settingsStore.isUnverifiedPackagesEnabled && communityPackage.updateAvailable"
+					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
 					placement="top"
 				>
 					<template #content>

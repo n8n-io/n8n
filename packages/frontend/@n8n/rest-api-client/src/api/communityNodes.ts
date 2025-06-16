@@ -27,8 +27,9 @@ export async function uninstallPackage(context: IRestApiContext, name: string): 
 export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
+	version?: string,
 ): Promise<PublicInstalledPackage> {
-	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name });
+	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name, version });
 }
 
 export async function getAvailableCommunityPackageCount(): Promise<number> {

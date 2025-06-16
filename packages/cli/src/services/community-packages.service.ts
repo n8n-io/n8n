@@ -349,8 +349,9 @@ export class CommunityPackagesService {
 	async updatePackage(
 		packageName: string,
 		installedPackage: InstalledPackages,
+		version?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage });
+		return await this.installOrUpdatePackage(packageName, { installedPackage, version });
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
