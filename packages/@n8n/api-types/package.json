@@ -25,7 +25,6 @@
     "@n8n/typescript-config": "workspace:*"
   },
   "dependencies": {
-    "@n8n/constants": "workspace:^",
     "@n8n/permissions": "workspace:*",
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
