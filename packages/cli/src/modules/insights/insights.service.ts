@@ -27,7 +27,6 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	@OnLeaderTakeover()
 	startTimers() {
 		this.collectionService.startFlushingTimer();
 

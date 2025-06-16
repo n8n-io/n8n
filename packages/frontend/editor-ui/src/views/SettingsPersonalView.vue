@@ -72,12 +72,11 @@ const currentUser = computed((): IUser | null => {
 
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
-		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
-	const isSamlEnabled = Boolean(
-		ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml,
-	);
-
-	return isLdapEnabled || isSamlEnabled;
+		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
+	const isOidcEnabled =
+		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
+	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
 
 const isPersonalSecurityEnabled = computed((): boolean => {

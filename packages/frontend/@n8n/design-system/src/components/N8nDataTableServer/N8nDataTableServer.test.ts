@@ -1,7 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor, within } from '@testing-library/vue';
-import { config } from '@vue/test-utils';
-import ElementPlus from 'element-plus';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
@@ -14,8 +12,6 @@ const getRenderedOptions = async () => {
 	expect(dropdown).toBeInTheDocument();
 	return dropdown.querySelectorAll('.el-select-dropdown__item');
 };
-
-config.global.plugins.push(ElementPlus);
 
 const itemFactory = () => ({
 	id: crypto.randomUUID() as string,

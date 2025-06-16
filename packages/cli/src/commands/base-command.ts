@@ -31,7 +31,6 @@ import { ModuleRegistry } from '@/modules/module-registry';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
@@ -86,10 +85,6 @@ export abstract class BaseCommand extends Command {
 		}
 
 		this.moduleRegistry.addEntities();
-
-		if (this.instanceSettings.isMultiMain) {
-			Container.get(MultiMainSetup).registerEventHandlers();
-		}
 	}
 
 	async init(): Promise<void> {

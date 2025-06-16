@@ -1,4 +1,5 @@
-import type { SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto } from '@n8n/api-types';
+import { type SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,19 +13,32 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 
-	const isLoading = ref(false);
-
 	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
+
+	const showSsoLoginButton = computed(
+		() =>
+			(isSamlLoginEnabled.value &&
+				isEnterpriseSamlEnabled.value &&
+				isDefaultAuthenticationSaml.value) ||
+			(isOidcLoginEnabled.value &&
+				isEnterpriseOidcEnabled.value &&
+				isDefaultAuthenticationOidc.value),
+	);
+
+	const getSSORedirectUrl = async (existingRedirect?: string) =>
+		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
 	const initialize = (options: {
 		authenticationMethod: UserManagementAuthenticationMethod;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
+			oidc?: Pick<OidcConfigDto, 'loginLabel' | 'loginEnabled' | 'loginUrl' | 'callbackUrl'>;
 		};
 		features: {
 			saml: boolean;
 			ldap: boolean;
+			oidc: boolean;
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
@@ -40,7 +54,92 @@ export const useSSOStore = defineStore('sso', () => {
 			saml.value.loginEnabled = options.config.saml.loginEnabled;
 			saml.value.loginLabel = options.config.saml.loginLabel;
 		}
+
+		isEnterpriseOidcEnabled.value = options.features.oidc;
+		if (options.config.oidc) {
+			oidc.value.loginEnabled = options.config.oidc.loginEnabled;
+			oidc.value.loginUrl = options.config.oidc.loginUrl || '';
+			oidc.value.callbackUrl = options.config.oidc.callbackUrl || '';
+		}
 	};
+
+	/**
+	 * SAML
+	 */
+
+	const saml = ref<Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>>({
+		loginLabel: '',
+		loginEnabled: false,
+	});
+
+	const samlConfig = ref<SamlPreferences & SamlPreferencesExtractedData>();
+
+	const isSamlLoginEnabled = computed({
+		get: () => saml.value.loginEnabled,
+		set: (value: boolean) => {
+			saml.value.loginEnabled = value;
+			void toggleLoginEnabled(value);
+		},
+	});
+
+	const isEnterpriseSamlEnabled = ref(false);
+
+	const isDefaultAuthenticationSaml = computed(
+		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
+	);
+
+	const toggleLoginEnabled = async (enabled: boolean) =>
+		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
+
+	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
+
+	const getSamlConfig = async () => {
+		const config = await ssoApi.getSamlConfig(rootStore.restApiContext);
+		samlConfig.value = config;
+		return config;
+	};
+
+	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
+
+	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
+
+	/**
+	 * OIDC
+	 */
+
+	const oidc = ref<Pick<OidcConfigDto, 'loginUrl' | 'loginEnabled' | 'callbackUrl'>>({
+		loginUrl: '',
+		loginEnabled: false,
+		callbackUrl: '',
+	});
+
+	const oidcConfig = ref<OidcConfigDto | undefined>();
+
+	const isEnterpriseOidcEnabled = ref(false);
+
+	const getOidcConfig = async () => {
+		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
+		oidcConfig.value = config;
+		return config;
+	};
+
+	const saveOidcConfig = async (config: OidcConfigDto) => {
+		const savedConfig = await ssoApi.saveOidcConfig(rootStore.restApiContext, config);
+		oidcConfig.value = savedConfig;
+		return savedConfig;
+	};
+
+	const isOidcLoginEnabled = computed({
+		get: () => oidc.value.loginEnabled,
+		set: (value: boolean) => {
+			oidc.value.loginEnabled = value;
+		},
+	});
+
+	const isDefaultAuthenticationOidc = computed(
+		() => authenticationMethod.value === UserManagementAuthenticationMethod.Oidc,
+	);
 
 	/**
 	 * LDAP Configuration
@@ -82,81 +181,32 @@ export const useSSOStore = defineStore('sso', () => {
 		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
 	};
 
-	/**
-	 * SAML Configuration
-	 */
-
-	const saml = ref<Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>>({
-		loginLabel: '',
-		loginEnabled: false,
-	});
-
-	const samlConfig = ref<(SamlPreferences & SamlPreferencesExtractedData) | undefined>(undefined);
-
-	const setLoading = (loading: boolean) => {
-		isLoading.value = loading;
-	};
-
-	const isDefaultAuthenticationSaml = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
-	);
-
-	const isSamlLoginEnabled = computed({
-		get: () => saml.value.loginEnabled,
-		set: (value: boolean) => {
-			saml.value.loginEnabled = value;
-			void toggleLoginEnabled(value);
-		},
-	});
-
-	const isEnterpriseSamlEnabled = ref(false);
-
-	const showSsoLoginButton = computed(
-		() =>
-			isSamlLoginEnabled.value &&
-			isEnterpriseSamlEnabled.value &&
-			isDefaultAuthenticationSaml.value,
-	);
-
-	const getSSORedirectUrl = async (existingRedirect?: string) =>
-		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
-
-	const toggleLoginEnabled = async (enabled: boolean) =>
-		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
-
-	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
-
-	const getSamlConfig = async () => {
-		const config = await ssoApi.getSamlConfig(rootStore.restApiContext);
-		samlConfig.value = config;
-		return config;
-	};
-
-	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
-		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
-
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
-
 	return {
-		isLoading,
-		authenticationMethod,
 		showSsoLoginButton,
-		setLoading,
+		getSSORedirectUrl,
 		initialize,
 
 		saml,
 		samlConfig,
+		isSamlLoginEnabled,
 		isEnterpriseSamlEnabled,
 		isDefaultAuthenticationSaml,
-		isSamlLoginEnabled,
-		getSSORedirectUrl,
 		getSamlMetadata,
 		getSamlConfig,
 		saveSamlConfig,
 		testSamlConfig,
 
+		oidc,
+		oidcConfig,
+		isOidcLoginEnabled,
+		isEnterpriseOidcEnabled,
+		isDefaultAuthenticationOidc,
+		getOidcConfig,
+		saveOidcConfig,
+
 		ldap,
 		isLdapLoginEnabled,
+		isEnterpriseLdapEnabled,
 		ldapLoginLabel,
 		getLdapConfig,
 		getLdapSynchronizations,

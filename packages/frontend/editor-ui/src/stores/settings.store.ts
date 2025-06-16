@@ -402,6 +402,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		experimental__minZoomNodeSettingsInCanvas,
+		partialExecutionVersion,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -411,6 +412,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		partialExecutionVersion,
 	};
 });

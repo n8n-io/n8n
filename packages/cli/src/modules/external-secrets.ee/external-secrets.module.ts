@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@BackendModule()
+@BackendModule({ licenseFlag: 'feat:externalSecrets' })
 export class ExternalSecretsModule implements ModuleInterface {
 	async init() {
 		await import('./external-secrets.controller.ee');

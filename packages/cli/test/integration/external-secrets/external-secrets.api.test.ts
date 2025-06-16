@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -31,6 +32,9 @@ let authMemberAgent: SuperAgentTest;
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
 
 const testServer = setupTestServer({
 	endpointGroups: ['externalSecrets'],

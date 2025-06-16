@@ -152,6 +152,7 @@
     "nodemailer": "6.9.9",
     "oauth-1.0a": "2.2.6",
     "open": "7.4.2",
+    "openid-client": "6.5.0",
     "otpauth": "9.1.1",
     "p-cancelable": "2.1.1",
     "p-lazy": "3.1.0",
