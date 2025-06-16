@@ -32,8 +32,6 @@ beforeAll(async () => {
 	licenseState = Container.get(LicenseState);
 
 	jest.spyOn(licenseState, 'getInsightsMaxHistory').mockReturnValue(365);
-	// testServer.license.mockLicenseState(licenseState);
-	// licenseState.getInsightsMaxHistory.mockReturnValue(365);
 });
 
 describe('GET /insights routes work for owner and admins for server with dashboard license', () => {
