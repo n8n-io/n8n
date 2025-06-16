@@ -149,7 +149,8 @@ export async function getInputConnectionData(
 	}
 
 	const maxConnections = inputConfigurations.reduce(
-		(acc, currentItem) => (currentItem.maxConnections ? acc + currentItem.maxConnections : acc),
+		(acc, currentItem) =>
+			currentItem.maxConnections !== undefined ? acc + currentItem.maxConnections : acc,
 		0,
 	);
 

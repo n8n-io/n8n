@@ -141,9 +141,9 @@ export class ModelSelector implements INodeType {
 			const rule = rules[i] as {
 				modelIndex: string;
 			};
-			const modelIndex = parseInt(rule.modelIndex, 10) - 1;
+			const modelIndex = parseInt(rule.modelIndex, 10);
 
-			if (modelIndex < 0 || modelIndex >= models.length) {
+			if (modelIndex <= 0 || modelIndex > models.length) {
 				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {
 					itemIndex,
 					description: `Model index must be between 1 and ${models.length}`,
@@ -155,7 +155,7 @@ export class ModelSelector implements INodeType {
 			}) as boolean;
 
 			if (conditionsMet) {
-				const selectedModel = models[modelIndex] as BaseChatModel;
+				const selectedModel = models[modelIndex - 1] as BaseChatModel;
 
 				const originalCallbacks = getCallbacksArray(selectedModel.callbacks);
 

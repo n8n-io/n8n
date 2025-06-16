@@ -125,7 +125,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			(executeContext.getConnections as jest.Mock).mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toBeUndefined();
