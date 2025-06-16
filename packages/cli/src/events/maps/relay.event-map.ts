@@ -1,4 +1,5 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
@@ -8,9 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -70,6 +68,18 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'workflow-archived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
+	'workflow-unarchived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
 	'workflow-saved': {
 		user: UserLike;
 		workflow: IWorkflowDb;
@@ -101,13 +111,17 @@ export type RelayEventMap = {
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	'node-post-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	// #endregion
@@ -479,6 +493,24 @@ export type RelayEventMap = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
+	};
+
+	// #endregion
+
+	// #region runner
+
+	'runner-task-requested': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	'runner-response-received': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
 	};
 
 	// #endregion

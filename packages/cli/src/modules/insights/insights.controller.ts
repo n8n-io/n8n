@@ -1,28 +1,43 @@
-import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
+import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import type { UserError } from 'n8n-workflow';
 
-import { Get, GlobalScope, Licensed, Query, RestController } from '@/decorators';
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
-import { sortByQueryMiddleware } from '@/middlewares/list-query/sort-by';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	private readonly maxAgeInDaysFilteredInsights = 7;
-
 	constructor(private readonly insightsService: InsightsService) {}
+
+	/**
+	 * This method is used to transform the date range from the request payload into a maximum age in days.
+	 * It throws a ForbiddenError if the date range does not match the license insights max history
+	 */
+	private getMaxAgeInDaysAndGranularity(payload: InsightsDateFilterDto) {
+		try {
+			return this.insightsService.getMaxAgeInDaysAndGranularity(payload.dateRange ?? 'week');
+		} catch (error: unknown) {
+			throw new ForbiddenError((error as UserError).message);
+		}
+	}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
-	async getInsightsSummary(): Promise<InsightsSummary> {
+	async getInsightsSummary(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query payload: InsightsDateFilterDto = { dateRange: 'week' },
+	): Promise<InsightsSummary> {
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
 		return await this.insightsService.getInsightsSummary({
-			periodLengthInDays: this.maxAgeInDaysFilteredInsights,
+			periodLengthInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 		});
 	}
 
-	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
+	@Get('/by-workflow')
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
@@ -30,8 +45,11 @@ export class InsightsController {
 		_res: Response,
 		@Query payload: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity({
+			dateRange: payload.dateRange ?? 'week',
+		});
 		return await this.insightsService.getInsightsByWorkflow({
-			maxAgeInDays: this.maxAgeInDaysFilteredInsights,
+			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			skip: payload.skip,
 			take: payload.take,
 			sortBy: payload.sortBy,
@@ -41,10 +59,15 @@ export class InsightsController {
 	@Get('/by-time')
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
-	async getInsightsByTime(): Promise<InsightsByTime[]> {
+	async getInsightsByTime(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query payload: InsightsDateFilterDto,
+	): Promise<InsightsByTime[]> {
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
 		return await this.insightsService.getInsightsByTime({
-			maxAgeInDays: this.maxAgeInDaysFilteredInsights,
-			periodUnit: 'day',
+			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
+			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 		});
 	}
 }

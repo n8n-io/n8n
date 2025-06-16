@@ -1,10 +1,9 @@
-import * as communityNodesApi from '@/api/communityNodes';
-import { getAvailableCommunityPackageCount } from '@/api/settings';
+import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import type { CommunityPackageMap } from '@/Interface';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
 
 const LOADER_DELAY = 300;
@@ -29,7 +28,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const fetchAvailableCommunityPackageCount = async (): Promise<void> => {
 		if (availablePackageCount.value === -1) {
-			availablePackageCount.value = await getAvailableCommunityPackageCount();
+			availablePackageCount.value = await communityNodesApi.getAvailableCommunityPackageCount();
 		}
 	};
 
@@ -54,8 +53,17 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		}, timeout);
 	};
 
-	const installPackage = async (packageName: string): Promise<void> => {
-		await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName);
+	const installPackage = async (
+		packageName: string,
+		verify?: boolean,
+		version?: string,
+	): Promise<void> => {
+		await communityNodesApi.installNewPackage(
+			rootStore.restApiContext,
+			packageName,
+			verify,
+			version,
+		);
 		await fetchInstalledPackages();
 	};
 

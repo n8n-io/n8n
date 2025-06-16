@@ -6,6 +6,8 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
+	ROLE,
+	Role,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -43,7 +45,10 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
+	ISourceData,
 } from 'n8n-workflow';
+import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -52,8 +57,8 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
@@ -176,19 +181,11 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
-	};
-}
-
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
+	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -214,6 +211,12 @@ export interface IStartRunData {
 	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;
+	};
+	agentRequest?: {
+		query: NodeParameterValueType;
+		tool: {
+			name: NodeParameterValueType;
+		};
 	};
 }
 
@@ -315,6 +318,7 @@ export interface IWorkflowDb {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
 	nodes: INodeUi[];
@@ -328,7 +332,13 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: { id: string; name: string };
+	parentFolder?: {
+		id: string;
+		name: string;
+		parentFolderId: string | null;
+		createdAt?: string;
+		updatedAt?: string;
+	};
 }
 
 // For workflow list we don't need the full workflow data
@@ -348,7 +358,6 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
-	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -356,21 +365,30 @@ export type BaseFolderItem = BaseResource & {
 	updatedAt: string;
 	workflowCount: number;
 	subFolderCount: number;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
+};
+
+export type ResourceParentFolder = {
+	id: string;
+	name: string;
+	parentFolderId: string | null;
 };
 
 export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -551,9 +569,7 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV3
 	| IPersonalizationSurveyAnswersV4;
 
-export type Roles = typeof ROLE;
-export type IRole = Roles[keyof Roles];
-export type InvitableRoleName = Roles['Member' | 'Admin'];
+export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -561,7 +577,7 @@ export interface IUserResponse {
 	lastName?: string;
 	email?: string;
 	createdAt?: string;
-	role?: IRole;
+	role?: Role;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
@@ -588,21 +604,16 @@ export interface IUserListAction {
 	guard?: (user: IUser) => boolean;
 }
 
-export interface IN8nPrompts {
-	message?: string;
-	title?: string;
-	showContactPrompt?: boolean;
-}
-
 export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
+	Oidc = 'oidc',
 }
 
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
-	role?: IRole[];
+	role?: Role[];
 }
 
 export interface IPermissionAllowGroup extends IPermissionGroup {
@@ -786,6 +797,15 @@ export interface LinkItemProps {
 	icon: string;
 	tag?: NodeCreatorTag;
 }
+
+export interface OpenTemplateItemProps {
+	key: 'rag-starter-template';
+	title: string;
+	description: string;
+	icon: string;
+	tag?: NodeCreatorTag;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -848,6 +868,11 @@ export interface LinkCreateElement extends CreateElementBase {
 	properties: LinkItemProps;
 }
 
+export interface OpenTemplateElement extends CreateElementBase {
+	type: 'openTemplate';
+	properties: OpenTemplateItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -862,7 +887,16 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
-	| LinkCreateElement;
+	| LinkCreateElement
+	| OpenTemplateElement;
+
+export type NodeTypeSelectedPayload = {
+	type: string;
+	parameters?: {
+		resource?: string;
+		operation?: string;
+	};
+};
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
@@ -885,33 +919,7 @@ export interface ITagRow {
 	canDelete?: boolean;
 }
 
-export interface IVersion {
-	name: string;
-	nodes: IVersionNode[];
-	createdAt: string;
-	description: string;
-	documentationUrl: string;
-	hasBreakingChange: boolean;
-	hasSecurityFix: boolean;
-	hasSecurityIssue: boolean;
-	securityIssueFixVersion: string;
-}
-
-export interface IVersionNode {
-	name: string;
-	displayName: string;
-	icon: string;
-	iconUrl?: string;
-	defaults: INodeParameters;
-	iconData: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
-	typeVersion?: number;
-}
-
-export interface ITemplatesNode extends IVersionNode {
+export interface ITemplatesNode extends VersionNode {
 	id: number;
 	categories?: ITemplatesCategory[];
 }
@@ -948,33 +956,6 @@ export interface WorkflowsState {
 	workflowsById: IWorkflowsMap;
 	chatMessages: string[];
 	isInDebugMode?: boolean;
-}
-
-export interface RootState {
-	baseUrl: string;
-	restEndpoint: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointMcp: string;
-	endpointMcpTest: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: {
-		[key: string]: string | number | undefined;
-	};
-	pushRef: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
 export interface NodeMetadataMap {
@@ -1086,7 +1067,8 @@ export type NodeFilterType =
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
-	| typeof AI_UNCATEGORIZED_CATEGORY;
+	| typeof AI_UNCATEGORIZED_CATEGORY
+	| typeof AI_EVALUATION;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1099,7 +1081,9 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
-	| 'add_node_button';
+	| 'add_node_button'
+	| 'add_evaluation_trigger_button'
+	| 'add_evaluation_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1173,8 +1157,8 @@ export interface ITemplateState {
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
-	nextVersions: IVersion[];
-	currentVersion: IVersion | undefined;
+	nextVersions: Version[];
+	currentVersion: Version | undefined;
 }
 
 export interface IWorkflowsMap {
@@ -1184,11 +1168,6 @@ export interface IWorkflowsMap {
 export interface CommunityNodesState {
 	availablePackageCount: number;
 	installedPackages: CommunityPackageMap;
-}
-
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1212,7 +1191,7 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
-		role: IRole;
+		role: Role;
 	};
 	error?: string;
 }
@@ -1234,6 +1213,7 @@ export interface ITabBarItem {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+	isArchived?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -1270,49 +1250,6 @@ export type SchemaType =
 	| 'null'
 	| 'undefined';
 
-export interface ILdapSyncData {
-	id: number;
-	startedAt: string;
-	endedAt: string;
-	created: number;
-	updated: number;
-	disabled: number;
-	scanned: number;
-	status: string;
-	error: string;
-	runMode: string;
-}
-
-export interface ILdapSyncTable {
-	status: string;
-	endedAt: string;
-	runTime: string;
-	runMode: string;
-	details: string;
-}
-
-export interface ILdapConfig {
-	loginEnabled: boolean;
-	loginLabel: string;
-	connectionUrl: string;
-	allowUnauthorizedCerts: boolean;
-	connectionSecurity: string;
-	connectionPort: number;
-	baseDn: string;
-	bindingAdminDn: string;
-	bindingAdminPassword: string;
-	firstNameAttribute: string;
-	lastNameAttribute: string;
-	emailAttribute: string;
-	loginIdAttribute: string;
-	ldapIdAttribute: string;
-	userFilter: string;
-	synchronizationEnabled: boolean;
-	synchronizationInterval: number; // minutes
-	searchPageSize: number;
-	searchTimeout: number;
-}
-
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
@@ -1323,6 +1260,10 @@ export type UsageState = {
 				limit: number; // -1 for unlimited, from license
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
+			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
 			};
 		};
 		license: {
@@ -1348,6 +1289,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';
@@ -1376,55 +1318,11 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export type SamlPreferencesExtractedData = {
-	entityID: string;
-	returnUrl: string;
-};
-
-export declare namespace Cloud {
-	export interface PlanData {
-		planId: number;
-		monthlyExecutionsLimit: number;
-		activeWorkflowsLimit: number;
-		credentialsLimit: number;
-		isActive: boolean;
-		displayName: string;
-		expirationDate: string;
-		metadata: PlanMetadata;
-	}
-
-	export interface PlanMetadata {
-		version: 'v1';
-		group: 'opt-out' | 'opt-in' | 'trial';
-		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-		trial?: Trial;
-	}
-
-	interface Trial {
-		length: number;
-		gracePeriod: number;
-	}
-
-	export type UserAccount = {
-		confirmed: boolean;
-		username: string;
-		email: string;
-		hasEarlyAccess?: boolean;
-		role?: string;
-	};
-}
-
 export interface CloudPlanState {
 	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;
-}
-
-export interface InstanceUsage {
-	timeframe?: string;
-	executions: number;
-	activeWorkflows: number;
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
@@ -1472,7 +1370,8 @@ export type CloudUpdateLinkSourceType =
 	| 'external-secrets'
 	| 'rbac'
 	| 'debug'
-	| 'insights';
+	| 'insights'
+	| 'evaluations';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1496,7 +1395,8 @@ export type UTMCampaign =
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
-	| 'upgrade-insights';
+	| 'upgrade-insights'
+	| 'upgrade-evaluations';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1526,6 +1426,7 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
 	hasAddedNodes?: boolean;
+	connectionType?: NodeConnectionType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
@@ -1538,6 +1439,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'LogStreaming'
 	| 'Variables'
 	| 'Saml'
+	| 'Oidc'
 	| 'SourceControl'
 	| 'ExternalSecrets'
 	| 'AuditLogs'
@@ -1549,10 +1451,6 @@ export type EnterpriseEditionFeatureKey =
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
-export interface IN8nPromptResponse {
-	updated: boolean;
-}
-
 export type InputPanel = {
 	nodeName?: string;
 	run?: number;
@@ -1563,6 +1461,7 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;

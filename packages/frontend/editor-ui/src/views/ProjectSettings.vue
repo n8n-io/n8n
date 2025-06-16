@@ -1,11 +1,12 @@
 <script lang="ts" setup>
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from '@n8n/design-system';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectIcon, Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
@@ -13,7 +14,6 @@ import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '@/components/Projects/ProjectRoleUpgradeDialog.vue';
 import { useRolesStore } from '@/stores/roles.store';
-import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -23,6 +23,7 @@ import { getAllIconNames } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
+	description?: string;
 	role?: ProjectRelation[];
 	memberAdded?: ProjectRelation[];
 	memberRemoved?: ProjectRelation[];
@@ -43,8 +44,10 @@ const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const isValid = ref(false);
-const formData = ref<Pick<Project, 'name' | 'relations'>>({
+const isCurrentProjectEmpty = ref(true);
+const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	name: '',
+	description: '',
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
@@ -109,7 +112,7 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 	}
 };
 
-const onNameInput = () => {
+const onTextInput = () => {
 	isDirty.value = true;
 };
 
@@ -118,6 +121,7 @@ const onCancel = () => {
 		? deepCopy(projectsStore.currentProject.relations)
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
+	formData.value.description = projectsStore.currentProject?.description ?? '';
 	isDirty.value = false;
 };
 
@@ -129,6 +133,10 @@ const makeFormDataDiff = (): FormDataDiff => {
 
 	if (formData.value.name !== projectsStore.currentProject.name) {
 		diff.name = formData.value.name ?? '';
+	}
+
+	if (formData.value.description !== projectsStore.currentProject.description) {
+		diff.description = formData.value.description ?? '';
 	}
 
 	if (formData.value.relations.length !== projectsStore.currentProject.relations.length) {
@@ -191,12 +199,16 @@ const updateProject = async () => {
 		return;
 	}
 	try {
+		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
+			throw new Error('Invalid role selected for this project.');
+		}
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
 			icon: projectIcon.value,
+			description: formData.value.description!,
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
-				role: r.role,
+				role: r.role as TeamProjectRole,
 			})),
 		});
 		isDirty.value = false;
@@ -222,6 +234,13 @@ const onSubmit = async () => {
 
 const onDelete = async () => {
 	await projectsStore.getAvailableProjects();
+
+	if (projectsStore.currentProjectId) {
+		isCurrentProjectEmpty.value = await projectsStore.isProjectEmpty(
+			projectsStore.currentProjectId,
+		);
+	}
+
 	dialogVisible.value = true;
 };
 
@@ -263,6 +282,7 @@ watch(
 	() => projectsStore.currentProject,
 	async () => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
+		formData.value.description = projectsStore.currentProject?.description ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
 			? deepCopy(projectsStore.currentProject.relations)
 			: [];
@@ -273,6 +293,19 @@ watch(
 		}
 	},
 	{ immediate: true },
+);
+
+// Add users property to the relation objects,
+// So that N8nUsersList has access to the full user data
+const relationUsers = computed(() =>
+	formData.value.relations.map((relation: ProjectRelation) => {
+		const user = usersStore.usersById[relation.id];
+		if (!user) return relation as ProjectRelation & IUser;
+		return {
+			...user,
+			...relation,
+		};
+	}),
 );
 
 onBeforeMount(async () => {
@@ -310,10 +343,27 @@ onMounted(() => {
 						required
 						data-test-id="project-settings-name-input"
 						:class="$style['project-name-input']"
-						@input="onNameInput"
+						@enter="onSubmit"
+						@input="onTextInput"
 						@validate="isValid = $event"
 					/>
 				</div>
+			</fieldset>
+			<fieldset>
+				<label for="projectDescription">{{ i18n.baseText('projects.settings.description') }}</label>
+				<N8nFormInput
+					id="projectDescription"
+					v-model="formData.description"
+					label=""
+					name="description"
+					type="textarea"
+					:maxlength="512"
+					:autosize="true"
+					data-test-id="project-settings-description-input"
+					@enter="onSubmit"
+					@input="onTextInput"
+					@validate="isValid = $event"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
@@ -333,7 +383,7 @@ onMounted(() => {
 				</N8nUserSelect>
 				<N8nUsersList
 					:actions="[]"
-					:users="formData.relations"
+					:users="relationUsers"
 					:current-user-id="usersStore.currentUser?.id"
 					:delete-label="i18n.baseText('workflows.shareModal.list.delete')"
 				>
@@ -415,6 +465,7 @@ onMounted(() => {
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
+			:is-current-project-empty="isCurrentProjectEmpty"
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
@@ -469,7 +520,6 @@ onMounted(() => {
 .project-name {
 	display: flex;
 	gap: var(--spacing-2xs);
-	align-items: center;
 
 	.project-name-input {
 		flex: 1;

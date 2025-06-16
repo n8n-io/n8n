@@ -64,7 +64,7 @@ describe('Code node', () => {
 				.type('{selectall}')
 				.paste(`$input.itemMatching()
 $input.item
-$('When clicking ‘Test workflow’').item
+$('When clicking ‘Execute workflow’').item
 $input.first(1)
 
 for (const item of $input.all()) {

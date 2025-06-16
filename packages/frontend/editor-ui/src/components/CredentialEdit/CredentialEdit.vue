@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
 import type {
 	ICredentialsDecryptedResponse,
@@ -22,7 +22,6 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { useMessage } from '@/composables/useMessage';
@@ -37,12 +36,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/types/projects.types';
+import { N8nInlineTextEdit, N8nText, type IMenuItem } from '@n8n/design-system';
 import { assert } from '@n8n/utils/assert';
-import type { IMenuItem } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
@@ -52,6 +51,7 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
+import { useElementSize } from '@vueuse/core';
 
 type Props = {
 	modalName: string;
@@ -476,6 +476,19 @@ function getCredentialProperties(name: string): INodeProperties[] {
 	return combineProperties;
 }
 
+/**
+ *
+ * We might get credential with empty parameters from source-control
+ * which breaks our types and Fe checks
+ */
+function removePropertiesWithEmptyStrings<T extends { [key: string]: unknown }>(data: T): T {
+	const copy = structuredClone(data);
+	Object.entries(copy).forEach(([key, value]) => {
+		if (value === '') delete copy[key];
+	});
+	return copy;
+}
+
 async function loadCurrentCredential() {
 	credentialId.value = props.activeId ?? '';
 
@@ -494,7 +507,10 @@ async function loadCurrentCredential() {
 
 		currentCredential.value = currentCredentials;
 
-		credentialData.value = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
+		credentialData.value = removePropertiesWithEmptyStrings(
+			(currentCredentials.data as ICredentialDataDecryptedObject) || {},
+		);
+
 		if (currentCredentials.sharedWithProjects) {
 			credentialData.value = {
 				...credentialData.value,
@@ -1049,6 +1065,9 @@ function resetCredentialData(): void {
 		homeProject,
 	};
 }
+
+const credNameRef = useTemplateRef('credNameRef');
+const { width } = useElementSize(credNameRef);
 </script>
 
 <template>
@@ -1067,16 +1086,21 @@ function resetCredentialData(): void {
 					<div :class="$style.credIcon">
 						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
-					<InlineNameEdit
-						:model-value="credentialName"
-						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="
-							!credentialPermissions.update || !credentialType || isEditingManagedCredential
-						"
-						type="Credential"
-						data-test-id="credential-name"
-						@update:model-value="onNameEdit"
-					/>
+					<div ref="credNameRef" :class="$style.credName">
+						<N8nInlineTextEdit
+							v-if="credentialName"
+							data-test-id="credential-name"
+							:model-value="credentialName"
+							:max-width="width - 10"
+							:readonly="
+								!credentialPermissions.update || !credentialType || isEditingManagedCredential
+							"
+							@update:model-value="onNameEdit"
+						/>
+						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
+							credentialType.displayName
+						}}</N8nText>
+					</div>
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button
@@ -1184,6 +1208,13 @@ function resetCredentialData(): void {
 	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
+}
+
+.credName {
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 }
 
 .sidebar {

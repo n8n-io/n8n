@@ -87,23 +87,18 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Set1');
 		ndvComposables.verifyInputHoverState('1000');
 
-		ndv.actions.dragMainPanelToRight();
-
-		ndvComposables.resetHoverState();
+		ndvComposables.hoverInputItemByText('1000');
 		ndvComposables.verifyOutputHoverState('1000');
-		// BUG(ADO-3469): Expression preview is not updated when input node is changed it uses the old value
-		// ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
+
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
 		ndv.actions.selectInputNode('Sort');
-		ndv.actions.dragMainPanelToLeft();
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 
 		ndvComposables.resetHoverState();
 		ndvComposables.verifyInputHoverState('1111');
 
-		ndv.actions.dragMainPanelToRight();
-
-		ndvComposables.resetHoverState();
+		ndvComposables.hoverInputItemByText('1111');
 		ndvComposables.verifyOutputHoverState('1111');
 
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
@@ -295,6 +290,13 @@ describe('NDV', () => {
 		workflowPage.actions.openNode('Switch1');
 		ndv.actions.execute();
 
-		ndv.getters.parameterExpressionPreview('output').should('include.text', '1');
+		ndv.getters.parameterExpressionPreview('output').should('have.text', '1');
+		ndv.getters.inlineExpressionEditorInput().click();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '3');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
 	});
 });

@@ -1,11 +1,13 @@
-import type { SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto } from '@n8n/api-types';
+import { type SamlPreferences } from '@n8n/api-types';
 import { computed, reactive } from 'vue';
+import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import * as ssoApi from '@/api/sso';
-import type { SamlPreferencesExtractedData } from '@/Interface';
+import * as ssoApi from '@n8n/rest-api-client/api/sso';
+import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 import { updateCurrentUser } from '@/api/users';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -13,19 +15,16 @@ export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const route = useRoute();
 
 	const state = reactive({
-		loading: false,
 		samlConfig: undefined as (SamlPreferences & SamlPreferencesExtractedData) | undefined,
+		oidcConfig: undefined as OidcConfigDto | undefined,
 	});
-
-	const isLoading = computed(() => state.loading);
 
 	const samlConfig = computed(() => state.samlConfig);
 
-	const setLoading = (loading: boolean) => {
-		state.loading = loading;
-	};
+	const oidcConfig = computed(() => state.oidcConfig);
 
 	const isSamlLoginEnabled = computed({
 		get: () => settingsStore.isSamlLoginEnabled,
@@ -43,23 +42,58 @@ export const useSSOStore = defineStore('sso', () => {
 			void toggleLoginEnabled(value);
 		},
 	});
+
+	const isOidcLoginEnabled = computed({
+		get: () => settingsStore.isOidcLoginEnabled,
+		set: (value: boolean) => {
+			settingsStore.setSettings({
+				...settingsStore.settings,
+				sso: {
+					...settingsStore.settings.sso,
+					oidc: {
+						...settingsStore.settings.sso.oidc,
+						loginEnabled: value,
+					},
+				},
+			});
+		},
+	});
+
 	const isEnterpriseSamlEnabled = computed(
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
 	);
-	const isDefaultAuthenticationSaml = computed(() => settingsStore.isDefaultAuthenticationSaml);
-	const showSsoLoginButton = computed(
-		() =>
-			isSamlLoginEnabled.value &&
-			isEnterpriseSamlEnabled.value &&
-			isDefaultAuthenticationSaml.value,
+
+	const isEnterpriseOidcEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 	);
 
-	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.restApiContext);
+	const isDefaultAuthenticationSaml = computed(() => settingsStore.isDefaultAuthenticationSaml);
+
+	const isDefaultAuthenticationOidc = computed(() => settingsStore.isDefaultAuthenticationOidc);
+
+	const showSsoLoginButton = computed(
+		() =>
+			(isSamlLoginEnabled.value &&
+				isEnterpriseSamlEnabled.value &&
+				isDefaultAuthenticationSaml.value) ||
+			(isOidcLoginEnabled.value &&
+				isEnterpriseOidcEnabled.value &&
+				isDefaultAuthenticationOidc.value),
+	);
+
+	const getSSORedirectUrl = async () =>
+		await ssoApi.initSSO(
+			rootStore.restApiContext,
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+		);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
 		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
 
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
+
+	// const getOidcRedirectLUrl = async () => await ssoApi)
+
 	const getSamlConfig = async () => {
 		const samlConfig = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		state.samlConfig = samlConfig;
@@ -77,20 +111,36 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const userData = computed(() => usersStore.currentUser);
 
+	const getOidcConfig = async () => {
+		const oidcConfig = await ssoApi.getOidcConfig(rootStore.restApiContext);
+		state.oidcConfig = oidcConfig;
+		return oidcConfig;
+	};
+
+	const saveOidcConfig = async (config: OidcConfigDto) => {
+		const savedConfig = await ssoApi.saveOidcConfig(rootStore.restApiContext, config);
+		state.oidcConfig = savedConfig;
+		return savedConfig;
+	};
+
 	return {
-		isLoading,
-		setLoading,
+		isEnterpriseOidcEnabled,
 		isSamlLoginEnabled,
+		isOidcLoginEnabled,
 		isEnterpriseSamlEnabled,
 		isDefaultAuthenticationSaml,
+		isDefaultAuthenticationOidc,
 		showSsoLoginButton,
 		samlConfig,
+		oidcConfig,
+		userData,
 		getSSORedirectUrl,
 		getSamlMetadata,
 		getSamlConfig,
 		saveSamlConfig,
 		testSamlConfig,
 		updateUser,
-		userData,
+		getOidcConfig,
+		saveOidcConfig,
 	};
 });

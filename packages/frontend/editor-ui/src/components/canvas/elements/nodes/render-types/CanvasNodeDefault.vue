@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
+import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 }>();
 
 const { initialized, viewport } = useCanvas();
@@ -28,6 +30,7 @@ const {
 	hasPinnedData,
 	executionStatus,
 	executionWaiting,
+	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
 	hasIssues,
@@ -48,6 +51,8 @@ const {
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
+const nodeSettingsZoom = useNodeSettingsInCanvas();
+
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -57,11 +62,12 @@ const classes = computed(() => {
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
-		[$style.running]: executionRunning.value,
+		[$style.running]: executionRunning.value || executionWaitingForNext.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		[$style.settingsView]: nodeSettingsZoom.value !== undefined,
 	};
 });
 
@@ -77,6 +83,10 @@ const styles = computed(() => {
 		}
 
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
+	}
+
+	if (nodeSettingsZoom.value !== undefined) {
+		stylesObject['--zoom'] = nodeSettingsZoom.value;
 	}
 
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
@@ -130,8 +140,8 @@ function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 
-function onActivate() {
-	emit('activate', id.value);
+function onActivate(event: MouseEvent) {
+	emit('activate', id.value, event);
 }
 </script>
 
@@ -143,19 +153,22 @@ function onActivate() {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
-		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-		<div :class="$style.description">
-			<div v-if="label" :class="$style.label">
-				{{ label }}
+		<CanvasNodeNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
+		<template v-else>
+			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+			<div :class="$style.description">
+				<div v-if="label" :class="$style.label">
+					{{ label }}
+				</div>
+				<div v-if="isDisabled" :class="$style.disabledLabel">
+					({{ i18n.baseText('node.disabled') }})
+				</div>
+				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
-			<div v-if="isDisabled" :class="$style.disabledLabel">
-				({{ i18n.baseText('node.disabled') }})
-			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
-		</div>
+		</template>
 	</div>
 </template>
 
@@ -191,6 +204,21 @@ function onActivate() {
 	&.trigger {
 		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
 			var(--border-radius-large) var(--trigger-node--border-radius);
+	}
+
+	&.settingsView {
+		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
+		height: calc(var(--canvas-node--height) * 2.4) !important;
+		width: calc(var(--canvas-node--width) * 1.6) !important;
+		align-items: flex-start;
+		justify-content: stretch;
+		overflow: auto;
+		border-radius: var(--border-radius-large) !important;
+
+		& > * {
+			zoom: calc(1 / var(--zoom, 1));
+			width: 100% !important;
+		}
 	}
 
 	/**

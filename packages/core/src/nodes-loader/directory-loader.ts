@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -15,14 +16,19 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, applyDeclarativeNodeOptionParameters } from 'n8n-workflow';
+import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
-import { Logger } from '@/logging/logger';
 
-import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './constants';
+import {
+	commonCORSParameters,
+	commonDeclarativeNodeOptionParameters,
+	commonPollingParameters,
+	CUSTOM_NODES_CATEGORY,
+} from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
 function toJSON(this: ICredentialType) {
@@ -78,13 +84,22 @@ export abstract class DirectoryLoader {
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
 		protected includeNodes: string[] = [],
-	) {}
+	) {
+		// If `directory` is a symlink, we try to resolve it to its real path
+		try {
+			this.directory = realpathSync(directory);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (error.code !== 'ENOENT') throw error;
+		}
+	}
 
 	abstract packageName: string;
 
 	abstract loadAll(): Promise<void>;
 
 	reset() {
+		this.unloadAll();
 		this.loadedNodes = [];
 		this.nodeTypes = {};
 		this.credentialTypes = {};
@@ -362,7 +377,7 @@ export abstract class DirectoryLoader {
 			else properties.push(...commonCORSParameters);
 		}
 
-		applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 	}
 
 	private getIconPath(icon: string, filePath: string) {
@@ -389,5 +404,69 @@ export abstract class DirectoryLoader {
 			};
 			obj.icon = undefined;
 		}
+	}
+
+	/** Augments additional `Request Options` property on declarative node-type */
+	static applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
+		if (
+			!!nodeType.execute ||
+			!!nodeType.trigger ||
+			!!nodeType.webhook ||
+			!!nodeType.description.polling ||
+			isSubNodeType(nodeType.description)
+		) {
+			return;
+		}
+
+		const parameters = nodeType.description.properties;
+		if (!parameters) {
+			return;
+		}
+
+		// Was originally under "options" instead of "requestOptions" so the chance
+		// that that existed was quite high. With this name the chance is actually
+		// very low that it already exists but lets leave it in anyway to be sure.
+		const existingRequestOptionsIndex = parameters.findIndex(
+			(parameter) => parameter.name === 'requestOptions',
+		);
+		if (existingRequestOptionsIndex !== -1) {
+			parameters[existingRequestOptionsIndex] = {
+				...commonDeclarativeNodeOptionParameters,
+				options: [
+					...(commonDeclarativeNodeOptionParameters.options ?? []),
+					...(parameters[existingRequestOptionsIndex]?.options ?? []),
+				],
+			};
+
+			const options = parameters[existingRequestOptionsIndex]?.options;
+
+			if (options) {
+				options.sort((a, b) => {
+					if ('displayName' in a && 'displayName' in b) {
+						if (a.displayName < b.displayName) {
+							return -1;
+						}
+						if (a.displayName > b.displayName) {
+							return 1;
+						}
+					}
+
+					return 0;
+				});
+			}
+		} else {
+			parameters.push(commonDeclarativeNodeOptionParameters);
+		}
+
+		return;
+	}
+
+	private unloadAll() {
+		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
+			filePath.startsWith(this.directory),
+		);
+		filesToUnload.forEach((filePath) => {
+			delete require.cache[filePath];
+		});
 	}
 }

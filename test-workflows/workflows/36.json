@@ -1,0 +1,753 @@
+{
+  "createdAt": "2021-02-17T17:57:34.255Z",
+  "updatedAt": "2021-07-15T14:42:32.636Z",
+  "id": "36",
+  "name": "Slack:File:upload getAll get:Star:add getAll delete:Channgel:create update setPurpose setTopic ge t invite leave join getAll history replies member archive unarchive",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "a26bf258-8876-4142-9a6c-37ac7426e7c9"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "setPurpose",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "purpose": "Testing"
+      },
+      "name": "Slack3",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        730,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "bd33c223-d19f-43ed-a4f8-6eb524340051"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "setTopic",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "topic": "QA"
+      },
+      "name": "Slack4",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        870,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "e956c837-0f3e-4075-a246-ce5a5f16ef17"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "get",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Slack5",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "66010c67-ac41-4390-a85a-6e3b9de26a98"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Slack6",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "ead0ce56-689b-43b0-b527-ecd4f869963c"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "history",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Slack7",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1820,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "d1dc4c44-619b-42e5-af3f-106fff4a99b5"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "rename",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "name": "=renamed{{$node[\"Slack2\"].json[\"name\"]}}"
+      },
+      "name": "Slack9",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        580,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "c63a975b-66ec-4f6a-85c4-712dd8f322d7"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Slack11",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        590,
+        390
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "4d54c4d7-285e-4e61-853f-b25cc38160dd"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "get",
+        "fileId": "={{$node[\"Slack10\"].json[\"id\"]}}"
+      },
+      "name": "Slack12",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        740,
+        390
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "1cc8f403-d7a4-42a4-8e78-a2443c2aed32"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "member",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "limit": 1
+      },
+      "name": "Slack8",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2120,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "88583aee-b74b-4316-a8c2-2a9ee278275a"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "channelId": "=testchannel{{Math.random().toString(36).replace(/[^a-z]+/g, '')}}",
+        "additionalFields": {
+          "isPrivate": false
+        }
+      },
+      "name": "Slack2",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        440,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "bfc23883-4190-46c7-8b9e-8afb0b4c3435"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileContent": "=Test file upload {{(new Date().toString())}}",
+        "options": {
+          "channelIds": [
+            "C01N780JVPG"
+          ]
+        }
+      },
+      "name": "Slack10",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        440,
+        390
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "3526fb45-6eca-495d-8535-d77cbf2b78fd"
+    },
+    {
+      "parameters": {
+        "resource": "star",
+        "operation": "delete",
+        "options": {
+          "channelId": "C01MZ82T9TR"
+        }
+      },
+      "name": "Slack23",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        840,
+        560
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "e4cfa506-e1b9-439f-8070-8c0cc7ba191d"
+    },
+    {
+      "parameters": {
+        "resource": "star",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Slack22",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        690,
+        560
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "c79469c2-5987-442d-a08a-7b942f8c3fde"
+    },
+    {
+      "parameters": {
+        "resource": "star",
+        "options": {
+          "channelId": "=C01MZ82T9TR"
+        }
+      },
+      "name": "Slack21",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        550,
+        560
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "eb6f3c3e-d6cb-42f4-aa6d-462bde196f28"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "archive",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}"
+      },
+      "name": "Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "cb863325-bb94-4669-a174-913a2d504fd9"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "invite",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "userIds": [
+          "U01N08LEY9M"
+        ]
+      },
+      "name": "Slack13",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "d4c01071-c77a-4605-8382-e0596de883ee"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "join",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}"
+      },
+      "name": "Slack16",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "b757d3d8-0d72-4efe-bcc0-ba360e423775"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "replies",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}",
+        "ts": "={{$node[\"Slack7\"].json[\"ts\"]}}",
+        "filters": {}
+      },
+      "name": "Slack18",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1960,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "c8c86ba2-599e-4546-a006-1509456726b7"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "leave",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}"
+      },
+      "name": "Slack17",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1330,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "8d90aae7-bcc9-427d-86e4-4c18df0e6c35"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "archive",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}"
+      },
+      "name": "Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2540,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "0a23fea3-c8dd-41a4-afef-1701d959d8f1"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "unarchive",
+        "channelId": "={{$node[\"Slack2\"].json[\"id\"]}}"
+      },
+      "name": "Slack14",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        230
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "id": "2f208a4c-9c68-43d6-8dfd-eb1297a79b0d"
+    },
+    {
+      "parameters": {
+        "resource": "star",
+        "operation": "delete",
+        "options": {
+          "channelId": "C01MZ82T9TR"
+        }
+      },
+      "name": "Slack24",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        400,
+        560
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "18",
+          "name": "Slack Token"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "IGNORED_PROPERTIES=ok,error",
+      "id": "3d3fd370-7c82-4623-9258-e4d7e5a1e381"
+    }
+  ],
+  "connections": {
+    "Slack3": {
+      "main": [
+        [
+          {
+            "node": "Slack4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack4": {
+      "main": [
+        [
+          {
+            "node": "Slack5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack5": {
+      "main": [
+        [
+          {
+            "node": "Slack13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack6": {
+      "main": [
+        [
+          {
+            "node": "Slack7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack7": {
+      "main": [
+        [
+          {
+            "node": "Slack18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack9": {
+      "main": [
+        [
+          {
+            "node": "Slack3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack11": {
+      "main": [
+        [
+          {
+            "node": "Slack12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack2": {
+      "main": [
+        [
+          {
+            "node": "Slack9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack10": {
+      "main": [
+        [
+          {
+            "node": "Slack11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack22": {
+      "main": [
+        [
+          {
+            "node": "Slack23",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack21": {
+      "main": [
+        [
+          {
+            "node": "Slack22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Slack10",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack24",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack8": {
+      "main": [
+        [
+          {
+            "node": "Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack13": {
+      "main": [
+        [
+          {
+            "node": "Slack17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack16": {
+      "main": [
+        [
+          {
+            "node": "Slack6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack18": {
+      "main": [
+        [
+          {
+            "node": "Slack8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack17": {
+      "main": [
+        [
+          {
+            "node": "Slack16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack": {
+      "main": [
+        [
+          {
+            "node": "Slack14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack14": {
+      "main": [
+        [
+          {
+            "node": "Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack24": {
+      "main": [
+        [
+          {
+            "node": "Slack21",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -5,15 +5,23 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@/permissions';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import {
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { INodeUi, IUsedCredential } from '@/Interface';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const props = defineProps<{
+	isArchived: boolean;
 	workflowActive: boolean;
 	workflowId: string;
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -25,6 +33,10 @@ const emit = defineEmits<{
 
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
+
+const uiStore = useUIStore();
+
+const workflowHelpers = useWorkflowHelpers();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -47,9 +59,12 @@ const isCurrentWorkflow = computed((): boolean => {
 	return workflowsStore.workflowId === props.workflowId;
 });
 
+const foundTriggers = computed(() =>
+	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
+);
+
 const containsTrigger = computed((): boolean => {
-	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
-	return foundTriggers.length > 0;
+	return foundTriggers.value.length > 0;
 });
 
 const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
@@ -71,6 +86,10 @@ const isNewWorkflow = computed(
 );
 
 const disabled = computed((): boolean => {
+	if (props.isArchived) {
+		return true;
+	}
+
 	if (isNewWorkflow.value || isCurrentWorkflow.value) {
 		return !props.workflowActive && !containsTrigger.value;
 	}
@@ -114,10 +133,31 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 });
 
 async function activeChanged(newActiveState: boolean) {
+	if (!isWorkflowActive.value) {
+		const conflictData = await workflowHelpers.checkConflictingWebhooks(props.workflowId);
+
+		if (conflictData) {
+			const { trigger, conflict } = conflictData;
+			const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
+
+			uiStore.openModalWithData({
+				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+				data: {
+					triggerName: trigger.name,
+					workflowName: conflictingWorkflow.name,
+					...conflict,
+				},
+			});
+
+			return;
+		}
+	}
+
 	const newState = await workflowActivate.updateWorkflowActivation(
 		props.workflowId,
 		newActiveState,
 	);
+
 	emit('update:workflowActive', { id: props.workflowId, active: newState });
 }
 
@@ -184,9 +224,11 @@ watch(
 				<div>
 					{{
 						i18n.baseText(
-							containsOnlyExecuteWorkflowTrigger
-								? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
-								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+							isArchived
+								? 'workflowActivator.thisWorkflowIsArchived'
+								: containsOnlyExecuteWorkflowTrigger
+									? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+									: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
 						)
 					}}
 				</div>

@@ -14,7 +14,8 @@ import type {
 } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
 
 interface Props {
 	rootNode: INodeUi;
@@ -47,7 +48,7 @@ const nodeType = computed(() =>
 );
 
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
-
+const ndvStore = useNDVStore();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 const nodeInputIssues = computed(() => {
@@ -106,7 +107,7 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
 					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
-					const stringifiedIssues = issues ? NodeHelpers.nodeIssuesToString(issues, node) : '';
+					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
 			}
@@ -175,7 +176,7 @@ function showNodeInputsIssues() {
 }
 
 watch(
-	nodeData,
+	[nodeData, ndvStore.activeNode],
 	debounce(
 		() =>
 			setTimeout(() => {

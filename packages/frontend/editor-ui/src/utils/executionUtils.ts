@@ -1,4 +1,8 @@
-import { SEND_AND_WAIT_OPERATION, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -6,13 +10,33 @@ import type {
 	INode,
 	IPinData,
 	IRunData,
+	ExecutionError,
+	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
+import type {
+	ExecutionFilterType,
+	ExecutionsQueryFilter,
+	IExecutionFlattedResponse,
+	IExecutionResponse,
+	INodeUi,
+} from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
+import {
+	CORE_NODES_CATEGORY,
+	ERROR_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	GITHUB_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_TRIGGER_NODE_TYPE,
+} from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/root.store';
-import { i18n } from '@/plugins/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { i18n } from '@n8n/i18n';
+import { h } from 'vue';
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import { parse } from 'flatted';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -100,7 +124,7 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export function displayForm({
+export async function displayForm({
 	nodes,
 	runData,
 	pinData,
@@ -134,6 +158,14 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
+
+			try {
+				const res = await fetch(testUrl, { method: 'GET' });
+				if (!res.ok) continue;
+			} catch (error) {
+				continue;
+			}
+
 			if (testUrl && source !== 'RunData.ManualChatMessage') {
 				clearPopupWindowState();
 				openFormPopupWindow(testUrl);
@@ -154,7 +186,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting');
+				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
 			}
 
 			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
@@ -165,12 +197,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 			if (resume === 'form') {
 				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
 				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
 			if (message && resumeUrl) {
@@ -179,7 +211,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 
 		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
@@ -265,4 +297,135 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 	}
 
 	return undefined;
+}
+
+/**
+ * Returns the error message from the execution object if it exists,
+ * or a fallback error message otherwise
+ */
+export function getExecutionErrorMessage({
+	error,
+	lastNodeExecuted,
+}: {
+	error?: ExecutionError;
+	lastNodeExecuted?: string;
+}): string {
+	let errorMessage: string;
+
+	if (lastNodeExecuted && error) {
+		errorMessage = error.message ?? error.description ?? '';
+	} else {
+		errorMessage = i18n.baseText('pushConnection.executionError', {
+			interpolate: { error: '!' },
+		});
+
+		if (error?.message) {
+			let nodeName: string | undefined;
+			if ('node' in error) {
+				nodeName = typeof error.node === 'string' ? error.node : error.node?.name;
+			}
+
+			const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+			errorMessage = i18n.baseText('pushConnection.executionError', {
+				interpolate: {
+					error: `.${i18n.baseText('pushConnection.executionError.details', {
+						interpolate: {
+							details: receivedError,
+						},
+					})}`,
+				},
+			});
+		}
+	}
+
+	return errorMessage;
+}
+
+export function getExecutionErrorToastConfiguration({
+	error,
+	lastNodeExecuted,
+}: {
+	error: ExecutionError;
+	lastNodeExecuted?: string;
+}) {
+	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
+
+	if (error.name === 'SubworkflowOperationError') {
+		return { title: error.message, message: error.description ?? '' };
+	}
+
+	if (
+		(error.name === 'NodeOperationError' || error.name === 'NodeApiError') &&
+		error.functionality === 'configuration-node'
+	) {
+		// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
+		const nodeErrorName = 'node' in error && error.node?.name ? error.node.name : '';
+
+		return {
+			title: nodeErrorName ? `Error in sub-node ‘${nodeErrorName}‘` : 'Problem executing workflow',
+			message: h(NodeExecutionErrorMessage, {
+				errorMessage: error.description ?? message,
+				nodeName: nodeErrorName,
+			}),
+		};
+	}
+
+	return {
+		title: lastNodeExecuted
+			? `Problem in node ‘${lastNodeExecuted}‘`
+			: 'Problem executing workflow',
+		message,
+	};
+}
+
+/**
+ * Unflattens the Execution data.
+ *
+ * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
+ */
+export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
+	// Unflatten the data
+	const returnData: IExecutionResponse = {
+		...fullExecutionData,
+		workflowData: fullExecutionData.workflowData,
+		data: parse(fullExecutionData.data),
+	};
+
+	returnData.finished = returnData.finished ? returnData.finished : false;
+
+	if (fullExecutionData.id) {
+		returnData.id = fullExecutionData.id;
+	}
+
+	return returnData;
+}
+
+export function findTriggerNodeToAutoSelect(
+	triggerNodes: INodeUi[],
+	getNodeType: (type: string, typeVersion: number) => INodeTypeBaseDescription | null,
+) {
+	const autoSelectPriorities: Record<string, number | undefined> = {
+		[FORM_TRIGGER_NODE_TYPE]: 10,
+		[WEBHOOK_NODE_TYPE]: 9,
+		// ..."Other apps"
+		[SCHEDULE_TRIGGER_NODE_TYPE]: 7,
+		[MANUAL_TRIGGER_NODE_TYPE]: 6,
+		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
+		[ERROR_TRIGGER_NODE_TYPE]: 4,
+	};
+
+	function isCoreNode(node: INodeUi): boolean {
+		const nodeType = getNodeType(node.type, node.typeVersion);
+
+		return nodeType?.codex?.categories?.includes(CORE_NODES_CATEGORY) ?? false;
+	}
+
+	return triggerNodes
+		.toSorted((a, b) => {
+			const aPriority = autoSelectPriorities[a.type] ?? (isCoreNode(a) ? 0 : 8);
+			const bPriority = autoSelectPriorities[b.type] ?? (isCoreNode(b) ? 0 : 8);
+
+			return bPriority - aPriority;
+		})
+		.find((node) => !node.disabled);
 }

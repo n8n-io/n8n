@@ -101,7 +101,7 @@ const onUserAction = (user: IUser, action: string) =>
 				<N8nActionToggle
 					v-if="
 						!user.isOwner &&
-						user.signInType !== 'ldap' &&
+						!['ldap'].includes(user.signInType) &&
 						!readonly &&
 						getActions(user).length > 0 &&
 						actions.length > 0

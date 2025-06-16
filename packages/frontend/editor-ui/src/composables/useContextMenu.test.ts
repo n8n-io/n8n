@@ -6,7 +6,12 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	NodeConnectionTypes,
+	NodeHelpers,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -33,7 +38,6 @@ describe('useContextMenu', () => {
 		} as never);
 
 		uiStore = useUIStore();
-		uiStore.selectedNodes = selectedNodes;
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
 		workflowsStore = useWorkflowsStore();
@@ -92,6 +96,80 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([sticky.id]);
 	});
 
+	it('should show "Go to Sub-workflow" action (enabled) when node is "Execute Workflow" with a set workflow', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const executeWorkflow = nodeFactory({
+			type: EXECUTE_WORKFLOW_NODE_TYPE,
+			parameters: {
+				workflowId: {
+					__rl: true,
+					value: 'qseYRPbw6joqU7RC',
+					mode: 'list',
+					cachedResultName: '',
+				},
+			},
+		});
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value).toMatchSnapshot();
+		expect(targetNodeIds.value).toEqual([executeWorkflow.id]);
+	});
+
+	it('should show "Go to Sub-workflow" action (disabled) when node is "Execute Workflow" without a set workflow', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const executeWorkflow = nodeFactory({
+			type: EXECUTE_WORKFLOW_NODE_TYPE,
+			parameters: {
+				workflowId: {},
+			},
+		});
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value).toMatchSnapshot();
+		expect(targetNodeIds.value).toEqual([executeWorkflow.id]);
+	});
+
+	it('should show "Go to Sub-workflow" action (enabled) when node is "Workflow Tool" with a set workflow', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const executeWorkflow = nodeFactory({
+			type: WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+			parameters: {
+				workflowId: {
+					__rl: true,
+					value: 'qseYRPbw6joqU7RC',
+					mode: 'list',
+					cachedResultName: '',
+				},
+			},
+		});
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value).toMatchSnapshot();
+		expect(targetNodeIds.value).toEqual([executeWorkflow.id]);
+	});
+
+	it('should show "Go to Sub-workflow" action (disabled) when node is "Workflow Tool" without a set workflow', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const executeWorkflow = nodeFactory({
+			type: WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+			parameters: {
+				workflowId: {},
+			},
+		});
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value).toMatchSnapshot();
+		expect(targetNodeIds.value).toEqual([executeWorkflow.id]);
+	});
+
 	it('should disable pinning for node that has other inputs then "main"', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
@@ -107,7 +185,7 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([basicChain.id]);
 	});
 
-	it('should disable test step option for sub-nodes (AI tool nodes)', () => {
+	it('should disable execute step option for sub-nodes (AI tool nodes)', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
 		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(subNode);

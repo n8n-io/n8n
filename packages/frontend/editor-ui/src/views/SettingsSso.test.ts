@@ -12,7 +12,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 import { nextTick } from 'vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import type { SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -65,6 +65,7 @@ describe('SettingsSso View', () => {
 		const pinia = createTestingPinia();
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = false;
+		ssoStore.isEnterpriseOidcEnabled = false;
 
 		const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -82,6 +83,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
@@ -102,6 +104,7 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
@@ -126,6 +129,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -163,6 +167,7 @@ describe('SettingsSso View', () => {
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -194,12 +199,74 @@ describe('SettingsSso View', () => {
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
 
-	it('PAY-1812: allows user to disable SSO even if config request failed', async () => {
+	it('should validate the url before setting the saml config', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
+
+		const { getByTestId } = renderView({ pinia });
+
+		const saveButton = getByTestId('sso-save');
+		expect(saveButton).toBeDisabled();
+
+		const urlinput = getByTestId('sso-provider-url');
+
+		expect(urlinput).toBeVisible();
+		await userEvent.type(urlinput, samlConfig.metadata!);
+
+		expect(saveButton).not.toBeDisabled();
+		await userEvent.click(saveButton);
+
+		expect(showError).toHaveBeenCalled();
+		expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+
+		expect(ssoStore.testSamlConfig).not.toHaveBeenCalled();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+	});
+
+	it('should ensure the url does not support invalid protocols like mailto', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
+
+		const { getByTestId } = renderView({ pinia });
+
+		const saveButton = getByTestId('sso-save');
+		expect(saveButton).toBeDisabled();
+
+		const urlinput = getByTestId('sso-provider-url');
+
+		expect(urlinput).toBeVisible();
+		await userEvent.type(urlinput, 'mailto://test@example.com');
+
+		expect(saveButton).not.toBeDisabled();
+		await userEvent.click(saveButton);
+
+		expect(showError).toHaveBeenCalled();
+		expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+
+		expect(ssoStore.testSamlConfig).not.toHaveBeenCalled();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+	});
+
+	it('allows user to disable SSO even if config request failed', async () => {
 		const pinia = createTestingPinia();
 
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
 		ssoStore.isSamlLoginEnabled = true;
+		ssoStore.isEnterpriseOidcEnabled = true;
+		ssoStore.isOidcLoginEnabled = false;
 
 		const error = new Error('Request failed with status code 404');
 		ssoStore.getSamlConfig.mockRejectedValue(error);

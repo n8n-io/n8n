@@ -20,7 +20,7 @@ vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
 	return {
 		...actual,
-		debouncedRef: vi.fn(actual.debouncedRef as typeof vueuse.debouncedRef),
+		throttledRef: vi.fn(actual.throttledRef as typeof vueuse.throttledRef),
 	};
 });
 
@@ -161,15 +161,14 @@ describe('WorkflowCanvas', () => {
 				},
 			});
 
-			expect(vueuse.debouncedRef).toHaveBeenCalledTimes(2);
+			expect(vueuse.throttledRef).toHaveBeenCalledTimes(2);
 
 			// Find calls related to our specific debouncing logic
-			const calls = vi.mocked(vueuse.debouncedRef).mock.calls;
-			const executingCalls = calls.filter((call) => call[1] === 200 && call[2]?.maxWait === 50);
+			const calls = vi.mocked(vueuse.throttledRef).mock.calls;
+			const executingCalls = calls.filter((call) => call[1] === 200);
 
 			expect(executingCalls.length).toBeGreaterThanOrEqual(2);
 			expect(executingCalls[0][1]).toBe(200);
-			expect(executingCalls[0][2]).toEqual({ maxWait: 50 });
 		});
 	});
 });

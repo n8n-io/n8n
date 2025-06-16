@@ -1,7 +1,6 @@
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 import { BaseCommand } from '../base-command';
 
@@ -29,7 +28,7 @@ export class DisableMFACommand extends BaseCommand {
 			return;
 		}
 
-		const repository = Container.get(AuthUserRepository);
+		const repository = Container.get(UserRepository);
 		const user = await repository.findOneBy({ email: flags.email });
 
 		if (!user) {

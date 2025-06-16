@@ -3,9 +3,9 @@ import { Flags } from '@oclif/core';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -77,10 +77,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 
-		await this.loadModules();
+		await this.moduleRegistry.initModules();
 	}
 
 	async run() {
@@ -98,9 +96,9 @@ export class Webhook extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		await Container.get(OrchestrationService).init();
+		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 }

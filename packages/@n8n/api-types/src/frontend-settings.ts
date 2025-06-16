@@ -1,4 +1,6 @@
-import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
+import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
+
+import { type InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -16,7 +18,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -82,6 +84,11 @@ export interface FrontendSettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+		oidc: {
+			loginEnabled: boolean;
+			loginUrl: string;
+			callbackUrl: string;
+		};
 		ldap: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -105,8 +112,11 @@ export interface FrontendSettings {
 	};
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	/** Whether multi-main mode is enabled and licensed for this main instance. */
+	isMultiMain: boolean;
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
 	};
@@ -124,6 +134,7 @@ export interface FrontendSettings {
 		sharing: boolean;
 		ldap: boolean;
 		saml: boolean;
+		oidc: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
@@ -151,9 +162,6 @@ export interface FrontendSettings {
 	};
 	variables: {
 		limit: number;
-	};
-	expressions: {
-		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;
@@ -188,5 +196,9 @@ export interface FrontendSettings {
 		enabled: boolean;
 		summary: boolean;
 		dashboard: boolean;
+		dateRanges: InsightsDateRange[];
+	};
+	evaluation: {
+		quota: number;
 	};
 }

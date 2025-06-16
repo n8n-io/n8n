@@ -1,9 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOptions';
 import labels from '../fixtures/labels.json';
@@ -129,10 +128,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['messages.workflow.json'],
 		});
 	});
 
@@ -154,10 +153,10 @@ describe('Test Gmail Node v2', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['labels.workflow.json'],
 		});
 	});
 
@@ -194,6 +193,15 @@ describe('Test Gmail Node v2', () => {
 				.query({ userId: 'me', uploadType: 'media' })
 				.reply(200, messages[0]);
 			gmailNock.delete('/v1/users/me/drafts/test-draft-id').reply(200, messages[0]);
+			gmailNock
+				.get('/v1/users/me/threads/test-thread-id')
+				.query({
+					format: 'metadata',
+					metadataHeaders: 'Message-ID',
+				})
+				.reply(200, {
+					messages: [{ payload: { headers: ['jjkjkjkf@reply.com'] } }],
+				});
 			gmailNock
 				.get('/v1/users/me/drafts/test-draft-id')
 				.query({ format: 'raw' })
@@ -244,10 +252,10 @@ describe('Test Gmail Node v2', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['drafts.workflow.json'],
 		});
 	});
 
@@ -307,10 +315,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['threads.workflow.json'],
 		});
 	});
 
