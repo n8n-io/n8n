@@ -2305,7 +2305,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		const connectedTool2 = mockToolNode('ConnectedTool2');
 		const unconnectedTool1 = mockToolNode('UnconnectedTool1');
 		const unconnectedTool2 = mockToolNode('UnconnectedTool2');
-		const someOtherNode = {
+		const someOtherNode: INode = {
 			id: 'other-node',
 			name: 'SomeOtherNode',
 			type: 'n8n-nodes-base.set',
