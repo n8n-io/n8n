@@ -33,7 +33,10 @@ export const useSSOStore = defineStore('sso', () => {
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
-			oidc?: Pick<OidcConfigDto, 'loginLabel' | 'loginEnabled' | 'loginUrl' | 'callbackUrl'>;
+			oidc?: Pick<OidcConfigDto, 'loginEnabled'> & {
+				loginUrl?: string;
+				callbackUrl?: string;
+			};
 		};
 		features: {
 			saml: boolean;
@@ -108,7 +111,12 @@ export const useSSOStore = defineStore('sso', () => {
 	 * OIDC
 	 */
 
-	const oidc = ref<Pick<OidcConfigDto, 'loginUrl' | 'loginEnabled' | 'callbackUrl'>>({
+	const oidc = ref<
+		Pick<OidcConfigDto, 'loginEnabled'> & {
+			loginUrl?: string;
+			callbackUrl?: string;
+		}
+	>({
 		loginUrl: '',
 		loginEnabled: false,
 		callbackUrl: '',

@@ -86,19 +86,21 @@ describe('Init', () => {
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
+			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
-			settingsStore.settings.sso = { saml, ldap };
+			settingsStore.settings.sso = { saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: UserManagementAuthenticationMethod.Saml,
-				config: { saml, ldap },
+				config: { saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,
+					oidc: false,
 				},
 			});
 		});
