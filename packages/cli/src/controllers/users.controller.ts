@@ -203,38 +203,33 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
-		try {
-			const userQuery = this.buildUserQuery(listQueryOptions);
+		const userQuery = this.buildUserQuery(listQueryOptions);
 
-			const response = await userQuery.getManyAndCount();
+		const response = await userQuery.getManyAndCount();
 
-			const [users, count] = response;
+		const [users, count] = response;
 
-			const publicUsers = await Promise.all(
-				users.map(async (u) => {
-					const user = await this.userService.toPublic(u, {
-						withInviteUrl: true,
-						inviterId: req.user.id,
-					});
-					return {
-						...user,
-						projectRelations: u.projectRelations?.map((pr) => ({
-							id: pr.projectId,
-							role: pr.role, // normalize role for frontend
-							name: pr.project.name,
-						})),
-					};
-				}),
-			);
+		const publicUsers = await Promise.all(
+			users.map(async (u) => {
+				const user = await this.userService.toPublic(u, {
+					withInviteUrl: true,
+					inviterId: req.user.id,
+				});
+				return {
+					...user,
+					projectRelations: u.projectRelations?.map((pr) => ({
+						id: pr.projectId,
+						role: pr.role, // normalize role for frontend
+						name: pr.project.name,
+					})),
+				};
+			}),
+		);
 
-			return usersListSchema.parse({
-				count,
-				items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
-			});
-		} catch (error) {
-			console.log('Error listing users', { error });
-			throw new BadRequestError('Failed to list users');
-		}
+		return usersListSchema.parse({
+			count,
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+		});
 	}
 
 	@Get('/:id/password-reset-link')
