@@ -1,4 +1,9 @@
-import { RoleChangeRequestDto, SettingsUpdateRequestDto, UsersListFilterDto } from '@n8n/api-types';
+import {
+	RoleChangeRequestDto,
+	SettingsUpdateRequestDto,
+	UsersListFilterDto,
+	usersListSchema,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -21,6 +26,8 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { Brackets } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -35,19 +42,6 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import {
-	Brackets,
-	FindManyOptions,
-	FindOptionsSelect,
-	FindOptionsWhere,
-	ILike,
-	Like,
-	Not,
-	Or,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
-import { parseUsersListFilterDto } from '@n8n/api-types/src/dto/user/users-list-filter.dto';
-import { usersListSchema } from '@n8n/api-types/src/schemas/user.schema';
 
 @RestController('/users')
 export class UsersController {
@@ -127,7 +121,7 @@ export class UsersController {
 		if (take >= 0) queryBuilder.limit(take);
 		if (skip) queryBuilder.offset(skip);
 
-		if (expand?.projectRelations === true) {
+		if (expand?.includes('projectRelations')) {
 			queryBuilder.leftJoinAndSelect(
 				'user.projectRelations',
 				'projectRelations',
@@ -141,19 +135,19 @@ export class UsersController {
 
 		if (typeof filter?.email === 'string') {
 			queryBuilder.andWhere('user.email = :email', {
-				email: filter.email!,
+				email: filter.email,
 			});
 		}
 
 		if (typeof filter?.firstName === 'string') {
 			queryBuilder.andWhere('user.firstName = :firstName', {
-				firstName: filter.firstName!,
+				firstName: filter.firstName,
 			});
 		}
 
 		if (typeof filter?.lastName === 'string') {
 			queryBuilder.andWhere('user.lastName = :lastName', {
-				lastName: filter.lastName!,
+				lastName: filter.lastName,
 			});
 		}
 
@@ -204,12 +198,12 @@ export class UsersController {
 
 	@Get('/')
 	@GlobalScope('user:list')
-	async listUsers(req: AuthenticatedRequest) {
+	async listUsers(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query listQueryOptions: UsersListFilterDto,
+	) {
 		try {
-			const listQueryOptions: UsersListFilterDto = parseUsersListFilterDto(
-				req.query as Record<string, string>,
-			);
-
 			const userQuery = this.buildUserQuery(listQueryOptions);
 
 			const response = await userQuery.getManyAndCount();
