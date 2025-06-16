@@ -404,7 +404,7 @@ export const itemFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Expression Attribute Values',
-				name: 'expressionAttributeUi',
+				name: 'eavUi',
 				description:
 					'Substitution tokens for attribute names in an expression. Only needed when the parameter "condition expression" is set.',
 				placeholder: 'Add Attribute Value',
@@ -417,8 +417,8 @@ export const itemFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'expressionAttributeValues',
-						displayName: 'Expression Attribute Vaue',
+						name: 'eavValues',
+						displayName: 'Expression Attribute Value',
 						values: [
 							{
 								displayName: 'Attribute',
