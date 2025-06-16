@@ -300,7 +300,7 @@ describe('SettingsSso View', () => {
 		});
 	});
 
-	describe.only('OIDC', () => {
+	describe('OIDC', () => {
 		it('should show upgrade banner when enterprise OIDC is disabled', async () => {
 			const pinia = createTestingPinia();
 			const ssoStore = mockedStore(useSSOStore);
