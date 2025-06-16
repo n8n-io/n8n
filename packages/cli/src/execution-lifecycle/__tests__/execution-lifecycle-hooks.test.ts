@@ -89,12 +89,6 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
-		data: {
-			startData: {
-				destinationNode: 'PartialExecutionToolExecutor',
-				originalDestinationNode: nodeName,
-			},
-		},
 	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
@@ -135,6 +129,15 @@ describe('Execution Lifecycle Hooks', () => {
 				error: expressionError,
 			},
 		};
+		successfulRunWithRewiredDestination.data = {
+			startData: {
+				destinationNode: 'PartialExecutionToolExecutor',
+				originalDestinationNode: nodeName,
+			},
+			resultData: {
+				runData: {},
+			},
+		};
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -168,7 +171,10 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should reset destination node to original destination', async () => {
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithRewiredDestination]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [
+					successfulRunWithRewiredDestination,
+					{},
+				]);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
 					executionId,
@@ -176,6 +182,11 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow: workflowData,
 					userId: expectedUserId,
 				});
+
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(
+					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
+				).toBeUndefined();
 			});
 		});
 	};
