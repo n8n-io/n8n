@@ -26,17 +26,17 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register multiple modules', () => {
-		@BackendModule({ name: 'test' })
+		@BackendModule({ name: 'test-1' })
 		class FirstModule {
 			init() {}
 		}
 
-		@BackendModule({ name: 'test' })
+		@BackendModule({ name: 'test-2' })
 		class SecondModule {
 			init() {}
 		}
 
-		@BackendModule({ name: 'test' })
+		@BackendModule({ name: 'test-3' })
 		class ThirdModule {
 			init() {}
 		}
@@ -81,10 +81,10 @@ describe('@BackendModule decorator', () => {
 
 	describe('ModuleMetadata', () => {
 		it('should allow retrieving and checking registered modules', () => {
-			@BackendModule({ name: 'test' })
+			@BackendModule({ name: 'test-a' })
 			class FirstModule {}
 
-			@BackendModule({ name: 'test' })
+			@BackendModule({ name: 'test-b' })
 			class SecondModule {}
 
 			const registeredModules = moduleMetadata.getClasses();
