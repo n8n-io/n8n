@@ -359,6 +359,7 @@ export class WorkflowExecute {
 			destinationNodeName,
 			'a destinationNodeName is required for the new partial execution flow',
 		);
+		const originalDestination = destinationNodeName;
 
 		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
@@ -453,6 +454,7 @@ export class WorkflowExecute {
 		this.runExecutionData = {
 			startData: {
 				destinationNode: destinationNodeName,
+				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {

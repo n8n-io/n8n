@@ -2134,6 +2134,7 @@ export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		originalDestinationNode?: string;
 		runNodeFilter?: string[];
 	};
 	resultData: {

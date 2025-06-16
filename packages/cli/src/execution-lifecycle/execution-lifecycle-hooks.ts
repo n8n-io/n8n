@@ -44,6 +44,15 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		if (runData.status === 'waiting') return;
 
 		const { executionId, workflowData: workflow } = this;
+
+		if (runData.data.startData) {
+			const originalDestination = runData.data.startData.originalDestinationNode;
+			if (originalDestination) {
+				runData.data.startData.destinationNode = originalDestination;
+				runData.data.startData.originalDestinationNode = undefined;
+			}
+		}
+
 		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 	});
 }
