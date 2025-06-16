@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -151,7 +152,14 @@ export class ManualExecutionService {
 					workflow = graph.toWorkflow({
 						...workflow,
 					});
-					data.destinationNode = graph.getDirectChildConnections(destinationNode).at(0)?.to?.name;
+
+					// Save original destination
+					if (data.executionData) {
+						data.executionData.startData = data.executionData.startData ?? {};
+						data.executionData.startData.originalDestinationNode = data.destinationNode;
+					}
+					// Set destination to Tool Executor
+					data.destinationNode = TOOL_EXECUTOR_NODE_NAME;
 				}
 			}
 
