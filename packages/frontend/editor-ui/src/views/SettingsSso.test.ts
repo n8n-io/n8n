@@ -9,7 +9,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import { useSSOStore } from '@/stores/sso.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/constants';
 import { nextTick } from 'vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
@@ -328,7 +327,7 @@ describe('SettingsSso', () => {
 	});
 
 	it('should render licensed content', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		ssoStore.isEnterpriseSamlEnabled = true;
 		await nextTick();
 
 		const { getByTestId, queryByTestId, getByRole } = renderComponent({
@@ -342,7 +341,7 @@ describe('SettingsSso', () => {
 
 	it('should enable activation checkbox and test button if data is already saved', async () => {
 		await ssoStore.getSamlConfig();
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		ssoStore.isEnterpriseSamlEnabled = true;
 		await nextTick();
 
 		const { container, getByTestId, getByRole } = renderComponent({
