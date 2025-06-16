@@ -34,7 +34,7 @@ const { width } = useElementSize(wrapperRef);
 <template>
 	<span :class="$style.container" data-test-id="node-title-container">
 		<span :class="$style.iconWrapper">
-			<NodeIcon :node-type="nodeType" :size="18" />
+			<NodeIcon :node-type="nodeType" :size="18" :show-tooltip="true" tooltip-position="left" />
 		</span>
 		<div ref="wrapperRef" :class="$style.textWrapper">
 			<N8nInlineTextEdit

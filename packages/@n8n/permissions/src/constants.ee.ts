@@ -25,6 +25,7 @@ export const RESOURCES = {
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
+	oidc: ['manage'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

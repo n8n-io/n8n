@@ -1,7 +1,17 @@
 import userEvent from '@testing-library/user-event';
-import { render, within } from '@testing-library/vue';
+import { render, screen, waitFor, within } from '@testing-library/vue';
+
+import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
+
+const renderComponent = createComponentRenderer(N8nDataTableServer);
+
+const getRenderedOptions = async () => {
+	const dropdown = await waitFor(() => screen.getByRole('listbox'));
+	expect(dropdown).toBeInTheDocument();
+	return dropdown.querySelectorAll('.el-select-dropdown__item');
+};
 
 const itemFactory = () => ({
 	id: crypto.randomUUID() as string,
@@ -84,8 +94,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting / pagination', async () => {
-		const { container, emitted, getByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, emitted, getByTestId, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 100 },
 		});
 
@@ -93,7 +102,17 @@ describe('N8nDataTableServer', () => {
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
 
-		expect(emitted('update:options').length).toBe(3);
+		// change the page size select option
+		const selectInput = await findAllByRole('combobox'); // Find the select input
+		await userEvent.click(selectInput[0]);
+
+		const options = await getRenderedOptions();
+		expect(options.length).toBe(4);
+
+		const option50 = Array.from(options).find((option) => option.textContent === '50');
+		await userEvent.click(option50!);
+
+		expect(emitted('update:options').length).toBeGreaterThanOrEqual(4);
 		expect(emitted('update:options')[0]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
 		]);
@@ -101,6 +120,24 @@ describe('N8nDataTableServer', () => {
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: true }] }),
 		]);
 		expect(emitted('update:options')[2]).toStrictEqual([expect.objectContaining({ page: 1 })]);
+		expect(emitted('update:options')[3]).toStrictEqual([
+			expect.objectContaining({ itemsPerPage: 50 }),
+		]);
+	});
+
+	it('should emit options for sorting with initial sort', async () => {
+		const { container, emitted } = renderComponent({
+			props: { items, headers, itemsLength: 100, sortBy: [{ id: 'id', desc: true }] },
+		});
+
+		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(container.querySelector('thead tr th')!);
+
+		expect(emitted('update:options').length).toBe(2);
+		expect(emitted('update:options')[0]).toStrictEqual([expect.objectContaining({ sortBy: [] })]);
+		expect(emitted('update:options')[1]).toStrictEqual([
+			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
+		]);
 	});
 
 	it('should not show the pagination if there are no items', async () => {

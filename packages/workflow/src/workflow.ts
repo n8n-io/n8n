@@ -5,8 +5,11 @@
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
+	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
+	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
 } from './constants';
+import { UserError } from './errors';
 import { ApplicationError } from './errors/application.error';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
@@ -31,6 +34,7 @@ import type {
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import * as NodeHelpers from './node-helpers';
+import { renameFormFields } from './node-parameters/rename-node-utils';
 import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
 
@@ -379,6 +383,29 @@ export class Workflow {
 	 * @param {string} newName The new name
 	 */
 	renameNode(currentName: string, newName: string) {
+		// These keys are excluded to prevent accidental modification of inherited properties and
+		// to avoid any issues related to JavaScript's built-in methods that can cause unexpected behavior
+		const restrictedKeys = [
+			'hasOwnProperty',
+			'isPrototypeOf',
+			'propertyIsEnumerable',
+			'toLocaleString',
+			'toString',
+			'valueOf',
+			'constructor',
+			'prototype',
+			'__proto__',
+			'__defineGetter__',
+			'__defineSetter__',
+			'__lookupGetter__',
+			'__lookupSetter__',
+		];
+
+		if (restrictedKeys.map((k) => k.toLowerCase()).includes(newName.toLowerCase())) {
+			throw new UserError(`Node name "${newName}" is a restricted name.`, {
+				description: `Node names cannot be any of the following: ${restrictedKeys.join(', ')}`,
+			});
+		}
 		// Rename the node itself
 		if (this.nodes[currentName] !== undefined) {
 			this.nodes[newName] = this.nodes[currentName];
@@ -401,6 +428,21 @@ export class Workflow {
 					currentName,
 					newName,
 					{ hasRenamableContent: true },
+				);
+			}
+			if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type)) {
+				node.parameters.html = this.renameNodeInParameterValue(
+					node.parameters.html,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
+			if (NODES_WITH_RENAMABLE_FORM_HTML_CONTENT.has(node.type)) {
+				renameFormFields(node, (p) =>
+					this.renameNodeInParameterValue(p, currentName, newName, {
+						hasRenamableContent: true,
+					}),
 				);
 			}
 		}
