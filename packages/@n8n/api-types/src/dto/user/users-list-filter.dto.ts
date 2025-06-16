@@ -35,6 +35,33 @@ const userSelectSchema = z.array(
 	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role']),
 );
 
+const selectValidatorSchema = z
+	.string()
+	.optional()
+	.transform((val, ctx) => {
+		if (!val) return undefined;
+		try {
+			const parsed: unknown = jsonParse(val);
+			try {
+				return userSelectSchema.parse(parsed);
+			} catch (e) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid select value',
+					path: ['select'],
+				});
+				return z.NEVER;
+			}
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid select format',
+				path: ['select'],
+			});
+			return z.NEVER;
+		}
+	});
+
 const userFilterSchema = z.object({
 	isOwner: z.boolean().optional(),
 	firstName: z.string().optional(),
@@ -72,12 +99,39 @@ const filterValidatorSchema = z
 
 const userExpandSchema = z.array(z.enum(['projectRelations']));
 
+const expandValidatorSchema = z
+	.string()
+	.optional()
+	.transform((val, ctx) => {
+		if (!val) return undefined;
+		try {
+			const parsed: unknown = jsonParse(val);
+			try {
+				return userExpandSchema.parse(parsed);
+			} catch (e) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid expand fields',
+					path: ['expand'],
+				});
+				return z.NEVER;
+			}
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid expand format',
+				path: ['expand'],
+			});
+			return z.NEVER;
+		}
+	});
+
 export class UsersListFilterDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(50), // Limit to 50 items per page
-	select: userSelectSchema.optional(),
+	select: selectValidatorSchema.optional(),
 	filter: filterValidatorSchema.optional(),
-	expand: userExpandSchema.optional(),
+	expand: expandValidatorSchema.optional(),
 	// Default sort order is role:asc, secondary sort criteria is name:asc
 	sortBy: usersListSortByValidator,
 }) {}
