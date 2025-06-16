@@ -11,7 +11,7 @@ import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getTools } from './loadOptions';
-import type { McpAuthenticationOption, McpToolIncludeMode } from './types';
+import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
 import {
 	connectMcpClient,
 	createCallTool,
@@ -76,13 +76,30 @@ export class McpClientTool implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'SSE Endpoint',
-				name: 'sseEndpoint',
+				displayName: 'Endpoint',
+				name: 'endpointUrl',
 				type: 'string',
-				description: 'SSE Endpoint of your MCP server',
-				placeholder: 'e.g. https://my-mcp-server.ai/sse',
+				description: 'Endpoint of your MCP server',
+				placeholder: 'e.g. https://my-mcp-server.ai/mcp',
 				default: '',
 				required: true,
+			},
+			{
+				displayName: 'Server Transport',
+				name: 'serverTransport',
+				type: 'options',
+				options: [
+					{
+						name: 'Server Sent Events (Deprecated)',
+						value: 'sse',
+					},
+					{
+						name: 'Streamable HTTP',
+						value: 'streamableHTTP',
+					},
+				],
+				default: 'sse',
+				description: 'The transport required by your server',
 			},
 			{
 				displayName: 'Authentication',
@@ -103,7 +120,7 @@ export class McpClientTool implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate with your SSE endpoint',
+				description: 'The way to authenticate with your endpoint',
 			},
 			{
 				displayName: 'Credentials',
@@ -187,11 +204,16 @@ export class McpClientTool implements INodeType {
 			'authentication',
 			itemIndex,
 		) as McpAuthenticationOption;
-		const sseEndpoint = this.getNodeParameter('sseEndpoint', itemIndex) as string;
+		const serverTransport = this.getNodeParameter(
+			'serverTransport',
+			itemIndex,
+		) as McpServerTransport;
+		const endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
-			sseEndpoint,
+			serverTransport,
+			endpointUrl,
 			headers,
 			name: node.type,
 			version: node.typeVersion,
