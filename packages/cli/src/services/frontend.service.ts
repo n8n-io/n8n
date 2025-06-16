@@ -253,12 +253,6 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
-			// insights: {
-			// 	enabled: this.modulesConfig.modules.includes('insights'),
-			// 	summary: true,
-			// 	dashboard: false,
-			// 	dateRanges: [],
-			// },
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
