@@ -257,9 +257,27 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
 
+			/**
+			 * Returns settings for all loaded modules.
+			 *
+			 * @example
+			 *
+			 * ```js
+			 * {
+			 * 		insights: {
+			 * 			summary: true,
+			 * 			dashboard: false,
+			 * 			dateRanges: [
+			 * 				{ key: 'day', licensed: true, granularity: 'hour' },
+			 * 				{ key: 'week', licensed: true, granularity: 'day' }
+			 * 			],
+			 * 		}
+			 * }
+			 * ```
+			 */
 			this.app.get(
-				`/${this.restEndpoint}/modules-settings`,
-				ResponseHelper.send(async () => frontendService.getModulesSettings()),
+				`/${this.restEndpoint}/module-settings`,
+				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
 			// Return Sentry config as a static file

@@ -3,24 +3,15 @@ import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
 import type { LifecycleContext, EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import {
-	UserError,
-	type IDataObject,
-	type IRun,
-	type IRunExecutionData,
-	type ITaskData,
-	type ITaskStartedData,
-	type IWorkflowBase,
-	type Workflow,
+import type {
+	IDataObject,
+	IRun,
+	IRunExecutionData,
+	ITaskData,
+	ITaskStartedData,
+	IWorkflowBase,
+	Workflow,
 } from 'n8n-workflow';
-
-class DuplicateModuleNameError extends UserError {
-	constructor(moduleName: string) {
-		super(
-			`Module "${moduleName}" exists more than once. Please ensure all your module classes are uniquely named.`,
-		);
-	}
-}
 
 @Service()
 export class ModuleRegistry {
@@ -40,14 +31,14 @@ export class ModuleRegistry {
 			const { licenseFlag, class: ModuleClass } = moduleEntry;
 
 			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
-				this.logger.debug(`Skipped init for unlicensed module "${ModuleClass.name}"`);
+				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
 				continue;
 			}
-			const moduleSettings = await Container.get(ModuleClass).init?.();
+			await Container.get(ModuleClass).init?.();
+
+			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
 			if (!moduleSettings) continue;
-
-			if (this.settings.has(moduleName)) throw new DuplicateModuleNameError(moduleName);
 
 			this.settings.set(moduleName, moduleSettings);
 		}

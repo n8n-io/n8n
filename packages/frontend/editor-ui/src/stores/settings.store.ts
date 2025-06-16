@@ -1,10 +1,15 @@
 import { computed, ref } from 'vue';
 import Bowser from 'bowser';
-import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
+import type {
+	IUserManagementSettings,
+	FrontendSettings,
+	FrontendModuleSettings,
+} from '@n8n/api-types';
 
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
+import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
@@ -29,6 +34,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const i18n = useI18n();
 	const initialized = ref(false);
 	const settings = ref<FrontendSettings>({} as FrontendSettings);
+	const moduleSettings = ref<FrontendModuleSettings>({} as FrontendModuleSettings);
 	const userManagement = ref<IUserManagementSettings>({
 		quota: -1,
 		showSetupOnFirstLoad: false,
@@ -192,6 +198,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const loadedModules = computed(() => settings.value.loadedModules);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -383,6 +391,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		settings.value = {} as FrontendSettings;
 	};
 
+	const getModuleSettings = async () => {
+		const fetched = await moduleSettingsApi.getModuleSettings(useRootStore().restApiContext);
+		moduleSettings.value = fetched;
+	};
+
 	/**
 	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
 	 */
@@ -471,5 +484,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSettings,
 		initialize,
 		partialExecutionVersion,
+		loadedModules,
+		getModuleSettings,
+		moduleSettings,
 	};
 });

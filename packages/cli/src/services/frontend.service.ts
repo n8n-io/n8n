@@ -377,13 +377,6 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		// Object.assign(this.settings.insights, {
-		// 	enabled: this.modulesConfig.loadedModules.has('insights'),
-		// 	summary: this.licenseState.isInsightsSummaryLicensed(),
-		// 	dashboard: this.licenseState.isInsightsDashboardLicensed(),
-		// 	dateRanges: this.licenseState.getInsightsAvailableDateRanges(),
-		// });
-
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
@@ -400,14 +393,8 @@ export class FrontendService {
 		return this.settings;
 	}
 
-	getModulesSettings() {
-		const modulesSettings = {};
-
-		for (const [moduleName, moduleSettings] of this.moduleRegistry.settings) {
-			Object.assign(modulesSettings, { [moduleName]: moduleSettings });
-		}
-
-		return modulesSettings;
+	getModuleSettings() {
+		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {

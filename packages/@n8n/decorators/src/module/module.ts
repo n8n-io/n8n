@@ -21,9 +21,9 @@ export type EntityClass = new () => BaseEntity;
 export type ModuleSettings = Record<string, unknown>;
 
 export interface ModuleInterface {
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-	init?(): Promise<ModuleSettings | void>;
+	init?(): Promise<void>;
 	entities?(): EntityClass[];
+	settings?(): Promise<ModuleSettings>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;
@@ -31,9 +31,9 @@ export type ModuleClass = Constructable<ModuleInterface>;
 export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 
 export const BackendModule =
-	(opts?: { licenseFlag: LicenseFlag }): ClassDecorator =>
+	(opts: { name?: string; licenseFlag?: LicenseFlag } = {}): ClassDecorator =>
 	(target) => {
-		Container.get(ModuleMetadata).register(target.name, {
+		Container.get(ModuleMetadata).register(opts?.name ?? target.name, {
 			class: target as unknown as ModuleClass,
 			licenseFlag: opts?.licenseFlag,
 		});
