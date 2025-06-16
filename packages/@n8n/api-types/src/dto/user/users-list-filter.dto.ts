@@ -1,5 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
+import { Z } from 'zod-class';
 
 import { paginationSchema } from '../pagination/pagination.dto';
 
@@ -42,29 +43,41 @@ const userFilterSchema = z.object({
 	fullText: z.string().optional(), // Full text search across firstName, lastName, and email
 });
 
-const userExpandSchema = z.object({
-	projectRelations: z.boolean().optional(),
-});
+const filterValidatorSchema = z
+	.string()
+	.optional()
+	.transform((val, ctx) => {
+		if (!val) return undefined;
+		try {
+			const parsed: unknown = jsonParse(val);
+			try {
+				return userFilterSchema.parse(parsed);
+			} catch (e) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid filter fields',
+					path: ['filter'],
+				});
+				return z.NEVER;
+			}
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid filter format',
+				path: ['filter'],
+			});
+			return z.NEVER;
+		}
+	});
 
-export const UsersListFilterDtoSchema = z.object({
+const userExpandSchema = z.array(z.enum(['projectRelations']));
+
+export class UsersListFilterDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(50), // Limit to 50 items per page
 	select: userSelectSchema.optional(),
-	filter: userFilterSchema.optional(),
+	filter: filterValidatorSchema.optional(),
 	expand: userExpandSchema.optional(),
 	// Default sort order is role:asc, secondary sort criteria is name:asc
 	sortBy: usersListSortByValidator,
-});
-
-export type UsersListFilterDto = z.infer<typeof UsersListFilterDtoSchema>;
-
-export const parseUsersListFilterDto = (query: Record<string, string>): UsersListFilterDto => {
-	return UsersListFilterDtoSchema.parse({
-		skip: query.skip,
-		take: query.take,
-		select: query.select ? jsonParse(query.select) : undefined,
-		filter: query.filter ? jsonParse(query.filter) : undefined,
-		expand: query.expand ? jsonParse(query.expand) : undefined,
-		sortBy: query.sortBy,
-	});
-};
+}) {}
