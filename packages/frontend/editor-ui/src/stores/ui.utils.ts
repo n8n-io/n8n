@@ -3,7 +3,7 @@ import type { AppliedThemeOption, ThemeOption } from '@/Interface';
 
 export function applyThemeToBody(theme: ThemeOption, window_?: Window) {
 	if (theme === 'system') {
-		window.document.body.removeAttribute('data-theme');
+		(window_ ?? window).document.body.removeAttribute('data-theme');
 	} else {
 		(window_ ?? window).document.body.setAttribute?.('data-theme', theme); // setAttribute can be missing in jsdom environment
 	}
