@@ -1,4 +1,6 @@
 import type { InsightsDateRange } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
@@ -17,6 +19,8 @@ const testServer = utils.setupTestServer({
 	modules: ['insights'],
 });
 
+let licenseState: LicenseState;
+
 beforeAll(async () => {
 	const owner = await createUser({ role: 'global:owner' });
 	const admin = await createUser({ role: 'global:admin' });
@@ -24,6 +28,12 @@ beforeAll(async () => {
 	agents.owner = testServer.authAgentFor(owner);
 	agents.admin = testServer.authAgentFor(admin);
 	agents.member = testServer.authAgentFor(member);
+
+	licenseState = Container.get(LicenseState);
+
+	jest.spyOn(licenseState, 'getInsightsMaxHistory').mockReturnValue(365);
+	// testServer.license.mockLicenseState(licenseState);
+	// licenseState.getInsightsMaxHistory.mockReturnValue(365);
 });
 
 describe('GET /insights routes work for owner and admins for server with dashboard license', () => {
@@ -56,6 +66,7 @@ describe('GET /insights routes return 403 for dashboard routes when summary lice
 describe('GET /insights routes return 403 if date range outside license limits', () => {
 	beforeAll(() => {
 		testServer.license.setDefaults({ quotas: { 'quota:insights:maxHistoryDays': 3 } });
+		jest.spyOn(licenseState, 'getInsightsMaxHistory').mockReturnValue(3);
 	});
 
 	test('Call should throw forbidden for default week insights', async () => {
@@ -83,6 +94,8 @@ describe('GET /insights routes return 200 if date range inside license limits', 
 			],
 			quotas: { 'quota:insights:maxHistoryDays': 365 },
 		});
+		jest.spyOn(licenseState, 'getInsightsMaxHistory').mockReturnValue(365);
+		jest.spyOn(licenseState, 'isInsightsHourlyDataLicensed').mockReturnValue(true);
 	});
 
 	test.each<InsightsDateRange['key']>([

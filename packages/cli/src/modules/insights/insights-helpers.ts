@@ -12,6 +12,7 @@ export const keyRangeToDays: Record<(typeof INSIGHTS_DATE_RANGE_KEYS)[number], n
 	year: 365,
 };
 
+// TODO: Remove
 /**
  * Returns the available date ranges with their license authorization and time granularity
  * when grouped by time.

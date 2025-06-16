@@ -1,5 +1,5 @@
-import type { BooleanLicenseFeature } from '@n8n/constants';
-import { UNLIMITED_LICENSE_QUOTA, INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
+import type { BooleanLicenseFeature, INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -207,22 +207,5 @@ export class LicenseState {
 
 	getMaxWorkflowsWithEvaluations() {
 		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
-	}
-
-	/**
-	 * Returns the available date ranges with their license authorization and time granularity
-	 * when grouped by time.
-	 */
-	getInsightsAvailableDateRanges() {
-		const maxHistoryInDays =
-			this.getInsightsMaxHistory() === -1 ? Number.MAX_SAFE_INTEGER : this.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.isInsightsHourlyDataLicensed();
-
-		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
-			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
-		}));
 	}
 }
