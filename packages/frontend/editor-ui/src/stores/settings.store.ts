@@ -502,7 +502,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		partialExecutionVersion,
 		loadedModules,
 		getModuleSettings,
 		moduleSettings,
