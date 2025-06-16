@@ -195,10 +195,19 @@ export interface FrontendSettings {
 	evaluation: {
 		quota: number;
 	};
+
+	/** Modules loaded by the backend based on user configuration and pre-init check. */
 	loadedModules: string[];
 }
 
 export type FrontendModuleSettings = {
+	/**
+	 * Client settings for [insights](https://docs.n8n.io/insights/) module.
+	 *
+	 * - `summary`: Whether the summary banner should be shown.
+	 * - `dashboard`: Whether the full dashboard should be shown.
+	 * - `dateRanges`: Date range filters available to select.
+	 */
 	insights?: {
 		summary: boolean;
 		dashboard: boolean;
