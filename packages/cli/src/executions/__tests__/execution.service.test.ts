@@ -71,7 +71,7 @@ describe('ExecutionService', () => {
 			 * Arrange
 			 */
 			executionRepository.findWithUnflattenedData.mockResolvedValue(undefined);
-			const req = mock<ExecutionRequest.Stop>();
+			const req = mock<ExecutionRequest.Stop>({ params: { id: '1234' } });
 
 			/**
 			 * Act
@@ -90,7 +90,7 @@ describe('ExecutionService', () => {
 			 */
 			const execution = mock<IExecutionResponse>({ id: '123', status: 'success' });
 			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
-			const req = mock<ExecutionRequest.Stop>();
+			const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 
 			/**
 			 * Act
@@ -115,7 +115,7 @@ describe('ExecutionService', () => {
 				waitTracker.has.mockReturnValue(false);
 				executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
-				const req = mock<ExecutionRequest.Stop>();
+				const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 
 				/**
 				 * Act
@@ -142,7 +142,7 @@ describe('ExecutionService', () => {
 				waitTracker.has.mockReturnValue(true);
 				executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
-				const req = mock<ExecutionRequest.Stop>();
+				const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 
 				/**
 				 * Act
@@ -169,7 +169,7 @@ describe('ExecutionService', () => {
 				waitTracker.has.mockReturnValue(false);
 				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
 
-				const req = mock<ExecutionRequest.Stop>();
+				const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 
 				/**
 				 * Act
@@ -206,7 +206,7 @@ describe('ExecutionService', () => {
 					activeExecutions.has.mockReturnValue(true);
 					waitTracker.has.mockReturnValue(false);
 
-					const req = mock<ExecutionRequest.Stop>();
+					const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 					const job = mock<Job>({ data: { executionId: '123' } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
@@ -241,7 +241,7 @@ describe('ExecutionService', () => {
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
 
-					const req = mock<ExecutionRequest.Stop>();
+					const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 					const job = mock<Job>({ data: { executionId: '123' } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
@@ -270,7 +270,7 @@ describe('ExecutionService', () => {
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
 
-					const req = mock<ExecutionRequest.Stop>();
+					const req = mock<ExecutionRequest.Stop>({ params: { id: '123' } });
 					const job = mock<Job>({ data: { executionId: '123' } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
