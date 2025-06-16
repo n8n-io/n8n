@@ -1,4 +1,4 @@
-import type { BooleanLicenseFeature, INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
+import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -10,16 +10,6 @@ class ProviderNotSetError extends UnexpectedError {
 		super('Cannot query license state because license provider has not been set');
 	}
 }
-
-export const keyRangeToDays: Record<(typeof INSIGHTS_DATE_RANGE_KEYS)[number], number> = {
-	day: 1,
-	week: 7,
-	'2weeks': 14,
-	month: 30,
-	quarter: 90,
-	'6months': 180,
-	year: 365,
-};
 
 @Service()
 export class LicenseState {
