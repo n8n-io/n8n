@@ -163,7 +163,11 @@ function onActivate(event: MouseEvent) {
 			/>
 			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
 			<CanvasNodeSettingsIcons
-				v-if="!isDisabled && !(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)"
+				v-if="
+					!renderOptions.configuration &&
+					!isDisabled &&
+					!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+				"
 			/>
 			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
