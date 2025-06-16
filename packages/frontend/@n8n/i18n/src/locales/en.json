@@ -12,6 +12,7 @@
 				"itemMatching": "Returns the matching item, i.e. the one used to produce the item in the current node at the specified index."
 			}
 		},
+		"user": "User",
 		"name": "Name",
 		"save": "Save",
 		"dismiss": "Dismiss",
@@ -1983,6 +1984,10 @@
 	"settings.users.userRoleUpdated": "Changes saved",
 	"settings.users.userRoleUpdated.message": "{user} has been successfully updated to a {role}",
 	"settings.users.userRoleUpdatedError": "Unable to updated role",
+	"settings.users.table.header.user": "@:_reusableBaseText.user",
+	"settings.users.table.header.accountType": "Account Type",
+	"settings.users.table.header.lastActive": "Last Active",
+	"settings.users.table.row.allProjects": "All projects",
 	"settings.api": "API",
 	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
 	"settings.api.scopes.upgrade.link": "Upgrade",

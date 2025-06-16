@@ -33,7 +33,7 @@ const search = ref('');
 const usersTableState = ref({
 	page: 0,
 	itemsPerPage: 25,
-	sortBy: [{ id: 'name', desc: true }],
+	sortBy: [{ id: 'name', desc: false }],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
@@ -42,6 +42,7 @@ onMounted(async () => {
 
 	if (!showUMSetupWarning.value) {
 		await usersStore.fetchUsers();
+		await updateUsersTableData(usersTableState.value);
 	}
 });
 
@@ -243,12 +244,12 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 	}
 }
 
-const updateUsersTableData = ({
-	page = 0,
-	itemsPerPage = 20,
+const updateUsersTableData = async ({
+	page,
+	itemsPerPage,
 	sortBy,
 }: {
-	page?: number;
+	page: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 }) => {
@@ -261,7 +262,7 @@ const updateUsersTableData = ({
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
 
-	void usersStore.usersList.execute(0, {
+	await usersStore.usersList.execute(0, {
 		skip,
 		take,
 		sortBy: sortBy[0]?.id ? `${sortBy[0].id}:${sortBy[0].desc ? 'desc' : 'asc'}` : undefined,
@@ -270,7 +271,7 @@ const updateUsersTableData = ({
 };
 
 const debouncedUpdateUsersTableData = useDebounceFn(() => {
-	updateUsersTableData(usersTableState.value);
+	void updateUsersTableData(usersTableState.value);
 }, 300);
 
 const onSearch = (value: string) => {
