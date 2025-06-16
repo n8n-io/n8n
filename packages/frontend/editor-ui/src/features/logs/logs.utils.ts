@@ -21,12 +21,12 @@ import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import z from 'zod';
 
-const SubExecutionIdentitySchema = z.object({
+const SubExecutionLocatorSchema = z.object({
 	executionId: z.string(),
 	workflowId: z.string(),
 });
 
-type SubExecutionIdentity = z.infer<typeof SubExecutionIdentitySchema>;
+type SubExecutionIdentity = z.infer<typeof SubExecutionLocatorSchema>;
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -452,7 +452,7 @@ export function findSubExecutionLocator(entry: LogEntry): SubExecutionIdentity |
 		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
 	}
 
-	return SubExecutionIdentitySchema.safeParse(entry.runData.error?.errorResponse).data;
+	return SubExecutionLocatorSchema.safeParse(entry.runData?.error?.errorResponse).data;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
