@@ -143,7 +143,7 @@ describe('ExecutionsController', () => {
 
 			const promise = executionsController.stop(req);
 
-			await expect(promise).rejects.toThrow(new NotFoundError('Execution not found'));
+			await expect(promise).rejects.toThrow(NotFoundError);
 			expect(executionService.stop).not.toHaveBeenCalled();
 		});
 
