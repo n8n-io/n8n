@@ -246,7 +246,7 @@ describe('prepareMessageFromLastNode', () => {
 			},
 		);
 		const result = prepareMessageFromLastNode(execution);
-		expect(result).toBe('');
+		expect(result).toBe('{\n  "someOtherProperty": "value"\n}');
 	});
 
 	it('should stringify non-string message values', () => {

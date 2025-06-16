@@ -27,7 +27,7 @@ export function prepareMessageFromLastNode(execution: IExecutionResponse) {
 	if (typeof textMessage !== 'string') {
 		textMessage = JSON.stringify(textMessage);
 	}
-	if (!textMessage) {
+	if (!textMessage && Object.keys(json).length) {
 		textMessage = JSON.stringify(json, null, 2);
 	}
 	return textMessage;
