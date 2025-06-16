@@ -2355,4 +2355,37 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			num_tools: 2, // Only ConnectedTool1 and ConnectedTool2
 		});
 	});
+
+	it('should extract model name from modelName parameter when model parameter is not present', () => {
+		const agentNode = mockAgentNode();
+		const modelNode: INode = {
+			id: 'model-node-id',
+			name: 'Google Gemini Model',
+			type: 'n8n-nodes-langchain.lmChatGoogleGemini',
+			typeVersion: 1,
+			position: [200, 200],
+			parameters: {
+				// Using modelName instead of model
+				modelName: 'gemini-1.5-pro',
+			},
+		};
+		const workflow = mockWorkflow([agentNode, modelNode], {
+			'Google Gemini Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		jest
+			.spyOn(nodeHelpers, 'getNodeParameters')
+			.mockReturnValueOnce(mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gemini-1.5-pro',
+		});
+	});
 });

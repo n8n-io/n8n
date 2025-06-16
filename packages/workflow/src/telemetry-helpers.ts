@@ -711,11 +711,18 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 									nodeType.description,
 								);
 
-								if (nodeParameters?.model) {
-									info.model_name =
-										typeof nodeParameters.model === 'string'
-											? nodeParameters.model
-											: ((nodeParameters.model as INodeParameterResourceLocator).value as string);
+								const modelNameKeys = ['model', 'modelName'] as const;
+								for (const key of modelNameKeys) {
+									if (nodeParameters?.[key]) {
+										info.model_name =
+											typeof nodeParameters[key] === 'string'
+												? nodeParameters[key]
+												: ((nodeParameters[key] as INodeParameterResourceLocator).value as string);
+
+										if (info.model_name) {
+											break;
+										}
+									}
 								}
 							}
 						}
