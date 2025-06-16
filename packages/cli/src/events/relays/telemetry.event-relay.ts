@@ -730,8 +730,14 @@ export class TelemetryEventRelay extends EventRelay {
 					credential_type: null,
 					is_managed: false,
 					eval_rows_left: null,
+					output_parser_fail_reason: null,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
+					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(
+						workflow,
+						this.nodeTypes,
+						runData,
+					),
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {

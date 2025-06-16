@@ -10,12 +10,14 @@ import type {
 	IRunData,
 	NodeConnectionType,
 	IWorkflowBase,
+	INodeParameters,
 } from '@/interfaces';
 import { NodeConnectionTypes } from '@/interfaces';
 import * as nodeHelpers from '@/node-helpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	extractLastExecutedNodeCredentialData,
+	extractLastExecutedNodeStructuredOutputErrorInfo,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
@@ -2024,6 +2026,249 @@ describe('resolveVectorStoreMetrics', () => {
 		expect(result).toMatchObject({
 			insertedIntoVectorStore: false,
 			queriedDataFromVectorStore: false,
+		});
+	});
+});
+
+describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
+	const mockWorkflow = (nodes: INode[], connections?: any): IWorkflowBase => ({
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		id: 'test-workflow',
+		name: 'Test Workflow',
+		active: false,
+		isArchived: false,
+		nodes,
+		connections: connections || {},
+		settings: {},
+		pinData: {},
+		versionId: 'test-version',
+	});
+
+	const mockAgentNode = (name = 'Agent', hasOutputParser = true): INode => ({
+		id: 'agent-node-id',
+		name,
+		type: '@n8n/n8n-nodes-langchain.agent',
+		typeVersion: 1,
+		position: [100, 100],
+		parameters: {
+			hasOutputParser,
+		},
+	});
+
+	const mockLanguageModelNode = (name = 'Model', model = 'gpt-4'): INode => ({
+		id: 'model-node-id',
+		name,
+		type: 'n8n-nodes-langchain.lmChatOpenAi',
+		typeVersion: 1,
+		position: [200, 200],
+		parameters: {
+			model,
+		},
+	});
+
+	const mockToolNode = (name: string): INode => ({
+		id: `tool-${name}`,
+		name,
+		type: 'n8n-nodes-base.httpRequestTool',
+		typeVersion: 1,
+		position: [300, 300],
+		parameters: {},
+	});
+
+	const mockRunData = (lastNodeExecuted: string, error?: any, nodeRunData?: any): IRun => ({
+		mode: 'manual',
+		status: error ? 'error' : 'success',
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+		data: {
+			startData: {},
+			resultData: {
+				lastNodeExecuted,
+				error,
+				runData: nodeRunData || {},
+			},
+		} as any,
+	});
+
+	it('should return null when there is no error', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent');
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toBeNull();
+	});
+
+	it('should return null when lastNodeExecuted is not defined', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toBeNull();
+	});
+
+	it('should return null when last executed node is not found in workflow', () => {
+		const workflow = mockWorkflow([mockAgentNode('Agent')]);
+		const runData = mockRunData('NonExistentNode', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toBeNull();
+	});
+
+	it('should return null when last executed node is not an agent node', () => {
+		const workflow = mockWorkflow([mockLanguageModelNode('Model')]);
+		const runData = mockRunData('Model', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toBeNull();
+	});
+
+	it('should return null when agent node does not have output parser', () => {
+		const workflow = mockWorkflow([mockAgentNode('Agent', false)]);
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toBeNull();
+	});
+
+	it('should return error info without output parser fail reason when error is not output parser error', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent', new Error('Different error'), {
+			Agent: [
+				{
+					error: {
+						message: 'Some other error',
+					},
+				},
+			],
+		});
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+		});
+	});
+
+	it('should return error info with output parser fail reason', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent', new Error('Some error'), {
+			Agent: [
+				{
+					error: {
+						message: "Model output doesn't fit required format",
+						context: {
+							outputParserFailReason: 'Failed to parse JSON output',
+						},
+					},
+				},
+			],
+		});
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			output_parser_fail_reason: 'Failed to parse JSON output',
+			num_tools: 0,
+		});
+	});
+
+	it('should count connected tools correctly', () => {
+		const agentNode = mockAgentNode();
+		const tool1 = mockToolNode('Tool1');
+		const tool2 = mockToolNode('Tool2');
+		const workflow = mockWorkflow([agentNode, tool1, tool2], {
+			Tool1: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			Tool2: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 2,
+		});
+	});
+
+	it('should extract model name from connected language model node', () => {
+		const agentNode = mockAgentNode();
+		const modelNode = mockLanguageModelNode('OpenAI Model', 'gpt-4-turbo');
+		const workflow = mockWorkflow([agentNode, modelNode], {
+			'OpenAI Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+		jest
+			.spyOn(nodeHelpers, 'getNodeParameters')
+			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gpt-4-turbo',
+		});
+	});
+
+	it('should handle complete scenario with tools, model, and output parser error', () => {
+		const agentNode = mockAgentNode();
+		const modelNode = mockLanguageModelNode('OpenAI Model', 'gpt-4');
+		const tool1 = mockToolNode('HTTPTool');
+		const tool2 = mockToolNode('SlackTool');
+		const tool3 = mockToolNode('GoogleSheetsTool');
+
+		const workflow = mockWorkflow([agentNode, modelNode, tool1, tool2, tool3], {
+			'OpenAI Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+			HTTPTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			SlackTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			GoogleSheetsTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+		});
+
+		const runData = mockRunData('Agent', new Error('Workflow error'), {
+			Agent: [
+				{
+					error: {
+						message: "Model output doesn't fit required format",
+						context: {
+							outputParserFailReason: 'Invalid JSON structure: Expected object, got string',
+						},
+					},
+				},
+			],
+		});
+
+		jest
+			.spyOn(nodeHelpers, 'getNodeParameters')
+			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			output_parser_fail_reason: 'Invalid JSON structure: Expected object, got string',
+			num_tools: 3,
+			model_name: 'gpt-4.1-mini',
 		});
 	});
 });
