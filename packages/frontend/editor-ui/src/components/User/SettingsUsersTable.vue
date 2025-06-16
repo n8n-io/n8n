@@ -1,11 +1,17 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ROLE, type UsersList } from '@n8n/api-types';
+import { type Role, ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import N8nDataTableServer, {
 	type TableHeader,
 } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
-import N8nUserInfo from '@n8n/design-system/components/N8nUserInfo';
+import {
+	N8nActionDropdown,
+	N8nUserInfo,
+	N8nIcon,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
+import { DateTime } from 'luxon';
 
 type Item = UsersList['data'][number];
 
@@ -45,13 +51,37 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
-		value(row) {
-			return roles.value[row.role] || i18n.baseText('auth.roles.owner.default');
+		value(row): {
+			userId: string;
+			roleId: Role;
+			label: string;
+			isEditable: boolean;
+			dropdownItems: ActionDropdownItem[];
+		} {
+			return {
+				userId: row.id,
+				roleId: row.role,
+				label: roles.value[row.role] ?? i18n.baseText('auth.roles.default'),
+				isEditable: row.role !== ROLE.Owner,
+				dropdownItems: [
+					{
+						id: ROLE.Member,
+						label: i18n.baseText('auth.roles.member'),
+					},
+					{
+						id: ROLE.Admin,
+						label: i18n.baseText('auth.roles.admin'),
+					},
+				],
+			};
 		},
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.lastActive'),
 		key: 'lastActive',
+		value(row) {
+			return DateTime.now().diff(DateTime.fromISO(row.lastActive), ['days']).toHuman();
+		},
 	},
 	{
 		title: i18n.baseText('projects.menu.title'),
@@ -76,6 +106,27 @@ const headers = ref<Array<TableHeader<Item>>>([
 				<div class="pt-s pb-s">
 					<N8nUserInfo v-bind="value" />
 				</div>
+			</template>
+			<template #[`item.role`]="{ value }">
+				<N8nActionDropdown
+					v-if="value.isEditable"
+					placement="bottom-start"
+					:items="value.dropdownItems"
+				>
+					<template #activator>
+						<span>
+							{{ value.label }}
+							<N8nIcon icon="chevron-down" size="small" />
+						</span>
+					</template>
+					<template #menuItem="item">
+						<span>{{ item.label }}</span>
+					</template>
+				</N8nActionDropdown>
+				<span v-else>{{ value.label }}</span>
+			</template>
+			<template #[`item.projects`]="{ value }">
+				<span>{{ value.join(', ') }}</span>
 			</template>
 		</N8nDataTableServer>
 	</div>
