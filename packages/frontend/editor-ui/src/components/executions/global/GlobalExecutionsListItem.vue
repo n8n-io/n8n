@@ -18,6 +18,7 @@ import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
+import { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -74,40 +75,41 @@ const EXECUTION_STATUS = {
 	CANCELED: 'canceled',
 } as const;
 
-const executionIconStatusDictionary: Record<ExecutionStatus, { icon: string; color: IconColor }> = {
-	[EXECUTION_STATUS.CRASHED]: {
-		icon: 'status-error',
-		color: 'danger',
-	},
-	[EXECUTION_STATUS.ERROR]: {
-		icon: 'status-error',
-		color: 'danger',
-	},
-	[EXECUTION_STATUS.WAITING]: {
-		icon: 'status-waiting',
-		color: 'secondary',
-	},
-	[EXECUTION_STATUS.SUCCESS]: {
-		icon: 'status-completed',
-		color: 'success',
-	},
-	[EXECUTION_STATUS.NEW]: {
-		icon: 'status-new',
-		color: 'foreground-xdark',
-	},
-	[EXECUTION_STATUS.RUNNING]: {
-		icon: 'spinner',
-		color: 'secondary',
-	},
-	[EXECUTION_STATUS.UNKNOWN]: {
-		icon: 'status-unknown',
-		color: 'foreground-xdark',
-	},
-	[EXECUTION_STATUS.CANCELED]: {
-		icon: 'status-canceled',
-		color: 'foreground-xdark',
-	},
-};
+const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; color: IconColor }> =
+	{
+		[EXECUTION_STATUS.CRASHED]: {
+			icon: 'status-error',
+			color: 'danger',
+		},
+		[EXECUTION_STATUS.ERROR]: {
+			icon: 'status-error',
+			color: 'danger',
+		},
+		[EXECUTION_STATUS.WAITING]: {
+			icon: 'status-waiting',
+			color: 'secondary',
+		},
+		[EXECUTION_STATUS.SUCCESS]: {
+			icon: 'status-completed',
+			color: 'success',
+		},
+		[EXECUTION_STATUS.NEW]: {
+			icon: 'status-new',
+			color: 'foreground-xdark',
+		},
+		[EXECUTION_STATUS.RUNNING]: {
+			icon: 'spinner',
+			color: 'secondary',
+		},
+		[EXECUTION_STATUS.UNKNOWN]: {
+			icon: 'status-unknown',
+			color: 'foreground-xdark',
+		},
+		[EXECUTION_STATUS.CANCELED]: {
+			icon: 'status-canceled',
+			color: 'foreground-xdark',
+		},
+	};
 
 const errorStatuses: ExecutionStatus[] = [EXECUTION_STATUS.ERROR, EXECUTION_STATUS.CRASHED];
 const classes = computed(() => {

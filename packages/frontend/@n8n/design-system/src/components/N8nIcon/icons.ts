@@ -1621,7 +1621,17 @@ export const icons = {
 	html: IconLucideX,
 	text: IconLucideX,
 	// robot: IconLucideX,
+	'pop-out': IconLucideX,
+	'status-new': IconLucideX,
+	'status-completed': IconLucideX,
+	'status-canceled': IconLucideX,
+	'status-warning': IconLucideX,
+	'status-error': IconLucideX,
+	'status-waiting': IconLucideX,
+	'status-unknown': IconLucideX,
 
+	refresh: IconLucideRefreshCw,
+	vault: IconLucideVault,
 	'check-double': IconLucideCheckCheck,
 
 	// selector icons

@@ -16,6 +16,7 @@ import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.v
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const route = useRoute();
 const router = useRouter();
@@ -88,7 +89,7 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: i18n.baseText('projects.header.create.workflow'),
-	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||

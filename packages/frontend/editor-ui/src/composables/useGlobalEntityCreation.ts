@@ -12,12 +12,13 @@ import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type BaseItem = {
 	id: string;
 	title: string;
 	disabled?: boolean;
-	icon?: string;
+	icon?: IconName;
 	route?: RouteLocationRaw;
 };
 
@@ -116,7 +117,7 @@ export const useGlobalEntityCreation = () => {
 						...displayProjects.value.map((project) => ({
 							id: `workflow-${project.id}`,
 							title: project.name as string,
-							icon: 'layer-group',
+							icon: 'layer-group' as IconName,
 							disabled: disabledWorkflow(project.scopes),
 							route: {
 								name: VIEWS.NEW_WORKFLOW,
@@ -140,7 +141,7 @@ export const useGlobalEntityCreation = () => {
 						{
 							id: 'credential-personal',
 							title: i18n.baseText('projects.menu.personal'),
-							icon: 'user',
+							icon: 'user' as IconName,
 							disabled: disabledCredential(projectsStore.personalProject?.scopes),
 							route: {
 								name: VIEWS.PROJECTS_CREDENTIALS,
@@ -150,7 +151,7 @@ export const useGlobalEntityCreation = () => {
 						...displayProjects.value.map((project) => ({
 							id: `credential-${project.id}`,
 							title: project.name as string,
-							icon: 'layer-group',
+							icon: 'layer-group' as IconName,
 							disabled: disabledCredential(project.scopes),
 							route: {
 								name: VIEWS.PROJECTS_CREDENTIALS,
