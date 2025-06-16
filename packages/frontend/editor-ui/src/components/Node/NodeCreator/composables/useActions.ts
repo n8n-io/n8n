@@ -13,6 +13,8 @@ import type {
 	INodeCreateElement,
 	IUpdateInformation,
 	LabelCreateElement,
+	NodeCreateElement,
+	NodeTypeSelectedPayload,
 } from '@/Interface';
 import {
 	AGENT_NODE_TYPE,
@@ -153,7 +155,13 @@ export const useActions = () => {
 		return filteredActions;
 	}
 
-	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
+	type ActionData = {
+		name: string;
+		key: string;
+		value: INodeParameters;
+	};
+
+	function getActionData(actionItem: ActionTypeDescription): ActionData {
 		const displayOptions = actionItem.displayOptions;
 
 		const displayConditions = Object.keys(displayOptions?.show ?? {}).reduce(
@@ -169,6 +177,51 @@ export const useActions = () => {
 			key: actionItem.name,
 			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
 		};
+	}
+
+	function actionDataToNodeTypeSelectedPayload(actionData: ActionData): NodeTypeSelectedPayload {
+		const result: NodeTypeSelectedPayload = {
+			type: actionData.key,
+		};
+
+		if (
+			typeof actionData.value.resource === 'string' ||
+			typeof actionData.value.operation === 'string'
+		) {
+			result.parameters = {};
+
+			if (typeof actionData.value.resource === 'string') {
+				result.parameters.resource = actionData.value.resource;
+			}
+
+			if (typeof actionData.value.operation === 'string') {
+				result.parameters.operation = actionData.value.operation;
+			}
+		}
+
+		return result;
+	}
+
+	function nodeCreateElementToNodeTypeSelectedPayload(
+		actionData: NodeCreateElement,
+	): NodeTypeSelectedPayload {
+		const result: NodeTypeSelectedPayload = {
+			type: actionData.key,
+		};
+
+		if (typeof actionData.resource === 'string' || typeof actionData.operation === 'string') {
+			result.parameters = {};
+
+			if (typeof actionData.resource === 'string') {
+				result.parameters.resource = actionData.resource;
+			}
+
+			if (typeof actionData.operation === 'string') {
+				result.parameters.operation = actionData.operation;
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -305,7 +358,7 @@ export const useActions = () => {
 		return { nodes, connections };
 	}
 
-	// Hook into addNode action to set the last node parameters & track the action selected
+	// Hook into addNode action to set the last node parameters, adjust default name and track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
@@ -323,7 +376,6 @@ export const useActions = () => {
 				});
 			},
 		);
-
 		return storeWatcher;
 	}
 
@@ -344,6 +396,8 @@ export const useActions = () => {
 
 	return {
 		actionsCategoryLocales,
+		actionDataToNodeTypeSelectedPayload,
+		nodeCreateElementToNodeTypeSelectedPayload,
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
 		getAddedNodesAndConnections,

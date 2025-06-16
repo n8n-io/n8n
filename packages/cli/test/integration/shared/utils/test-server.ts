@@ -17,6 +17,7 @@ import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
+import * as testModules from '@test-integration/test-modules';
 
 import { mockInstance, mockLogger } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -91,6 +92,7 @@ export const setupTestServer = ({
 	endpointGroups,
 	enabledFeatures,
 	quotas,
+	modules,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -120,6 +122,7 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
+		if (modules) await testModules.load(modules);
 		await testDb.init();
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
@@ -289,7 +292,7 @@ export const setupTestServer = ({
 						await import('@/controllers/folder.controller');
 
 					case 'externalSecrets':
-						await import('@/modules/external-secrets.ee/external-secrets.ee.module');
+						await import('@/modules/external-secrets.ee/external-secrets.module');
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');

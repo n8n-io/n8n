@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { TaskRunnersConfig } from '@n8n/config';
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	BrokerMessage,
@@ -10,7 +10,6 @@ import type {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import config from '@/config';
 import { Time } from '@/constants';
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
@@ -91,6 +90,7 @@ export class TaskBroker {
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly taskRunnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new UserError('Task timeout must be greater than 0');
@@ -471,7 +471,7 @@ export class TaskBroker {
 			taskId,
 			new TaskRunnerExecutionTimeoutError({
 				taskTimeout,
-				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
+				isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
 				mode,
 			}),
 		);

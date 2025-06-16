@@ -21,7 +21,12 @@ import {
 	type ExecutionError,
 	type ITaskStartedData,
 } from 'n8n-workflow';
-import { createTestLogTreeCreationContext } from './__test__/data';
+import {
+	aiAgentNode,
+	aiChatWorkflow,
+	aiModelNode,
+	createTestLogTreeCreationContext,
+} from './__test__/data';
 import type { LogEntrySelection } from './logs.types';
 import type { IExecutionResponse } from '@/Interface';
 import { isReactive, reactive } from 'vue';
@@ -30,10 +35,11 @@ import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
+		const nodeA = createTestNode({ name: 'A', id: 'test-node-id-a' });
 		const workflow = createTestWorkflowObject({
 			id: 'test-wf-id',
 			nodes: [
-				createTestNode({ name: 'A', id: 'test-node-id-a' }),
+				nodeA,
 				createTestNode({ name: 'B', id: 'test-node-id-b' }),
 				createTestNode({ name: 'C', id: 'test-node-id-c' }),
 			],
@@ -69,7 +75,7 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({ startTime: 1740528000004 }),
 			],
 		});
-		const logTree = getTreeNodeData('A', ctx.data.resultData.runData.A[0], undefined, ctx);
+		const logTree = getTreeNodeData(nodeA, ctx.data.resultData.runData.A[0], undefined, ctx);
 
 		expect(logTree.length).toBe(1);
 
@@ -77,14 +83,14 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].depth).toBe(0);
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
-		expect(logTree[0].runData.startTime).toBe(1740528000000);
+		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
 		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
 		expect(logTree[0].children[0].depth).toBe(1);
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
-		expect(logTree[0].children[0].runData.startTime).toBe(1740528000001);
+		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
 		expect(logTree[0].children[0].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
@@ -112,12 +118,10 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter node executions based on source node', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
-			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
-				createTestNode({ name: 'SharedSubNode' }),
-			],
+			nodes: [rootNode1, rootNode2, createTestNode({ name: 'SharedSubNode' })],
 			connections: {
 				SharedSubNode: {
 					ai_tool: [
@@ -160,7 +164,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -171,7 +175,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -182,8 +186,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter node executions based on source run index', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -217,7 +222,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for run #1 of RootNode - should only show SubNode with source run index 0
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			0,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -228,7 +233,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for run #2 of RootNode - should only show SubNode with source run index 1
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[1],
 			1,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -239,8 +244,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes without source information', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -268,7 +274,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode - should still show SubNode even without source info
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -279,8 +285,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes with empty source array', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -308,7 +315,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode - should still show SubNode even with empty source array
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -319,8 +326,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes with source array without previous node', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -335,7 +343,7 @@ describe(getTreeNodeData, () => {
 		};
 
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -346,10 +354,12 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter deeper nested nodes based on source', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
 			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
+				rootNode1,
+				rootNode2,
 				createTestNode({ name: 'SharedSubNode' }),
 				createTestNode({ name: 'DeepSubNode' }),
 			],
@@ -412,7 +422,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode1
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -426,7 +436,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode2
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -440,10 +450,12 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should handle complex tree with multiple branches and filters correctly', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
 			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
+				rootNode1,
+				rootNode2,
 				createTestNode({ name: 'SubNodeA' }),
 				createTestNode({ name: 'SubNodeB' }),
 				createTestNode({ name: 'DeepNode' }),
@@ -512,7 +524,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode1 -> SubNodeA -> DeepNode
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -525,7 +537,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode2 -> SubNodeB -> DeepNode
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -986,6 +998,88 @@ describe(createLogTree, () => {
 		expect(logs[0].children[1].children).toHaveLength(2);
 		expect(logs[0].children[1].children[0].node.name).toBe('C');
 		expect(logs[0].children[1].children[1].node.name).toBe('C');
+	});
+
+	it('should not include nodes without run data', () => {
+		const logs = createLogTree(
+			createTestWorkflowObject(aiChatWorkflow),
+			createTestWorkflowExecutionResponse({ data: { resultData: { runData: {} } } }),
+		);
+
+		expect(logs).toHaveLength(0);
+	});
+
+	it('should include sub node log without run data in its root node', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject(aiChatWorkflow),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe(aiAgentNode.name);
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should include sub node log with its root node disabled', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				...aiChatWorkflow,
+				nodes: [{ ...aiAgentNode, disabled: true }, aiModelNode],
+			}),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe(aiAgentNode.name);
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should not include duplicate sub node log when the node belongs to multiple root nodes with no run data', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				nodes: [
+					{ ...aiAgentNode, name: 'Agent A' },
+					{ ...aiAgentNode, name: 'Agent B' },
+					aiModelNode,
+				],
+				connections: {
+					[aiModelNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[
+								{ node: 'Agent A', index: 0, type: NodeConnectionTypes.AiLanguageModel },
+								{ node: 'Agent B', index: 0, type: NodeConnectionTypes.AiLanguageModel },
+							],
+						],
+					},
+				},
+			}),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe('Agent B');
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
 });
 

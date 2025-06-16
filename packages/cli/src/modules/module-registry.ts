@@ -1,5 +1,6 @@
-import type { LifecycleContext } from '@n8n/decorators';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
+import type { LifecycleContext, EntityClass } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type {
@@ -14,14 +15,32 @@ import type {
 
 @Service()
 export class ModuleRegistry {
+	readonly entities: EntityClass[] = [];
+
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
 		private readonly lifecycleMetadata: LifecycleMetadata,
+		private readonly licenseState: LicenseState,
+		private readonly logger: Logger,
 	) {}
 
-	async initializeModules() {
-		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			await Container.get(ModuleClass).initialize?.();
+	async initModules() {
+		for (const { class: ModuleClass, licenseFlag } of this.moduleMetadata.getEntries()) {
+			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
+				this.logger.debug(`Skipped init for unlicensed module "${ModuleClass.name}"`);
+				continue;
+			}
+			await Container.get(ModuleClass).init?.();
+		}
+	}
+
+	addEntities() {
+		for (const { class: ModuleClass } of this.moduleMetadata.getEntries()) {
+			const entities = Container.get(ModuleClass).entities?.();
+
+			if (!entities || entities.length === 0) continue;
+
+			this.entities.push(...entities);
 		}
 	}
 

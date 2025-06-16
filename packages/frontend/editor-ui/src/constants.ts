@@ -571,6 +571,8 @@ export const enum VIEWS {
 	SHARED_WITH_ME = 'SharedWithMe',
 	SHARED_WORKFLOWS = 'SharedWorkflows',
 	SHARED_CREDENTIALS = 'SharedCredentials',
+	ENTITY_NOT_FOUND = 'EntityNotFound',
+	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -642,6 +644,7 @@ export const EnterpriseEditionFeature: Record<
 	LogStreaming: 'logStreaming',
 	Variables: 'variables',
 	Saml: 'saml',
+	Oidc: 'oidc',
 	SourceControl: 'sourceControl',
 	ExternalSecrets: 'externalSecrets',
 	AuditLogs: 'auditLogs',
@@ -696,6 +699,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
+	OIDC = 'oidc',
 }
 
 export const N8N_SALES_EMAIL = 'sales@n8n.io';
@@ -734,10 +738,17 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
+	name: '033_rag_template',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
+	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';

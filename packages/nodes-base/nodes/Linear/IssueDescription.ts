@@ -13,6 +13,12 @@ export const issueOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Link',
+				value: 'addLink',
+				description: 'Add a link to an issue',
+				action: 'Add a link to an issue',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an issue',
@@ -164,7 +170,7 @@ export const issueFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['issue'],
-				operation: ['get', 'delete'],
+				operation: ['addLink', 'get', 'delete'],
 			},
 		},
 		default: '',
@@ -306,5 +312,21 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                         	issue:addLink                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Link',
+		name: 'link',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['issue'],
+				operation: ['addLink'],
+			},
+		},
+		default: '',
 	},
 ];

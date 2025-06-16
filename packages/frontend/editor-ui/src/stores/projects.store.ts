@@ -123,14 +123,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon } = projectData;
+		const { name, icon, description } = projectData;
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = name;
 			myProjects.value[projectIndex].icon = icon;
+			myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
 			currentProject.value.name = name;
 			currentProject.value.icon = icon;
+			currentProject.value.description = description;
 		}
 		if (projectData.relations) {
 			await getProject(id);
