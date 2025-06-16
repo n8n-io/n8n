@@ -1,7 +1,7 @@
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Workflow } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NodeTypes } from '@/node-types';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { mockInstance } from '@test/mocking';

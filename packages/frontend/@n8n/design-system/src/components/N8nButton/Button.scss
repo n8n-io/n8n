@@ -22,7 +22,11 @@
 	box-sizing: border-box;
 	outline: none;
 	margin: 0;
-	transition: 0.3s;
+	transition:
+		all 0.3s,
+		padding 0s,
+		width 0s,
+		height 0s;
 
 	@include utils-user-select(none);
 

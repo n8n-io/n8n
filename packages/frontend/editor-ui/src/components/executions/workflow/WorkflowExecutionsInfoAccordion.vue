@@ -7,9 +7,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -28,7 +28,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowSaving = useWorkflowSaving({ router });
 const locale = useI18n();
 
 const settingsStore = useSettingsStore();
@@ -177,7 +177,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 	if (!currentId) {
 		return;
 	}
-	const saved = await workflowHelpers.saveCurrentWorkflow({
+	const saved = await workflowSaving.saveCurrentWorkflow({
 		id: currentId,
 		name: workflowName.value,
 		tags: currentWorkflowTagIds.value,
@@ -232,7 +232,9 @@ async function onSaveWorkflowClick(): Promise<void> {
 	& > div:nth-child(1) {
 		display: flex;
 		flex-direction: row;
-		padding: var(--spacing-xs);
+		justify-content: space-between;
+		padding-block: var(--spacing-2xs);
+		padding-inline: var(--spacing-s);
 		width: 100%;
 		user-select: none;
 		color: var(--color-text-base) !important;
@@ -243,7 +245,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		padding: 0 var(--spacing-l) var(--spacing-s) !important;
+		padding: 0 var(--spacing-s) var(--spacing-2xs) !important;
 
 		span {
 			width: 100%;

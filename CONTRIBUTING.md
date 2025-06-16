@@ -19,9 +19,14 @@ Great that you are here and you want to contribute to n8n
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
-		-	[Community PR Guidelines](#community-pr-guidelines)
+		- [Community PR Guidelines](#community-pr-guidelines)
+			- [**1. Change Request/Comment**](#1-change-requestcomment)
+			- [**2. General Requirements**](#2-general-requirements)
+			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
+			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
 		- [Test suite](#test-suite)
 			- [Unit tests](#unit-tests)
+			- [Code Coverage](#code-coverage)
 			- [E2E tests](#e2e-tests)
 	- [Releasing](#releasing)
 	- [Create custom nodes](#create-custom-nodes)
@@ -42,7 +47,7 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
-- [/docker/image](/docker/images) - Dockerfiles to create n8n containers
+- [/docker/images](/docker/images) - Dockerfiles to create n8n containers
 - [/packages](/packages) - The different n8n modules
 - [/packages/cli](/packages/cli) - CLI code to run front- & backend
 - [/packages/core](/packages/core) - Core code which handles workflow
@@ -69,11 +74,11 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 20.15 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 22.16 or newer is required for development purposes.
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 9.1 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 10.2 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -85,11 +90,11 @@ This automatically sets up file-links between modules which depend on each other
 
 We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
 
-With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 9.15 of pnpm via: `corepack prepare pnpm@9.15.5 --activate`.
+You can install the correct version of pnpm using `corepack prepare --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare pnpm --activate` in a terminal as an administrator.
+**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
 
 #### Build tools
 
@@ -252,6 +257,10 @@ of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
 If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
+
+#### Code Coverage
+We track coverage for all our code on [Codecov](https://app.codecov.io/gh/n8n-io/n8n).
+But when you are working on tests locally, we recommend running your tests with env variable `COVERAGE_ENABLED` set to `true`. You can then view the code coverage in the `coverage` folder, or you can use [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) to visualize the coverage directly in VSCode.
 
 #### E2E tests
 

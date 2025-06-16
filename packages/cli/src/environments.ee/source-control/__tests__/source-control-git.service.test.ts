@@ -1,8 +1,7 @@
+import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
-
-import type { User } from '@/databases/entities/user';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';

@@ -151,6 +151,7 @@ module.exports = {
 			files: ['**/*.test.ts', '**/test/**/*.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
+				'n8n-nodes-base/node-filename-against-convention': 'off',
 			},
 		},
 	],

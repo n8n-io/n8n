@@ -11,16 +11,20 @@ export const defaultSettings: FrontendSettings = {
 	},
 	allowedModules: {},
 	communityNodesEnabled: false,
+	unverifiedCommunityNodesEnabled: true,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',
 	endpointFormWaiting: '',
+	endpointMcp: '',
+	endpointMcpTest: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
 	enterprise: {
 		sharing: false,
 		ldap: false,
+		oidc: false,
 		saml: false,
 		logStreaming: false,
 		debugInEditor: false,
@@ -34,16 +38,15 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		apiKeyScopes: false,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
 	},
-	expressions: {
-		evaluator: 'tournament',
-	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -76,6 +79,7 @@ export const defaultSettings: FrontendSettings = {
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
+		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
 	},
 	telemetry: {
 		enabled: false,
@@ -143,5 +147,19 @@ export const defaultSettings: FrontendSettings = {
 	},
 	insights: {
 		enabled: false,
+		summary: true,
+		dashboard: false,
+		dateRanges: [
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: false, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: '6months', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		],
+	},
+	evaluation: {
+		quota: 0,
 	},
 };

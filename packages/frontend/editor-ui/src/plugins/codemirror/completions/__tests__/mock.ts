@@ -9,6 +9,7 @@ const runExecutionData: IRunExecutionData = {
 			Start: [
 				{
 					startTime: 1,
+					executionIndex: 0,
 					executionTime: 1,
 					data: {
 						main: [
@@ -25,6 +26,7 @@ const runExecutionData: IRunExecutionData = {
 			Function: [
 				{
 					startTime: 1,
+					executionIndex: 1,
 					executionTime: 1,
 					data: {
 						main: [
@@ -62,6 +64,7 @@ const runExecutionData: IRunExecutionData = {
 			Rename: [
 				{
 					startTime: 1,
+					executionIndex: 2,
 					executionTime: 1,
 					data: {
 						main: [
@@ -99,6 +102,7 @@ const runExecutionData: IRunExecutionData = {
 			End: [
 				{
 					startTime: 1,
+					executionIndex: 3,
 					executionTime: 1,
 					data: {
 						main: [

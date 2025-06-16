@@ -5,6 +5,8 @@ import type {
 	SimplifiedNodeType,
 	INodeCreateElement,
 	SectionCreateElement,
+	ActionTypeDescription,
+	NodeFilterType,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
@@ -19,12 +21,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { NodeViewItemSection } from './viewsData';
-import { i18n } from '@/plugins/i18n';
-import { sortBy } from 'lodash-es';
+import { i18n } from '@n8n/i18n';
+import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { NodeIconSource } from '../../../utils/nodeIcon';
+import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
+import { useNodeTypesStore } from '../../../stores/nodeTypes.store';
+
+const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -57,11 +64,17 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
 
-		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
+		const matchedSubcategories = WHITE_LISTED_SUBCATEGORIES.flatMap((category) => {
 			if (item.codex?.categories?.includes(category)) {
-				subcategories = item.codex?.subcategories?.[category] ?? [];
+				return item.codex?.subcategories?.[category] ?? [];
 			}
+
+			return [];
 		});
+
+		if (matchedSubcategories.length > 0) {
+			subcategories = matchedSubcategories;
+		}
 
 		subcategories.forEach((subcategory: string) => {
 			if (!acc[subcategory]) {
@@ -84,21 +97,34 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	});
 }
 
+// We remove `Trigger` from e.g. `Telegram Trigger` to show it as part of the `Telegram` group,
+// but still want to show matching results when the user types `Telegram Tri` or `Telegram Trigger`
+// Ideally this would be handled via metadata, but that is a larger refactor.
+export function removeTrailingTrigger(searchFilter: string) {
+	const parts = searchFilter.split(' ');
+	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0].toLowerCase())) {
+		return parts
+			.slice(0, -1)
+			.filter((x) => x)
+			.join(' ')
+			.trimEnd();
+	}
+	return searchFilter;
+}
+
 export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
 	}
 
-	// In order to support the old search we need to remove the 'trigger' part
-	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
+	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
-	const result = (
-		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 1.3 },
-			{ key: 'properties.codex.alias', weight: 1 },
-		]) || []
-	).map(({ item }) => item);
+	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
+	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
+	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
+		({ item }) => item,
+	);
 
 	return result;
 }
@@ -202,3 +228,103 @@ export const formatTriggerActionName = (actionPropertyName: string) => {
 	}
 	return changeCase.noCase(name);
 };
+
+export const removePreviewToken = (key: string) =>
+	key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+
+export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
+
+export function extendItemsWithUUID(items: INodeCreateElement[]) {
+	return items.map((item) => ({
+		...item,
+		uuid: `${item.key}-${uuidv4()}`,
+	}));
+}
+
+export const filterAndSearchNodes = (
+	mergedNodes: SimplifiedNodeType[],
+	search: string,
+	isAgentSubcategory: boolean,
+) => {
+	if (!search || isAgentSubcategory) return [];
+
+	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
+
+	const searchResult: INodeCreateElement[] = extendItemsWithUUID(
+		searchNodes(search || '', vettedNodes),
+	);
+
+	return searchResult;
+};
+
+export function prepareCommunityNodeDetailsViewStack(
+	item: NodeCreateElement,
+	nodeIcon: NodeIconSource | undefined,
+	rootView: NodeFilterType | undefined,
+	nodeActions: ActionTypeDescription[] = [],
+): ViewStack {
+	const installed = !isNodePreviewKey(item.key);
+	const packageName = removePreviewToken(item.key.split('.')[0]);
+	const nodeTypesStore = useNodeTypesStore();
+	const nodeType = nodeTypesStore.communityNodeType(removePreviewToken(item.key));
+
+	const communityNodeDetails: CommunityNodeDetails = {
+		title: item.properties.displayName,
+		description: item.properties.description,
+		key: item.key,
+		nodeIcon,
+		installed,
+		official: nodeType?.isOfficialNode ?? false,
+		packageName,
+		companyName: nodeType?.companyName,
+	};
+
+	if (nodeActions.length) {
+		const transformedActions = nodeActions?.map((a) =>
+			transformNodeType(a, item.properties.displayName, 'action'),
+		);
+
+		return {
+			subcategory: item.properties.displayName,
+			title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
+			rootView,
+			hasSearch: false,
+			mode: 'actions',
+			items: transformedActions,
+			communityNodeDetails,
+		};
+	}
+
+	return {
+		subcategory: item.properties.displayName,
+		title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
+		rootView,
+		hasSearch: false,
+		items: [item],
+		mode: 'community-node',
+		communityNodeDetails,
+	};
+}
+
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
+	const results: INodeCreateElement[] = [];
+
+	const ragKeywords = ['rag', 'vec', 'know'];
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+		results.push({
+			key: 'rag-starter-template',
+			type: 'openTemplate',
+			properties: {
+				key: 'rag-starter-template',
+				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+				icon: 'database',
+				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+				tag: {
+					type: 'info',
+					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				},
+			},
+		});
+	}
+	return results;
+}

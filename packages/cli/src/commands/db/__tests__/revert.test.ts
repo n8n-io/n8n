@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import type { IrreversibleMigration, ReversibleMigration } from '@n8n/db';
 import type { Migration, MigrationExecutor } from '@n8n/typeorm';
 import { type DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 
 import { main } from '@/commands/db/revert';
-import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
 import { mockInstance } from '@test/mocking';
 
 const logger = mockInstance(Logger);

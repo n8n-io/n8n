@@ -1,12 +1,8 @@
 import { ref } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
-import {
-	CUSTOM_API_CALL_KEY,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -28,9 +24,12 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValue,
 	NodeConnectionType,
+	IRunExecutionData,
+	NodeHint,
 } from 'n8n-workflow';
 
 import type {
+	AddedNode,
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -39,12 +38,11 @@ import type {
 
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { get } from 'lodash-es';
-import { useI18n } from './useI18n';
+import get from 'lodash/get';
+import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -106,7 +104,17 @@ export function useNodeHelpers() {
 		node: INodeUi | null,
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
-		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey);
+		const nodeTypeDescription = node?.type
+			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
+			: null;
+		return NodeHelpers.displayParameterPath(
+			nodeValues,
+			parameter,
+			path,
+			node,
+			nodeTypeDescription,
+			displayKey,
+		);
 	}
 
 	function getNodeIssues(
@@ -137,7 +145,7 @@ export function useNodeHelpers() {
 
 			// Add potential parameter issues
 			if (!ignoreIssues.includes('parameters')) {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
 			}
 
 			if (!ignoreIssues.includes('credentials')) {
@@ -287,6 +295,7 @@ export function useNodeHelpers() {
 		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
 			localNodeType.properties,
 			node,
+			nodeType ?? null,
 		);
 
 		let newIssues: INodeIssueObjectProperty | null = null;
@@ -533,27 +542,35 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function getNodeTaskData(node: INodeUi | null, runIndex = 0) {
-		if (node === null) {
-			return null;
-		}
-		if (workflowsStore.getWorkflowExecution === null) {
-			return null;
-		}
+	function getNodeTaskData(nodeName: string, runIndex = 0, execution?: IRunExecutionData) {
+		return getAllNodeTaskData(nodeName, execution)?.[runIndex] ?? null;
+	}
 
-		const executionData = workflowsStore.getWorkflowExecution.data;
-		if (!executionData?.resultData) {
-			// unknown status
-			return null;
-		}
-		const runData = executionData.resultData.runData;
+	function getAllNodeTaskData(nodeName: string, execution?: IRunExecutionData) {
+		const runData = execution?.resultData.runData ?? workflowsStore.getWorkflowRunData;
 
-		const taskData = get(runData, [node.name, runIndex]);
-		if (!taskData) {
-			return null;
-		}
+		return runData?.[nodeName] ?? null;
+	}
 
-		return taskData;
+	function hasNodeExecuted(nodeName: string) {
+		return (
+			getAllNodeTaskData(nodeName)?.some(
+				({ executionStatus }) => executionStatus && ['success', 'error'].includes(executionStatus),
+			) ?? false
+		);
+	}
+
+	function getLastRunIndexWithData(
+		nodeName: string,
+		outputIndex = 0,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+	) {
+		const allTaskData = getAllNodeTaskData(nodeName) ?? [];
+
+		return allTaskData.findLastIndex(
+			(taskData) =>
+				taskData.data && getInputData(taskData.data, outputIndex, connectionType).length > 0,
+		);
 	}
 
 	function getNodeInputData(
@@ -562,18 +579,10 @@ export function useNodeHelpers() {
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+		execution?: IRunExecutionData,
 	): INodeExecutionData[] {
-		//TODO: check if this needs to be fixed in different place
-		if (
-			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
-			paneType === 'input' &&
-			runIndex !== 0 &&
-			outputIndex !== 0
-		) {
-			runIndex = runIndex - 1;
-		}
-
-		const taskData = getNodeTaskData(node, runIndex);
+		if (!node) return [];
+		const taskData = getNodeTaskData(node.name, runIndex, execution);
 		if (taskData === null) {
 			return [];
 		}
@@ -693,9 +702,6 @@ export function useNodeHelpers() {
 
 		if (nodeType?.subtitle !== undefined) {
 			try {
-				ExpressionEvaluatorProxy.setEvaluator(
-					useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-				);
 				return workflow.expression.getSimpleParameterValue(
 					data,
 					nodeType.subtitle,
@@ -874,6 +880,128 @@ export function useNodeHelpers() {
 		return false;
 	}
 
+	function getNodeHints(
+		workflow: Workflow,
+		node: INode,
+		nodeTypeData: INodeTypeDescription,
+		nodeInputData?: {
+			runExecutionData: IRunExecutionData | null;
+			runIndex: number;
+			connectionInputData: INodeExecutionData[];
+		},
+	): NodeHint[] {
+		const hints: NodeHint[] = [];
+
+		if (nodeTypeData?.hints?.length) {
+			for (const hint of nodeTypeData.hints) {
+				if (hint.displayCondition) {
+					try {
+						let display;
+
+						if (nodeInputData === undefined) {
+							display = (workflow.expression.getSimpleParameterValue(
+								node,
+								hint.displayCondition,
+								'internal',
+								{},
+							) || false) as boolean;
+						} else {
+							const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
+							display = workflow.expression.getParameterValue(
+								hint.displayCondition,
+								runExecutionData ?? null,
+								runIndex,
+								0,
+								node.name,
+								connectionInputData,
+								'manual',
+								{},
+							);
+						}
+
+						if (typeof display === 'string' && display.trim() === 'true') {
+							display = true;
+						}
+
+						if (typeof display !== 'boolean') {
+							console.warn(
+								`Condition was not resolved as boolean in '${node.name}' node for hint: `,
+								hint.message,
+							);
+							continue;
+						}
+
+						if (display) {
+							hints.push(hint);
+						}
+					} catch (e) {
+						console.warn(
+							`Could not calculate display condition in '${node.name}' node for hint: `,
+							hint.message,
+						);
+					}
+				} else {
+					hints.push(hint);
+				}
+			}
+		}
+
+		return hints;
+	}
+
+	/**
+	 * Returns the issues of the node as string
+	 *
+	 * @param {INodeIssues} issues The issues of the node
+	 * @param {INode} node The node
+	 */
+	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+		const nodeIssues = [];
+
+		if (issues.execution !== undefined) {
+			nodeIssues.push('Execution Error.');
+		}
+
+		const objectProperties = ['parameters', 'credentials', 'input'];
+
+		let issueText: string;
+		let parameterName: string;
+		for (const propertyName of objectProperties) {
+			if (issues[propertyName] !== undefined) {
+				for (parameterName of Object.keys(issues[propertyName] as object)) {
+					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
+						nodeIssues.push(issueText);
+					}
+				}
+			}
+		}
+
+		if (issues.typeUnknown !== undefined) {
+			if (node !== undefined) {
+				nodeIssues.push(`Node Type "${node.type}" is not known.`);
+			} else {
+				nodeIssues.push('Node Type is not known.');
+			}
+		}
+
+		return nodeIssues;
+	}
+
+	function getDefaultNodeName(node: AddedNode | INode) {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (nodeType === null) return null;
+		const parameters = NodeHelpers.getNodeParameters(
+			nodeType?.properties,
+			node.parameters ?? {},
+			true,
+			false,
+			node.typeVersion ? { typeVersion: node.typeVersion } : null,
+			nodeType,
+		);
+
+		return NodeHelpers.makeNodeName(parameters ?? {}, nodeType);
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -892,6 +1020,8 @@ export function useNodeHelpers() {
 		disableNodes,
 		getNodeSubtitle,
 		updateNodesCredentialsIssues,
+		getLastRunIndexWithData,
+		hasNodeExecuted,
 		getNodeInputData,
 		matchCredentials,
 		isInsertingNodes,
@@ -903,5 +1033,8 @@ export function useNodeHelpers() {
 		assignNodeId,
 		assignWebhookId,
 		isSingleExecution,
+		getNodeHints,
+		nodeIssuesToString,
+		getDefaultNodeName,
 	};
 }

@@ -1,6 +1,6 @@
 import type { Command, Undoable } from '@/models/history';
 import { BulkCommand } from '@/models/history';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { HistoryState } from '@/Interface';
 import { defineStore } from 'pinia';
 

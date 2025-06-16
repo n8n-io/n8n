@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import type { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';
@@ -95,22 +95,28 @@ workflow_success_total{workflow_id="1234"} 1"
 			workflowRepository,
 		);
 
+		// ACT
 		await prometheusMetricsService.init(app);
 
-		// ACT
-		const event = new EventMessageWorkflow({
-			eventName: 'n8n.workflow.success',
-			payload: { workflowId: '1234' },
-		});
-
-		eventBus.emit('metrics.eventBus.event', event);
-
 		// ASSERT
-		const versionInfoMetric = promClient.register.getSingleMetric(`${customPrefix}version_info`);
-
-		if (!versionInfoMetric) {
-			fail(`Could not find a metric called "${customPrefix}version_info"`);
-		}
+		// native metric from promClient
+		const eventLoopLagMetric = await promClient.register.getSingleMetricAsString(
+			`${customPrefix}nodejs_eventloop_lag_seconds`,
+		);
+		expect(eventLoopLagMetric.split('\n')).toMatchObject([
+			'# HELP custom_nodejs_eventloop_lag_seconds Lag of event loop in seconds.',
+			'# TYPE custom_nodejs_eventloop_lag_seconds gauge',
+			expect.stringMatching('custom_nodejs_eventloop_lag_seconds .*'),
+		]);
+		// custom metric
+		const versionMetric = await promClient.register.getSingleMetricAsString(
+			`${customPrefix}version_info`,
+		);
+		expect(versionMetric.split('\n')).toMatchObject([
+			'# HELP custom_version_info n8n version info.',
+			'# TYPE custom_version_info gauge',
+			expect.stringMatching('custom_version_info.*'),
+		]);
 	});
 });
 

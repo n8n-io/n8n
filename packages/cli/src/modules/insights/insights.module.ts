@@ -1,31 +1,31 @@
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { InstanceSettings, Logger } from 'n8n-core';
-
-import type { BaseN8nModule } from '@/decorators/module';
-import { N8nModule } from '@/decorators/module';
-
-import { InsightsService } from './insights.service';
-
+import type { ModuleInterface } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import './insights.controller';
+import { InstanceSettings } from 'n8n-core';
 
-@N8nModule()
-export class InsightsModule implements BaseN8nModule {
-	constructor(
-		private readonly logger: Logger,
-		private readonly insightsService: InsightsService,
-		private readonly instanceSettings: InstanceSettings,
-	) {
-		this.logger = this.logger.scoped('insights');
+import { InsightsByPeriod } from './database/entities/insights-by-period';
+import { InsightsMetadata } from './database/entities/insights-metadata';
+import { InsightsRaw } from './database/entities/insights-raw';
+
+@BackendModule()
+export class InsightsModule implements ModuleInterface {
+	async init() {
+		const { instanceType } = Container.get(InstanceSettings);
+
+		/**
+		 * Only main- and webhook-type instances collect insights because
+		 * only they are informed of finished workflow executions.
+		 */
+		if (instanceType === 'worker') return;
+
+		await import('./insights.controller');
+
+		const { InsightsService } = await import('./insights.service');
+		Container.get(InsightsService).startTimers();
 	}
 
-	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
-		const insightsService = this.insightsService;
-
-		// Workers should not be saving any insights
-		if (this.instanceSettings.instanceType !== 'worker') {
-			hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-				await insightsService.workflowExecuteAfterHandler(this, fullRunData);
-			});
-		}
+	entities() {
+		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
 	}
 }

@@ -89,7 +89,7 @@ onMounted(() => {
 		resizeObserver.value = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				if (entry.target === chatTextArea.value) {
-					adjustHeight({ target: chatTextArea.value } as unknown as Event);
+					adjustTextAreaHeight();
 				}
 			}
 		});
@@ -149,7 +149,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 	}
 
 	await onSubmit(event);
-	adjustHeight({ target: chatTextArea.value } as unknown as Event);
+	adjustTextAreaHeight();
 }
 
 function onFileRemove(file: File) {
@@ -181,8 +181,9 @@ function onOpenFileDialog() {
 	openFileDialog({ accept: unref(allowedFileTypes) });
 }
 
-function adjustHeight(event: Event) {
-	const textarea = event.target as HTMLTextAreaElement;
+function adjustTextAreaHeight() {
+	const textarea = chatTextArea.value;
+	if (!textarea) return;
 	// Set to content minimum to get the right scrollHeight
 	textarea.style.height = 'var(--chat--textarea--height)';
 	// Get the new height, with a small buffer for padding
@@ -204,9 +205,9 @@ function adjustHeight(event: Event) {
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
-				@input="adjustHeight"
-				@mousedown="adjustHeight"
-				@focus="adjustHeight"
+				@input="adjustTextAreaHeight"
+				@mousedown="adjustTextAreaHeight"
+				@focus="adjustTextAreaHeight"
 			/>
 
 			<div class="chat-inputs-controls">

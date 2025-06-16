@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Draggable from './Draggable.vue';
+import Draggable from '@/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
 defineProps<{

@@ -1,8 +1,8 @@
+import type { User } from '@n8n/db';
 import nock from 'nock';
 
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@/databases/entities/user';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
 import { License } from '@/license';
 
@@ -12,7 +12,6 @@ import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
-const MOCK_RENEW_OFFSET = 259200;
 
 let owner: User;
 let member: User;
@@ -30,7 +29,6 @@ beforeAll(async () => {
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
-	config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 });
 
 afterEach(async () => {
@@ -121,6 +119,10 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 				limit: -1,
 				warningThreshold: 0.8,
 			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: 0,
+			},
 		},
 		license: {
 			planId: '',
@@ -136,6 +138,10 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,
+			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: 0,
 			},
 		},
 		license: {

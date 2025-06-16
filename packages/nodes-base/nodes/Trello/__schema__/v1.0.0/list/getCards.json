@@ -29,6 +29,9 @@
                 "checkItemsChecked": {
                     "type": "integer"
                 },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
                 "comments": {
                     "type": "integer"
                 },
@@ -47,6 +50,9 @@
                 "location": {
                     "type": "boolean"
                 },
+                "maliciousAttachments": {
+                    "type": "integer"
+                },
                 "subscribed": {
                     "type": "boolean"
                 },
@@ -57,9 +63,6 @@
                     "type": "integer"
                 }
             }
-        },
-        "cardRole": {
-            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -145,6 +148,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -194,5 +200,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

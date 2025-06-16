@@ -5,8 +5,10 @@
 	],
 	"compilerOptions": {
 		"paths": {
+			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"@nodes-testing/*": ["../core/nodes-testing/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

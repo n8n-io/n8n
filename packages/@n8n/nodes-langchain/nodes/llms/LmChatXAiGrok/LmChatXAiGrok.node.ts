@@ -9,6 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -228,6 +229,7 @@ export class LmChatXAiGrok implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			httpAgent: getHttpProxyAgent(),
 		};
 
 		const model = new ChatOpenAI({
@@ -238,11 +240,14 @@ export class LmChatXAiGrok implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: {
+				stream_options: undefined,
+				...(options.responseFormat
+					? {
+							response_format: { type: options.responseFormat },
+						}
+					: undefined),
+			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 

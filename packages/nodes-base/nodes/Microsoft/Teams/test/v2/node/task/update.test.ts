@@ -1,6 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { testWorkflows } from '@test/nodes/Helpers';
+import { credentials } from '../../../credentials';
 
 describe('Test MicrosoftTeamsV2, task => update', () => {
 	nock('https://graph.microsoft.com')
@@ -14,6 +15,8 @@ describe('Test MicrosoftTeamsV2, task => update', () => {
 		.matchHeader('If-Match', 'W/"JzEtVGFzayAgQEBAQEBAQEBAQEBAQEBARCc="')
 		.reply(200);
 
-	const workflows = ['nodes/Microsoft/Teams/test/v2/node/task/update.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['update.workflow.json'],
+	});
 });

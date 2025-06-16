@@ -1,10 +1,19 @@
-import { CommaSeperatedStringArray, Config, Env } from '@n8n/config';
+import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
+import type { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-const moduleNames = ['insights'] as const;
-type ModuleName = (typeof moduleNames)[number];
+export type ModulePreInitContext = {
+	instance: InstanceSettings;
+};
 
-class Modules extends CommaSeperatedStringArray<ModuleName> {
+export type ModulePreInit = {
+	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
+};
+
+const moduleNames = ['insights', 'external-secrets'] as const;
+export type ModuleName = (typeof moduleNames)[number];
+
+class Modules extends CommaSeparatedStringArray<ModuleName> {
 	constructor(str: string) {
 		super(str);
 
@@ -18,7 +27,32 @@ class Modules extends CommaSeperatedStringArray<ModuleName> {
 
 @Config
 export class ModulesConfig {
-	/** Comma-separated list of all enabled modules */
+	/** Comma-separated list of all modules enabled */
 	@Env('N8N_ENABLED_MODULES')
-	modules: Modules = [];
+	enabledModules: Modules = [];
+
+	/** Comma-separated list of all disabled modules */
+	@Env('N8N_DISABLED_MODULES')
+	disabledModules: Modules = [];
+
+	// Default modules are always enabled unless explicitly disabled
+	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+
+	// Loaded modules are the ones that have been loaded so far by the instance
+	readonly loadedModules = new Set<ModuleName>();
+
+	// Get all modules by merging default and enabled, and filtering out disabled modules
+	get modules(): ModuleName[] {
+		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
+			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
+		}
+
+		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
+
+		return enabledModules.filter((module) => !this.disabledModules.includes(module));
+	}
+
+	addLoadedModule(module: ModuleName) {
+		this.loadedModules.add(module);
+	}
 }

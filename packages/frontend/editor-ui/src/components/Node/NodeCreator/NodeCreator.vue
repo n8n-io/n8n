@@ -14,10 +14,12 @@ import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 import { useAssistantStore } from '@/stores/assistant.store';
 import N8nIconButton from '@n8n/design-system/components/N8nIconButton/IconButton.vue';
+import { useBuilderStore } from '@/stores/builder.store';
+import type { NodeTypeSelectedPayload } from '@/Interface';
 
 export interface Props {
 	active?: boolean;
-	onNodeTypeSelected?: (nodeType: string[]) => void;
+	onNodeTypeSelected?: (value: NodeTypeSelectedPayload[]) => void;
 }
 
 const props = defineProps<Props>();
@@ -25,10 +27,11 @@ const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	closeNodeCreator: [];
-	nodeTypeSelected: [value: string[]];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -43,9 +46,21 @@ const showScrim = computed(() => useNodeCreatorStore().showScrim);
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 const nodeCreatorInlineStyle = computed(() => {
-	const rightPosition = assistantStore.isAssistantOpen ? assistantStore.chatWidth : 0;
+	const rightPosition = getRightOffset();
 	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px`, right: `${rightPosition}px` };
 });
+
+function getRightOffset() {
+	if (assistantStore.isAssistantOpen) {
+		return assistantStore.chatWidth;
+	}
+	if (builderStore.isAssistantOpen) {
+		return builderStore.chatWidth;
+	}
+
+	return 0;
+}
+
 function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
 		const clickEvent = new MouseEvent('click', {

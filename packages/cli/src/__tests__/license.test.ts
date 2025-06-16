@@ -25,7 +25,7 @@ function makeDateWithHourOffset(offsetInHours: number): Date {
 const licenseConfig: GlobalConfig['license'] = {
 	serverUrl: MOCK_SERVER_URL,
 	autoRenewalEnabled: true,
-	autoRenewOffset: MOCK_RENEW_OFFSET,
+	detachFloatingOnShutdown: true,
 	activationKey: MOCK_ACTIVATION_KEY,
 	tenantId: 1,
 	cert: '',
@@ -60,6 +60,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -90,6 +91,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -111,13 +113,13 @@ describe('License', () => {
 	});
 
 	test('check if feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -129,7 +131,7 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		license.getFeatureValue(MOCK_FEATURE_FLAG);
+		license.getValue(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});

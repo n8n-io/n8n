@@ -63,6 +63,17 @@ export namespace ChatRequest {
 		question: string;
 	}
 
+	export interface InitBuilderChat {
+		role: 'user';
+		type: 'init-builder-chat';
+		user: {
+			firstName: string;
+		};
+		context?: UserContext & WorkflowContext;
+		workflowContext?: WorkflowContext;
+		question: string;
+	}
+
 	export interface InitCredHelp {
 		role: 'user';
 		type: 'init-cred-help';
@@ -116,7 +127,7 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp | InitBuilderChat;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;
@@ -173,6 +184,44 @@ export namespace ChatRequest {
 		step: string;
 	}
 
+	interface WorkflowStepMessage {
+		role: 'assistant';
+		type: 'workflow-step';
+		steps: string[];
+	}
+
+	interface WorkflowNodeMessage {
+		role: 'assistant';
+		type: 'workflow-node';
+		nodes: string[];
+	}
+
+	interface WorkflowPromptValidationMessage {
+		role: 'assistant';
+		type: 'prompt-validation';
+		isWorkflowPrompt: boolean;
+	}
+	interface WorkflowComposedMessage {
+		role: 'assistant';
+		type: 'workflow-composed';
+		nodes: Array<{
+			parameters: Record<string, unknown>;
+			type: string;
+			name: string;
+			position: [number, number];
+		}>;
+	}
+	interface WorkflowGeneratedMessage {
+		role: 'assistant';
+		type: 'workflow-generated';
+		codeSnippet: string;
+	}
+	interface RateWorkflowMessage {
+		role: 'assistant';
+		type: 'rate-workflow';
+		content: string;
+	}
+
 	export type MessageResponse =
 		| ((
 				| AssistantChatMessage
@@ -180,6 +229,12 @@ export namespace ChatRequest {
 				| AssistantSummaryMessage
 				| AgentChatMessage
 				| AgentThinkingStep
+				| WorkflowStepMessage
+				| WorkflowNodeMessage
+				| WorkflowComposedMessage
+				| WorkflowPromptValidationMessage
+				| WorkflowGeneratedMessage
+				| RateWorkflowMessage
 		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })

@@ -1,0 +1,322 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747344011917,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Disqus": [
+          {
+            "startTime": 1747344011918,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 38,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "aetBannerConfirmation": {
+                        "object": true
+                      },
+                      "founder": "252695960",
+                      "twitterName": {
+                        "object": true
+                      },
+                      "commentsLinkOne": "1 Comment",
+                      "guidelines": {
+                        "object": true
+                      },
+                      "disableDisqusBrandingOnPolls": false,
+                      "commentsLinkZero": "0 Comments",
+                      "disableDisqusBranding": false,
+                      "id": "disqus-demo-page",
+                      "createdAt": "2017-05-22T19:17:36.057166",
+                      "category": "Business",
+                      "aetBannerEnabled": false,
+                      "aetBannerTitle": {
+                        "object": true
+                      },
+                      "raw_guidelines": {
+                        "object": true
+                      },
+                      "initialCommentCount": {
+                        "object": true
+                      },
+                      "votingType": {
+                        "object": true
+                      },
+                      "daysUnapproveNewUsers": {
+                        "object": true
+                      },
+                      "installCompleted": true,
+                      "moderatorBadgeText": "",
+                      "commentPolicyText": {
+                        "object": true
+                      },
+                      "aetEnabled": false,
+                      "channel": {
+                        "object": true
+                      },
+                      "sort": 4,
+                      "description": {
+                        "object": true
+                      },
+                      "organizationHasBadges": true,
+                      "newPolicy": true,
+                      "raw_description": {
+                        "object": true
+                      },
+                      "customFont": {
+                        "object": true
+                      },
+                      "language": "en",
+                      "adsReviewStatus": 0,
+                      "commentsPlaceholderTextEmpty": {
+                        "object": true
+                      },
+                      "daysAlive": 0,
+                      "forumCategory": {
+                        "object": true
+                      },
+                      "linkColor": {
+                        "object": true
+                      },
+                      "colorScheme": "auto",
+                      "pk": "5140050",
+                      "commentsPlaceholderTextPopulated": {
+                        "object": true
+                      },
+                      "permissions": {
+                        "object": true
+                      },
+                      "commentPolicyLink": {
+                        "object": true
+                      },
+                      "aetBannerDescription": {
+                        "object": true
+                      },
+                      "favicon": {
+                        "object": true
+                      },
+                      "name": "Disqus Demo Page",
+                      "commentsLinkMultiple": "{num} Comments",
+                      "settings": {
+                        "object": true
+                      },
+                      "organizationId": 3883635,
+                      "typeface": "auto",
+                      "url": {
+                        "object": true
+                      },
+                      "daysThreadAlive": 0,
+                      "avatar": {
+                        "object": true
+                      },
+                      "signedUrl": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Disqus1": [
+          {
+            "startTime": 1747344011956,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Disqus"
+              }
+            ],
+            "hints": [],
+            "executionTime": 37,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "6858940",
+                      "forum": "disqus-demo-page",
+                      "order": 0,
+                      "isDefault": true,
+                      "title": "General"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Disqus2": [
+          {
+            "startTime": 1747344011993,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Disqus1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 37,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "feed": "https://disqus-demo-page.disqus.com/httpssharadrajinjekyll_theme_miloc20181009jekyll_posthtml/latest.rss",
+                      "clean_title": "Jekyll post",
+                      "dislikes": 0,
+                      "likes": 0,
+                      "message": "",
+                      "ratingsEnabled": false,
+                      "isSpam": false,
+                      "isDeleted": false,
+                      "category": "6858940",
+                      "adsDisabled": false,
+                      "author": "252695960",
+                      "userScore": 0,
+                      "id": "10287492051",
+                      "signedLink": "https://disq.us/?url=https%3A%2F%2Fsharadraj.in%2Fjekyll-theme-milo%2Fc%2F2018%2F10%2F09%2FJekyll-post.html&key=CSxj3qucEGNA77KOdrXIIQ",
+                      "createdAt": "2024-08-11T01:54:42",
+                      "hasStreaming": false,
+                      "raw_message": "",
+                      "isClosed": false,
+                      "link": "https://sharadraj.in/jekyll-theme-milo/c/2018/10/09/Jekyll-post.html",
+                      "slug": "httpssharadrajinjekyll_theme_miloc20181009jekyll_posthtml",
+                      "forum": "disqus-demo-page",
+                      "identifiers": [
+                        "json array"
+                      ],
+                      "posts": 0,
+                      "userSubscription": false,
+                      "validateAllPosts": false,
+                      "title": "Jekyll post",
+                      "highlightedPost": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Disqus3": [
+          {
+            "startTime": 1747344012030,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Disqus2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 37,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "editableUntil": "2021-02-20T11:14:59",
+                      "dislikes": 0,
+                      "thread": "8396245103",
+                      "numReports": 0,
+                      "likes": 0,
+                      "message": "<p>You have done a good job with your knowledge that makes our work easy because you are providing such good information. Keep sharing this kind of knowledge with us.<br><a href=\"https://disq.us/url?url=https%3A%2F%2Fwww.mehrsaffron.com%2Fbuy-saffron%2F%3AvSrYduQGHsKICdIN3wMd8fB5TFQ&amp;cuid=5140050\" rel=\"nofollow noopener\" target=\"_blank\" title=\"https://www.mehrsaffron.com/buy-saffron/\">buy spanish saffron online</a></p>",
+                      "id": "5266881862",
+                      "createdAt": "2021-02-13T11:14:59",
+                      "author": {
+                        "object": true
+                      },
+                      "media": [
+                        "json array"
+                      ],
+                      "isSpam": false,
+                      "isDeletedByAuthor": false,
+                      "isHighlighted": false,
+                      "parent": {
+                        "object": true
+                      },
+                      "isApproved": true,
+                      "isNewUserNeedsApproval": false,
+                      "isDeleted": false,
+                      "isFlagged": false,
+                      "raw_message": "You have done a good job with your knowledge that makes our work easy because you are providing such good information. Keep sharing this kind of knowledge with us.\n<a href=\"https://www.mehrsaffron.com/buy-saffron/\">buy spanish saffron online</a>",
+                      "isAtFlagLimit": false,
+                      "canVote": false,
+                      "forum": "disqus-demo-page",
+                      "points": 0,
+                      "moderationLabels": [
+                        "json array"
+                      ],
+                      "isEdited": false,
+                      "sb": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Disqus3"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:11.917Z",
+  "stoppedAt": "2025-05-15T21:20:12.067Z",
+  "status": "running",
+  "finished": true
+}

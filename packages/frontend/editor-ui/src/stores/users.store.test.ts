@@ -24,7 +24,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 	})),
 }));
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		instanceId: 'test-instance-id',
 	})),
@@ -88,6 +88,73 @@ describe('users.store', () => {
 					emailSent: true,
 				}),
 			);
+		});
+	});
+
+	describe('isCalloutDismissed', () => {
+		it('should return true if callout is dismissed', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+				settings: {
+					dismissedCallouts: {
+						testCallout: true,
+					},
+				},
+			};
+			usersStore.currentUserId = '1';
+
+			const isDismissed = usersStore.isCalloutDismissed('testCallout');
+			expect(isDismissed).toBe(true);
+		});
+	});
+
+	describe('setCalloutDismissed', () => {
+		it('should set callout as dismissed in user settings', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+				settings: {},
+			};
+			usersStore.currentUserId = '1';
+
+			usersStore.setCalloutDismissed('testCallout');
+
+			expect(usersStore.usersById['1'].settings?.dismissedCallouts).toEqual({
+				testCallout: true,
+			});
+		});
+
+		it('should not lose existing dismissed callouts', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+				settings: {
+					dismissedCallouts: {
+						previousCallout: true,
+					},
+				},
+			};
+			usersStore.currentUserId = '1';
+
+			usersStore.setCalloutDismissed('testCallout');
+
+			expect(usersStore.usersById['1'].settings?.dismissedCallouts).toEqual({
+				previousCallout: true,
+				testCallout: true,
+			});
 		});
 	});
 });

@@ -1,5 +1,5 @@
 import { getParts, type ImapSimple, type Message, type MessagePart } from '@n8n/imap';
-import { find } from 'lodash';
+import find from 'lodash/find';
 import { simpleParser, type Source as ParserSource } from 'mailparser';
 import {
 	type IBinaryData,
@@ -117,6 +117,10 @@ export async function getNewEmails(
 				dataPropertyAttachmentsPrefixName,
 			);
 
+			(parsedEmail.json as IDataObject).attributes = {
+				uid: message.attributes.uid,
+			};
+
 			newEmails.push(parsedEmail);
 		}
 	} else if (format === 'simple') {
@@ -149,6 +153,9 @@ export async function getNewEmails(
 					textHtml: await getText(parts, message, 'html'),
 					textPlain: await getText(parts, message, 'plain'),
 					metadata: {} as IDataObject,
+					attributes: {
+						uid: message.attributes.uid,
+					} as IDataObject,
 				},
 			};
 

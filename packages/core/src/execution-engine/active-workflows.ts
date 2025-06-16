@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
 	INode,
@@ -18,7 +19,6 @@ import {
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
@@ -211,9 +211,17 @@ export class ActiveWorkflows {
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		for (const workflowId of Object.keys(this.activeWorkflows)) {
+		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+
+		if (activeWorkflowIds.length === 0) return;
+
+		for (const workflowId of activeWorkflowIds) {
 			await this.remove(workflowId);
 		}
+
+		this.logger.debug('Deactivated all trigger- and poller-based workflows', {
+			workflowIds: activeWorkflowIds,
+		});
 	}
 
 	private async closeTrigger(response: ITriggerResponse, workflowId: string) {

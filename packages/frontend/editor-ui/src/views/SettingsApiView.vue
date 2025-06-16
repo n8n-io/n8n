@@ -7,13 +7,13 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -28,7 +28,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { getAndCacheApiKeys, deleteApiKey } = apiKeysStore;
+const { getAndCacheApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
@@ -55,17 +55,17 @@ onMounted(async () => {
 
 	if (!isPublicApiEnabled) return;
 
-	await getApiKeys();
+	await getApiKeysAndScopes();
 });
 
 function onUpgrade() {
 	void goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 }
 
-async function getApiKeys() {
+async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
-		await getAndCacheApiKeys();
+		await Promise.all([getAndCacheApiKeys(), getApiKeyAvailableScopes()]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {

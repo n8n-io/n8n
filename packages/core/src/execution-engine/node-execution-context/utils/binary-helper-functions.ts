@@ -4,6 +4,7 @@ import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
 import { extension, lookup } from 'mime-types';
+import type { StringValue as TimeUnitValue } from 'ms';
 import type {
 	BinaryHelperFunctions,
 	IBinaryData,
@@ -271,7 +272,7 @@ export async function prepareBinaryData(
 }
 
 export const getBinaryHelperFunctions = (
-	{ executionId }: IWorkflowExecuteAdditionalData,
+	{ executionId, restApiUrl }: IWorkflowExecuteAdditionalData,
 	workflowId: string,
 ): BinaryHelperFunctions => ({
 	getBinaryPath,
@@ -279,6 +280,10 @@ export const getBinaryHelperFunctions = (
 	getBinaryMetadata,
 	binaryToBuffer,
 	binaryToString,
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: TimeUnitValue) {
+		const token = Container.get(BinaryDataService).createSignedToken(binaryData, expiresIn);
+		return `${restApiUrl}/binary-data/signed?token=${token}`;
+	},
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>

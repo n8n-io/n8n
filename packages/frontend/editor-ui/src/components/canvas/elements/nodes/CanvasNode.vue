@@ -32,7 +32,7 @@ import {
 } from '@/utils/canvasUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { isEqual } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
 
 type Props = NodeProps<CanvasNodeData> & {
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 	run: [id: string];
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 	deactivate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
@@ -240,8 +240,8 @@ function onDisabledToggle() {
 	emit('toggle', props.id);
 }
 
-function onActivate() {
-	emit('activate', props.id);
+function onActivate(id: string, event: MouseEvent) {
+	emit('activate', id, event);
 }
 
 function onDeactivate() {
@@ -288,7 +288,9 @@ provide(CanvasNodeKey, {
 	eventBus: canvasNodeEventBus,
 });
 
-const hasToolbar = computed(() => props.data.type !== CanvasNodeRenderType.AddNodes);
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+);
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
@@ -392,6 +394,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeTrigger

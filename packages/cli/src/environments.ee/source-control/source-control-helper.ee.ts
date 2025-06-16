@@ -1,10 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { Logger } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
+import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
@@ -16,8 +18,10 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
+import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -44,6 +48,22 @@ export function getTagsPath(gitFolder: string): string {
 
 export function getFoldersPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+}
+
+export async function readTagAndMappingsFromSourceControlFile(file: string): Promise<{
+	tags: TagEntity[];
+	mappings: WorkflowTagMapping[];
+}> {
+	return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+		await fsReadFile(file, { encoding: 'utf8' }),
+		{ fallbackValue: { tags: [], mappings: [] } },
+	);
+}
+
+export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
+	return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
+		fallbackValue: { folders: [] },
+	});
 }
 
 export function sourceControlFoldersExistCheck(
@@ -131,9 +151,13 @@ function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
 	);
 }
 
-export function getTrackingInformationFromPullResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPullResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		credConflicts: uniques.filter(
 			(file) =>
 				file.type === 'credential' && file.status === 'modified' && file.location === 'local',
@@ -145,9 +169,13 @@ export function getTrackingInformationFromPullResult(result: SourceControlledFil
 	};
 }
 
-export function getTrackingInformationFromPrePushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPrePushResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length,
 		workflowsEligibleWithConflicts: uniques.filter(
 			(file) => file.type === 'workflow' && file.conflict,
@@ -160,9 +188,13 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 	};
 }
 
-export function getTrackingInformationFromPostPushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPostPushResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsPushed: uniques.filter((file) => file.pushed && file.type === 'workflow').length ?? 0,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length ?? 0,
 		credsPushed:
@@ -191,4 +223,18 @@ export function normalizeAndValidateSourceControlledFilePath(
 	}
 
 	return normalizedPath;
+}
+
+/**
+ * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
+ * between local and remote versions
+ */
+export function isWorkflowModified(
+	local: SourceControlWorkflowVersionId,
+	remote: SourceControlWorkflowVersionId,
+): boolean {
+	return (
+		remote.versionId !== local.versionId ||
+		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
+	);
 }

@@ -49,13 +49,64 @@ export const groupOperations: INodeProperties[] = [
 
 export const groupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
+	/*                                 group                                      */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Group',
+		name: 'groupId',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group to perform the operation on',
+		displayOptions: {
+			show: {
+				operation: ['delete', 'get', 'update'],
+				resource: ['group'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchGroups',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'GroupId',
+				type: 'string',
+				placeholder: 'e.g. 0123kx3o1habcdf',
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+
+	/* -------------------------------------------------------------------------- */
 	/*                                 group:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Email',
+		displayName: 'Group Name',
+		name: 'name',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['group'],
+			},
+		},
+		default: '',
+		description: "The group's display name",
+		placeholder: 'e.g. Sales',
+		type: 'string',
+	},
+	{
+		displayName: 'Group Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
+		placeholder: 'e.g. sales@example.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -88,51 +139,13 @@ export const groupFields: INodeProperties[] = [
 				description:
 					'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: "The group's display name",
-			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:delete                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Group ID',
-		name: 'groupId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['group'],
-			},
-		},
-		default: '',
-		description:
-			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 group:get                                  */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Group ID',
-		name: 'groupId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['group'],
-			},
-		},
-		default: '',
-		description:
-			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
-	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -168,10 +181,10 @@ export const groupFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Filter',
+		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -185,82 +198,88 @@ export const groupFields: INodeProperties[] = [
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description:
-					"The unique ID for the customer's Google Workspace account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
+				description: "The unique ID for the customer's Google Workspace account",
 			},
 			{
 				displayName: 'Domain',
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name. Use this field to get fields from only one domain.',
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Email',
-						value: 'email',
-					},
-				],
-				default: '',
-				description: 'Property to use for sorting results',
+				description: 'The domain name. Use this field to get groups from a specific domain.',
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
 				description:
-					'Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>.',
-			},
-			{
-				displayName: 'Sort Order',
-				name: 'sortOrder',
-				type: 'options',
-				options: [
-					{
-						name: 'Ascending',
-						value: 'ASCENDING',
-					},
-					{
-						name: 'Descending',
-						value: 'DESCENDING',
-					},
-				],
-				default: '',
-				description: 'Whether to return results in ascending or descending order',
+					'Query string to filter the results. Follow Google Admin SDK documentation. <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups#examples" target="_blank">More info</a>.',
 			},
 			{
 				displayName: 'User ID',
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description:
-					"Email or immutable ID of the user if only those groups are to be listed, the given user is a member of. If it's an ID, it should match with the ID of the user object.",
+				description: 'Email or immutable ID of a user to list groups they are a member of',
 			},
 		],
 	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 group:update                               */
-	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Group ID',
-		name: 'groupId',
-		type: 'string',
-		required: true,
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Rule',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: ['update'],
+				operation: ['getAll'],
 				resource: ['group'],
 			},
 		},
-		default: '',
-		description:
-			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
+		options: [
+			{
+				name: 'sortRules',
+				displayName: 'Sort Rules',
+				values: [
+					{
+						displayName: 'Order By',
+						name: 'orderBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Email',
+								value: 'email',
+							},
+						],
+						default: 'email',
+						description: 'Field to sort the results by',
+					},
+					{
+						displayName: 'Sort Order',
+						name: 'sortOrder',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'ASCENDING',
+							},
+							{
+								name: 'Descending',
+								value: 'DESCENDING',
+							},
+						],
+						default: 'ASCENDING',
+						description: 'Sort order direction',
+					},
+				],
+			},
+		],
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 group:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -279,6 +298,9 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
+				typeOptions: {
+					rows: 2,
+				},
 				description:
 					'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
@@ -286,7 +308,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
+				placeholder: 'e.g. sales@example.com',
 				default: '',
 				description:
 					"The group's email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique.",
@@ -295,6 +317,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
+				placeholder: 'e.g. Sales',
 				default: '',
 				description: "The group's display name",
 			},

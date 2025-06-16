@@ -1,27 +1,20 @@
+import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import {
-	CLI_DIR,
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	inProduction,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -63,12 +56,11 @@ import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
-import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
+import '@/webhooks/webhooks.controller';
 
 @Service()
 export class Server extends AbstractServer {
@@ -83,6 +75,7 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly licenseState: LicenseState,
 	) {
 		super();
 
@@ -123,6 +116,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/community-packages.controller');
+			await import('@/controllers/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
@@ -156,17 +150,39 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// OIDC
+		// ----------------------------------------
+
+		try {
+			if (this.licenseState.isOidcLicensed()) {
+				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+				await Container.get(OidcService).init();
+				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
+			}
+		} catch (error) {
+			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
+		}
+
+		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
+
+		if (this.licenseState.isSourceControlLicensed()) {
+			try {
+				const { SourceControlService } = await import(
+					'@/environments.ee/source-control/source-control.service.ee'
+				);
+				await Container.get(SourceControlService).init();
+				await import('@/environments.ee/source-control/source-control.controller.ee');
+			} catch (error) {
+				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
+			}
+		}
+
 		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
 			await import('@/environments.ee/variables/variables.controller.ee');
 		} catch (error) {
-			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
+			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
 	}
 
@@ -240,7 +256,9 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
+		);
 
 		// ----------------------------------------
 		// Settings
@@ -349,7 +367,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version/:resource/:operation.json', serveSchemas);
+			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -360,11 +378,13 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
 					? false
 					: {
 							useDefaults: false,
+							reportOnly: cspReportOnly,
 							directives: {
 								...cspDirectives,
 							},
