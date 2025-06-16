@@ -253,7 +253,7 @@ export function generateNodesGraph(
 		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
+			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
 
