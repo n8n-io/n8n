@@ -118,6 +118,28 @@ const getSamlConfig = async () => {
 	ssoSettingsSaved.value = !!config?.metadata;
 };
 
+const trackUpdateSettings = () => {
+	const trackingMetadata: {
+		instance_id: string;
+		authentication_method: SupportedProtocolType;
+		is_active?: boolean;
+		discovery_endpoint?: string;
+		identity_provider?: 'metadata' | 'xml';
+	} = {
+		instance_id: rootStore.instanceId,
+		authentication_method: authProtocol.value,
+	};
+
+	if (authProtocol.value === SupportedProtocols.SAML) {
+		trackingMetadata.identity_provider = ipsType.value === 'url' ? 'metadata' : 'xml';
+		trackingMetadata.is_active = ssoStore.isSamlLoginEnabled;
+	} else if (authProtocol.value === SupportedProtocols.OIDC) {
+		trackingMetadata.discovery_endpoint = discoveryEndpoint.value;
+		trackingMetadata.is_active = ssoStore.isOidcLoginEnabled;
+	}
+	telemetry.track('User updated single sign on settings', trackingMetadata);
+};
+
 const onSave = async () => {
 	try {
 		validateInput();
@@ -142,11 +164,7 @@ const onSave = async () => {
 			}
 		}
 
-		telemetry.track('User updated single sign on settings', {
-			instance_id: rootStore.instanceId,
-			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
-			is_active: ssoStore.isSamlLoginEnabled,
-		});
+		trackUpdateSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
@@ -267,6 +285,7 @@ async function onOidcSettingsSave() {
 	});
 
 	clientSecret.value = newConfig.clientSecret;
+	trackUpdateSettings();
 }
 </script>
 
@@ -281,13 +300,17 @@ async function onOidcSettingsSave() {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
+		<div
+			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
+			data-test-id="sso-content-licensed"
+		>
 			<div :class="$style.group">
 				<label>Select Authentication Protocol</label>
 				<div>
 					<N8nSelect
 						filterable
 						:model-value="authProtocol"
+						data-test-id="sso-auth-protocol-select"
 						:placeholder="i18n.baseText('parameterInput.select')"
 						@update:model-value="onAuthProtocolUpdated"
 						@keydown.stop
@@ -407,6 +430,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="discoveryEndpoint"
 						type="text"
+						data-test-id="oidc-discovery-endpoint"
 						placeholder="https://accounts.google.com/.well-known/openid-configuration"
 						@update:model-value="(v: string) => (discoveryEndpoint = v)"
 					/>
@@ -417,6 +441,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="clientId"
 						type="text"
+						data-test-id="oidc-client-id"
 						@update:model-value="(v: string) => (clientId = v)"
 					/>
 					<small
@@ -428,6 +453,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="clientSecret"
 						type="password"
+						data-test-id="oidc-client-secret"
 						@update:model-value="(v: string) => (clientSecret = v)"
 					/>
 					<small
@@ -445,7 +471,12 @@ async function onOidcSettingsSave() {
 				</div>
 
 				<div :class="$style.buttons">
-					<n8n-button size="large" :disabled="cannotSaveOidcSettings" @click="onOidcSettingsSave">
+					<n8n-button
+						data-test-id="sso-oidc-save"
+						size="large"
+						:disabled="cannotSaveOidcSettings"
+						@click="onOidcSettingsSave"
+					>
 						{{ i18n.baseText('settings.sso.settings.save') }}
 					</n8n-button>
 				</div>
