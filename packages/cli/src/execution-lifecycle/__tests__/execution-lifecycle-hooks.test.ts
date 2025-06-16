@@ -84,6 +84,18 @@ describe('Execution Lifecycle Hooks', () => {
 	const taskStartedData = mock<ITaskStartedData>();
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
+
+	const successfulRunWithRewiredDestination = mock<IRun>({
+		status: 'success',
+		finished: true,
+		waitTill: undefined,
+		data: {
+			startData: {
+				destinationNode: 'PartialExecutionToolExecutor',
+				originalDestinationNode: nodeName,
+			},
+		},
+	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
@@ -153,6 +165,17 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
+
+			it('should reset destination node to original destination', async () => {
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithRewiredDestination]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRunWithRewiredDestination,
+					workflow: workflowData,
+					userId: expectedUserId,
+				});
 			});
 		});
 	};
