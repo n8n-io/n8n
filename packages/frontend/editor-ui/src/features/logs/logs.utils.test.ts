@@ -9,6 +9,7 @@ import {
 	createLogTree,
 	deepToRaw,
 	findSelectedLogEntry,
+	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
 	getTreeNodeData,
 	mergeStartData,
@@ -1269,5 +1270,45 @@ describe(restoreChatHistory, () => {
 			{ id: expect.any(String), sender: 'user', text: 'test input' },
 			{ id: 'test-exec-id', sender: 'bot', text: 'test output' },
 		]);
+	});
+});
+
+describe(findSubExecutionLocator, () => {
+	it('should return undefined if given log entry has no related sub execution', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					metadata: {},
+				}),
+			}),
+		);
+
+		expect(found).toBe(undefined);
+	});
+
+	it('should find workflowId and executionId in metadata', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+			}),
+		);
+
+		expect(found).toEqual({ workflowId: 'w0', executionId: 'e0' });
+	});
+
+	it('should find workflowId and executionId in error object', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					error: {
+						errorResponse: { workflowId: 'w1', executionId: 'e1' },
+					} as unknown as ExecutionError,
+				}),
+			}),
+		);
+
+		expect(found).toEqual({ workflowId: 'w1', executionId: 'e1' });
 	});
 });
