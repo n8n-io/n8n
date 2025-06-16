@@ -3,7 +3,7 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
 import { computed, unref } from 'vue';
 
-type KeyMap = Record<string, (event: KeyboardEvent) => void>;
+export type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
 /**
  * Binds a `keydown` event to `document` and calls the approriate
