@@ -420,13 +420,22 @@ export class ExecutionService {
 		);
 	}
 
-	async stop(executionId: string): Promise<StopResult> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+	async stop(req: ExecutionRequest.Stop, sharedWorkflowIds: string[]): Promise<StopResult> {
+		const { id: executionId } = req.params;
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
 
-		if (!execution) throw new MissingExecutionStopError(executionId);
+		if (!execution) {
+			this.logger.info('Attempt to stop an execution was blocked due to insufficient permissions', {
+				userId: req.user.id,
+				executionId,
+			});
+
+			// TODO: Should this be a NotFoundError to match the behavior of other methods?
+			throw new MissingExecutionStopError(executionId);
+		}
 
 		this.assertStoppable(execution);
 

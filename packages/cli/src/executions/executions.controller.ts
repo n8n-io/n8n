@@ -96,7 +96,7 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.stop(req.params.id);
+		return await this.executionService.stop(req, workflowIds);
 	}
 
 	@Post('/:id/retry')
