@@ -24,7 +24,16 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import type { IMenuItem } from '@n8n/design-system';
+import {
+	N8nNavigationDropdown,
+	N8nTooltip,
+	N8nLink,
+	N8nIconButton,
+	N8nMenu,
+	N8nButton,
+	N8nIcon,
+} from '@n8n/design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import Logo from './Logo/Logo.vue';
 
@@ -67,7 +76,7 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = computed(() => [
+const mainMenuItems = computed((): IMenuItem[] => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',

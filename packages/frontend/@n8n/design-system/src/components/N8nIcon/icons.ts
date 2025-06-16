@@ -1629,10 +1629,12 @@ export const icons = {
 	'status-error': IconLucideX,
 	'status-waiting': IconLucideX,
 	'status-unknown': IconLucideX,
+	variable: IconLucideX,
 
 	refresh: IconLucideRefreshCw,
 	vault: IconLucideVault,
 	'check-double': IconLucideCheckCheck,
+	'folder-plus': IconLucideFolderPlus,
 
 	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
