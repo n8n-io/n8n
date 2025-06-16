@@ -184,7 +184,10 @@ export class ActiveExecutions {
 				this.logger.debug('Closing response for execution', { executionId });
 				execution.executionData.httpResponse.end();
 			} catch (error) {
-				this.logger.error('Error closing streaming response', { executionId, error });
+				this.logger.error('Error closing streaming response', {
+					executionId,
+					error: (error as Error).message,
+				});
 			}
 		}
 
