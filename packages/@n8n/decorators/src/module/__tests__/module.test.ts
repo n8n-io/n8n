@@ -60,12 +60,12 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should support async init method', async () => {
-		const mockinit = jest.fn();
+		const mockInit = jest.fn();
 
 		@BackendModule({ name: 'test' })
 		class TestModule {
 			async init() {
-				mockinit();
+				mockInit();
 			}
 		}
 
@@ -76,7 +76,7 @@ describe('@BackendModule decorator', () => {
 		const moduleInstance = new TestModule();
 		await moduleInstance.init();
 
-		expect(mockinit).toHaveBeenCalled();
+		expect(mockInit).toHaveBeenCalled();
 	});
 
 	describe('ModuleMetadata', () => {
