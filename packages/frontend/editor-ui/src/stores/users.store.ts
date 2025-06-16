@@ -264,6 +264,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
+		return user;
+	};
+
+	const updateUserName = async (params: { firstName: string; lastName: string }) => {
+		if (!currentUser.value) {
+			return;
+		}
+
+		return await updateUser({
+			email: currentUser.value.email as string,
+			...params,
+		});
 	};
 
 	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
@@ -430,6 +442,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		validatePasswordToken,
 		changePassword,
 		updateUser,
+		updateUserName,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,

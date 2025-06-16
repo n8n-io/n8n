@@ -3,11 +3,9 @@ import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
 import * as eventsApi from '@n8n/rest-api-client/api/events';
-import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
-import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
@@ -44,9 +42,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			enabled: false,
 		},
 	});
-	const ldap = ref({ loginLabel: '', loginEnabled: false });
-	const saml = ref({ loginLabel: '', loginEnabled: false });
-	const oidc = ref({ loginEnabled: false, loginUrl: '', callbackUrl: '' });
 	const mfa = ref({ enabled: false });
 	const folders = ref({ enabled: false });
 
@@ -89,16 +84,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
-
-	const isLdapLoginEnabled = computed(() => ldap.value.loginEnabled);
-
-	const ldapLoginLabel = computed(() => ldap.value.loginLabel);
-
-	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
-
-	const isOidcLoginEnabled = computed(() => oidc.value.loginEnabled);
-
-	const oidcCallBackUrl = computed(() => oidc.value.callbackUrl);
 
 	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
 
@@ -182,14 +167,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.workflowCallerPolicyDefaultOption,
 	);
 
-	const isDefaultAuthenticationSaml = computed(
-		() => userManagement.value.authenticationMethod === UserManagementAuthenticationMethod.Saml,
-	);
-
-	const isDefaultAuthenticationOidc = computed(
-		() => userManagement.value.authenticationMethod === UserManagementAuthenticationMethod.Oidc,
-	);
-
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isBelowUserQuota = computed(
@@ -210,21 +187,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				!!settings.value.userManagement.showSetupOnFirstLoad;
 		}
 		api.value = settings.value.publicApi;
-		if (settings.value.sso?.ldap) {
-			ldap.value.loginEnabled = settings.value.sso.ldap.loginEnabled;
-			ldap.value.loginLabel = settings.value.sso.ldap.loginLabel;
-		}
-		if (settings.value.sso?.saml) {
-			saml.value.loginEnabled = settings.value.sso.saml.loginEnabled;
-			saml.value.loginLabel = settings.value.sso.saml.loginLabel;
-		}
-
-		if (settings.value.sso?.oidc) {
-			oidc.value.loginEnabled = settings.value.sso.oidc.loginEnabled;
-			oidc.value.loginUrl = settings.value.sso.oidc.loginUrl || '';
-			oidc.value.callbackUrl = settings.value.sso.oidc.callbackUrl || '';
-		}
-
 		mfa.value.enabled = settings.value.mfa?.enabled;
 		folders.value.enabled = settings.value.folders?.enabled;
 
@@ -364,31 +326,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getLdapConfig = async () => {
-		const rootStore = useRootStore();
-		return await ldapApi.getLdapConfig(rootStore.restApiContext);
-	};
-
-	const getLdapSynchronizations = async (pagination: { page: number }) => {
-		const rootStore = useRootStore();
-		return await ldapApi.getLdapSynchronizations(rootStore.restApiContext, pagination);
-	};
-
-	const testLdapConnection = async () => {
-		const rootStore = useRootStore();
-		return await ldapApi.testLdapConnection(rootStore.restApiContext);
-	};
-
-	const updateLdapConfig = async (ldapConfig: LdapConfig) => {
-		const rootStore = useRootStore();
-		return await ldapApi.updateLdapConfig(rootStore.restApiContext, ldapConfig);
-	};
-
-	const runLdapSync = async (data: IDataObject) => {
-		const rootStore = useRootStore();
-		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
-	};
-
 	const getTimezones = async (): Promise<IDataObject> => {
 		const rootStore = useRootStore();
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
@@ -412,8 +349,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		userManagement,
 		templatesEndpointHealthy,
 		api,
-		ldap,
-		saml,
 		mfa,
 		isDocker,
 		isDevRelease,
@@ -432,10 +367,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPreviewMode,
 		publicApiLatestVersion,
 		publicApiPath,
-		isLdapLoginEnabled,
-		ldapLoginLabel,
-		isSamlLoginEnabled,
-		isOidcLoginEnabled,
 		showSetupPage,
 		deploymentType,
 		isCloudDeployment,
@@ -459,8 +390,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isQueueModeEnabled,
 		isMultiMain,
 		isWorkerViewAvailable,
-		isDefaultAuthenticationSaml,
-		isDefaultAuthenticationOidc,
 		workflowCallerPolicyDefaultOption,
 		permanentlyDismissedBanners,
 		isBelowUserQuota,
@@ -474,13 +403,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		experimental__minZoomNodeSettingsInCanvas,
 		partialExecutionVersion,
-		oidcCallBackUrl,
 		reset,
-		testLdapConnection,
-		getLdapConfig,
-		getLdapSynchronizations,
-		updateLdapConfig,
-		runLdapSync,
 		getTimezones,
 		testTemplatesEndpoint,
 		submitContactInfo,
