@@ -29,7 +29,7 @@ const onSSOLogin = async () => {
 			<span>{{ i18n.baseText('sso.login.divider') }}</span>
 		</div>
 		<n8n-button
-			size="large"
+			size="test"
 			type="primary"
 			outline
 			:label="i18n.baseText('sso.login.button')"
