@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-Stricter parameters for `iframe`, `video`, and `source` tags when using Form node,
+Stricter parameters for `iframe`, `video`, and `source` tags when using the Form node.
 
 ### When is action necessary?
 
