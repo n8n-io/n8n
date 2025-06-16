@@ -15,7 +15,6 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -190,10 +189,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa.value.enabled = settings.value.mfa?.enabled;
 		folders.value.enabled = settings.value.folders?.enabled;
 
-		if (settings.value.enterprise?.showNonProdBanner) {
-			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
-		}
-
 		if (settings.value.versionCli) {
 			useRootStore().setVersionCli(settings.value.versionCli);
 		}
@@ -207,11 +202,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				document.write(INSECURE_CONNECTION_WARNING);
 				return;
 			}
-		}
-
-		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');
-		if (!isV1BannerDismissedPermanently && settings.value.versionCli.startsWith('1.')) {
-			useUIStore().pushBannerToStack('V1');
 		}
 	};
 

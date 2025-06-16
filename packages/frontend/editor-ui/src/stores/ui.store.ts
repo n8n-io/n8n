@@ -526,6 +526,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const initialize = (options: { banners: BannerName[] }) => {
+		options.banners.forEach((banner) => {
+			pushBannerToStack(banner);
+		});
+	};
+
 	return {
 		appGridDimensions,
 		appliedTheme,
@@ -579,6 +585,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
+		initialize,
 	};
 });
 
