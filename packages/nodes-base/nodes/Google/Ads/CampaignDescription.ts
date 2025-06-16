@@ -11,7 +11,7 @@ async function processCampaignSearchResponse(
 	_inputData: INodeExecutionData[],
 	responseData: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
+	const results = ((responseData.body as IDataObject).results as GoogleAdsCampaignElement) ?? [];
 
 	return results.map((result) => ({
 		json: {
