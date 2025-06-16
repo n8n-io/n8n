@@ -13,8 +13,13 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import { useSSOStore } from '@/stores/sso.store';
+import { EnterpriseEditionFeature } from '@/constants';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
 
-let coreInitialized = false;
+export const state = {
+	initialized: false,
+};
 let authenticatedFeaturesInitialized = false;
 
 /**
@@ -22,15 +27,27 @@ let authenticatedFeaturesInitialized = false;
  * This is called once, when the first route is loaded.
  */
 export async function initializeCore() {
-	if (coreInitialized) {
+	if (state.initialized) {
 		return;
 	}
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const ssoStore = useSSOStore();
 
 	await settingsStore.initialize();
+
+	ssoStore.initialize({
+		authenticationMethod: settingsStore.userManagement
+			.authenticationMethod as UserManagementAuthenticationMethod,
+		config: settingsStore.settings.sso,
+		features: {
+			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+		},
+	});
 
 	void useExternalHooks().run('app.mount');
 
@@ -40,7 +57,7 @@ export async function initializeCore() {
 		void versionsStore.checkForNewVersions();
 	}
 
-	coreInitialized = true;
+	state.initialized = true;
 }
 
 /**
