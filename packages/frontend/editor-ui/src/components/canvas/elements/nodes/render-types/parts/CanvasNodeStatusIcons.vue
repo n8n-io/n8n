@@ -7,10 +7,6 @@ import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 
-const { withCountClass } = defineProps<{
-	withCountClass?: string;
-}>();
-
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
 
@@ -32,7 +28,6 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
-const shouldShowCount = computed(() => runDataIterations.value > 1);
 </script>
 
 <template>
@@ -89,22 +84,19 @@ const shouldShowCount = computed(() => runDataIterations.value > 1);
 					)
 				}}
 			</template>
-			<div
-				data-test-id="canvas-node-status-warning"
-				:class="[$style.status, $style.warning, shouldShowCount ? withCountClass : '']"
-			>
+			<div data-test-id="canvas-node-status-warning" :class="[$style.status, $style.warning]">
 				<FontAwesomeIcon icon="triangle" />
-				<span v-if="shouldShowCount" :class="$style.count"> {{ runDataIterations }}</span>
+				<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 			</div>
 		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasRunData"
 		data-test-id="canvas-node-status-success"
-		:class="[$style.status, $style.runData, shouldShowCount ? withCountClass : '']"
+		:class="[$style.status, $style.runData]"
 	>
 		<FontAwesomeIcon icon="check" />
-		<span v-if="shouldShowCount" :class="$style.count"> {{ runDataIterations }}</span>
+		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 	</div>
 </template>
 

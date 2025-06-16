@@ -27,6 +27,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     </div>
   </div>
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -42,7 +43,6 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
       Test Node Subtitle
     </div>
   </div>
-  <!--v-if-->
   
 </div>
 `;
@@ -74,6 +74,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
     </div>
   </div>
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -89,7 +90,6 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
       Test Node Subtitle
     </div>
   </div>
-  <!--v-if-->
   
 </div>
 `;
@@ -121,6 +121,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
     </div>
   </div>
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -136,7 +137,6 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
       Test Node Subtitle
     </div>
   </div>
-  <!--v-if-->
   
 </div>
 `;
@@ -168,6 +168,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     </div>
   </div>
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -183,7 +184,6 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
       Test Node Subtitle
     </div>
   </div>
-  <!--v-if-->
   
 </div>
 `;
@@ -215,6 +215,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     </div>
   </div>
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -230,7 +231,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
       Test Node Subtitle
     </div>
   </div>
-  <!--v-if-->
   
 </div>
 `;
