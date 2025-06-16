@@ -14,9 +14,9 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class TestModule {
-			initialize() {}
+			init() {}
 		}
 
 		const registeredModules = moduleMetadata.getClasses();
@@ -26,19 +26,19 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register multiple modules', () => {
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class FirstModule {
-			initialize() {}
+			init() {}
 		}
 
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class SecondModule {
-			initialize() {}
+			init() {}
 		}
 
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class ThirdModule {
-			initialize() {}
+			init() {}
 		}
 
 		const registeredModules = moduleMetadata.getClasses();
@@ -49,8 +49,8 @@ describe('@BackendModule decorator', () => {
 		expect(registeredModules).toHaveLength(3);
 	});
 
-	it('should work with modules without initialize method', () => {
-		@BackendModule()
+	it('should work with modules without init method', () => {
+		@BackendModule({ name: 'test' })
 		class TestModule {}
 
 		const registeredModules = moduleMetadata.getClasses();
@@ -59,13 +59,13 @@ describe('@BackendModule decorator', () => {
 		expect(registeredModules).toHaveLength(1);
 	});
 
-	it('should support async initialize method', async () => {
-		const mockInitialize = jest.fn();
+	it('should support async init method', async () => {
+		const mockinit = jest.fn();
 
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class TestModule {
-			async initialize() {
-				mockInitialize();
+			async init() {
+				mockinit();
 			}
 		}
 
@@ -74,17 +74,17 @@ describe('@BackendModule decorator', () => {
 		expect(registeredModules).toContain(TestModule);
 
 		const moduleInstance = new TestModule();
-		await moduleInstance.initialize();
+		await moduleInstance.init();
 
-		expect(mockInitialize).toHaveBeenCalled();
+		expect(mockinit).toHaveBeenCalled();
 	});
 
 	describe('ModuleMetadata', () => {
 		it('should allow retrieving and checking registered modules', () => {
-			@BackendModule()
+			@BackendModule({ name: 'test' })
 			class FirstModule {}
 
-			@BackendModule()
+			@BackendModule({ name: 'test' })
 			class SecondModule {}
 
 			const registeredModules = moduleMetadata.getClasses();
@@ -95,7 +95,7 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should apply Service decorator', () => {
-		@BackendModule()
+		@BackendModule({ name: 'test' })
 		class TestModule {}
 
 		expect(Container.has(TestModule)).toBe(true);
