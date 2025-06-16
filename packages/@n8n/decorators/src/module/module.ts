@@ -33,8 +33,8 @@ export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURE
 /**
  * Decorator to create a backend module.
  *
- * @param opts.name - Name of the module, camelCased. Used as the key to register the module metadata.
- * @param opts.licenseFlag - License flag to enable the module. Only ofr modules that are fully licensed.
+ * @param opts.name - Name of the module, camelCased. Used as the key to register module metadata.
+ * @param opts.licenseFlag - License flag to enable the module. Only for modules that are fully licensed.
  */
 export const BackendModule =
 	(opts: { name: string; licenseFlag?: LicenseFlag }): ClassDecorator =>
