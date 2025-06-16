@@ -34,19 +34,18 @@ export function getSamlLoginLabel(): string {
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
-	if (isEmailCurrentAuthenticationMethod() || isSamlCurrentAuthenticationMethod()) {
-		if (enabled) {
-			config.set(SAML_LOGIN_ENABLED, true);
-			await setCurrentAuthenticationMethod('saml');
-		} else if (!enabled) {
-			config.set(SAML_LOGIN_ENABLED, false);
-			await setCurrentAuthenticationMethod('email');
-		}
-	} else {
+	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+	if (enabled && !isEmailCurrentAuthenticationMethod() && !isSamlCurrentAuthenticationMethod()) {
 		throw new InternalServerError(
-			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${getCurrentAuthenticationMethod()})`,
+			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${currentAuthenticationMethod})`,
 		);
 	}
+
+	const targetAuthenticationMethod =
+		!enabled && currentAuthenticationMethod === 'saml' ? 'email' : currentAuthenticationMethod;
+
+	config.set(SAML_LOGIN_ENABLED, enabled);
+	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
 }
 
 export function setSamlLoginLabel(label: string): void {

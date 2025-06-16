@@ -20,6 +20,7 @@ import {
 	getDomainBase,
 	getDomainPath,
 	resolveAIMetrics,
+	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
 } from '@/telemetry-helpers';
 import { randomInt } from '@/utils';
@@ -1805,6 +1806,224 @@ describe('makeAIMetrics', () => {
 			aiToolCount: 0,
 			fromAIOverrideCount: 0,
 			fromAIExpressionCount: 0,
+		});
+	});
+});
+
+describe('resolveVectorStoreMetrics', () => {
+	const makeNode = (parameters: object, type: string) =>
+		({
+			parameters,
+			type,
+			typeVersion: 1,
+			id: '7cb0b373-715c-4a89-8bbb-3f238907bc86',
+			name: 'a name',
+			position: [0, 0],
+		}) as INode;
+
+	it('should return empty object if no vector store nodes are present', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.nonVectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['Non-AI'],
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({});
+	});
+
+	it('should detect vector store nodes that inserted data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: true,
+			queriedDataFromVectorStore: false,
+		});
+	});
+
+	it('should detect vector store nodes that queried data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'retrieve',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: false,
+			queriedDataFromVectorStore: true,
+		});
+	});
+
+	it('should detect vector store nodes that both inserted and queried data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+			makeNode(
+				{
+					mode: 'retrieve',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: true,
+			queriedDataFromVectorStore: true,
+		});
+	});
+
+	it('should return empty object if no successful executions are found', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'error',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: false,
+			queriedDataFromVectorStore: false,
 		});
 	});
 });
