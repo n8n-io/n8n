@@ -303,18 +303,18 @@ export async function getTools(
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
 
 	// If an output parser is available, create a dynamic tool to validate the final output.
-	if (outputParser) {
-		const schema = getOutputParserSchema(outputParser);
-		const structuredOutputParserTool = new DynamicStructuredTool({
-			schema,
-			name: 'format_final_json_response',
-			description:
-				'Use this tool to format your final response to the user in a structured JSON format. This tool validates your output against a schema to ensure it meets the required format. ONLY use this tool when you have completed all necessary reasoning and are ready to provide your final answer. Do not use this tool for intermediate steps or for asking questions. The output from this tool will be directly returned to the user.',
-			// We do not use a function here because we intercept the output with the parser.
-			func: async () => '',
-		});
-		tools.push(structuredOutputParserTool);
-	}
+	// if (outputParser) {
+	// 	const schema = getOutputParserSchema(outputParser);
+	// 	const structuredOutputParserTool = new DynamicStructuredTool({
+	// 		schema,
+	// 		name: 'format_final_json_response',
+	// 		description:
+	// 			'Use this tool to format your final response to the user in a structured JSON format. This tool validates your output against a schema to ensure it meets the required format. ONLY use this tool when you have completed all necessary reasoning and are ready to provide your final answer. Do not use this tool for intermediate steps or for asking questions. The output from this tool will be directly returned to the user.',
+	// 		// We do not use a function here because we intercept the output with the parser.
+	// 		func: async () => '',
+	// 	});
+	// 	tools.push(structuredOutputParserTool);
+	// }
 	return tools;
 }
 

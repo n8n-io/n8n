@@ -1,4 +1,4 @@
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import omit from 'lodash/omit';
@@ -13,6 +13,7 @@ import {
 	getAgentStepsParser,
 	getChatModel,
 	getOptionalMemory,
+	getOutputParserSchema,
 	getTools,
 	prepareMessages,
 	preparePrompt,
@@ -85,10 +86,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				streamRunnable: false,
 			});
 			agent.streamRunnable = false;
+
 			// Wrap the agent with parsers and fixes.
 			const runnableAgent = RunnableSequence.from([
 				agent,
-				getAgentStepsParser(outputParser, memory),
+				getAgentStepsParser(undefined, memory),
 				fixEmptyContentMessage,
 			]);
 			const executor = AgentExecutor.fromAgentAndTools({
@@ -100,7 +102,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			return await executor.invoke(
+			const agentResult = await executor.invoke(
 				{
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
@@ -109,6 +111,28 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
+
+			// After agent execution, use the outputParsingLlm to format the result
+			let finalResult = agentResult;
+			if (outputParser) {
+				const outputParsingLlm = model.withStructuredOutput(getOutputParserSchema(outputParser));
+
+				const outputParsingPrompt = await ChatPromptTemplate.fromMessages([
+					['system', agentResult.system_message],
+					['user', '{user_input}'],
+					['assistant', '{agent_output}'],
+					['user', 'Format the response according to the JSON schema'],
+				]).invoke({
+					user_input: agentResult.input,
+					agent_output: agentResult.output,
+				});
+
+				console.log(outputParsingPrompt);
+
+				finalResult = await outputParsingLlm.invoke(outputParsingPrompt);
+			}
+
+			return finalResult;
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);
