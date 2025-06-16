@@ -4,7 +4,6 @@ import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
 */
-
 export function sanitizeHtml(dirtyHtml: string) {
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {
@@ -47,21 +46,6 @@ export const sanitizeIfString = <T>(message: T): string | T => {
 	}
 	return message;
 };
-
-export function convertRemToPixels(rem: string) {
-	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-}
-
-export function isChildOf(parent: Element, child: Element): boolean {
-	if (child.parentElement === null) {
-		return false;
-	}
-	if (child.parentElement === parent) {
-		return true;
-	}
-
-	return isChildOf(parent, child.parentElement);
-}
 
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
