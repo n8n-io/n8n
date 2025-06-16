@@ -42,8 +42,6 @@ const testServer = utils.setupTestServer({
 describe('GET /users', () => {
 	let owner: User;
 	let member1: User;
-	let member2: User;
-	let admin: User;
 	let ownerAgent: SuperAgentTest;
 	let userRepository: UserRepository;
 
@@ -64,13 +62,13 @@ describe('GET /users', () => {
 			firstName: 'Member1FirstName',
 			lastName: 'Member1LastName',
 		});
-		member2 = await createUser({
+		await createUser({
 			role: 'global:member',
 			email: 'member2@n8n.io',
 			firstName: 'Member2FirstName',
 			lastName: 'Member2LastName',
 		});
-		admin = await createUser({
+		await createUser({
 			role: 'global:admin',
 			email: 'admin@n8n.io',
 			firstName: 'AdminFirstName',
@@ -381,7 +379,7 @@ describe('GET /users', () => {
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						`filter={ "email": "${member1.email}" }&select=["firstName"]&take=1&expand={"projectRelations": true}&sortBy=role:asc`,
+						`filter={ "email": "${member1.email}" }&select=["firstName"]&take=1&expand=["projectRelations"]&sortBy=role:asc`,
 					)
 					.expect(200);
 
@@ -411,7 +409,7 @@ describe('GET /users', () => {
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						'filter={ "isOwner": true }&select=["firstName"]&take=1&expand={"projectRelations": true}&sortBy=role:asc',
+						'filter={ "isOwner": true }&select=["firstName"]&take=1&expand=["projectRelations"]&sortBy=role:asc',
 					)
 					.expect(200);
 
@@ -429,6 +427,67 @@ describe('GET /users', () => {
 				});
 
 				expect(response.body.data.items[0].projectRelations).toHaveLength(0);
+			});
+		});
+
+		describe('sortBy', () => {
+			test('should sort by role:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=role:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].role).toBe('global:owner');
+				expect(response.body.data.items[1].role).toBe('global:admin');
+				expect(response.body.data.items[2].role).toBe('global:member');
+				expect(response.body.data.items[3].role).toBe('global:member');
+			});
+
+			test('should sort by role:desc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=role:desc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].role).toBe('global:member');
+				expect(response.body.data.items[1].role).toBe('global:member');
+				expect(response.body.data.items[2].role).toBe('global:admin');
+				expect(response.body.data.items[3].role).toBe('global:owner');
+			});
+
+			test('should sort by firstName:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=firstName:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].firstName).toBe('AdminFirstName');
+				expect(response.body.data.items[1].firstName).toBe('Member1FirstName');
+				expect(response.body.data.items[2].firstName).toBe('Member2FirstName');
+				expect(response.body.data.items[3].firstName).toBe('OwnerFirstName');
+			});
+
+			test('should sort by firstName:desc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=firstName:desc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].firstName).toBe('OwnerFirstName');
+				expect(response.body.data.items[1].firstName).toBe('Member2FirstName');
+				expect(response.body.data.items[2].firstName).toBe('Member1FirstName');
+				expect(response.body.data.items[3].firstName).toBe('AdminFirstName');
+			});
+
+			test('should sort by lastName:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=lastName:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].lastName).toBe('AdminLastName');
+				expect(response.body.data.items[1].lastName).toBe('Member1LastName');
+				expect(response.body.data.items[2].lastName).toBe('Member2LastName');
+				expect(response.body.data.items[3].lastName).toBe('OwnerLastName');
+			});
+			test('should sort by lastName:desc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy=lastName:desc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].lastName).toBe('OwnerLastName');
+				expect(response.body.data.items[1].lastName).toBe('Member2LastName');
+				expect(response.body.data.items[2].lastName).toBe('Member1LastName');
+				expect(response.body.data.items[3].lastName).toBe('AdminLastName');
 			});
 		});
 	});

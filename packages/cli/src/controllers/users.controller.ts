@@ -26,8 +26,6 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -71,13 +69,9 @@ export class UsersController {
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
-		listQueryOptions?: UsersListFilterDto,
+		listQueryOptions: UsersListFilterDto,
 	) {
-		if (listQueryOptions === undefined) {
-			return publicUsers;
-		}
-
-		const { select, filter } = listQueryOptions;
+		const { select } = listQueryOptions;
 
 		// remove fields added to satisfy query
 		const fields = select as Array<keyof User>;
@@ -99,103 +93,6 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
-		const queryBuilder = this.userRepository.createQueryBuilder('user');
-
-		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
-
-		if (!listQueryOptions) {
-			return queryBuilder;
-		}
-
-		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
-
-		if (select !== undefined) {
-			const fields = select as Array<keyof User>;
-			if (!fields.includes('id')) {
-				fields.unshift('id'); // Ensure id is always selected
-			}
-			queryBuilder.select(fields.map((field) => `user.${field}`));
-		}
-
-		if (take >= 0) queryBuilder.limit(take);
-		if (skip) queryBuilder.offset(skip);
-
-		if (expand?.includes('projectRelations')) {
-			queryBuilder.leftJoinAndSelect(
-				'user.projectRelations',
-				'projectRelations',
-				'projectRelations.role <> :projectRole',
-				{
-					projectRole: 'project:personalOwner', // Exclude personal project relations
-				},
-			);
-			queryBuilder.leftJoinAndSelect('projectRelations.project', 'project');
-		}
-
-		if (typeof filter?.email === 'string') {
-			queryBuilder.andWhere('user.email = :email', {
-				email: filter.email,
-			});
-		}
-
-		if (typeof filter?.firstName === 'string') {
-			queryBuilder.andWhere('user.firstName = :firstName', {
-				firstName: filter.firstName,
-			});
-		}
-
-		if (typeof filter?.lastName === 'string') {
-			queryBuilder.andWhere('user.lastName = :lastName', {
-				lastName: filter.lastName,
-			});
-		}
-
-		console.log('filter?.isOwner', filter?.isOwner);
-		if (typeof filter?.isOwner === 'boolean') {
-			if (filter.isOwner) {
-				queryBuilder.andWhere('user.role = :role', {
-					role: 'global:owner',
-				});
-			} else {
-				queryBuilder.andWhere('user.role <> :role', {
-					role: 'global:owner',
-				});
-			}
-		}
-
-		if (filter?.fullText) {
-			const fullTextFilter = `%${filter.fullText}%`;
-			queryBuilder.andWhere(
-				new Brackets((qb) => {
-					qb.where('LOWER(user.firstName) like LOWER(:firstNameFullText)', {
-						firstNameFullText: fullTextFilter,
-					})
-						.orWhere('LOWER(user.lastName) like LOWER(:lastNameFullText)', {
-							lastNameFullText: fullTextFilter,
-						})
-						.orWhere('LOWER(user.email) like LOWER(:email)', {
-							email: fullTextFilter,
-						});
-				}),
-			);
-		}
-
-		if (sortBy) {
-			const [field, order] = sortBy.split(':');
-			if (field === 'firstName' || field === 'lastName') {
-				queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
-			} else if (field === 'role') {
-				queryBuilder.addOrderBy(
-					"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-					order.toUpperCase() as 'ASC' | 'DESC',
-				);
-			}
-		}
-
-		return queryBuilder;
-	}
-
 	@Get('/')
 	@GlobalScope('user:list')
 	async listUsers(
@@ -203,7 +100,7 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
-		const userQuery = this.buildUserQuery(listQueryOptions);
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 
 		const response = await userQuery.getManyAndCount();
 
