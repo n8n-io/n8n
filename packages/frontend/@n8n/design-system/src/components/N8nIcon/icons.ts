@@ -1614,7 +1614,7 @@ export const icons = {
 	// 'paper-plane': IconLucideX,
 	// 'sync-alt': IconLucideX,
 	triangle: IconLucideX,
-	spinner: IconLucideX,
+	// spinner: IconLucideX,
 	json: IconLucideX,
 	binary: IconLucideX,
 	schema: IconLucideX,
