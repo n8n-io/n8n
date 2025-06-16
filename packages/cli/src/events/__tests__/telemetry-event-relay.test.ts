@@ -26,6 +26,9 @@ describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
+		deployment: {
+			type: 'default',
+		},
 		userManagement: {
 			emails: {
 				mode: 'smtp',

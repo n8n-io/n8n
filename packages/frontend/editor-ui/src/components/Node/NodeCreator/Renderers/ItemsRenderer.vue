@@ -13,6 +13,7 @@ import CommunityNodeItem from '../ItemTypes/CommunityNodeItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
+import OpenTemplateItem from '../ItemTypes/OpenTemplateItem.vue';
 
 export interface Props {
 	elements?: INodeCreateElement[];
@@ -204,6 +205,12 @@ watch(
 					<LinkItem
 						v-else-if="item.type === 'link'"
 						:link="item.properties"
+						:class="$style.linkItem"
+					/>
+
+					<OpenTemplateItem
+						v-else-if="item.type === 'openTemplate'"
+						:open-template="item.properties"
 						:class="$style.linkItem"
 					/>
 				</div>

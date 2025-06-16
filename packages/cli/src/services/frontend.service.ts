@@ -134,12 +134,12 @@ export class FrontendService {
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
-				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
+				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
-				config.getEnv('personalization.enabled') && this.globalConfig.diagnostics.enabled,
-			defaultLocale: config.getEnv('defaultLocale'),
+				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
+			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
@@ -155,6 +155,11 @@ export class FrontendService {
 					loginEnabled: false,
 					loginLabel: '',
 				},
+				oidc: {
+					loginEnabled: false,
+					loginUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/login`,
+					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
+				},
 			},
 			publicApi: {
 				enabled: isApiEnabled(),
@@ -166,7 +171,7 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
-			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 			},
@@ -180,7 +185,7 @@ export class FrontendService {
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
-				type: config.getEnv('deployment.type'),
+				type: this.globalConfig.deployment.type,
 			},
 			allowedModules: {
 				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
@@ -190,6 +195,7 @@ export class FrontendService {
 				sharing: false,
 				ldap: false,
 				saml: false,
+				oidc: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
@@ -212,7 +218,7 @@ export class FrontendService {
 			mfa: {
 				enabled: false,
 			},
-			hideUsagePage: config.getEnv('hideUsagePage'),
+			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
 				consumerId: 'unknown',
 				environment: this.globalConfig.license.tenantId === 1 ? 'production' : 'staging',
@@ -321,6 +327,7 @@ export class FrontendService {
 			logStreaming: this.license.isLogStreamingEnabled(),
 			ldap: this.license.isLdapEnabled(),
 			saml: this.license.isSamlEnabled(),
+			oidc: this.licenseState.isOidcLicensed(),
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
@@ -346,6 +353,12 @@ export class FrontendService {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
 				loginEnabled: config.getEnv('sso.saml.loginEnabled'),
+			});
+		}
+
+		if (this.licenseState.isOidcLicensed()) {
+			Object.assign(this.settings.sso.oidc, {
+				loginEnabled: config.getEnv('sso.oidc.loginEnabled'),
 			});
 		}
 
@@ -377,7 +390,7 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		this.settings.mfa.enabled = config.get('mfa.enabled');
+		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 

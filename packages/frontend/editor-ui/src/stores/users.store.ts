@@ -91,6 +91,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const isCalloutDismissed = (callout: string) =>
+		Boolean(currentUser.value?.settings?.dismissedCallouts?.[callout]);
+
+	const setCalloutDismissed = (callout: string) => {
+		if (currentUser.value?.settings) {
+			if (!currentUser.value?.settings?.dismissedCallouts) {
+				currentUser.value.settings.dismissedCallouts = {};
+			}
+
+			currentUser.value.settings.dismissedCallouts[callout] = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -437,6 +450,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		isCalloutDismissed,
+		setCalloutDismissed,
 		submitContactEmail,
 	};
 });
