@@ -138,16 +138,16 @@ describe('ExecutionsController', () => {
 		const executionId = '999';
 		const req = mock<ExecutionRequest.Stop>({ params: { id: executionId } });
 
-		it('should 404 when all workflows are inaccessible for user', async () => {
+		it('should throw expected NotFoundError when all workflows are inaccessible for user', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 
 			const promise = executionsController.stop(req);
 
-			await expect(promise).rejects.toThrow('Execution not found');
+			await expect(promise).rejects.toThrow(new NotFoundError('Execution not found'));
 			expect(executionService.stop).not.toHaveBeenCalled();
 		});
 
-		it('should attempt to stop execution when user has accessible workflows but passed workflow ID is not accessible by user', async () => {
+		it('should call execution service with expected data when user has accessible workflows', async () => {
 			const mockAccessibleWorkflowIds = ['1234', '5678'];
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(mockAccessibleWorkflowIds);
 
