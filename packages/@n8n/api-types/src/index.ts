@@ -43,4 +43,5 @@ export {
 	ROLE,
 	type Role,
 	type UsersList,
+	usersListSchema,
 } from './schemas/user.schema';
