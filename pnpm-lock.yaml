@@ -773,7 +773,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e417b0b770c7ddaee3cf4ccf28b37200))
+        version: 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(259cf7eaee7343a58498f432f7938ad9))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -800,7 +800,7 @@ importers:
         version: 0.3.2(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(01b86b12d6f50995a1edd579a0245a6d)
+        version: 0.3.24(c3af4d731197d186549496cd7d66d0a9)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -905,7 +905,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(e417b0b770c7ddaee3cf4ccf28b37200)
+        version: 0.3.11(259cf7eaee7343a58498f432f7938ad9)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -2340,8 +2340,8 @@ importers:
         specifier: ^8.0.2
         version: 8.0.2
       '@iconify/json':
-        specifier: ^2.2.228
-        version: 2.2.230
+        specifier: ^2.2.349
+        version: 2.2.349
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
@@ -4238,8 +4238,8 @@ packages:
   '@iconify-json/mdi@1.1.63':
     resolution: {integrity: sha512-b07dRM5LYdwJqd/lm+1+JDNDNSWHvpZ7ujb73oJxx3lmK1J0giDS0BSc4yia0hixNV0Z2q/4GyxAu/A8XqDnbg==}
 
-  '@iconify/json@2.2.230':
-    resolution: {integrity: sha512-SbwqcrYfHMnH7Na3S5RNNUdZvX0cLqgkONVMzI8BOfgVCQSY3tXHyHqeu2VkVoxJX9OcHMmfjeavpno7/y3Mfw==}
+  '@iconify/json@2.2.349':
+    resolution: {integrity: sha512-0uWIZXsRomSeeFpAGTlOtt6q9U4wfh4ghS7uBaXytNcVrklAXTDRqrH5tjbMCfLUSBTCEoF70UzrMCg012U7/g==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -16802,7 +16802,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e417b0b770c7ddaee3cf4ccf28b37200))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(259cf7eaee7343a58498f432f7938ad9))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16811,7 +16811,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(e417b0b770c7ddaee3cf4ccf28b37200)
+      langchain: 0.3.11(259cf7eaee7343a58498f432f7938ad9)
     transitivePeerDependencies:
       - encoding
 
@@ -16927,7 +16927,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify/json@2.2.230':
+  '@iconify/json@2.2.349':
     dependencies:
       '@iconify/types': 2.0.0
       pathe: 1.1.2
@@ -17335,7 +17335,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(01b86b12d6f50995a1edd579a0245a6d)':
+  '@langchain/community@0.3.24(c3af4d731197d186549496cd7d66d0a9)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17346,7 +17346,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(e417b0b770c7ddaee3cf4ccf28b37200)
+      langchain: 0.3.11(259cf7eaee7343a58498f432f7938ad9)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -17361,7 +17361,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e417b0b770c7ddaee3cf4ccf28b37200))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(259cf7eaee7343a58498f432f7938ad9))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -20871,14 +20871,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.9.0:
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
-      form-data: 4.0.2
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   axios@1.9.0(debug@4.3.6):
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.6)
@@ -20897,7 +20889,7 @@ snapshots:
 
   axios@1.9.0(debug@4.4.1):
     dependencies:
-      follow-redirects: 1.15.9(debug@4.4.1)
+      follow-redirects: 1.15.9(debug@4.3.6)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -23063,10 +23055,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.0
 
-  follow-redirects@1.15.9(debug@4.4.1):
-    optionalDependencies:
-      debug: 4.4.1(supports-color@8.1.1)
-
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -23687,7 +23675,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0)
+      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -23752,7 +23740,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24677,7 +24665,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(e417b0b770c7ddaee3cf4ccf28b37200):
+  langchain@0.3.11(259cf7eaee7343a58498f432f7938ad9):
     dependencies:
       '@langchain/core': 0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -24701,7 +24689,7 @@ snapshots:
       '@langchain/groq': 0.1.3(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.0(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/ollama': 0.1.4(@langchain/core@0.3.48(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -26486,7 +26474,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -27063,9 +27051,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0):
+  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
     dependencies:
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -27527,7 +27515,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.9.0
+      axios: 1.9.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
