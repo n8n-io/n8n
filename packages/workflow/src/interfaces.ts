@@ -2093,7 +2093,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
+export type WebhookResponseMode =
+	| 'onReceived'
+	| 'lastNode'
+	| 'responseNode'
+	| 'formPage'
+	| 'streaming';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2324,6 +2329,8 @@ export interface IWorkflowExecutionDataProcess {
 		data?: ITaskData;
 	};
 	agentRequest?: AiAgentRequest;
+	httpResponse?: express.Response; // Used for streaming responses
+	streamingEnabled?: boolean;
 }
 
 export interface ExecuteWorkflowOptions {

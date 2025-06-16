@@ -251,6 +251,10 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 
+		if (data.streamingEnabled) {
+			// TODO: Add stream handling
+		}
+
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },
