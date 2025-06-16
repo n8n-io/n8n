@@ -8,7 +8,6 @@ import {
 	type ITaskData,
 	type ITaskStartedData,
 	type Workflow,
-	type JsonObject,
 	type INode,
 	type ISourceData,
 } from 'n8n-workflow';
@@ -20,21 +19,14 @@ import get from 'lodash-es/get';
 import isEmpty from 'lodash-es/isEmpty';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import z from 'zod';
 
-type SubExecutionIdentity = {
-	executionId: string;
-	workflowId: string;
-};
+const SubExecutionIdentitySchema = z.object({
+	executionId: z.string(),
+	workflowId: z.string(),
+});
 
-function hasSubExecutionErrorIdentity(
-	errorResponse?: JsonObject,
-): errorResponse is SubExecutionIdentity {
-	return (
-		errorResponse !== undefined &&
-		typeof errorResponse.workflowId === 'string' &&
-		typeof errorResponse.executionId === 'string'
-	);
-}
+type SubExecutionIdentity = z.infer<typeof SubExecutionIdentitySchema>;
 
 function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
@@ -460,12 +452,7 @@ export function findSubExecutionLocator(entry: LogEntry): SubExecutionIdentity |
 		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
 	}
 
-	if (hasSubExecutionErrorIdentity(entry.runData?.error?.errorResponse)) {
-		const { workflowId, executionId } = entry.runData.error?.errorResponse;
-		return { workflowId, executionId };
-	}
-
-	return undefined;
+	return SubExecutionIdentitySchema.safeParse(entry.runData.error?.errorResponse).data;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
