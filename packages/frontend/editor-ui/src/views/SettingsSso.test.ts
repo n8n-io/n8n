@@ -285,6 +285,10 @@ describe('SettingsSso View', () => {
 			const ssoStore = mockedStore(useSSOStore);
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isSamlLoginEnabled = true;
+
+			ssoStore.isDefaultAuthenticationOidc = false;
+			ssoStore.isEnterpriseOidcEnabled = false;
+
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
 			const { container, getByTestId, getByRole } = renderView({
@@ -304,7 +308,10 @@ describe('SettingsSso View', () => {
 		it('should show upgrade banner when enterprise OIDC is disabled', async () => {
 			const pinia = createTestingPinia();
 			const ssoStore = mockedStore(useSSOStore);
+
 			ssoStore.isDefaultAuthenticationSaml = false;
+			ssoStore.isEnterpriseSamlEnabled = false;
+
 			ssoStore.isDefaultAuthenticationOidc = true;
 			ssoStore.isEnterpriseOidcEnabled = false;
 
