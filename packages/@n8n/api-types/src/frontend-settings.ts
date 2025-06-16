@@ -196,7 +196,7 @@ export interface FrontendSettings {
 		quota: number;
 	};
 
-	/** Backend modules loaded based on user choice and pre-init check. */
+	/** Backend modules loaded based on user configuration and pre-init check. */
 	loadedModules: string[];
 }
 
