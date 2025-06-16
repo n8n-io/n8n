@@ -19,6 +19,7 @@ import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-work
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
+import { randomUUID } from 'node:crypto';
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -41,14 +42,19 @@ describe('ExecuteContext', () => {
 	const nodeTypes = mock<INodeTypes>();
 	const expression = mock<Expression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'test-node-id',
 		name: 'Test Node',
+		type: 'testNodeType',
+		typeVersion: 1,
+		position: [0, 0],
 		credentials: {
 			[testCredentialType]: {
 				id: 'testCredentialId',
 			},
 		},
-	});
+		parameters: {},
+	};
 	node.parameters = {
 		testParameter: 'testValue',
 		nullParameter: null,
@@ -257,6 +263,108 @@ describe('ExecuteContext', () => {
 			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
 
 			sendMessageSpy.mockRestore();
+		});
+	});
+
+	describe('sendChunk', () => {
+		test('should send call hook with structured chunk', async () => {
+			const hooksMock = {
+				runHook: jest.fn(),
+			};
+			const additionalDataWithHooks = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('item', 'test');
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'item',
+					content: '"test"',
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should send chunk without content when content is undefined', async () => {
+			const hooksMock = {
+				runHook: jest.fn(),
+			};
+			const additionalDataWithHooks = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('start');
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'start',
+					content: undefined,
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should handle when hooks is undefined', async () => {
+			const additionalDataWithoutHooks = {
+				...additionalData,
+				hooks: undefined,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithoutHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			// Should not throw error
+			await expect(testExecuteContext.sendChunk('item', 'test')).resolves.toBeUndefined();
 		});
 	});
 });

@@ -11,7 +11,8 @@ import { mockInstance } from '@test/mocking';
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
-import type { Job, JobData, JobQueue } from '../scaling.types';
+import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
+import { ActiveExecutions } from '@/active-executions';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -313,6 +314,44 @@ describe('ScalingService', () => {
 			const result = await scalingService.stopJob(job);
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('message handling', () => {
+		it('should handle send-chunk messages', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			// Simulate receiving a send-chunk message
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			expect(messageHandler).toBeDefined();
+
+			const sendChunkMessage = {
+				kind: 'send-chunk',
+				executionId: 'exec-123',
+				chunkText: { type: 'item', content: 'test' },
+				workerId: 'worker-456',
+			};
+
+			messageHandler('job-789', sendChunkMessage);
+
+			expect(activeExecutions.sendChunk).toHaveBeenCalledWith('exec-123', {
+				type: 'item',
+				content: 'test',
+			});
 		});
 	});
 });
