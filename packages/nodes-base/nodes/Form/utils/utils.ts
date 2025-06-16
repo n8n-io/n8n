@@ -59,12 +59,21 @@ export function sanitizeHtml(text: string) {
 			a: ['href', 'target', 'rel'],
 			img: ['src', 'alt', 'width', 'height'],
 			video: ['controls', 'autoplay', 'loop', 'muted', 'poster', 'width', 'height'],
-			iframe: ['*'],
+			iframe: [
+				'src',
+				'width',
+				'height',
+				'frameborder',
+				'allow',
+				'allowfullscreen',
+				'referrerpolicy',
+			],
 			source: ['src', 'type'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
 			source: ['https', 'http'],
+			iframe: ['https', 'http'],
 		},
 		allowProtocolRelative: false,
 		transformTags: {
