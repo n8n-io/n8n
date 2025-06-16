@@ -130,7 +130,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (conditionExpession) {
@@ -213,7 +213,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						const headers = {
@@ -260,7 +260,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (additionalFields.readType) {
