@@ -1,4 +1,4 @@
-import type { SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { within, waitFor } from '@testing-library/vue';
 import { mockedStore, retry } from '@/__tests__/utils';
@@ -22,6 +22,10 @@ const samlConfig = {
 	entityID: 'https://n8n-tunnel.myhost.com/rest/sso/saml/metadata',
 	returnUrl: 'https://n8n-tunnel.myhost.com/rest/sso/saml/acs',
 } as SamlPreferences & SamlPreferencesExtractedData;
+
+const oidcConfig = {
+	discoveryEndpoint: 'https://dev-qqkrykgkoo0p63d5.eu.auth0.com/.well-known/openid-configuration',
+} as OidcConfigDto;
 
 const telemetryTrack = vi.fn();
 vi.mock('@/composables/useTelemetry', () => ({
@@ -152,7 +156,7 @@ describe('SettingsSso View', () => {
 
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			expect.any(String),
-			expect.objectContaining({ identity_provider: 'metadata' }),
+			expect.objectContaining({ identity_provider: 'metadata', authentication_method: 'saml' }),
 		);
 
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
@@ -281,6 +285,68 @@ describe('SettingsSso View', () => {
 			await userEvent.click(toggle);
 			expect(toggle.textContent).toContain('Deactivated');
 		});
+	});
+
+	it('allows user to save OIDC config', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.saveOidcConfig.mockResolvedValue(oidcConfig);
+		ssoStore.isEnterpriseOidcEnabled = true;
+		ssoStore.isEnterpriseSamlEnabled = false;
+		ssoStore.isOidcLoginEnabled = true;
+		ssoStore.isSamlLoginEnabled = false;
+
+		const { getByTestId, getByRole } = renderView({ pinia });
+
+		// Set authProtocol component ref to OIDC
+		const protocolSelect = getByRole('combobox');
+		expect(protocolSelect).toBeInTheDocument();
+		await userEvent.click(protocolSelect);
+
+		const dropdown = await waitFor(() => getByRole('listbox'));
+		expect(dropdown).toBeInTheDocument();
+		const items = dropdown.querySelectorAll('.el-select-dropdown__item');
+		const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
+		expect(oidcItem).toBeDefined();
+
+		await userEvent.click(oidcItem!);
+
+		const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+		expect(saveButton).toBeVisible();
+
+		const oidcDiscoveryUrlInput = getByTestId('oidc-discovery-endpoint');
+
+		expect(oidcDiscoveryUrlInput).toBeVisible();
+		await userEvent.type(oidcDiscoveryUrlInput, oidcConfig.discoveryEndpoint);
+
+		const clientIdInput = getByTestId('oidc-client-id');
+		expect(clientIdInput).toBeVisible();
+		await userEvent.type(clientIdInput, 'test-client-id');
+		const clientSecretInput = getByTestId('oidc-client-secret');
+		expect(clientSecretInput).toBeVisible();
+		await userEvent.type(clientSecretInput, 'test-client-secret');
+
+		expect(saveButton).not.toBeDisabled();
+		await userEvent.click(saveButton);
+
+		expect(ssoStore.saveOidcConfig).toHaveBeenCalledWith(
+			expect.objectContaining({
+				discoveryEndpoint: oidcConfig.discoveryEndpoint,
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				loginEnabled: true,
+			}),
+		);
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				authentication_method: 'oidc',
+				discovery_endpoint: oidcConfig.discoveryEndpoint,
+				is_active: true,
+			}),
+		);
 	});
 });
 
