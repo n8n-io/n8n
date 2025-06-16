@@ -177,6 +177,17 @@ export class ActiveExecutions {
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
+
+		// Close response if it exists (for streaming responses)
+		if (execution.executionData.httpResponse) {
+			try {
+				this.logger.debug('Closing response for execution', { executionId });
+				execution.executionData.httpResponse.end();
+			} catch (error) {
+				this.logger.error('Error closing streaming response', { executionId, error });
+			}
+		}
+
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });
 	}
