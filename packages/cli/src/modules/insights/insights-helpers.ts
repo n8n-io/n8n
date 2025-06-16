@@ -1,6 +1,15 @@
 import { type InsightsDateRange } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
-import { INSIGHTS_DATE_RANGE_KEYS } from '@n8n/constants';
+
+export const INSIGHTS_DATE_RANGE_KEYS = [
+	'day',
+	'week',
+	'2weeks',
+	'month',
+	'quarter',
+	'6months',
+	'year',
+] as const;
 
 export const keyRangeToDays: Record<(typeof INSIGHTS_DATE_RANGE_KEYS)[number], number> = {
 	day: 1,
