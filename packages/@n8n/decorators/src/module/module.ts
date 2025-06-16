@@ -39,7 +39,7 @@ export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURE
 export const BackendModule =
 	(opts: { name: string; licenseFlag?: LicenseFlag }): ClassDecorator =>
 	(target) => {
-		Container.get(ModuleMetadata).register(opts?.name ?? target.name, {
+		Container.get(ModuleMetadata).register(opts.name, {
 			class: target as unknown as ModuleClass,
 			licenseFlag: opts?.licenseFlag,
 		});
