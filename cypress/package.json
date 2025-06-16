@@ -17,10 +17,10 @@
   },
   "devDependencies": {
     "@cypress/grep": "^4.1.0",
-    "@n8n/api-types": "workspace:*",
+    "@n8n/api-types":
     "@types/lodash": "catalog:",
     "eslint-plugin-cypress": "^3.5.0",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow":
   },
   "dependencies": {
     "@ngneat/falso": "^7.3.0",
