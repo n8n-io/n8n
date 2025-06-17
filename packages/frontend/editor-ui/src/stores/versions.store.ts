@@ -2,7 +2,7 @@ import type { IVersionNotificationSettings } from '@n8n/api-types';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { Version } from '@n8n/rest-api-client/api/versions';
+import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
@@ -12,9 +12,15 @@ import { computed, ref } from 'vue';
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
 export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
-	const versionNotificationSettings = ref({ enabled: false, endpoint: '', infoUrl: '' });
+	const versionNotificationSettings = ref<IVersionNotificationSettings>({
+		enabled: false,
+		endpoint: '',
+		whatsNewEndpoint: '',
+		infoUrl: '',
+	});
 	const nextVersions = ref<Version[]>([]);
 	const currentVersion = ref<Version | undefined>();
+	const whatsNewArticles = ref<WhatsNewArticle[]>([]);
 
 	const { showToast } = useToast();
 	const uiStore = useUIStore();
@@ -46,10 +52,10 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			const { enabled, endpoint } = versionNotificationSettings.value;
 			if (enabled && endpoint) {
 				const rootStore = useRootStore();
-				const currentVersion = rootStore.versionCli;
+				const current = rootStore.versionCli;
 				const instanceId = rootStore.instanceId;
-				const versions = await versionsApi.getNextVersions(endpoint, currentVersion, instanceId);
-				setVersions({ versions, currentVersion });
+				const versions = await versionsApi.getNextVersions(endpoint, current, instanceId);
+				setVersions({ versions, currentVersion: current });
 			}
 		} catch (e) {}
 	};
@@ -57,6 +63,27 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const setVersions = (params: SetVersionParams) => {
 		nextVersions.value = params.versions.filter((v) => v.name !== params.currentVersion);
 		currentVersion.value = params.versions.find((v) => v.name === params.currentVersion);
+	};
+
+	const setWhatsNew = (article: WhatsNewArticle[]) => {
+		whatsNewArticles.value = article;
+	};
+
+	const fetchWhatsNew = async () => {
+		try {
+			const { enabled, whatsNewEndpoint } = versionNotificationSettings.value;
+			if (enabled && whatsNewEndpoint) {
+				const rootStore = useRootStore();
+				const current = rootStore.versionCli;
+				const instanceId = rootStore.instanceId;
+				const articles = await versionsApi.getWhatsNewArticles(
+					whatsNewEndpoint,
+					current,
+					instanceId,
+				);
+				setWhatsNew(articles);
+			}
+		} catch (e) {}
 	};
 
 	const initialize = (settings: IVersionNotificationSettings) => {
@@ -69,7 +96,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			return;
 		}
 
-		await fetchVersions();
+		await Promise.all([fetchVersions(), fetchWhatsNew()]);
 
 		if (
 			currentVersion.value &&
@@ -109,5 +136,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		setVersions,
 		initialize,
 		checkForNewVersions,
+		fetchWhatsNew,
+		whatsNewArticles,
 	};
 });

@@ -104,6 +104,7 @@ export const defaultSettings: FrontendSettings = {
 		enabled: true,
 		endpoint: '',
 		infoUrl: '',
+		whatsNewEndpoint: '',
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
