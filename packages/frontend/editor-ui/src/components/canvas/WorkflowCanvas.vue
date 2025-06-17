@@ -9,7 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { templateRef, throttledRef } from '@vueuse/core';
-import CanvasNodeNodeSettings from './elements/nodes/render-types/parts/CanvasNodeNodeSettings.vue';
+import ExperimentalCanvasNodeSettings from './elements/nodes/render-types/parts/ExperimentalCanvasNodeSettings.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { N8nText } from '@n8n/design-system';
@@ -101,7 +101,7 @@ const drawerMode = true;
 				{{ getSelectedNodes.length }} nodes selected
 			</N8nText>
 			<!-- key attribute as temporary fix for an initialization issue -->
-			<CanvasNodeNodeSettings
+			<ExperimentalCanvasNodeSettings
 				v-else-if="getSelectedNodes.length === 1"
 				:key="getSelectedNodes[0]?.id"
 				:node-id="getSelectedNodes[0]?.id"
