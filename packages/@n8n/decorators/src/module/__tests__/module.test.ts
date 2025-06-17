@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 
+import type { ModuleInterface } from '../module';
 import { BackendModule } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
@@ -15,9 +16,7 @@ describe('@BackendModule decorator', () => {
 
 	it('should register module in ModuleMetadata', () => {
 		@BackendModule({ name: 'test' })
-		class TestModule {
-			init() {}
-		}
+		class TestModule implements ModuleInterface {}
 
 		const registeredModules = moduleMetadata.getClasses();
 
@@ -27,19 +26,13 @@ describe('@BackendModule decorator', () => {
 
 	it('should register multiple modules', () => {
 		@BackendModule({ name: 'test-1' })
-		class FirstModule {
-			init() {}
-		}
+		class FirstModule implements ModuleInterface {}
 
 		@BackendModule({ name: 'test-2' })
-		class SecondModule {
-			init() {}
-		}
+		class SecondModule implements ModuleInterface {}
 
 		@BackendModule({ name: 'test-3' })
-		class ThirdModule {
-			init() {}
-		}
+		class ThirdModule implements ModuleInterface {}
 
 		const registeredModules = moduleMetadata.getClasses();
 
@@ -51,7 +44,7 @@ describe('@BackendModule decorator', () => {
 
 	it('should work with modules without init method', () => {
 		@BackendModule({ name: 'test' })
-		class TestModule {}
+		class TestModule implements ModuleInterface {}
 
 		const registeredModules = moduleMetadata.getClasses();
 
@@ -63,7 +56,7 @@ describe('@BackendModule decorator', () => {
 		const mockInit = jest.fn();
 
 		@BackendModule({ name: 'test' })
-		class TestModule {
+		class TestModule implements ModuleInterface {
 			async init() {
 				mockInit();
 			}
@@ -81,7 +74,7 @@ describe('@BackendModule decorator', () => {
 
 	it('should apply Service decorator', () => {
 		@BackendModule({ name: 'test' })
-		class TestModule {}
+		class TestModule implements ModuleInterface {}
 
 		expect(Container.has(TestModule)).toBe(true);
 	});
