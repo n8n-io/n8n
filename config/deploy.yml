@@ -12,7 +12,6 @@ proxy:
   forward_headers: true
   hosts:
     - <%= ENV["PROXY_HOST"] %>
-    - <%= ENV["PROXY_HOST_2"] %>
   app_port: <%= ENV["N8N_PORT"] %>
   healthcheck:
     path: /
@@ -59,10 +58,10 @@ env:
     EXECUTIONS_DATA_SAVE_ON_ERROR: 'all'
     EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'all'
 
-    N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY: <%= ENV["TYPEBOT_STORAGE_ACCESS_KEY_ID"] %>
-    N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET: <%= ENV["TYPEBOT_STORAGE_SECRET_ACCESS_KEY"] %>
-    N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME: <%= ENV["TYPEBOT_STORAGE_BUCKET_NAME"] %>
-    N8N_EXTERNAL_STORAGE_S3_HOST: <%= ENV["TYPEBOT_STORAGE_ENDPOINT"] %>
+    N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY: <%= ENV["STORAGE_ACCESS_KEY_ID"] %>
+    N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET: <%= ENV["STORAGE_SECRET_ACCESS_KEY"] %>
+    N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME: <%= ENV["STORAGE_BUCKET_NAME"] %>
+    N8N_EXTERNAL_STORAGE_S3_HOST: <%= ENV["STORAGE_ENDPOINT"] %>
 
     N8N_DIAGNOSTICS_ENABLED: <%= ENV["N8N_DIAGNOSTICS_ENABLED"] %>
     N8N_VERSION_NOTIFICATIONS_ENABLED: <%= ENV["N8N_VERSION_NOTIFICATIONS_ENABLED"] %>
@@ -82,3 +81,46 @@ aliases:
   logs: app logs -f
   logs-sidekiq: app logs -f --container=sidekiq
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
+
+accessories:
+  postgres:
+    image: pgvector/pgvector:pg16
+    host: <%= ENV["SERVER_POSTGRES"] %>
+    port: 5432
+    env:
+      clear:
+        POSTGRES_USER: <%= ENV["POSTGRES_USERNAME"] %>
+        POSTGRES_PASSWORD: <%= ENV["POSTGRES_PASSWORD"] %>
+        POSTGRES_DB: <%= ENV["POSTGRES_DB"] %>
+        PGPASSWORD: <%= ENV["PGPASSWORD"] %>
+    directories:
+      - /mnt/volume-hel1-1/postgres:/var/lib/postgresql/data
+    options:
+      restart: always
+
+  redis:
+    image: redis:alpine
+    host: <%= ENV["SERVER_REDIS"] %>
+    port: 6379
+    cmd: redis-server
+    directories:
+      - /mnt/volume-hel1-1/redis:/data
+    options:
+      restart: always
+
+  db_backup:
+    image: itbm/postgresql-backup-s3
+    host: <%= ENV["SERVER_POSTGRES"] %>
+    env:
+      clear:
+        SCHEDULE: '@daily'
+        S3_ACCESS_KEY_ID: <%= ENV["BACKUP_STORAGE_KEY"] %>
+        S3_SECRET_ACCESS_KEY: <%= ENV["BACKUP_STORAGE_SECRET"] %>
+        S3_BUCKET: <%= ENV["BACKUP_BUCKET"] %>
+        S3_ENDPOINT: <%= ENV["BACKUP_ENDPOINT"] %>
+        S3_PREFIX: <%= ENV["BACKUP_PREFIX"] %>
+        POSTGRES_HOST: <%= ENV["POSTGRES_HOST"] %>
+        POSTGRES_DATABASE: <%= ENV["BACKUP_DATABASE"] %>
+        POSTGRES_USER: <%= ENV["POSTGRES_USERNAME"] %>
+        POSTGRES_PASSWORD: <%= ENV["POSTGRES_PASSWORD"] %>
+        DELETE_OLDER_THAN: <%= ENV["BACKUP_DELETE_OLDER_THAN"] %>
