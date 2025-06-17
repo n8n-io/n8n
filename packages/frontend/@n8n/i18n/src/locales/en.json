@@ -1842,7 +1842,7 @@
 	"runData.table": "Table",
 	"runData.table.viewSubExecution": "View sub-execution {id}",
 	"runData.pindata.learnMore": "Learn more",
-	"runData.pindata.thisDataIsPinned": "This data is pinned.",
+	"runData.pindata.thisDataIsPinned": "This data is pinned for test executions.",
 	"runData.pindata.unpin": "Unpin",
 	"runData.editor.save": "Save",
 	"runData.editor.cancel": "Cancel",
