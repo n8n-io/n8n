@@ -102,7 +102,7 @@ export async function execute(
 							}
 						}
 					} else {
-						values.push(...parseCSVWithQuotes(rawValues).map((v) => v)); // Ensure single values
+						values.push(...stringToArray(rawValues));
 					}
 				} else {
 					const evaluatedValue = evaluateExpression(this.evaluateExpression(rawValues, index));
