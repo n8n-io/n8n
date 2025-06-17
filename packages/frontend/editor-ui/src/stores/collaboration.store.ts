@@ -13,7 +13,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { IWorkflowDb } from '@/Interface';
 import { WebsocketProvider } from 'y-websocket';
-import { deepToRaw } from '@/components/RunDataAi/utils';
+import { deepToRaw } from '@/features/logs/logs.utils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
