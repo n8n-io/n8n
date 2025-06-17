@@ -6,7 +6,6 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -29,7 +28,6 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const ssoStore = useSSOStore();
 const message = useMessage();
-const settingsStore = useSettingsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -135,6 +133,28 @@ const getSamlConfig = async () => {
 	ssoSettingsSaved.value = !!config?.metadata;
 };
 
+const trackUpdateSettings = () => {
+	const trackingMetadata: {
+		instance_id: string;
+		authentication_method: SupportedProtocolType;
+		is_active?: boolean;
+		discovery_endpoint?: string;
+		identity_provider?: 'metadata' | 'xml';
+	} = {
+		instance_id: rootStore.instanceId,
+		authentication_method: authProtocol.value,
+	};
+
+	if (authProtocol.value === SupportedProtocols.SAML) {
+		trackingMetadata.identity_provider = ipsType.value === 'url' ? 'metadata' : 'xml';
+		trackingMetadata.is_active = ssoStore.isSamlLoginEnabled;
+	} else if (authProtocol.value === SupportedProtocols.OIDC) {
+		trackingMetadata.discovery_endpoint = discoveryEndpoint.value;
+		trackingMetadata.is_active = ssoStore.isOidcLoginEnabled;
+	}
+	telemetry.track('User updated single sign on settings', trackingMetadata);
+};
+
 const onSave = async () => {
 	try {
 		validateInput();
@@ -159,11 +179,7 @@ const onSave = async () => {
 			}
 		}
 
-		telemetry.track('User updated single sign on settings', {
-			instance_id: rootStore.instanceId,
-			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
-			is_active: ssoStore.isSamlLoginEnabled,
-		});
+		trackUpdateSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
@@ -284,6 +300,7 @@ async function onOidcSettingsSave() {
 	});
 
 	clientSecret.value = newConfig.clientSecret;
+	trackUpdateSettings();
 }
 </script>
 
@@ -427,7 +444,7 @@ async function onOidcSettingsSave() {
 				<div :class="$style.group">
 					<label>Redirect URL</label>
 					<CopyInput
-						:value="settingsStore.oidcCallBackUrl"
+						:value="ssoStore.oidc.callbackUrl"
 						:copy-button-text="i18n.baseText('generic.clickToCopy')"
 						toast-title="Redirect URL copied to clipboard"
 					/>
@@ -438,6 +455,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="discoveryEndpoint"
 						type="text"
+						data-test-id="oidc-discovery-endpoint"
 						placeholder="https://accounts.google.com/.well-known/openid-configuration"
 						@update:model-value="(v: string) => (discoveryEndpoint = v)"
 					/>
@@ -448,6 +466,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="clientId"
 						type="text"
+						data-test-id="oidc-client-id"
 						@update:model-value="(v: string) => (clientId = v)"
 					/>
 					<small
@@ -459,6 +478,7 @@ async function onOidcSettingsSave() {
 					<N8nInput
 						:model-value="clientSecret"
 						type="password"
+						data-test-id="oidc-client-secret"
 						@update:model-value="(v: string) => (clientSecret = v)"
 					/>
 					<small
@@ -476,7 +496,12 @@ async function onOidcSettingsSave() {
 				</div>
 
 				<div :class="$style.buttons">
-					<n8n-button size="large" :disabled="cannotSaveOidcSettings" @click="onOidcSettingsSave">
+					<n8n-button
+						data-test-id="sso-oidc-save"
+						size="large"
+						:disabled="cannotSaveOidcSettings"
+						@click="onOidcSettingsSave"
+					>
 						{{ i18n.baseText('settings.sso.settings.save') }}
 					</n8n-button>
 				</div>
