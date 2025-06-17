@@ -298,7 +298,8 @@ export const setupTestServer = ({
 						await Container.get(ExternalSecretsModule).init();
 
 					case 'insights':
-						await import('@/modules/insights/insights.module');
+						const { InsightsModule } = await import('@/modules/insights/insights.module');
+						await Container.get(InsightsModule).init();
 				}
 			}
 
