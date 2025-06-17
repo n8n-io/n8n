@@ -230,7 +230,7 @@ export class InsightsService {
 			key,
 			licensed:
 				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : ('week' as const),
+			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
 		}));
 	}
 }

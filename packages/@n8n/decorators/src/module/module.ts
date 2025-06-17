@@ -30,12 +30,6 @@ export type ModuleClass = Constructable<ModuleInterface>;
 
 export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 
-/**
- * Decorator to create a backend module.
- *
- * @param opts.name - Name of the module, identical to module dir.
- * @param opts.licenseFlag - License flag to enable the module.
- */
 export const BackendModule =
 	(opts: { name: string; licenseFlag?: LicenseFlag }): ClassDecorator =>
 	(target) => {
