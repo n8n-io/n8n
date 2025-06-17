@@ -19,7 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
@@ -175,6 +175,31 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 		],
 	},
+	{
+		id: 'whats-new',
+		icon: 'bell',
+		notification: true,
+		label: i18n.baseText('mainSidebar.whatsNew'),
+		position: 'bottom',
+		children: [
+			...versionsStore.whatsNewArticles.map((article) => ({
+				id: `whats-new-article-${article.id}`,
+				label: article.title,
+				unread: true,
+				compact: true,
+			})),
+			{
+				id: 'full-changelog',
+				icon: 'external-link-alt',
+				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+				link: {
+					href: 'https://docs.n8n.io/release-notes/',
+					target: '_blank',
+				},
+				compact: true,
+			},
+		],
+	},
 ]);
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
@@ -280,6 +305,20 @@ const handleSelect = (key: string) => {
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 		default:
+			if (key.startsWith('whats-new-article-')) {
+				const articleId = key.replace('whats-new-article-', '');
+
+				telemetry.track("User clicked on what's new section", {
+					article_id: articleId,
+				});
+				uiStore.openModalWithData({
+					name: WHATS_NEW_MODAL_KEY,
+					data: {
+						articleId,
+					},
+				});
+			}
+
 			break;
 	}
 };

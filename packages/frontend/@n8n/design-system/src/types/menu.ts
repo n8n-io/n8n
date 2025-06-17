@@ -29,6 +29,8 @@ export type IMenuItem = {
 	children?: IMenuItem[];
 	isLoading?: boolean;
 	disabled?: boolean;
+	unread?: boolean;
+	notification?: boolean;
 };
 
 export type IRouteMenuItemProperties = {

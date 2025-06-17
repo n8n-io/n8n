@@ -26,6 +26,8 @@ const props = withDefaults(defineProps<MenuItemProps>(), {
 	tooltipDelay: 300,
 	popperClass: '',
 	mode: 'router',
+	activeTab: undefined,
+	handleSelect: undefined,
 });
 
 const $style = useCssModule();
@@ -82,12 +84,20 @@ const N8nMenuItem = getCurrentInstance()?.type;
 			:popper-class="submenuPopperClass"
 		>
 			<template #title>
-				<N8nIcon
-					v-if="item.icon"
-					:class="$style.icon"
-					:icon="item.icon"
-					:size="item.customIconSize || 'large'"
-				/>
+				<N8nIcon v-if="item.unread" :class="$style.icon" icon="circle" size="xsmall" />
+				<template v-if="item.icon">
+					<div :class="$style.iconContainer">
+						<N8nIcon
+							v-if="item.icon"
+							:class="$style.icon"
+							:icon="item.icon"
+							:size="item.customIconSize || 'large'"
+						/>
+						<div v-if="item.notification" :class="$style['notification']">
+							<div></div>
+						</div>
+					</div>
+				</template>
 				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 				<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 					getInitials(item.label)
@@ -121,13 +131,14 @@ const N8nMenuItem = getCurrentInstance()?.type;
 						[$style.disableActiveStyle]: !isItemActive(item),
 						[$style.active]: isItemActive(item),
 						[$style.compact]: compact,
+						[$style.unread]: item.unread,
 					}"
 					data-test-id="menu-item"
 					:index="item.id"
 					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
-					<div v-if="item.icon">
+					<div v-if="item.icon" :class="$style.iconContainer">
 						<N8nIcon
 							v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
 							:class="$style.icon"
@@ -138,6 +149,12 @@ const N8nMenuItem = getCurrentInstance()?.type;
 							item.icon.value
 						}}</span>
 					</div>
+					<N8nIcon
+						v-if="item.unread"
+						:class="[$style.icon, $style.iconContainer]"
+						icon="circle"
+						color="primary"
+					/>
 					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 						getInitials(item.label)
@@ -209,8 +226,21 @@ const N8nMenuItem = getCurrentInstance()?.type;
 		height: var(--sub-menu-item-height) !important;
 		min-width: auto !important;
 		margin: var(--spacing-2xs) 0 !important;
-		padding-left: var(--spacing-l) !important;
 		user-select: none;
+		padding-left: var(--spacing-l) !important;
+
+		&.topLevel {
+			padding-left: var(--spacing-xs) !important;
+		}
+
+		&.unread {
+			.icon {
+				font-size: 0.36em;
+				svg {
+					color: var(--color-primary) !important;
+				}
+			}
+		}
 
 		&:hover {
 			.icon {
@@ -265,8 +295,36 @@ const N8nMenuItem = getCurrentInstance()?.type;
 
 .icon {
 	min-width: var(--spacing-s);
-	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.iconContainer {
+	display: flex;
+	position: relative;
+	margin-right: var(--spacing-xs);
+
+	display: flex;
+	position: relative;
+
+	svg {
+		margin-right: 0 !important;
+	}
+}
+
+.notification {
+	display: flex;
+	position: absolute;
+	top: -0.15em;
+	right: -0.3em;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 0.36em;
+		width: 0.36em;
+		background-color: var(--color-primary);
+		border-radius: 50%;
+	}
 }
 
 .loading {

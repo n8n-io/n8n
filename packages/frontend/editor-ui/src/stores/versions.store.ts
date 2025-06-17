@@ -33,6 +33,10 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return nextVersions.value.length > 0;
 	});
 
+	const latestVersion = computed(() => {
+		return nextVersions.value[0] ?? currentVersion.value;
+	});
+
 	const areNotificationsEnabled = computed(() => {
 		return versionNotificationSettings.value.enabled;
 	});
@@ -128,6 +132,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	return {
 		currentVersion,
+		latestVersion,
 		nextVersions,
 		hasVersionUpdates,
 		areNotificationsEnabled,
