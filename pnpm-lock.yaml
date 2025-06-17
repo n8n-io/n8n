@@ -740,6 +740,12 @@ importers:
 
   packages/@n8n/integration-test-utils:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:^
+        version: link:../backend-common
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.2)))(typescript@5.8.2)
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2

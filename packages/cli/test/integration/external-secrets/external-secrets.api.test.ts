@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
@@ -22,7 +23,7 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
-import { mockInstance, mockLogger } from '../../shared/mocking';
+import { mockInstance } from '../../shared/mocking';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';

@@ -1,9 +1,9 @@
 import type { ExecutionsConfig } from '@n8n/config';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { DbConnection } from '@/databases/db-connection';
-import { mockLogger } from '@test/mocking';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 

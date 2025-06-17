@@ -1,4 +1,5 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { captor, mock } from 'jest-mock-extended';
 
 import type { License } from '@/license';
@@ -9,7 +10,7 @@ import {
 	FailedProvider,
 	MockProviders,
 } from '@test/external-secrets/utils';
-import { mockCipher, mockLogger } from '@test/mocking';
+import { mockCipher } from '@test/mocking';
 
 import { EXTERNAL_SECRETS_DB_KEY } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
