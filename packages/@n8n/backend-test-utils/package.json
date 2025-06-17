@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/integration-test-utils",
+  "name": "@n8n/backend-test-utils",
   "version": "0.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
