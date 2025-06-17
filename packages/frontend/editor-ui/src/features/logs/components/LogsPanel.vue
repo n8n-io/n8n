@@ -136,6 +136,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
+							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pip' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
