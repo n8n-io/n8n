@@ -503,6 +503,7 @@ export class YouTube implements INodeType {
 							snippet: {
 								title,
 							},
+							status: {},
 						};
 
 						if (options.tags) {
@@ -510,9 +511,9 @@ export class YouTube implements INodeType {
 							body.snippet.tags = (options.tags as string).split(',');
 						}
 
-						if (options.description) {
+						if (options.privacyStatus) {
 							//@ts-ignore
-							body.snippet.privacyStatus = options.privacyStatus as string;
+							body.status.privacyStatus = options.privacyStatus as string;
 						}
 
 						if (options.defaultLanguage) {
