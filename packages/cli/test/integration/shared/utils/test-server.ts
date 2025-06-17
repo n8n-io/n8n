@@ -13,6 +13,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
+import { ModuleRegistry } from '@/modules/module-registry';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
@@ -292,17 +293,14 @@ export const setupTestServer = ({
 						await import('@/controllers/folder.controller');
 
 					case 'externalSecrets':
-						const { ExternalSecretsModule } = await import(
-							'@/modules/external-secrets.ee/external-secrets.module'
-						);
-						await Container.get(ExternalSecretsModule).init();
+						await import('@/modules/external-secrets.ee/external-secrets.module');
 
 					case 'insights':
-						const { InsightsModule } = await import('@/modules/insights/insights.module');
-						await Container.get(InsightsModule).init();
+						await import('@/modules/insights/insights.module');
 				}
 			}
 
+			await Container.get(ModuleRegistry).initModules();
 			Container.get(ControllerRegistry).activate(app);
 		}
 	});
