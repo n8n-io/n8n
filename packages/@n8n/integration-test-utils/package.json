@@ -21,6 +21,8 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/backend-common": "workspace:^",
+    "jest-mock-extended": "^3.0.4",
     "reflect-metadata": "catalog:"
   },
   "devDependencies": {
