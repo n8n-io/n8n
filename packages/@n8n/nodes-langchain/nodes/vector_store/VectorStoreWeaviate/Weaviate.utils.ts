@@ -78,7 +78,7 @@ function buildFilter(filter: WeaviateFilterUnit): unknown {
 		case 'equal':
 			if (filter.valueString !== undefined) return property.equal(filter.valueString);
 			if (filter.valueNumber !== undefined) return property.equal(filter.valueNumber);
-			if (filter.valueBoolean !== undefined) return property.equal(filter.valueBoolean);
+			if (filter.valueBoolean !== undefined) return property.isNull(filter.valueBoolean);
 			break;
 
 		case 'like':
