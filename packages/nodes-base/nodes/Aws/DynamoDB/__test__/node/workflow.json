@@ -164,8 +164,8 @@
 							}
 						]
 					},
-					"eavUi": {
-						"eavValues": [
+					"expressionAttributeUi": {
+						"expressionAttributeValues": [
 							{
 								"attribute": ":v",
 								"value": "payload"

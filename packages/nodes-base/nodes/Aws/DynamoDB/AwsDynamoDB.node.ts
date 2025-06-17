@@ -180,7 +180,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						const eavUi = this.getNodeParameter(
-							'additionalFields.eavUi.eavValues',
+							'additionalFields.expressionAttributeUi.expressionAttributeValues',
 							i,
 							[],
 						) as IAttributeValueUi[];
