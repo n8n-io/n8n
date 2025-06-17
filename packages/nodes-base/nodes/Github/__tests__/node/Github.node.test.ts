@@ -2,6 +2,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
+import * as utilities from '../../../../utils/utilities';
 import { Github } from '../../Github.node';
 
 describe('Test Github Node', () => {
@@ -60,6 +61,73 @@ describe('Test Github Node', () => {
 
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
+		});
+
+		describe('removeTrailingSlash Function', () => {
+			let githubNode: Github;
+			let mockExecutionContext: any;
+
+			beforeEach(() => {
+				githubNode = new Github();
+				mockExecutionContext = {
+					getNode: jest.fn().mockReturnValue({ name: 'Github' }),
+					getNodeParameter: jest.fn(),
+					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+					continueOnFail: jest.fn().mockReturnValue(false),
+					getCredentials: jest.fn().mockResolvedValue({
+						server: 'https://api.github.com',
+						user: 'test',
+						accessToken: 'test',
+					}),
+					helpers: {
+						returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
+						requestWithAuthentication: jest.fn().mockResolvedValue({}),
+						constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+					},
+				};
+
+				jest.spyOn(utilities, 'removeTrailingSlash');
+				jest.mock('../../../../utils/utilities', () => ({
+					...jest.requireActual('../../../../utils/utilities'),
+					getFileSha: jest.fn().mockResolvedValue('mockedSHA'),
+				}));
+			});
+
+			it('should call remove trailing slash', async () => {
+				mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+					if (parameterName === 'operation') {
+						return 'list';
+					}
+					if (parameterName === 'resource') {
+						return 'file';
+					}
+					if (parameterName === 'filePath') {
+						return 'path/to/file/';
+					}
+					if (parameterName === 'owner') {
+						return 'me';
+					}
+					if (parameterName === 'repository') {
+						return 'repo';
+					}
+					return '';
+				});
+
+				await githubNode.execute.call(mockExecutionContext);
+
+				expect(utilities.removeTrailingSlash).toHaveBeenCalledWith('path/to/file/');
+				expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'githubOAuth2Api',
+					{
+						body: {},
+						headers: { 'User-Agent': 'n8n' },
+						json: true,
+						method: 'GET',
+						qs: {},
+						uri: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
+					},
+				);
+			});
 		});
 
 		beforeEach(async () => {
