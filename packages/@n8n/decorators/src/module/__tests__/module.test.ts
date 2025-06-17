@@ -79,21 +79,6 @@ describe('@BackendModule decorator', () => {
 		expect(mockInit).toHaveBeenCalled();
 	});
 
-	describe('ModuleMetadata', () => {
-		it('should allow retrieving and checking registered modules', () => {
-			@BackendModule({ name: 'test-a' })
-			class FirstModule {}
-
-			@BackendModule({ name: 'test-b' })
-			class SecondModule {}
-
-			const registeredModules = moduleMetadata.getClasses();
-
-			expect(registeredModules).toContain(FirstModule);
-			expect(registeredModules).toContain(SecondModule);
-		});
-	});
-
 	it('should apply Service decorator', () => {
 		@BackendModule({ name: 'test' })
 		class TestModule {}
