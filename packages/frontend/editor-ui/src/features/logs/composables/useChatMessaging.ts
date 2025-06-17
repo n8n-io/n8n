@@ -152,6 +152,12 @@ export function useChatMessaging({
 			return;
 		}
 
+		// Response Node mode should not return last node result in a version >= 1.2
+		const responseMode = (triggerNode.parameters.options as { responseMode?: string }).responseMode;
+		if (triggerNode.typeVersion >= 1.2 && responseMode === 'responseNode') {
+			return;
+		}
+
 		const chatMessage = executionResultData.value
 			? extractBotResponse(
 					executionResultData.value,

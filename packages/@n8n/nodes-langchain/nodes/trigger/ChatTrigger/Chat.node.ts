@@ -93,7 +93,7 @@ const limitWaitTimeOption: INodeProperties = {
 	name: 'limitWaitTime',
 	type: 'fixedCollection',
 	description:
-		'Whether the workflow will automatically resume execution after the specified limit type',
+		'Whether to limit the time this node should wait for a user response before execution resumes',
 	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
 	options: [
 		{
@@ -102,6 +102,11 @@ const limitWaitTimeOption: INodeProperties = {
 			values: limitWaitTimeProperties,
 		},
 	],
+	displayOptions: {
+		show: {
+			[`/${CHAT_WAIT_USER_REPLY}`]: [true],
+		},
+	},
 };
 
 export class Chat implements INodeType {
@@ -140,6 +145,12 @@ export class Chat implements INodeType {
 				},
 			},
 			{
+				displayName: 'Wait for User Reply',
+				name: CHAT_WAIT_USER_REPLY,
+				type: 'boolean',
+				default: true,
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -153,12 +164,6 @@ export class Chat implements INodeType {
 						default: false,
 					},
 					limitWaitTimeOption,
-					{
-						displayName: 'Wait for User Reply',
-						name: CHAT_WAIT_USER_REPLY,
-						type: 'boolean',
-						default: true,
-					},
 				],
 			},
 		],
@@ -169,11 +174,12 @@ export class Chat implements INodeType {
 		data: INodeExecutionData,
 	): Promise<INodeExecutionData[][]> {
 		const options = context.getNodeParameter('options', 0, {}) as {
-			[CHAT_WAIT_USER_REPLY]?: boolean;
 			memoryConnection?: boolean;
 		};
 
-		if (options[CHAT_WAIT_USER_REPLY] === false) {
+		const waitForReply = context.getNodeParameter(CHAT_WAIT_USER_REPLY, 0, true) as boolean;
+
+		if (!waitForReply) {
 			const inputData = context.getInputData();
 			return [inputData];
 		}

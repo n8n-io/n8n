@@ -48,7 +48,11 @@ export function shouldResumeImmediately(lastNode: INode) {
 		return true;
 	}
 
-	const options = lastNode?.parameters?.options as {
+	if (lastNode.parameters?.[CHAT_WAIT_USER_REPLY] === false) {
+		return true;
+	}
+
+	const options = lastNode.parameters?.options as {
 		[CHAT_WAIT_USER_REPLY]?: boolean;
 	};
 
