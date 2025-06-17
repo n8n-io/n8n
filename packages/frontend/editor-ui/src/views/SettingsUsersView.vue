@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, ROLE } from '@/constants';
-
-import type { IRole, IUser, IUserListAction, InvitableRoleName } from '@/Interface';
+import { ROLE, type Role } from '@n8n/api-types';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
+import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -11,7 +11,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import { computed, onMounted } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
@@ -71,13 +71,12 @@ const usersListActions = computed((): IUserListAction[] => {
 		{
 			label: i18n.baseText('settings.users.actions.allowSSOManualLogin'),
 			value: 'allowSSOManualLogin',
-			guard: (user) => settingsStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.disallowSSOManualLogin'),
 			value: 'disallowSSOManualLogin',
-			guard: (user) =>
-				settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
 		},
 	];
 });
@@ -85,7 +84,7 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
-const userRoles = computed((): Array<{ value: IRole; label: string; disabled?: boolean }> => {
+const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
 		{
 			value: ROLE.Member,

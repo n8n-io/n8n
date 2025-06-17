@@ -8,7 +8,7 @@ import { createUser } from '@/__tests__/data/users';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingOptions } from '@pinia/testing';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@n8n/stores';
@@ -91,8 +91,7 @@ describe('SettingsUsersView', () => {
 
 	it('hides invite button visibility based on user permissions', async () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
-		const userStore = useUsersStore(pinia);
-		// @ts-expect-error: mocked getter
+		const userStore = mockedStore(useUsersStore);
 		userStore.currentUser = createUser({ isDefaultUser: true });
 
 		const { queryByTestId } = renderView({ pinia });
@@ -103,8 +102,7 @@ describe('SettingsUsersView', () => {
 	describe('Below quota', () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 
-		const settingsStore = useSettingsStore(pinia);
-		// @ts-expect-error: mocked getter
+		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isBelowUserQuota = false;
 
 		it('disables the invite button', async () => {
@@ -180,8 +178,7 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
+			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isSmtpSetup = true;
 
 			const userStore = useUsersStore();
@@ -236,9 +233,8 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
-			settingsStore.isSamlLoginEnabled = true;
+			const ssoStore = useSSOStore(pinia);
+			ssoStore.isSamlLoginEnabled = true;
 
 			const userStore = useUsersStore();
 
@@ -256,9 +252,8 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
-			settingsStore.isSamlLoginEnabled = true;
+			const ssoStore = useSSOStore(pinia);
+			ssoStore.isSamlLoginEnabled = true;
 
 			const userStore = useUsersStore();
 

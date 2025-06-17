@@ -63,6 +63,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'ai-llm-errored': (event) => this.aiLlmErrored(event),
 			'ai-vector-store-populated': (event) => this.aiVectorStorePopulated(event),
 			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
+			'runner-task-requested': (event) => this.runnerTaskRequested(event),
+			'runner-response-received': (event) => this.runnerResponseReceived(event),
 		});
 	}
 
@@ -178,28 +180,42 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Node
 
-	private nodePreExecute({ workflow, executionId, nodeName }: RelayEventMap['node-pre-execute']) {
+	private nodePreExecute({
+		workflow,
+		executionId,
+		nodeId,
+		nodeName,
+		nodeType,
+	}: RelayEventMap['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
 
-	private nodePostExecute({ workflow, executionId, nodeName }: RelayEventMap['node-post-execute']) {
+	private nodePostExecute({
+		workflow,
+		executionId,
+		nodeType,
+		nodeName,
+		nodeId,
+	}: RelayEventMap['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
@@ -519,6 +535,24 @@ export class LogStreamingEventRelay extends EventRelay {
 	private aiVectorStoreUpdated(payload: RelayEventMap['ai-vector-store-updated']) {
 		void this.eventBus.sendAiNodeEvent({
 			eventName: 'n8n.ai.vector.store.updated',
+			payload,
+		});
+	}
+
+	// #endregion
+
+	// #region runner
+
+	private runnerTaskRequested(payload: RelayEventMap['runner-task-requested']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.task.requested',
+			payload,
+		});
+	}
+
+	private runnerResponseReceived(payload: RelayEventMap['runner-response-received']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.response.received',
 			payload,
 		});
 	}

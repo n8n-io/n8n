@@ -3,6 +3,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
@@ -116,7 +117,7 @@ export class PrometheusMetricsService {
 	private initDefaultMetrics() {
 		if (!this.includes.metrics.default) return;
 
-		promClient.collectDefaultMetrics();
+		promClient.collectDefaultMetrics({ prefix: this.globalConfig.endpoints.metrics.prefix });
 	}
 
 	/**
@@ -132,15 +133,15 @@ export class PrometheusMetricsService {
 			includePath: this.includes.labels.apiPath,
 			includeMethod: this.includes.labels.apiMethod,
 			includeStatusCode: this.includes.labels.apiStatusCode,
+			httpDurationMetricName: this.prefix + 'http_request_duration_seconds',
 		});
 
 		const activityGauge = new promClient.Gauge({
 			name: this.prefix + 'last_activity',
-			help: 'last instance activity (backend request).',
-			labelNames: ['timestamp'],
+			help: 'last instance activity (backend request) in Unix time (seconds).',
 		});
 
-		activityGauge.set({ timestamp: new Date().toISOString() }, 1);
+		activityGauge.set(DateTime.now().toUnixInteger());
 
 		app.use(
 			[
@@ -154,8 +155,7 @@ export class PrometheusMetricsService {
 				`/${this.globalConfig.endpoints.formTest}/`,
 			],
 			async (req, res, next) => {
-				activityGauge.reset();
-				activityGauge.set({ timestamp: new Date().toISOString() }, 1);
+				activityGauge.set(DateTime.now().toUnixInteger());
 
 				await metricsMiddleware(req, res, next);
 			},
@@ -165,23 +165,9 @@ export class PrometheusMetricsService {
 	private mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
-			const prefixedMetrics = this.addPrefixToMetrics(metrics);
 			res.setHeader('Content-Type', promClient.register.contentType);
-			res.send(prefixedMetrics).end();
+			res.send(metrics).end();
 		});
-	}
-
-	private addPrefixToMetrics(metrics: string) {
-		return metrics
-			.split('\n')
-			.map((rawLine) => {
-				const line = rawLine.trim();
-
-				if (!line || line.startsWith('#') || line.startsWith(this.prefix)) return rawLine;
-
-				return this.prefix + line;
-			})
-			.join('\n');
 	}
 
 	/**

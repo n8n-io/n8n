@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
@@ -5,7 +6,7 @@ import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { Logger } from 'n8n-core';
+import type { StringValue as TimeUnitValue } from 'ms';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -180,7 +181,7 @@ export class AuthService {
 		return user;
 	}
 
-	generatePasswordResetToken(user: User, expiresIn = '20m') {
+	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
 		return this.jwtService.sign(payload, { expiresIn });
 	}
@@ -229,8 +230,12 @@ export class AuthService {
 		return user;
 	}
 
-	createJWTHash({ email, password }: User) {
-		return this.hash(email + ':' + password).substring(0, 10);
+	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
+		const payload = [email, password];
+		if (mfaEnabled && mfaSecret) {
+			payload.push(mfaSecret.substring(0, 3));
+		}
+		return this.hash(payload.join(':')).substring(0, 10);
 	}
 
 	private hash(input: string) {

@@ -4,7 +4,7 @@ import { computed, type MaybeRef, ref, unref, watch } from 'vue';
 
 type GetSize = number | ((containerSize: number) => number);
 
-interface UseResizerV2Options {
+interface UseResizablePanelOptions {
 	/**
 	 * Container element, to which relative size is calculated (doesn't necessarily have to be DOM parent node)
 	 */
@@ -52,7 +52,7 @@ export function useResizablePanel(
 		position = 'left',
 		allowCollapse,
 		allowFullSize,
-	}: UseResizerV2Options,
+	}: UseResizablePanelOptions,
 ) {
 	const containerSize = ref(0);
 	const persistedSize = useLocalStorage(localStorageKey, -1, { writeDefaults: false });

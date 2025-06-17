@@ -39,15 +39,9 @@
         "messageTime": {
             "type": "integer"
         },
-        "rejected": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "response": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

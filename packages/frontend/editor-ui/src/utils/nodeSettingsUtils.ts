@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { SWITCH_NODE_TYPE } from '@/constants';
-import { isEqual } from 'lodash-es';
+import isEqual from 'lodash/isEqual';
 
 import { captureException } from '@sentry/vue';
 

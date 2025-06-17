@@ -58,6 +58,10 @@ export class LicenseState {
 		return this.isLicensed('feat:saml');
 	}
 
+	isOidcLicensed() {
+		return this.isLicensed('feat:oidc');
+	}
+
 	isApiKeyScopesLicensed() {
 		return this.isLicensed('feat:apiKeyScopes');
 	}
@@ -188,5 +192,9 @@ export class LicenseState {
 
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
+	}
+
+	getMaxWorkflowsWithEvaluations() {
+		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
 	}
 }
