@@ -8,6 +8,7 @@ import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
 import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -71,8 +72,13 @@ const classes = computed(() => {
 	};
 });
 
+const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+
 const styles = computed(() => {
-	const stylesObject: Record<string, string | number> = {};
+	const stylesObject: Record<string, string | number> = {
+		'--node-icon-size': `${iconSize.value}px`,
+		'--canvas-grid-size': `${GRID_SIZE}px`,
+	};
 
 	if (renderOptions.value.configurable) {
 		let spacerCount = 0;
@@ -117,8 +123,6 @@ const isStrikethroughVisible = computed(() => {
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
-
 const iconSource = computed(() => renderOptions.value.icon);
 
 const showTooltip = ref(false);
@@ -156,8 +160,13 @@ function onActivate(event: MouseEvent) {
 		<CanvasNodeNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<NodeIcon
+				:icon-source="iconSource"
+				:size="iconSize"
+				:shrink="false"
+				:disabled="isDisabled"
+				:class="$style.icon"
+			/>
 			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 			<div :class="$style.description">
 				<div v-if="label" :class="$style.label">
@@ -168,6 +177,7 @@ function onActivate(event: MouseEvent) {
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		</template>
 	</div>
 </template>
@@ -182,10 +192,14 @@ function onActivate(event: MouseEvent) {
 	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
 	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
+	--configuration-node-border-radius: calc(var(--canvas-grid-size) * 2);
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 30px;
-	--configurable-node--icon-size: 30px;
+	--configurable-node--icon-offset: calc(
+		var(--configuration-node-border-radius) - var(--node-icon-size) / 2 - var(
+				--canvas-node-border-width
+			)
+	);
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -207,7 +221,6 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.settingsView {
-		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
 		height: calc(var(--canvas-node--height) * 2.4) !important;
 		width: calc(var(--canvas-node--width) * 1.6) !important;
 		align-items: flex-start;
@@ -226,13 +239,13 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		--canvas-node--width: 80px;
-		--canvas-node--height: 80px;
+		--canvas-node--width: calc(var(--configuration-node-border-radius) * 2);
+		--canvas-node--height: calc(var(--configuration-node-border-radius) * 2);
 
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
 			var(--canvas-node--border-color, var(--color-foreground-dark));
-		border-radius: 50px;
+		border-radius: var(--configuration-node-border-radius);
 
 		.statusIcons {
 			right: unset;
@@ -248,7 +261,7 @@ function onActivate(event: MouseEvent) {
 
 		justify-content: flex-start;
 
-		:global(.n8n-node-icon) {
+		.icon {
 			margin-left: var(--configurable-node--icon-offset);
 		}
 
@@ -261,9 +274,8 @@ function onActivate(event: MouseEvent) {
 			width: auto;
 			min-width: unset;
 			max-width: calc(
-				var(--canvas-node--width) - var(--configurable-node--icon-offset) - var(
-						--configurable-node--icon-size
-					) - 2 * var(--spacing-s)
+				var(--canvas-node--width) - var(--configurable-node--icon-offset) - var(--node--icon-size) -
+					2 * var(--spacing-s)
 			);
 		}
 
@@ -279,8 +291,13 @@ function onActivate(event: MouseEvent) {
 			--canvas-node--height: 75px;
 
 			.statusIcons {
-				right: calc(-1 * var(--spacing-2xs));
-				bottom: 0;
+				position: static;
+				margin-right: var(--canvas-node--status-icons-offset);
+			}
+
+			.description {
+				flex-grow: 1;
+				margin-right: var(--spacing-xs);
 			}
 		}
 	}
@@ -333,7 +350,6 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
-	align-items: center;
 }
 
 .label,
@@ -366,5 +382,10 @@ function onActivate(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
+}
+
+.icon {
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 </style>

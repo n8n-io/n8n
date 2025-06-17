@@ -34,6 +34,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -184,6 +185,18 @@ const createEndpointMappingFn =
 			connectingHandle.value?.handleType === handleType &&
 			connectingHandle.value?.handleId === handleId;
 
+		function getOffsetValue() {
+			if (offsetAxis === 'top' || endpoints.length <= 1) {
+				return `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
+			}
+
+			const padding = GRID_SIZE * 2;
+			const nth = index / (endpoints.length - 1);
+
+			// Equal amount of padding on the left and right, divide the remaining length evenly
+			return `calc(${padding - Math.floor(2 * nth * padding)}px + ${Math.floor(100 * nth)}% )`;
+		}
+
 		return {
 			...endpoint,
 			handleId,
@@ -191,7 +204,7 @@ const createEndpointMappingFn =
 			isConnecting,
 			position,
 			offset: {
-				[offsetAxis]: `${(100 / (endpoints.length + 1)) * (index + 1)}%`,
+				[offsetAxis]: getOffsetValue(),
 			},
 		};
 	};
