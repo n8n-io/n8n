@@ -16,6 +16,7 @@ const {
 	hasIssues,
 	executionStatus,
 	executionWaiting,
+	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
 	runDataIterations,
@@ -59,7 +60,7 @@ const dirtiness = computed(() =>
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
-		v-else-if="executionRunning || executionStatus === 'running'"
+		v-else-if="executionRunning || executionWaitingForNext || executionStatus === 'running'"
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>

@@ -35,6 +35,10 @@ export function isLdapCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'ldap';
 }
 
+export function isOidcCurrentAuthenticationMethod(): boolean {
+	return getCurrentAuthenticationMethod() === 'oidc';
+}
+
 export function isEmailCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'email';
 }

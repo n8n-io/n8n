@@ -7,6 +7,7 @@ import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
+import * as testModules from '@test-integration/test-modules';
 
 import {
 	createMetadata,
@@ -18,8 +19,8 @@ import { InsightsByPeriodRepository } from '../database/repositories/insights-by
 import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
-// Initialize DB once for all tests
 beforeAll(async () => {
+	await testModules.load(['insights']);
 	await testDb.init();
 });
 
@@ -436,7 +437,7 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 5, 23, 59),
-					DateTime.utc(2000, 1, 11, 1, 0),
+					DateTime.utc(2000, 1, 10, 1, 0),
 				],
 				batches: [2, 1],
 			},
@@ -446,9 +447,9 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 4, 23, 59),
-					DateTime.utc(2000, 1, 11, 0, 0),
-					DateTime.utc(2000, 1, 12, 23, 59),
-					DateTime.utc(2000, 1, 18, 23, 59),
+					DateTime.utc(2000, 1, 10, 0, 0),
+					DateTime.utc(2000, 1, 11, 23, 59),
+					DateTime.utc(2000, 1, 17, 23, 59),
 				],
 				batches: [2, 2, 1],
 			},
@@ -482,7 +483,7 @@ describe('compaction', () => {
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.periodStart.getDay()).toBe(1);
+				expect(compacted.periodStart.getUTCDay()).toBe(1);
 				expect(compacted.value).toBe(batches[index]);
 			}
 		});

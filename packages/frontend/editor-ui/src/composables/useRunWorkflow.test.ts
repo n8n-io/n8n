@@ -68,7 +68,7 @@ vi.mock('@/stores/workflows.store', () => {
 vi.mock('@/stores/parameterOverrides.store', () => {
 	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
 		agentRequests: {},
-		generateAgentRequest: vi.fn(),
+		getAgentRequest: vi.fn(),
 	};
 	return {
 		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
@@ -152,7 +152,7 @@ describe('useRunWorkflow({ router })', () => {
 		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();
-		workflowHelpers = useWorkflowHelpers({ router });
+		workflowHelpers = useWorkflowHelpers();
 	});
 
 	afterEach(() => {
@@ -236,7 +236,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',
@@ -267,7 +267,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).isWorkflowActive = true;
 
-			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [
 					{
 						name: 'Slack',
@@ -511,6 +511,77 @@ describe('useRunWorkflow({ router })', () => {
 						name: triggerNode,
 						data: nodeData,
 					},
+					startNodes: [],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from child node if triggerNode and nodeData are passed in', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [
+						{
+							name: {
+								name: 'Child node',
+								type: 'nodes.child',
+							},
+							sourceData: null,
+						},
+					],
+				}),
+			);
+		});
+
+		it('should retrigger workflow from trigger node if rerunTriggerNode is set', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({
+					getChildNodes: vi.fn().mockReturnValue([{ name: 'Child node', type: 'nodes.child' }]),
+				}),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData, rerunTriggerNode: true });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+					startNodes: [],
 				}),
 			);
 		});
@@ -621,12 +692,12 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-			vi.mocked(agentRequestStore).generateAgentRequest.mockReturnValue(agentRequest);
+			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
-			expect(agentRequestStore.generateAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
+			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
 				agentRequest: {
 					query: 'query',

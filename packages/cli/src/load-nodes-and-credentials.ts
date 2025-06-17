@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -13,7 +13,6 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
-	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -524,22 +523,15 @@ export class LoadNodesAndCredentials {
 		const push = Container.get(Push);
 
 		Object.values(this.loaders).forEach(async (loader) => {
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
 				return;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
@@ -550,11 +542,11 @@ export class LoadNodesAndCredentials {
 				? ['**/nodes.json', '**/credentials.json']
 				: ['**/*.js', '**/*.json'];
 			const files = await glob(toWatch, {
-				cwd: realModulePath,
+				cwd: directory,
 				ignore: ['node_modules/**'],
 			});
 			const watcher = watch(files, {
-				cwd: realModulePath,
+				cwd: directory,
 				ignoreInitial: true,
 			});
 			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);

@@ -5,6 +5,7 @@ import {
 	clickCreateNewCredential,
 	getNdvContainer,
 	selectResourceLocatorAddResourceItem,
+	clickGetBackToCanvas,
 } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
@@ -156,7 +157,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				expect(interception.request.query).not.to.have.property('projectId');
 				expect(interception.request.query).to.have.property('workflowId');
 			});
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -181,7 +182,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -210,7 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -279,7 +280,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
@@ -294,14 +295,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
-			// This mock fails when running with `test:e2e:dev` but works with `test:e2e:ui`,
-			// at least on macOS at version 1.94.0. ¯\_(ツ)_/¯
-			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
-
+			cy.interceptNewTab();
 			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
-			// Need to wait for the trigger node to auto-open after a delay
+
+			cy.visitInterceptedTab();
 			getNdvContainer().should('be.visible');
-			cy.get('body').type('{esc}');
+			clickGetBackToCanvas();
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
 			setCredentialValues({

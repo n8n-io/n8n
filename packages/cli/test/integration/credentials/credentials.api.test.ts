@@ -1260,12 +1260,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail with a 403 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
+	test('should fail with a 404 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
 		const response = await authMemberAgent
 			.patch('/credentials/123')
 			.send(randomCredentialPayload());
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('should fail with a 400 is credential is managed', async () => {

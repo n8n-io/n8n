@@ -34,7 +34,7 @@ import {
 } from '@n8n/design-system';
 import { uid } from '@n8n/design-system/utils';
 import { useAsyncState } from '@vueuse/core';
-import { pickBy } from 'lodash-es';
+import pickBy from 'lodash/pickBy';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();

@@ -197,6 +197,7 @@ onMounted(async () => {
 	> .chat-message-markdown {
 		display: block;
 		box-sizing: border-box;
+		font-size: inherit;
 
 		> *:first-child {
 			margin-top: 0;

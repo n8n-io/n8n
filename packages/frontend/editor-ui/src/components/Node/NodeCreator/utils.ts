@@ -22,7 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@n8n/i18n';
-import { sortBy } from 'lodash-es';
+import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
@@ -304,4 +304,27 @@ export function prepareCommunityNodeDetailsViewStack(
 		mode: 'community-node',
 		communityNodeDetails,
 	};
+}
+
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
+	const results: INodeCreateElement[] = [];
+
+	const ragKeywords = ['rag', 'vec', 'know'];
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+		results.push({
+			key: 'rag-starter-template',
+			type: 'openTemplate',
+			properties: {
+				key: 'rag-starter-template',
+				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+				icon: 'database',
+				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+				tag: {
+					type: 'info',
+					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				},
+			},
+		});
+	}
+	return results;
 }

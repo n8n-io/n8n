@@ -29,6 +29,7 @@ import type {
 } from 'n8n-workflow';
 
 import type {
+	AddedNode,
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -40,7 +41,7 @@ import { isObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
@@ -986,6 +987,21 @@ export function useNodeHelpers() {
 		return nodeIssues;
 	}
 
+	function getDefaultNodeName(node: AddedNode | INode) {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (nodeType === null) return null;
+		const parameters = NodeHelpers.getNodeParameters(
+			nodeType?.properties,
+			node.parameters ?? {},
+			true,
+			false,
+			node.typeVersion ? { typeVersion: node.typeVersion } : null,
+			nodeType,
+		);
+
+		return NodeHelpers.makeNodeName(parameters ?? {}, nodeType);
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1019,5 +1035,6 @@ export function useNodeHelpers() {
 		isSingleExecution,
 		getNodeHints,
 		nodeIssuesToString,
+		getDefaultNodeName,
 	};
 }

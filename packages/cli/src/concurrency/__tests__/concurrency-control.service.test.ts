@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
@@ -21,6 +22,7 @@ describe('ConcurrencyControlService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
+	const globalConfig = mock<GlobalConfig>();
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
@@ -47,6 +49,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 
 				/**
@@ -73,7 +76,13 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Act
 					 */
-					new ConcurrencyControlService(logger, executionRepository, telemetry, eventService);
+					new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventService,
+						globalConfig,
+					);
 				} catch (error) {
 					/**
 					 * Assert
@@ -98,6 +107,7 @@ describe('ConcurrencyControlService', () => {
 				executionRepository,
 				telemetry,
 				eventService,
+				globalConfig,
 			);
 
 			/**
@@ -123,6 +133,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 
 				/**
@@ -148,6 +159,7 @@ describe('ConcurrencyControlService', () => {
 				executionRepository,
 				telemetry,
 				eventService,
+				globalConfig,
 			);
 
 			/**
@@ -177,6 +189,7 @@ describe('ConcurrencyControlService', () => {
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -203,6 +216,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -228,6 +242,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -257,6 +272,7 @@ describe('ConcurrencyControlService', () => {
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -283,6 +299,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -308,6 +325,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -337,6 +355,7 @@ describe('ConcurrencyControlService', () => {
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -365,6 +384,7 @@ describe('ConcurrencyControlService', () => {
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -391,6 +411,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -420,6 +441,7 @@ describe('ConcurrencyControlService', () => {
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 
 					jest
@@ -459,6 +481,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('webhook');
@@ -485,6 +508,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('evaluation');
@@ -515,6 +539,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -541,6 +566,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -569,6 +595,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -594,6 +621,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -621,6 +649,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -646,6 +675,7 @@ describe('ConcurrencyControlService', () => {
 					executionRepository,
 					telemetry,
 					eventService,
+					globalConfig,
 				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -675,12 +705,13 @@ describe('ConcurrencyControlService', () => {
 					 * Arrange
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
-					config.set('deployment.type', 'cloud');
+					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 
 					/**
@@ -708,12 +739,13 @@ describe('ConcurrencyControlService', () => {
 					 * Arrange
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
-					config.set('deployment.type', 'cloud');
+					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 
 					/**
@@ -740,12 +772,13 @@ describe('ConcurrencyControlService', () => {
 					 * Arrange
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
-					config.set('deployment.type', 'cloud');
+					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,
 						executionRepository,
 						telemetry,
 						eventService,
+						globalConfig,
 					);
 
 					/**

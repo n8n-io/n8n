@@ -86,23 +86,32 @@ export class I18nClass {
 	}
 
 	displayTimer(msPassed: number, showMs = false): string {
-		if (msPassed < 60000) {
-			if (!showMs) {
-				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
-			}
-
-			if (msPassed > 0 && msPassed < 1000) {
-				return `${msPassed}${this.baseText('genericHelpers.millis')}`;
-			}
-
-			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
+		if (msPassed > 0 && msPassed < 1000 && showMs) {
+			return `${msPassed}${this.baseText('genericHelpers.millis')}`;
 		}
 
-		const secondsPassed = Math.floor(msPassed / 1000);
-		const minutesPassed = Math.floor(secondsPassed / 60);
-		const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
+		const parts = [];
+		const second = 1000;
+		const minute = 60 * second;
+		const hour = 60 * minute;
 
-		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
+		let remainingMs = msPassed;
+
+		if (remainingMs >= hour) {
+			parts.push(`${Math.floor(remainingMs / hour)}${this.baseText('genericHelpers.hrsShort')}`);
+			remainingMs = remainingMs % hour;
+		}
+
+		if (parts.length > 0 || remainingMs >= minute) {
+			parts.push(`${Math.floor(remainingMs / minute)}${this.baseText('genericHelpers.minShort')}`);
+			remainingMs = remainingMs % minute;
+		}
+
+		const remainingSec = showMs ? remainingMs / second : Math.floor(remainingMs / second);
+
+		parts.push(`${remainingSec}${this.baseText('genericHelpers.secShort')}`);
+
+		return parts.join(' ');
 	}
 
 	/**
@@ -201,8 +210,8 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText(activeNodeType?: string | null) {
-		const nodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
-		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
+		const shortNodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
+		const initialKey = `n8n-nodes-base.nodes.${shortNodeType}.nodeView`;
 		const context = this;
 
 		return {
@@ -383,7 +392,7 @@ export async function loadLanguage(language: string) {
 		return await setLanguage(language);
 	}
 
-	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
+	const { numberFormats, ...rest } = (await import(`@n8n/i18n/locales/${language}.json`)).default;
 
 	i18nInstance.global.setLocaleMessage(language, rest);
 

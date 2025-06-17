@@ -1,4 +1,5 @@
-import { parseAiContent } from '@/utils/aiUtils';
+import type { LlmTokenUsageData } from '@/Interface';
+import { addTokenUsageData, formatTokenUsageCount, parseAiContent } from '@/utils/aiUtils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe(parseAiContent, () => {
@@ -77,5 +78,58 @@ describe(parseAiContent, () => {
 				raw: expect.any(Object),
 			},
 		]);
+	});
+});
+
+describe(addTokenUsageData, () => {
+	it('should return sum of consumed tokens', () => {
+		expect(
+			addTokenUsageData(
+				{ completionTokens: 1, promptTokens: 100, totalTokens: 1000, isEstimate: false },
+				{ completionTokens: 0, promptTokens: 1, totalTokens: 2, isEstimate: false },
+			),
+		).toEqual({ completionTokens: 1, promptTokens: 101, totalTokens: 1002, isEstimate: false });
+	});
+
+	it('should set isEstimate to true if either of the arguments is an estimation', () => {
+		const usageData = { completionTokens: 0, promptTokens: 0, totalTokens: 0, isEstimate: false };
+
+		expect(addTokenUsageData(usageData, usageData)).toEqual({
+			...usageData,
+			isEstimate: false,
+		});
+		expect(addTokenUsageData({ ...usageData, isEstimate: true }, usageData)).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
+		expect(addTokenUsageData(usageData, { ...usageData, isEstimate: true })).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
+		expect(
+			addTokenUsageData({ ...usageData, isEstimate: true }, { ...usageData, isEstimate: true }),
+		).toEqual({
+			...usageData,
+			isEstimate: true,
+		});
+	});
+});
+
+describe(formatTokenUsageCount, () => {
+	const usageData: LlmTokenUsageData = {
+		completionTokens: 11,
+		promptTokens: 22,
+		totalTokens: 33,
+		isEstimate: false,
+	};
+
+	it('should return the number of specified field', () => {
+		expect(formatTokenUsageCount(usageData, 'completion')).toBe('11');
+		expect(formatTokenUsageCount(usageData, 'prompt')).toBe('22');
+		expect(formatTokenUsageCount(usageData, 'total')).toBe('33');
+	});
+
+	it('should prepend "~" if the usage data is an estimation', () => {
+		expect(formatTokenUsageCount({ ...usageData, isEstimate: true }, 'total')).toBe('~33');
 	});
 });

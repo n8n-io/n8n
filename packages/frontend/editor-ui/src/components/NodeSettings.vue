@@ -32,7 +32,9 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import { get, set, unset } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -51,6 +53,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 const props = withDefaults(
 	defineProps<{
@@ -63,6 +66,7 @@ const props = withDefaults(
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
+		activeNode?: INodeUi;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -93,6 +97,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const canvasOperations = useCanvasOperations();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -127,7 +132,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -573,6 +578,15 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
+			}
+		}
+
+		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
+			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType);
+			// Account for unique-ified nodes with `<name><digit>`
+			if (!_node.name.startsWith(newName)) {
+				// We need a timeout here to support events reacting to the valueChange based on node names
+				setTimeout(async () => await canvasOperations.renameNode(_node.name, newName));
 			}
 		}
 
