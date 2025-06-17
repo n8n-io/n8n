@@ -10,7 +10,9 @@ import { InsightsService } from './insights.service';
 export class ForbiddenError extends Error {
 	readonly httpStatusCode = 403;
 
-	readonly level = 'warning';
+	readonly errorCode = 403;
+
+	readonly shouldReport = false;
 }
 
 @RestController('/insights')
