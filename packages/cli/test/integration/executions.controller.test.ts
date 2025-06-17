@@ -130,7 +130,7 @@ describe('POST /executions/delete', () => {
 describe('POST /executions/stop', () => {
 	test('should not stop an execution we do not have access to', async () => {
 		await saveExecution({ belongingTo: owner });
-		const incorrectExecutionId = 'fakeExecutionsId';
+		const incorrectExecutionId = '1234';
 
 		await testServer
 			.authAgentFor(owner)

@@ -422,6 +422,7 @@ export class ExecutionService {
 
 	async stop(req: ExecutionRequest.Stop, sharedWorkflowIds: string[]): Promise<StopResult> {
 		const { id: executionId } = req.params;
+
 		const execution = await this.executionRepository.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -433,7 +434,6 @@ export class ExecutionService {
 				executionId,
 			});
 
-			// TODO: Should this be a NotFoundError to match the behavior of other methods?
 			throw new MissingExecutionStopError(executionId);
 		}
 
