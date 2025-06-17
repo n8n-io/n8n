@@ -1,5 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 

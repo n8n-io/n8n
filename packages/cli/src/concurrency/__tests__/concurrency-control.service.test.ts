@@ -1,6 +1,6 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
