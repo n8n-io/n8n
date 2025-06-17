@@ -48,4 +48,20 @@ describe('@BackendModule decorator', () => {
 
 		expect(Container.has(TestModule)).toBe(true);
 	});
+
+	it('stores the test name and licenseFlag flag in the metadata', () => {
+		const name = 'test';
+		const licenseFlag = 'feat:ldap';
+
+		@BackendModule({ name, licenseFlag })
+		class TestModule implements ModuleInterface {}
+
+		const registeredModules = moduleMetadata.getEntries();
+
+		expect(registeredModules).toHaveLength(1);
+		const [moduleName, options] = registeredModules[0];
+		expect(moduleName).toBe(name);
+		expect(options.licenseFlag).toBe(licenseFlag);
+		expect(options.class).toBe(TestModule);
+	});
 });
