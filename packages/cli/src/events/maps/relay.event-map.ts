@@ -514,4 +514,29 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region queue
+
+	'job-enqueued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-dequeued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-stalled': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	// #endregion
 } & AiEventMap;

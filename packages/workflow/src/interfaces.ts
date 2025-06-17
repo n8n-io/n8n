@@ -2143,6 +2143,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to

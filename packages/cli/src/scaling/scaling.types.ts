@@ -10,6 +10,7 @@ export type Job = Bull.Job<JobData>;
 export type JobId = Job['id'];
 
 export type JobData = {
+	workflowId: string;
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
