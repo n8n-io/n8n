@@ -3,10 +3,15 @@ import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/a
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import type { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
+
+export class ForbiddenError extends Error {
+	readonly httpStatusCode = 403;
+
+	readonly level = 'warning';
+}
 
 @RestController('/insights')
 export class InsightsController {

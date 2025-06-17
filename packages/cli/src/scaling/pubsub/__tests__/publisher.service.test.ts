@@ -1,10 +1,10 @@
+import { mockLogger } from '@n8n/integration-test-utils';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import type { RedisClientService } from '@/services/redis-client.service';
-import { mockLogger } from '@test/mocking';
 
 import { Publisher } from '../publisher.service';
 import type { PubSub } from '../pubsub.types';
