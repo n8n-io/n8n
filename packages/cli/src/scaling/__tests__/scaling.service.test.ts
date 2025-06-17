@@ -1,6 +1,6 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mockLogger } from '@n8n/integration-test-utils';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';

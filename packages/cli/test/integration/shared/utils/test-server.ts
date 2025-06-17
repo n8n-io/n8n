@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mockLogger } from '@n8n/integration-test-utils';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
