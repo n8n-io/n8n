@@ -71,7 +71,7 @@ export const sanitizeFilename = (
 		.replace(LEADING_TRAILING_DOTS_SPACES_REGEX, '');
 
 	// Handle empty or invalid filenames after cleaning
-	if (!baseName || baseName === '.' || baseName === '..') {
+	if (!baseName) {
 		baseName = DEFAULT_FALLBACK_NAME;
 	}
 
