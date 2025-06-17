@@ -74,6 +74,8 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 const wrapper = templateRef('wrapper');
 
 useViewportAutoAdjust(wrapper, viewport, setViewport);
+
+const drawerMode = true;
 </script>
 
 <template>
@@ -88,14 +90,15 @@ useViewportAutoAdjust(wrapper, viewport, setViewport);
 				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
-			<slot />
+			<slot v-if="!drawerMode" />
 		</div>
+		<slot v-if="drawerMode" />
 		<div
 			v-if="settingsStore.experimental__dockedNodeSettingsEnabled && !props.readOnly"
-			:class="$style.settings"
+			:class="[$style.settings, drawerMode ? $style.drawer : '']"
 		>
 			<N8nText v-if="getSelectedNodes.length > 1" color="text-base">
-				Multiple nodes selected
+				{{ getSelectedNodes.length }} nodes selected
 			</N8nText>
 			<!-- key attribute as temporary fix for an initialization issue -->
 			<CanvasNodeNodeSettings
@@ -127,16 +130,17 @@ useViewportAutoAdjust(wrapper, viewport, setViewport);
 }
 
 .settings {
+	z-index: 10;
 	flex-grow: 0;
 	flex-shrink: 0;
 	border-left: var(--border-base);
-	width: max(min(400px, 30%), 320px);
+	width: #{$node-creator-width};
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	transition: width 0.2s ease;
 
-	&:empty {
+	&.drawer:empty {
 		width: 0;
 	}
 }
