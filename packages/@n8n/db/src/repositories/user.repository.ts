@@ -164,26 +164,25 @@ export class UserRepository extends Repository<User> {
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
 	): SelectQueryBuilder<User> {
-		if (typeof filter?.email === 'string') {
+		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
 			});
 		}
 
-		if (typeof filter?.firstName === 'string') {
+		if (filter?.firstName !== undefined) {
 			queryBuilder.andWhere('user.firstName = :firstName', {
 				firstName: filter.firstName,
 			});
 		}
 
-		if (typeof filter?.lastName === 'string') {
+		if (filter?.lastName !== undefined) {
 			queryBuilder.andWhere('user.lastName = :lastName', {
 				lastName: filter.lastName,
 			});
 		}
 
-		console.log('filter?.isOwner', filter?.isOwner);
-		if (typeof filter?.isOwner === 'boolean') {
+		if (filter?.isOwner !== undefined) {
 			if (filter.isOwner) {
 				queryBuilder.andWhere('user.role = :role', {
 					role: 'global:owner',
@@ -195,7 +194,7 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
-		if (filter?.fullText) {
+		if (filter?.fullText !== undefined) {
 			const fullTextFilter = `%${filter.fullText}%`;
 			queryBuilder.andWhere(
 				new Brackets((qb) => {

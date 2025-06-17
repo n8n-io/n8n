@@ -74,15 +74,14 @@ export class UsersController {
 		const { select } = listQueryOptions;
 
 		// remove fields added to satisfy query
-		const fields = select as Array<keyof User>;
 
-		if (fields !== undefined && !fields.includes('id')) {
+		if (select !== undefined && !select.includes('id')) {
 			for (const user of publicUsers) delete user.id;
 		}
 
 		// remove computed fields (unselectable)
 
-		if (fields) {
+		if (select) {
 			for (const user of publicUsers) {
 				delete user.isOwner;
 				delete user.isPending;
