@@ -22,6 +22,7 @@ import * as Helpers from './helpers';
 interface StubNode {
 	name: string;
 	parameters: INodeParameters;
+	type?: string;
 }
 
 describe('Workflow', () => {
@@ -988,6 +989,109 @@ describe('Workflow', () => {
 					},
 				},
 			},
+			{
+				description: 'rename node with jsCode parameter',
+				input: {
+					currentName: 'Node1',
+					newName: 'Node1New',
+					nodes: [
+						{
+							name: 'Node1',
+							type: 'n8n-nodes-base.code',
+							parameters: {
+								jsCode: '$("Node1").params',
+							},
+						},
+					],
+					connections: {},
+				},
+				output: {
+					nodes: [
+						{
+							name: 'Node1New',
+							type: 'n8n-nodes-base.code',
+							parameters: {
+								jsCode: '$("Node1New").params',
+							},
+						},
+					],
+					connections: {},
+				},
+			},
+			{
+				description: 'rename node with html parameter',
+				input: {
+					currentName: 'Node1',
+					newName: 'Node1New',
+					nodes: [
+						{
+							name: 'Node1',
+							type: 'n8n-nodes-base.html',
+							parameters: {
+								html: '$("Node1").params',
+							},
+						},
+					],
+					connections: {},
+				},
+				output: {
+					nodes: [
+						{
+							name: 'Node1New',
+							type: 'n8n-nodes-base.html',
+							parameters: {
+								html: '$("Node1New").params',
+							},
+						},
+					],
+					connections: {},
+				},
+			},
+			{
+				description: 'rename form node with html parameter',
+				input: {
+					currentName: 'Node1',
+					newName: 'Node1New',
+					nodes: [
+						{
+							name: 'Node1',
+							type: 'n8n-nodes-base.form',
+							parameters: {
+								formFields: {
+									values: [
+										{
+											fieldType: 'html',
+											html: '$("Node1").params',
+											elementName: '$("Node1").params',
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				},
+				output: {
+					nodes: [
+						{
+							name: 'Node1New',
+							type: 'n8n-nodes-base.form',
+							parameters: {
+								formFields: {
+									values: [
+										{
+											fieldType: 'html',
+											html: '$("Node1New").params',
+											elementName: '$("Node1").params',
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				},
+			},
 			// This does just a basic test if "renameNodeInParameterValue" gets used. More complex
 			// tests with different formats and levels are in the separate tests for the function
 			// "renameNodeInParameterValue"
@@ -1042,7 +1146,7 @@ describe('Workflow', () => {
 			return {
 				name: stubData.name,
 				parameters: stubData.parameters,
-				type: 'test.set',
+				type: stubData.type ?? 'test.set',
 				typeVersion: 1,
 				id: 'uuid-1234',
 				position: [100, 100],

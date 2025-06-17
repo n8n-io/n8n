@@ -13,6 +13,17 @@ const tsJestOptions = {
 
 const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
 
+const esmDependencies = [
+	'pdfjs-dist',
+	'openid-client',
+	'oauth4webapi',
+	'jose',
+	// Add other ESM dependencies that need to be transformed here
+];
+
+const esmDependenciesPattern = esmDependencies.join('|');
+const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js$`;
+
 /** @type {import('jest').Config} */
 const config = {
 	verbose: true,
@@ -21,7 +32,7 @@ const config = {
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
-		'node_modules/pdfjs-dist/.+\\.mjs$': [
+		[esmDependenciesRegex]: [
 			'babel-jest',
 			{
 				presets: ['@babel/preset-env'],
@@ -29,7 +40,7 @@ const config = {
 			},
 		],
 	},
-	transformIgnorePatterns: ['/dist/', '/node_modules/(?!.*pdfjs-dist/)'],
+	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: compilerOptions?.paths
 		? pathsToModuleNameMapper(compilerOptions.paths, {

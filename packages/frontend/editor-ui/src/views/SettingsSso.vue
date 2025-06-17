@@ -9,11 +9,19 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { MODAL_CONFIRM } from '@/constants';
+
+type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
 };
+
+const SupportedProtocols = {
+	SAML: 'saml',
+	OIDC: 'oidc',
+} as const;
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -29,10 +37,23 @@ const ssoActivatedLabel = computed(() =>
 		? i18n.baseText('settings.sso.activated')
 		: i18n.baseText('settings.sso.deactivated'),
 );
+
+const oidcActivatedLabel = computed(() =>
+	ssoStore.isOidcLoginEnabled
+		? i18n.baseText('settings.sso.activated')
+		: i18n.baseText('settings.sso.deactivated'),
+);
+
 const ssoSettingsSaved = ref(false);
 
-const redirectUrl = ref();
 const entityId = ref();
+
+const clientId = ref('');
+const clientSecret = ref('');
+
+const discoveryEndpoint = ref('');
+
+const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const ipsOptions = ref([
 	{
@@ -48,6 +69,8 @@ const ipsType = ref(IdentityProviderSettingsType.URL);
 
 const metadataUrl = ref();
 const metadata = ref();
+
+const redirectUrl = ref();
 
 const isSaveEnabled = computed(() => {
 	if (ipsType.value === IdentityProviderSettingsType.URL) {
@@ -67,6 +90,17 @@ const isTestEnabled = computed(() => {
 	return false;
 });
 
+async function loadSamlConfig() {
+	if (!ssoStore.isEnterpriseSamlEnabled) {
+		return;
+	}
+	try {
+		await getSamlConfig();
+	} catch (error) {
+		toast.showError(error, 'error');
+	}
+}
+
 const getSamlConfig = async () => {
 	const config = await ssoStore.getSamlConfig();
 
@@ -82,6 +116,28 @@ const getSamlConfig = async () => {
 	metadata.value = config?.metadata;
 	metadataUrl.value = config?.metadataUrl;
 	ssoSettingsSaved.value = !!config?.metadata;
+};
+
+const trackUpdateSettings = () => {
+	const trackingMetadata: {
+		instance_id: string;
+		authentication_method: SupportedProtocolType;
+		is_active?: boolean;
+		discovery_endpoint?: string;
+		identity_provider?: 'metadata' | 'xml';
+	} = {
+		instance_id: rootStore.instanceId,
+		authentication_method: authProtocol.value,
+	};
+
+	if (authProtocol.value === SupportedProtocols.SAML) {
+		trackingMetadata.identity_provider = ipsType.value === 'url' ? 'metadata' : 'xml';
+		trackingMetadata.is_active = ssoStore.isSamlLoginEnabled;
+	} else if (authProtocol.value === SupportedProtocols.OIDC) {
+		trackingMetadata.discovery_endpoint = discoveryEndpoint.value;
+		trackingMetadata.is_active = ssoStore.isOidcLoginEnabled;
+	}
+	telemetry.track('User updated single sign on settings', trackingMetadata);
 };
 
 const onSave = async () => {
@@ -108,11 +164,7 @@ const onSave = async () => {
 			}
 		}
 
-		telemetry.track('User updated single sign on settings', {
-			instance_id: rootStore.instanceId,
-			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
-			is_active: ssoStore.isSamlLoginEnabled,
-		});
+		trackUpdateSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
@@ -167,39 +219,80 @@ const isToggleSsoDisabled = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
-	if (!ssoStore.isEnterpriseSamlEnabled) {
+	await Promise.all([loadSamlConfig(), loadOidcConfig()]);
+
+	if (ssoStore.isDefaultAuthenticationSaml) {
+		authProtocol.value = SupportedProtocols.SAML;
+	} else if (ssoStore.isDefaultAuthenticationOidc) {
+		authProtocol.value = SupportedProtocols.OIDC;
+	}
+});
+
+const getOidcConfig = async () => {
+	const config = await ssoStore.getOidcConfig();
+
+	clientId.value = config.clientId;
+	clientSecret.value = config.clientSecret;
+	discoveryEndpoint.value = config.discoveryEndpoint;
+};
+
+async function loadOidcConfig() {
+	if (!ssoStore.isEnterpriseOidcEnabled) {
 		return;
 	}
 	try {
-		await getSamlConfig();
+		await getOidcConfig();
 	} catch (error) {
 		toast.showError(error, 'error');
 	}
+}
+
+function onAuthProtocolUpdated(value: SupportedProtocolType) {
+	authProtocol.value = value;
+}
+
+const cannotSaveOidcSettings = computed(() => {
+	return (
+		ssoStore.oidcConfig?.clientId === clientId.value &&
+		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
+		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
+		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled
+	);
 });
+
+async function onOidcSettingsSave() {
+	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
+		const confirmAction = await message.confirm(
+			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.message'),
+			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.headline'),
+			{
+				cancelButtonText: i18n.baseText(
+					'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
+				),
+				confirmButtonText: i18n.baseText(
+					'settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText',
+				),
+			},
+		);
+		if (confirmAction !== MODAL_CONFIRM) return;
+	}
+
+	const newConfig = await ssoStore.saveOidcConfig({
+		clientId: clientId.value,
+		clientSecret: clientSecret.value,
+		discoveryEndpoint: discoveryEndpoint.value,
+		loginEnabled: ssoStore.isOidcLoginEnabled,
+	});
+
+	clientSecret.value = newConfig.clientSecret;
+	trackUpdateSettings();
+}
 </script>
 
 <template>
-	<div class="pb-3xl">
-		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</n8n-heading>
-		<div :class="$style.top">
-			<n8n-heading size="xlarge">{{ i18n.baseText('settings.sso.subtitle') }}</n8n-heading>
-			<n8n-tooltip
-				v-if="ssoStore.isEnterpriseSamlEnabled"
-				:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
-			>
-				<template #content>
-					<span>
-						{{ i18n.baseText('settings.sso.activation.tooltip') }}
-					</span>
-				</template>
-				<el-switch
-					v-model="ssoStore.isSamlLoginEnabled"
-					data-test-id="sso-toggle"
-					:disabled="isToggleSsoDisabled"
-					:class="$style.switch"
-					:inactive-text="ssoActivatedLabel"
-				/>
-			</n8n-tooltip>
+	<div class="pb-2xl">
+		<div :class="$style.heading">
+			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</n8n-heading>
 		</div>
 		<n8n-info-tip>
 			{{ i18n.baseText('settings.sso.info') }}
@@ -207,69 +300,187 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
+		<div
+			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
+			data-test-id="sso-content-licensed"
+		>
 			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-				<CopyInput
-					:value="redirectUrl"
-					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-					:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
-			</div>
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-				<CopyInput
-					:value="entityId"
-					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-					:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-			</div>
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-				<div class="mt-2xs mb-s">
-					<n8n-radio-buttons v-model="ipsType" :options="ipsOptions" />
+				<label>Select Authentication Protocol</label>
+				<div>
+					<N8nSelect
+						filterable
+						:model-value="authProtocol"
+						data-test-id="sso-auth-protocol-select"
+						:placeholder="i18n.baseText('parameterInput.select')"
+						@update:model-value="onAuthProtocolUpdated"
+						@keydown.stop
+					>
+						<N8nOption
+							v-for="protocol in Object.values(SupportedProtocols)"
+							:key="protocol"
+							:value="protocol"
+							:label="protocol.toUpperCase()"
+							data-test-id="credential-select-option"
+						>
+						</N8nOption>
+					</N8nSelect>
 				</div>
-				<div v-show="ipsType === IdentityProviderSettingsType.URL">
-					<n8n-input
-						v-model="metadataUrl"
-						type="text"
-						name="metadataUrl"
+			</div>
+			<div v-if="authProtocol === SupportedProtocols.SAML">
+				<div :class="$style.group">
+					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+					<CopyInput
+						:value="redirectUrl"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+				</div>
+				<div :class="$style.group">
+					<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+					<CopyInput
+						:value="entityId"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+				</div>
+				<div :class="$style.group">
+					<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+					<div class="mt-2xs mb-s">
+						<n8n-radio-buttons v-model="ipsType" :options="ipsOptions" />
+					</div>
+					<div v-show="ipsType === IdentityProviderSettingsType.URL">
+						<n8n-input
+							v-model="metadataUrl"
+							type="text"
+							name="metadataUrl"
+							size="large"
+							:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+							data-test-id="sso-provider-url"
+						/>
+						<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+					</div>
+					<div v-show="ipsType === IdentityProviderSettingsType.XML">
+						<n8n-input
+							v-model="metadata"
+							type="textarea"
+							name="metadata"
+							:rows="4"
+							data-test-id="sso-provider-xml"
+						/>
+						<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+					</div>
+					<div :class="$style.group">
+						<n8n-tooltip
+							v-if="ssoStore.isEnterpriseSamlEnabled"
+							:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
+						>
+							<template #content>
+								<span>
+									{{ i18n.baseText('settings.sso.activation.tooltip') }}
+								</span>
+							</template>
+							<el-switch
+								v-model="ssoStore.isSamlLoginEnabled"
+								data-test-id="sso-toggle"
+								:disabled="isToggleSsoDisabled"
+								:class="$style.switch"
+								:inactive-text="ssoActivatedLabel"
+							/>
+						</n8n-tooltip>
+					</div>
+				</div>
+				<div :class="$style.buttons">
+					<n8n-button
+						:disabled="!isSaveEnabled"
 						size="large"
-						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-						data-test-id="sso-provider-url"
-					/>
-					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+						data-test-id="sso-save"
+						@click="onSave"
+					>
+						{{ i18n.baseText('settings.sso.settings.save') }}
+					</n8n-button>
+					<n8n-button
+						:disabled="!isTestEnabled"
+						size="large"
+						type="tertiary"
+						data-test-id="sso-test"
+						@click="onTest"
+					>
+						{{ i18n.baseText('settings.sso.settings.test') }}
+					</n8n-button>
 				</div>
-				<div v-show="ipsType === IdentityProviderSettingsType.XML">
-					<n8n-input
-						v-model="metadata"
-						type="textarea"
-						name="metadata"
-						:rows="4"
-						data-test-id="sso-provider-xml"
+
+				<footer :class="$style.footer">
+					{{ i18n.baseText('settings.sso.settings.footer.hint') }}
+				</footer>
+			</div>
+			<div v-if="authProtocol === SupportedProtocols.OIDC">
+				<div :class="$style.group">
+					<label>Redirect URL</label>
+					<CopyInput
+						:value="ssoStore.oidc.callbackUrl"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						toast-title="Redirect URL copied to clipboard"
 					/>
-					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+					<small>Copy the Redirect URL to configure your OIDC provider </small>
+				</div>
+				<div :class="$style.group">
+					<label>Discovery Endpoint</label>
+					<N8nInput
+						:model-value="discoveryEndpoint"
+						type="text"
+						data-test-id="oidc-discovery-endpoint"
+						placeholder="https://accounts.google.com/.well-known/openid-configuration"
+						@update:model-value="(v: string) => (discoveryEndpoint = v)"
+					/>
+					<small>Paste here your discovery endpoint</small>
+				</div>
+				<div :class="$style.group">
+					<label>Client ID</label>
+					<N8nInput
+						:model-value="clientId"
+						type="text"
+						data-test-id="oidc-client-id"
+						@update:model-value="(v: string) => (clientId = v)"
+					/>
+					<small
+						>The client ID you received when registering your application with your provider</small
+					>
+				</div>
+				<div :class="$style.group">
+					<label>Client Secret</label>
+					<N8nInput
+						:model-value="clientSecret"
+						type="password"
+						data-test-id="oidc-client-secret"
+						@update:model-value="(v: string) => (clientSecret = v)"
+					/>
+					<small
+						>The client Secret you received when registering your application with your
+						provider</small
+					>
+				</div>
+				<div :class="$style.group">
+					<el-switch
+						v-model="ssoStore.isOidcLoginEnabled"
+						data-test-id="sso-oidc-toggle"
+						:class="$style.switch"
+						:inactive-text="oidcActivatedLabel"
+					/>
+				</div>
+
+				<div :class="$style.buttons">
+					<n8n-button
+						data-test-id="sso-oidc-save"
+						size="large"
+						:disabled="cannotSaveOidcSettings"
+						@click="onOidcSettingsSave"
+					>
+						{{ i18n.baseText('settings.sso.settings.save') }}
+					</n8n-button>
 				</div>
 			</div>
-			<div :class="$style.buttons">
-				<n8n-button :disabled="!isSaveEnabled" size="large" data-test-id="sso-save" @click="onSave">
-					{{ i18n.baseText('settings.sso.settings.save') }}
-				</n8n-button>
-				<n8n-button
-					:disabled="!isTestEnabled"
-					size="large"
-					type="tertiary"
-					data-test-id="sso-test"
-					@click="onTest"
-				>
-					{{ i18n.baseText('settings.sso.settings.test') }}
-				</n8n-button>
-			</div>
-			<footer :class="$style.footer">
-				{{ i18n.baseText('settings.sso.settings.footer.hint') }}
-			</footer>
 		</div>
 		<n8n-action-box
 			v-else
@@ -287,11 +498,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-.top {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing-2xl) 0 var(--spacing-xl);
+.heading {
+	margin-bottom: var(--spacing-s);
 }
 
 .switch {

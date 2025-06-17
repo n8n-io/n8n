@@ -33,6 +33,21 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 		},
+		defaultLocale: 'en',
+		hideUsagePage: false,
+		deployment: {
+			type: 'default',
+		},
+		mfa: {
+			enabled: true,
+		},
+		hiringBanner: {
+			enabled: true,
+		},
+		personalization: {
+			enabled: true,
+		},
+		proxy_hops: 0,
 		database: {
 			logging: {
 				enabled: false,

@@ -5,6 +5,8 @@
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
+	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
+	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
@@ -32,6 +34,7 @@ import type {
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import * as NodeHelpers from './node-helpers';
+import { renameFormFields } from './node-parameters/rename-node-utils';
 import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
 
@@ -425,6 +428,21 @@ export class Workflow {
 					currentName,
 					newName,
 					{ hasRenamableContent: true },
+				);
+			}
+			if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type)) {
+				node.parameters.html = this.renameNodeInParameterValue(
+					node.parameters.html,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
+			if (NODES_WITH_RENAMABLE_FORM_HTML_CONTENT.has(node.type)) {
+				renameFormFields(node, (p) =>
+					this.renameNodeInParameterValue(p, currentName, newName, {
+						hasRenamableContent: true,
+					}),
 				);
 			}
 		}

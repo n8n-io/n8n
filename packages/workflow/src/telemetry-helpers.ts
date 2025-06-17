@@ -604,3 +604,43 @@ export function resolveAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAIC
 		fromAIExpressionCount,
 	};
 }
+
+export type VectorStoreMetrics = {
+	insertedIntoVectorStore: boolean;
+	queriedDataFromVectorStore: boolean;
+};
+
+export function resolveVectorStoreMetrics(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+	run: IRun,
+): VectorStoreMetrics | {} {
+	const resolvedNodes = nodes
+		.map((x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const)
+		.filter((x) => !!x[1]?.description);
+
+	const vectorStores = resolvedNodes.filter(
+		(x) =>
+			x[1].description.codex?.categories?.includes('AI') &&
+			x[1].description.codex?.subcategories?.AI?.includes('Vector Stores'),
+	);
+
+	if (vectorStores.length === 0) return {};
+
+	const runData = run?.data?.resultData?.runData;
+	const succeededVectorStores = vectorStores.filter((x) =>
+		runData?.[x[0].name]?.some((execution) => execution.executionStatus === 'success'),
+	);
+
+	const insertingVectorStores = succeededVectorStores.filter(
+		(x) => x[0].parameters?.mode === 'insert',
+	);
+	const retrievingVectorStores = succeededVectorStores.filter((x) =>
+		['retrieve-as-tool', 'retrieve', 'load'].find((y) => y === x[0].parameters?.mode),
+	);
+
+	return {
+		insertedIntoVectorStore: insertingVectorStores.length > 0,
+		queriedDataFromVectorStore: retrievingVectorStores.length > 0,
+	};
+}
