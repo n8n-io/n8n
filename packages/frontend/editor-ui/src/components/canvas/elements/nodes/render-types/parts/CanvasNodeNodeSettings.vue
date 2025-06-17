@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import NodeSettings from '@/components/NodeSettings.vue';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 
-const { nodeId } = defineProps<{ nodeId: string }>();
+const { nodeId, canOpenNdv } = defineProps<{ nodeId: string; canOpenNdv?: boolean }>();
 
 const settingsEventBus = createEventBus();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const { setActiveNodeName } = useNDVStore();
 
 const activeNode = computed(() => workflowsStore.getNodeById(nodeId));
 const activeNodeType = computed(() => {
@@ -18,10 +20,17 @@ const activeNodeType = computed(() => {
 	}
 	return null;
 });
+
+function handleOpenNdv() {
+	if (activeNode.value) {
+		setActiveNodeName(activeNode.value.name);
+	}
+}
 </script>
 
 <template>
 	<NodeSettings
+		:can-expand="canOpenNdv"
 		:event-bus="settingsEventBus"
 		:dragging="false"
 		:active-node="activeNode"
@@ -32,5 +41,7 @@ const activeNodeType = computed(() => {
 		:block-u-i="false"
 		:executable="false"
 		:input-size="0"
+		hide-connections
+		@expand="handleOpenNdv"
 	/>
 </template>

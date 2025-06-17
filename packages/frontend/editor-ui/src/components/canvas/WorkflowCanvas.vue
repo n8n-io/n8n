@@ -8,7 +8,11 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { throttledRef } from '@vueuse/core';
+import { templateRef, throttledRef } from '@vueuse/core';
+import CanvasNodeNodeSettings from './elements/nodes/render-types/parts/CanvasNodeNodeSettings.vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
+import { N8nText } from '@n8n/design-system';
 
 defineOptions({
 	inheritAttrs: false,
@@ -34,8 +38,11 @@ const props = withDefaults(
 );
 
 const $style = useCssModule();
+const settingsStore = useSettingsStore();
 
-const { onNodesInitialized } = useVueFlow({ id: props.id });
+const { onNodesInitialized, getSelectedNodes, viewport, setViewport } = useVueFlow({
+	id: props.id,
+});
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -63,10 +70,14 @@ onNodesInitialized(() => {
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
+
+const wrapper = templateRef('wrapper');
+
+useViewportAutoAdjust(wrapper, viewport, setViewport);
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
+	<div ref="wrapper" :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
@@ -77,14 +88,29 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
+			<slot />
 		</div>
-		<slot />
+		<div
+			v-if="settingsStore.experimental__dockedNodeSettingsEnabled && !props.readOnly"
+			:class="$style.settings"
+		>
+			<N8nText v-if="getSelectedNodes.length > 1" color="text-base">
+				Multiple nodes selected
+			</N8nText>
+			<!-- key attribute as temporary fix for an initialization issue -->
+			<CanvasNodeNodeSettings
+				v-else-if="getSelectedNodes.length === 1"
+				:key="getSelectedNodes[0]?.id"
+				:node-id="getSelectedNodes[0]?.id"
+				can-open-ndv
+			/>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .wrapper {
-	display: block;
+	display: flex;
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -96,5 +122,22 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 	height: 100%;
 	position: relative;
 	display: block;
+	align-items: stretch;
+	justify-content: stretch;
+}
+
+.settings {
+	flex-grow: 0;
+	flex-shrink: 0;
+	border-left: var(--border-base);
+	width: max(min(400px, 30%), 320px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: width 0.2s ease;
+
+	&:empty {
+		width: 0;
+	}
 }
 </style>
