@@ -2,6 +2,7 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 
 export const RESOURCES = {
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
+	audit: ['view'] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,

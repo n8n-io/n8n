@@ -3,7 +3,7 @@ import SetupWorkflowCredentialsButton from '@/components/SetupWorkflowCredential
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-
+import { WorkflowStatus } from 'n8n-workflow';
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -34,6 +34,7 @@ const EMPTY_WORKFLOW = {
 	isArchived: false,
 	connections: {},
 	nodes: [],
+	status: 'created' as WorkflowStatus,
 	usedCredentials: [],
 	meta: { templateId: '2722', templateCredsSetupCompleted: true },
 };

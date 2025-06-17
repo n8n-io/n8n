@@ -70,6 +70,7 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
+	status: IWorkflowDb['status'];
 }>();
 
 const $style = useCssModule();
@@ -762,6 +763,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
 					:is-archived="isArchived"
+					v-if="hasPermission(['rbac'], { rbac: { scope: 'audit:view' } }) || status === 'approved'"
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
@@ -822,6 +824,17 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
+
+				<AuditButtons
+					v-if="
+						!uiStore.stateIsDirty &&
+						!hasPermission(['rbac'], { rbac: { scope: 'audit:view' } }) &&
+						!isNewWorkflow
+					"
+					:workflow_id="props.id"
+					:audit_status="props.status"
+				/>
+
 				<WorkflowHistoryButton
 					:workflow-id="props.id"
 					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
@@ -829,6 +842,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					@upgrade="goToWorkflowHistoryUpgrade"
 				/>
 			</div>
+			<p :class="$style.saved">{{ locale.baseText(`audit.status.${status}`) }}</p>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
 					ref="importFileRef"
@@ -964,5 +978,12 @@ $--header-spacing: 20px;
 	right: var(--spacing-xs);
 	top: var(--spacing-xs);
 	cursor: pointer;
+}
+.saved {
+	color: $custom-font-very-light;
+	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	line-height: 12px;
+	text-align: center;
 }
 </style>

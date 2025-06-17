@@ -7,6 +7,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'annotationTag:delete',
 	'annotationTag:list',
 	'auditLogs:manage',
+	'audit:view',
 	'banner:dismiss',
 	'credential:create',
 	'credential:read',

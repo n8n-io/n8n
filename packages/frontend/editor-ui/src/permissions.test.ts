@@ -65,6 +65,7 @@ describe('permissions', () => {
 
 		const permissionRecord: PermissionsRecord = {
 			annotationTag: {},
+			audit: {},
 			auditLogs: {},
 			banner: {},
 			community: {},

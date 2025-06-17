@@ -51,6 +51,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import {
 	N8nCard,
 	N8nHeading,
@@ -131,6 +132,8 @@ const workflowListEventBus = createEventBus();
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const easyAICalloutVisible = ref(true);
+
+const { canUserAccessRouteByName } = useUserHelpers(router, route);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -287,6 +290,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 			} satisfies FolderResource;
 		} else {
+			console.log('resource status', resource.status);
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
@@ -301,6 +305,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
+				status: resource.status,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -468,6 +473,7 @@ const initialize = async () => {
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
+	console.log('resourcesPage', resourcesPage);
 	loading.value = false;
 };
 
@@ -514,6 +520,9 @@ const fetchWorkflows = async () => {
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
 				parentFolderId: getParentFolderId(parentFolder),
+				status: canUserAccessRouteByName(VIEWS.AUDIT)
+					? ['created', 'approved', 'declined']
+					: ['created', 'submitted', 'approved', 'declined'],
 			},
 			fetchFolders,
 			projectPages.isSharedSubPage,
@@ -540,6 +549,7 @@ const fetchWorkflows = async () => {
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
 			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
+		console.log(workflowsAndFolders);
 
 		return fetchedResources;
 	} catch (error) {

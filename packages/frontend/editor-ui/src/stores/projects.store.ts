@@ -214,6 +214,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 			if (newRoute?.path?.includes('shared')) {
 				projectNavActiveId.value = 'shared';
+			}
+
+			if (newRoute?.path?.includes('audit')) {
+				projectNavActiveId.value = 'audit';
 				setCurrentProject(null);
 			}
 

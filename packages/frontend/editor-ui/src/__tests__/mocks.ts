@@ -11,6 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 	ITaskData,
+	WorkflowStatus,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -198,6 +199,7 @@ export function createTestWorkflow({
 		versionId: '1',
 		meta: {},
 		pinData,
+		status: 'created' as WorkflowStatus,
 		...rest,
 	};
 }

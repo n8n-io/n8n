@@ -14,6 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { WorkflowStatus } from 'n8n-workflow';
 vi.mock('vue-router', () => {
 	const push = vi.fn();
 	const resolve = vi.fn().mockReturnValue({ href: '' });
@@ -64,6 +65,7 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	active: true,
 	isArchived: false,
 	versionId: '1',
+	status: 'created' as WorkflowStatus,
 	...overrides,
 });
 

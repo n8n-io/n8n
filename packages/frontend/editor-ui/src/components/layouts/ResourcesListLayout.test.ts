@@ -34,6 +34,7 @@ const TEST_WORKFLOWS: Resource[] = vi.hoisted(() => [
 		isArchived: false,
 		readOnly: false,
 		homeProject: TEST_HOME_PROJECT,
+		status: 'created',
 	},
 	{
 		resourceType: 'workflow',
@@ -45,6 +46,7 @@ const TEST_WORKFLOWS: Resource[] = vi.hoisted(() => [
 		isArchived: false,
 		readOnly: false,
 		homeProject: TEST_HOME_PROJECT,
+		status: 'created',
 	},
 ]);
 

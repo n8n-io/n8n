@@ -4,15 +4,12 @@ import { useRoute, useRouter } from 'vue-router';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useProjectPages } from '@/composables/useProjectPages';
 
 const route = useRoute();
 const router = useRouter();
@@ -20,43 +17,12 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const projectPages = useProjectPages();
 
 const emit = defineEmits<{
 	createFolder: [];
 }>();
 
-const projectName = computed(() => {
-	if (!projectsStore.currentProject) {
-		if (projectPages.isOverviewSubPage) {
-			return i18n.baseText('projects.menu.overview');
-		} else if (projectPages.isSharedSubPage) {
-			return i18n.baseText('projects.header.shared.title');
-		}
-		return null;
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	} else {
-		return projectsStore.currentProject.name;
-	}
-});
-
-const projectPermissions = computed(
-	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
-);
-
-const showSettings = computed(
-	() =>
-		!!route?.params?.projectId &&
-		!!projectPermissions.value.update &&
-		projectsStore.currentProject?.type === ProjectTypes.Team,
-);
-
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-
-const isPersonalProject = computed(() => {
-	return homeProject.value?.type === ProjectTypes.Personal;
-});
 
 const showFolders = computed(() => {
 	return (
@@ -81,7 +47,6 @@ const createWorkflowButton = computed(() => ({
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
-
 const menu = computed(() => {
 	const items: UserAction[] = [
 		{
@@ -128,27 +93,6 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	},
 } as const;
 
-const pageType = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else {
-		return 'project';
-	}
-});
-
-const subtitle = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (projectPages.isSharedSubPage) {
-		return i18n.baseText('projects.header.shared.subtitle');
-	} else if (isPersonalProject.value) {
-		return i18n.baseText('projects.header.personal.subtitle');
-	}
-	return null;
-});
-
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
@@ -163,14 +107,14 @@ const onSelect = (action: string) => {
 		<div :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
-						projectName
-					}}</N8nHeading>
+					<N8nHeading bold tag="h2" size="xlarge">
+						{{ i18n.baseText('projects.menu.audit') }}
+					</N8nHeading>
 					<N8nText color="text-light">
 						<slot name="subtitle">
-							<N8nText v-if="subtitle" color="text-light" data-test-id="project-subtitle">{{
-								subtitle
-							}}</N8nText>
+							<span v-if="!projectsStore.currentProject">{{
+								i18n.baseText('projects.audit.subtitle')
+							}}</span>
 						</slot>
 					</N8nText>
 				</div>
@@ -195,14 +139,6 @@ const onSelect = (action: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<slot></slot>
-		<div :class="$style.actions">
-			<ProjectTabs
-				:page-type="pageType"
-				:show-executions="!projectPages.isSharedSubPage"
-				:show-settings="showSettings"
-			/>
-		</div>
 	</div>
 </template>
 
@@ -219,10 +155,6 @@ const onSelect = (action: string) => {
 .projectDetails {
 	display: flex;
 	align-items: center;
-}
-
-.actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }
 
 @include mixins.breakpoint('xs-only') {

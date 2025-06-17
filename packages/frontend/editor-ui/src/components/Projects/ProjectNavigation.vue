@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 type Props = {
 	collapsed: boolean;
@@ -41,6 +42,17 @@ const shared = computed<IMenuItem>(() => ({
 	route: {
 		to: { name: VIEWS.SHARED_WITH_ME },
 	},
+}));
+
+const audit = computed<IMenuItem>(() => ({
+	id: 'audit',
+	label: locale.baseText('projects.menu.audit'),
+	icon: 'clipboard-list',
+	route: {
+		to: { name: VIEWS.AUDIT },
+	},
+
+	available: hasPermission(['rbac'], { rbac: { scope: 'audit:view' } }),
 }));
 
 const getProjectMenuItem = (project: ProjectListItem) => ({
@@ -97,6 +109,13 @@ const showAddFirstProject = computed(
 				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-shared-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="audit.available"
+				:item="audit"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
 			/>
 		</ElMenu>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />

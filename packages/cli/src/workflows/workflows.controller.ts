@@ -32,7 +32,7 @@ import {
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, WorkflowStatus } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -438,6 +438,15 @@ export class WorkflowsController {
 		}
 
 		return workflow;
+	}
+	@Patch('/:workflowId/audit-status')
+	@ProjectScope('workflow:update')
+	async updateAuditStatus(req: WorkflowRequest.UpdateAuditStatus) {
+		return await this.workflowService.updateAuditStatus(
+			req.user,
+			req.params.workflowId,
+			req.body.status as WorkflowStatus,
+		);
 	}
 
 	@Post('/:workflowId/run')

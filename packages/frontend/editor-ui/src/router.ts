@@ -65,6 +65,7 @@ const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboard
 const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
 const EvaluationRootView = async () =>
 	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
+const WorkflowsAuditView = async () => await import('@/views/WorkflowsAuditView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -82,6 +83,22 @@ export const routes: RouteRecordRaw[] = [
 		redirect: '/home/workflows',
 		meta: {
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/audit',
+		name: VIEWS.AUDIT,
+		components: {
+			default: WorkflowsAuditView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'rbac'],
+			middlewareOptions: {
+				rbac: {
+					scope: 'audit:view',
+				},
+			},
 		},
 	},
 	{

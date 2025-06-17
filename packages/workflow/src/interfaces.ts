@@ -1153,6 +1153,8 @@ export interface IPinData {
 	[nodeName: string]: INodeExecutionData[];
 }
 
+export type WorkflowStatus = 'created' | 'submitted' | 'approved' | 'declined';
+
 export interface INodes {
 	[key: string]: INode;
 }

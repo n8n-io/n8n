@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString, IsBoolean, IsArray } from 'class-validator';
+import { WorkflowStatus } from 'n8n-workflow';
 
 import { BaseFilter } from './base.filter.dto';
 
@@ -34,6 +35,12 @@ export class WorkflowFilter extends BaseFilter {
 	@IsOptional()
 	@Expose()
 	parentFolderId?: string;
+
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	@Expose()
+	status?: WorkflowStatus[];
 
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);

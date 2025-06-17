@@ -372,6 +372,7 @@ describe('ParameterInput.vue', () => {
 				nodes: [],
 				connections: {},
 				versionId: faker.string.uuid(),
+				status: 'created',
 			},
 		];
 
@@ -425,6 +426,7 @@ describe('ParameterInput.vue', () => {
 				nodes: [],
 				connections: {},
 				versionId: faker.string.uuid(),
+				status: 'created',
 			},
 		];
 

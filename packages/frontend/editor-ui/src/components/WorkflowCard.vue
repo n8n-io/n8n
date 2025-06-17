@@ -10,6 +10,7 @@ import {
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -29,7 +30,7 @@ import type { IUser } from 'n8n-workflow';
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
-
+import AuditButtons from '@/components/AuditButtons.vue';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -435,6 +436,20 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
+				<n8n-badge
+					v-if="data.status"
+					class="mr-2xs"
+					:theme="
+						data.status === 'approved'
+							? 'success'
+							: data.status === 'declined'
+								? 'danger'
+								: 'warning'
+					"
+					bold
+				>
+					{{ locale.baseText(`audit.status.${data.status}`) }}
+				</n8n-badge>
 				<span v-show="data"
 					>{{ locale.baseText('workflows.item.updated') }}
 					<TimeAgo :date="String(data.updatedAt)" /> |
@@ -501,13 +516,16 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					v-else
 					class="mr-s"
 					:is-archived="data.isArchived"
+					v-if="
+						hasPermission(['rbac'], { rbac: { scope: 'audit:view' } }) || data.status === 'approved'
+					"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
 					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
-
+				<AuditButtons :workflow_id="data.id" :audit_status="data.status" />
 				<n8n-action-toggle
 					:actions="actions"
 					theme="dark"

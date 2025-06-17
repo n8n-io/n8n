@@ -10,6 +10,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { WorkflowStatus } from 'n8n-workflow';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 vi.mock('vue-router', async () => ({
@@ -66,6 +67,7 @@ describe('WorkflowSettingsVue', () => {
 				createdAt: 1,
 				updatedAt: 1,
 				versionId: '123',
+				status: 'created' as WorkflowStatus,
 			},
 		]);
 		workflowsStore.getWorkflowById.mockImplementation(() => ({
@@ -79,6 +81,7 @@ describe('WorkflowSettingsVue', () => {
 			updatedAt: 1,
 			versionId: '123',
 			scopes: ['workflow:update'],
+			status: 'created' as WorkflowStatus,
 		}));
 	});
 
@@ -281,6 +284,7 @@ describe('WorkflowSettingsVue', () => {
 			createdAt: 1,
 			updatedAt: 1,
 			versionId: '123',
+			status: 'created' as WorkflowStatus,
 			scopes: ['workflow:read'],
 		}));
 

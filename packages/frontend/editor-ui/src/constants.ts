@@ -578,6 +578,7 @@ export const enum VIEWS {
 	SHARED_WITH_ME = 'SharedWithMe',
 	SHARED_WORKFLOWS = 'SharedWorkflows',
 	SHARED_CREDENTIALS = 'SharedCredentials',
+	AUDIT = 'WorkflowAuditView',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

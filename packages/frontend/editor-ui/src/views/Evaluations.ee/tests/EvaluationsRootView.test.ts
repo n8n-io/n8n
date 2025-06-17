@@ -37,6 +37,7 @@ describe('EvaluationsRootView', () => {
 	const mockWorkflow: IWorkflowDb = {
 		id: 'different-id',
 		name: 'Test Workflow',
+		status: 'created',
 		active: false,
 		isArchived: false,
 		createdAt: Date.now(),

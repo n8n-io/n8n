@@ -19,7 +19,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService } from 'n8n-core';
-import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT, WorkflowStatus } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -556,5 +556,21 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+	}
+
+	async updateAuditStatus(user: User, workflowId: string, status: WorkflowStatus) {
+		// get the workflow by ID and user and update the status
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		// update the status
+		await this.workflowRepository.update(workflowId, { status });
+
+		return workflow;
 	}
 }

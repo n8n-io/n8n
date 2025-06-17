@@ -432,6 +432,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
+		this.applyStatusFilter(qb, filter);
 	}
 
 	private applyNameFilter(
@@ -441,6 +442,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (typeof filter?.name === 'string' && filter.name !== '') {
 			qb.andWhere('LOWER(workflow.name) LIKE :name', {
 				name: `%${filter.name.toLowerCase()}%`,
+			});
+		}
+	}
+
+	private applyStatusFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (Array.isArray(filter?.status) && filter.status.length > 0) {
+			qb.andWhere('workflow.status IN (:...workflowStatus)', {
+				workflowStatus: filter.status,
 			});
 		}
 	}
@@ -556,6 +568,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',
+				'workflow.status',
 			]);
 			return;
 		}

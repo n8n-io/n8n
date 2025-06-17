@@ -15,6 +15,7 @@ import type {
 	ExecutionOptions,
 	ExecutionSummary,
 	IDataObject,
+	WorkflowStatus,
 } from 'n8n-workflow';
 import { getFullApiResponse, makeRestApiRequest } from '@/utils/apiUtils';
 
@@ -200,4 +201,15 @@ export async function getFolderContent(
 		`/projects/${projectId}/folders/${folderId}/content`,
 	);
 	return res.data;
+}
+
+export async function updateWorkflowAuditStatus(
+	context: IRestApiContext,
+	workflowId: string,
+	status: WorkflowStatus,
+) {
+	console.log('status in workflows.ts. submitting request: ', status);
+	return await makeRestApiRequest(context, 'PATCH', `/workflows/${workflowId}/audit-status`, {
+		status,
+	});
 }

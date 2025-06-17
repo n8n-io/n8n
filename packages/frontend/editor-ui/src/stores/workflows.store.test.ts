@@ -18,6 +18,7 @@ import type {
 	IConnection,
 	INodeExecutionData,
 	INode,
+	WorkflowStatus,
 } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
@@ -1305,6 +1306,7 @@ function generateMockExecutionEvents() {
 			active: false,
 			isArchived: false,
 			versionId: '1',
+			status: 'created' as WorkflowStatus,
 		},
 		finished: false,
 		mode: 'cli',

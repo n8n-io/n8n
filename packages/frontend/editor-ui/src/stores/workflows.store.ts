@@ -56,6 +56,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 	ITaskStartedData,
+	WorkflowStatus,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -111,6 +112,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	pinData: {},
 	versionId: '',
 	usedCredentials: [],
+	status: 'created' as WorkflowStatus,
 };
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
@@ -550,11 +552,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active?: boolean;
 			isArchived?: boolean;
 			parentFolderId?: string;
+			status?: WorkflowStatus[];
 		} = {},
 		includeFolders: boolean = false,
 		onlySharedWithMe: boolean = false,
+		status?: WorkflowStatus[],
 	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
+		if (status) {
+			filter.status = status;
+		}
 		const options = {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
@@ -601,6 +608,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
 		addWorkflow(workflowData);
+		console.log('workflow data in workflows.store.ts fetchWorkflow():', workflowData);
 		return workflowData;
 	}
 
@@ -1253,6 +1261,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
+	function setWorkflowAuditStatus(status: WorkflowStatus): void {
+		workflow.value.status = status;
+	}
+
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
@@ -1701,6 +1713,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		data: IWorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
+		console.log('data in update workflow: ', data);
 		if (data.settings === null) {
 			data.settings = undefined;
 		}
@@ -1723,6 +1736,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		return updatedWorkflow;
+	}
+
+	async function updateWorkflowAuditStatus(
+		workflowId: string,
+		status: WorkflowStatus,
+	): Promise<void> {
+		console.log('submitting request in workflows.store.ts: ', status);
+		await workflowsApi.updateWorkflowAuditStatus(rootStore.restApiContext, workflowId, status);
+		setWorkflowAuditStatus(status);
+		console.log('finished request in workflows.store.ts');
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -2015,6 +2038,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
+		setWorkflowAuditStatus,
+		updateWorkflowAuditStatus,
 		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,

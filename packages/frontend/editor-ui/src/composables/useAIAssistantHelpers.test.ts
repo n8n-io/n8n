@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { INode, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
+import type { INode, IRunExecutionData, NodeConnectionType, WorkflowStatus } from 'n8n-workflow';
 import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -438,6 +438,7 @@ const testWorkflow: IWorkflowDb = {
 	settings: {
 		executionOrder: 'v1',
 	},
+	status: 'created' as WorkflowStatus,
 	tags: [],
 	pinData: {},
 	versionId: '9f3263e3-d23d-4cc8-bff0-0fdecfbd82bf',

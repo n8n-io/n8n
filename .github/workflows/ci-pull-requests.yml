@@ -54,19 +54,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache build artifacts
+      - name: Cache turbo build artifacts
         uses: actions/cache@v3
-        id: cache-build
+        id: cache-turbo
         with:
-          path: |
-            packages/**/dist
-            packages/**/build
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          path: .turbo/cache
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-turbo-
 
       - name: Build
-        if: steps.cache-build.outputs.cache-hit != 'true'
         run: pnpm build
 
       - name: Run formatcheck

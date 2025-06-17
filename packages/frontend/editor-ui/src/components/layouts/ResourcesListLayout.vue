@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
+import { WorkflowStatus } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
@@ -36,6 +37,7 @@ export type WorkflowResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
+	status: WorkflowStatus;
 };
 
 export type VariableResource = BaseResource & {
