@@ -43,7 +43,6 @@ const {
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" :release-channel="releaseChannel" />
 		<div v-if="subtitle" :class="$style.textContainer">
 			<n8n-text size="large">{{ subtitle }}</n8n-text>
 		</div>
