@@ -14,10 +14,22 @@ export const nodeProperties: INodeProperties[] = [
 				action: 'Aggregate documents',
 			},
 			{
+				name: 'CreateSearchIndex',
+				value: 'createSearchIndex',
+				description: 'Create Search Index',
+				action: 'Create Search Index',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete documents',
 				action: 'Delete documents',
+			},
+			{
+				name: 'DropSearchIndex',
+				value: 'dropSearchIndex',
+				description: 'Drop Search Index',
+				action: 'Drop Search Index',
 			},
 			{
 				name: 'Find',
@@ -44,10 +56,22 @@ export const nodeProperties: INodeProperties[] = [
 				action: 'Insert documents',
 			},
 			{
+				name: 'ListSearchIndexes',
+				value: 'listSearchIndexes',
+				description: 'List Search Indexes',
+				action: 'List Search Indexes',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update documents',
 				action: 'Update documents',
+			},
+			{
+				name: 'UpdateSearchIndex',
+				value: 'updateSearchIndex',
+				description: 'Update Search Index',
+				action: 'Update Search Index',
 			},
 		],
 		default: 'find',
@@ -270,5 +294,61 @@ export const nodeProperties: INodeProperties[] = [
 				description: 'Whether to use dot notation to access date fields',
 			},
 		],
+	},
+	{
+		displayName: 'Index Name',
+		name: 'indexName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['listSearchIndexes'],
+			},
+		},
+		default: '',
+		description: 'If provided, only lists indexes with the specified name',
+	},
+	{
+		displayName: 'Index Name',
+		name: 'indexNameRequired',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex', 'dropSearchIndex', 'updateSearchIndex'],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The name of the search index',
+	},
+	{
+		displayName: 'Index Definition',
+		name: 'indexDefinition',
+		type: 'json',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex', 'updateSearchIndex'],
+			},
+		},
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		placeholder: '{ "type": "vectorSearch", "definition": {} }',
+		hint: 'Learn more about search index definitions <a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/">here</a>',
+		default: '{}',
+		required: true,
+		description: 'The search index definition',
+	},
+	{
+		displayName: 'Index Type',
+		name: 'indexType',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['createSearchIndex'],
+			},
+		},
+		default: 'vectorSearch',
+		required: true,
+		description: 'The search index index type - either vectorSearch or search',
 	},
 ];
