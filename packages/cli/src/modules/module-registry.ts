@@ -45,9 +45,7 @@ export class ModuleRegistry {
 	}
 
 	addEntities() {
-		for (const [_, moduleEntry] of this.moduleMetadata.getEntries()) {
-			const { class: ModuleClass } = moduleEntry;
-
+		for (const ModuleClass of this.moduleMetadata.getClasses()) {
 			const entities = Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
