@@ -34,7 +34,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const i18n = useI18n();
 	const initialized = ref(false);
 	const settings = ref<FrontendSettings>({} as FrontendSettings);
-	const moduleSettings = ref<FrontendModuleSettings>({} as FrontendModuleSettings);
+	const moduleSettings = ref<FrontendModuleSettings>({});
 	const userManagement = ref<IUserManagementSettings>({
 		quota: -1,
 		showSetupOnFirstLoad: false,
