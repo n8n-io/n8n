@@ -2,16 +2,14 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/api/workflows';
 import {
 	DUPLICATE_POSTFFIX,
-	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 
-import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import type {
 	IPinData,
 	ExecutionSummary,
@@ -24,7 +22,6 @@ import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload, FrontendSettings } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
-import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import * as apiUtils from '@n8n/rest-api-client';
