@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mockLogger } from '@n8n/integration-test-utils';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
@@ -19,7 +20,7 @@ import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
 import * as testModules from '@test-integration/test-modules';
 
-import { mockInstance, mockLogger } from '../../../shared/mocking';
+import { mockInstance } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import { LicenseMocker } from '../license';
 import * as testDb from '../test-db';

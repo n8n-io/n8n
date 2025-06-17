@@ -1,9 +1,8 @@
 import { OnPubSubEvent, PubSubMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-
-import { mockLogger } from '@test/mocking';
 
 import { PubSubEventBus } from '../pubsub.eventbus';
 import { PubSubRegistry } from '../pubsub.registry';

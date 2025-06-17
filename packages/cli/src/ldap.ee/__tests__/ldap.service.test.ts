@@ -1,6 +1,7 @@
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
@@ -9,7 +10,7 @@ import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import type { EventService } from '@/events/event.service';
-import { mockInstance, mockLogger } from '@test/mocking';
+import { mockInstance } from '@test/mocking';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '../constants';
 import {
