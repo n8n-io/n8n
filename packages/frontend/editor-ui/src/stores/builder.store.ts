@@ -95,6 +95,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
 		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
+			if (!window) {
+				return; // for unit testing
+			}
+
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth,
