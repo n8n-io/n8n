@@ -52,7 +52,6 @@ const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
-type SourceControlledFileType = SourceControlledFile['type'];
 
 type Changes = {
 	tags: SourceControlledFile[];
