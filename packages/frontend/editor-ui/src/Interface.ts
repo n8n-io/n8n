@@ -573,6 +573,7 @@ export type IPersonalizationSurveyVersions =
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
 export interface IUserResponse extends User {
+	createdAt?: string;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	signInType?: SignInType;
