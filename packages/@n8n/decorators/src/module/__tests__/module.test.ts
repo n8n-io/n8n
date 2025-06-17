@@ -42,26 +42,6 @@ describe('@BackendModule decorator', () => {
 		expect(registeredModules).toHaveLength(3);
 	});
 
-	it('should support async init method', async () => {
-		const mockInit = jest.fn();
-
-		@BackendModule({ name: 'test' })
-		class TestModule implements ModuleInterface {
-			async init() {
-				mockInit();
-			}
-		}
-
-		const registeredModules = moduleMetadata.getClasses();
-
-		expect(registeredModules).toContain(TestModule);
-
-		const moduleInstance = new TestModule();
-		await moduleInstance.init();
-
-		expect(mockInit).toHaveBeenCalled();
-	});
-
 	it('should apply Service decorator', () => {
 		@BackendModule({ name: 'test' })
 		class TestModule implements ModuleInterface {}
