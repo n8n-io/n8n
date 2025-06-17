@@ -2,6 +2,7 @@ import type { TestRun } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { readFileSync } from 'fs';
 import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
@@ -17,7 +18,7 @@ import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance, mockLogger } from '@test/mocking';
+import { mockInstance } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
