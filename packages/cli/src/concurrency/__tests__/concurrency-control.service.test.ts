@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
@@ -13,7 +14,6 @@ import config from '@/config';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
-import { mockLogger } from '@test/mocking';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
 

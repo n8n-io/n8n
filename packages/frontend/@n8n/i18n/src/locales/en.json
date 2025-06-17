@@ -100,6 +100,7 @@
 	"generic.rename": "Rename",
 	"generic.missing.permissions": "Missing permissions to perform this action",
 	"generic.shortcutHint": "Or press",
+	"generic.upgradeToEnterprise": "Upgrade to Enterprise",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",
