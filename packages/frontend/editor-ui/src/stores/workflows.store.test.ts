@@ -201,35 +201,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('currentWorkflowHasWebhookNode', () => {
-		it('should return true when a node has a webhookId', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', webhookId: 'webhook1' },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
-			expect(hasWebhookNode).toBe(true);
-		});
-
-		it('should return false when no nodes have a webhookId', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
-			expect(hasWebhookNode).toBe(false);
-		});
-
-		it('should return false when there are no nodes', () => {
-			workflowsStore.workflow.nodes = [];
-
-			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
-			expect(hasWebhookNode).toBe(false);
-		});
-	});
-
 	describe('getWorkflowRunData', () => {
 		it('should return null when no execution data is present', () => {
 			workflowsStore.workflowExecutionData = null;
