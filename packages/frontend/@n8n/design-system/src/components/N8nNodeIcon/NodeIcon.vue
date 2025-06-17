@@ -4,6 +4,7 @@ import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
 import N8nTooltip from '../N8nTooltip';
+import N8nNodeIcon from '../N8nNodeIcon';
 
 interface NodeIconProps {
 	type: 'file' | 'icon' | 'unknown';
@@ -97,7 +98,7 @@ const badgeStyleData = computed((): Record<string, string> => {
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
-						<n8n-node-icon :type="badge.type" :src="badge.src" :size="badgeSize"></n8n-node-icon>
+						<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
 					</div>
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">

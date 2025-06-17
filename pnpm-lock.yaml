@@ -1673,6 +1673,9 @@ importers:
 
   packages/frontend/@n8n/chat:
     dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../design-system
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))

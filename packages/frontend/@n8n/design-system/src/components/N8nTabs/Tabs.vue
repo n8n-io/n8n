@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
 
 interface TabOptions {
 	value: Value;

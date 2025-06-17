@@ -1,6 +1,8 @@
 <script lang="ts" setup generic="Value extends unknown = unknown">
 import { computed, useCssModule } from 'vue';
 
+import N8nTree from '../N8nTree';
+
 interface TreeProps {
 	value?: Record<string, Value>;
 	path?: Array<string | number>;

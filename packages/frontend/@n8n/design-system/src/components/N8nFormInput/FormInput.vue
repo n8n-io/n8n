@@ -19,6 +19,7 @@ import type {
 import N8nCheckbox from '../N8nCheckbox';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
+import N8nLink from '../N8nLink';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
 
@@ -260,7 +261,7 @@ defineExpose({ inputRef });
 		</div>
 		<div v-if="showErrors" :class="$style.errors">
 			<span v-text="validationError" />
-			<n8n-link
+			<N8nLink
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
 				:new-window="true"
@@ -268,7 +269,7 @@ defineExpose({ inputRef });
 				theme="danger"
 			>
 				{{ documentationText }}
-			</n8n-link>
+			</N8nLink>
 		</div>
 		<div v-else-if="infoText" :class="$style.infoText">
 			<span size="small" v-text="infoText" />

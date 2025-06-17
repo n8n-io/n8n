@@ -6,6 +6,7 @@ import type { FormEventBus } from '../../utils';
 import { createFormEventBus } from '../../utils';
 import N8nFormInput from '../N8nFormInput';
 import ResizeObserver from '../ResizeObserver';
+import N8nText from '../N8nText';
 
 export type FormInputsProps = {
 	inputs?: IFormInput[];
@@ -108,7 +109,7 @@ onMounted(() => {
 					:key="input.name"
 					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
-					<n8n-text
+					<N8nText
 						v-if="input.properties.type === 'info'"
 						color="text-base"
 						tag="div"
@@ -117,7 +118,7 @@ onMounted(() => {
 						class="form-text"
 					>
 						{{ input.properties.label }}
-					</n8n-text>
+					</N8nText>
 					<N8nFormInput
 						v-else
 						v-bind="input.properties"

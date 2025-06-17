@@ -11,7 +11,9 @@ import { ref, useCssModule, useAttrs, computed } from 'vue';
 import type { IconSize } from '@n8n/design-system/types/icon';
 
 import type { ActionDropdownItem } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
@@ -96,7 +98,7 @@ defineExpose({ open, close });
 			@visible-change="onVisibleChange"
 		>
 			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
+			<N8nIconButton
 				v-else
 				type="tertiary"
 				text

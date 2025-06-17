@@ -6,6 +6,7 @@ import type { UserAction } from '@n8n/design-system/types';
 import type { IconOrientation, IconSize } from '@n8n/design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
+import N8nLoading from '../N8nLoading';
 
 const SIZE = ['mini', 'small', 'medium'] as const;
 const THEME = ['default', 'dark'] as const;

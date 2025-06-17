@@ -36,6 +36,7 @@
     }
   },
   "dependencies": {
+    "@n8n/design-system": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "highlight.js": "catalog:frontend",
     "markdown-it-link-attributes": "^4.0.1",

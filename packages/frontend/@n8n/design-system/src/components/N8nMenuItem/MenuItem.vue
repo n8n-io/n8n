@@ -9,6 +9,8 @@ import { getInitials } from '../../utils/labelUtil';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
+import N8nSpinner from '../N8nSpinner';
+import N8nMenuItem from '../N8nMenuItem';
 
 interface MenuItemProps {
 	item: IMenuItem;
