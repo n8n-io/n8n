@@ -497,13 +497,15 @@ export class YouTube implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						qs.part = 'snippet';
+						qs.part = 'snippet,status';
 
 						const body: IDataObject = {
 							snippet: {
 								title,
 							},
-							status: {},
+							status: {
+								privacyStatus: 'private',
+							},
 						};
 
 						if (options.tags) {
