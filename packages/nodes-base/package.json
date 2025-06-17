@@ -883,6 +883,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
+    "@napi-rs/canvas": "0.1.71",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",

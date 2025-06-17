@@ -69,7 +69,7 @@ jobs:
           context: .
           file: ./docker/images/n8n/Dockerfile
           build-args: |
-            N8N_RELEASE_TYPE=development
+            N8N_RELEASE_TYPE=dev
           platforms: linux/amd64
           provenance: false
           push: true

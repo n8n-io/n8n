@@ -9,8 +9,8 @@ COPY . /src
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
 RUN pnpm build
 
-# Delete all dev dependencies
-RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
+# Delete all frontend dependencies
+RUN jq '.pnpm.patchedDependencies |= with_entries(select(.key | startswith("pdfjs-dist") or startswith("pkce-challenge")))' package.json > package.json.tmp; mv package.json.tmp package.json
 RUN node .github/scripts/trim-fe-packageJson.js
 
 # Delete any source code or typings
@@ -18,7 +18,7 @@ RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -na
 
 # Deploy the `n8n` package into /compiled
 RUN mkdir /compiled
-RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
+RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy /compiled
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
@@ -60,7 +60,9 @@ RUN \
 RUN \
 	cd /usr/local/lib/node_modules/n8n && \
 	npm rebuild sqlite3 && \
-	cd - && \
+	cd node_modules/@napi-rs/canvas && \
+	npm i --omit-dev && \
+	cd /home/node && \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
 	mkdir .n8n && \
 	chown node:node .n8n
