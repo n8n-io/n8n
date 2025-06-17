@@ -28,8 +28,8 @@ export const userListItemSchema = z.object({
 	role: roleSchema.optional(),
 	isPending: z.boolean().optional(),
 	isOwner: z.boolean().optional(),
-	signInType: z.string().optional(),
-	settings: z.object({}).nullable().optional(),
+	signInType: z.enum(['email', 'oauth', 'ldap']).optional(),
+	settings: z.object({}).optional(),
 	personalizationAnswers: z.object({}).nullable().optional(),
 	lastActive: z.string().optional(),
 	projectRelations: z.array(userProjectSchema).optional(), // Can be null if the user is the owner or is an admin

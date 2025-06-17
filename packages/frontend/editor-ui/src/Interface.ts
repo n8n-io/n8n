@@ -54,7 +54,6 @@ import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -575,7 +574,6 @@ export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	signInType?: SignInType;
 	settings?: IUserSettings;
 }
 
