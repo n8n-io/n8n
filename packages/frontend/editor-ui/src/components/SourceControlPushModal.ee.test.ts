@@ -182,7 +182,7 @@ describe('SourceControlPushModal', () => {
 		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
 	});
 
-	it('should push non workflow entities', async () => {
+	it('should push all entities besides workflows and credentials', async () => {
 		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
@@ -240,7 +240,6 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(getByRole('alert').textContent).toContain('Credentials: 1 added.');
 		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
 		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
 		expect(getByRole('alert').textContent).toContain('Folders: at least one new or modified.');
@@ -253,7 +252,7 @@ describe('SourceControlPushModal', () => {
 		expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
 			expect.objectContaining({
 				commitMessage,
-				fileNames: expect.arrayContaining(status),
+				fileNames: expect.arrayContaining(status.filter((file) => file.type !== 'credential')),
 				force: true,
 			}),
 		);
