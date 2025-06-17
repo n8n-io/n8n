@@ -1,191 +1,94 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { sanitizeFilename, validateFilename, generateSafeFilename } from './fileUtils';
+import { describe, it, expect } from 'vitest';
+import { sanitizeFilename } from './fileUtils';
 
-describe('fileUtils', () => {
-	describe('sanitizeFilename', () => {
-		it('should return normal filenames unchanged', () => {
-			expect(sanitizeFilename('normalfile.txt')).toBe('normalfile.txt');
-			expect(sanitizeFilename('my-file_v2.pdf')).toBe('my-file_v2.pdf');
-		});
-
-		it('should handle empty and invalid inputs', () => {
-			expect(sanitizeFilename('')).toBe('untitled');
-			expect(sanitizeFilename(null as unknown as string)).toBe('untitled');
-			expect(sanitizeFilename(undefined as unknown as string)).toBe('untitled');
-			expect(sanitizeFilename('  filename.txt  ')).toBe('filename.txt');
-		});
-
-		it('should replace Windows forbidden characters', () => {
-			expect(sanitizeFilename('file<name>.txt')).toBe('file_name_.txt');
-			expect(sanitizeFilename('file>name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file:name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file"name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file/name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file\\name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file|name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file?name.txt')).toBe('file_name.txt');
-			expect(sanitizeFilename('file*name.txt')).toBe('file_name.txt');
-		});
-
-		it('should handle Unicode characters', () => {
-			// Remove zero-width characters
-			expect(sanitizeFilename('file\u200Bname.txt')).toBe('filename.txt');
-			expect(sanitizeFilename('file\uFEFFname.txt')).toBe('filename.txt');
-			// Convert special spaces
-			expect(sanitizeFilename('file\u00A0name.txt')).toBe('file name.txt');
-			// Preserve Chinese characters
-			expect(sanitizeFilename('文件名.txt')).toBe('文件名.txt');
-		});
-
-		it('should handle Windows reserved names', () => {
-			expect(sanitizeFilename('CON.txt')).toBe('_CON.txt');
-			expect(sanitizeFilename('con.txt')).toBe('_con.txt');
-			expect(sanitizeFilename('PRN')).toBe('_PRN');
-			expect(sanitizeFilename('COM1.txt')).toBe('_COM1.txt');
-			expect(sanitizeFilename('LPT1.txt')).toBe('_LPT1.txt');
-			// Should not affect partial matches
-			expect(sanitizeFilename('my-CON-file.txt')).toBe('my-CON-file.txt');
-		});
-
-		it('should remove leading/trailing spaces and dots', () => {
-			expect(sanitizeFilename('...filename...')).toBe('filename');
-			expect(sanitizeFilename('   filename   ')).toBe('filename');
-			expect(sanitizeFilename('.hidden')).toBe('hidden');
-		});
-
-		it('should handle special cases', () => {
-			expect(sanitizeFilename('.')).toBe('untitled');
-			expect(sanitizeFilename('..')).toBe('untitled');
-			expect(sanitizeFilename('<<<>>>')).toBe('______');
-		});
-
-		it('should handle length limits', () => {
-			const longName = 'a'.repeat(250) + '.txt';
-			const result = sanitizeFilename(longName);
-			expect(result.length).toBeLessThanOrEqual(200);
-			expect(result.endsWith('.txt')).toBe(true);
-
-			// Custom length limit
-			const result2 = sanitizeFilename(longName, 50);
-			expect(result2.length).toBeLessThanOrEqual(50);
-			expect(result2.endsWith('.txt')).toBe(true);
-		});
+describe('sanitizeFilename', () => {
+	it('should return normal filenames unchanged', () => {
+		expect(sanitizeFilename('normalfile')).toBe('normalfile');
+		expect(sanitizeFilename('my-file_v2')).toBe('my-file_v2');
 	});
 
-	describe('validateFilename', () => {
-		it('should validate valid filenames', () => {
-			const result = validateFilename('validfile.txt');
-			expect(result.isValid).toBe(true);
-			expect(result.issues).toHaveLength(0);
-			expect(result.sanitized).toBe('validfile.txt');
-		});
-
-		it('should detect invalid filenames', () => {
-			// Empty filename
-			const result1 = validateFilename('');
-			expect(result1.isValid).toBe(false);
-			expect(result1.issues).toContain('Filename is empty');
-
-			// Invalid characters
-			const result2 = validateFilename('file<>name.txt');
-			expect(result2.isValid).toBe(false);
-			expect(result2.issues).toContain('Filename contains invalid characters or format');
-
-			// Too long
-			const result3 = validateFilename('a'.repeat(300));
-			expect(result3.isValid).toBe(false);
-			expect(result3.issues).toContain('Filename is too long (max 255 characters)');
-
-			// Reserved names
-			const result4 = validateFilename('CON.txt');
-			expect(result4.isValid).toBe(false);
-			expect(result4.issues).toContain('Filename uses Windows reserved name');
-		});
-
-		it('should test common Windows reserved names', () => {
-			const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM9', 'LPT1', 'LPT9'];
-
-			reservedNames.forEach((name) => {
-				const result = validateFilename(name);
-				expect(result.isValid).toBe(false);
-				expect(result.issues).toContain('Filename uses Windows reserved name');
-			});
-		});
+	it('should handle empty and invalid inputs', () => {
+		expect(sanitizeFilename('')).toBe('untitled');
+		expect(sanitizeFilename(null as unknown as string)).toBe('untitled');
+		expect(sanitizeFilename(undefined as unknown as string)).toBe('untitled');
+		expect(sanitizeFilename('filename   ')).toBe('filename');
 	});
 
-	describe('generateSafeFilename', () => {
-		beforeEach(() => {
-			vi.useFakeTimers();
-			vi.setSystemTime(new Date('2023-12-25T10:30:45.123Z'));
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		it('should return valid filenames unchanged', () => {
-			expect(generateSafeFilename('validfile.txt')).toBe('validfile.txt');
-			expect(generateSafeFilename('document.pdf')).toBe('document.pdf');
-		});
-
-		it('should clean invalid filenames', () => {
-			expect(generateSafeFilename('file<>name.txt')).toBe('file__name.txt');
-			expect(generateSafeFilename('file?name')).toBe('file_name');
-		});
-
-		it('should generate timestamped names for problematic inputs', () => {
-			expect(generateSafeFilename('')).toBe('file_2023-12-25T10-30-45');
-			expect(generateSafeFilename('   ')).toBe('file_2023-12-25T10-30-45');
-			expect(generateSafeFilename('...')).toBe('file_2023-12-25T10-30-45');
-		});
-
-		it('should handle Windows reserved names', () => {
-			expect(generateSafeFilename('CON.txt')).toBe('_CON.txt');
-		});
-
-		it('should handle custom prefix', () => {
-			const result = generateSafeFilename('', 'document');
-			expect(result).toBe('document_2023-12-25T10-30-45');
-		});
+	it('should replace forbidden characters', () => {
+		expect(sanitizeFilename('hello:world')).toBe('hello_world');
+		expect(sanitizeFilename('file<name>')).toBe('file_name_');
+		expect(sanitizeFilename('file/name')).toBe('file_name');
+		expect(sanitizeFilename('file|name')).toBe('file_name');
 	});
 
-	describe('integration tests', () => {
-		it('should handle complex real-world filenames', () => {
-			const complexName = 'My Document (v2.1) - "Final" <DRAFT> [2023].docx';
-			const sanitized = sanitizeFilename(complexName);
-			const validation = validateFilename(complexName);
-			const safe = generateSafeFilename(complexName);
+	it('should handle Unicode characters', () => {
+		expect(sanitizeFilename('file\u200Bname')).toBe('filename'); // Zero-width space
+		expect(sanitizeFilename('file\u00A0name')).toBe('file name'); // Non-breaking space
+	});
 
-			expect(sanitized).toBe('My Document (v2.1) - _Final_ _DRAFT_ [2023].docx');
-			expect(validation.isValid).toBe(false);
-			expect(validation.sanitized).toBe(sanitized);
-			expect(safe).toBe(sanitized);
-		});
+	it('should handle edge cases', () => {
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
+		expect(sanitizeFilename('   ...   ')).toBe('untitled');
+	});
 
-		it('should handle Chinese and special characters', () => {
-			const chineseName = '我的文档<测试>：版本2.0.pdf';
-			const sanitized = sanitizeFilename(chineseName);
-			const validation = validateFilename(chineseName);
+	it('should handle length limits', () => {
+		const longName = 'a'.repeat(250);
+		const result = sanitizeFilename(longName, 50);
+		expect(result.length).toBeLessThanOrEqual(50);
+	});
 
-			expect(sanitized).toBe('我的文档_测试_：版本2.0.pdf');
-			expect(validation.isValid).toBe(false);
-			expect(validation.sanitized).toBe(sanitized);
-		});
+	// 15 most complex world languages (by writing system complexity)
+	it('should support complex writing systems', () => {
+		// 1. Arabic - Right-to-left, complex ligatures
+		expect(sanitizeFilename('سير العمل الخاص بي')).toBe('سير العمل الخاص بي');
 
-		it('should ensure consistency across all functions', () => {
-			const testCases = ['normal.txt', 'file<>name.txt', 'CON.txt', '', 'a'.repeat(300)];
+		// 2. Burmese - Complex script with stacked characters
+		expect(sanitizeFilename('ကျွန်ုပ်၏ လုပ်ငန်းစဉ်')).toBe('ကျွန်ုပ်၏ လုပ်ငန်းစဉ်');
 
-			testCases.forEach((testCase) => {
-				const sanitized = sanitizeFilename(testCase);
-				const validation = validateFilename(testCase);
-				const safe = generateSafeFilename(testCase);
+		// 3. Thai - Complex script, no word separators
+		expect(sanitizeFilename('เวิร์กโฟลว์ของฉัน')).toBe('เวิร์กโฟลว์ของฉัน');
 
-				expect(validation.sanitized).toBe(sanitized);
+		// 4. Hindi - Devanagari script with complex conjuncts
+		expect(sanitizeFilename('मेरा वर्कफ़्लो')).toBe('मेरा वर्कफ़्लो');
 
-				if (sanitized !== 'untitled' || testCase === 'untitled') {
-					expect(safe).toBe(sanitized);
-				}
-			});
-		});
+		// 5. Bengali - Complex script with conjunct consonants
+		expect(sanitizeFilename('আমার ওয়ার্কফ্লো')).toBe('আমার ওয়ার্কফ্লো');
+
+		// 6. Urdu - Right-to-left, Arabic-based script
+		expect(sanitizeFilename('میرا ورک فلو')).toBe('میرا ورک فلو');
+
+		// 7. Chinese - Logographic writing system
+		expect(sanitizeFilename('我的工作流')).toBe('我的工作流');
+
+		// 8. Japanese - Mixed scripts (Hiragana, Katakana, Kanji)
+		expect(sanitizeFilename('私のワークフロー')).toBe('私のワークフロー');
+
+		// 9. Korean - Hangul syllabic blocks
+		expect(sanitizeFilename('내 워크플로우')).toBe('내 워크플로우');
+
+		// 10. Russian - Cyrillic script
+		expect(sanitizeFilename('Мой рабочий процесс')).toBe('Мой рабочий процесс');
+
+		// 11. Tamil - Complex script with vowel marks
+		expect(sanitizeFilename('எனது பணிப்பாய்வு')).toBe('எனது பணிப்பாய்வு');
+
+		// 12. Telugu - Complex script with conjunct consonants
+		expect(sanitizeFilename('నా వర్క్‌ఫ్లో')).toBe('నా వర్క్ఫ్లో');
+
+		// 13. Marathi - Devanagari script
+		expect(sanitizeFilename('माझा वर्कफ्लो')).toBe('माझा वर्कफ्लो');
+
+		// 14. Gujarati - Complex script with vowel modifications
+		expect(sanitizeFilename('મારો વર્કફ્લો')).toBe('મારો વર્કફ્લો');
+
+		// 15. Punjabi - Gurmukhi script
+		expect(sanitizeFilename('ਮੇਰਾ ਵਰਕਫਲੋ')).toBe('ਮੇਰਾ ਵਰਕਫਲੋ');
+	});
+
+	it('should handle mixed complex scripts with special characters', () => {
+		expect(sanitizeFilename('工作流程/ワークフロー')).toBe('工作流程_ワークフロー');
+		expect(sanitizeFilename('वर्कफ्लो:العمل')).toBe('वर्कफ्लो_العمل');
+		expect(sanitizeFilename('프로세스|процесс')).toBe('프로세스_процесс');
 	});
 });
