@@ -8,6 +8,7 @@ import type {
 	IVersionNotificationSettings,
 	ROLE,
 	Role,
+	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -571,16 +572,9 @@ export type IPersonalizationSurveyVersions =
 
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
-export interface IUserResponse {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email?: string;
-	createdAt?: string;
-	role?: Role;
+export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	isPending: boolean;
 	signInType?: SignInType;
 	settings?: IUserSettings;
 }

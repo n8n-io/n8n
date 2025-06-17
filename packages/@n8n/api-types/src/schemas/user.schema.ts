@@ -21,7 +21,7 @@ export const userProjectSchema = z.object({
 });
 
 export const userListItemSchema = z.object({
-	id: z.string().optional(),
+	id: z.string(),
 	firstName: z.string().optional(),
 	lastName: z.string().optional(),
 	email: z.string().email().optional(),
@@ -40,4 +40,5 @@ export const usersListSchema = z.object({
 	items: z.array(userListItemSchema),
 });
 
+export type User = z.infer<typeof userListItemSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
