@@ -420,17 +420,14 @@ export class ExecutionService {
 		);
 	}
 
-	async stop(req: ExecutionRequest.Stop, sharedWorkflowIds: string[]): Promise<StopResult> {
-		const { id: executionId } = req.params;
-
+	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
 		const execution = await this.executionRepository.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
 		);
 
 		if (!execution) {
-			this.logger.info('Attempt to stop an execution was blocked due to insufficient permissions', {
-				userId: req.user.id,
+			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
 				executionId,
 			});
 

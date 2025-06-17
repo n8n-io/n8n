@@ -148,11 +148,11 @@ describe('ExecutionsController', () => {
 		});
 
 		it('should call execution service with expected data when user has accessible workflows', async () => {
-			const mockAccessibleWorkflowIds = ['1234', '5678'];
+			const mockAccessibleWorkflowIds = ['1234', '999'];
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(mockAccessibleWorkflowIds);
 
 			await executionsController.stop(req);
-			expect(executionService.stop).toHaveBeenCalledWith(req, mockAccessibleWorkflowIds);
+			expect(executionService.stop).toHaveBeenCalledWith(req.params.id, mockAccessibleWorkflowIds);
 		});
 	});
 });
