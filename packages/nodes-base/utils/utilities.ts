@@ -1,4 +1,9 @@
-import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
+import isNull from 'lodash/isNull';
+import isObject from 'lodash/isObject';
+import merge from 'lodash/merge';
+import reduce from 'lodash/reduce';
 import type {
 	IDataObject,
 	IDisplayOptions,

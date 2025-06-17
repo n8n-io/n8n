@@ -3,11 +3,12 @@ import { ref, computed } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
+import type { ChangeLocationSearchResult } from '@/Interface';
 
 const props = defineProps<{
 	modalName: string;
@@ -32,7 +33,7 @@ const projectsStore = useProjectsStore();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string; type: 'folder' | 'project' } | null>(null);
+const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
@@ -106,7 +107,7 @@ async function onSubmit() {
 		loading.value = true;
 
 		const newParentId =
-			selectedFolder.value?.type === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
+			selectedFolder.value?.resource === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
 
 		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId, newParentId);
 
@@ -134,7 +135,7 @@ async function onSubmit() {
 	}
 }
 
-const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 'project' }) => {
+const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
 </script>
@@ -180,8 +181,10 @@ const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 
 						}}</n8n-text>
 						<MoveToFolderDropdown
 							v-if="projectsStore.currentProject"
-							:current-folder-id="props.activeId"
+							:selected-location="selectedFolder"
+							:selected-project-id="projectsStore.currentProject?.id"
 							:current-project-id="projectsStore.currentProject?.id"
+							:current-folder-id="props.activeId"
 							:parent-folder-id="folderToDelete?.parentFolder"
 							@location:selected="onFolderSelected"
 						/>

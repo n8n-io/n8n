@@ -33,7 +33,7 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { ElCheckbox } from 'element-plus';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
 import N8nPagination from '../N8nPagination';
@@ -205,7 +205,10 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => (page.value = 0));
+watch(itemsPerPage, () => {
+	page.value = 0;
+	table.setPageSize(itemsPerPage.value);
+});
 
 const pagination = computed<PaginationState>({
 	get() {
@@ -225,13 +228,16 @@ const showPagination = computed(() => props.itemsLength > Math.min(...props.page
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
 function handleSortingChange(updaterOrValue: Updater<SortingState>) {
-	sortBy.value =
+	const newValue =
 		typeof updaterOrValue === 'function' ? updaterOrValue(sortBy.value) : updaterOrValue;
+	sortBy.value = newValue;
 
+	// Use newValue instead of sortBy.value to ensure the latest value is used
+	// This is because of the async nature of the Vue reactivity system
 	emit('update:options', {
 		page: page.value,
 		itemsPerPage: itemsPerPage.value,
-		sortBy: sortBy.value,
+		sortBy: newValue,
 	});
 }
 

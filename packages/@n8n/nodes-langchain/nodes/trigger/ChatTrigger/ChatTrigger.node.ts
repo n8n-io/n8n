@@ -1,5 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import { Node, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -563,7 +563,7 @@ ${cssVariables}
 				return {
 					webhookResponse: { data: messages },
 				};
-			} else if (options?.loadPreviousSession === 'notSupported') {
+			} else if (!options?.loadPreviousSession || options?.loadPreviousSession === 'notSupported') {
 				// If messages of a previous session should not be loaded, simply return an empty array
 				return {
 					webhookResponse: { data: [] },

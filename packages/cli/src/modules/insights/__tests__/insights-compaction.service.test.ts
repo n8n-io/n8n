@@ -7,6 +7,7 @@ import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
+import * as testModules from '@test-integration/test-modules';
 
 import {
 	createMetadata,
@@ -18,8 +19,8 @@ import { InsightsByPeriodRepository } from '../database/repositories/insights-by
 import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
-// Initialize DB once for all tests
 beforeAll(async () => {
+	await testModules.load(['insights']);
 	await testDb.init();
 });
 
@@ -282,11 +283,11 @@ describe('compaction', () => {
 			const workflow = await createWorkflow({}, project);
 
 			// create 100 more events than the batch size (500)
-			const batchSize = 600;
+			const numberOfEvents = 600;
 
 			let timestamp = DateTime.utc().startOf('hour');
 			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
+			for (let i = 0; i < numberOfEvents; i++) {
 				events.push({ type: 'success', value: 1, timestamp });
 				timestamp = timestamp.plus({ minute: 1 });
 			}
@@ -296,13 +297,13 @@ describe('compaction', () => {
 			await insightsCompactionService.compactInsights();
 
 			// ASSERT
-			// compaction batch size is 500, so rawToHour should be called 3 times:
-			// 1st call: 500 events, 2nd call: 100 events, and third call that returns nothing
-			expect(rawToHourSpy).toHaveBeenCalledTimes(3);
+			// compaction batch size is 500, so rawToHour should be called 2 times:
+			// 1st call: 500 events, 2nd call: 100 events
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
+			expect(accumulatedValues).toBe(numberOfEvents);
 		});
 	});
 
@@ -436,7 +437,7 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 5, 23, 59),
-					DateTime.utc(2000, 1, 11, 1, 0),
+					DateTime.utc(2000, 1, 10, 1, 0),
 				],
 				batches: [2, 1],
 			},
@@ -446,9 +447,9 @@ describe('compaction', () => {
 					// 2000-01-03 is a Monday
 					DateTime.utc(2000, 1, 3, 0, 0),
 					DateTime.utc(2000, 1, 4, 23, 59),
-					DateTime.utc(2000, 1, 11, 0, 0),
-					DateTime.utc(2000, 1, 12, 23, 59),
-					DateTime.utc(2000, 1, 18, 23, 59),
+					DateTime.utc(2000, 1, 10, 0, 0),
+					DateTime.utc(2000, 1, 11, 23, 59),
+					DateTime.utc(2000, 1, 17, 23, 59),
 				],
 				batches: [2, 2, 1],
 			},
@@ -482,7 +483,7 @@ describe('compaction', () => {
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.periodStart.getDay()).toBe(1);
+				expect(compacted.periodStart.getUTCDay()).toBe(1);
 				expect(compacted.value).toBe(batches[index]);
 			}
 		});

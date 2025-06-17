@@ -1,5 +1,4 @@
-ARG NODE_VERSION=20
-ARG N8N_VERSION=snapshot
+ARG NODE_VERSION=22
 
 # 1. Create an image to build n8n
 FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
@@ -25,6 +24,7 @@ RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional
 FROM n8nio/base:${NODE_VERSION}
 ENV NODE_ENV=production
 
+ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 
@@ -64,6 +64,9 @@ RUN \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
 	mkdir .n8n && \
 	chown node:node .n8n
+
+# Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
+RUN npm install -g npm@11.4.1
 
 ENV SHELL /bin/sh
 USER node

@@ -1,11 +1,11 @@
-import { ROLE } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { usePageRedirectionHelper } from './usePageRedirectionHelper';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useUsersStore } from '@/stores/users.store';
 import { createPinia, setActivePinia } from 'pinia';
-import * as cloudPlanApi from '@/api/cloudPlans';
+import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
 

@@ -561,6 +561,8 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'exec456',
 				nodeName: 'HTTP Request',
 				workflow,
+				nodeId: 'node2',
+				nodeType: 'n8n-nodes-base.httpRequest',
 			};
 
 			eventService.emit('node-pre-execute', event);
@@ -573,6 +575,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf303',
 					workflowName: 'Test Workflow with Nodes',
 					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeId: 'node2',
 				},
 			});
 		});
@@ -606,6 +609,8 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'exec789',
 				nodeName: 'HTTP Response',
 				workflow,
+				nodeId: 'node2',
+				nodeType: 'n8n-nodes-base.httpResponse',
 			};
 
 			eventService.emit('node-post-execute', event);
@@ -618,6 +623,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf404',
 					workflowName: 'Test Workflow with Completed Node',
 					nodeType: 'n8n-nodes-base.httpResponse',
+					nodeId: 'node2',
 				},
 			});
 		});
@@ -1255,6 +1261,50 @@ describe('LogStreamingEventRelay', () => {
 			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.ai.vector.store.updated',
 				payload,
+			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should log on `runner-task-requested` event', () => {
+			const event: RelayEventMap['runner-task-requested'] = {
+				taskId: 't-1',
+				nodeId: 'n-2',
+				executionId: 'e-3',
+				workflowId: 'w-4',
+			};
+
+			eventService.emit('runner-task-requested', event);
+
+			expect(eventBus.sendRunnerEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.runner.task.requested',
+				payload: {
+					taskId: 't-1',
+					nodeId: 'n-2',
+					executionId: 'e-3',
+					workflowId: 'w-4',
+				},
+			});
+		});
+
+		it('should log on `runner-response-received` event', () => {
+			const event: RelayEventMap['runner-response-received'] = {
+				taskId: 't-1',
+				nodeId: 'n-2',
+				executionId: 'e-3',
+				workflowId: 'w-4',
+			};
+
+			eventService.emit('runner-response-received', event);
+
+			expect(eventBus.sendRunnerEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.runner.response.received',
+				payload: {
+					taskId: 't-1',
+					nodeId: 'n-2',
+					executionId: 'e-3',
+					workflowId: 'w-4',
+				},
 			});
 		});
 	});

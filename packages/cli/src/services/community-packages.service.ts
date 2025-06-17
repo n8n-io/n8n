@@ -1,14 +1,17 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstalledPackages } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
-import { InstanceSettings, Logger } from 'n8n-core';
-import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'path';
 import { promisify } from 'util';
 
 import {
@@ -56,11 +59,21 @@ const asyncExec = promisify(exec);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
+type PackageJson = {
+	name: 'installed-nodes';
+	private: true;
+	dependencies: Record<string, string>;
+};
+
 @Service()
 export class CommunityPackagesService {
 	reinstallMissingPackages = false;
 
 	missingPackages: string[] = [];
+
+	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
+
+	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -71,6 +84,11 @@ export class CommunityPackagesService {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	async init() {
+		await this.ensurePackageJson();
+		await this.checkForMissingPackages();
+	}
 
 	get hasMissingPackages() {
 		return this.missingPackages.length > 0;
@@ -136,10 +154,8 @@ export class CommunityPackagesService {
 
 	/** @deprecated */
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
-
 		const execOptions = {
-			cwd: downloadFolder,
+			cwd: this.downloadFolder,
 			env: {
 				NODE_PATH: process.env.NODE_PATH,
 				PATH: process.env.PATH,
@@ -147,8 +163,6 @@ export class CommunityPackagesService {
 				NODE_ENV: 'production',
 			},
 		};
-
-		await mkdir(downloadFolder, { recursive: true });
 
 		try {
 			const commandResult = await asyncExec(command, execOptions);
@@ -261,6 +275,20 @@ export class CommunityPackagesService {
 			);
 		} catch {
 			// do nothing
+		}
+	}
+
+	async ensurePackageJson() {
+		try {
+			await access(this.packageJsonPath, constants.F_OK);
+		} catch {
+			await mkdir(this.downloadFolder, { recursive: true });
+			const packageJson: PackageJson = {
+				name: 'installed-nodes',
+				private: true,
+				dependencies: {},
+			};
+			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 		}
 	}
 
@@ -420,14 +448,28 @@ export class CommunityPackagesService {
 		}
 	}
 
-	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
+	@OnPubSubEvent('community-package-install')
+	@OnPubSubEvent('community-package-update')
+	async handleInstallEvent({
+		packageName,
+		packageVersion,
+	}: { packageName: string; packageVersion: string }) {
+		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+	}
+
+	@OnPubSubEvent('community-package-uninstall')
+	async handleUninstallEvent({ packageName }: { packageName: string }) {
+		await this.removeNpmPackage(packageName);
+	}
+
+	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.downloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
-	async removeNpmPackage(packageName: string) {
+	private async removeNpmPackage(packageName: string) {
 		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -435,13 +477,11 @@ export class CommunityPackagesService {
 	}
 
 	private resolvePackageDirectory(packageName: string) {
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
-		return `${downloadFolder}/node_modules/${packageName}`;
+		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
 		const registry = this.getNpmRegistry();
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
 		// (Re)create the packageDir
@@ -453,27 +493,37 @@ export class CommunityPackagesService {
 
 		const { stdout: tarOutput } = await asyncExec(
 			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
-			{ cwd: downloadFolder },
+			{ cwd: this.downloadFolder },
 		);
 
 		const tarballName = tarOutput?.trim();
 
 		try {
 			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
-				cwd: downloadFolder,
+				cwd: this.downloadFolder,
 			});
 
 			// Strip dev, optional, and peer dependencies before running `npm install`
 			const packageJsonPath = `${packageDirectory}/package.json`;
 			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const { devDependencies, peerDependencies, optionalDependencies, ...packageJson } =
-				JSON.parse(packageJsonContent);
+			const {
+				devDependencies,
+				peerDependencies,
+				optionalDependencies,
+				...packageJson
+			}: {
+				version: string;
+				devDependencies: Record<string, string>;
+				peerDependencies: Record<string, string>;
+				optionalDependencies: Record<string, string>;
+			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
 			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
-			await asyncExec(`rm ${tarballName}`, { cwd: downloadFolder });
+			await rm(join(this.downloadFolder, tarballName));
 		}
 
 		return packageDirectory;
@@ -481,6 +531,13 @@ export class CommunityPackagesService {
 
 	private async deletePackageDirectory(packageName: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await asyncExec(`rm -rf ${packageDirectory}`);
+		await rm(packageDirectory, { recursive: true, force: true });
+	}
+
+	async updatePackageJsonDependency(packageName: string, version: string) {
+		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+		const packageJson = jsonParse<PackageJson>(existingContent);
+		packageJson.dependencies[packageName] = version;
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 }

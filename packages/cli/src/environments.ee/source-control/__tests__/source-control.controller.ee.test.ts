@@ -31,6 +31,7 @@ describe('SourceControlController', () => {
 		controller = new SourceControlController(
 			sourceControlService,
 			sourceControlPreferencesService,
+			mock(),
 			eventService,
 		);
 	});

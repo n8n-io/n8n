@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
@@ -5,11 +6,19 @@ import {
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
+	findTriggerNodeToAutoSelect,
 } from './executionUtils';
-import type { INode, IRunData, IPinData, ExecutionError } from 'n8n-workflow';
+import type { INode, IRunData, IPinData, ExecutionError, INodeTypeDescription } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
-import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '@/constants';
-import { createTestNode } from '@/__tests__/mocks';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CORE_NODES_CATEGORY,
+	FORM_TRIGGER_NODE_TYPE,
+	GITHUB_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from '@/constants';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
@@ -29,13 +38,13 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaitingForFormSubmission': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaitingForWebhook': 'Waiting for webhook call: ',
+				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
+				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
+				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
 				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
 				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
@@ -48,12 +57,24 @@ vi.mock('@/plugins/i18n', () => ({
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
+	let fetchMock: MockInstance;
+	const successResponse = {
+		ok: true,
+	} as unknown as Response;
+
+	beforeAll(() => {
+		fetchMock = vi.spyOn(global, 'fetch');
+	});
+
+	afterAll(() => {
+		fetchMock.mockRestore();
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should not call openPopUpWindow if node has already run or is pinned', () => {
+	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -76,7 +97,9 @@ describe('displayForm', () => {
 		const runData: IRunData = { Node1: [] };
 		const pinData: IPinData = { Node2: [{ json: { data: {} } }] };
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData,
 			pinData,
@@ -90,7 +113,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
+	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -110,7 +133,8 @@ describe('displayForm', () => {
 			},
 		];
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -124,7 +148,7 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
+	it('should not open pop-up if source is "RunData.ManualChatMessage"', async () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -138,7 +162,9 @@ describe('displayForm', () => {
 
 		getTestUrlMock.mockReturnValue('http://test-url.com');
 
-		displayForm({
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
 			nodes,
 			runData: undefined,
 			pinData: {},
@@ -162,8 +188,9 @@ describe('displayForm', () => {
 			getTestUrlMock.mockReturnValue('http://test-url.com');
 		});
 
-		it('should open pop-up if the trigger node is a form node', () => {
-			displayForm({
+		it('should open pop-up if the trigger node is a form node', async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
@@ -177,8 +204,41 @@ describe('displayForm', () => {
 			expect(windowOpenSpy).toHaveBeenCalled();
 		});
 
-		it("should not open pop-up if the trigger node is specified and it isn't a form node", () => {
-			displayForm({
+		it('should not open pop-up if the trigger node is a form node but webhook url is not live', async () => {
+			fetchMock.mockResolvedValue({ ok: false });
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not open pop-up if the trigger node is a form node but fetch of webhook url throws', async () => {
+			fetchMock.mockRejectedValue(new Error());
+			await displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it("should not open pop-up if the trigger node is specified and it isn't a form node", async () => {
+			fetchMock.mockResolvedValue(successResponse);
+			await displayForm({
 				nodes,
 				runData: undefined,
 				pinData: {},
@@ -450,5 +510,53 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Problem executing workflow',
 			message: 'Execution error.Details: Something broke',
 		});
+	});
+});
+
+describe(findTriggerNodeToAutoSelect, () => {
+	const APP_TRIGGER_TYPE = 'app trigger';
+
+	function getNodeType(type: string): INodeTypeDescription {
+		return mockNodeTypeDescription({
+			name: type,
+			codex: { categories: type === APP_TRIGGER_TYPE ? [] : [CORE_NODES_CATEGORY] },
+		});
+	}
+
+	it('should return the first enabled node', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', disabled: true }),
+					createTestNode({ name: 'B', disabled: false }),
+					createTestNode({ name: 'C', disabled: false }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should prioritize form trigger node than other node types', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: FORM_TRIGGER_NODE_TYPE }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should prioritize an app trigger than a scheduled trigger', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: SCHEDULE_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: APP_TRIGGER_TYPE }),
+				],
+				getNodeType,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
 	});
 });

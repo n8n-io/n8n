@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ITemplatesCollection } from '@/Interface';
 
 withDefaults(

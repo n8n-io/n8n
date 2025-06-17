@@ -1,9 +1,10 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import type { CredentialsRepository, SettingsRepository } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter, Logger } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
