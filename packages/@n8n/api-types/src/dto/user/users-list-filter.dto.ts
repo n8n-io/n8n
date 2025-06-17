@@ -41,7 +41,7 @@ const selectValidatorSchema = z
 	.transform((val, ctx) => {
 		if (!val) return undefined;
 		try {
-			const parsed: unknown = jsonParse(val);
+			const parsed: unknown = val.split(',').map((s) => s.trim());
 			try {
 				return userSelectSchema.parse(parsed);
 			} catch (e) {
@@ -105,7 +105,7 @@ const expandValidatorSchema = z
 	.transform((val, ctx) => {
 		if (!val) return undefined;
 		try {
-			const parsed: unknown = jsonParse(val);
+			const parsed: unknown = val.split(',').map((s) => s.trim());
 			try {
 				return userExpandSchema.parse(parsed);
 			} catch (e) {
