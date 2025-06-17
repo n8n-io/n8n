@@ -57,6 +57,7 @@ export class ImportService {
 
 				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
+				// @ts-ignore CAT-957
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
