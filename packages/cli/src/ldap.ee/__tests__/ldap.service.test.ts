@@ -1,7 +1,7 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
