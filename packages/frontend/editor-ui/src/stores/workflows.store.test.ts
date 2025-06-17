@@ -84,67 +84,6 @@ describe('useWorkflowsStore', () => {
 		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 	});
 
-	describe('isWaitingExecution', () => {
-		it('should return false if no activeNode and no waiting nodes in workflow', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: 'type1' },
-				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(false);
-		});
-
-		it('should return false if no activeNode and waiting node in workflow and waiting node is disabled', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: FORM_NODE_TYPE, disabled: true },
-				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(false);
-		});
-
-		it('should return true if no activeNode and wait node in workflow', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: WAIT_NODE_TYPE },
-				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(true);
-		});
-
-		it('should return true if no activeNode and form node in workflow', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: FORM_NODE_TYPE },
-				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(true);
-		});
-
-		it('should return true if no activeNode and sendAndWait node in workflow', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: 'type1', parameters: { operation: SEND_AND_WAIT_OPERATION } },
-				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(true);
-		});
-
-		it('should return true if activeNode is waiting node', () => {
-			vi.mocked(useNDVStore).mockReturnValue({
-				activeNode: { type: WAIT_NODE_TYPE } as unknown as INodeUi,
-			} as unknown as ReturnType<typeof useNDVStore>);
-
-			const isWaiting = workflowsStore.isWaitingExecution;
-			expect(isWaiting).toEqual(true);
-		});
-	});
-
 	describe('allWorkflows', () => {
 		it('should return sorted workflows by name', () => {
 			workflowsStore.setWorkflows([
