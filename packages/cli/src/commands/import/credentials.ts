@@ -102,6 +102,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		// @ts-ignore CAT-957
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 
 		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
