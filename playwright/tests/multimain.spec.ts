@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/base';
 
-test('Leader election @mode:multi-main', async ({ chaos }) => {
+test('Leader election @mode:multi-main @chaostest', async ({ chaos }) => {
 	// First get the container (try main 1 first)
 	const namePattern = 'n8n-main-*';
 

@@ -1,4 +1,4 @@
-import { test as base, expect, type TestInfo, type UseOptions } from '@playwright/test';
+import { test as base, expect, type TestInfo } from '@playwright/test';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import type { N8NStack } from '../containers/n8n-test-container-creation';
@@ -18,8 +18,16 @@ type WorkerFixtures = {
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
-	containerConfig: any; // Configuration for container creation
+	containerConfig: ContainerConfig; // Configuration for container creation
 };
+
+interface ContainerConfig {
+	postgres?: boolean;
+	queueMode?: {
+		mains: number;
+		workers: number;
+	};
+}
 
 /**
  * Extended Playwright test with n8n-specific fixtures.
@@ -29,8 +37,8 @@ type WorkerFixtures = {
 export const test = base.extend<TestFixtures, WorkerFixtures>({
 	// Container configuration from the project use options
 	containerConfig: [
-		async ({}, use: UseOptions<any, any>, testInfo: TestInfo) => {
-			const config = testInfo.project.use?.containerConfig || {};
+		async ({}, use, testInfo: TestInfo) => {
+			const config = (testInfo.project.use?.containerConfig as ContainerConfig) || {};
 			await use(config);
 		},
 		{ scope: 'worker' },
@@ -73,7 +81,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	// Reset the database for the new container or the existing n8n instance if RESET_E2E_DB is true
 	dbSetup: [
 		async ({ n8nUrl, n8nContainer, browser }, use) => {
-			if (n8nContainer || process.env.RESET_E2E_DB === 'true') {
+			if (n8nContainer) {
 				const context = await browser.newContext({ baseURL: n8nUrl });
 				const api = new ApiHelpers(context.request);
 				await api.resetDatabase();
@@ -88,7 +96,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	chaos: [
 		async ({ n8nContainer }, use) => {
 			if (process.env.N8N_BASE_URL) {
-				throw new ApplicationError(
+				throw new Error(
 					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 				);
 			}

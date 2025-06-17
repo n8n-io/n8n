@@ -94,7 +94,7 @@ export class ApiHelpers {
 				return await this.signin(role, memberIndex);
 
 			default:
-				throw new ApplicationError()
+				throw new Error();
 		}
 	}
 
@@ -111,7 +111,7 @@ export class ApiHelpers {
 
 		if (!response.ok()) {
 			const errorText = await response.text();
-			throw new ApplicationError()
+			throw new Error(errorText);
 		}
 		// Adding small delay to ensure database is reset
 		await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -130,7 +130,7 @@ export class ApiHelpers {
 		});
 
 		if (!response.ok()) {
-			throw new ApplicationError()
+			throw new Error();
 		}
 	}
 
@@ -140,7 +140,7 @@ export class ApiHelpers {
 		});
 
 		if (!response.ok()) {
-			throw new ApplicationError()
+			throw new Error();
 		}
 	}
 
@@ -150,7 +150,7 @@ export class ApiHelpers {
 		});
 
 		if (!response.ok()) {
-			throw new ApplicationError()
+			throw new Error();
 		}
 	}
 
@@ -172,7 +172,7 @@ export class ApiHelpers {
 		const response = await this.request.get(path, { params });
 
 		if (!response.ok()) {
-			throw new ApplicationError()
+			throw new Error();
 		}
 
 		const { data } = await response.json();
@@ -193,7 +193,7 @@ export class ApiHelpers {
 
 		if (!response.ok()) {
 			const errorText = await response.text();
-			throw new ApplicationError()
+			throw new Error(errorText);
 		}
 
 		let responseData: any;
@@ -201,13 +201,13 @@ export class ApiHelpers {
 			responseData = await response.json();
 		} catch (error) {
 			const errorText = await response.text();
-			throw new ApplicationError()
+			throw new Error(errorText);
 		}
 
 		const loginData: LoginResponseData = responseData.data;
 
 		if (!loginData?.id) {
-			throw new ApplicationError('Login did not return expected user data (missing user ID)')
+			throw new Error('Login did not return expected user data (missing user ID)');
 		}
 
 		return loginData;
@@ -221,11 +221,11 @@ export class ApiHelpers {
 				return INSTANCE_ADMIN_CREDENTIALS;
 			case 'member':
 				if (!INSTANCE_MEMBER_CREDENTIALS || memberIndex >= INSTANCE_MEMBER_CREDENTIALS.length) {
-					throw new ApplicationError()
+					throw new Error();
 				}
 				return INSTANCE_MEMBER_CREDENTIALS[memberIndex];
 			default:
-				throw new ApplicationError()
+				throw new Error();
 		}
 	}
 

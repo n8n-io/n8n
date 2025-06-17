@@ -36,14 +36,14 @@ const BASE_ENV: Record<string, string> = {
 	N8N_ENCRYPTION_KEY: 'test-encryption-key',
 	E2E_TESTS: 'true',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
-	N8N_USER_MANAGEMENT_DISABLED: 'true', // Disable user management for tests
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 };
 
 // Multi-main license (required for multiple main instances)
 const MULTI_MAIN_LICENSE = {
 	N8N_LICENSE_TENANT_ID: '1001',
-	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
+	N8N_LICENSE_ACTIVATION_KEY:
+		process.env.N8N_LICENSE_ACTIVATION_KEY ?? '6b68c8e2-2c39-4215-a85f-549ace8f559d',
 };
 
 // Wait strategy for n8n containers

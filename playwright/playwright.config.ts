@@ -39,29 +39,52 @@ const containerConfigs = [
 	{ name: 'mode:multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
-// Helper to generate parallel/sequential project pairs
-function createProjectPair(name: string, containerConfig: any): Project[] {
+// Parallel tests can run fully parallel on a worker
+// Sequential tests can run on a single worker, since the need a DB reset
+// Chaos tests can run on a single worker, since they can destroy containers etc, these need to be isolate from DB tests since they are destructive
+function createProjectTrio(name: string, containerConfig: any): Project[] {
 	const modeTag = `@${name}`;
+
+	// Parse custom env vars from command line
+	const customEnv = process.env.N8N_TEST_ENV ? JSON.parse(process.env.N8N_TEST_ENV) : {};
+
+	// Merge custom env vars into container config
+	const mergedConfig = {
+		...containerConfig,
+		env: {
+			...containerConfig.env,
+			...customEnv,
+		},
+	};
 
 	return [
 		{
 			name: `${name} - Parallel`,
-			// Run tests that are either tagged for this mode OR have no mode tags, but exclude @db:reset
-			grep: new RegExp(`${modeTag}(?!.*@db:reset)|^(?!.*@mode:|.*@db:reset)`),
+			grep: new RegExp(
+				`${modeTag}(?!.*(@db:reset|@chaostest))|^(?!.*(@mode:|@db:reset|@chaostest))`,
+			),
 			fullyParallel: true,
-			use: { containerConfig } as any,
+			use: { containerConfig: mergedConfig } as any,
 		},
 		{
 			name: `${name} - Sequential`,
-			// Run tests that are either tagged for this mode + @db:reset OR just @db:reset (no mode tag)
 			grep: new RegExp(`${modeTag}.*@db:reset|@db:reset(?!.*@mode:)`),
 			fullyParallel: false,
-			use: { containerConfig } as any,
+			workers: 1,
+			use: { containerConfig: mergedConfig } as any,
+		},
+		{
+			name: `${name} - Chaos`,
+			// Only run chaos tests that are tagged for this specific mode
+			grep: new RegExp(`${modeTag}.*@chaostest`),
+			fullyParallel: false,
+			workers: 1,
+			use: { containerConfig: mergedConfig } as any,
 		},
 	];
 }
-
 export default defineConfig({
+	globalSetup: './global-setup.ts',
 	testDir: './tests',
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
@@ -89,5 +112,9 @@ export default defineConfig({
 		navigationTimeout: 10000,
 	},
 
-	projects: containerConfigs.flatMap(({ name, config }) => createProjectPair(name, config)),
+	projects: process.env.N8N_BASE_URL
+		? containerConfigs
+				.filter(({ name }) => name === 'mode:standard')
+				.flatMap(({ name, config }) => createProjectTrio(name, config))
+		: containerConfigs.flatMap(({ name, config }) => createProjectTrio(name, config)),
 });
