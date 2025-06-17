@@ -120,7 +120,14 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
-
+	menuItems.push({
+		id: 'settings-language',
+		icon: 'globe',
+		label: i18n.baseText('settings.language'),
+		position: 'top',
+		available: canUserAccessRouteByName(VIEWS.LANGUAGE),
+		route: { to: { name: VIEWS.LANGUAGE } },
+	});
 	return menuItems;
 });
 </script>
@@ -160,6 +167,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 .returnButton {
 	padding: var(--spacing-s) var(--spacing-l);
 	cursor: pointer;
+
 	&:hover {
 		color: var(--color-primary);
 	}

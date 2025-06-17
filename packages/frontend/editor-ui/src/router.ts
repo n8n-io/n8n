@@ -43,6 +43,7 @@ const SettingsPersonalView = async () => await import('./views/SettingsPersonalV
 const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
+const SettingsLanguageView = async () => await import('./views/SettingsLanguageView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
@@ -660,6 +661,24 @@ export const routes: RouteRecordRaw[] = [
 				},
 				meta: {
 					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: 'language',
+				name: VIEWS.LANGUAGE,
+				components: {
+					settingsView: SettingsLanguageView,
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'language:update',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
 				},
 			},
 			{
