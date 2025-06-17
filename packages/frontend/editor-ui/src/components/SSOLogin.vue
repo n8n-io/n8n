@@ -2,19 +2,21 @@
 import { useSSOStore } from '@/stores/sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useRoute } from 'vue-router';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const toast = useToast();
-const settingsStore = useSettingsStore();
+const route = useRoute();
 
 const onSSOLogin = async () => {
 	try {
 		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
-			? await ssoStore.getSSORedirectUrl()
-			: settingsStore.settings.sso.oidc.loginUrl;
-		window.location.href = redirectUrl;
+			? await ssoStore.getSSORedirectUrl(
+					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+				)
+			: ssoStore.oidc.loginUrl;
+		window.location.href = redirectUrl ?? '';
 	} catch (error) {
 		toast.showError(error, 'Error', error.message);
 	}

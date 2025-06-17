@@ -35,7 +35,7 @@ component_management:
         - packages/@n8n/decorators/**
         - packages/@n8n/constants/**
         - packages/@n8n/backend-common/**
-        - packages/@n8n/integration-test-utils/**
+        - packages/@n8n/backend-test-utils/**
         - packages/@n8n/db/**
         - packages/@n8n/di/**
         - packages/@n8n/imap/**
@@ -60,8 +60,6 @@ component_management:
         - type: project
           target: auto
           threshold: 0% # Enforce: Coverage must not decrease
-
-
 
 ignore:
   - (?s:.*/[^\/]*\.spec\.ts.*)\Z
