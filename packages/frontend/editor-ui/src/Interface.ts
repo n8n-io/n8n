@@ -574,7 +574,7 @@ export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	settings?: IUserSettings;
+	settings?: IUserSettings | null;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
