@@ -2,6 +2,8 @@ import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UsersList,
+	UsersListFilterDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type {
@@ -128,8 +130,9 @@ export async function deleteUser(
 
 export async function getUsers(
 	context: IRestApiContext,
-): Promise<{ count: number; data: IUserResponse[] }> {
-	return await makeRestApiRequest(context, 'GET', '/users');
+	filter?: UsersListFilterDto,
+): Promise<UsersList> {
+	return await makeRestApiRequest(context, 'GET', '/users', filter);
 }
 
 export async function getInviteLink(
