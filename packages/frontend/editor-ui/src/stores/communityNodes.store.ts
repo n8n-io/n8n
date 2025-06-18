@@ -100,5 +100,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		installPackage,
 		uninstallPackage,
 		updatePackage,
+		setInstalledPackages,
 	};
 });

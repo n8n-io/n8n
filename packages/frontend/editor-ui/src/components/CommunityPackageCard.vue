@@ -7,7 +7,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { computed, ref, watch, watchEffect } from 'vue';
+import { computed, ref, watch } from 'vue';
 import semver from 'semver';
 
 interface Props {
@@ -24,9 +24,10 @@ const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallCon
 	useUIStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const settingsStore = useSettingsStore();
 
+const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
+
 const latestVerifiedVersion = ref<string>();
 const currVersion = computed(() => props.communityPackage?.installedVersion || '');
 
