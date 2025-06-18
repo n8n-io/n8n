@@ -31,7 +31,7 @@ export interface CurrentState {
 
 export interface BaseN8nStateManager {
 	getStateSchema(): DynamicZodObject;
-	getCurrentState: () => Promise<string>;
+	getCurrentState: () => string;
 	getPrompt: () => string;
 	setState: (
 		context: IExecuteFunctions,
@@ -49,10 +49,9 @@ export async function getOptionalStateManager(
 	let stateManager: N8nStateManager | undefined;
 
 	if (ctx.getNodeParameter('hasStateManager', 0, true) === true) {
-		stateManager = (await ctx.getInputConnectionData(
-			NodeConnectionTypes.AiStateManager,
-			0,
-		)) as N8nStateManager;
+		stateManager = (
+			await ctx.getInputConnectionData(NodeConnectionTypes.AiStateManager, 0)
+		)[0] as N8nStateManager;
 	}
 
 	return stateManager;
