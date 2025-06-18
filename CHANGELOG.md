@@ -1,3 +1,13 @@
+## [1.99.1](https://github.com/n8n-io/n8n/compare/n8n@1.99.0...n8n@1.99.1) (2025-06-18)
+
+
+### Bug Fixes
+
+* **core:** Fix pdf extract not working ([#16463](https://github.com/n8n-io/n8n/issues/16463)) ([0d69ea4](https://github.com/n8n-io/n8n/commit/0d69ea4f5bdd1216bd06ad5ae4e60eec6cc948b3))
+* **n8n Form Node:** Prevent XSS with video and source tags ([#16329](https://github.com/n8n-io/n8n/issues/16329)) ([7940384](https://github.com/n8n-io/n8n/commit/7940384a85041a1890b1203d69c092c887312500))
+
+
+
 # [1.99.0](https://github.com/n8n-io/n8n/compare/n8n@1.98.0...n8n@1.99.0) (2025-06-16)
 
 
