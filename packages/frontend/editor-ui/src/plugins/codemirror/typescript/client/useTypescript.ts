@@ -67,7 +67,9 @@ export function useTypescript(
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,
-							targetNodeParameterContext === undefined ? (ndvStore.ndvInputRunIndex ?? 0) : 0,
+							toValue(targetNodeParameterContext) === undefined
+								? (ndvStore.ndvInputRunIndex ?? 0)
+								: 0,
 							0,
 						)
 						.filter((data) => Boolean(data && Object.keys(data).length));
