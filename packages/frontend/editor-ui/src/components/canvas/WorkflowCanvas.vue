@@ -74,8 +74,6 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 const wrapper = templateRef('wrapper');
 
 useViewportAutoAdjust(wrapper, viewport, setViewport);
-
-const drawerMode = true;
 </script>
 
 <template>
@@ -90,12 +88,11 @@ const drawerMode = true;
 				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
-			<slot v-if="!drawerMode" />
 		</div>
-		<slot v-if="drawerMode" />
+		<slot />
 		<div
 			v-if="settingsStore.experimental__dockedNodeSettingsEnabled && !props.readOnly"
-			:class="[$style.settings, drawerMode ? $style.drawer : '']"
+			:class="$style.settings"
 		>
 			<N8nText v-if="getSelectedNodes.length > 1" color="text-base">
 				{{ getSelectedNodes.length }} nodes selected
@@ -140,7 +137,7 @@ const drawerMode = true;
 	justify-content: center;
 	transition: width 0.2s ease;
 
-	&.drawer:empty {
+	&:empty {
 		width: 0;
 	}
 }
