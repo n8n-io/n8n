@@ -7,6 +7,7 @@ import markdownTaskLists from 'markdown-it-task-lists';
 import { computed, ref } from 'vue';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
+import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
 import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
 
@@ -19,6 +20,7 @@ interface Options {
 	markdown: MarkdownOptions;
 	linkAttributes: markdownLink.Config;
 	tasklists: markdownTaskLists.Config;
+	youtube: YoutubeEmbedConfig;
 }
 
 interface MarkdownProps {
@@ -58,6 +60,10 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 			label: true,
 			labelAfter: true,
 		},
+		youtube: {
+			width: 400,
+			height: 200,
+		},
 	}),
 });
 
@@ -67,11 +73,22 @@ const { options } = props;
 const md = new Markdown(options.markdown)
 	.use(markdownLink, options.linkAttributes)
 	.use(markdownEmoji)
-	.use(markdownTaskLists, options.tasklists);
+	.use(markdownTaskLists, options.tasklists)
+	.use(markdownYoutubeEmbed, options.youtube);
 
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
+	iframe: [
+		'width',
+		'height',
+		'src',
+		'title',
+		'frameborder',
+		'allow',
+		'referrerpolicy',
+		'allowfullscreen',
+	],
 };
 
 const htmlContent = computed(() => {
@@ -112,6 +129,19 @@ const htmlContent = computed(() => {
 					return '';
 				}
 			}
+
+			if (tag === 'iframe') {
+				if (name === 'src') {
+					// Only allow YouTube as src for iframes embeds
+					if (YOUTUBE_EMBED_SRC_REGEX.test(value)) {
+						return `src=${friendlyAttrValue(value)}`;
+					} else {
+						return '';
+					}
+				}
+				return;
+			}
+
 			// Return nothing, means keep the default handling measure
 			return;
 		},
@@ -195,14 +225,16 @@ const onCheckboxChange = (index: number) => {
 
 <template>
 	<div class="n8n-markdown">
+		<!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
+		<!-- eslint-disable vue/no-v-html -->
 		<div
 			v-if="!loading"
 			ref="editor"
-			v-n8n-html="htmlContent"
 			:class="$style[theme]"
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
+			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">
