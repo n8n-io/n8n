@@ -1,18 +1,21 @@
-import {
-	NodeConnectionTypes,
-	type ISupplyDataFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	GenericValue,
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import type { N8nStateManager } from '@utils/N8nStateManager';
+import type { CurrentState, N8nStateMachine, N8nStateManager } from '@utils/N8nStateManager';
 
 export class SlotFillingStateSingleton {
 	private static instance: SlotFillingStateSingleton;
 
-	private stateBuffer: Map<string, Record<string, any>>;
+	// SessionID -> state
+	private stateBuffer: Map<string, CurrentState>;
 
 	private constructor() {
 		this.stateBuffer = new Map();
@@ -25,15 +28,15 @@ export class SlotFillingStateSingleton {
 		return SlotFillingStateSingleton.instance;
 	}
 
-	getState(sessionId: string): Record<string, any> | undefined {
+	getState(sessionId: string): CurrentState | undefined {
 		return this.stateBuffer.get(sessionId);
 	}
 
-	setState(sessionId: string, data: Record<string, any>): void {
+	setState(sessionId: string, data: CurrentState): void {
 		this.stateBuffer.set(sessionId, data);
 	}
 
-	updateState(sessionId: string, updates: Record<string, any>): void {
+	updateState(sessionId: string, updates: CurrentState): void {
 		const currentData = this.getState(sessionId) || {};
 		const updatedData = { ...currentData, ...updates };
 		this.setState(sessionId, updatedData);
@@ -129,31 +132,42 @@ export class SlotFillingState implements INodeType {
 		const sessionId = getSessionId(this, itemIndex);
 		const singleton = SlotFillingStateSingleton.getInstance();
 
-		// Create a state manager object
-		const stateManager = {
-			get: (key?: string) => {
+		const stateSchema = this.getNodeParameter('stateSchema', itemIndex, '') as string;
+		const parsedStateSchema = jsonParse<N8nStateMachine>(stateSchema);
+
+		const stateManager: N8nStateManager = {
+			getStateSchema: () => {
+				throw new NodeOperationError(this.getNode(), 'Not implemented');
+			},
+			getCurrentState: async () => {
 				const state = singleton.getState(sessionId);
-				if (key && state) {
-					return state[key];
+				return state ? state.currentState : '';
+			},
+			getPrompt: () => 'NOT IMPLEMENTED',
+			setState: async (context: IExecuteFunctions, slotName, slotValue) => {
+				const state =
+					singleton.getState(sessionId) ??
+					({
+						currentState: parsedStateSchema.initialState,
+						slots: new Map(),
+					} as CurrentState);
+
+				if (!state.slots.has(state.currentState)) {
+					state.slots.set(state.currentState, new Map());
 				}
-				return state;
+
+				state.slots.get(state.currentState)?.set(slotName, slotValue as GenericValue);
+
+				singleton.updateState(sessionId, state);
+				return singleton.getState(sessionId) as CurrentState;
 			},
-			set: (data: Record<string, any>) => {
-				singleton.setState(sessionId, data);
-			},
-			update: (updates: Record<string, any>) => {
-				singleton.updateState(sessionId, updates);
-			},
-			delete: () => {
+			clearState: async () => {
 				singleton.deleteState(sessionId);
-			},
-			has: () => {
-				return singleton.hasState(sessionId);
 			},
 		};
 
 		return {
-			response: stateManager as N8nStateManager,
+			response: stateManager,
 		};
 	}
 }
