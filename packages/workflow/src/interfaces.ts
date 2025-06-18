@@ -1893,6 +1893,7 @@ export const NodeConnectionTypes = {
 	AiTextSplitter: 'ai_textSplitter',
 	AiTool: 'ai_tool',
 	AiVectorStore: 'ai_vectorStore',
+	AiStateManager: 'ai_stateManager',
 	Main: 'main',
 } as const;
 

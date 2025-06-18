@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { N8nStateManager } from '@utils/N8nStateManager';
 /* -----------------------------------------------------------
    Output Parser Helper
 ----------------------------------------------------------- */
@@ -299,6 +300,7 @@ export async function getOptionalMemory(
 export async function getTools(
 	ctx: IExecuteFunctions,
 	outputParser?: N8nOutputParser,
+	stateManager?: N8nStateManager,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
 
@@ -314,6 +316,17 @@ export async function getTools(
 			func: async () => '',
 		});
 		tools.push(structuredOutputParserTool);
+	}
+
+	if (stateManager) {
+		const schema = stateManager.getSchema();
+		const structuredSetStateTool = new DynamicStructuredTool({
+			schema,
+			name: 'set_state',
+			func: async () => stateManager.setState.bind(stateManager),
+		});
+
+		tools.push(structuredSetStateTool);
 	}
 	return tools;
 }
@@ -333,6 +346,7 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		outputParser?: N8nOutputParser;
+		stateManager?: N8nStateManager;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -342,10 +356,15 @@ export async function prepareMessages(
 	if (useSystemMessage) {
 		messages.push([
 			'system',
-			`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`,
+			`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}
+			${options.stateManager ? '\n\n{state_manager}' : ''}`,
 		]);
-	} else if (options.outputParser) {
-		messages.push(['system', '{formatting_instructions}']);
+	} else if (options.outputParser || options.stateManager) {
+		messages.push([
+			'system',
+			`${options.outputParser ? '{formatting_instructions}\n\n' : ''}
+			${options.stateManager ? '{state_manager}\n\n' : ''}`,
+		]);
 	}
 
 	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);

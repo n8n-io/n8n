@@ -18,6 +18,7 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { getOptionalStateManager } from '@utils/N8nStateManager';
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -37,6 +38,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
+	const stateManager = await getOptionalStateManager(this);
 	const tools = await getTools(this, outputParser);
 	const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
 	const delayBetweenBatches = this.getNodeParameter(
@@ -74,6 +76,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				systemMessage: options.systemMessage,
 				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 				outputParser,
+				stateManager,
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
 
@@ -106,6 +109,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 					formatting_instructions:
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					state_manager: stateManager.getPrompt() + '\n\n' + stateManager.getCurrentState(),
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
