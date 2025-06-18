@@ -307,6 +307,64 @@ describe('SourceControlPushModal', () => {
 		expect(submitButton).not.toBeDisabled();
 	});
 
+	it('should show credentials in a different tab', async () => {
+		// source-control-push-modal-tab
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My credential',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		const { getAllByTestId } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(workflows).toHaveLength(2);
+
+		const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
+			textContent?.includes('Credentials'),
+		);
+
+		await userEvent.click(tab[0]);
+
+		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(credentials).toHaveLength(1);
+		expect(within(credentials[0]).getByText('My credential')).toBeInTheDocument();
+	});
+
 	describe('filters', () => {
 		it('should filter by name', async () => {
 			const status: SourceControlledFile[] = [
