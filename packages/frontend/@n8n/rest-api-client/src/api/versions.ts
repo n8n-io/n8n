@@ -40,59 +40,15 @@ export interface WhatsNewArticle {
 	calloutContent: string;
 }
 
-export interface StrapiResponse<T> {
-	data: T[];
-	meta: {
-		pagination: {
-			page: number;
-			pageSize: number;
-			pageCount: number;
-			total: number;
-		};
-	};
-}
-
-export interface StrapiN8nVersion {
-	id: number;
-	attributes: {
-		name: string;
-		encodedName: string;
-		major: number;
-		minor: number;
-		patch: number;
-		isStable: boolean;
-		showReleaseNotification: boolean;
-		hasCoreChanges: boolean;
-		isAvailableOnCloud: boolean;
-		hasNewNodes: boolean | null;
-		hasNodeEnhancements: boolean | null;
-		hasSecurityIssue: boolean | null;
-		hasSecurityFix: boolean | null;
-		hasBreakingChange: boolean | null;
-		hasBugFixes: boolean | null;
-		securityIssueFixVersion: string;
-		documentationUrl: string;
-		nodes: string;
-		isEarlyAccess: boolean | null;
-		createdAt: string;
-		updatedAt: string | null;
-	};
-}
-
 export interface StrapiWhatsNewArticle {
 	id: number;
-	attributes: {
-		title: string;
-		content: string;
-		calloutTitle: string;
-		calloutText: string;
-		createdAt: string;
-		updatedAt: string | null;
-		publishedAt: string;
-		n8nVersion: {
-			data: StrapiN8nVersion | null;
-		};
-	};
+	title: string;
+	content: string;
+	calloutTitle: string;
+	calloutText: string;
+	createdAt: string;
+	updatedAt: string | null;
+	publishedAt: string;
 }
 
 export async function getNextVersions(
@@ -113,21 +69,16 @@ export async function getWhatsNewArticles(
 		[INSTANCE_ID_HEADER as string]: instanceId,
 		[INSTANCE_VERSION_HEADER as string]: currentVersion,
 	};
-	const response: StrapiResponse<StrapiWhatsNewArticle> = await get(
-		endpoint,
-		'?populate=*',
-		{},
-		headers,
-	);
+	const response: StrapiWhatsNewArticle[] = await get(endpoint, '', {}, headers);
 
-	return response.data.map((article) => ({
+	return response.map((article) => ({
 		id: article.id,
-		title: article.attributes.title,
-		content: article.attributes.content,
-		calloutTitle: article.attributes.calloutTitle,
-		calloutContent: article.attributes.calloutText,
-		createdAt: article.attributes.createdAt,
-		updatedAt: article.attributes.updatedAt,
-		publishedAt: article.attributes.publishedAt,
+		title: article.title,
+		content: article.content,
+		calloutTitle: article.calloutTitle,
+		calloutContent: article.calloutText,
+		createdAt: article.createdAt,
+		updatedAt: article.updatedAt,
+		publishedAt: article.publishedAt,
 	}));
 }

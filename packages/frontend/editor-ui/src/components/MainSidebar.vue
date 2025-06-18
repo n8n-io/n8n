@@ -180,7 +180,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		notification: true,
 		label: i18n.baseText('mainSidebar.whatsNew'),
 		position: 'bottom',
-		available: versionsStore.whatsNewArticles.length > 0,
+		available: hasVersionUpdates.value || versionsStore.whatsNewArticles.length > 0,
 		children: [
 			...versionsStore.whatsNewArticles.map((article) => ({
 				id: `whats-new-article-${article.id}`,
