@@ -1,5 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 

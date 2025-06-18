@@ -1,8 +1,8 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { TestRun } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { readFileSync } from 'fs';
 import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';

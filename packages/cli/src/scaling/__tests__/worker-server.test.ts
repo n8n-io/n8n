@@ -1,5 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { mockLogger } from '@n8n/integration-test-utils';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';

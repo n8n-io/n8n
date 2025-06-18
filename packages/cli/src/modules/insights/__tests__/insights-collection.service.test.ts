@@ -1,10 +1,10 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
 import type { SharedWorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
