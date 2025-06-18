@@ -103,12 +103,12 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-const mongoConfig = {
+export const mongoConfig = {
 	client: null as MongoClient | null,
 	connectionString: '',
 };
 
-async function getMongoClient(context: any) {
+export async function getMongoClient(context: any) {
 	const credentials = await context.getCredentials('mongoDb');
 	const connectionString = credentials.connectionString as string;
 	if (!mongoConfig.client || mongoConfig.connectionString !== connectionString) {
