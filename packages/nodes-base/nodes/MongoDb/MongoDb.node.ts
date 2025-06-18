@@ -426,79 +426,126 @@ export class MongoDb implements INodeType {
 
 			if (operation === 'listSearchIndexes') {
 				for (let i = 0; i < itemsLength; i++) {
-					const collection = this.getNodeParameter('collection', i) as string;
-					const indexName = (() => {
-						const name = this.getNodeParameter('indexName', i) as string;
-						return name.length === 0 ? undefined : name;
-					})();
+					try {
+						const collection = this.getNodeParameter('collection', i) as string;
+						const indexName = (() => {
+							const name = this.getNodeParameter('indexName', i) as string;
+							return name.length === 0 ? undefined : name;
+						})();
 
-					const cursor = indexName
-						? mdb.collection(collection).listSearchIndexes(indexName)
-						: mdb.collection(collection).listSearchIndexes();
+						const cursor = indexName
+							? mdb.collection(collection).listSearchIndexes(indexName)
+							: mdb.collection(collection).listSearchIndexes();
 
-					const query = await cursor.toArray();
-					returnData.push(
-						...query.map((json) => ({
+						const query = await cursor.toArray();
+						const result = query.map((json) => ({
 							json,
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
-						})),
-					);
+						}));
+						returnData.push(
+							...result,
+						);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: (error as JsonObject).message },
+								pairedItem: fallbackPairedItems ?? [{ item: i }],
+							});
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 
 			if (operation === 'dropSearchIndex') {
 				for (let i = 0; i < itemsLength; i++) {
-					const collection = this.getNodeParameter('collection', i) as string;
-					const indexName = this.getNodeParameter('indexNameRequired', i) as string;
+					try {
+						const collection = this.getNodeParameter('collection', i) as string;
+						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
 
-					await mdb.collection(collection).dropSearchIndex(indexName);
-					returnData.push({
-						json: {
-							[indexName]: true,
-						},
-						pairedItem: fallbackPairedItems ?? [{ item: i }],
-					});
+						await mdb.collection(collection).dropSearchIndex(indexName);
+						returnData.push({
+							json: {
+								[indexName]: true,
+							},
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+					}
+					catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: (error as JsonObject).message },
+								pairedItem: fallbackPairedItems ?? [{ item: i }],
+							});
+							continue;
+						}
+						throw error;
+					}
+
 				}
 			}
 
 			if (operation === 'createSearchIndex') {
 				for (let i = 0; i < itemsLength; i++) {
-					const collection = this.getNodeParameter('collection', i) as string;
-					const indexName = this.getNodeParameter('indexNameRequired', i) as string;
-					const definition = JSON.parse(
-						this.getNodeParameter('indexDefinition', i) as string,
-					) as Record<string, unknown>;
+					try {
+						const collection = this.getNodeParameter('collection', i) as string;
+						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
+						const definition = JSON.parse(
+							this.getNodeParameter('indexDefinition', i) as string,
+						) as Record<string, unknown>;
 
-					await mdb.collection(collection).createSearchIndex({
-						name: indexName,
-						definition,
-					});
+						await mdb.collection(collection).createSearchIndex({
+							name: indexName,
+							definition,
+						});
 
-					returnData.push({
-						json: { indexName },
-						pairedItem: fallbackPairedItems ?? [{ item: i }],
-					});
+						returnData.push({
+							json: { indexName },
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: (error as JsonObject).message },
+								pairedItem: fallbackPairedItems ?? [{ item: i }],
+							});
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 
 			if (operation === 'updateSearchIndex') {
 				for (let i = 0; i < itemsLength; i++) {
-					const collection = this.getNodeParameter('collection', i) as string;
-					const indexName = this.getNodeParameter('indexNameRequired', i) as string;
-					const definition = JSON.parse(
-						this.getNodeParameter('indexDefinition', i) as string,
-					) as Record<string, unknown>;
+					try {
+						const collection = this.getNodeParameter('collection', i) as string;
+						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
+						const definition = JSON.parse(
+							this.getNodeParameter('indexDefinition', i) as string,
+						) as Record<string, unknown>;
 
-					await mdb.collection(collection).updateSearchIndex(indexName, definition);
+						await mdb.collection(collection).updateSearchIndex(indexName, definition);
 
-					returnData.push({
-						json: { [indexName]: true },
-						pairedItem: fallbackPairedItems ?? [{ item: i }],
-					});
+						returnData.push({
+							json: { [indexName]: true },
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: (error as JsonObject).message },
+								pairedItem: fallbackPairedItems ?? [{ item: i }],
+							});
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 		} finally {
-			await client.close().catch(() => {});
+			await client.close().catch(() => { });
 		}
 
 		return [stringifyObjectIDs(returnData)];
