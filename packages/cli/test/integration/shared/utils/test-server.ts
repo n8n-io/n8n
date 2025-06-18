@@ -99,6 +99,7 @@ export const setupTestServer = ({
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.set('query parser', 'extended');
 	app.use((req: APIRequest, _, next) => {
 		req.browserId = browserId;
 		next();
