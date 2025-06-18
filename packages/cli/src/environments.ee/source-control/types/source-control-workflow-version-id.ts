@@ -7,7 +7,7 @@ export interface SourceControlWorkflowVersionId {
 	remoteId?: string;
 	parentFolderId: string | null;
 	updatedAt?: string;
-	owner:
+	owner?:
 		| {
 				type: 'personal';
 				personalEmail: string;

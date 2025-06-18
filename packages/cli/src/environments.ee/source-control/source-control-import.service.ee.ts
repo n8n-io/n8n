@@ -179,6 +179,13 @@ export class SourceControlImportService {
 		const localWorkflows = await this.workflowRepository.find({
 			relations: {
 				parentFolder: true,
+				shared: {
+					project: {
+						projectRelations: {
+							user: true,
+						},
+					},
+				},
 			},
 			select: {
 				id: true,
@@ -221,16 +228,9 @@ export class SourceControlImportService {
 			}
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
-			if (!remoteOwnerProject) {
-				throw new UnexpectedError(`Workflow ${local.name} has no owner`);
-			}
+			let owner: ResourceOwner | undefined = undefined;
 
-			let owner: ResourceOwner = {
-				type: 'team',
-				teamId: remoteOwnerProject.id,
-				teamName: remoteOwnerProject.name,
-			};
-			if (remoteOwnerProject.type === 'personal') {
+			if (remoteOwnerProject?.type === 'personal') {
 				const personalEmail = remoteOwnerProject.projectRelations?.find(
 					(r) => r.role === 'project:personalOwner',
 				)?.user.email;
@@ -241,6 +241,12 @@ export class SourceControlImportService {
 				owner = {
 					type: 'personal',
 					personalEmail,
+				};
+			} else if (remoteOwnerProject?.type === 'team') {
+				owner = {
+					type: 'team',
+					teamId: remoteOwnerProject.id,
+					teamName: remoteOwnerProject.name,
 				};
 			}
 
