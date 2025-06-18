@@ -119,7 +119,7 @@ const expandValidatorSchema = z
 export class UsersListFilterDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(50, true), // Limit to 50 items per page, and allow infinity for pagination
-	select: userSelectSchema.optional(), //selectValidatorSchema.optional(),
+	select: selectValidatorSchema.optional(),
 	filter: filterValidatorSchema.optional(),
 	expand: expandValidatorSchema.optional(),
 	// Default sort order is role:asc, secondary sort criteria is name:asc
