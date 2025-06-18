@@ -1,0 +1,33 @@
+name: Docker Publish
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Get version
+        id: version
+        run: echo "tag=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          push: true
+          tags: blackpc/n8n:${{ steps.version.outputs.tag }}-no-llm-tracing
+          build-args: |
+            N8N_VERSION=${{ steps.version.outputs.tag }}
