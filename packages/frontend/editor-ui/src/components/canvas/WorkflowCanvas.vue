@@ -8,9 +8,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { templateRef, throttledRef } from '@vueuse/core';
+import { throttledRef } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import ExperimentalNodeDetailsDrawer from './components/ExperimentalNodeDetailsDrawer.vue';
 
 defineOptions({
@@ -39,9 +38,7 @@ const props = withDefaults(
 const $style = useCssModule();
 const settingsStore = useSettingsStore();
 
-const { onNodesInitialized, getSelectedNodes, viewport, setViewport } = useVueFlow({
-	id: props.id,
-});
+const { onNodesInitialized, getSelectedNodes } = useVueFlow({ id: props.id });
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -69,14 +66,10 @@ onNodesInitialized(() => {
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
-
-const wrapper = templateRef('wrapper');
-
-useViewportAutoAdjust(wrapper, viewport, setViewport);
 </script>
 
 <template>
-	<div ref="wrapper" :class="$style.wrapper" data-test-id="canvas-wrapper">
+	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div :class="$style.canvas">
 			<Canvas
 				v-if="workflow"

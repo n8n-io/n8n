@@ -53,6 +53,7 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
 
 const $style = useCssModule();
@@ -574,6 +575,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 
 const defaultZoom = 1;
 const isPaneMoving = ref(false);
+
+useViewportAutoAdjust(viewportRef, viewport, setViewport);
 
 function getProjectedPosition(event?: MouseEvent | TouchEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
