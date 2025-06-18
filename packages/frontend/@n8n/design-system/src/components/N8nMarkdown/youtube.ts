@@ -8,7 +8,6 @@ const YOUTUBE_TAG_REGEX = /@\[youtube]\(([\w-]{11}(?:\?.*)?)\)/im;
 export const YOUTUBE_EMBED_SRC_REGEX =
 	/^https:\/\/(?:www\.)?(youtube\.com|youtube-nocookie\.com)\/embed\/[\w-]{11}(?:\?.*)?$/i;
 
-// https://developers.google.com/youtube/player_parameters#Parameters
 export interface YoutubeEmbedConfig {
 	width?: number;
 	height?: number;
@@ -50,6 +49,20 @@ export const markdownYoutubeEmbed = (md: MarkdownIt, options: YoutubeEmbedConfig
 	md.inline.ruler.before('link', 'youtube_embed', parser);
 	md.renderer.rules.youtube_embed = (tokens: Token[], idx: number): string => {
 		const { videoId } = tokens[idx].meta as { videoId: string };
-		return `<iframe width="${opts.width}" height="${opts.height}" src="${youtubeUrl}${videoId}" title="${md.utils.escapeHtml(opts.title)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+
+		// More information about available YouTube embed parameters here:
+		// https://developers.google.com/youtube/player_parameters#Parameters
+		const parameters = [
+			`width="${opts.width}"`,
+			`height="${opts.height}"`,
+			`src="${youtubeUrl}${videoId}"`,
+			`title="${md.utils.escapeHtml(opts.title)}"`,
+			`frameborder="0"`,
+			`allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"`,
+			`referrerpolicy="strict-origin-when-cross-origin"`,
+			`allowfullscreen`,
+		];
+
+		return `<iframe ${parameters.join(' ')}></iframe>`;
 	};
 };
