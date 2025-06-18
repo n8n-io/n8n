@@ -259,6 +259,20 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 				id: '28bc73a1-e64a-47bf-ac1c-ffe644894ea5',
 				name: 'Sticky Note2',
 			},
+			{
+				parameters: {
+					content:
+						'### Embeddings\n\nThe Insert and Retrieve operation use the same embedding node.\n\nThis is to ensure that they are using the **exact same embeddings and settings**.\n\nDifferent embeddings might not work at all, or have unintended consequences.\n',
+					height: 240,
+					width: 320,
+					color: 4,
+				},
+				type: 'n8n-nodes-base.stickyNote',
+				position: [660, 440],
+				typeVersion: 1,
+				id: '0cf8c647-418c-4d1a-8952-766145afca72',
+				name: 'Sticky Note3',
+			},
 		],
 		connections: {
 			'Upload your file here': {

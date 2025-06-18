@@ -1,6 +1,6 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { WorkflowHistoryRepository } from '@n8n/db';
-import { mockLogger } from '@n8n/integration-test-utils';
 import { mockClear } from 'jest-mock-extended';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

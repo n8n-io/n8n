@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mockLogger } from '@n8n/integration-test-utils';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
@@ -14,6 +14,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
+import { ModuleRegistry } from '@/modules/module-registry';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
@@ -300,6 +301,7 @@ export const setupTestServer = ({
 				}
 			}
 
+			await Container.get(ModuleRegistry).initModules();
 			Container.get(ControllerRegistry).activate(app);
 		}
 	});
