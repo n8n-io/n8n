@@ -100,18 +100,33 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 
 // Scroll selected row into view
 watch(
-	() => selected,
+	() => selected?.id,
 	async (selection) => {
-		if (selection && virtualList.list.value.every((e) => e.data.id !== selection.id)) {
-			const index = flatLogEntries.findIndex((e) => e.id === selection?.id);
+		// Wait for the node to be added to the list, and then scroll
+		await nextTick(() => {
+			if (selection && virtualList.list.value.every((e) => e.data.id !== selection)) {
+				const index = flatLogEntries.findIndex((e) => e.id === selection);
 
-			if (index >= 0) {
-				// Wait for the node to be added to the list, and then scroll
-				await nextTick(() => virtualList.scrollTo(index));
+				if (index >= 0) {
+					virtualList.scrollTo(index);
+				}
 			}
-		}
+		});
 	},
 	{ immediate: true },
+);
+
+// Scroll to the bottom if there's no selection
+watch(
+	() => flatLogEntries.length,
+	async (flatEntryCount) => {
+		// Wait for the node to be added to the list, and then scroll
+		await nextTick(() => {
+			if (selected === undefined) {
+				virtualList.scrollTo(flatEntryCount - 1);
+			}
+		});
+	},
 );
 </script>
 
