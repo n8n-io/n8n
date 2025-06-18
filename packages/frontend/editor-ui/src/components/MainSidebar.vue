@@ -206,6 +206,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			{
 				id: 'version-upgrade-cta',
 				component: VersionUpdateCTA,
+				available: versionsStore.nextVersions.length > 0,
 				props: {},
 			},
 		],

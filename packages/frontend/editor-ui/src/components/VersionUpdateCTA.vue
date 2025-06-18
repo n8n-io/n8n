@@ -16,11 +16,7 @@ const onUpdate = () => {
 
 <template>
 	<div :class="$style.container">
-		<N8nText
-			:color="nextVersions.length > 0 ? 'primary' : 'text'"
-			:size="'small'"
-			:class="$style.text"
-		>
+		<N8nText :size="'small'" :class="$style.text" :color="'text-base'">
 			{{
 				i18n.baseText('mainSidebar.whatsNew.versionsBehind', {
 					interpolate: {
@@ -43,9 +39,10 @@ const onUpdate = () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
 	justify-content: space-between;
+	gap: var(--spacing-2xs);
 	padding: var(--spacing-2xs) var(--spacing-xs);
+	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-3xs);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
@@ -53,10 +50,7 @@ const onUpdate = () => {
 	background: var(--color-background-light-base);
 }
 
-.text {
-	align-self: flex-start;
-}
 .button {
-	align-self: flex-end;
+	width: 100%;
 }
 </style>
