@@ -184,7 +184,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const loadedModules = computed(() => settings.value.loadedModules);
+	const activeModules = computed(() => settings.value.activeModules);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -415,7 +415,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		loadedModules,
+		activeModules,
 		getModuleSettings,
 		moduleSettings,
 	};

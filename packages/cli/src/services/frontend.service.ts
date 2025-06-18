@@ -254,7 +254,7 @@ export class FrontendService {
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
-			loadedModules: this.moduleRegistry.getActiveModules(),
+			activeModules: this.moduleRegistry.getActiveModules(),
 		};
 	}
 
