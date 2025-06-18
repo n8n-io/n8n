@@ -1,4 +1,7 @@
+import { projectRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
+
+import { userSettingsSchema } from './user-settings.schema';
 
 export const ROLE = {
 	Owner: 'global:owner',
@@ -13,20 +16,31 @@ export type Role = (typeof ROLE)[keyof typeof ROLE];
 const roleValuesForSchema = Object.values(ROLE) as [Role, ...Role[]];
 export const roleSchema = z.enum(roleValuesForSchema);
 
+export const userProjectSchema = z.object({
+	id: z.string(),
+	role: projectRoleSchema,
+	name: z.string(),
+});
+
 export const userListItemSchema = z.object({
 	id: z.string(),
-	firstName: z.string().nullable(),
-	lastName: z.string().nullable(),
-	email: z.string().email().nullable(),
-	role: roleSchema,
-	isPending: z.boolean(),
-	lastActive: z.string().nullable(),
-	projects: z.array(z.string()).nullable(), // Can be null if the user is the owner or is an admin
+	firstName: z.string().nullable().optional(),
+	lastName: z.string().nullable().optional(),
+	email: z.string().email().nullable().optional(),
+	role: roleSchema.optional(),
+	isPending: z.boolean().optional(),
+	isOwner: z.boolean().optional(),
+	signInType: z.string().optional(),
+	settings: userSettingsSchema.nullable().optional(),
+	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
+	lastActive: z.string().optional(),
+	projectRelations: z.array(userProjectSchema).nullable().optional(),
 });
 
 export const usersListSchema = z.object({
 	count: z.number(),
-	data: z.array(userListItemSchema),
+	items: z.array(userListItemSchema),
 });
 
+export type User = z.infer<typeof userListItemSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
