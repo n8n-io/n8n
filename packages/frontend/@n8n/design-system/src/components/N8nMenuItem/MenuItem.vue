@@ -4,7 +4,8 @@ import { computed, useCssModule, getCurrentInstance } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
-import type { IMenuItem } from '../../types';
+import type { IMenuItem, IMenuElement } from '../../types';
+import { isCustomMenuItem } from '../../types';
 import { getInitials } from '../../utils/labelUtil';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
@@ -33,7 +34,7 @@ const props = withDefaults(defineProps<MenuItemProps>(), {
 const $style = useCssModule();
 const $route = useRoute();
 
-const availableChildren = computed((): IMenuItem[] =>
+const availableChildren = computed((): IMenuElement[] =>
 	Array.isArray(props.item.children)
 		? props.item.children.filter((child) => child.available !== false)
 		: [],
@@ -51,7 +52,7 @@ const submenuPopperClass = computed((): string => {
 	return popperClass.join(' ');
 });
 
-const isActive = (item: IMenuItem): boolean => {
+const isActive = (item: IMenuElement): boolean => {
 	if (props.mode === 'router') {
 		return doesMenuItemMatchCurrentRoute(item, currentRoute.value);
 	} else {
@@ -104,17 +105,19 @@ const N8nMenuItem = getCurrentInstance()?.type;
 					getInitials(item.label)
 				}}</span>
 			</template>
-			<N8nMenuItem
-				v-for="child in availableChildren"
-				:key="child.id"
-				:item="child"
-				:compact="false"
-				:tooltip-delay="tooltipDelay"
-				:popper-class="popperClass"
-				:mode="mode"
-				:active-tab="activeTab"
-				:handle-select="handleSelect"
-			/>
+			<template v-for="child in availableChildren" :key="child.id">
+				<component :is="child.component" v-if="isCustomMenuItem(child)" v-bind="child.props" />
+				<N8nMenuItem
+					v-else
+					:item="child"
+					:compact="false"
+					:tooltip-delay="tooltipDelay"
+					:popper-class="popperClass"
+					:mode="mode"
+					:active-tab="activeTab"
+					:handle-select="handleSelect"
+				/>
+			</template>
 		</ElSubMenu>
 		<N8nTooltip
 			v-else

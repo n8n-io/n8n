@@ -1,5 +1,5 @@
 import type { ElTooltipProps } from 'element-plus';
-import type { AnchorHTMLAttributes } from 'vue';
+import type { AnchorHTMLAttributes, Component } from 'vue';
 import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 
 import type { TextColor } from './text';
@@ -28,12 +28,24 @@ export type IMenuItem = {
 	activateOnRouteNames?: string[];
 	activateOnRoutePaths?: string[];
 
-	children?: IMenuItem[];
+	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;
 	notification?: boolean;
 	size?: 'medium' | 'small';
 };
+
+export interface ICustomMenuItem {
+	id: string;
+	component: Component;
+	props?: Record<string, unknown>;
+	available?: boolean;
+	position?: 'top' | 'bottom';
+}
+
+export type IMenuElement = IMenuItem | ICustomMenuItem;
+
+export const isCustomMenuItem = (e: IMenuElement): e is ICustomMenuItem => 'component' in e;
 
 export type IRouteMenuItemProperties = {
 	route: RouteLocationRaw;

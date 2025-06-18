@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
+
+import { useI18n } from '@n8n/i18n';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import type { IMenuItem } from '@n8n/design-system';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -11,23 +17,16 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
-import Logo from './Logo/Logo.vue';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import Logo from '@/components/Logo/Logo.vue';
+import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -203,6 +202,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				},
 				size: 'small',
 				customIconSize: 'small',
+			},
+			{
+				id: 'version-upgrade-cta',
+				component: VersionUpdateCTA,
+				props: {},
 			},
 		],
 	},

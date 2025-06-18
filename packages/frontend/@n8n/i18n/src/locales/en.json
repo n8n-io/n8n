@@ -1083,7 +1083,7 @@
 	"mainSidebar.workersView": "Workers",
 	"mainSidebar.whatsNew": "What’s New",
 	"mainSidebar.whatsNew.fullChangelog": "Full changelog",
-	"mainSidebar.whatsNew.versionsBehind": "{count} behind",
+	"mainSidebar.whatsNew.versionsBehind": "{count} versions behind",
 	"mainSidebar.whatsNew.update": "Update",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
