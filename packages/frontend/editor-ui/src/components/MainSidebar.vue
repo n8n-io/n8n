@@ -127,7 +127,7 @@ const mainMenuItems = computed(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					href: 'https://space.bilibili.com/519651176?spm_id_from=333.788.0.0',
 					target: '_blank',
 				},
 			},
@@ -154,7 +154,7 @@ const mainMenuItems = computed(() => [
 				icon: 'graduation-cap',
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
-					href: 'https://docs.n8n.io/courses/',
+					href: 'https://n8n.akashio.com/article/welcome',
 					target: '_blank',
 				},
 			},
