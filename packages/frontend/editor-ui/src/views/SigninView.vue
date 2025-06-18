@@ -144,6 +144,11 @@ const login = async (form: LoginRequestDto) => {
 			}
 		}
 		await settingsStore.getSettings();
+
+		if (settingsStore.loadedModules.length > 0) {
+			await settingsStore.getModuleSettings();
+		}
+
 		toast.clearAllStickyNotifications();
 
 		telemetry.track('User attempted to login', {
