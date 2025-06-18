@@ -1,5 +1,7 @@
-import { type IExecuteFunctions, NodeConnectionTypes } from 'n8n-workflow';
-import { DynamicZodObject } from 'types/zod.types';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { GenericValue, type IExecuteFunctions } from 'n8n-workflow';
+
+import type { DynamicZodObject } from 'types/zod.types';
 
 export type N8nStateManager = BaseN8nStateManager;
 
@@ -18,20 +20,13 @@ export interface StateDefinition {
 
 export interface N8nStateMachine {
 	states: StateDefinition[];
+	initialState: string;
 }
 
 export interface CurrentState {
 	currentState: string;
-	// Statename -> Slots[]
-	slots: Map<
-		string,
-		Array<{
-			name: string;
-			description: string;
-			required: boolean;
-			value?: unknown;
-		}>
-	>;
+	// Statename -> SlotName -> SlotValue
+	slots: Map<string, Map<string, GenericValue>>;
 }
 
 export interface BaseN8nStateManager {
