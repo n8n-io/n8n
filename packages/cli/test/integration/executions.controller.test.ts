@@ -3,7 +3,11 @@ import type { User } from '@n8n/db';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { WaitTracker } from '@/wait-tracker';
 
-import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
+import {
+	createSuccessfulExecution,
+	createWaitingExecution,
+	getAllExecutions,
+} from './shared/db/executions';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
@@ -25,6 +29,11 @@ let member: User;
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
 	return await createSuccessfulExecution(workflow);
+};
+
+const saveWaitingExecution = async ({ belongingTo }: { belongingTo: User }) => {
+	const workflow = await createWorkflow({}, belongingTo);
+	return await createWaitingExecution(workflow);
 };
 
 beforeEach(async () => {
@@ -115,5 +124,23 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+});
+
+describe('POST /executions/stop', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveExecution({ belongingTo: owner });
+		const incorrectExecutionId = '1234';
+
+		await testServer
+			.authAgentFor(owner)
+			.post(`/executions/${incorrectExecutionId}/stop`)
+			.expect(500);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		const execution = await saveWaitingExecution({ belongingTo: owner });
+
+		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });
