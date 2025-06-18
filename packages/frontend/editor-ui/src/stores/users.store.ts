@@ -33,6 +33,7 @@ import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
+import * as onboardingApi from '@/api/workflow-webhooks';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -87,6 +88,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const setEasyAIWorkflowOnboardingDone = () => {
 		if (currentUser.value?.settings) {
 			currentUser.value.settings.easyAIWorkflowOnboarded = true;
+		}
+	};
+
+	const isCalloutDismissed = (callout: string) =>
+		Boolean(currentUser.value?.settings?.dismissedCallouts?.[callout]);
+
+	const setCalloutDismissed = (callout: string) => {
+		if (currentUser.value?.settings) {
+			if (!currentUser.value?.settings?.dismissedCallouts) {
+				currentUser.value.settings.dismissedCallouts = {};
+			}
+
+			currentUser.value.settings.dismissedCallouts[callout] = true;
 		}
 	};
 
@@ -250,6 +264,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
+		return user;
+	};
+
+	const updateUserName = async (params: { firstName: string; lastName: string }) => {
+		if (!currentUser.value) {
+			return;
+		}
+
+		return await updateUser({
+			email: currentUser.value.email as string,
+			...params,
+		});
 	};
 
 	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
@@ -376,6 +402,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		currentUserCloudInfo.value = null;
 	};
 
+	const submitContactEmail = async (email: string, agree: boolean) => {
+		if (currentUser.value) {
+			return await onboardingApi.submitEmailOnSignup(
+				rootStore.instanceId,
+				currentUser.value,
+				email ?? currentUser.value.email,
+				agree,
+			);
+		}
+		return null;
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -404,6 +442,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		validatePasswordToken,
 		changePassword,
 		updateUser,
+		updateUserName,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,
@@ -424,5 +463,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		isCalloutDismissed,
+		setCalloutDismissed,
+		submitContactEmail,
 	};
 });

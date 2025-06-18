@@ -12,6 +12,7 @@ export * from './orchestration';
 export * from './prompts';
 export * from './roles';
 export * from './settings';
+export * from './module-settings';
 export * from './sso';
 export * from './ui';
 export * from './versions';

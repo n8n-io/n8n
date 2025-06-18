@@ -3,6 +3,8 @@ import { computed, defineComponent, h, ref } from 'vue';
 import { usePiPWindow } from './usePiPWindow';
 import { waitFor } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 
 describe(usePiPWindow, () => {
 	const documentPictureInPicture: NonNullable<Window['documentPictureInPicture']> = {
@@ -14,6 +16,10 @@ describe(usePiPWindow, () => {
 				close: vi.fn(),
 			}) as unknown as Window,
 	};
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
 
 	describe('canPopOut', () => {
 		it('should return false if window.documentPictureInPicture is not available', () => {

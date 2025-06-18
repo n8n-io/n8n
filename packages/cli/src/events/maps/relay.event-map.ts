@@ -111,13 +111,17 @@ export type RelayEventMap = {
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	'node-post-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	// #endregion
@@ -507,6 +511,31 @@ export type RelayEventMap = {
 		nodeId: string;
 		workflowId: string;
 		executionId: string;
+	};
+
+	// #endregion
+
+	// #region queue
+
+	'job-enqueued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-dequeued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-stalled': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
 	};
 
 	// #endregion

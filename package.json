@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.98.0",
+  "version": "1.99.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -52,6 +52,7 @@
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
     "babel-plugin-transform-import-meta": "^2.3.2",
+    "bundlemon": "^3.1.0",
     "cross-env": "^7.0.3",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",

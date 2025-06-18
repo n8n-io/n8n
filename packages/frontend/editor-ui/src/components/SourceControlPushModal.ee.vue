@@ -1,44 +1,40 @@
 <script lang="ts" setup>
-import Modal from './Modal.vue';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
-import { computed, onMounted, ref, toRaw, watch } from 'vue';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@n8n/i18n';
 import { useLoadingService } from '@/composables/useLoadingService';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useRoute } from 'vue-router';
-import dateformat from 'dateformat';
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { refDebounced } from '@vueuse/core';
-import {
-	N8nHeading,
-	N8nText,
-	N8nLink,
-	N8nCheckbox,
-	N8nInput,
-	N8nIcon,
-	N8nButton,
-	N8nBadge,
-	N8nNotice,
-	N8nPopover,
-	N8nSelect,
-	N8nOption,
-	N8nInputLabel,
-	N8nInfoTip,
-} from '@n8n/design-system';
+import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
 import {
 	type SourceControlledFile,
+	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
-	SOURCE_CONTROL_FILE_LOCATION,
 } from '@n8n/api-types';
-import groupBy from 'lodash/groupBy';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+	N8nOption,
+	N8nPopover,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { refDebounced } from '@vueuse/core';
+import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
-import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import Modal from './Modal.vue';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -60,8 +56,8 @@ type SourceControlledFileStatus = SourceControlledFile['status'];
 type Changes = {
 	tags: SourceControlledFile[];
 	variables: SourceControlledFile[];
-	credentials: SourceControlledFile[];
-	workflows: SourceControlledFile[];
+	credential: SourceControlledFile[];
+	workflow: SourceControlledFile[];
 	currentWorkflow?: SourceControlledFile;
 	folders: SourceControlledFile[];
 };
@@ -98,12 +94,12 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow) {
-				acc.workflows.push(file);
+				acc.workflow.push(file);
 				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.credential) {
-				acc.credentials.push(file);
+				acc.credential.push(file);
 				return acc;
 			}
 
@@ -112,8 +108,8 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 		{
 			tags: [],
 			variables: [],
-			credentials: [],
-			workflows: [],
+			credential: [],
+			workflow: [],
 			folders: [],
 			currentWorkflow: undefined,
 		},
@@ -121,19 +117,6 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 
 const userNotices = computed(() => {
 	const messages: Array<{ title: string; content: string }> = [];
-
-	if (changes.value.credentials.length) {
-		const { created, deleted, modified } = groupBy(changes.value.credentials, 'status');
-
-		messages.push({
-			title: 'Credentials',
-			content: concatenateWithAnd([
-				...(created?.length ? [`${created.length} added`] : []),
-				...(deleted?.length ? [`${deleted.length} deleted`] : []),
-				...(modified?.length ? [`${modified.length} changed`] : []),
-			]),
-		});
-	}
 
 	if (changes.value.variables.length) {
 		messages.push({
@@ -165,23 +148,20 @@ const workflowId = computed(
 
 const changes = computed(() => classifyFilesByType(props.data.status, workflowId.value));
 
-const selectedChanges = ref<Set<string>>(new Set());
-const toggleSelected = (id: string) => {
-	if (selectedChanges.value.has(id)) {
-		selectedChanges.value.delete(id);
-	} else {
-		selectedChanges.value.add(id);
-	}
-};
+const selectedWorkflows = reactive<Set<string>>(new Set());
 
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFile) =>
-	workflow && selectedChanges.value.add(workflow.id);
+	workflow && selectedWorkflows.add(workflow.id);
+
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
 const filters = ref<{ status?: SourceControlledFileStatus }>({});
-const filtersApplied = computed(() => Boolean(Object.keys(filters.value).length));
+const filtersApplied = computed(
+	() => Boolean(search.value) || Boolean(Object.keys(filters.value).length),
+);
 const resetFilters = () => {
 	filters.value = {};
+	search.value = '';
 };
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
@@ -209,7 +189,7 @@ const filterCount = computed(() =>
 const filteredWorkflows = computed(() => {
 	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
 
-	return changes.value.workflows.filter((workflow) => {
+	return changes.value.workflow.filter((workflow) => {
 		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
 		}
@@ -231,6 +211,28 @@ const sortedWorkflows = computed(() =>
 	),
 );
 
+const selectedCredentials = reactive<Set<string>>(new Set());
+
+const filteredCredentials = computed(() => {
+	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+
+	return changes.value.credential.filter((credential) => {
+		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
+			return false;
+		}
+
+		return !(filters.value.status && filters.value.status !== credential.status);
+	});
+});
+
+const sortedCredentials = computed(() =>
+	orderBy(
+		filteredCredentials.value,
+		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+		['asc', 'desc'],
+	),
+);
+
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
 	if (!commitMessage.value.trim()) {
@@ -238,47 +240,43 @@ const isSubmitDisabled = computed(() => {
 	}
 
 	const toBePushed =
-		changes.value.credentials.length +
+		selectedCredentials.size +
 		changes.value.tags.length +
 		changes.value.variables.length +
 		changes.value.folders.length +
-		selectedChanges.value.size;
+		selectedWorkflows.size;
 
 	return toBePushed <= 0;
 });
 
-const sortedWorkflowsSet = computed(() => new Set(sortedWorkflows.value.map(({ id }) => id)));
-
-const selectAll = computed(() => {
-	if (!selectedChanges.value.size) {
-		return false;
-	}
-
-	const notSelectedVisibleItems = toRaw(sortedWorkflowsSet.value).difference(selectedChanges.value);
-
-	return !Boolean(notSelectedVisibleItems.size);
-});
-
 const selectAllIndeterminate = computed(() => {
-	if (!selectedChanges.value.size) {
+	if (!activeSelection.value.size) {
 		return false;
 	}
 
-	const selectedVisibleItems = toRaw(selectedChanges.value).intersection(sortedWorkflowsSet.value);
+	const selectedVisibleItems = toRaw(activeSelection.value).intersection(
+		new Set(activeDataSourceFiltered.value.map(({ id }) => id)),
+	);
 
 	if (selectedVisibleItems.size === 0) {
 		return false;
 	}
 
-	return !selectAll.value;
+	return !allVisibleItemsSelected.value;
 });
 
+const selectedCount = computed(() => selectedWorkflows.size + selectedCredentials.size);
+
 function onToggleSelectAll() {
-	const selected = toRaw(selectedChanges.value);
-	if (selectAll.value) {
-		selectedChanges.value = selected.difference(sortedWorkflowsSet.value);
+	if (allVisibleItemsSelected.value) {
+		const diff = toRaw(activeSelection.value).difference(
+			new Set(activeDataSourceFiltered.value.map(({ id }) => id)),
+		);
+
+		activeSelection.value.clear();
+		diff.forEach((id) => activeSelection.value.add(id));
 	} else {
-		selectedChanges.value = selected.union(sortedWorkflowsSet.value);
+		activeDataSourceFiltered.value.forEach((file) => activeSelection.value.add(file.id));
 	}
 }
 
@@ -309,20 +307,20 @@ async function onCommitKeyDownEnter() {
 const successNotificationMessage = () => {
 	const messages: string[] = [];
 
-	if (selectedChanges.value.size) {
+	if (selectedWorkflows.size) {
 		messages.push(
 			i18n.baseText('generic.workflow', {
-				adjustToNumber: selectedChanges.value.size,
-				interpolate: { count: selectedChanges.value.size },
+				adjustToNumber: selectedWorkflows.size,
+				interpolate: { count: selectedWorkflows.size },
 			}),
 		);
 	}
 
-	if (changes.value.credentials.length) {
+	if (selectedCredentials.size) {
 		messages.push(
 			i18n.baseText('generic.credential', {
-				adjustToNumber: changes.value.credentials.length,
-				interpolate: { count: changes.value.credentials.length },
+				adjustToNumber: selectedCredentials.size,
+				interpolate: { count: selectedCredentials.size },
 			}),
 		);
 	}
@@ -348,9 +346,9 @@ const successNotificationMessage = () => {
 async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
-		.concat(changes.value.credentials)
+		.concat(changes.value.credential.filter((file) => selectedCredentials.has(file.id)))
 		.concat(changes.value.folders)
-		.concat(changes.value.workflows.filter((file) => selectedChanges.value.has(file.id)));
+		.concat(changes.value.workflow.filter((file) => selectedWorkflows.has(file.id)));
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
 
@@ -373,7 +371,7 @@ async function commitAndPush() {
 	}
 }
 
-const modalHeight = computed(() => (changes.value.workflows.length ? 'min(80vh, 850px)' : 'auto'));
+const modalHeight = computed(() => (changes.value.workflow.length ? 'min(80vh, 850px)' : 'auto'));
 
 watch(
 	() => filters.value.status,
@@ -383,6 +381,94 @@ watch(
 );
 watch(refDebounced(search, 500), (term) => {
 	telemetry.track('User searched workflows in commit modal', { search: term });
+});
+
+const activeTab = ref<
+	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
+>(SOURCE_CONTROL_FILE_TYPE.workflow);
+
+const allVisibleItemsSelected = computed(() => {
+	if (!activeSelection.value.size) {
+		return false;
+	}
+
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		const workflowsSet = new Set(sortedWorkflows.value.map(({ id }) => id));
+		const notSelectedVisibleItems = workflowsSet.difference(toRaw(activeSelection.value));
+
+		return !Boolean(notSelectedVisibleItems.size);
+	}
+
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		const credentialsSet = new Set(sortedCredentials.value.map(({ id }) => id));
+		const notSelectedVisibleItems = credentialsSet.difference(toRaw(activeSelection.value));
+
+		return !Boolean(notSelectedVisibleItems.size);
+	}
+
+	return false;
+});
+
+function toggleSelected(id: string) {
+	if (activeSelection.value.has(id)) {
+		activeSelection.value.delete(id);
+	} else {
+		activeSelection.value.add(id);
+	}
+}
+
+const activeDataSource = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return changes.value.workflow;
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return changes.value.credential;
+	}
+	return [];
+});
+
+const activeDataSourceFiltered = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return sortedWorkflows.value;
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return sortedCredentials.value;
+	}
+	return [];
+});
+
+const activeSelection = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return selectedWorkflows;
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return selectedCredentials;
+	}
+	return new Set<string>();
+});
+
+const tabs = computed(() => {
+	return [
+		{
+			label: 'Workflows',
+			value: SOURCE_CONTROL_FILE_TYPE.workflow,
+			selected: selectedWorkflows.size,
+			total: changes.value.workflow.length,
+		},
+		{
+			label: 'Credentials',
+			value: SOURCE_CONTROL_FILE_TYPE.credential,
+			selected: selectedCredentials.size,
+			total: changes.value.credential.length,
+		},
+	];
+});
+
+const filtersActiveText = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return i18n.baseText('workflows.filters.active');
+	}
+	return i18n.baseText('credentials.filters.active');
 });
 </script>
 
@@ -399,7 +485,7 @@ watch(refDebounced(search, 500), (term) => {
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
 
-			<div v-if="changes.workflows.length" :class="[$style.filtersRow]" class="mt-l">
+			<div v-if="changes.workflow.length" :class="[$style.filtersRow]" class="mt-l">
 				<div :class="[$style.filters]">
 					<N8nInput
 						v-model="search"
@@ -448,106 +534,132 @@ watch(refDebounced(search, 500), (term) => {
 						</N8nSelect>
 					</N8nPopover>
 				</div>
-
-				<div>
-					<N8nText bold color="text-base" size="small">
-						{{ selectedChanges.size }} of {{ changes.workflows.length }}
-					</N8nText>
-					<N8nText color="text-base" size="small"> workflows selected</N8nText>
-				</div>
 			</div>
 		</template>
 		<template #content>
-			<div v-if="changes.workflows.length" :class="[$style.table]">
-				<div :class="[$style.tableHeader]">
-					<N8nCheckbox
-						:class="$style.selectAll"
-						:indeterminate="selectAllIndeterminate"
-						:model-value="selectAll"
-						data-test-id="source-control-push-modal-toggle-all"
-						@update:model-value="onToggleSelectAll"
-					>
-						<N8nText> Title </N8nText>
-					</N8nCheckbox>
-				</div>
-				<div style="flex: 1; overflow: hidden">
-					<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
-						{{ i18n.baseText('workflows.filters.active') }}
-						<N8nLink size="small" data-test-id="source-control-filters-reset" @click="resetFilters">
-							{{ i18n.baseText('workflows.filters.active.reset') }}
-						</N8nLink>
-					</N8nInfoTip>
-					<DynamicScroller
-						v-if="sortedWorkflows.length"
-						:class="[$style.scroller]"
-						:items="sortedWorkflows"
-						:min-item-size="58"
-						item-class="scrollerItem"
-					>
-						<template #default="{ item: file, active, index }">
-							<DynamicScrollerItem
-								:item="file"
-								:active="active"
-								:size-dependencies="[file.name, file.id]"
-								:data-index="index"
+			<div style="display: flex; height: 100%">
+				<div :class="$style.tabs">
+					<template v-for="tab in tabs" :key="tab.value">
+						<button
+							type="button"
+							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
+							data-test-id="source-control-push-modal-tab"
+							@click="activeTab = tab.value"
+						>
+							<div>{{ tab.label }}</div>
+							<N8nText tag="div" color="text-light">
+								{{ tab.selected }} / {{ tab.total }} selected</N8nText
 							>
-								<N8nCheckbox
-									:class="[$style.listItem]"
-									data-test-id="source-control-push-modal-file-checkbox"
-									:model-value="selectedChanges.has(file.id)"
-									@update:model-value="toggleSelected(file.id)"
+						</button>
+					</template>
+				</div>
+				<div style="flex: 1">
+					<div :class="[$style.table]">
+						<div :class="[$style.tableHeader]">
+							<N8nCheckbox
+								:class="$style.selectAll"
+								:indeterminate="selectAllIndeterminate"
+								:model-value="allVisibleItemsSelected"
+								data-test-id="source-control-push-modal-toggle-all"
+								@update:model-value="onToggleSelectAll"
+							>
+								<N8nText> Title </N8nText>
+							</N8nCheckbox>
+						</div>
+						<div style="flex: 1; overflow: hidden">
+							<N8nInfoTip
+								v-if="filtersApplied && activeDataSource.length && !activeDataSourceFiltered.length"
+								class="p-xs"
+								:bold="false"
+							>
+								{{ filtersActiveText }}
+								<N8nLink
+									size="small"
+									data-test-id="source-control-filters-reset"
+									@click="resetFilters"
 								>
-									<span>
-										<N8nText
-											v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
-											color="text-light"
+									{{ i18n.baseText('workflows.filters.active.reset') }}
+								</N8nLink>
+							</N8nInfoTip>
+							<DynamicScroller
+								v-if="activeDataSourceFiltered.length"
+								:class="[$style.scroller]"
+								:items="activeDataSourceFiltered"
+								:min-item-size="57"
+								item-class="scrollerItem"
+							>
+								<template #default="{ item: file, active, index }">
+									<DynamicScrollerItem
+										:item="file"
+										:active="active"
+										:size-dependencies="[file.name, file.id]"
+										:data-index="index"
+									>
+										<N8nCheckbox
+											:class="[$style.listItem]"
+											data-test-id="source-control-push-modal-file-checkbox"
+											:model-value="activeSelection.has(file.id)"
+											@update:model-value="toggleSelected(file.id)"
 										>
-											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-												Deleted Workflow:
+											<span>
+												<N8nText
+													v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
+													color="text-light"
+												>
+													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
+														Deleted Workflow:
+													</span>
+													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
+														Deleted Credential:
+													</span>
+													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
+														Deleted Folders:
+													</span>
+													<strong>{{ file.name || file.id }}</strong>
+												</N8nText>
+												<N8nText
+													v-else
+													tag="div"
+													bold
+													color="text-dark"
+													:class="[$style.listItemName]"
+												>
+													{{ file.name }}
+												</N8nText>
+												<N8nText
+													v-if="file.updatedAt"
+													tag="p"
+													class="mt-0"
+													color="text-light"
+													size="small"
+												>
+													{{ renderUpdatedAt(file) }}
+												</N8nText>
 											</span>
-											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-												Deleted Credential:
+											<span :class="[$style.badges]">
+												<N8nBadge
+													v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
+													class="mr-2xs"
+												>
+													Current workflow
+												</N8nBadge>
+												<N8nBadge :theme="getStatusTheme(file.status)">
+													{{ getStatusText(file.status) }}
+												</N8nBadge>
 											</span>
-											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
-												Deleted Folders:
-											</span>
-											<strong>{{ file.name || file.id }}</strong>
-										</N8nText>
-										<N8nText v-else tag="div" bold color="text-dark" :class="[$style.listItemName]">
-											{{ file.name }}
-										</N8nText>
-										<N8nText
-											v-if="file.updatedAt"
-											tag="p"
-											class="mt-0"
-											color="text-light"
-											size="small"
-										>
-											{{ renderUpdatedAt(file) }}
-										</N8nText>
-									</span>
-									<span :class="[$style.badges]">
-										<N8nBadge
-											v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
-											class="mr-2xs"
-										>
-											Current workflow
-										</N8nBadge>
-										<N8nBadge :theme="getStatusTheme(file.status)">
-											{{ getStatusText(file.status) }}
-										</N8nBadge>
-									</span>
-								</N8nCheckbox>
-							</DynamicScrollerItem>
-						</template>
-					</DynamicScroller>
+										</N8nCheckbox>
+									</DynamicScrollerItem>
+								</template>
+							</DynamicScroller>
+						</div>
+					</div>
 				</div>
 			</div>
 		</template>
 
 		<template #footer>
 			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
-				<N8nText bold size="medium">Changes to credentials, variables, tags and folders </N8nText>
+				<N8nText bold size="medium">Changes to variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
 					<N8nText bold size="small">{{ title }}</N8nText>
@@ -577,7 +689,7 @@ watch(refDebounced(search, 500), (term) => {
 					@click="commitAndPush"
 				>
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
-					{{ selectedChanges.size ? `(${selectedChanges.size})` : undefined }}
+					{{ selectedCount ? `(${selectedCount})` : undefined }}
 				</N8nButton>
 			</div>
 		</template>
@@ -673,11 +785,45 @@ watch(refDebounced(search, 500), (term) => {
 	display: flex;
 	flex-direction: column;
 	border: var(--border-base);
-	border-radius: 8px;
+	border-top-right-radius: 8px;
+	border-bottom-right-radius: 8px;
 }
 
 .tableHeader {
 	border-bottom: var(--border-base);
 	padding: 10px 16px;
+}
+
+.tabs {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 165px;
+	padding: var(--spacing-2xs);
+	border: var(--border-base);
+	border-right: 0;
+	border-top-left-radius: 8px;
+	border-bottom-left-radius: 8px;
+}
+
+.tab {
+	color: var(--color-text-base);
+	background-color: transparent;
+	border: 1px solid transparent;
+	padding: var(--spacing-2xs);
+	cursor: pointer;
+	border-radius: 4px;
+	text-align: left;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	&:hover {
+		border-color: var(--color-background-base);
+	}
+}
+
+.tabActive {
+	background-color: var(--color-background-base);
+	color: var(--color-text-dark);
 }
 </style>

@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.98.0",
+  "version": "1.99.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -31,7 +31,6 @@
     "@codemirror/view": "^6.26.3",
     "@dagrejs/dagre": "^1.1.4",
     "@lezer/common": "1.1.0",
-    "@n8n/rest-api-client": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",
@@ -41,6 +40,7 @@
     "@n8n/design-system": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",
