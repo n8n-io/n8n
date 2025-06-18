@@ -50,15 +50,6 @@ export const markdownYoutubeEmbed = (md: MarkdownIt, options: YoutubeEmbedConfig
 	md.inline.ruler.before('link', 'youtube_embed', parser);
 	md.renderer.rules.youtube_embed = (tokens: Token[], idx: number): string => {
 		const { videoId } = tokens[idx].meta as { videoId: string };
-		return `<iframe
-			width="${opts.width}"
-			height="${opts.height}"
-			src="${youtubeUrl}${videoId}"
-			title="${md.utils.escapeHtml(opts.title)}"
-			frameborder="0"
-			allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-			referrerpolicy="strict-origin-when-cross-origin"
-			allowfullscreen>
-		</iframe>`;
+		return `<iframe width="${opts.width}" height="${opts.height}" src="${youtubeUrl}${videoId}" title="${md.utils.escapeHtml(opts.title)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
 	};
 };
