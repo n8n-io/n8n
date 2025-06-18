@@ -144,6 +144,12 @@ export class MemoryMem0 implements INodeType {
 		inputs: [],
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
+		credentials: [
+			{
+				name: 'mem0Api',
+				required: true,
+			},
+		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
@@ -170,14 +176,7 @@ export class MemoryMem0 implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Mem0 API Key',
-				name: 'mem0ApiKey',
-				type: 'string',
-				typeOptions: { password: true },
-				default: 'your-mem0-api-key',
-				description: 'The API key to use to connect to Mem0',
-			},
+
 			{
 				displayName: 'User ID',
 				name: 'userId',
@@ -242,9 +241,12 @@ export class MemoryMem0 implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const credentials = await this.getCredentials<{
+			apiKey: string;
+		}>('mem0Api');
+
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', itemIndex) as number;
 		const workflowId = this.getWorkflow().id;
-		const mem0ApiKey = (this.getNodeParameter('mem0ApiKey', itemIndex) as string) || undefined;
 		const userId = (this.getNodeParameter('userId', itemIndex) as string) || undefined;
 		const runId = (this.getNodeParameter('runId', itemIndex) as string) || undefined;
 		const agentId = (this.getNodeParameter('agentId', itemIndex) as string) || undefined;
@@ -254,7 +256,7 @@ export class MemoryMem0 implements INodeType {
 		const searchOnly = (this.getNodeParameter('searchOnly', itemIndex) as boolean) || false;
 
 		const memoryInstance = MemoryMem0Singleton.getInstance({
-			apiKey: mem0ApiKey ?? '',
+			apiKey: credentials.apiKey,
 			organizationId: orgId,
 			projectId,
 			userId,

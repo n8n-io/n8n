@@ -42,7 +42,8 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/Mem0Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
