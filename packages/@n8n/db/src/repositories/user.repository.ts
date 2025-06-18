@@ -152,9 +152,9 @@ export class UserRepository extends Repository<User> {
 		select: Array<keyof User> | undefined,
 	): SelectQueryBuilder<User> {
 		if (select !== undefined) {
-			if (!select.includes('id')) {
-				select.unshift('id'); // Ensure id is always selected
-			}
+			// if (!select.includes('id')) {
+			// 	select.unshift('id'); // Ensure id is always selected
+			// }
 			queryBuilder.select(select.map((field) => `user.${field}`));
 		}
 		return queryBuilder;
