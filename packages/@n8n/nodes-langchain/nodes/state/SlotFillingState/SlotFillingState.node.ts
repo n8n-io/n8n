@@ -10,6 +10,7 @@ import type {
 
 import { getSessionId } from '@utils/helpers';
 import type { CurrentState, N8nStateMachine, N8nStateManager } from '@utils/N8nStateManager';
+import { z } from 'zod';
 
 export class SlotFillingStateSingleton {
 	private static instance: SlotFillingStateSingleton;
@@ -137,13 +138,19 @@ export class SlotFillingState implements INodeType {
 
 		const stateManager: N8nStateManager = {
 			getStateSchema: () => {
-				throw new NodeOperationError(this.getNode(), 'Not implemented');
+				// return the schema as a Zod object with string keys (slotNames) and values as GenericValue
+				return z.object({
+					slots: z.record(z.string(), z.any()),
+				});
 			},
-			getCurrentState: async () => {
+			getCurrentState: () => {
 				const state = singleton.getState(sessionId);
 				return state ? state.currentState : '';
 			},
-			getPrompt: () => 'NOT IMPLEMENTED',
+			getPrompt: () => {
+				const state = singleton.getState(sessionId);
+				return `Current state: ${state?.currentState ?? 'unknown'}`;
+			},
 			setState: async (context: IExecuteFunctions, slotName, slotValue) => {
 				const state =
 					singleton.getState(sessionId) ??
