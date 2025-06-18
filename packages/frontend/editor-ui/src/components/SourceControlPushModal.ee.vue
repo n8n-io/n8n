@@ -316,7 +316,7 @@ const successNotificationMessage = () => {
 		);
 	}
 
-	if (changes.value.credential.length) {
+	if (selectedCredentials.size) {
 		messages.push(
 			i18n.baseText('generic.credential', {
 				adjustToNumber: selectedCredentials.size,
