@@ -22,6 +22,11 @@ import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')
@@ -46,10 +51,34 @@ export class MeController {
 		res: Response,
 		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
-		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
+		const {
+			id: userId,
+			email: currentEmail,
+			mfaEnabled,
+			firstName: currentFirstName,
+			lastName: currentLastName,
+		} = req.user;
 
-		const { email } = payload;
+		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
+		const isFirstNameChanged = firstName !== currentFirstName;
+		const isLastNameChanged = lastName !== currentLastName;
+
+		if (
+			(isLdapCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			(isEmailBeingChanged || isFirstNameChanged || isLastNameChanged)
+		) {
+			this.logger.debug(
+				`Request to update user failed because ${getCurrentAuthenticationMethod()} user may not change their profile information`,
+				{
+					userId,
+					payload,
+				},
+			);
+			throw new BadRequestError(
+				` ${getCurrentAuthenticationMethod()} user may not change their profile information`,
+			);
+		}
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {

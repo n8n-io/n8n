@@ -1,3 +1,4 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type { ExecutionEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
@@ -16,7 +17,7 @@ import {
 } from './shared/db/executions';
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/test-db';
-import { mockInstance, mockLogger } from '../shared/mocking';
+import { mockInstance } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: ExecutionsPruningService;
