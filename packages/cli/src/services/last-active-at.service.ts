@@ -1,5 +1,4 @@
 import { UserRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { Time } from '@/constants';
@@ -12,13 +11,17 @@ export class LastActiveAtService {
 
 	constructor(private readonly userRepository: UserRepository) {}
 
-	async updateLastActiveIfStale(user: User) {
+	async updateLastActiveIfStale(userId: string) {
 		const now = Date.now();
-		const last = this.lastActiveCache.get(user.id) ?? 0;
+		const last = this.lastActiveCache.get(userId) ?? 0;
 		if (now - last > LAST_ACTIVE_CACHE_TTL) {
-			user.lastActiveAt = new Date();
-			await this.userRepository.save(user);
-			this.lastActiveCache.set(user.id, now);
+			const query = this.userRepository
+				.createQueryBuilder()
+				.update()
+				.set({ lastActiveAt: new Date() })
+				.where('id = :id', { id: userId });
+			await query.execute();
+			this.lastActiveCache.set(userId, now);
 		}
 	}
 }

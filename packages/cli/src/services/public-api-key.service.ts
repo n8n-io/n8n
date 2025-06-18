@@ -141,7 +141,7 @@ export class PublicApiKeyService {
 
 			req.user = user;
 
-			await this.lastActiveAtService.updateLastActiveIfStale(user);
+			await this.lastActiveAtService.updateLastActiveIfStale(user.id);
 
 			return true;
 		};

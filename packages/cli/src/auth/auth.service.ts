@@ -88,7 +88,7 @@ export class AuthService {
 
 		if (req.user) {
 			res.on('finish', async () => {
-				await this.lastActiveAtService.updateLastActiveIfStale(req.user);
+				await this.lastActiveAtService.updateLastActiveIfStale(req.user.id);
 			});
 			next();
 		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });
