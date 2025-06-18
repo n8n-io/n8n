@@ -21,10 +21,10 @@ export const userProjectSchema = z.object({
 });
 
 export const userListItemSchema = z.object({
-	id: z.string().optional(),
-	firstName: z.string().optional(),
-	lastName: z.string().optional(),
-	email: z.string().email().optional(),
+	id: z.string(),
+	firstName: z.string().nullable().optional(),
+	lastName: z.string().nullable().optional(),
+	email: z.string().email().nullable().optional(),
 	role: roleSchema.optional(),
 	isPending: z.boolean().optional(),
 	isOwner: z.boolean().optional(),
@@ -40,4 +40,5 @@ export const usersListSchema = z.object({
 	items: z.array(userListItemSchema),
 });
 
+export type User = z.infer<typeof userListItemSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
