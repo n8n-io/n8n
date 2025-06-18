@@ -235,13 +235,12 @@ export class SourceControlImportService {
 					(r) => r.role === 'project:personalOwner',
 				)?.user.email;
 
-				if (!personalEmail) {
-					throw new UnexpectedError(`Failed to find owner of workflow ${local.name}`);
+				if (personalEmail) {
+					owner = {
+						type: 'personal',
+						personalEmail,
+					};
 				}
-				owner = {
-					type: 'personal',
-					personalEmail,
-				};
 			} else if (remoteOwnerProject?.type === 'team') {
 				owner = {
 					type: 'team',
