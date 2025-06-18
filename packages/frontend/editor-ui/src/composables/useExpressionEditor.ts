@@ -43,6 +43,7 @@ import { ignoreUpdateAnnotation } from '../utils/forceParse';
 export const useExpressionEditor = ({
 	editorRef,
 	editorValue,
+	contextNodeName,
 	extensions = [],
 	additionalData = {},
 	skipSegments = [],
@@ -52,6 +53,7 @@ export const useExpressionEditor = ({
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
+	contextNodeName?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	skipSegments?: MaybeRefOrGetter<string[]>;
@@ -305,12 +307,15 @@ export const useExpressionEditor = ({
 		};
 
 		try {
-			if (!ndvStore.activeNode) {
+			if (!ndvStore.activeNode && contextNodeName === undefined) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
-				if (ndvStore.isInputParentOfActiveNode) {
+				let opts: Record<string, unknown> = {
+					additionalKeys: toValue(additionalData),
+					contextNodeName,
+				};
+				if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,

@@ -50,7 +50,11 @@ import {
 } from 'vue';
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
-import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
+import {
+	languageFacet,
+	type TargetNodeContext,
+	type CodeEditorLanguage,
+} from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 
@@ -67,6 +71,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language,
 	languageParams,
 	placeholder,
+	contextNodeName = undefined,
 	extensions = [],
 	isReadOnly = false,
 	theme = {},
@@ -77,6 +82,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
+	contextNodeName?: MaybeRefOrGetter<TargetNodeContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{
@@ -106,7 +112,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
-	const { createWorker: createTsWorker } = useTypescript(editor, mode, id);
+	const { createWorker: createTsWorker } = useTypescript(editor, mode, id, contextNodeName);
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {

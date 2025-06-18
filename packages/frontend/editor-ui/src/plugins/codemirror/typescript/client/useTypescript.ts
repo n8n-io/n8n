@@ -21,17 +21,19 @@ import { typescriptWorkerFacet } from './facet';
 import { typescriptHoverTooltips } from './hoverTooltip';
 import { linter } from '@codemirror/lint';
 import { typescriptLintSource } from './linter';
+import { targetNodeFacet, type TargetNodeContext } from '../../format';
 
 export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	id: MaybeRefOrGetter<string>,
+	targetNodeContext?: MaybeRefOrGetter<TargetNodeContext>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const { debounce } = useDebounce();
-	const activeNodeName = ndvStore.activeNodeName;
+	const activeNodeName = toValue(targetNodeContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
 	const webWorker = ref<Worker>();
 
@@ -64,7 +66,7 @@ export function useTypescript(
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,
-							ndvStore.ndvInputRunIndex ?? 0,
+							contextNodeName === undefined ? (ndvStore.ndvInputRunIndex ?? 0) : 0,
 							0,
 						)
 						.filter((data) => Boolean(data && Object.keys(data).length));
@@ -88,6 +90,7 @@ export function useTypescript(
 
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
+			targetNodeFacet.of(toValue(targetNodeContext)),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),
