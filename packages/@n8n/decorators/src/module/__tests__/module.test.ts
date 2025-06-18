@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 
+import type { ModuleInterface } from '../module';
 import { BackendModule } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
@@ -14,34 +15,26 @@ describe('@BackendModule decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@BackendModule()
-		class TestModule {
-			initialize() {}
-		}
+		@BackendModule({ name: 'test' })
+		class TestModule implements ModuleInterface {}
 
-		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
+		const registeredModules = moduleMetadata.getClasses();
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
 	});
 
 	it('should register multiple modules', () => {
-		@BackendModule()
-		class FirstModule {
-			initialize() {}
-		}
+		@BackendModule({ name: 'test-1' })
+		class FirstModule implements ModuleInterface {}
 
-		@BackendModule()
-		class SecondModule {
-			initialize() {}
-		}
+		@BackendModule({ name: 'test-2' })
+		class SecondModule implements ModuleInterface {}
 
-		@BackendModule()
-		class ThirdModule {
-			initialize() {}
-		}
+		@BackendModule({ name: 'test-3' })
+		class ThirdModule implements ModuleInterface {}
 
-		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
+		const registeredModules = moduleMetadata.getClasses();
 
 		expect(registeredModules).toContain(FirstModule);
 		expect(registeredModules).toContain(SecondModule);
@@ -49,55 +42,26 @@ describe('@BackendModule decorator', () => {
 		expect(registeredModules).toHaveLength(3);
 	});
 
-	it('should work with modules without initialize method', () => {
-		@BackendModule()
-		class TestModule {}
-
-		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
-
-		expect(registeredModules).toContain(TestModule);
-		expect(registeredModules).toHaveLength(1);
-	});
-
-	it('should support async initialize method', async () => {
-		const mockInitialize = jest.fn();
-
-		@BackendModule()
-		class TestModule {
-			async initialize() {
-				mockInitialize();
-			}
-		}
-
-		const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
-
-		expect(registeredModules).toContain(TestModule);
-
-		const moduleInstance = new TestModule();
-		await moduleInstance.initialize();
-
-		expect(mockInitialize).toHaveBeenCalled();
-	});
-
-	describe('ModuleMetadata', () => {
-		it('should allow retrieving and checking registered modules', () => {
-			@BackendModule()
-			class FirstModule {}
-
-			@BackendModule()
-			class SecondModule {}
-
-			const registeredModules = moduleMetadata.getEntries().map((entry) => entry.class);
-
-			expect(registeredModules).toContain(FirstModule);
-			expect(registeredModules).toContain(SecondModule);
-		});
-	});
-
 	it('should apply Service decorator', () => {
-		@BackendModule()
-		class TestModule {}
+		@BackendModule({ name: 'test' })
+		class TestModule implements ModuleInterface {}
 
 		expect(Container.has(TestModule)).toBe(true);
+	});
+
+	it('stores the test name and licenseFlag flag in the metadata', () => {
+		const name = 'test';
+		const licenseFlag = 'feat:ldap';
+
+		@BackendModule({ name, licenseFlag })
+		class TestModule implements ModuleInterface {}
+
+		const registeredModules = moduleMetadata.getEntries();
+
+		expect(registeredModules).toHaveLength(1);
+		const [moduleName, options] = registeredModules[0];
+		expect(moduleName).toBe(name);
+		expect(options.licenseFlag).toBe(licenseFlag);
+		expect(options.class).toBe(TestModule);
 	});
 });

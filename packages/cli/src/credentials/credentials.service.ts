@@ -388,6 +388,7 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
+		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record

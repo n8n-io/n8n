@@ -963,6 +963,8 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
+		const lastUpdatedDate = lastUpdatedFolder[0]?.updatedAt ?? new Date();
+
 		const foldersMappingsRemote =
 			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
 		const foldersMappingsLocal =
@@ -999,7 +1001,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: false,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 		foldersMissingInRemote.forEach((item) => {
@@ -1011,7 +1013,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 

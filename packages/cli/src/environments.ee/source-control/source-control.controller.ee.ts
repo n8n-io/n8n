@@ -216,10 +216,10 @@ export class SourceControlController {
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
-			const result = (await this.sourceControlService.getStatus(
+			const result = await this.sourceControlService.getStatus(
 				req.user,
 				new SourceControlGetStatus(req.query),
-			)) as SourceControlledFile[];
+			);
 			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);

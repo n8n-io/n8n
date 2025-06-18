@@ -15,6 +15,7 @@ import { STORES } from '@n8n/stores';
 import { useSSOStore } from '@/stores/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { EnterpriseEditionFeature } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
 
 const showMessage = vi.fn();
 
@@ -38,6 +39,7 @@ describe('Init', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let versionsStore: ReturnType<typeof useVersionsStore>;
 	let ssoStore: ReturnType<typeof useSSOStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -56,6 +58,7 @@ describe('Init', () => {
 		versionsStore = useVersionsStore();
 		versionsStore = useVersionsStore();
 		ssoStore = useSSOStore();
+		uiStore = useUIStore();
 	});
 
 	describe('initializeCore()', () => {
@@ -102,6 +105,18 @@ describe('Init', () => {
 					ldap: false,
 					oidc: false,
 				},
+			});
+		});
+
+		it('should initialize uiStore with banners based on settings', async () => {
+			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
+			settingsStore.settings.banners = { dismissed: [] };
+			settingsStore.settings.versionCli = '1.2.3';
+
+			await initializeCore();
+
+			expect(uiStore.initialize).toHaveBeenCalledWith({
+				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});
 	});

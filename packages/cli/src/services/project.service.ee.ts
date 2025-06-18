@@ -383,6 +383,7 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
+			// @ts-ignore CAT-957
 			relations.map((v) =>
 				this.projectRelationRepository.create({
 					projectId: project.id,
