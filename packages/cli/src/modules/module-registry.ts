@@ -13,6 +13,11 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { MissingModuleError } from './errors/missing-module.error';
+import { ModuleConfusionError } from './errors/module-confusion.error';
+import { ModulesConfig } from './modules.config';
+import type { ModuleName } from './modules.config';
+
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
@@ -22,26 +27,66 @@ export class ModuleRegistry {
 		private readonly lifecycleMetadata: LifecycleMetadata,
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
+		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	async initModules() {
-		for (const { class: ModuleClass, licenseFlag } of this.moduleMetadata.getEntries()) {
-			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
-				this.logger.debug(`Skipped init for unlicensed module "${ModuleClass.name}"`);
-				continue;
-			}
-			await Container.get(ModuleClass).init?.();
-		}
+	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+
+	private readonly activeModules: string[] = [];
+
+	get eligibleModules(): ModuleName[] {
+		const { enabledModules, disabledModules } = this.modulesConfig;
+
+		const doubleListed = enabledModules.filter((m) => disabledModules.includes(m));
+
+		if (doubleListed.length > 0) throw new ModuleConfusionError(doubleListed);
+
+		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
+
+		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
 	}
 
-	addEntities() {
-		for (const { class: ModuleClass } of this.moduleMetadata.getEntries()) {
+	async loadModules(modules?: ModuleName[]) {
+		for (const moduleName of modules ?? this.eligibleModules) {
+			try {
+				await import(`../modules/${moduleName}/${moduleName}.module`);
+			} catch {
+				try {
+					await import(`../modules/${moduleName}.ee/${moduleName}.module`);
+				} catch (error) {
+					throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
+				}
+			}
+		}
+
+		for (const ModuleClass of this.moduleMetadata.getClasses()) {
 			const entities = Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
 
 			this.entities.push(...entities);
 		}
+	}
+
+	async initModules() {
+		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
+			const { licenseFlag, class: ModuleClass } = moduleEntry;
+
+			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
+				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
+				continue;
+			}
+
+			await Container.get(ModuleClass).init?.();
+
+			this.logger.debug(`Initialized module "${moduleName}"`);
+
+			this.activeModules.push(moduleName);
+		}
+	}
+
+	isActive(moduleName: ModuleName) {
+		return this.activeModules.includes(moduleName);
 	}
 
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {

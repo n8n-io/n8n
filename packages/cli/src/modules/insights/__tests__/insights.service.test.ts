@@ -32,7 +32,7 @@ import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 beforeAll(async () => {
-	await testModules.load(['insights']);
+	await testModules.loadModules(['insights']);
 	await testDb.init();
 });
 
