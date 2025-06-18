@@ -617,8 +617,8 @@ export class SourceControlImportService {
 					);
 				}
 
-				// @ts-ignore CAT-957
 				const tagCopy = this.tagRepository.create(tag);
+				// @ts-ignore CAT-957
 				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
