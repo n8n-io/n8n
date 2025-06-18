@@ -1,6 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
-import type { LifecycleContext, EntityClass } from '@n8n/decorators';
+import type { LifecycleContext, EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type {
@@ -21,6 +21,8 @@ import type { ModuleName } from './modules.config';
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
+
+	readonly settings: Map<string, ModuleSettings> = new Map();
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,

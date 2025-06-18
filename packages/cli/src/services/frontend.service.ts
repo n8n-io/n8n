@@ -17,7 +17,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { getAvailableDateRanges as getInsightsAvailableDateRanges } from '@/modules/insights/insights-helpers';
 import { ModuleRegistry } from '@/modules/module-registry';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
@@ -53,6 +52,7 @@ export class FrontendService {
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -252,15 +252,10 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
-			insights: {
-				enabled: this.moduleRegistry.isActive('insights'),
-				summary: true,
-				dashboard: false,
-				dateRanges: [],
-			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
+			loadedModules: [], // TODO
 		};
 	}
 
@@ -388,13 +383,6 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
-		Object.assign(this.settings.insights, {
-			enabled: this.moduleRegistry.isActive('insights'),
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: getInsightsAvailableDateRanges(this.licenseState),
-		});
-
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		this.settings.executionMode = config.getEnv('executions.mode');
@@ -409,6 +397,10 @@ export class FrontendService {
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
 
 		return this.settings;
+	}
+
+	getModuleSettings() {
+		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {

@@ -46,6 +46,7 @@ let telemetry: ReturnType<typeof useTelemetry>;
 describe('SigninView', () => {
 	const signInWithValidUser = async () => {
 		settingsStore.isCloudDeployment = false;
+		settingsStore.loadedModules = [];
 		usersStore.loginWithCreds.mockResolvedValueOnce();
 
 		const { getByRole, queryByTestId, container } = renderComponent();
