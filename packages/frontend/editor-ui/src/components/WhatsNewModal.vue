@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { WHATS_NEW_MODAL_KEY } from '@/constants';
-import { N8nMarkdown } from '@n8n/design-system';
+import { N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
 
@@ -39,10 +39,33 @@ const versionsStore = useVersionsStore();
 		<template #content>
 			<template v-for="article in versionsStore.whatsNewArticles" :key="article.id">
 				<div :class="$style.row">
-					<h1>{{ article.title }}</h1>
+					<N8nText :size="'xlarge'" :bold="true" class="content">
+						{{ article.title }}
+					</N8nText>
 					<N8nMarkdown
 						:content="article.content"
 						:data-test-id="`whats-new-article-${article.id}`"
+						:options="{
+							markdown: {
+								html: true,
+								linkify: true,
+								typographer: true,
+								breaks: true,
+							},
+							tasklists: {
+								enabled: false,
+							},
+							linkAttributes: {
+								attrs: {
+									target: '_blank',
+									rel: 'noopener',
+								},
+							},
+							youtube: {
+								width: '100%',
+								height: '315',
+							},
+						}"
 					/>
 				</div>
 			</template>
