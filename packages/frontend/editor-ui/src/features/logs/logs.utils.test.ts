@@ -79,14 +79,14 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree.length).toBe(1);
 
-		expect(logTree[0].id).toBe('test-wf-id:A:test-execution-id:0');
+		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0:0');
 		expect(logTree[0].depth).toBe(0);
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
 		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
-		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
+		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:1:0');
 		expect(logTree[0].children[0].depth).toBe(1);
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
@@ -95,14 +95,14 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
 
-		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:C:test-execution-id:0');
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:2:0');
 		expect(logTree[0].children[0].children[0].depth).toBe(2);
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
-		expect(logTree[0].children[1].id).toBe('test-wf-id:B:test-execution-id:1');
+		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:1:1');
 		expect(logTree[0].children[1].depth).toBe(1);
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
@@ -110,7 +110,7 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
-		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:C:test-execution-id:1');
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:2:1');
 		expect(logTree[0].children[1].children[0].depth).toBe(2);
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
@@ -554,10 +554,11 @@ describe(getTreeNodeData, () => {
 });
 
 describe(findSelectedLogEntry, () => {
-	function find(state: LogEntrySelection, response: IExecutionResponse) {
+	function find(state: LogEntrySelection, response: IExecutionResponse, shouldFallback: boolean) {
 		return findSelectedLogEntry(
 			state,
 			createLogTree(createTestWorkflowObject(response.workflowData), response),
+			shouldFallback,
 		);
 	}
 
@@ -574,7 +575,7 @@ describe(findSelectedLogEntry, () => {
 				data: { resultData: { runData: {} } },
 			});
 
-			expect(find({ type: 'initial' }, response)).toBe(undefined);
+			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
 		});
 
 		it('should return first log entry with error', () => {
@@ -601,7 +602,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -637,7 +638,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -666,7 +667,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			);
 		});
@@ -695,7 +696,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			);
 		});
@@ -704,10 +705,9 @@ describe(findSelectedLogEntry, () => {
 	describe('when log is manually selected', () => {
 		it('should return manually selected log', () => {
 			const response = createTestWorkflowExecutionResponse({
-				id: 'my-exec-id',
 				workflowData: createTestWorkflow({
 					id: 'test-wf-id',
-					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
+					nodes: [createTestNode({ name: 'A', id: 'a' }), createTestNode({ name: 'B', id: 'b' })],
 				}),
 				data: {
 					resultData: {
@@ -719,10 +719,62 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
+			const result = find(
+				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0:0' }) },
+				response,
+				false,
+			);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			);
+		});
+	});
+
+	describe('when fallback to closest selection is enabled', () => {
+		const nodeA = createTestNode({ name: 'A', id: 'a' });
+		const workflowData = createTestWorkflow({
+			id: 'test-wf-id',
+			nodes: [nodeA],
+		});
+		const response = createTestWorkflowExecutionResponse({
+			workflowData,
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData(), createTestTaskData(), createTestTaskData()],
+					},
+				},
+			},
+		});
+
+		it('should return the log with same node and run index as selected log if it exists', () => {
+			const selected = createTestLogEntry({
+				id: 'test-wf-id:a:0:2',
+				executionId: response.id,
+				node: nodeA,
+				runIndex: 2,
+				workflow: createTestWorkflowObject(workflowData),
+			});
+			const result = find({ type: 'selected', entry: selected }, response, true);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
+			);
+		});
+
+		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
+			const selected = createTestLogEntry({
+				id: 'test-wf-id:a:0:4',
+				executionId: response.id,
+				node: nodeA,
+				runIndex: 4,
+				workflow: createTestWorkflowObject(workflowData),
+			});
+			const result = find({ type: 'selected', entry: selected }, response, true);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
 			);
 		});
 	});

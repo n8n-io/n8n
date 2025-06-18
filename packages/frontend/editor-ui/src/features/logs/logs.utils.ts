@@ -17,8 +17,8 @@ import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
-import get from 'lodash-es/get';
-import isEmpty from 'lodash-es/isEmpty';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
@@ -54,7 +54,7 @@ function createNode(
 	return {
 		parent: context.parent,
 		node,
-		id: `${context.workflow.id}:${node.name}:${context.executionId}:${runIndex}`,
+		id: `${context.workflow.id}:${node.id}:${context.depth}:${runIndex}`,
 		depth: context.depth,
 		runIndex,
 		runData,
@@ -285,6 +285,7 @@ export function findLogEntryRec(
 export function findSelectedLogEntry(
 	selection: LogEntrySelection,
 	entries: LogEntry[],
+	shouldFallbackToClosest: boolean,
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
@@ -292,13 +293,26 @@ export function findSelectedLogEntry(
 		case 'none':
 			return undefined;
 		case 'selected': {
-			const entry = findLogEntryRec((e) => e.id === selection.id, entries);
+			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
 
-			if (entry) {
-				return entry;
+			if (found === undefined && shouldFallbackToClosest) {
+				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
+					const fallback = findLogEntryRec(
+						(e) =>
+							e.workflow.id === selection.entry.workflow.id &&
+							e.depth === selection.entry.depth &&
+							e.node.id === selection.entry.node.id &&
+							e.runIndex === runIndex,
+						entries,
+					);
+
+					if (fallback !== undefined) {
+						return fallback;
+					}
+				}
 			}
 
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return found;
 		}
 	}
 }

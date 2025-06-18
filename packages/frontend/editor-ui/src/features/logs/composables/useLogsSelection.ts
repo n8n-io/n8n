@@ -12,8 +12,8 @@ import type { IExecutionResponse } from '@/Interface';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useLogsStore } from '@/stores/logs.store';
 import { useUIStore } from '@/stores/ui.store';
-import { watch } from 'vue';
-import { computed, ref, type ComputedRef } from 'vue';
+import { shallowRef, watch } from 'vue';
+import { computed, type ComputedRef } from 'vue';
 
 export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
@@ -22,8 +22,11 @@ export function useLogsSelection(
 	toggleExpand: (entry: LogEntry, expand?: boolean) => void,
 ) {
 	const telemetry = useTelemetry();
-	const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-	const selected = computed(() => findSelectedLogEntry(manualLogEntrySelection.value, tree.value));
+	const manualLogEntrySelection = shallowRef<LogEntrySelection>({ type: 'initial' });
+	const isExecutionStopped = computed(() => execution.value?.stoppedAt !== undefined);
+	const selected = computed(() =>
+		findSelectedLogEntry(manualLogEntrySelection.value, tree.value, isExecutionStopped.value),
+	);
 	const logsStore = useLogsStore();
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
@@ -38,7 +41,7 @@ export function useLogsSelection(
 
 	function select(value: LogEntry | undefined) {
 		manualLogEntrySelection.value =
-			value === undefined ? { type: 'none' } : { type: 'selected', id: value.id };
+			value === undefined ? { type: 'none' } : { type: 'selected', entry: value };
 
 		if (value) {
 			syncSelectionToCanvasIfEnabled(value);
@@ -59,7 +62,7 @@ export function useLogsSelection(
 			? (getEntryAtRelativeIndex(entries, selected.value.id, -1) ?? entries[0])
 			: entries[entries.length - 1];
 
-		manualLogEntrySelection.value = { type: 'selected', id: prevEntry.id };
+		manualLogEntrySelection.value = { type: 'selected', entry: prevEntry };
 		syncSelectionToCanvasIfEnabled(prevEntry);
 	}
 
@@ -69,7 +72,7 @@ export function useLogsSelection(
 			? (getEntryAtRelativeIndex(entries, selected.value.id, 1) ?? entries[entries.length - 1])
 			: entries[0];
 
-		manualLogEntrySelection.value = { type: 'selected', id: nextEntry.id };
+		manualLogEntrySelection.value = { type: 'selected', entry: nextEntry };
 		syncSelectionToCanvasIfEnabled(nextEntry);
 	}
 
@@ -102,7 +105,7 @@ export function useLogsSelection(
 				return;
 			}
 
-			manualLogEntrySelection.value = { type: 'selected', id: entry.id };
+			manualLogEntrySelection.value = { type: 'selected', entry };
 
 			let parent = entry.parent;
 
