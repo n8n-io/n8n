@@ -298,14 +298,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.parameterMode = 'NAMED';
 
 				body.queryParameters = namedParameters.map(({ name, value }) => {
-					for (const resolvable of getResolvables(name)) {
-						name = name.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-					}
-
-					for (const resolvable of getResolvables(value)) {
-						value = value.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-					}
-
 					// BigQuery type descriptors are very involved, and it would be hard to support all possible
 					// options, that's why the only supported type here is "STRING".
 					//
