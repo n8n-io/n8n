@@ -42,12 +42,15 @@ watch(
 
 <style lang="scss" module>
 .component {
+	position: absolute;
+	right: 0;
 	z-index: 10;
 	flex-grow: 0;
 	flex-shrink: 0;
 	border-left: var(--border-base);
 	background-color: var(--color-background-xlight);
 	width: #{$node-creator-width};
+	height: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
