@@ -1,3 +1,15 @@
+## [1.98.2](https://github.com/n8n-io/n8n/compare/n8n@1.98.1...n8n@1.98.2) (2025-06-18)
+
+
+### Bug Fixes
+
+* **core:** Fix pdf extract not working ([#16463](https://github.com/n8n-io/n8n/issues/16463)) ([56aeec8](https://github.com/n8n-io/n8n/commit/56aeec80e03925509a0a5df62916f50d2b03a44d))
+* **core:** Reset destination node after partial execution of tools ([#16376](https://github.com/n8n-io/n8n/issues/16376)) ([45161b2](https://github.com/n8n-io/n8n/commit/45161b24e8bca668b301059eaf48a541a11f466d))
+* **editor:** Logs not shown when tools are partially executed ([#16274](https://github.com/n8n-io/n8n/issues/16274)) ([ab6ebe4](https://github.com/n8n-io/n8n/commit/ab6ebe44d0e247de900f4a72ef22b411ca134c1b))
+* **n8n Form Node:** Prevent XSS with video and source tags ([#16329](https://github.com/n8n-io/n8n/issues/16329)) ([3241793](https://github.com/n8n-io/n8n/commit/3241793a8a2ab809202032fe5ce2fda75cae329c))
+
+
+
 ## [1.98.1](https://github.com/n8n-io/n8n/compare/n8n@1.98.0...n8n@1.98.1) (2025-06-12)
 
 
