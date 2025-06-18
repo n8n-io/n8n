@@ -177,38 +177,42 @@ export class SourceControlImportService {
 	async getLocalVersionIdsFromDb(
 		context: SourceControlContext,
 	): Promise<SourceControlWorkflowVersionId[]> {
-		const localWorkflows = await this.workflowRepository
-			.createQueryBuilder('workflow')
-			.leftJoinAndSelect('workflow.parentFolder', 'parentFolder')
-			.leftJoinAndSelect('workflow.shared', 'shared', 'shared.role = :ownerRole', {
-				ownerRole: 'workflow:owner',
-			})
-			.leftJoinAndSelect('shared.project', 'project')
-			.leftJoinAndSelect(
-				'project.projectRelations',
-				'projectRelation',
-				'projectRelation.role = :projectOwnerRole',
-				{
-					projectOwnerRole: 'project:personalOwner',
+		const localWorkflows = await this.workflowRepository.find({
+			relations: {
+				parentFolder: true,
+				shared: {
+					project: {
+						projectRelations: {
+							user: true,
+						},
+					},
 				},
-			)
-			.leftJoinAndSelect('projectRelation.user', 'user')
-			.select([
-				'workflow.id',
-				'workflow.versionId',
-				'workflow.name',
-				'workflow.updatedAt',
-				'parentFolder.id',
-				'shared.role',
-				'project.id',
-				'project.name',
-				'project.type',
-				'projectRelation.role',
-				'user.email',
-			])
-			.where(this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context))
-			.getMany();
-
+			},
+			select: {
+				id: true,
+				versionId: true,
+				name: true,
+				updatedAt: true,
+				parentFolder: {
+					id: true,
+				},
+				shared: {
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							role: true,
+							user: {
+								email: true,
+							},
+						},
+					},
+					role: true,
+				},
+			},
+			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
+		});
 		return localWorkflows.map((local) => {
 			let updatedAt: Date;
 			if (local.updatedAt instanceof Date) {
@@ -229,7 +233,7 @@ export class SourceControlImportService {
 			if (remoteOwnerProject?.type === 'personal') {
 				const personalEmail = remoteOwnerProject.projectRelations?.find(
 					(r) => r.role === 'project:personalOwner',
-				)?.user.email;
+				)?.user?.email;
 
 				if (personalEmail) {
 					owner = {
