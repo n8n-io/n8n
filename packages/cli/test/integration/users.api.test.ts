@@ -237,7 +237,7 @@ describe('GET /users', () => {
 
 		describe('select', () => {
 			test('should select user field: id', async () => {
-				const response = await ownerAgent.get('/users').query('select=id').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=id').expect(200);
 
 				expect(response.body).toEqual({
 					data: {
@@ -253,48 +253,48 @@ describe('GET /users', () => {
 			});
 
 			test('should select user field: email', async () => {
-				const response = await ownerAgent.get('/users').query('select=email').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=email').expect(200);
 
 				expect(response.body).toEqual({
 					data: {
 						count: 4,
 						items: [
-							{ email: expect.any(String), id: expect.any(String) },
-							{ email: expect.any(String), id: expect.any(String) },
-							{ email: expect.any(String), id: expect.any(String) },
-							{ email: expect.any(String), id: expect.any(String) },
+							{ email: expect.any(String) },
+							{ email: expect.any(String) },
+							{ email: expect.any(String) },
+							{ email: expect.any(String) },
 						],
 					},
 				});
 			});
 
 			test('should select user field: firstName', async () => {
-				const response = await ownerAgent.get('/users').query('select=firstName').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=firstName').expect(200);
 
 				expect(response.body).toEqual({
 					data: {
 						count: 4,
 						items: [
-							{ firstName: expect.any(String), id: expect.any(String) },
-							{ firstName: expect.any(String), id: expect.any(String) },
-							{ firstName: expect.any(String), id: expect.any(String) },
-							{ firstName: expect.any(String), id: expect.any(String) },
+							{ firstName: expect.any(String) },
+							{ firstName: expect.any(String) },
+							{ firstName: expect.any(String) },
+							{ firstName: expect.any(String) },
 						],
 					},
 				});
 			});
 
 			test('should select user field: lastName', async () => {
-				const response = await ownerAgent.get('/users').query('select=lastName').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=lastName').expect(200);
 
 				expect(response.body).toEqual({
 					data: {
 						count: 4,
 						items: [
-							{ lastName: expect.any(String), id: expect.any(String) },
-							{ lastName: expect.any(String), id: expect.any(String) },
-							{ lastName: expect.any(String), id: expect.any(String) },
-							{ lastName: expect.any(String), id: expect.any(String) },
+							{ lastName: expect.any(String) },
+							{ lastName: expect.any(String) },
+							{ lastName: expect.any(String) },
+							{ lastName: expect.any(String) },
 						],
 					},
 				});
@@ -303,7 +303,7 @@ describe('GET /users', () => {
 			test('should select multiple user fields: email, firstName, lastName', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query('select=email,firstName,lastName')
+					.query('select[]=email&select[]=firstName&select[]=lastName')
 					.expect(200);
 
 				expect(response.body).toEqual({
@@ -314,25 +314,21 @@ describe('GET /users', () => {
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
-								id: expect.any(String),
 							},
 							{
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
-								id: expect.any(String),
 							},
 							{
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
-								id: expect.any(String),
 							},
 							{
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
-								id: expect.any(String),
 							},
 						],
 					},
@@ -398,13 +394,13 @@ describe('GET /users', () => {
 			test('should support options that require auxiliary fields', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query('filter={ "isOwner": true }&select=firstName&take=1')
+					.query('filter={ "isOwner": true }&select[]=firstName&take=1')
 					.expect(200);
 
 				expect(response.body).toEqual({
 					data: {
 						count: 1,
-						items: [{ firstName: expect.any(String), id: expect.any(String) }],
+						items: [{ firstName: expect.any(String) }],
 					},
 				});
 			});
@@ -418,7 +414,7 @@ describe('GET /users', () => {
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						`filter={ "email": "${member1.email}" }&select=firstName&take=1&expand=projectRelations&sortBy=role:asc`,
+						`filter={ "email": "${member1.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy=role:asc`,
 					)
 					.expect(200);
 
@@ -428,7 +424,6 @@ describe('GET /users', () => {
 						items: [
 							{
 								firstName: expect.any(String),
-								id: expect.any(String),
 								projectRelations: [
 									{
 										id: project.id,
@@ -448,7 +443,7 @@ describe('GET /users', () => {
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						'filter={ "isOwner": true }&select=firstName&take=1&expand=projectRelations&sortBy=role:asc',
+						'filter={ "isOwner": true }&select[]=firstName&take=1&expand[]=projectRelations&sortBy=role:asc',
 					)
 					.expect(200);
 
@@ -458,7 +453,6 @@ describe('GET /users', () => {
 						items: [
 							{
 								firstName: expect.any(String),
-								id: expect.any(String),
 								projectRelations: expect.arrayContaining([]),
 							},
 						],
