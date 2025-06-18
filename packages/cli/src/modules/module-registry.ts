@@ -91,6 +91,10 @@ export class ModuleRegistry {
 		return this.activeModules.includes(moduleName);
 	}
 
+	getActiveModules() {
+		return this.activeModules;
+	}
+
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
 		const handlers = this.lifecycleMetadata.getHandlers();
 

@@ -48,7 +48,6 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly moduleRegistry: ModuleRegistry,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
@@ -255,7 +254,7 @@ export class FrontendService {
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
-			loadedModules: [], // TODO
+			loadedModules: this.moduleRegistry.getActiveModules(),
 		};
 	}
 
