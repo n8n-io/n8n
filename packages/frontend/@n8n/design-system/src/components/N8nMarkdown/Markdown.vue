@@ -60,10 +60,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 			label: true,
 			labelAfter: true,
 		},
-		youtube: {
-			width: 400,
-			height: 200,
-		},
+		youtube: {},
 	}),
 });
 
@@ -226,7 +223,7 @@ const onCheckboxChange = (index: number) => {
 <template>
 	<div class="n8n-markdown">
 		<!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
-		<!-- eslint-disable vue/no-v-html -->
+		<!-- eslint-disable-next-line vue/no-v-html -->
 		<div
 			v-if="!loading"
 			ref="editor"
