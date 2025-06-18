@@ -2,7 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { paginationSchema } from '../pagination/pagination.dto';
+import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 const USERS_LIST_SORT_OPTIONS = [
 	'firstName:asc',
@@ -14,16 +14,6 @@ const USERS_LIST_SORT_OPTIONS = [
 	// 'lastActive:asc',
 	// 'lastActive:desc',
 ] as const;
-
-const createTakeValidator = (maxItems: number) =>
-	z
-		.string()
-		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 10))
-		.refine((val) => !isNaN(val) && Number.isInteger(val), {
-			message: 'Param `take` must be a valid integer',
-		})
-		.transform((val) => Math.min(val, maxItems));
 
 const usersListSortByValidator = z
 	.enum(USERS_LIST_SORT_OPTIONS, {
@@ -128,8 +118,8 @@ const expandValidatorSchema = z
 
 export class UsersListFilterDto extends Z.class({
 	...paginationSchema,
-	take: createTakeValidator(50), // Limit to 50 items per page
-	select: selectValidatorSchema.optional(),
+	take: createTakeValidator(50, true), // Limit to 50 items per page, and allow infinity for pagination
+	select: userSelectSchema.optional(), //selectValidatorSchema.optional(),
 	filter: filterValidatorSchema.optional(),
 	expand: expandValidatorSchema.optional(),
 	// Default sort order is role:asc, secondary sort criteria is name:asc
