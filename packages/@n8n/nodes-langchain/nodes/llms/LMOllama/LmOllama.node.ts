@@ -64,7 +64,7 @@ export class LmOllama implements INodeType {
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			...options,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

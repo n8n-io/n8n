@@ -146,7 +146,7 @@ export class LmChatGroq implements INodeType {
 			modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [],
 			httpAgent: getHttpProxyAgent(),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});

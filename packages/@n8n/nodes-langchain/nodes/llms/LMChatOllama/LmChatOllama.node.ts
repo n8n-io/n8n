@@ -66,7 +66,7 @@ export class LmChatOllama implements INodeType {
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

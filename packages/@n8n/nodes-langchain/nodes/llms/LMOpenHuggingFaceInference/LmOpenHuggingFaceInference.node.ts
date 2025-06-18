@@ -144,7 +144,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 			model: modelName,
 			apiKey: credentials.apiKey as string,
 			...options,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

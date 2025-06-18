@@ -327,7 +327,7 @@ export class LmChatAnthropic implements INodeType {
 			temperature: options.temperature,
 			topK: options.topK,
 			topP: options.topP,
-			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
+			callbacks: [],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
 			clientOptions: {

@@ -192,7 +192,7 @@ export class LmChatMistralCloud implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
