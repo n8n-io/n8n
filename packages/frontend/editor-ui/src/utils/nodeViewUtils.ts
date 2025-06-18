@@ -35,8 +35,8 @@ export const GRID_SIZE = 20;
 
 export const NODE_SIZE = 100;
 export const DEFAULT_NODE_SIZE: [number, number] = [100, 100];
-export const CONFIGURATION_NODE_SIZE: [number, number] = [80, 80];
-export const CONFIGURABLE_NODE_SIZE: [number, number] = [256, 100];
+export const CONFIGURATION_NODE_SIZE: [number, number] = [GRID_SIZE * 4, GRID_SIZE * 4];
+export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 12, 100];
 export const DEFAULT_START_POSITION_X = 180;
 export const DEFAULT_START_POSITION_Y = 240;
 export const HEADER_HEIGHT = 65;

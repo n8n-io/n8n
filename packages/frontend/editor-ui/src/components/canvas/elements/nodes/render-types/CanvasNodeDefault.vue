@@ -8,7 +8,7 @@ import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
 import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { GRID_SIZE, CONFIGURABLE_NODE_SIZE } from '@/utils/nodeViewUtils';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -78,6 +78,7 @@ const styles = computed(() => {
 	const stylesObject: Record<string, string | number> = {
 		'--node-icon-size': `${iconSize.value}px`,
 		'--canvas-grid-size': `${GRID_SIZE}px`,
+		'--configurable-node-width': `${CONFIGURABLE_NODE_SIZE[0]}px`,
 	};
 
 	if (renderOptions.value.configurable) {
@@ -254,10 +255,7 @@ function onActivate(event: MouseEvent) {
 
 	&.configurable {
 		--canvas-node--height: 100px;
-		--canvas-node--width: calc(
-			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
-				var(--configurable-node--input-width)
-		);
+		--canvas-node--width: var(--configurable-node-width);
 
 		justify-content: flex-start;
 
