@@ -192,13 +192,25 @@ export interface FrontendSettings {
 	partialExecution: {
 		version: 1 | 2;
 	};
-	insights: {
-		enabled: boolean;
+	evaluation: {
+		quota: number;
+	};
+
+	/** Backend modules that were loaded during startup based on user configuration and pre-init check. */
+	loadedModules: string[];
+}
+
+export type FrontendModuleSettings = {
+	/**
+	 * Client settings for [insights](https://docs.n8n.io/insights/) module.
+	 *
+	 * - `summary`: Whether the summary banner should be shown.
+	 * - `dashboard`: Whether the full dashboard should be shown.
+	 * - `dateRanges`: Date range filters available to select.
+	 */
+	insights?: {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
 	};
-	evaluation: {
-		quota: number;
-	};
-}
+};

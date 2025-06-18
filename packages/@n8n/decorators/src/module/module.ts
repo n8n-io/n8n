@@ -18,9 +18,12 @@ export interface BaseEntity {
 
 export type EntityClass = new () => BaseEntity;
 
+export type ModuleSettings = Record<string, unknown>;
+
 export interface ModuleInterface {
-	init?(): void | Promise<void>;
+	init?(): Promise<void>;
 	entities?(): EntityClass[];
+	settings?(): Promise<ModuleSettings>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;
@@ -28,9 +31,9 @@ export type ModuleClass = Constructable<ModuleInterface>;
 export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 
 export const BackendModule =
-	(opts?: { licenseFlag: LicenseFlag }): ClassDecorator =>
+	(opts: { name: string; licenseFlag?: LicenseFlag }): ClassDecorator =>
 	(target) => {
-		Container.get(ModuleMetadata).register(target.name, {
+		Container.get(ModuleMetadata).register(opts.name, {
 			class: target as unknown as ModuleClass,
 			licenseFlag: opts?.licenseFlag,
 		});
