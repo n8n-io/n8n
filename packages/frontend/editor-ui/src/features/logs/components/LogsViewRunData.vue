@@ -6,8 +6,9 @@ import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import { PiPWindowSymbol } from '@/constants';
 
 const { title, logEntry, paneType } = defineProps<{
 	title: string;
@@ -17,6 +18,8 @@ const { title, logEntry, paneType } = defineProps<{
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
+
+const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(
@@ -65,6 +68,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
+		:key="`run-data${pipWindow ? '-pip' : ''}`"
 		:workflow="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"

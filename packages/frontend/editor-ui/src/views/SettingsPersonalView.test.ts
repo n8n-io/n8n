@@ -9,9 +9,12 @@ import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/stores/ui.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { UserManagementAuthenticationMethod } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
+let ssoStore: ReturnType<typeof useSSOStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
@@ -41,6 +44,7 @@ describe('SettingsPersonalView', () => {
 		pinia = createPinia();
 
 		settingsStore = useSettingsStore(pinia);
+		ssoStore = useSSOStore(pinia);
 		usersStore = useUsersStore(pinia);
 		uiStore = useUIStore(pinia);
 		cloudPlanStore = useCloudPlanStore(pinia);
@@ -49,6 +53,15 @@ describe('SettingsPersonalView', () => {
 		usersStore.currentUserId = currentUser.id;
 
 		await settingsStore.getSettings();
+		ssoStore.initialize({
+			authenticationMethod: UserManagementAuthenticationMethod.Email,
+			config: settingsStore.settings.sso,
+			features: {
+				saml: true,
+				ldap: true,
+				oidc: true,
+			},
+		});
 	});
 
 	afterAll(() => {
@@ -96,7 +109,9 @@ describe('SettingsPersonalView', () => {
 		});
 
 		it('should commit the theme change after clicking save', async () => {
-			vi.spyOn(usersStore, 'updateUser').mockReturnValue(Promise.resolve());
+			vi.spyOn(usersStore, 'updateUser').mockReturnValue(
+				Promise.resolve({ id: '123', isPending: false }),
+			);
 			const { getByPlaceholderText, findByText, getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
@@ -116,8 +131,8 @@ describe('SettingsPersonalView', () => {
 
 	describe('when external auth is enabled, email and password change', () => {
 		beforeEach(() => {
-			vi.spyOn(settingsStore, 'isSamlLoginEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'isDefaultAuthenticationSaml', 'get').mockReturnValue(true);
+			vi.spyOn(ssoStore, 'isSamlLoginEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(ssoStore, 'isDefaultAuthenticationSaml', 'get').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
 		});
 

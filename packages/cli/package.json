@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.98.0",
+  "version": "1.99.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -99,7 +99,7 @@
     "@n8n/db": "workspace:^",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n/integration-test-utils": "workspace:^",
+    "@n8n/backend-test-utils": "workspace:^",
     "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
