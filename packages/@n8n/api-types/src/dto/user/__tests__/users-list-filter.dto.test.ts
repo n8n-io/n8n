@@ -15,18 +15,18 @@ describe('UsersListFilterDto', () => {
 			},
 			{
 				name: 'sort by firstName ascending',
-				request: { sortBy: 'firstName:asc' },
-				parsedResult: { skip: 0, take: 10, sortBy: 'firstName:asc' },
+				request: { sortBy: ['firstName:asc'] },
+				parsedResult: { skip: 0, take: 10, sortBy: ['firstName:asc'] },
 			},
 			{
 				name: 'sort by lastName ascending',
-				request: { sortBy: 'lastName:asc' },
-				parsedResult: { skip: 0, take: 10, sortBy: 'lastName:asc' },
+				request: { sortBy: ['lastName:asc'] },
+				parsedResult: { skip: 0, take: 10, sortBy: ['lastName:asc'] },
 			},
 			{
 				name: 'sort by role descending and pagination',
-				request: { skip: '5', take: '20', sortBy: 'role:desc' },
-				parsedResult: { skip: 5, take: 20, sortBy: 'role:desc' },
+				request: { skip: '5', take: '20', sortBy: ['role:desc'] },
+				parsedResult: { skip: 5, take: 20, sortBy: ['role:desc'] },
 			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = UsersListFilterDto.safeParse(request);
