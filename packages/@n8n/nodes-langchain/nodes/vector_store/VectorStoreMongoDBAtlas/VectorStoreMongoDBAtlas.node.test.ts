@@ -19,7 +19,7 @@ describe('VectorStoreMongoDBAtlas -> getMongoClient', () => {
 	const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 		mongoConfig.client = null;
 		mongoConfig.connectionString = '';
 	});
