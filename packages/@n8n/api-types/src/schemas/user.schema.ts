@@ -1,6 +1,8 @@
 import { projectRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
+import { userSettingsSchema } from './user-settings.schema';
+
 export const ROLE = {
 	Owner: 'global:owner',
 	Member: 'global:member',
@@ -29,10 +31,10 @@ export const userListItemSchema = z.object({
 	isPending: z.boolean().optional(),
 	isOwner: z.boolean().optional(),
 	signInType: z.string().optional(),
-	settings: z.object({}).nullable().optional(),
-	personalizationAnswers: z.object({}).nullable().optional(),
+	settings: userSettingsSchema.nullable().optional(),
+	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
 	lastActive: z.string().optional(),
-	projectRelations: z.array(userProjectSchema).optional(), // Can be null if the user is the owner or is an admin
+	projectRelations: z.array(userProjectSchema).nullable().optional(),
 });
 
 export const usersListSchema = z.object({

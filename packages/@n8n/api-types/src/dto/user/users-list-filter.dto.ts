@@ -16,9 +16,11 @@ const USERS_LIST_SORT_OPTIONS = [
 ] as const;
 
 const usersListSortByValidator = z
-	.enum(USERS_LIST_SORT_OPTIONS, {
-		message: `sortBy must be one of: ${USERS_LIST_SORT_OPTIONS.join(', ')}`,
-	})
+	.array(
+		z.enum(USERS_LIST_SORT_OPTIONS, {
+			message: `sortBy must be one of: ${USERS_LIST_SORT_OPTIONS.join(', ')}`,
+		}),
+	)
 	.optional();
 
 const userSelectSchema = z.array(

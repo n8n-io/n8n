@@ -238,14 +238,16 @@ export class UserRepository extends Repository<User> {
 		sortBy: UsersListFilterDto['sortBy'],
 	): SelectQueryBuilder<User> {
 		if (sortBy) {
-			const [field, order] = sortBy.split(':');
-			if (field === 'firstName' || field === 'lastName') {
-				queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
-			} else if (field === 'role') {
-				queryBuilder.addOrderBy(
-					"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-					order.toUpperCase() as 'ASC' | 'DESC',
-				);
+			for (const sort of sortBy) {
+				const [field, order] = sort.split(':');
+				if (field === 'firstName' || field === 'lastName') {
+					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
+				} else if (field === 'role') {
+					queryBuilder.addOrderBy(
+						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
+						order.toUpperCase() as 'ASC' | 'DESC',
+					);
+				}
 			}
 		}
 
