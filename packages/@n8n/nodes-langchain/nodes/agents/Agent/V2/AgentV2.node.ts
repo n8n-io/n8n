@@ -32,6 +32,7 @@ function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeI
 			ai_memory: 'Memory',
 			ai_tool: 'Tool',
 			ai_outputParser: 'Output Parser',
+			ai_stateManager: 'State Manager',
 		};
 
 		return inputs.map(({ type, filter }) => {
@@ -89,6 +90,9 @@ function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeI
 		},
 		{
 			type: 'ai_outputParser',
+		},
+		{
+			type: 'ai_stateManager',
 		},
 	];
 
