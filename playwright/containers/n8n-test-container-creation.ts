@@ -25,7 +25,7 @@ import {
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
 const NGINX_IMAGE = 'nginx:stable';
-const N8N_E2E_IMAGE = 'n8n-e2e';
+const N8N_E2E_IMAGE = 'n8n-local:dev';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
 const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;

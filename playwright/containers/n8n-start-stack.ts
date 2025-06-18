@@ -172,7 +172,7 @@ async function main() {
 
 function displayConfig(config: any) {
 	// Show Docker image being used
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8n-e2e';
+	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8n-local:dev';
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
