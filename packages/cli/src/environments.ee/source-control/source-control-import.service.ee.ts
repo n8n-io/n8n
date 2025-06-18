@@ -48,7 +48,6 @@ import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
-import { OwnerController } from '@/controllers/owner.controller';
 
 @Service()
 export class SourceControlImportService {
