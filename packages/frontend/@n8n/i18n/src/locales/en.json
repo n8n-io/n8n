@@ -2887,7 +2887,6 @@
 	"audit.status.declined": "Declined",
 	"audit.submission.result.success": "Audit result submitted",
 	"audit.submission.request.success": "Audit request submitted",
-	"audit.submission.refresh": "Refresh page to update",
 	"mfa.setup.invalidAuthenticatorCode": "{code} is not a valid number",
 	"mfa.setup.invalidCode": "Two-factor code failed. Please try again.",
 	"mfa.code.modal.title": "Two-factor authentication",

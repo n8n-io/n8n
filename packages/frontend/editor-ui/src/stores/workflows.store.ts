@@ -608,7 +608,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
 		addWorkflow(workflowData);
-		console.log('workflow data in workflows.store.ts fetchWorkflow():', workflowData);
 		return workflowData;
 	}
 
@@ -1713,7 +1712,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		data: IWorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
-		console.log('data in update workflow: ', data);
 		if (data.settings === null) {
 			data.settings = undefined;
 		}
@@ -1742,10 +1740,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId: string,
 		status: WorkflowStatus,
 	): Promise<void> {
-		console.log('submitting request in workflows.store.ts: ', status);
 		await workflowsApi.updateWorkflowAuditStatus(rootStore.restApiContext, workflowId, status);
 		setWorkflowAuditStatus(status);
-		console.log('finished request in workflows.store.ts');
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {

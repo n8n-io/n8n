@@ -78,7 +78,6 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-console.log('active at setup in MainHeader.vue:', workflow.value.active);
 const workflowId = computed(() =>
 	String(router.currentRoute.value.params.name || workflowsStore.workflowId),
 );

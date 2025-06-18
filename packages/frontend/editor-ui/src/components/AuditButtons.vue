@@ -13,24 +13,24 @@ const props = defineProps<{
 	audit_status: WorkflowStatus;
 }>();
 
+const emit = defineEmits<{
+	'audit-status-updated': [];
+}>();
+
 function showAuditFinishedToast() {
 	let toastTitle = locale.baseText('audit.submission.result.success');
-	let toastText = locale.baseText('audit.submission.refresh');
 
 	toast.showMessage({
 		title: toastTitle,
-		message: toastText,
 		type: 'success',
 	});
 }
 
 function showAuditSubmittedToast() {
 	let toastTitle = locale.baseText('audit.submission.request.success');
-	let toastText = locale.baseText('audit.submission.refresh');
 
 	toast.showMessage({
 		title: toastTitle,
-		message: toastText,
 		type: 'success',
 	});
 }
@@ -38,15 +38,18 @@ function showAuditSubmittedToast() {
 async function onApproveWorkflow() {
 	await workflowsStore.updateWorkflowAuditStatus(props.workflow_id, 'approved' as WorkflowStatus);
 	showAuditFinishedToast();
+	emit('audit-status-updated');
 }
 
 async function onDeclineWorkflow() {
 	await workflowsStore.updateWorkflowAuditStatus(props.workflow_id, 'declined' as WorkflowStatus);
 	showAuditFinishedToast();
+	emit('audit-status-updated');
 }
 async function onSubmitWorkflowForAudit() {
 	await workflowsStore.updateWorkflowAuditStatus(props.workflow_id, 'submitted' as WorkflowStatus);
 	showAuditSubmittedToast();
+	emit('audit-status-updated');
 }
 </script>
 

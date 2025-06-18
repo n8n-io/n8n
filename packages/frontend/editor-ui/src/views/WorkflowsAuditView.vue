@@ -6,6 +6,7 @@ import type {
 	BaseFilters,
 	FolderResource,
 	WorkflowResource,
+	SortingAndPaginationUpdates,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
@@ -423,16 +424,28 @@ const fetchWorkflows = async () => {
 };
 
 // Filter and sort methods
-
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
 	}
-	await fetchWorkflows();
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (payload.sort) {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+		if (currentSort.value !== 'updatedAt:desc') {
+			void router.replace({ query: { ...route.query, sort: payload.sort } });
+		} else {
+			void router.replace({ query: { ...route.query, sort: undefined } });
+		}
+	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onFiltersUpdated = async () => {
@@ -772,7 +785,7 @@ const onWorkflowMoved = async (payload: {
 		@update:current-page="setCurrentPage"
 		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
-		@sort="onSortUpdated"
+		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
@@ -872,6 +885,7 @@ const onWorkflowMoved = async (payload: {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
+					@workflow:status-updated="fetchWorkflows"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
 				/>

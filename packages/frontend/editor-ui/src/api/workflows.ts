@@ -208,7 +208,6 @@ export async function updateWorkflowAuditStatus(
 	workflowId: string,
 	status: WorkflowStatus,
 ) {
-	console.log('status in workflows.ts. submitting request: ', status);
 	return await makeRestApiRequest(context, 'PATCH', `/workflows/${workflowId}/audit-status`, {
 		status,
 	});

@@ -290,7 +290,6 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 			} satisfies FolderResource;
 		} else {
-			console.log('resource status', resource.status);
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
@@ -473,7 +472,6 @@ const initialize = async () => {
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
-	console.log('resourcesPage', resourcesPage);
 	loading.value = false;
 };
 
@@ -549,7 +547,6 @@ const fetchWorkflows = async () => {
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
 			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
-		console.log(workflowsAndFolders);
 
 		return fetchedResources;
 	} catch (error) {
@@ -1707,6 +1704,7 @@ const onNameSubmit = async ({
 					:show-ownership-badge="showCardsBadge"
 					data-target="workflow"
 					@click:tag="onClickTag"
+					@workflow:status-updated="fetchWorkflows"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
 					@workflow:unarchived="refreshWorkflows"

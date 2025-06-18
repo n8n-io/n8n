@@ -456,7 +456,6 @@ async function fetchAndSetProject(projectId: string) {
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
-		console.log('workflow data intialize workspace for existing workflow', workflowData);
 
 		openWorkflow(workflowData);
 

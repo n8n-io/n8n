@@ -71,6 +71,7 @@ const emit = defineEmits<{
 			sharedWithProjects?: ProjectSharingData[];
 		},
 	];
+	'workflow:status-updated': [];
 }>();
 
 const toast = useToast();
@@ -525,7 +526,11 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					data-test-id="workflow-card-activator"
 					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
-				<AuditButtons :workflow_id="data.id" :audit_status="data.status" />
+				<AuditButtons
+					:workflow_id="data.id"
+					:audit_status="data.status"
+					@audit-status-updated="$emit('workflow:status-updated')"
+				/>
 				<n8n-action-toggle
 					:actions="actions"
 					theme="dark"

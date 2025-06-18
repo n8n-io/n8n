@@ -2809,7 +2809,6 @@
 	"audit.status.declined": "已拒绝",
 	"audit.submission.result.success": "审阅结果已提交",
 	"audit.submission.request.success": "审阅请求已提交",
-	"audit.submission.refresh": "刷新页面以更新",
 	"mfa.setup.invalidAuthenticatorCode": "{code} 不是有效的数字",
 	"mfa.setup.invalidCode": "双重验证失败。请重试。",
 	"mfa.code.modal.title": "双重验证",
