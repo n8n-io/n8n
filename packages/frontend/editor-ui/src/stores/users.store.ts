@@ -310,7 +310,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const fetchUsers = async () => {
-		const { items } = await usersApi.getUsers(rootStore.restApiContext);
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
 		addUsers(items);
 	};
 
