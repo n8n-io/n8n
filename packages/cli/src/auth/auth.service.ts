@@ -16,6 +16,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
+import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
@@ -36,14 +37,10 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const LAST_ACTIVE_CACHE_TTL = 2 * Time.minutes.toMilliseconds;
-
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
 	private skipBrowserIdCheckEndpoints: string[];
-
-	private lastActiveCache = new Map<string, number>();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -53,6 +50,7 @@ export class AuthService {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
+		private readonly lastActiveAtService: LastActiveAtService,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -70,16 +68,6 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 		];
-	}
-
-	async updateLastActiveIfStale(user: User) {
-		const now = Date.now();
-		const last = this.lastActiveCache.get(user.id) ?? 0;
-		if (now - last > LAST_ACTIVE_CACHE_TTL) {
-			user.lastActiveAt = new Date();
-			await this.userRepository.save(user);
-			this.lastActiveCache.set(user.id, now);
-		}
 	}
 
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -100,7 +88,7 @@ export class AuthService {
 
 		if (req.user) {
 			res.on('finish', async () => {
-				await this.updateLastActiveIfStale(req.user);
+				await this.lastActiveAtService.updateLastActiveIfStale(req.user);
 			});
 			next();
 		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });

@@ -12,6 +12,7 @@ import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
+import { LastActiveAtService } from '@/services/last-active-at.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
@@ -31,6 +32,7 @@ describe('AuthService', () => {
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
+	const lastActiveAtService = new LastActiveAtService(userRepository);
 	const authService = new AuthService(
 		globalConfig,
 		mock(),
@@ -39,6 +41,7 @@ describe('AuthService', () => {
 		urlService,
 		userRepository,
 		invalidAuthTokenRepository,
+		lastActiveAtService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
@@ -182,7 +185,7 @@ describe('AuthService', () => {
 			userRepository.findOne.mockResolvedValue(user);
 
 			// reset the last active time cache (private variable)
-			(authService as any).lastActiveCache = new Map();
+			(lastActiveAtService as any).lastActiveCache = new Map();
 
 			let finishCallback: (() => Promise<void>) | undefined;
 			res.on.mockImplementation((event, cb: () => Promise<void>) => {
@@ -209,7 +212,7 @@ describe('AuthService', () => {
 			userRepository.findOne.mockResolvedValue(user);
 
 			// reset the last active time cache (private variable)
-			(authService as any).lastActiveCache = new Map();
+			(lastActiveAtService as any).lastActiveCache = new Map();
 
 			// Simulate the user being in the cache
 			let finishCallback: (() => Promise<void>) | undefined;
