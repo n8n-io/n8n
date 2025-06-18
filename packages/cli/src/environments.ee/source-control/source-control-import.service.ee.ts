@@ -48,6 +48,7 @@ import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
+import { OwnerController } from '@/controllers/owner.controller';
 
 @Service()
 export class SourceControlImportService {
@@ -176,43 +177,38 @@ export class SourceControlImportService {
 	async getLocalVersionIdsFromDb(
 		context: SourceControlContext,
 	): Promise<SourceControlWorkflowVersionId[]> {
-		const localWorkflows = await this.workflowRepository.find({
-			relations: {
-				parentFolder: true,
-				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-						},
-					},
+		const localWorkflows = await this.workflowRepository
+			.createQueryBuilder('workflow')
+			.leftJoinAndSelect('workflow.parentFolder', 'parentFolder')
+			.leftJoinAndSelect('workflow.shared', 'shared', 'shared.role = :ownerRole', {
+				ownerRole: 'workflow:owner',
+			})
+			.leftJoinAndSelect('shared.project', 'project')
+			.leftJoinAndSelect(
+				'project.projectRelations',
+				'projectRelation',
+				'projectRelation.role = :projectOwnerRole',
+				{
+					projectOwnerRole: 'project:personalOwner',
 				},
-			},
-			select: {
-				id: true,
-				versionId: true,
-				name: true,
-				updatedAt: true,
-				parentFolder: {
-					id: true,
-				},
-				shared: {
-					project: {
-						id: true,
-						name: true,
-						type: true,
-						projectRelations: {
-							role: true,
-							user: {
-								id: true,
-								email: true,
-							},
-						},
-					},
-					role: true,
-				},
-			},
-			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
-		});
+			)
+			.leftJoinAndSelect('projectRelation.user', 'user')
+			.select([
+				'workflow.id',
+				'workflow.versionId',
+				'workflow.name',
+				'workflow.updatedAt',
+				'parentFolder.id',
+				'shared.role',
+				'project.id',
+				'project.name',
+				'project.type',
+				'projectRelation.role',
+				'user.email',
+			])
+			.where(this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context))
+			.getMany();
+
 		return localWorkflows.map((local) => {
 			let updatedAt: Date;
 			if (local.updatedAt instanceof Date) {
