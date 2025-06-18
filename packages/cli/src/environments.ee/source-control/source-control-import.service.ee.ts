@@ -123,12 +123,13 @@ export class SourceControlImportService {
 			.map((remote) => {
 				return {
 					id: remote.id,
-					versionId: remote.versionId,
+					versionId: remote.versionId ?? '',
 					name: remote.name,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-				} as SourceControlWorkflowVersionId;
+					owner: remote.owner,
+				};
 			});
 
 		return remoteWorkflowFilesParsed;
@@ -187,6 +188,21 @@ export class SourceControlImportService {
 				parentFolder: {
 					id: true,
 				},
+				shared: {
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							role: true,
+							user: {
+								id: true,
+								email: true,
+							},
+						},
+					},
+					role: true,
+				},
 			},
 			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 		});
@@ -203,6 +219,31 @@ export class SourceControlImportService {
 				});
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
+			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
+
+			if (!remoteOwnerProject) {
+				throw new UnexpectedError(`Workflow ${local.name} has no owner`);
+			}
+
+			let owner: ResourceOwner = {
+				type: 'team',
+				teamId: remoteOwnerProject.id,
+				teamName: remoteOwnerProject.name,
+			};
+			if (remoteOwnerProject.type === 'personal') {
+				const personalEmail = remoteOwnerProject.projectRelations?.find(
+					(r) => r.role === 'project:personalOwner',
+				)?.user.email;
+
+				if (!personalEmail) {
+					throw new UnexpectedError(`Failed to find owner of workflow ${local.name}`);
+				}
+				owner = {
+					type: 'personal',
+					personalEmail,
+				};
+			}
+
 			return {
 				id: local.id,
 				versionId: local.versionId,
@@ -211,8 +252,9 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
+				owner,
 			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getRemoteCredentialsFromFiles(

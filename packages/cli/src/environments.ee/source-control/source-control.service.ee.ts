@@ -663,6 +663,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -676,6 +677,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -689,6 +691,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -746,6 +749,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy && typeof item.ownedBy === 'object' ? item.ownedBy : undefined,
 			});
 		});
 
@@ -759,6 +763,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy && typeof item.ownedBy === 'object' ? item.ownedBy : undefined,
 			});
 		});
 
@@ -772,6 +777,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy && typeof item.ownedBy === 'object' ? item.ownedBy : undefined,
 			});
 		});
 		return {
