@@ -16,6 +16,29 @@ import {
 import { numberInputsProperty, configuredInputs } from './helpers';
 import { N8nLlmTracing } from '../llms/N8nLlmTracing';
 
+interface ModeleSelectionRule {
+	modelIndex: number;
+	conditions: {
+		options: {
+			caseSensitive: boolean;
+			typeValidation: 'strict' | 'loose';
+			leftValue: string;
+			version: 1 | 2;
+		};
+		conditions: Array<{
+			id: string;
+			leftValue: string;
+			rightValue: string;
+			operator: {
+				type: string;
+				operation: string;
+				name: string;
+			};
+		}>;
+		combinator: 'and' | 'or';
+	};
+}
+
 function getCallbacksArray(
 	callbacks: Callbacks | undefined,
 ): Array<BaseCallbackHandler | CallbackHandlerMethods> {
@@ -34,6 +57,7 @@ export class ModelSelector implements INodeType {
 		displayName: 'Model Selector',
 		name: 'modelSelector',
 		icon: 'fa:map-signs',
+		iconColor: 'green',
 		defaults: {
 			name: 'Model Selector',
 		},
@@ -128,7 +152,7 @@ export class ModelSelector implements INodeType {
 		}
 		models.reverse();
 
-		const rules = this.getNodeParameter('rules.rule', itemIndex, []) as any[];
+		const rules = this.getNodeParameter('rules.rule', itemIndex, []) as ModeleSelectionRule[];
 
 		if (!rules || rules.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'No rules defined', {
@@ -138,10 +162,8 @@ export class ModelSelector implements INodeType {
 		}
 
 		for (let i = 0; i < rules.length; i++) {
-			const rule = rules[i] as {
-				modelIndex: string;
-			};
-			const modelIndex = parseInt(rule.modelIndex, 10);
+			const rule = rules[i];
+			const modelIndex = rule.modelIndex;
 
 			if (modelIndex <= 0 || modelIndex > models.length) {
 				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {

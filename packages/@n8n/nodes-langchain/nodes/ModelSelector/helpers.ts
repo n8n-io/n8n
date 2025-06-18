@@ -1,4 +1,4 @@
-import type { INodeOutputConfiguration, INodeParameters, INodeProperties } from 'n8n-workflow';
+import type { INodeInputConfiguration, INodeParameters, INodeProperties } from 'n8n-workflow';
 
 export const numberInputsProperty: INodeProperties = {
 	displayName: 'Number of Inputs',
@@ -49,7 +49,7 @@ export const numberInputsProperty: INodeProperties = {
 		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
 };
 
-export function configuredInputs(parameters: INodeParameters): INodeOutputConfiguration[] {
+export function configuredInputs(parameters: INodeParameters): INodeInputConfiguration[] {
 	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
 		type: 'ai_languageModel',
 		displayName: `Model ${(i + 1).toString()}`,
