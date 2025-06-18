@@ -26,18 +26,16 @@ export interface N8nStateMachine {
 export interface CurrentState {
 	currentState: string;
 	// Statename -> SlotName -> SlotValue
-	slots: Map<string, Map<string, GenericValue>>;
+	slots: Map<string, Record<string, GenericValue>>;
 }
 
 export interface BaseN8nStateManager {
 	getStateSchema(): DynamicZodObject;
 	getCurrentState: () => string;
 	getPrompt: () => string;
-	setState: (
-		context: IExecuteFunctions,
-		slotName: string,
-		slotValue: unknown,
-	) => Promise<CurrentState | undefined>;
+	setState: (slotValue: { slotName: string; value: GenericValue }) => Promise<
+		CurrentState | undefined
+	>;
 	clearState: (context: IExecuteFunctions) => Promise<void>;
 }
 

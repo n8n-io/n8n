@@ -39,7 +39,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
 	const stateManager = await getOptionalStateManager(this);
-	const tools = await getTools(this, outputParser);
+	const tools = await getTools(this, outputParser, stateManager);
 	const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
 	const delayBetweenBatches = this.getNodeParameter(
 		'options.batching.delayBetweenBatches',

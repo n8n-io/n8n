@@ -319,11 +319,14 @@ export async function getTools(
 	}
 
 	if (stateManager) {
-		const schema = stateManager.getSchema();
+		const schema = stateManager.getStateSchema();
+
 		const structuredSetStateTool = new DynamicStructuredTool({
 			schema,
 			name: 'set_state',
-			func: async () => stateManager.setState.bind(stateManager),
+			description:
+				'Use this tool to save the state of the slots. Make sure to save the information as soon as you got it',
+			func: async (toolArgs: any) => stateManager.setState(toolArgs),
 		});
 
 		tools.push(structuredSetStateTool);

@@ -1,16 +1,15 @@
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 import type {
-	IExecuteFunctions,
 	GenericValue,
 	ISupplyDataFunctions,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { getSessionId } from '@utils/helpers';
 import type { CurrentState, N8nStateMachine, N8nStateManager } from '@utils/N8nStateManager';
-import { z } from 'zod';
 
 export class SlotFillingStateSingleton {
 	private static instance: SlotFillingStateSingleton;
@@ -139,8 +138,15 @@ export class SlotFillingState implements INodeType {
 		const stateManager: N8nStateManager = {
 			getStateSchema: () => {
 				// return the schema as a Zod object with string keys (slotNames) and values as GenericValue
+				// return z
+				// 	.object({
+				// 		slots: z
+				// 			.record(z.string(), z.any())
+				// 			.describe('Values of the slots to save to the state'),
+				// 	})
 				return z.object({
-					slots: z.record(z.string(), z.any()),
+					slotName: z.string(),
+					value: z.any(),
 				});
 			},
 			getCurrentState: () => {
@@ -149,9 +155,23 @@ export class SlotFillingState implements INodeType {
 			},
 			getPrompt: () => {
 				const state = singleton.getState(sessionId);
-				return `Current state: ${state?.currentState ?? 'unknown'}`;
+				const currentStateName = state ? state.currentState : parsedStateSchema.initialState;
+
+				const slots = state?.slots ?? new Map();
+
+				// Return current state and state of the slots
+				return `
+Current State: ${currentStateName}
+State description: ${JSON.stringify(
+					parsedStateSchema.states.find((s) => s.name === currentStateName),
+					null,
+					2,
+				)}
+Current Slots:
+${JSON.stringify(Object.fromEntries(slots.entries()), null, 2)}
+`;
 			},
-			setState: async (context: IExecuteFunctions, slotName, slotValue) => {
+			setState: (slotValue: { slotName: string; value: GenericValue }) => {
 				const state =
 					singleton.getState(sessionId) ??
 					({
@@ -159,14 +179,52 @@ export class SlotFillingState implements INodeType {
 						slots: new Map(),
 					} as CurrentState);
 
-				if (!state.slots.has(state.currentState)) {
-					state.slots.set(state.currentState, new Map());
+				// Update the slots for the current state
+				const currentSlots = state.slots.get(state.currentState);
+				state.slots.set(state.currentState, {
+					...currentSlots,
+					[slotValue.slotName]: slotValue.value,
+				});
+
+				// If all required slots are filled, move to the next state
+				const currentStateDefinition = parsedStateSchema.states.find(
+					(s) => s.name === state.currentState,
+				);
+
+				if (
+					currentStateDefinition &&
+					currentStateDefinition.slots.every(
+						(slot) =>
+							!slot.required ||
+							(state.slots.get(state.currentState)?.hasOwnProperty(slot.name) ?? false),
+					)
+				) {
+					const nextState = parsedStateSchema.states.find(
+						(s) => s.name === currentStateDefinition.targetState,
+					);
+					if (nextState) {
+						state.currentState = nextState.name;
+					}
 				}
 
-				state.slots.get(state.currentState)?.set(slotName, slotValue as GenericValue);
-
 				singleton.updateState(sessionId, state);
-				return singleton.getState(sessionId) as CurrentState;
+
+				console.log('State saved:' + JSON.stringify(state, null, 2));
+
+				const currentStateName = state ? state.currentState : parsedStateSchema.initialState;
+
+				const slots = state?.slots ?? new Map();
+
+				return `
+Current State: ${currentStateName}
+State description: ${JSON.stringify(
+					parsedStateSchema.states.find((s) => s.name === currentStateName),
+					null,
+					2,
+				)}
+Current Slots:
+${JSON.stringify(Object.fromEntries(slots.entries()), null, 2)}
+`;
 			},
 			clearState: async () => {
 				singleton.deleteState(sessionId);
