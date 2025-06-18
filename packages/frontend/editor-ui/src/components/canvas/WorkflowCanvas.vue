@@ -9,10 +9,9 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { templateRef, throttledRef } from '@vueuse/core';
-import ExperimentalCanvasNodeSettings from './elements/nodes/render-types/parts/ExperimentalCanvasNodeSettings.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
-import { N8nText } from '@n8n/design-system';
+import ExperimentalNodeDetailsDrawer from './components/ExperimentalNodeDetailsDrawer.vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -90,21 +89,10 @@ useViewportAutoAdjust(wrapper, viewport, setViewport);
 			/>
 		</div>
 		<slot />
-		<div
+		<ExperimentalNodeDetailsDrawer
 			v-if="settingsStore.experimental__dockedNodeSettingsEnabled && !props.readOnly"
-			:class="$style.settings"
-		>
-			<N8nText v-if="getSelectedNodes.length > 1" color="text-base">
-				{{ getSelectedNodes.length }} nodes selected
-			</N8nText>
-			<!-- key attribute as temporary fix for an initialization issue -->
-			<ExperimentalCanvasNodeSettings
-				v-else-if="getSelectedNodes.length === 1"
-				:key="getSelectedNodes[0]?.id"
-				:node-id="getSelectedNodes[0]?.id"
-				can-open-ndv
-			/>
-		</div>
+			:selected-nodes="getSelectedNodes"
+		/>
 	</div>
 </template>
 
@@ -124,21 +112,5 @@ useViewportAutoAdjust(wrapper, viewport, setViewport);
 	display: block;
 	align-items: stretch;
 	justify-content: stretch;
-}
-
-.settings {
-	z-index: 10;
-	flex-grow: 0;
-	flex-shrink: 0;
-	border-left: var(--border-base);
-	width: #{$node-creator-width};
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: width 0.2s ease;
-
-	&:empty {
-		width: 0;
-	}
 }
 </style>

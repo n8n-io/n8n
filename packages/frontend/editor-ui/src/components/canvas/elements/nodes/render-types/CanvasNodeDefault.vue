@@ -7,7 +7,7 @@ import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
-import ExperimentalCanvasNodeSettings from './parts/ExperimentalCanvasNodeSettings.vue';
+import ExperimentalCanvasNodeSettings from '../../../components/ExperimentalCanvasNodeSettings.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
