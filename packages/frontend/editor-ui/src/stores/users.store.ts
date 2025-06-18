@@ -91,6 +91,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const isCalloutDismissed = (callout: string) =>
+		Boolean(currentUser.value?.settings?.dismissedCallouts?.[callout]);
+
+	const setCalloutDismissed = (callout: string) => {
+		if (currentUser.value?.settings) {
+			if (!currentUser.value?.settings?.dismissedCallouts) {
+				currentUser.value.settings.dismissedCallouts = {};
+			}
+
+			currentUser.value.settings.dismissedCallouts[callout] = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -251,6 +264,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
+		return user;
+	};
+
+	const updateUserName = async (params: { firstName: string; lastName: string }) => {
+		if (!currentUser.value) {
+			return;
+		}
+
+		return await updateUser({
+			email: currentUser.value.email as string,
+			...params,
+		});
 	};
 
 	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
@@ -417,6 +442,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		validatePasswordToken,
 		changePassword,
 		updateUser,
+		updateUserName,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,
@@ -437,6 +463,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		isCalloutDismissed,
+		setCalloutDismissed,
 		submitContactEmail,
 	};
 });

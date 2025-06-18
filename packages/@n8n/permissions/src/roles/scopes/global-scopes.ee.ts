@@ -77,6 +77,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:delete',
 	'insights:list',
 	'folder:move',
+	'oidc:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

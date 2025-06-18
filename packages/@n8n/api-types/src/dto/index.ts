@@ -72,3 +72,5 @@ export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
 export { UsersListFilterDto } from './user/users-list-filter.dto';
+
+export { OidcConfigDto } from './oidc/config.dto';

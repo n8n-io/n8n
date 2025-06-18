@@ -3,10 +3,10 @@ import { useRouter } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
-import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -20,7 +20,7 @@ vi.mock('vue-router', () => {
 });
 
 let pinia: ReturnType<typeof createTestingPinia>;
-let ssoStore: ReturnType<typeof useSSOStore>;
+let usersStore: ReturnType<typeof useUsersStore>;
 let router: ReturnType<typeof useRouter>;
 
 const renderComponent = createComponentRenderer(SamlOnboarding);
@@ -34,7 +34,7 @@ describe('SamlOnboarding', () => {
 				},
 			},
 		});
-		ssoStore = useSSOStore(pinia);
+		usersStore = useUsersStore(pinia);
 		router = useRouter();
 	});
 
@@ -43,7 +43,7 @@ describe('SamlOnboarding', () => {
 	});
 
 	it('should submit filled in form only and redirect', async () => {
-		vi.spyOn(ssoStore, 'updateUser').mockResolvedValue({
+		vi.spyOn(usersStore, 'updateUserName').mockResolvedValue({
 			id: '1',
 			isPending: false,
 		});
@@ -56,14 +56,14 @@ describe('SamlOnboarding', () => {
 		await userEvent.click(submit);
 		await waitAllPromises();
 
-		expect(ssoStore.updateUser).not.toHaveBeenCalled();
+		expect(usersStore.updateUserName).not.toHaveBeenCalled();
 		expect(router.push).not.toHaveBeenCalled();
 
 		await userEvent.type(inputs[0], 'test');
 		await userEvent.type(inputs[1], 'test');
 		await userEvent.click(submit);
 
-		expect(ssoStore.updateUser).toHaveBeenCalled();
+		expect(usersStore.updateUserName).toHaveBeenCalled();
 		expect(router.push).toHaveBeenCalled();
 	});
 });

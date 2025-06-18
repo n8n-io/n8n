@@ -1251,6 +1251,7 @@ export type NodePropertyTypes =
 	| 'fixedCollection'
 	| 'hidden'
 	| 'json'
+	| 'callout'
 	| 'notice'
 	| 'multiOptions'
 	| 'number'
@@ -1294,6 +1295,12 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
+export type CalloutActionType = 'openRagStarterTemplate';
+export interface CalloutAction {
+	type: CalloutActionType;
+	label: string;
+}
+
 export interface INodePropertyTypeOptions {
 	// Supported by: button
 	buttonConfig?: {
@@ -1326,6 +1333,7 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	calloutAction?: CalloutAction; // Supported by: callout
 	[key: string]: any;
 }
 
@@ -2135,6 +2143,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to
@@ -2144,6 +2155,7 @@ export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		originalDestinationNode?: string;
 		runNodeFilter?: string[];
 	};
 	resultData: {
@@ -2835,6 +2847,7 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
+	dismissedCallouts?: Record<string, boolean>;
 }
 
 export interface IProcessedDataConfig {
