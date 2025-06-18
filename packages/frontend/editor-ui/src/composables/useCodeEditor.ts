@@ -109,7 +109,12 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
-	const { createWorker: createTsWorker } = useTypescript(editor, mode, id, contextNodeName);
+	const { createWorker: createTsWorker } = useTypescript(
+		editor,
+		mode,
+		id,
+		targetNodeParameterContext,
+	);
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
