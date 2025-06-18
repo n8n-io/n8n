@@ -21,7 +21,7 @@ export const userProjectSchema = z.object({
 });
 
 export const userListItemSchema = z.object({
-	id: z.string().optional(),
+	id: z.string(),
 	firstName: z.string().nullable().optional(),
 	lastName: z.string().nullable().optional(),
 	email: z.string().email().nullable().optional(),
