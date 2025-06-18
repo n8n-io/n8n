@@ -50,13 +50,10 @@ import {
 } from 'vue';
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
-import {
-	languageFacet,
-	type TargetNodeContext,
-	type CodeEditorLanguage,
-} from '../plugins/codemirror/format';
+import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -71,7 +68,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language,
 	languageParams,
 	placeholder,
-	contextNodeName = undefined,
+	targetNodeParameterContext = undefined,
 	extensions = [],
 	isReadOnly = false,
 	theme = {},
@@ -82,7 +79,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
-	contextNodeName?: MaybeRefOrGetter<TargetNodeContext>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{

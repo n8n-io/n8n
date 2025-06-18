@@ -19,7 +19,7 @@ import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { TargetNodeContext } from '../format';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -192,12 +192,12 @@ export function resolveAutocompleteExpression(expression: string, contextNodeNam
 
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
-export const isInHttpNodePagination = (targetNodeContext?: TargetNodeContext) => {
+export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodeParameterContext) => {
 	let nodeType: string | undefined;
 	let path: string;
-	if (targetNodeContext) {
-		nodeType = targetNodeContext.nodeName;
-		path = targetNodeContext.parameterPath;
+	if (targetNodeParameterContext) {
+		nodeType = targetNodeParameterContext.nodeName;
+		path = targetNodeParameterContext.parameterPath;
 	} else {
 		const ndvStore = useNDVStore();
 		nodeType = ndvStore.activeNode?.type;
@@ -207,9 +207,9 @@ export const isInHttpNodePagination = (targetNodeContext?: TargetNodeContext) =>
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = (targetNodeContext?: TargetNodeContext) =>
-	(targetNodeContext !== undefined &&
-		useWorkflowsStore().getNodeByName(targetNodeContext.nodeName) !== null) ||
+export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
+	(targetNodeParameterContext !== undefined &&
+		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
 	useNDVStore().activeNode?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>

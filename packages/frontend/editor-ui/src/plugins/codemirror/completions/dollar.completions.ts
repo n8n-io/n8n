@@ -18,9 +18,9 @@ import {
 	PREVIOUS_NODES_SECTION,
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
+	TARGET_NODE_PARAMETER_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
-import { targetNodeFacet } from '../format';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -118,13 +118,13 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 			: [];
 	}
 
-	const targetNodeContext = context.state.facet(targetNodeFacet);
+	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 
-	if (!hasActiveNode(targetNodeContext)) {
+	if (!hasActiveNode(targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (receivesNoBinaryData(targetNodeContext?.nodeName)) SKIP.add('$binary');
+	if (receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => {
 		const label = `$('${escapeMappingString(nodeName)}')`;

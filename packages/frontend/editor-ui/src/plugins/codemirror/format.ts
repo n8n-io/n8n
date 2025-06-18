@@ -10,18 +10,6 @@ export const languageFacet = Facet.define<CodeEditorLanguage, CodeEditorLanguage
 	combine: (values) => values[0] ?? 'javaScript',
 });
 
-export type TargetNodeContext = {
-	parameterPath: string;
-	nodeName: string;
-};
-
-export const targetNodeFacet = Facet.define<
-	TargetNodeContext | undefined,
-	TargetNodeContext | undefined
->({
-	combine: (values) => values[0],
-});
-
 export function formatDocument(view: EditorView) {
 	function format(parser: BuiltInParserName) {
 		void formatWithCursor(view.state.doc.toString(), {
