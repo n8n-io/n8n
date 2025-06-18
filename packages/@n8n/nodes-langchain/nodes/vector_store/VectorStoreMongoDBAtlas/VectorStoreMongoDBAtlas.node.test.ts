@@ -12,9 +12,11 @@ describe('VectorStoreMongoDBAtlas -> getMongoClient', () => {
 	};
 	const mockClient1 = {
 		connect: jest.fn().mockResolvedValue(undefined),
+		close: jest.fn().mockResolvedValue(undefined),
 	};
 	const mockClient2 = {
 		connect: jest.fn().mockResolvedValue(undefined),
+		close: jest.fn().mockResolvedValue(undefined),
 	};
 	const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
 
@@ -38,6 +40,8 @@ describe('VectorStoreMongoDBAtlas -> getMongoClient', () => {
 			appName: 'devrel.integration.n8n_vector_integ',
 		});
 		expect(mockClient1.connect).toHaveBeenCalledTimes(1);
+		expect(mockClient1.close).not.toHaveBeenCalled();
+		expect(mockClient2.connect).not.toHaveBeenCalled();
 		expect(client1).toBe(mockClient1);
 		expect(client2).toBe(mockClient1);
 	});
@@ -65,7 +69,9 @@ describe('VectorStoreMongoDBAtlas -> getMongoClient', () => {
 			appName: 'devrel.integration.n8n_vector_integ',
 		});
 		expect(mockClient1.connect).toHaveBeenCalledTimes(1);
+		expect(mockClient1.close).toHaveBeenCalledTimes(1);
 		expect(mockClient2.connect).toHaveBeenCalledTimes(1);
+		expect(mockClient2.close).not.toHaveBeenCalled();
 		expect(client1).toBe(mockClient1);
 		expect(client2).toBe(mockClient2);
 	});

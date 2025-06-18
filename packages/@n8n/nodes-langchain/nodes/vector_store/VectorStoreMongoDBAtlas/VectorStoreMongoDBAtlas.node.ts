@@ -112,6 +112,10 @@ export async function getMongoClient(context: any) {
 	const credentials = await context.getCredentials('mongoDb');
 	const connectionString = credentials.connectionString as string;
 	if (!mongoConfig.client || mongoConfig.connectionString !== connectionString) {
+		if (mongoConfig.client) {
+			await mongoConfig.client.close();
+		}
+
 		mongoConfig.connectionString = connectionString;
 		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
