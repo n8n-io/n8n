@@ -98,35 +98,32 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	}
 }
 
-// Scroll selected row into view
 watch(
-	() => selected?.id,
-	async (selection) => {
+	[() => selected?.id, () => flatLogEntries.length],
+	async ([selection, flatEntryCount]) => {
 		// Wait for the node to be added to the list, and then scroll
 		await nextTick(() => {
-			if (selection && virtualList.list.value.every((e) => e.data.id !== selection)) {
-				const index = flatLogEntries.findIndex((e) => e.id === selection);
-
-				if (index >= 0) {
-					virtualList.scrollTo(index);
+			if (selection === undefined) {
+				if (execution?.status === 'running') {
+					// Scroll to the bottom if there's no selection
+					virtualList.scrollTo(flatEntryCount - 1);
 				}
+				return;
+			}
+
+			if (virtualList.list.value.some((e) => e.data.id === selection)) {
+				return;
+			}
+
+			const index = flatLogEntries.findIndex((e) => e.id === selection);
+
+			if (index >= 0) {
+				// Scroll selected row into view
+				virtualList.scrollTo(index);
 			}
 		});
 	},
 	{ immediate: true },
-);
-
-// Scroll to the bottom if there's no selection
-watch(
-	() => flatLogEntries.length,
-	async (flatEntryCount) => {
-		// Wait for the node to be added to the list, and then scroll
-		await nextTick(() => {
-			if (selected === undefined) {
-				virtualList.scrollTo(flatEntryCount - 1);
-			}
-		});
-	},
 );
 </script>
 
