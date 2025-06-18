@@ -913,8 +913,12 @@ export class WorkflowDataProxy {
 		}
 
 		const normalizePairedItem = (
-			paired: number | IPairedItemData | Array<number | IPairedItemData>,
+			paired: number | IPairedItemData | Array<number | IPairedItemData> | null | undefined,
 		): IPairedItemData[] => {
+			if (paired === null || paired === undefined) {
+				return [];
+			}
+
 			const pairedItems = Array.isArray(paired) ? paired : [paired];
 
 			return pairedItems.map((p) => (typeof p === 'number' ? { item: p } : p));
@@ -927,7 +931,7 @@ export class WorkflowDataProxy {
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
 			nodeBeforeLast?: string,
 		): INodeExecutionData => {
-			// Step 1: Normalize inputs
+			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
 
 			if (!sourceData) {
@@ -948,12 +952,12 @@ export class WorkflowDataProxy {
 				return item;
 			}
 
-			if (!item?.pairedItem) {
-				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
-			}
-
 			// Normalize paired item to always be IPairedItemData[]
 			const nextPairedItems = normalizePairedItem(item.pairedItem);
+
+			if (nextPairedItems.length === 0) {
+				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+			}
 
 			// Recursively traverse ancestry to find the destination node + paired item
 			const results = nextPairedItems.flatMap((nextPairedItem) => {
