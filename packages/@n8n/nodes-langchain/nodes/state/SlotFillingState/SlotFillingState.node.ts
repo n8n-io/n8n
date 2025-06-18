@@ -109,6 +109,19 @@ export class SlotFillingState implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'State Schema',
+				name: 'stateSchema',
+				type: 'json',
+				default: `{
+  "some": "example"
+}`,
+				noDataExpression: true,
+				typeOptions: {
+					rows: 10,
+				},
+				description: 'Define your state machine schema here',
+			},
 		],
 	};
 
