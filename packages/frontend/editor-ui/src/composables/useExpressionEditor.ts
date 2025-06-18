@@ -18,7 +18,7 @@ import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 
-import type { TargetItem } from '@/Interface';
+import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
@@ -43,7 +43,7 @@ import { ignoreUpdateAnnotation } from '../utils/forceParse';
 export const useExpressionEditor = ({
 	editorRef,
 	editorValue,
-	contextNodeName,
+	targetNodeParameterContext,
 	extensions = [],
 	additionalData = {},
 	skipSegments = [],
@@ -53,7 +53,7 @@ export const useExpressionEditor = ({
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
-	contextNodeName?: MaybeRefOrGetter<string>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	skipSegments?: MaybeRefOrGetter<string[]>;
@@ -307,15 +307,15 @@ export const useExpressionEditor = ({
 		};
 
 		try {
-			if (!ndvStore.activeNode && contextNodeName === undefined) {
+			if (!ndvStore.activeNode && targetNodeParameterContext === undefined) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
 				let opts: Record<string, unknown> = {
 					additionalKeys: toValue(additionalData),
-					contextNodeName,
+					targetNodeParameterContext,
 				};
-				if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
+				if (targetNodeParameterContext === undefined && ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
