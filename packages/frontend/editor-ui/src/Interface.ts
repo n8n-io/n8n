@@ -1058,6 +1058,11 @@ export interface NDVState {
 	highlightDraggables: boolean;
 }
 
+export type TargetNodeParameterContext = {
+	nodeName: string;
+	parameterPath: string;
+};
+
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
 }
