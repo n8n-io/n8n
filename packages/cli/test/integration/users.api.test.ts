@@ -259,10 +259,22 @@ describe('GET /users', () => {
 					data: {
 						count: 4,
 						items: [
-							{ email: expect.any(String) },
-							{ email: expect.any(String) },
-							{ email: expect.any(String) },
-							{ email: expect.any(String) },
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
 						],
 					},
 				});
@@ -275,10 +287,22 @@ describe('GET /users', () => {
 					data: {
 						count: 4,
 						items: [
-							{ firstName: expect.any(String) },
-							{ firstName: expect.any(String) },
-							{ firstName: expect.any(String) },
-							{ firstName: expect.any(String) },
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
 						],
 					},
 				});
@@ -291,10 +315,22 @@ describe('GET /users', () => {
 					data: {
 						count: 4,
 						items: [
-							{ lastName: expect.any(String) },
-							{ lastName: expect.any(String) },
-							{ lastName: expect.any(String) },
-							{ lastName: expect.any(String) },
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
 						],
 					},
 				});
@@ -311,21 +347,25 @@ describe('GET /users', () => {
 						count: 4,
 						items: [
 							{
+								id: expect.any(String),
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
 							},
 							{
+								id: expect.any(String),
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
 							},
 							{
+								id: expect.any(String),
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
 							},
 							{
+								id: expect.any(String),
 								email: expect.any(String),
 								firstName: expect.any(String),
 								lastName: expect.any(String),
@@ -400,7 +440,12 @@ describe('GET /users', () => {
 				expect(response.body).toEqual({
 					data: {
 						count: 1,
-						items: [{ firstName: expect.any(String) }],
+						items: [
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+						],
 					},
 				});
 			});
@@ -423,6 +468,7 @@ describe('GET /users', () => {
 						count: 1,
 						items: [
 							{
+								id: expect.any(String),
 								firstName: expect.any(String),
 								projectRelations: [
 									{
@@ -452,6 +498,7 @@ describe('GET /users', () => {
 						count: 1,
 						items: [
 							{
+								id: expect.any(String),
 								firstName: expect.any(String),
 								projectRelations: expect.arrayContaining([]),
 							},
