@@ -157,6 +157,82 @@ describe('AuthService', () => {
 				secure: true,
 			});
 		});
+
+		it('should update last active time if user not in cache', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+
+			let finishCallback: (() => Promise<void>) | undefined;
+			res.on.mockImplementation((event, cb: () => Promise<void>) => {
+				if (event === 'finish') finishCallback = cb;
+				return res;
+			});
+
+			await authService.authMiddleware(req, res, next);
+			if (finishCallback) await finishCallback();
+
+			expect(user.lastActiveAt).toEqual(now);
+			expect(userRepository.save).toHaveBeenCalledWith(user);
+		});
+
+		it('should not update last active time if user is in cache', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+
+			// reset the last active time cache (private variable)
+			(authService as any).lastActiveCache = new Map();
+
+			let finishCallback: (() => Promise<void>) | undefined;
+			res.on.mockImplementation((event, cb: () => Promise<void>) => {
+				if (event === 'finish') finishCallback = cb;
+				return res;
+			});
+
+			await authService.authMiddleware(req, res, next);
+			if (finishCallback) await finishCallback();
+
+			expect(userRepository.save).toHaveBeenCalled();
+
+			// Call middleware again now that the user is in cache
+			userRepository.save.mockClear();
+			await authService.authMiddleware(req, res, next);
+			if (finishCallback) await finishCallback();
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should update last active time if user is in cache but stale', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+
+			// reset the last active time cache (private variable)
+			(authService as any).lastActiveCache = new Map();
+
+			// Simulate the user being in the cache
+			let finishCallback: (() => Promise<void>) | undefined;
+			res.on.mockImplementation((event, cb: () => Promise<void>) => {
+				if (event === 'finish') finishCallback = cb;
+				return res;
+			});
+
+			await authService.authMiddleware(req, res, next);
+			if (finishCallback) await finishCallback();
+
+			expect(userRepository.save).toHaveBeenCalledWith(user);
+
+			userRepository.save.mockClear();
+			jest.advanceTimersByTime(3 * Time.minutes.toMilliseconds);
+
+			// Call middleware again now that the user is in cache with a stale last active time
+			await authService.authMiddleware(req, res, next);
+			if (finishCallback) await finishCallback();
+
+			expect(user.lastActiveAt!.getTime()).toEqual(now.getTime() + 3 * Time.minutes.toMilliseconds);
+			expect(userRepository.save).toHaveBeenCalledWith(user);
+		});
 	});
 
 	describe('issueCookie', () => {

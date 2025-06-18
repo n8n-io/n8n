@@ -36,10 +36,14 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+const LAST_ACTIVE_CACHE_TTL = 2 * Time.minutes.toMilliseconds;
+
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
 	private skipBrowserIdCheckEndpoints: string[];
+
+	private lastActiveCache = new Map<string, number>();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -68,6 +72,16 @@ export class AuthService {
 		];
 	}
 
+	async updateLastActiveIfStale(user: User) {
+		const now = Date.now();
+		const last = this.lastActiveCache.get(user.id) ?? 0;
+		if (now - last > LAST_ACTIVE_CACHE_TTL) {
+			user.lastActiveAt = new Date();
+			await this.userRepository.save(user);
+			this.lastActiveCache.set(user.id, now);
+		}
+	}
+
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (token) {
@@ -84,8 +98,12 @@ export class AuthService {
 			}
 		}
 
-		if (req.user) next();
-		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		if (req.user) {
+			res.on('finish', async () => {
+				await this.updateLastActiveIfStale(req.user);
+			});
+			next();
+		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 
 	clearCookie(res: Response) {
