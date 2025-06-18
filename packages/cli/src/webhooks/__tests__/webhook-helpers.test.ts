@@ -13,7 +13,12 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
-import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
@@ -38,6 +43,15 @@ describe('autoDetectResponseMode', () => {
 	beforeEach(() => {
 		workflow = mock<Workflow>();
 		workflow.nodes = {};
+	});
+
+	test('should return hostedChat when start node is CHAT_TRIGGER_NODE_TYPE, method is POST, and public is true', () => {
+		const workflowStartNode = mock<INode>({
+			type: CHAT_TRIGGER_NODE_TYPE,
+			parameters: { public: true },
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('hostedChat');
 	});
 
 	test('should return undefined if start node is WAIT_NODE_TYPE with resume not equal to form', () => {

@@ -21,6 +21,39 @@ describe('ChatService', () => {
 		mockWs = mock<WebSocket>();
 	});
 
+	it('should handle missing execution gracefully', async () => {
+		const req = {
+			ws: mockWs,
+			query: {
+				sessionId: '123',
+				executionId: '42',
+				isPublic: false,
+			},
+		} as unknown as ChatRequest;
+
+		mockExecutionManager.findExecution.mockResolvedValue(undefined);
+
+		try {
+			await chatService.startSession(req);
+		} catch (error) {
+			expect(error).toBeDefined();
+			expect(mockWs.send).toHaveBeenCalledWith('Execution with id "42" does not exist');
+		}
+	});
+
+	it('should handle missing WebSocket connection gracefully', async () => {
+		const req = {
+			ws: null,
+			query: {
+				sessionId: 'abc',
+				executionId: '123',
+				isPublic: false,
+			},
+		} as unknown as ChatRequest;
+
+		await expect(chatService.startSession(req)).rejects.toThrow('WebSocket connection is missing');
+	});
+
 	describe('startSession', () => {
 		it('should reject if sessionId or executionId is missing', () => {
 			const req = {
@@ -38,7 +71,7 @@ describe('ChatService', () => {
 			expect(mockWs.close).toHaveBeenCalledWith(1008);
 		});
 
-		it('should start a session and store it in sessions map', () => {
+		it('should start a session and store it in sessions map', async () => {
 			const mockWs = mock<WebSocket>();
 			// @ts-ignore override private readonly
 			mockWs.readyState = WebSocket.OPEN;
@@ -52,7 +85,9 @@ describe('ChatService', () => {
 				},
 			} as unknown as ChatRequest;
 
-			void chatService.startSession(req);
+			mockExecutionManager.findExecution.mockResolvedValue({ id: '123' } as any);
+
+			await chatService.startSession(req);
 
 			const sessionKey = 'abc|123|public';
 			const session = (chatService as any).sessions.get(sessionKey);
@@ -91,11 +126,12 @@ describe('ChatService', () => {
 				isPublic: false,
 			});
 
+			mockExecutionManager.findExecution.mockResolvedValue({ id: '123' } as any);
+
 			await chatService.startSession(req);
 
 			expect(previousConnection.terminate).toHaveBeenCalled();
 			expect(clearIntervalSpy).toHaveBeenCalledWith(dummyInterval);
-			console.log((chatService as any).sessions.get(sessionKey));
 			expect((chatService as any).sessions.get(sessionKey).connection).toBe(mockWs);
 			clearIntervalSpy.mockRestore();
 		});

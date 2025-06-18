@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 
 import { ChatExecutionManager } from './chat-execution-manager';
@@ -52,9 +52,21 @@ export class ChatService {
 			query: { sessionId, executionId, isPublic },
 		} = req;
 
+		if (!ws) {
+			throw new UnexpectedError('WebSocket connection is missing');
+		}
+
 		if (!sessionId || !executionId) {
 			const parameter = sessionId ? 'executionId' : 'sessionId';
 			ws.send(`The query parameter "${parameter}" is missing`);
+			ws.close(1008);
+			return;
+		}
+
+		const execution = await this.executionManager.findExecution(executionId);
+
+		if (!execution) {
+			ws.send(`Execution with id "${executionId}" does not exist`);
 			ws.close(1008);
 			return;
 		}

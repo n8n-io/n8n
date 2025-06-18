@@ -1,6 +1,6 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { ExecuteContext } from 'n8n-core';
 import type {
 	IBinaryKeyData,
@@ -19,10 +19,15 @@ import { OwnershipService } from '../services/ownership.service';
 
 @Service()
 export class ChatExecutionManager {
-	constructor(private readonly executionRepository: ExecutionRepository) {}
+	constructor(
+		private readonly executionRepository: ExecutionRepository,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly ownershipService: OwnershipService,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
 	async runWorkflow(execution: IExecutionResponse, message: ChatMessage) {
-		await Container.get(WorkflowRunner).run(
+		await this.workflowRunner.run(
 			await this.getRunData(execution, message),
 			true,
 			true,
@@ -58,7 +63,7 @@ export class ChatExecutionManager {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: workflowData.active,
-			nodeTypes: Container.get(NodeTypes),
+			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
@@ -126,7 +131,7 @@ export class ChatExecutionManager {
 
 		let project: Project | undefined = undefined;
 		try {
-			project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+			project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
 		} catch (error) {
 			throw new NotFoundError('Cannot find workflow');
 		}
