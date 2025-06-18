@@ -290,7 +290,7 @@ function onActivate(event: MouseEvent) {
 
 			.statusIcons {
 				position: static;
-				margin-right: var(--canvas-node--status-icons-offset);
+				margin-right: var(--spacing-2xs);
 			}
 
 			.description {
