@@ -87,6 +87,7 @@
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
+      "dist/nodes/a2a/A2aServerTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
@@ -151,6 +152,7 @@
     "tsup": "catalog:"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^0.2.1",
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
     "@getzep/zep-cloud": "1.0.12",
