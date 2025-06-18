@@ -5,7 +5,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -80,11 +80,9 @@ export class MongoDb implements INodeType {
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
-						// TODO - bailey: revert
-						await client.db(database).createCollection('bar');
-						// throw new ApplicationError(`Database "${database}" does not exist`, {
-						// 	level: 'warning',
-						// });
+						throw new ApplicationError(`Database "${database}" does not exist`, {
+							level: 'warning',
+						});
 					}
 					await client.close();
 				} catch (error) {
@@ -442,9 +440,7 @@ export class MongoDb implements INodeType {
 							json,
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
 						}));
-						returnData.push(
-							...result,
-						);
+						returnData.push(...result);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({
@@ -471,8 +467,7 @@ export class MongoDb implements INodeType {
 							},
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
 						});
-					}
-					catch (error) {
+					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: (error as JsonObject).message },
@@ -482,7 +477,6 @@ export class MongoDb implements INodeType {
 						}
 						throw error;
 					}
-
 				}
 			}
 
@@ -545,7 +539,7 @@ export class MongoDb implements INodeType {
 				}
 			}
 		} finally {
-			await client.close().catch(() => { });
+			await client.close().catch(() => {});
 		}
 
 		return [stringifyObjectIDs(returnData)];
