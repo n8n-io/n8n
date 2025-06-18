@@ -41,6 +41,7 @@ export class PublicApiKeyService {
 	) {
 		const apiKey = this.generateApiKey(user, expiresAt);
 		await this.apiKeyRepository.insert(
+			// @ts-ignore CAT-957
 			this.apiKeyRepository.create({
 				userId: user.id,
 				apiKey,

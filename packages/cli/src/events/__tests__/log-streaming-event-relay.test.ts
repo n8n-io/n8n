@@ -1,5 +1,6 @@
 import type { IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -10,7 +11,9 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = new EventService();
-	new LogStreamingEventRelay(eventService, eventBus).init();
+	const hostId = 'host-xyz';
+	const instanceSettings = mock<InstanceSettings>({ hostId });
+	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
 
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -223,6 +226,35 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log job completion on `workflow-post-execute` for successful job', () => {
+			const runData = mock<IRun>({
+				finished: true,
+				status: 'success',
+				mode: 'manual',
+				jobId: '12345',
+				data: { resultData: {} },
+			});
+
+			const event = {
+				executionId: 'exec-123',
+				userId: 'user-456',
+				workflow: mock<IWorkflowBase>({ id: 'wf-789', name: 'Test Workflow' }),
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			expect(eventBus.sendQueueEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.queue.job.completed',
+				payload: {
+					executionId: 'exec-123',
+					workflowId: 'wf-789',
+					hostId: 'host-xyz',
+					jobId: '12345',
+				},
+			});
+		});
+
 		it('should log on `workflow-post-execute` event for failed execution', () => {
 			const runData = mock<IRun>({
 				status: 'error',
@@ -263,6 +295,45 @@ describe('LogStreamingEventRelay', () => {
 					lastNodeExecuted: 'some-node',
 					errorNodeType: 'some-type',
 					errorMessage: 'some-message',
+				},
+			});
+		});
+
+		it('should log job failure on `workflow-post-execute` for failed job', () => {
+			const runData = mock<IRun>({
+				finished: false,
+				status: 'error',
+				mode: 'manual',
+				jobId: '67890',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'some-node',
+						// @ts-expect-error Partial mock
+						error: {
+							node: mock<INode>({ type: 'some-type' }),
+							message: 'some-message',
+						},
+						errorMessage: 'some-message',
+					},
+				},
+			}) as unknown as IRun;
+
+			const event = {
+				executionId: 'exec-456',
+				userId: 'user-789',
+				workflow: mock<IWorkflowBase>({ id: 'wf-101', name: 'Failed Workflow' }),
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			expect(eventBus.sendQueueEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.queue.job.failed',
+				payload: {
+					executionId: 'exec-456',
+					workflowId: 'wf-101',
+					hostId: 'host-xyz',
+					jobId: '67890',
 				},
 			});
 		});
@@ -1304,6 +1375,71 @@ describe('LogStreamingEventRelay', () => {
 					nodeId: 'n-2',
 					executionId: 'e-3',
 					workflowId: 'w-4',
+				},
+			});
+		});
+	});
+
+	describe('job events', () => {
+		it('should log on `job-enqueued` event', () => {
+			const event: RelayEventMap['job-enqueued'] = {
+				executionId: 'exec-1',
+				workflowId: 'wf-2',
+				hostId,
+				jobId: 'job-4',
+			};
+
+			eventService.emit('job-enqueued', event);
+
+			expect(eventBus.sendQueueEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.queue.job.enqueued',
+				payload: {
+					executionId: 'exec-1',
+					workflowId: 'wf-2',
+					hostId,
+					jobId: 'job-4',
+				},
+			});
+		});
+
+		it('should log on `job-dequeued` event', () => {
+			const event: RelayEventMap['job-dequeued'] = {
+				executionId: 'exec-1',
+				workflowId: 'wf-2',
+				hostId,
+				jobId: 'job-4',
+			};
+
+			eventService.emit('job-dequeued', event);
+
+			expect(eventBus.sendQueueEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.queue.job.dequeued',
+				payload: {
+					executionId: 'exec-1',
+					workflowId: 'wf-2',
+					hostId,
+					jobId: 'job-4',
+				},
+			});
+		});
+
+		it('should log on `job-stalled` event', () => {
+			const event: RelayEventMap['job-stalled'] = {
+				executionId: 'exec-1',
+				workflowId: 'wf-2',
+				hostId,
+				jobId: 'job-4',
+			};
+
+			eventService.emit('job-stalled', event);
+
+			expect(eventBus.sendQueueEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.queue.job.stalled',
+				payload: {
+					executionId: 'exec-1',
+					workflowId: 'wf-2',
+					hostId,
+					jobId: 'job-4',
 				},
 			});
 		});

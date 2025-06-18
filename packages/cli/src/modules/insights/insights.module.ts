@@ -8,7 +8,7 @@ import { InsightsByPeriod } from './database/entities/insights-by-period';
 import { InsightsMetadata } from './database/entities/insights-metadata';
 import { InsightsRaw } from './database/entities/insights-raw';
 
-@BackendModule()
+@BackendModule({ name: 'insights' })
 export class InsightsModule implements ModuleInterface {
 	async init() {
 		const { instanceType } = Container.get(InstanceSettings);
@@ -27,5 +27,10 @@ export class InsightsModule implements ModuleInterface {
 
 	entities() {
 		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
+	}
+
+	async settings() {
+		const { InsightsService } = await import('./insights.service');
+		return Container.get(InsightsService).settings();
 	}
 }

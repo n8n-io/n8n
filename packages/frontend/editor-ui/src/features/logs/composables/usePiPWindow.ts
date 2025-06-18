@@ -1,4 +1,4 @@
-import { IsInPiPWindowSymbol } from '@/constants';
+import { PiPWindowSymbol } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { applyThemeToBody } from '@/stores/ui.utils';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
@@ -90,7 +90,7 @@ export function usePiPWindow({
 	// Copy over dynamic styles to PiP window to support lazily imported modules
 	observer.observe(document.head, { childList: true, subtree: true });
 
-	provide(IsInPiPWindowSymbol, isPoppedOut);
+	provide(PiPWindowSymbol, pipWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
 
 	async function showPip() {

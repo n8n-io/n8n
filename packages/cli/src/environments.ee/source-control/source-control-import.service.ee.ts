@@ -562,6 +562,7 @@ export class SourceControlImportService {
 					newSharedCredential.projectId = remoteOwnerProject?.id ?? personalProject.id;
 					newSharedCredential.role = 'credential:owner';
 
+					// @ts-ignore CAT-957
 					await this.sharedCredentialsRepository.upsert({ ...newSharedCredential }, [
 						'credentialsId',
 						'projectId',
@@ -616,6 +617,7 @@ export class SourceControlImportService {
 					);
 				}
 
+				// @ts-ignore CAT-957
 				const tagCopy = this.tagRepository.create(tag);
 				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
@@ -672,6 +674,7 @@ export class SourceControlImportService {
 					},
 				});
 
+				// @ts-ignore CAT-957
 				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },

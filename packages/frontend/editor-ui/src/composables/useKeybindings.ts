@@ -3,7 +3,11 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
 import { computed, unref } from 'vue';
 
-type KeyMap = Record<string, (event: KeyboardEvent) => void>;
+type KeyboardEventHandler =
+	| ((event: KeyboardEvent) => void)
+	| { disabled: () => boolean; run: (event: KeyboardEvent) => void };
+
+export type KeyMap = Partial<Record<string, KeyboardEventHandler>>;
 
 /**
  * Binds a `keydown` event to `document` and calls the approriate
@@ -134,11 +138,13 @@ export const useKeybindings = (
 		// - Dvorak works correctly
 		// - Non-ansi layouts work correctly
 		const handler = normalizedKeymap.value[byKey] ?? normalizedKeymap.value[byCode];
+		const run =
+			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 
-		if (handler) {
+		if (run) {
 			event.preventDefault();
 			event.stopPropagation();
-			handler(event);
+			run(event);
 		}
 	}
 

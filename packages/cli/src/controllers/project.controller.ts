@@ -204,7 +204,7 @@ export class ProjectController {
 		@Param('projectId') projectId: string,
 	) {
 		const { name, icon, relations, description } = payload;
-		if ([name, icon, description].some((data) => typeof data === 'string')) {
+		if (name || icon || description) {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
 		if (relations) {
