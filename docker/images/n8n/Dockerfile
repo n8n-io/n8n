@@ -15,7 +15,7 @@ RUN node .github/scripts/trim-fe-packageJson.js
 # in `pnpm deploy`. However, we need to remove FE patches because we trim the FE
 # package.json files and `pnpm deploy` will fail otherwise. element-plus is the
 # only FE patch that we need to remove.
-RUN jq 'del(.pnpm.patchedDependencies."element-plus@2.4.3")' package.json > package.json.tmp; mv package.json.tmp package.json
+RUN jq '.pnpm.patchedDependencies |= with_entries(select(.key | startswith("pdfjs-dist") or startswith("pkce-challenge")))' package.json > package.json.tmp; mv package.json.tmp package.json
 
 # Delete any source code or typings
 RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
