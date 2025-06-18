@@ -30,7 +30,7 @@ describe('AuthService', () => {
 	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
-	const queryBuilderMock = {
+	let queryBuilderMock = {
 		update: jest.fn().mockReturnThis(),
 		set: jest.fn().mockReturnThis(),
 		where: jest.fn().mockReturnThis(),
@@ -38,8 +38,6 @@ describe('AuthService', () => {
 	};
 
 	const userRepository = mock<UserRepository>();
-	// Make sure this is set up properly
-	(userRepository.createQueryBuilder as jest.Mock).mockReturnValue(queryBuilderMock);
 
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const lastActiveAtService = new LastActiveAtService(userRepository);
@@ -61,11 +59,18 @@ describe('AuthService', () => {
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 		jest.setSystemTime(now);
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
+		queryBuilderMock = {
+			update: jest.fn().mockReturnThis(),
+			set: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			execute: jest.fn(),
+		};
+		(userRepository.createQueryBuilder as jest.Mock).mockReturnValue(queryBuilderMock);
 	});
 
 	describe('createJWTHash', () => {
