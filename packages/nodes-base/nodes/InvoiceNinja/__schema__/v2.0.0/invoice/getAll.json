@@ -1,0 +1,301 @@
+{
+    "type": "object",
+    "properties": {
+        "archived_at": {
+            "type": "integer"
+        },
+        "assigned_user_id": {
+            "type": "string"
+        },
+        "auto_bill_enabled": {
+            "type": "boolean"
+        },
+        "balance": {
+            "type": "integer"
+        },
+        "client_id": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "integer"
+        },
+        "custom_surcharge_tax1": {
+            "type": "boolean"
+        },
+        "custom_surcharge_tax2": {
+            "type": "boolean"
+        },
+        "custom_surcharge_tax3": {
+            "type": "boolean"
+        },
+        "custom_surcharge_tax4": {
+            "type": "boolean"
+        },
+        "custom_surcharge1": {
+            "type": "integer"
+        },
+        "custom_surcharge2": {
+            "type": "integer"
+        },
+        "custom_surcharge3": {
+            "type": "integer"
+        },
+        "custom_surcharge4": {
+            "type": "integer"
+        },
+        "custom_value1": {
+            "type": "string"
+        },
+        "custom_value2": {
+            "type": "string"
+        },
+        "custom_value3": {
+            "type": "string"
+        },
+        "custom_value4": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "design_id": {
+            "type": "string"
+        },
+        "discount": {
+            "type": "integer"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "entity_type": {
+            "type": "string"
+        },
+        "exchange_rate": {
+            "type": "integer"
+        },
+        "footer": {
+            "type": "string"
+        },
+        "has_expenses": {
+            "type": "boolean"
+        },
+        "has_tasks": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "invitations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "archived_at": {
+                        "type": "integer"
+                    },
+                    "client_contact_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "integer"
+                    },
+                    "email_error": {
+                        "type": "string"
+                    },
+                    "email_status": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "key": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "message_id": {
+                        "type": "string"
+                    },
+                    "opened_date": {
+                        "type": "string"
+                    },
+                    "sent_date": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "integer"
+                    },
+                    "viewed_date": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "is_amount_discount": {
+            "type": "boolean"
+        },
+        "is_deleted": {
+            "type": "boolean"
+        },
+        "last_sent_date": {
+            "type": "string"
+        },
+        "line_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "custom_value1": {
+                        "type": "string"
+                    },
+                    "custom_value2": {
+                        "type": "string"
+                    },
+                    "custom_value3": {
+                        "type": "string"
+                    },
+                    "custom_value4": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "string"
+                    },
+                    "discount": {
+                        "type": "integer"
+                    },
+                    "expense_id": {
+                        "type": "string"
+                    },
+                    "is_amount_discount": {
+                        "type": "boolean"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "product_cost": {
+                        "type": "integer"
+                    },
+                    "product_key": {
+                        "type": "string"
+                    },
+                    "sort_id": {
+                        "type": "string"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "tax_amount": {
+                        "type": "integer"
+                    },
+                    "tax_id": {
+                        "type": "string"
+                    },
+                    "tax_name1": {
+                        "type": "string"
+                    },
+                    "tax_name2": {
+                        "type": "string"
+                    },
+                    "tax_name3": {
+                        "type": "string"
+                    },
+                    "tax_rate1": {
+                        "type": "integer"
+                    },
+                    "tax_rate2": {
+                        "type": "integer"
+                    },
+                    "tax_rate3": {
+                        "type": "integer"
+                    },
+                    "type_id": {
+                        "type": "string"
+                    },
+                    "unit_code": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "next_send_date": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "partial": {
+            "type": "integer"
+        },
+        "partial_due_date": {
+            "type": "string"
+        },
+        "po_number": {
+            "type": "string"
+        },
+        "private_notes": {
+            "type": "string"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "public_notes": {
+            "type": "string"
+        },
+        "recurring_id": {
+            "type": "string"
+        },
+        "reminder_last_sent": {
+            "type": "string"
+        },
+        "reminder1_sent": {
+            "type": "string"
+        },
+        "reminder2_sent": {
+            "type": "string"
+        },
+        "reminder3_sent": {
+            "type": "string"
+        },
+        "status_id": {
+            "type": "string"
+        },
+        "subscription_id": {
+            "type": "string"
+        },
+        "tax_name1": {
+            "type": "string"
+        },
+        "tax_name2": {
+            "type": "string"
+        },
+        "tax_name3": {
+            "type": "string"
+        },
+        "tax_rate2": {
+            "type": "integer"
+        },
+        "tax_rate3": {
+            "type": "integer"
+        },
+        "terms": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "string"
+        },
+        "uses_inclusive_taxes": {
+            "type": "boolean"
+        },
+        "vendor_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

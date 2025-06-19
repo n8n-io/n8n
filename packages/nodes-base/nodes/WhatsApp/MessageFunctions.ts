@@ -115,8 +115,9 @@ export async function componentsRequest(
 		};
 
 		if (component.type === 'body') {
-			comp.parameters = (((component.bodyParameters as IDataObject)!.parameter as IDataObject[]) ||
-				[])!.map((i: IDataObject) => {
+			comp.parameters = (
+				((component.bodyParameters as IDataObject).parameter as IDataObject[]) || []
+			).map((i: IDataObject) => {
 				if (i.type === 'text') {
 					return i;
 				} else if (i.type === 'currency') {
@@ -168,12 +169,13 @@ export async function componentsRequest(
 	return requestOptions;
 }
 
+export const sanitizePhoneNumber = (phoneNumber: string) => phoneNumber.replace(/[\-\(\)\+]/g, '');
+
 export async function cleanPhoneNumber(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	let phoneNumber = this.getNodeParameter('recipientPhoneNumber') as string;
-	phoneNumber = phoneNumber.replace(/[\-\(\)\+]/g, '');
+	const phoneNumber = sanitizePhoneNumber(this.getNodeParameter('recipientPhoneNumber') as string);
 
 	if (!requestOptions.body) {
 		requestOptions.body = {};

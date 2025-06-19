@@ -1,0 +1,235 @@
+{
+  "name": "switch reorder",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b3f0815d-b733-413f-ab3f-74e48277bd3a",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        620
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fbc5b12a-6165-4cab-80a1-9fd6e4fbe39f",
+      "name": "One",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        620,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "duplicateItem": true,
+        "duplicateCount": 1,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ec6c1d1d-a17a-4537-8135-d474df7fded1",
+              "name": "entry",
+              "value": "first",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8c5a72a5-17ef-40e0-8477-764f24770174",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        160,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8ec7c46-d02f-4bf5-931e-5ec2fb8bea22",
+              "name": "entry",
+              "value": "zero",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bc3fb81d-2ddf-4b28-a93d-762a48e8fd6b",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        160,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.entry }}",
+                    "rightValue": "first",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "ffa570ef-fc16-49ec-87be-56159f14a44b",
+                    "leftValue": "={{ $json.entry }}",
+                    "rightValue": "=second",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "296ba553-c6c5-4c84-89fb-9056b24bab30",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        360,
+        740
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "da787dd6-8e85-4dd5-8326-198705b4ae4b",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        520
+      ]
+    }
+  ],
+  "pinData": {
+    "Edit Fields": [
+      {
+        "json": {
+          "entry": "first"
+        }
+      },
+      {
+        "json": {
+          "entry": "second"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ce5db792-5e38-4d54-895b-88d85f2545d0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+  },
+  "id": "uMpL0bN7t1NYZDJS",
+  "tags": []
+}

@@ -3,7 +3,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ITriggerResponse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 export class ManualChatTrigger implements INodeType {
@@ -18,7 +18,7 @@ export class ManualChatTrigger implements INodeType {
 		maxNodes: 1,
 		hidden: true,
 		defaults: {
-			name: 'On new manual Chat Message',
+			name: 'When chat message received',
 			color: '#909298',
 		},
 		codex: {
@@ -35,7 +35,7 @@ export class ManualChatTrigger implements INodeType {
 			},
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
@@ -50,7 +50,9 @@ export class ManualChatTrigger implements INodeType {
 				name: 'openChat',
 				type: 'button',
 				typeOptions: {
-					action: 'openChat',
+					buttonConfig: {
+						action: 'openChat',
+					},
 				},
 				default: '',
 			},

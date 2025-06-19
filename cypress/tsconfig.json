@@ -4,8 +4,9 @@
 		"sourceMap": false,
 		"declaration": false,
 		"lib": ["esnext", "dom"],
-		"types": ["cypress", "node"]
+		"types": ["cypress", "node", "cypress-real-events"]
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+	"references": [{ "path": "../packages/workflow/tsconfig.build.json" }]
 }

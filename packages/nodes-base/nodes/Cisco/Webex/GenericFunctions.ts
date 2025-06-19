@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-
+import upperFirst from 'lodash/upperFirst';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -13,8 +13,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import upperFirst from 'lodash/upperFirst';
 
 export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
@@ -43,7 +41,6 @@ export async function webexApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});

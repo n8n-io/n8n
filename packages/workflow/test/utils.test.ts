@@ -1,5 +1,17 @@
+import { ALPHABET } from '@/constants';
 import { ApplicationError } from '@/errors/application.error';
-import { jsonParse, jsonStringify, deepCopy, isObjectEmpty, fileTypeFromMimeType } from '@/utils';
+import {
+	jsonParse,
+	jsonStringify,
+	deepCopy,
+	isObjectEmpty,
+	fileTypeFromMimeType,
+	randomInt,
+	randomString,
+	hasKey,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
+} from '@/utils';
 
 describe('isObjectEmpty', () => {
 	it('should handle null and undefined', () => {
@@ -235,5 +247,150 @@ describe('fileTypeFromMimeType', () => {
 
 	it('should recognize pdf', () => {
 		expect(fileTypeFromMimeType('application/pdf')).toEqual('pdf');
+	});
+});
+
+const repeat = (fn: () => void, times = 10) => Array(times).fill(0).forEach(fn);
+
+describe('randomInt', () => {
+	it('should generate random integers', () => {
+		repeat(() => {
+			const result = randomInt(10);
+			expect(result).toBeLessThanOrEqual(10);
+			expect(result).toBeGreaterThanOrEqual(0);
+		});
+	});
+
+	it('should generate random in range', () => {
+		repeat(() => {
+			const result = randomInt(10, 100);
+			expect(result).toBeLessThanOrEqual(100);
+			expect(result).toBeGreaterThanOrEqual(10);
+		});
+	});
+});
+
+describe('randomString', () => {
+	it('should return a random string of the specified length', () => {
+		repeat(() => {
+			const result = randomString(42);
+			expect(result).toHaveLength(42);
+		});
+	});
+
+	it('should return a random string of the in the length range', () => {
+		repeat(() => {
+			const result = randomString(10, 100);
+			expect(result.length).toBeGreaterThanOrEqual(10);
+			expect(result.length).toBeLessThanOrEqual(100);
+		});
+	});
+
+	it('should only contain characters from the specified character set', () => {
+		repeat(() => {
+			const result = randomString(1000);
+			result.split('').every((char) => ALPHABET.includes(char));
+		});
+	});
+});
+
+type Expect<T extends true> = T;
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+	? true
+	: false;
+
+describe('hasKey', () => {
+	it('should return false if the input is null', () => {
+		const x = null;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is undefined', () => {
+		const x = undefined;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is a number', () => {
+		const x = 1;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is an array out of bounds', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 5);
+
+		expect(result).toEqual(false);
+	});
+
+	it('should return true if the input is an array within bounds', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 1);
+
+		expect(result).toEqual(true);
+	});
+	it('should return true if the input is an array with the key `length`', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 'length');
+
+		expect(result).toEqual(true);
+	});
+	it('should return false if the input is an array with the key `toString`', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 'toString');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is an object without the key', () => {
+		const x = { a: 3 };
+		const result = hasKey(x, 'a');
+
+		expect(result).toEqual(true);
+	});
+
+	it('should return true if the input is an object with the key', () => {
+		const x = { a: 3 };
+		const result = hasKey(x, 'b');
+
+		expect(result).toEqual(false);
+	});
+
+	it('should provide a type guard', () => {
+		const x: unknown = { a: 3 };
+		if (hasKey(x, '0')) {
+			const y: Expect<Equal<typeof x, Record<'0', unknown>>> = true;
+			y;
+		} else {
+			const z: Expect<Equal<typeof x, unknown>> = true;
+			z;
+		}
+	});
+});
+
+describe('isSafeObjectProperty', () => {
+	it.each([
+		['__proto__', false],
+		['prototype', false],
+		['constructor', false],
+		['getPrototypeOf', false],
+		['safeKey', true],
+		['anotherKey', true],
+		['toString', true],
+	])('should return %s for key "%s"', (key, expected) => {
+		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('setSafeObjectProperty', () => {
+	it.each([
+		['safeKey', 123, { safeKey: 123 }],
+		['__proto__', 456, {}],
+		['constructor', 'test', {}],
+	])('should set property "%s" safely', (key, value, expected) => {
+		const obj: Record<string, unknown> = {};
+		setSafeObjectProperty(obj, key, value);
+		expect(obj).toEqual(expected);
 	});
 });

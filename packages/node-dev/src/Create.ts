@@ -15,7 +15,7 @@ export async function createTemplate(
 	replaceValues: object,
 ): Promise<void> {
 	// Copy the file to then replace the values in it
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 	await copyFile(sourceFilePath, destinationFilePath);
 
 	// Replace the variables in the template file

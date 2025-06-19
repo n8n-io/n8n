@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "long_url": {
+            "type": "string"
+        },
+        "references": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

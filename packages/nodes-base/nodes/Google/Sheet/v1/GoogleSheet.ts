@@ -1,9 +1,8 @@
+import get from 'lodash/get';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { utils as xlsxUtils } from 'xlsx';
 
-import get from 'lodash/get';
 import { googleApiRequest } from './GenericFunctions';
 
 export interface ISheetOptions {
@@ -462,7 +461,7 @@ export class GoogleSheet {
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
@@ -586,7 +585,7 @@ export class GoogleSheet {
 					item[key] !== undefined
 				) {
 					//match by exact key name
-					rowData.push(item[key]!.toString());
+					rowData.push(item[key].toString());
 				} else {
 					rowData.push('');
 				}

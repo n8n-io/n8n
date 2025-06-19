@@ -1,5 +1,6 @@
-import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+import sanitizeHtml from 'sanitize-html';
 
+import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
 export function createPage({
 	instanceId,
 	webhookUrl,
@@ -8,6 +9,9 @@ export function createPage({
 	i18n: { en },
 	initialMessages,
 	authentication,
+	allowFileUploads,
+	allowedFilesMimeTypes,
+	customCss,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -19,6 +23,9 @@ export function createPage({
 	initialMessages: string[];
 	mode: 'test' | 'production';
 	authentication: AuthenticationChatOption;
+	allowFileUploads?: boolean;
+	allowedFilesMimeTypes?: string;
+	customCss?: string;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -35,24 +42,40 @@ export function createPage({
 		? authentication
 		: 'none';
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
+	const sanitizedAllowFileUploads = !!allowFileUploads;
+	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
+	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
+		allowedTags: ['style'],
+		allowedAttributes: false,
+	});
+
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
 	)
 		? loadPreviousSession
 		: 'notSupported';
 
-	return `<doctype html>
+	return `<!doctype html>
 	<html lang="en">
 		<head>
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
+			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+			<style>
+				html,
+				body,
+				#n8n-chat {
+					width: 100%;
+					height: 100%;
+				}
+			</style>
+			${sanitizedCustomCss}
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat@latest/chat.bundle.es.js';
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';
@@ -60,7 +83,8 @@ export function createPage({
 					if (authentication === 'n8nUserAuth') {
 						try {
 							const response = await fetch('/rest/login', {
-									method: 'GET'
+									method: 'GET',
+									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
 
 							if (response.status !== 200) {
@@ -94,6 +118,8 @@ export function createPage({
 								'X-Instance-Id': '${instanceId}',
 							}
 						},
+						allowFileUploads: ${sanitizedAllowFileUploads},
+						allowedFilesMimeTypes: '${sanitizedAllowedFilesMimeTypes}',
 						i18n: {
 							${en ? `en: ${JSON.stringify(en)},` : ''}
 						},

@@ -67,7 +67,7 @@ export const messageConversationFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -86,7 +86,7 @@ export const messageConversationFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -114,7 +114,7 @@ export const messageConversationFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Actions',
@@ -217,7 +217,7 @@ export const messageConversationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			// {
 			// 	displayName: 'Direct Group Mentions ',
@@ -251,7 +251,7 @@ export const messageConversationFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Conversation Name or ID',
@@ -270,7 +270,7 @@ export const messageConversationFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -486,7 +486,7 @@ export const messageConversationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

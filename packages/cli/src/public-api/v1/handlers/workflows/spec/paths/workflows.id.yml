@@ -1,0 +1,76 @@
+get:
+  x-eov-operation-id: getWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Retrieves a workflow
+  description: Retrieves a workflow.
+  parameters:
+    - name: excludePinnedData
+      in: query
+      required: false
+      description: Set this to avoid retrieving pinned data
+      schema:
+        type: boolean
+        example: true
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+delete:
+  x-eov-operation-id: deleteWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Delete a workflow
+  description: Deletes a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+put:
+  x-eov-operation-id: updateWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Update a workflow
+  description: Update a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    description: Updated workflow object.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/workflow.yml'
+    required: true
+  responses:
+    '200':
+      description: Workflow object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

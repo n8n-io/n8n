@@ -1,0 +1,126 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747344011798,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "MessageBird": [
+          {
+            "startTime": 1747344011798,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 145,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "payment": "prepaid",
+                      "type": "dollars",
+                      "amount": 0
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "MessageBird1": [
+          {
+            "startTime": 1747344011943,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 137,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "52553d3188e047aa843be860383dfe0d",
+                      "href": "https://rest.messagebird.com/messages/52553d3188e047aa843be860383dfe0d",
+                      "direction": "mt",
+                      "type": "sms",
+                      "originator": "4930270504079",
+                      "body": "TestMessage",
+                      "reference": {
+                        "object": true
+                      },
+                      "validity": {
+                        "object": true
+                      },
+                      "gateway": 10,
+                      "typeDetails": {
+                        "object": true
+                      },
+                      "datacoding": "plain",
+                      "mclass": 1,
+                      "scheduledDatetime": {
+                        "object": true
+                      },
+                      "createdDatetime": "2025-05-15T21:20:12+00:00",
+                      "recipients": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "MessageBird1"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:11.798Z",
+  "stoppedAt": "2025-05-15T21:20:12.080Z",
+  "status": "running",
+  "finished": true
+}

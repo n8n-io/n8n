@@ -49,7 +49,7 @@ export const accountFields: INodeProperties[] = [
 			loadOptionsMethod: 'getProfiles',
 		},
 		description:
-			'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['account'],
@@ -70,7 +70,7 @@ export const accountFields: INodeProperties[] = [
 			loadOptionsMethod: 'getProfiles',
 		},
 		description:
-			'ID of the user profile whose account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the user profile whose account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['account'],
@@ -89,7 +89,7 @@ export const accountFields: INodeProperties[] = [
 			loadOptionsDependsOn: ['profileId'],
 		},
 		description:
-			'ID of the borderless account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the borderless account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['account'],
@@ -136,6 +136,10 @@ export const accountFields: INodeProperties[] = [
 				name: 'PDF',
 				value: 'pdf',
 			},
+			{
+				name: 'XML (CAMT.053)',
+				value: 'xml',
+			},
 		],
 	},
 	{
@@ -149,7 +153,7 @@ export const accountFields: INodeProperties[] = [
 			show: {
 				resource: ['account'],
 				operation: ['getStatement'],
-				format: ['csv', 'pdf'],
+				format: ['csv', 'pdf', 'xml'],
 			},
 		},
 	},
@@ -165,7 +169,7 @@ export const accountFields: INodeProperties[] = [
 			show: {
 				resource: ['account'],
 				operation: ['getStatement'],
-				format: ['csv', 'pdf'],
+				format: ['csv', 'pdf', 'xml'],
 			},
 		},
 	},

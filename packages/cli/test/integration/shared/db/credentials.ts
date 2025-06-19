@@ -1,27 +1,38 @@
-import { Container } from 'typedi';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
-import type { ICredentialsDb } from '@/Interfaces';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ICredentialsDb } from '@n8n/db';
+import { CredentialsEntity } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { CredentialSharingRole } from '@n8n/permissions';
+
 import type { CredentialPayload } from '../types';
 
-async function encryptCredentialData(credential: CredentialsEntity) {
-	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
+export async function encryptCredentialData(
+	credential: CredentialsEntity,
+): Promise<ICredentialsDb> {
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data);
 
-	return coreCredential.getDataToSave() as ICredentialsDb;
+	return Object.assign(credential, coreCredential.getDataToSave());
+}
+
+export async function decryptCredentialData(credential: ICredentialsDb): Promise<unknown> {
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+	const coreCredential = createCredentialsFromCredentialsEntity(credential);
+
+	return coreCredential.getData();
 }
 
 const emptyAttributes = {
 	name: 'test',
 	type: 'test',
 	data: '',
-	nodesAccess: [],
 };
 
 export async function createManyCredentials(
@@ -35,11 +46,24 @@ export async function createManyCredentials(
 	);
 }
 
-export async function createCredentials(attributes: Partial<CredentialsEntity> = emptyAttributes) {
+export async function createCredentials(
+	attributes: Partial<CredentialsEntity> = emptyAttributes,
+	project?: Project,
+) {
 	const credentialsRepository = Container.get(CredentialsRepository);
-	const entity = credentialsRepository.create(attributes);
+	const credentials = await credentialsRepository.save(credentialsRepository.create(attributes));
 
-	return await credentialsRepository.save(entity);
+	if (project) {
+		await Container.get(SharedCredentialsRepository).save(
+			Container.get(SharedCredentialsRepository).create({
+				project,
+				credentials,
+				role: 'credential:owner',
+			}),
+		);
+	}
+
+	return credentials;
 }
 
 /**
@@ -47,43 +71,89 @@ export async function createCredentials(attributes: Partial<CredentialsEntity> =
  */
 export async function saveCredential(
 	credentialPayload: CredentialPayload,
-	{ user, role }: { user: User; role: CredentialSharingRole },
+	options:
+		| { user: User; role: CredentialSharingRole }
+		| {
+				project: Project;
+				role: CredentialSharingRole;
+		  },
 ) {
+	const role = options.role;
 	const newCredential = new CredentialsEntity();
 
 	Object.assign(newCredential, credentialPayload);
 
-	const encryptedData = await encryptCredentialData(newCredential);
-
-	Object.assign(newCredential, encryptedData);
+	await encryptCredentialData(newCredential);
 
 	const savedCredential = await Container.get(CredentialsRepository).save(newCredential);
 
 	savedCredential.data = newCredential.data;
 
-	await Container.get(SharedCredentialsRepository).save({
-		user,
-		credentials: savedCredential,
-		role,
-	});
+	if ('user' in options) {
+		const user = options.user;
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			user.id,
+		);
+
+		await Container.get(SharedCredentialsRepository).save({
+			user,
+			credentials: savedCredential,
+			role,
+			project: personalProject,
+		});
+	} else {
+		const project = options.project;
+
+		await Container.get(SharedCredentialsRepository).save({
+			credentials: savedCredential,
+			role,
+			project,
+		});
+	}
 
 	return savedCredential;
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const newSharedCredentials = users.map((user) =>
-		Container.get(SharedCredentialsRepository).create({
-			userId: user.id,
-			credentialsId: credential.id,
-			role: 'credential:user',
+	const newSharedCredentials = await Promise.all(
+		users.map(async (user) => {
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(user.id);
+
+			return Container.get(SharedCredentialsRepository).create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: personalProject.id,
+			});
 		}),
 	);
+
+	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
+}
+
+export async function shareCredentialWithProjects(
+	credential: CredentialsEntity,
+	projects: Project[],
+) {
+	const newSharedCredentials = await Promise.all(
+		projects.map(async (project) => {
+			return Container.get(SharedCredentialsRepository).create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
+			});
+		}),
+	);
+
 	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 }
 
 export function affixRoleToSaveCredential(role: CredentialSharingRole) {
-	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		await saveCredential(credentialPayload, { user, role });
+	return async (
+		credentialPayload: CredentialPayload,
+		options: { user: User } | { project: Project },
+	) => await saveCredential(credentialPayload, { ...options, role });
 }
 
 export async function getAllCredentials() {
@@ -92,3 +162,13 @@ export async function getAllCredentials() {
 
 export const getCredentialById = async (id: string) =>
 	await Container.get(CredentialsRepository).findOneBy({ id });
+
+export async function getAllSharedCredentials() {
+	return await Container.get(SharedCredentialsRepository).find();
+}
+
+export async function getCredentialSharings(credential: CredentialsEntity) {
+	return await Container.get(SharedCredentialsRepository).findBy({
+		credentialsId: credential.id,
+	});
+}

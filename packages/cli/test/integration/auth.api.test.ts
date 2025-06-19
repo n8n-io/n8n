@@ -1,16 +1,18 @@
-import type { SuperAgentTest } from 'supertest';
-import { Container } from 'typedi';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import validator from 'validator';
+
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import { MfaService } from '@/mfa/mfa.service';
+
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import { MfaService } from '@/Mfa/mfa.service';
+import { randomValidPassword } from './shared/random';
+import * as testDb from './shared/test-db';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -41,7 +43,7 @@ describe('POST /login', () => {
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -85,9 +87,9 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
-			mfaToken: mfaService.totp.generateTOTP(secret),
+			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -129,7 +131,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -144,6 +146,18 @@ describe('POST /login', () => {
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
+		config.set('userManagement.authenticationMethod', 'email');
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid email address');
 	});
 });
 
@@ -368,7 +382,8 @@ describe('GET /resolve-signup-token', () => {
 			.query({ inviteeId });
 
 		// cause inconsistent DB state
-		await Container.get(UserRepository).update(owner.id, { email: '' });
+		owner.email = '';
+		await Container.get(UserRepository).save(owner);
 		const fifth = await authOwnerAgent
 			.get('/resolve-signup-token')
 			.query({ inviterId: owner.id })
@@ -383,13 +398,19 @@ describe('GET /resolve-signup-token', () => {
 describe('POST /logout', () => {
 	test('should log user out', async () => {
 		const owner = await createUser({ role: 'global:owner' });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
 
-		const response = await testServer.authAgentFor(owner).post('/logout');
+		const response = await ownerAgent.post('/logout');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.get('/login').expect(401);
 	});
 });

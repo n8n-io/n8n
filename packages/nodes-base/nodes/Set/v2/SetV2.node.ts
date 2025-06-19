@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,29 +6,28 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
-
-import * as raw from './raw.mode';
 import * as manual from './manual.mode';
+import * as raw from './raw.mode';
 
 type Mode = 'manual' | 'raw';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Edit Fields (Set)',
 	name: 'set',
-	icon: 'fa:pen',
+	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3],
+	version: [3, 3.1, 3.2, 3.3, 3.4],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
-		color: '#0000FF',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Mode',
@@ -179,6 +177,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['selected'],
+					'@version': [3, 3.1, 3.2],
 				},
 			},
 		},
@@ -194,6 +193,45 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					include: ['except'],
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Fields to Include',
+			name: 'includeFields',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. fieldToInclude1,fieldToInclude2',
+			description:
+				'Comma-separated list of the field names you want to include in the output. You can drag the selected fields from the input panel.',
+			requiresDataPath: 'multiple',
+			displayOptions: {
+				show: {
+					include: ['selected'],
+					'/includeOtherFields': [true],
+				},
+				hide: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Fields to Exclude',
+			name: 'excludeFields',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. fieldToExclude1,fieldToExclude2',
+			description:
+				'Comma-separated list of the field names you want to exclude from the output. You can drag the selected fields from the input panel.',
+			requiresDataPath: 'multiple',
+			displayOptions: {
+				show: {
+					include: ['except'],
+					'/includeOtherFields': [true],
+				},
+				hide: {
+					'@version': [3, 3.1, 3.2],
 				},
 			},
 		},
@@ -201,7 +239,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -209,7 +247,26 @@ const versionDescription: INodeTypeDescription = {
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,
+					displayOptions: {
+						hide: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+						},
+					},
 					description: 'Whether binary data should be included if present in the input item',
+				},
+				{
+					displayName: 'Strip Binary Data',
+					name: 'stripBinary',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether binary data should be stripped from the input item. Only applies when "Include Other Input Fields" is enabled.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+							'/includeOtherFields': [true],
+						},
+					},
 				},
 				{
 					displayName: 'Ignore Type Conversion Errors',

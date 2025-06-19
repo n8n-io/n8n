@@ -1,4 +1,3 @@
-import { URLSearchParams } from 'url';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -9,12 +8,12 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { wrapData } from '../../utils/utilities';
 import { nextCloudApiRequest } from './GenericFunctions';
+import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +27,9 @@ export class NextCloud implements INodeType {
 		defaults: {
 			name: 'Nextcloud',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'nextCloudApi',
@@ -544,7 +544,7 @@ export class NextCloud implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -757,7 +757,7 @@ export class NextCloud implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -792,7 +792,7 @@ export class NextCloud implements INodeType {
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

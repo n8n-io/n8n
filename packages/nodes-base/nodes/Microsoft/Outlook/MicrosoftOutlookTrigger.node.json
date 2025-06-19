@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/microsoft"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftOutlookTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftoutlooktrigger/"
 			}
 		]
 	},

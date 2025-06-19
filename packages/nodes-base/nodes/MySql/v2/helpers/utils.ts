@@ -6,10 +6,8 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	Mysql2Pool,
 	QueryMode,
@@ -18,8 +16,8 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
-
 import { BATCH_MODE } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
@@ -141,7 +139,7 @@ export function prepareOutput(
 	) => NodeExecutionWithMetadata[],
 	itemData: IPairedItemData | IPairedItemData[],
 ) {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	if (options.detailedOutput) {
 		response.forEach((entry, index) => {
@@ -154,17 +152,17 @@ export function prepareOutput(
 				itemData,
 			});
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		});
 	} else {
 		response
 			.filter((entry) => Array.isArray(entry))
-			.forEach((entry) => {
+			.forEach((entry, index) => {
 				const executionData = constructExecutionHelper(wrapData(entry), {
-					itemData,
+					itemData: Array.isArray(itemData) ? itemData[index] : itemData,
 				});
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			});
 	}
 
@@ -190,6 +188,14 @@ export function prepareOutput(
 
 	return returnData;
 }
+const END_OF_STATEMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
+export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
+	const statements = query
+		.replace(/\n/g, '')
+		.split(END_OF_STATEMENT)
+		.map((statement) => statement.trim());
+	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
+};
 
 export function configureQueryRunner(
 	this: IExecuteFunctions,
@@ -201,22 +207,22 @@ export function configureQueryRunner(
 			return [];
 		}
 
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const mode = (options.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
 		const connection = await pool.getConnection();
 
 		if (mode === BATCH_MODE.SINGLE) {
-			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
+			const formattedQueries = queries.map(({ query, values }) => connection.format(query, values));
 			try {
-				//releasing connection after formating queries, otherwise pool.query() will fail with timeout
+				//releasing connection after formatting queries, otherwise pool.query() will fail with timeout
 				connection.release();
 
 				let singleQuery = '';
-				if (formatedQueries.length > 1) {
-					singleQuery = formatedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
+				if (formattedQueries.length > 1) {
+					singleQuery = formattedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
 				} else {
-					singleQuery = formatedQueries[0];
+					singleQuery = formattedQueries[0];
 				}
 
 				let response: IDataObject | IDataObject[] = (
@@ -225,10 +231,15 @@ export function configureQueryRunner(
 
 				if (!response) return [];
 
-				const statements = singleQuery
-					.replace(/\n/g, '')
-					.split(';')
-					.filter((statement) => statement !== '');
+				let statements;
+				if ((options?.nodeVersion as number) <= 2.3) {
+					statements = singleQuery
+						.replace(/\n/g, '')
+						.split(';')
+						.filter((statement) => statement !== '');
+				} else {
+					statements = splitQueryToStatements(singleQuery);
+				}
 
 				if (Array.isArray(response)) {
 					if (statements.length === 1) response = [response];
@@ -236,11 +247,11 @@ export function configureQueryRunner(
 					response = [response];
 				}
 
-				//because single query is used in this mode mapping itemIndex not posible, setting all items as paired
+				//because single query is used in this mode mapping itemIndex not possible, setting all items as paired
 				const pairedItem = generatePairedItemData(queries.length);
 
-				returnData.push(
-					...prepareOutput(
+				returnData = returnData.concat(
+					prepareOutput(
 						response,
 						options,
 						statements,
@@ -249,19 +260,25 @@ export function configureQueryRunner(
 					),
 				);
 			} catch (err) {
-				const error = parseMySqlError.call(this, err, 0, formatedQueries);
+				const error = parseMySqlError.call(this, err, 0, formattedQueries);
 
 				if (!this.continueOnFail()) throw error;
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
 			if (mode === BATCH_MODE.INDEPENDENTLY) {
-				let formatedQuery = '';
+				let formattedQuery = '';
 				for (const [index, queryWithValues] of queries.entries()) {
 					try {
 						const { query, values } = queryWithValues;
-						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+						formattedQuery = connection.format(query, values);
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formattedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formattedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
@@ -271,8 +288,8 @@ export function configureQueryRunner(
 							responses.push(response);
 						}
 
-						returnData.push(
-							...prepareOutput(
+						returnData = returnData.concat(
+							prepareOutput(
 								responses,
 								options,
 								statements,
@@ -281,7 +298,7 @@ export function configureQueryRunner(
 							),
 						);
 					} catch (err) {
-						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
+						const error = parseMySqlError.call(this, err, index, [formattedQuery]);
 
 						if (!this.continueOnFail()) {
 							connection.release();
@@ -295,12 +312,18 @@ export function configureQueryRunner(
 			if (mode === BATCH_MODE.TRANSACTION) {
 				await connection.beginTransaction();
 
-				let formatedQuery = '';
+				let formattedQuery = '';
 				for (const [index, queryWithValues] of queries.entries()) {
 					try {
 						const { query, values } = queryWithValues;
-						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+						formattedQuery = connection.format(query, values);
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formattedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formattedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
@@ -310,8 +333,8 @@ export function configureQueryRunner(
 							responses.push(response);
 						}
 
-						returnData.push(
-							...prepareOutput(
+						returnData = returnData.concat(
+							prepareOutput(
 								responses,
 								options,
 								statements,
@@ -320,7 +343,7 @@ export function configureQueryRunner(
 							),
 						);
 					} catch (err) {
-						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
+						const error = parseMySqlError.call(this, err, index, [formattedQuery]);
 
 						if (connection) {
 							await connection.rollback();
@@ -388,7 +411,7 @@ export function addWhereClauses(
 		}
 
 		let valueReplacement = ' ';
-		if (clause.condition !== 'IS NULL') {
+		if (clause.condition !== 'IS NULL' && clause.condition !== 'IS NOT NULL') {
 			valueReplacement = ' ?';
 			values.push(clause.value);
 		}

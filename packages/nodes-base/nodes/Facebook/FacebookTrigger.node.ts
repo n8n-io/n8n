@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import { createHmac } from 'crypto';
 import type {
 	IDataObject,
@@ -10,14 +11,10 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { snakeCase } from 'change-case';
-
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
-
 import type { FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {
@@ -33,7 +30,7 @@ export class FacebookTrigger implements INodeType {
 			name: 'Facebook Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'facebookGraphAppApi',
@@ -62,6 +59,17 @@ export class FacebookTrigger implements INodeType {
 				required: true,
 				default: '',
 				description: 'Facebook APP ID',
+			},
+			{
+				displayName: 'To watch Whatsapp business account events use the Whatsapp trigger node',
+				name: 'whatsappBusinessAccountNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						object: ['whatsappBusinessAccount'],
+					},
+				},
 			},
 			{
 				displayName: 'Object',
@@ -139,7 +147,7 @@ export class FacebookTrigger implements INodeType {
 				},
 				default: [],
 				description:
-					'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Options',

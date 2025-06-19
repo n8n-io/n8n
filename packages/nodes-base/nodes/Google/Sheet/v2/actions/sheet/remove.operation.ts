@@ -1,11 +1,12 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { apiRequest } from '../../transport';
-import type { GoogleSheet } from '../../helpers/GoogleSheet';
+
 import { wrapData } from '../../../../../../utils/utilities';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
+import { apiRequest } from '../../transport';
 
 export async function execute(
 	this: IExecuteFunctions,
-	sheet: GoogleSheet,
+	_sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];

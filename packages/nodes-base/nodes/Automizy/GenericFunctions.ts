@@ -17,7 +17,7 @@ export async function automizyApiRequest(
 	qs: IDataObject = {},
 	option = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('automizyApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ apiToken: string }>('automizyApi');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -40,7 +40,6 @@ export async function automizyApiRequest(
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

@@ -1,18 +1,12 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import {
-	getDateParts,
-	monicaCrmApiRequest,
-	monicaCrmApiRequestAllItems,
-	toOptions,
-} from './GenericFunctions';
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import {
 	activityFields,
@@ -40,7 +34,12 @@ import {
 	taskFields,
 	taskOperations,
 } from './descriptions';
-
+import {
+	getDateParts,
+	monicaCrmApiRequest,
+	monicaCrmApiRequestAllItems,
+	toOptions,
+} from './GenericFunctions';
 import type { LoaderGetResponse, Option } from './types';
 
 export class MonicaCrm implements INodeType {
@@ -56,8 +55,9 @@ export class MonicaCrm implements INodeType {
 		defaults: {
 			name: 'Monica CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'monicaCrmApi',

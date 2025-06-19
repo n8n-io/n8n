@@ -6,13 +6,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
 } from '../../helpers/interfaces';
-
 import {
 	addReturning,
 	checkItemAgainstSchema,
@@ -20,11 +22,10 @@ import {
 	doesRowExist,
 	getTableSchema,
 	prepareItem,
+	convertArraysToPostgresFormat,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
-
 import { optionsCollection } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -74,13 +75,13 @@ const properties: INodeProperties[] = [
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>.',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: 'The column that identifies the row(s) to modify',
+		hint: 'The column to use when matching rows in Postgres to the input items of this node. Usually an ID.',
 		displayOptions: {
 			show: {
 				'@version': [2, 2.1],
@@ -129,7 +130,7 @@ const properties: INodeProperties[] = [
 						type: 'options',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -171,7 +172,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2, 2.3],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 	},
@@ -194,7 +195,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -279,7 +280,7 @@ export async function execute(
 			const rowExists = await doesRowExist(db, schema, table, matchValues);
 			if (!rowExists) {
 				const descriptionValues: string[] = [];
-				matchValues.forEach((val, index) => {
+				matchValues.forEach((_, index) => {
 					if (index % 2 === 0) {
 						descriptionValues.push(`${matchValues[index]}=${matchValues[index + 1]}`);
 					}
@@ -299,6 +300,10 @@ export async function execute(
 		}
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+
+		if (nodeVersion >= 2.4) {
+			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+		}
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 

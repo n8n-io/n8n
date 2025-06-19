@@ -12,6 +12,7 @@ export class SplitInBatches extends VersionedNodeType {
 			displayName: 'Split In Batches',
 			name: 'splitInBatches',
 			icon: 'fa:th-large',
+			iconColor: 'dark-green',
 			group: ['organization'],
 			description: 'Split data into batches and iterate over each batch',
 			defaultVersion: 4,

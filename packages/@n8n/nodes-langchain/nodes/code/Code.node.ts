@@ -1,60 +1,67 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	type INodeOutputConfiguration,
-	type SupplyData,
-	NodeConnectionType,
+import type { Tool } from '@langchain/core/tools';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	SupplyData,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
 
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import type { Tool } from 'langchain/tools';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
 
 // TODO: Replace
 const connectorTypes = {
-	[NodeConnectionType.AiChain]: 'Chain',
-	[NodeConnectionType.AiDocument]: 'Document',
-	[NodeConnectionType.AiEmbedding]: 'Embedding',
-	[NodeConnectionType.AiLanguageModel]: 'Language Model',
-	[NodeConnectionType.AiMemory]: 'Memory',
-	[NodeConnectionType.AiOutputParser]: 'Output Parser',
-	[NodeConnectionType.AiTextSplitter]: 'Text Splitter',
-	[NodeConnectionType.AiTool]: 'Tool',
-	[NodeConnectionType.AiVectorStore]: 'Vector Store',
-	[NodeConnectionType.Main]: 'Main',
+	[NodeConnectionTypes.AiChain]: 'Chain',
+	[NodeConnectionTypes.AiDocument]: 'Document',
+	[NodeConnectionTypes.AiEmbedding]: 'Embedding',
+	[NodeConnectionTypes.AiLanguageModel]: 'Language Model',
+	[NodeConnectionTypes.AiMemory]: 'Memory',
+	[NodeConnectionTypes.AiOutputParser]: 'Output Parser',
+	[NodeConnectionTypes.AiTextSplitter]: 'Text Splitter',
+	[NodeConnectionTypes.AiTool]: 'Tool',
+	[NodeConnectionTypes.AiVectorStore]: 'Vector Store',
+	[NodeConnectionTypes.Main]: 'Main',
 };
 
-const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompts');
+const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/prompts');
 
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
+
+// If you are allowing more than one language model input connection (-1 or
+// anything greater than 1), getInputConnectionData returns an array, so you
+// will have to change the code below it to deal with that. For example, use
+// llm[0] in the chain definition
+
 const llm = await this.getInputConnectionData('ai_languageModel', 0);
 let chain = prompt.pipe(llm);
 const output = await chain.invoke();
 return [ {json: { output } } ];`;
 
-const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
+const defaultCodeSupplyData = `const { WikipediaQueryRun } = require( '@langchain/community/tools/wikipedia_query_run');
 return new WikipediaQueryRun();`;
 
+const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
-		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
+		modules: external ? [...langchainModules, ...external.split(',')] : [...langchainModules],
 		transitive: false,
 	},
 	resolve(moduleName, parentDirname) {
-		if (moduleName.match(/^langchain\//)) {
+		if (moduleName.match(/^langchain\//) ?? moduleName.match(/^@langchain\//)) {
 			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
 				paths: [parentDirname],
 			});
@@ -65,7 +72,7 @@ export const vmResolver = makeResolverFromLegacyOptions({
 });
 
 function getSandbox(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	code: string,
 	options?: { addItems?: boolean; itemIndex?: number },
 ) {
@@ -74,29 +81,22 @@ function getSandbox(
 	const workflowMode = this.getMode();
 
 	const context = getSandboxContext.call(this, itemIndex);
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.addInputData = this.addInputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.addOutputData = this.addOutputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getInputConnectionData = this.getInputConnectionData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getInputData = this.getInputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getNode = this.getNode;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getExecutionCancelSignal = this.getExecutionCancelSignal;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getNodeOutputs = this.getNodeOutputs;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.addInputData = this.addInputData.bind(this);
+	context.addOutputData = this.addOutputData.bind(this);
+	context.getInputConnectionData = this.getInputConnectionData.bind(this);
+	context.getInputData = this.getInputData.bind(this);
+	context.getNode = this.getNode.bind(this);
+	context.getExecutionCancelSignal = this.getExecutionCancelSignal.bind(this);
+	context.getNodeOutputs = this.getNodeOutputs.bind(this);
+	context.executeWorkflow = this.executeWorkflow.bind(this);
+	context.getWorkflowDataProxy = this.getWorkflowDataProxy.bind(this);
 	context.logger = this.logger;
 
 	if (options?.addItems) {
 		context.items = context.$input.all();
 	}
-	// eslint-disable-next-line @typescript-eslint/unbound-method
 
-	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, code, this.helpers, {
 		resolver: vmResolver,
 	});
 
@@ -115,6 +115,7 @@ export class Code implements INodeType {
 		displayName: 'LangChain Code',
 		name: 'code',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'LangChain Code Node',
@@ -303,7 +304,7 @@ export class Code implements INodeType {
 
 		const outputs = this.getNodeOutputs();
 		const mainOutputs: INodeOutputConfiguration[] = outputs.filter(
-			(output) => output.type === NodeConnectionType.Main,
+			(output) => output.type === NodeConnectionTypes.Main,
 		);
 
 		const options = { multiOutput: mainOutputs.length !== 1 };
@@ -342,7 +343,7 @@ export class Code implements INodeType {
 		}
 	}
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const code = this.getNodeParameter('code', itemIndex) as { supplyData?: { code: string } };
 
 		if (!code.supplyData?.code) {
@@ -356,7 +357,7 @@ export class Code implements INodeType {
 		}
 
 		const sandbox = getSandbox.call(this, code.supplyData.code, { itemIndex });
-		const response = (await sandbox.runCode()) as Tool;
+		const response = await sandbox.runCode<Tool>();
 
 		return {
 			response: logWrapper(response, this),

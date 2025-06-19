@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+
 import { sendErrorPostReceive } from './GenericFunctions';
 
 export const imageOperations: INodeProperties[] = [
@@ -242,7 +243,7 @@ const createOperations: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},

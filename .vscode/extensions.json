@@ -1,11 +1,14 @@
 {
 	"recommendations": [
+		"biomejs.biome",
 		"streetsidesoftware.code-spell-checker",
 		"dangmai.workspace-default-settings",
 		"dbaeumer.vscode-eslint",
 		"EditorConfig.EditorConfig",
 		"esbenp.prettier-vscode",
-		"Vue.vscode-typescript-vue-plugin",
-		"Vue.volar"
+		"mjmlio.vscode-mjml",
+		"ryanluker.vscode-coverage-gutters",
+		"Vue.volar",
+		"vitest.explorer"
 	]
 }

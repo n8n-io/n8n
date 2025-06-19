@@ -1,10 +1,10 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/node'],
+	extends: ['@n8n/eslint-config/node'],
 
 	...sharedOptions(__dirname),
 
@@ -15,7 +15,6 @@ module.exports = {
 		eqeqeq: 'warn',
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',
-		'import/order': 'warn',
 		'prefer-spread': 'warn',
 		'import/no-extraneous-dependencies': 'warn',
 
@@ -36,6 +35,7 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
 		'@typescript-eslint/restrict-plus-operands': 'warn',
+		'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 	},
 
 	overrides: [
@@ -65,19 +65,18 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-empty-string': 'error',
 				'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
-				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
+				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'off',
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
 				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
 				'n8n-nodes-base/node-class-description-name-miscased': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
-				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
+				'n8n-nodes-base/node-class-description-outputs-wrong': 'off',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
 				'n8n-nodes-base/node-execute-block-double-assertion-for-items': 'error',
 				'n8n-nodes-base/node-execute-block-wrong-error-thrown': 'error',
 				'n8n-nodes-base/node-filename-against-convention': 'error',
 				'n8n-nodes-base/node-param-array-type-assertion': 'error',
-				'n8n-nodes-base/node-param-collection-type-unsorted-items': 'error',
 				'n8n-nodes-base/node-param-color-type-unused': 'error',
 				'n8n-nodes-base/node-param-default-missing': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-boolean': 'error',
@@ -154,6 +153,7 @@ module.exports = {
 			files: ['**/*.test.ts', '**/test/**/*.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
+				'n8n-nodes-base/node-filename-against-convention': 'off',
 			},
 		},
 	],

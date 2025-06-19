@@ -1,9 +1,14 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
-
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import { updateDisplayOptions } from '@utils/utilities';
+
 import { errorMapper } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
@@ -30,7 +35,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -115,7 +120,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 		}
 	}
 

@@ -1,45 +1,32 @@
-import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
-import type { Entry as LdapUser } from 'ldapts';
+import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { AuthProviderSyncHistoryRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
-import { jsonParse } from 'n8n-workflow';
+import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { LdapService } from '@/Ldap/ldap.service';
-import { saveLdapSynchronization } from '@/Ldap/helpers';
-import type { LdapConfig } from '@/Ldap/types';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
-import * as testDb from './../shared/testDb';
-import * as utils from '../shared/utils/';
-
+import { getPersonalProject } from '../shared/db/projects';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
+import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
+import * as testDb from '../shared/test-db';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 jest.mock('@/telemetry');
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-const defaultLdapConfig = {
-	...LDAP_DEFAULT_CONFIGURATION,
-	loginEnabled: true,
-	loginLabel: '',
-	ldapIdAttribute: 'uid',
-	firstNameAttribute: 'givenName',
-	lastNameAttribute: 'sn',
-	emailAttribute: 'mail',
-	loginIdAttribute: 'mail',
-	baseDn: 'baseDn',
-	bindingAdminDn: 'adminDn',
-	bindingAdminPassword: 'adminPassword',
-};
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth', 'ldap'],
@@ -60,9 +47,9 @@ beforeEach(async () => {
 		'AuthIdentity',
 		'AuthProviderSyncHistory',
 		'SharedCredentials',
-		'Credentials',
+		'CredentialsEntity',
 		'SharedWorkflow',
-		'Workflow',
+		'WorkflowEntity',
 	]);
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
@@ -73,18 +60,6 @@ beforeEach(async () => {
 
 	await setCurrentAuthenticationMethod('email');
 });
-
-const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
-	const { value: ldapConfig } = await Container.get(SettingsRepository).save({
-		key: LDAP_FEATURE_NAME,
-		value: JSON.stringify({
-			...defaultLdapConfig,
-			...attributes,
-		}),
-		loadOnStartup: true,
-	});
-	return await jsonParse(ldapConfig);
-};
 
 test('Member role should not be able to access ldap routes', async () => {
 	const member = await createUser({ role: 'global:member' });
@@ -366,6 +341,8 @@ describe('POST /ldap/sync', () => {
 			expect(memberUser.email).toBe(ldapUser.mail);
 			expect(memberUser.lastName).toBe(ldapUser.sn);
 			expect(memberUser.firstName).toBe(ldapUser.givenName);
+			const memberProject = getPersonalProject(memberUser);
+			expect(memberProject).toBeDefined();
 
 			const authIdentities = await getLdapIdentities();
 			expect(authIdentities.length).toBe(1);
@@ -493,11 +470,11 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: ldapUser.mail, password: 'password' });
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
-		expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
+		expect(response.headers['set-cookie'][0]).toContain('n8n-auth=');
 
 		// Make sure the changes in the "LDAP server" were persisted in the database
 		const localLdapIdentities = await getLdapIdentities();
@@ -509,6 +486,8 @@ describe('POST /login', () => {
 		expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
 		expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 		expect(localLdapUsers[0].disabled).toBe(false);
+
+		await expect(getPersonalProject(localLdapUsers[0])).resolves.toBeDefined();
 	};
 
 	test('should allow new LDAP user to login and synchronize data', async () => {
@@ -550,7 +529,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: owner.email, password: 'password' });
+			.send({ emailOrLdapLoginId: owner.email, password: 'password' });
 
 		expect(response.status).toBe(200);
 		expect(response.body.data?.signInType).toBeDefined();

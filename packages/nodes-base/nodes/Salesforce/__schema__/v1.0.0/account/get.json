@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawCompanyId": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "SicDesc": {
+            "type": "null"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

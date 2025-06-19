@@ -1,6 +1,12 @@
-import type { INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import { prepareTimestamp } from '../../GenericFunctions';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+
+import type { IEmail } from '@utils/sendAndWait/interfaces';
+
+import * as GenericFunctions from '../../GenericFunctions';
+import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
+import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
 	id: '1',
@@ -106,5 +112,93 @@ describe('Google Gmail v2, prepareTimestamp', () => {
 		expect(() => prepareTimestamp(node, 0, '', dateInput, 'after')).toThrow(
 			"Invalid date/time in 'Received After' field",
 		);
+	});
+});
+
+describe('parseRawEmail', () => {
+	it('should return a date string', async () => {
+		// ARRANGE
+		const executionFunctions = mock<IExecuteFunctions>();
+		const rawEmail = 'Date: Wed, 28 Aug 2024 00:36:37 -0700'.replace(/\n/g, '\r\n');
+
+		// ACT
+		const { json } = await parseRawEmail.call(
+			executionFunctions,
+			{ raw: Buffer.from(rawEmail, 'utf8').toString('base64') },
+			'attachment_',
+		);
+
+		// ASSERT
+		expect(typeof json.date).toBe('string');
+	});
+});
+
+describe('addThreadHeadersToEmail', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should set inReplyTo and reference on the email object', async () => {
+		const mockThreadId = 'thread123';
+		const mockMessageId = '<message-id@example.com>';
+		const mockThread = {
+			messages: [
+				{ payload: { headers: [{ value: '<old-id@example.com>' }] } },
+				{ payload: { headers: [{ value: mockMessageId }] } },
+			],
+		};
+
+		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+			return mockThread;
+		});
+
+		const email = mock<IEmail>({});
+
+		const thisArg = mock<IExecuteFunctions>({});
+
+		await addThreadHeadersToEmail.call(thisArg, email, mockThreadId);
+
+		expect(email.inReplyTo).toBe(mockMessageId);
+		expect(email.reference).toBe(mockMessageId);
+	});
+
+	it('should set inReplyTo and reference on the email object even if the message has only one item', async () => {
+		const mockThreadId = 'thread123';
+		const mockMessageId = '<message-id@example.com>';
+		const mockThread = {
+			messages: [{ payload: { headers: [{ value: mockMessageId }] } }],
+		};
+
+		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+			return mockThread;
+		});
+
+		const email = mock<IEmail>({});
+
+		const thisArg = mock<IExecuteFunctions>({});
+
+		await addThreadHeadersToEmail.call(thisArg, email, mockThreadId);
+
+		expect(email.inReplyTo).toBe(mockMessageId);
+		expect(email.reference).toBe(mockMessageId);
+	});
+
+	it('should not do anything if the thread has no messages', async () => {
+		const mockThreadId = 'thread123';
+		const mockThread = {};
+
+		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+			return mockThread;
+		});
+
+		const email = mock<IEmail>({});
+
+		const thisArg = mock<IExecuteFunctions>({});
+
+		await addThreadHeadersToEmail.call(thisArg, email, mockThreadId);
+
+		// We are using mock<IEmail>({}) which means the value of these will be a mock function
+		expect(typeof email.inReplyTo).toBe('function');
+		expect(typeof email.reference).toBe('function');
 	});
 });

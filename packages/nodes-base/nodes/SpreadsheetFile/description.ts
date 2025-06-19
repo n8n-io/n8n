@@ -102,7 +102,7 @@ export const toFileOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: {},
 	displayOptions: {
 		show: {
@@ -156,7 +156,7 @@ export const fromFileOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: {},
 	displayOptions: {
 		show: {
@@ -178,6 +178,26 @@ export const fromFileOptions: INodeProperties = {
 			description: 'Set the field delimiter, usually a comma',
 		},
 		{
+			displayName: 'Encoding',
+			name: 'encoding',
+			type: 'options',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			options: [
+				{ name: 'ASCII', value: 'ascii' },
+				{ name: 'Latin1', value: 'latin1' },
+				{ name: 'UCS-2', value: 'ucs-2' },
+				{ name: 'UCS2', value: 'ucs2' },
+				{ name: 'UTF-8', value: 'utf-8' },
+				{ name: 'UTF16LE', value: 'utf16le' },
+				{ name: 'UTF8', value: 'utf8' },
+			],
+			default: 'utf-8',
+		},
+		{
 			displayName: 'Exclude Byte Order Mark (BOM)',
 			name: 'enableBOM',
 			type: 'boolean',
@@ -189,6 +209,19 @@ export const fromFileOptions: INodeProperties = {
 			default: false,
 			description:
 				'Whether to detect and exclude the byte-order-mark from the CSV Input if present',
+		},
+		{
+			displayName: 'Preserve Quotes',
+			name: 'relaxQuotes',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			default: false,
+			description:
+				"Whether to handle unclosed quotes in CSV fields as part of the field's content instead of throwing a parsing error",
 		},
 		{
 			displayName: 'Header Row',

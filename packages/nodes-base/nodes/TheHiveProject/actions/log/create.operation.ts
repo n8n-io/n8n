@@ -5,11 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { theHiveApiRequest } from '../../transport';
-
-import { fixFieldType, prepareInputItem } from '../../helpers/utils';
-import { attachmentsUi, taskRLC } from '../../descriptions';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { attachmentsUi, taskRLC } from '../../descriptions';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	taskRLC,

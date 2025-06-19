@@ -1,3 +1,7 @@
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,11 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
 
 interface IRenameKey {
 	currentKey: string;
@@ -21,6 +20,7 @@ export class RenameKeys implements INodeType {
 		displayName: 'Rename Keys',
 		name: 'renameKeys',
 		icon: 'fa:edit',
+		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Update item field names',
@@ -28,8 +28,8 @@ export class RenameKeys implements INodeType {
 			name: 'Rename Keys',
 			color: '#772244',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Keys',
@@ -75,7 +75,7 @@ export class RenameKeys implements INodeType {
 				name: 'additionalOptions',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Regex',

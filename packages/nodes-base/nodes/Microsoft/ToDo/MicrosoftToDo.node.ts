@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,16 +8,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
-
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
-
-import { taskFields, taskOperations } from './TaskDescription';
-
 import { listFields, listOperations } from './ListDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
 export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,8 +27,9 @@ export class MicrosoftToDo implements INodeType {
 		defaults: {
 			name: 'Microsoft To Do',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftToDoOAuth2Api',
@@ -309,6 +307,16 @@ export class MicrosoftToDo implements INodeType {
 								dateTime: moment.tz(body.dueDateTime, timezone).format(),
 								timeZone: timezone,
 							};
+						}
+
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
+						} else {
+							body.isReminderOn = false;
 						}
 
 						responseData = await microsoftApiRequest.call(

@@ -1,6 +1,8 @@
-import { Container } from 'typedi';
-import { License } from '@/License';
-import { BaseCommand } from '../BaseCommand';
+import { Container } from '@n8n/di';
+
+import { License } from '@/license';
+
+import { BaseCommand } from '../base-command';
 
 export class LicenseInfoCommand extends BaseCommand {
 	static description = 'Print license information';
@@ -9,7 +11,7 @@ export class LicenseInfoCommand extends BaseCommand {
 
 	async run() {
 		const license = Container.get(License);
-		await license.init();
+		await license.init({ isCli: true });
 
 		this.logger.info('Printing license information:\n' + license.getInfo());
 	}

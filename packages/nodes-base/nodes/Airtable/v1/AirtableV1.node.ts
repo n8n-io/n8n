@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,12 +7,12 @@ import type {
 	INodeTypeBaseDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
-import { generatePairedItemData } from '../../../utils/utilities';
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
+import { oldVersionNotice } from '../../../utils/descriptions';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',
@@ -25,8 +24,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Airtable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'airtableApi',
@@ -63,10 +62,6 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
-					value: 'airtableApi',
-				},
-				{
 					name: 'Access Token',
 					value: 'airtableTokenApi',
 				},
@@ -74,10 +69,26 @@ const versionDescription: INodeTypeDescription = {
 					name: 'OAuth2',
 					value: 'airtableOAuth2Api',
 				},
+				{
+					name: 'API Key (Deprecated)',
+					value: 'airtableApi',
+				},
 			],
 			default: 'airtableApi',
 		},
 		oldVersionNotice,
+		{
+			displayName:
+				"This type of connection (API Key) was deprecated and can't be used anymore. Please create a new credential of type 'Access Token' instead.",
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['airtableApi'],
+				},
+			},
+		},
 		{
 			displayName: 'Operation',
 			name: 'operation',
@@ -335,7 +346,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			default: {},
 			description: 'Additional options which decide which records should be returned',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			options: [
 				{
 					displayName: 'Fields',
@@ -490,7 +501,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			displayOptions: {
 				show: {
 					operation: ['append', 'delete', 'update'],
@@ -552,6 +563,13 @@ export class AirtableV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const authentication = this.getNodeParameter('authentication', 0);
+		if (authentication === 'airtableApi') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
+			);
+		}
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;

@@ -7,35 +7,38 @@ on:
 
 jobs:
   install-and-build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
 
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - run: corepack enable
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4.0.1
+      - uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
       - name: Build
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: useblacksmith/cache/save@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+          key: ${{ github.sha }}-base:build
 
   unit-test:
     name: Unit tests
@@ -43,46 +46,24 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x, 24.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
-      cacheKey: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-      collectCoverage: true
+      cacheKey: ${{ github.sha }}-base:build
+      collectCoverage: ${{ matrix.node-version == '22.x' }}
+      ignoreTurboCache: ${{ matrix.node-version == '22.x' }}
+      skipFrontendTests: ${{ matrix.node-version != '22.x' }}
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
-    name: Lint changes
-    runs-on: ubuntu-latest
+    name: Lint
+    uses: ./.github/workflows/linting-reusable.yml
     needs: install-and-build
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    steps:
-      - uses: actions/checkout@v4.1.1
-        with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
-
-      - run: corepack enable
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4.0.1
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-
-      - name: Lint
-        env:
-          CI_LINT_MASTER: true
-        run: pnpm lint
+    with:
+      ref: ${{ inputs.branch }}
+      cacheKey: ${{ github.sha }}-base:build
 
   notify-on-failure:
     name: Notify Slack on failure
@@ -90,7 +71,7 @@ jobs:
     needs: [unit-test, lint]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

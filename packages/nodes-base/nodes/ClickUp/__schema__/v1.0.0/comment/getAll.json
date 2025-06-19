@@ -1,0 +1,88 @@
+{
+    "type": "object",
+    "properties": {
+        "comment": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attributes": {
+                        "type": "object",
+                        "properties": {
+                            "block-id": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "comment_text": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "group_assignee": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "reactions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "reaction": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "initials": {
+                                "type": "string"
+                            },
+                            "username": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "initials": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

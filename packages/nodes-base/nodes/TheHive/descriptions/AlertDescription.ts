@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { TLP } from '../interfaces/AlertInterface';
+import { TLPs } from '../interfaces/AlertInterface';
 
 export const alertOperations: INodeProperties[] = [
 	{
@@ -8,7 +8,7 @@ export const alertOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		typeOptions: {
@@ -185,19 +185,19 @@ export const alertFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'White',
-				value: TLP.white,
+				value: TLPs.white,
 			},
 			{
 				name: 'Green',
-				value: TLP.green,
+				value: TLPs.green,
 			},
 			{
 				name: 'Amber',
-				value: TLP.amber,
+				value: TLPs.amber,
 			},
 			{
 				name: 'Red',
-				value: TLP.red,
+				value: TLPs.red,
 			},
 		],
 		displayOptions: {
@@ -325,7 +325,7 @@ export const alertFields: INodeProperties[] = [
 							loadOptionsMethod: 'loadObservableTypes',
 						},
 						description:
-							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Data',
@@ -373,7 +373,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'responder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -448,7 +448,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -540,7 +540,7 @@ export const alertFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadObservableTypes',
 								},
 								description:
-									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Data',
@@ -605,7 +605,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -722,19 +722,19 @@ export const alertFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'White',
-						value: TLP.white,
+						value: TLPs.white,
 					},
 					{
 						name: 'Green',
-						value: TLP.green,
+						value: TLPs.green,
 					},
 					{
 						name: 'Amber',
-						value: TLP.amber,
+						value: TLPs.amber,
 					},
 					{
 						name: 'Red',
-						value: TLP.red,
+						value: TLPs.red,
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber.',
@@ -752,7 +752,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -774,7 +774,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -818,7 +818,7 @@ export const alertFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -891,19 +891,19 @@ export const alertFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'White',
-						value: TLP.white,
+						value: TLPs.white,
 					},
 					{
 						name: 'Green',
-						value: TLP.green,
+						value: TLPs.green,
 					},
 					{
 						name: 'Amber',
-						value: TLP.amber,
+						value: TLPs.amber,
 					},
 					{
 						name: 'Red',
-						value: TLP.red,
+						value: TLPs.red,
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber.',

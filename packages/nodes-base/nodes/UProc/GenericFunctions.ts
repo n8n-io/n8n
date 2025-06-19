@@ -14,7 +14,6 @@ export async function uprocApiRequest(
 	method: IHttpRequestMethods,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {

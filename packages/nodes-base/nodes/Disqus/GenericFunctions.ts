@@ -17,7 +17,7 @@ export async function disqusApiRequest(
 	body: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('disqusApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ accessToken: string }>('disqusApi');
 	qs.api_key = credentials.accessToken;
 
 	// Convert to query string into a format the API can read
@@ -66,14 +66,10 @@ export async function disqusApiRequestAllItems(
 
 	let responseData;
 
-	try {
-		do {
-			responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
-			qs.cursor = responseData.cursor.id;
-			returnData.push.apply(returnData, responseData.response as IDataObject[]);
-		} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
-		return returnData;
-	} catch (error) {
-		throw error;
-	}
+	do {
+		responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
+		qs.cursor = responseData.cursor.id;
+		returnData.push.apply(returnData, responseData.response as IDataObject[]);
+	} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
+	return returnData;
 }

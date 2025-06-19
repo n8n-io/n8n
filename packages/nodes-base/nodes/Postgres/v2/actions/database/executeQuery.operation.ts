@@ -6,12 +6,21 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
-
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
-
-import { optionsCollection } from '../common.descriptions';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import type {
+	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryWithValues,
+} from '../../helpers/interfaces';
+import {
+	evaluateExpression,
+	isJSON,
+	replaceEmptyStringsByNulls,
+	stringToArray,
+} from '../../helpers/utils';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -46,23 +55,22 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
-	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
-
-	const queries: QueryWithValues[] = [];
-
-	for (let i = 0; i < items.length; i++) {
-		let query = this.getNodeParameter('query', i) as string;
+	const queries: QueryWithValues[] = replaceEmptyStringsByNulls(
+		items,
+		nodeOptions.replaceEmptyStrings as boolean,
+	).map((_, index) => {
+		let query = this.getNodeParameter('query', index) as string;
 
 		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
 		}
 
 		let values: Array<IDataObject | string> = [];
 
-		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
+		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
 		if (typeof queryReplacement === 'number') {
 			queryReplacement = String(queryReplacement);
@@ -74,21 +82,42 @@ export async function execute(
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			if (rawReplacements) {
-				const rawValues = rawReplacements
-					.replace(/^=+/, '')
-					.split(',')
-					.filter((entry) => entry)
-					.map((entry) => entry.trim());
+				const nodeVersion = nodeOptions.nodeVersion as number;
 
-				for (const rawValue of rawValues) {
-					const resolvables = getResolvables(rawValue);
-
+				if (nodeVersion >= 2.5) {
+					const rawValues = rawReplacements.replace(/^=+/, '');
+					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							const evaluatedExpression = evaluateExpression(
+								this.evaluateExpression(`${resolvable}`, index),
+							);
+							const evaluatedValues = isJSON(evaluatedExpression)
+								? [evaluatedExpression]
+								: stringToArray(evaluatedExpression);
+
+							if (evaluatedValues.length) values.push(...evaluatedValues);
 						}
 					} else {
-						values.push(rawValue);
+						values.push(...stringToArray(rawValues));
+					}
+				} else {
+					const rawValues = rawReplacements
+						.replace(/^=+/, '')
+						.split(',')
+						.filter((entry) => entry)
+						.map((entry) => entry.trim());
+
+					for (const rawValue of rawValues) {
+						const resolvables = getResolvables(rawValue);
+
+						if (resolvables.length) {
+							for (const resolvable of resolvables) {
+								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
+							}
+						} else {
+							values.push(rawValue);
+						}
 					}
 				}
 			}
@@ -99,13 +128,23 @@ export async function execute(
 				throw new NodeOperationError(
 					this.getNode(),
 					'Query Parameters must be a string of comma-separated values or an array of values',
-					{ itemIndex: i },
+					{ itemIndex: index },
 				);
 			}
 		}
 
-		queries.push({ query, values });
-	}
+		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+			let nextValueIndex = values.length + 1;
+			const literals = query.match(/'\$[0-9]+'/g) ?? [];
+			for (const literal of literals) {
+				query = query.replace(literal, `$${nextValueIndex}`);
+				values.push(literal.replace(/'/g, ''));
+				nextValueIndex++;
+			}
+		}
+
+		return { query, values, options: { partial: true } };
+	});
 
 	return await runQueries(queries, items, nodeOptions);
 }

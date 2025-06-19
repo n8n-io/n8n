@@ -1,0 +1,209 @@
+{
+    "type": "object",
+    "properties": {
+        "AllocateProduct": {
+            "type": "boolean"
+        },
+        "CreatedBy": {
+            "type": "string"
+        },
+        "CreatedOn": {
+            "type": "string"
+        },
+        "Currency": {
+            "type": "object",
+            "properties": {
+                "CurrencyCode": {
+                    "type": "string"
+                },
+                "DefaultBuyRate": {
+                    "type": "null"
+                },
+                "DefaultSellRate": {
+                    "type": "null"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            }
+        },
+        "Customer": {
+            "type": "object",
+            "properties": {
+                "CurrencyId": {
+                    "type": "integer"
+                },
+                "CustomerCode": {
+                    "type": "string"
+                },
+                "CustomerName": {
+                    "type": "string"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            }
+        },
+        "Guid": {
+            "type": "string"
+        },
+        "LastModifiedBy": {
+            "type": "string"
+        },
+        "LastModifiedOn": {
+            "type": "string"
+        },
+        "OrderDate": {
+            "type": "string"
+        },
+        "OrderNumber": {
+            "type": "string"
+        },
+        "OrderStatus": {
+            "type": "string"
+        },
+        "ReceivedDate": {
+            "type": "null"
+        },
+        "SalesAccount": {
+            "type": "null"
+        },
+        "SalesOrderLines": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "BatchNumbers": {
+                        "type": "null"
+                    },
+                    "DueDate": {
+                        "type": "string"
+                    },
+                    "Guid": {
+                        "type": "string"
+                    },
+                    "LastModifiedOn": {
+                        "type": "string"
+                    },
+                    "LineNumber": {
+                        "type": "integer"
+                    },
+                    "OrderQuantity": {
+                        "type": "integer"
+                    },
+                    "Product": {
+                        "type": "object",
+                        "properties": {
+                            "Guid": {
+                                "type": "string"
+                            },
+                            "ProductDescription": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "SerialNumbers": {
+                        "type": "null"
+                    },
+                    "XeroTaxCode": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "SalesPerson": {
+            "type": "object",
+            "properties": {
+                "Email": {
+                    "type": "string"
+                },
+                "FullName": {
+                    "type": "string"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "SaveAddress": {
+            "type": "boolean"
+        },
+        "SendAccountingJournalOnly": {
+            "type": "boolean"
+        },
+        "SourceId": {
+            "type": "null"
+        },
+        "Tax": {
+            "type": "object",
+            "properties": {
+                "CanApplyToExpenses": {
+                    "type": "boolean"
+                },
+                "CanApplyToRevenue": {
+                    "type": "boolean"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                },
+                "TaxCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "Warehouse": {
+            "type": "object",
+            "properties": {
+                "FaxNumber": {
+                    "type": "null"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "IsDefault": {
+                    "type": "boolean"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                },
+                "WarehouseCode": {
+                    "type": "string"
+                },
+                "WarehouseName": {
+                    "type": "string"
+                }
+            }
+        },
+        "XeroTaxCode": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

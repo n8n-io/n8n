@@ -1,5 +1,6 @@
-import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
-import { ApplicationError, type ReportingOptions } from '../application.error';
+import type { Functionality, IDataObject, JsonObject } from '../../interfaces';
+import { ApplicationError } from '../application.error';
+import type { ReportingOptions } from '../error.types';
 
 interface ExecutionBaseErrorOptions extends ReportingOptions {
 	cause?: Error;
@@ -37,8 +38,7 @@ export abstract class ExecutionBaseError extends ApplicationError {
 		if (errorResponse) this.errorResponse = errorResponse;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	toJSON?(): any {
+	toJSON?() {
 		return {
 			message: this.message,
 			lineNumber: this.lineNumber,

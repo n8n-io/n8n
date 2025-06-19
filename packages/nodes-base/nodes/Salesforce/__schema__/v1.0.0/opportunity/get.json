@@ -1,0 +1,89 @@
+{
+    "type": "object",
+    "properties": {
+        "AccountId": {
+            "type": "string"
+        },
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CloseDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Fiscal": {
+            "type": "string"
+        },
+        "FiscalQuarter": {
+            "type": "integer"
+        },
+        "FiscalYear": {
+            "type": "integer"
+        },
+        "ForecastCategory": {
+            "type": "string"
+        },
+        "ForecastCategoryName": {
+            "type": "string"
+        },
+        "HasOpenActivity": {
+            "type": "boolean"
+        },
+        "HasOpportunityLineItem": {
+            "type": "boolean"
+        },
+        "HasOverdueTask": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsWon": {
+            "type": "boolean"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
+        },
+        "PushCount": {
+            "type": "integer"
+        },
+        "StageName": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

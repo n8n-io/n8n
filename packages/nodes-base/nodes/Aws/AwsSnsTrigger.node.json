@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/aws"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
 			}
 		],
 		"primaryDocumentation": [

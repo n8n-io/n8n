@@ -1,0 +1,122 @@
+{
+    "type": "object",
+    "properties": {
+        "activities": {
+            "type": "string"
+        },
+        "campaign": {
+            "type": "object",
+            "properties": {
+                "campaignId": {
+                    "type": "string"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "changedOn": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "createdOn": {
+            "type": "string"
+        },
+        "customFieldValues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "fieldType": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "valueType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dayOfCycle": {
+            "type": "null"
+        },
+        "email": {
+            "type": "string"
+        },
+        "geolocation": {
+            "type": "object",
+            "properties": {
+                "continentCode": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "dmaCode": {
+                    "type": "null"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "ipAddress": {
+            "type": "string"
+        },
+        "note": {
+            "type": "null"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "string"
+                    },
+                    "href": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tagId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "timeZone": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

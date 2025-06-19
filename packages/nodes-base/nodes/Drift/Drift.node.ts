@@ -5,16 +5,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { driftApiRequest } from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact } from './ContactInterface';
+import { driftApiRequest } from './GenericFunctions';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Drift',
 		name: 'drift',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:drift.png',
+
+		icon: { light: 'file:drift.svg', dark: 'file:drift.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -22,8 +24,9 @@ export class Drift implements INodeType {
 		defaults: {
 			name: 'Drift',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'driftApi',

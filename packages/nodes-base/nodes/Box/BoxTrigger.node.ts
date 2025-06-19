@@ -1,9 +1,10 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
@@ -21,7 +22,7 @@ export class BoxTrigger implements INodeType {
 			name: 'Box Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'boxOAuth2Api',

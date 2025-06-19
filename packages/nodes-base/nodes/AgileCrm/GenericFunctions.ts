@@ -10,7 +10,6 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IContactUpdate } from './ContactInterface';
-
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
@@ -96,7 +95,7 @@ export async function agileCrmApiRequestAllItems(
 export async function agileCrmApiRequestUpdate(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods = 'PUT',
-	endpoint?: string,
+	_endpoint?: string,
 	body: any = {},
 	_query: IDataObject = {},
 	uri?: string,

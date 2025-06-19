@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import {
 	getItemBinaryData,
 	prepareQueryString,
@@ -14,7 +16,6 @@ import {
 } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 import { fileRLC, updateCommonOptions } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -57,7 +58,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			...updateCommonOptions,
@@ -185,6 +186,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				fileContent,
 				{
 					uploadType: 'media',
+					supportsAllDrives: true,
 				},
 				undefined,
 				{
@@ -200,7 +202,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				'PATCH',
 				`/upload/drive/v3/files/${fileId}`,
 				undefined,
-				{ uploadType: 'resumable' },
+				{ uploadType: 'resumable', supportsAllDrives: true },
 				undefined,
 				{
 					returnFullResponse: true,

@@ -1,5 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -8,38 +9,23 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
+	INodePropertyOptions,
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
-import { DateTime } from 'luxon';
-
-import isEmpty from 'lodash/isEmpty';
-
-export interface IEmail {
-	from?: string;
-	to?: string;
-	cc?: string;
-	bcc?: string;
-	replyTo?: string;
-	inReplyTo?: string;
-	reference?: string;
-	subject: string;
-	body: string;
-	htmlBody?: string;
-	attachments?: IDataObject[];
-}
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
+import { createUtmCampaignLink, escapeHtml } from '../../../utils/utilities';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export interface IAttachments {
 	type: string;
 	name: string;
 	content: string;
 }
-
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -202,6 +188,11 @@ export async function parseRawEmail(
 		headers,
 		headerLines: undefined,
 		attachments: undefined,
+		// Having data in IDataObjects that is not representable in JSON leads to
+		// inconsistencies between test executions and production executions.
+		// During a manual execution this would be stringified and during a
+		// production execution the next node would receive a date instance.
+		date: responseData.date ? responseData.date.toISOString() : responseData.date,
 	}) as IDataObject;
 
 	return {
@@ -259,7 +250,7 @@ export async function encodeEmail(email: IEmail) {
 
 	const mailBody = await mail.build();
 
-	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export async function googleApiRequestAllItems(
@@ -443,9 +434,7 @@ export function prepareEmailBody(
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.gmail',
-		)}${instanceId ? '_' + instanceId : ''}`;
+		const link = createUtmCampaignLink('n8n-nodes-base.gmail', instanceId);
 		if (emailType === 'html') {
 			message = `
 			${message}
@@ -477,7 +466,6 @@ export function prepareEmailBody(
 export async function prepareEmailAttachments(
 	this: IExecuteFunctions,
 	options: IDataObject,
-	items: INodeExecutionData[],
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
@@ -512,22 +500,7 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
 		const snippet = item.json.snippet as string;
 		if (snippet) {
-			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
-				switch (match) {
-					case '&amp;':
-						return '&';
-					case '&lt;':
-						return '<';
-					case '&gt;':
-						return '>';
-					case '&#39;':
-						return "'";
-					case '&quot;':
-						return '"';
-					default:
-						return match;
-				}
-			});
+			item.json.snippet = escapeHtml(snippet);
 		}
 		return item;
 	});
@@ -536,7 +509,6 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 
 export async function replyToEmail(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
@@ -558,7 +530,6 @@ export async function replyToEmail(
 		attachments = await prepareEmailAttachments.call(
 			this,
 			options.attachmentsUi as IDataObject,
-			items,
 			itemIndex,
 		);
 		if (attachments.length) {
@@ -665,5 +636,36 @@ export async function simplifyOutput(
 			delete (item.payload as IDataObject).headers;
 		}
 		return item;
+	});
+}
+
+/**
+ * Get all the labels to display them to user so that they can select them easily
+ */
+export async function getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const labels = await googleApiRequestAllItems.call(
+		this,
+		'labels',
+		'GET',
+		'/gmail/v1/users/me/labels',
+	);
+
+	for (const label of labels) {
+		returnData.push({
+			name: label.name,
+			value: label.id,
+		});
+	}
+
+	return returnData.sort((a, b) => {
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
+		return 0;
 	});
 }

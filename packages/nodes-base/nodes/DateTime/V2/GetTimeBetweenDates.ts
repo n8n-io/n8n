@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { includeInputFields } from './common.descriptions';
 
 export const GetTimeBetweenDatesDescription: INodeProperties[] = [
@@ -86,7 +87,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getTimeBetweenDates'],

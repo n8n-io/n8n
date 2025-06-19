@@ -1,13 +1,14 @@
+import { GlobalConfig } from '@n8n/config';
+import type { InstalledNodes } from '@n8n/db';
+import type { InstalledPackages } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import nock from 'nock';
-import config from '@/config';
 import { v4 as uuid } from 'uuid';
-import { toReportTitle } from '@/security-audit/utils';
+
 import * as constants from '@/constants';
 import type { Risk } from '@/security-audit/types';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import Container from 'typedi';
+import { toReportTitle } from '@/security-audit/utils';
 
 type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	? Risk.InstanceSection
@@ -104,28 +105,26 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 			{
 				name: 'My Test Node',
 				type: 'myTestNode',
-				latestVersion: '1',
+				latestVersion: 1,
 			} as InstalledNodes,
 		],
 	},
 ];
 
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
-	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
+	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
 }
 
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
-	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
+	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
 }

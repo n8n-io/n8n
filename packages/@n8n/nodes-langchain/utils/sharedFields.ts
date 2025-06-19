@@ -1,4 +1,5 @@
-import { NodeConnectionType, type INodeProperties } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 export const metadataFilterField: INodeProperties = {
 	displayName: 'Metadata Filter',
@@ -42,45 +43,84 @@ export function getTemplateNoticeField(templateId: number): INodeProperties {
 	};
 }
 
+export function getBatchingOptionFields(
+	displayOptions: IDisplayOptions | undefined,
+	defaultBatchSize: number = 5,
+): INodeProperties {
+	return {
+		displayName: 'Batch Processing',
+		name: 'batching',
+		type: 'collection',
+		placeholder: 'Add Batch Processing Option',
+		description: 'Batch processing options for rate limiting',
+		default: {},
+		options: [
+			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				default: defaultBatchSize,
+				type: 'number',
+				description:
+					'How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering.',
+			},
+			{
+				displayName: 'Delay Between Batches',
+				name: 'delayBetweenBatches',
+				default: 0,
+				type: 'number',
+				description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+			},
+		],
+		displayOptions,
+	};
+}
+
 const connectionsString = {
-	[NodeConnectionType.AiAgent]: {
+	[NodeConnectionTypes.AiAgent]: {
 		// Root AI view
 		connection: '',
 		locale: 'AI Agent',
 	},
-	[NodeConnectionType.AiChain]: {
+	[NodeConnectionTypes.AiChain]: {
 		// Root AI view
 		connection: '',
 		locale: 'AI Chain',
 	},
-	[NodeConnectionType.AiDocument]: {
-		connection: NodeConnectionType.AiDocument,
+	[NodeConnectionTypes.AiDocument]: {
+		connection: NodeConnectionTypes.AiDocument,
 		locale: 'Document Loader',
 	},
-	[NodeConnectionType.AiVectorStore]: {
-		connection: NodeConnectionType.AiVectorStore,
+	[NodeConnectionTypes.AiVectorStore]: {
+		connection: NodeConnectionTypes.AiVectorStore,
 		locale: 'Vector Store',
 	},
-	[NodeConnectionType.AiRetriever]: {
-		connection: NodeConnectionType.AiRetriever,
+	[NodeConnectionTypes.AiRetriever]: {
+		connection: NodeConnectionTypes.AiRetriever,
 		locale: 'Vector Store Retriever',
 	},
 };
 
 type AllowedConnectionTypes =
-	| NodeConnectionType.AiAgent
-	| NodeConnectionType.AiChain
-	| NodeConnectionType.AiDocument
-	| NodeConnectionType.AiVectorStore
-	| NodeConnectionType.AiRetriever;
+	| typeof NodeConnectionTypes.AiAgent
+	| typeof NodeConnectionTypes.AiChain
+	| typeof NodeConnectionTypes.AiDocument
+	| typeof NodeConnectionTypes.AiVectorStore
+	| typeof NodeConnectionTypes.AiRetriever;
 
 function determineArticle(nextWord: string): string {
 	// check if the next word starts with a vowel sound
 	const vowels = /^[aeiouAEIOU]/;
 	return vowels.test(nextWord) ? 'an' : 'a';
 }
+const getConnectionParameterString = (connectionType: string) => {
+	if (connectionType === '') return "data-action-parameter-creatorview='AI'";
+
+	return `data-action-parameter-connectiontype='${connectionType}'`;
+};
 const getAhref = (connectionType: { connection: string; locale: string }) =>
-	`<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connectionType.connection}'>${connectionType.locale}</a>`;
+	`<a class="test" data-action='openSelectiveNodeCreator'${getConnectionParameterString(
+		connectionType.connection,
+	)}'>${connectionType.locale}</a>`;
 
 export function getConnectionHintNoticeField(
 	connectionTypes: AllowedConnectionTypes[],
@@ -105,12 +145,15 @@ export function getConnectionHintNoticeField(
 
 	if (groupedConnections.size === 1) {
 		const [[connection, locales]] = Array.from(groupedConnections);
+
 		displayName = `This node must be connected to ${determineArticle(locales[0])} ${locales[0]
 			.toLowerCase()
 			.replace(
 				/^ai /,
 				'AI ',
-			)}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
+			)}. <a data-action='openSelectiveNodeCreator' ${getConnectionParameterString(
+			connection,
+		)}>Insert one</a>`;
 	} else {
 		const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
 			// If there are multiple locales, join them with ' or '

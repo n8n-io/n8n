@@ -1,65 +1,105 @@
-import { Service } from 'typedi';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+
 import { CacheService } from '@/services/cache/cache.service';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import type { ListQuery } from '@/requests';
 
 @Service()
 export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
 		private userRepository: UserRepository,
+		private projectRepository: ProjectRepository,
+		private projectRelationRepository: ProjectRelationRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	/**
-	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
+	 * Retrieve the project that owns the workflow. Note that workflow ownership is **immutable**.
 	 */
-	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedValue = await this.cacheService.getHashValue<User>(
-			'workflow-ownership',
+	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
+		const cachedValue = await this.cacheService.getHashValue<Project>(
+			'workflow-project',
 			workflowId,
 		);
 
-		if (cachedValue) return this.userRepository.create(cachedValue);
+		if (cachedValue) return this.projectRepository.create(cachedValue);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
 			where: { workflowId, role: 'workflow:owner' },
-			relations: ['user'],
+			relations: ['project'],
 		});
 
-		void this.cacheService.setHash('workflow-ownership', { [workflowId]: sharedWorkflow.user });
+		void this.cacheService.setHash('workflow-project', { [workflowId]: sharedWorkflow.project });
 
-		return sharedWorkflow.user;
+		return sharedWorkflow.project;
+	}
+
+	/**
+	 * Retrieve the user who owns the personal project, or `null` if non-personal project.
+	 * Personal project ownership is **immutable**.
+	 */
+	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
+		const cachedValue = await this.cacheService.getHashValue<User>('project-owner', projectId);
+
+		if (cachedValue) return this.userRepository.create(cachedValue);
+
+		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
+		const owner = ownerRel[0]?.user ?? null;
+		void this.cacheService.setHash('project-owner', { [projectId]: owner });
+
+		return owner;
 	}
 
 	addOwnedByAndSharedWith(
-		rawWorkflow: ListQuery.Workflow.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawCredential: ListQuery.Credentials.WithSharing,
-	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
-		const { shared, ...rest } = rawEntity;
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
+		const shared = rawEntity.shared;
+		const entity = rawEntity as
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 
-		const entity = rest as
-			| ListQuery.Workflow.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithOwnedByAndSharedWith;
+		Object.assign(entity, {
+			homeProject: null,
+			sharedWithProjects: [],
+		});
 
-		Object.assign(entity, { ownedBy: null, sharedWith: [] });
+		if (shared === undefined) {
+			return entity;
+		}
 
-		shared?.forEach(({ user, role }) => {
-			const { id, email, firstName, lastName } = user;
+		for (const sharedEntity of shared) {
+			const { project, role } = sharedEntity;
 
 			if (role === 'credential:owner' || role === 'workflow:owner') {
-				entity.ownedBy = { id, email, firstName, lastName };
+				entity.homeProject = {
+					id: project.id,
+					type: project.type,
+					name: project.name,
+					icon: project.icon,
+				};
 			} else {
-				entity.sharedWith.push({ id, email, firstName, lastName });
+				entity.sharedWithProjects.push({
+					id: project.id,
+					type: project.type,
+					name: project.name,
+					icon: project.icon,
+				});
 			}
-		});
+		}
 
 		return entity;
 	}

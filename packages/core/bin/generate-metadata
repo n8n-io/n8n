@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+
+const { LoggerProxy } = require('n8n-workflow');
+const { PackageDirectoryLoader } = require('../dist/nodes-loader/package-directory-loader');
+const { packageDir, writeJSON } = require('./common');
+
+LoggerProxy.init(console);
+
+function findReferencedMethods(obj, refs = {}, latestName = '') {
+	for (const key in obj) {
+		if (key === 'name' && 'group' in obj) {
+			latestName = obj[key];
+		}
+
+		if (typeof obj[key] === 'object') {
+			findReferencedMethods(obj[key], refs, latestName);
+		}
+
+		if (key === 'loadOptionsMethod') {
+			refs[latestName] = refs[latestName]
+				? [...new Set([...refs[latestName], obj[key]])]
+				: [obj[key]];
+		}
+	}
+
+	return refs;
+}
+
+(async () => {
+	const loader = new PackageDirectoryLoader(packageDir);
+	await loader.loadAll();
+
+	const loaderNodeTypes = Object.values(loader.nodeTypes);
+
+	const definedMethods = loaderNodeTypes.reduce((acc, cur) => {
+		loader.getVersionedNodeTypeAll(cur.type).forEach((type) => {
+			const methods = type.description?.__loadOptionsMethods;
+
+			if (!methods) return;
+
+			const { name } = type.description;
+
+			if (acc[name]) {
+				acc[name] = [...new Set([...acc[name], ...methods])];
+				return;
+			}
+
+			acc[name] = methods;
+		});
+
+		return acc;
+	}, {});
+
+	const nodeTypes = loaderNodeTypes
+		.map(({ type }) => type)
+		.flatMap((nodeType) =>
+			loader.getVersionedNodeTypeAll(nodeType).map((item) => {
+				const { __loadOptionsMethods, ...rest } = item.description;
+				return rest;
+			}),
+		);
+
+	const knownCredentials = loader.known.credentials;
+	const credentialTypes = Object.values(loader.credentialTypes).map(({ type }) => type);
+	const referencedMethods = findReferencedMethods(nodeTypes);
+
+	await Promise.all([
+		writeJSON('known/nodes.json', loader.known.nodes),
+		writeJSON('known/credentials.json', loader.known.credentials),
+		writeJSON('types/credentials.json', credentialTypes),
+		writeJSON('types/nodes.json', nodeTypes),
+		writeJSON('methods/defined.json', definedMethods),
+		writeJSON('methods/referenced.json', referencedMethods),
+	]);
+})();

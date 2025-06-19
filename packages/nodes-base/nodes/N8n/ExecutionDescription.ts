@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { getCursorPaginator } from './GenericFunctions';
 import { workflowIdLocator } from './WorkflowLocator';
 
@@ -173,7 +174,7 @@ const getAllOperation: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['execution'],
@@ -218,7 +219,7 @@ const getOperation: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['execution'],

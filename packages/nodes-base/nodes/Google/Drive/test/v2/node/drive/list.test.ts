@@ -1,9 +1,7 @@
-import nock from 'nock';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as list from '../../../../v2/actions/drive/list.operation';
-
 import * as transport from '../../../../v2/transport';
-
 import { createMockExecuteFunction, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {
@@ -24,16 +22,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: drive list', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
-	it('shuold be called with limit', async () => {
+	it('should be called with limit', async () => {
 		const nodeParameters = {
 			resource: 'drive',
 			operation: 'list',
@@ -54,7 +43,7 @@ describe('test GoogleDriveV2: drive list', () => {
 		);
 	});
 
-	it('shuold be called with returnAll true', async () => {
+	it('should be called with returnAll true', async () => {
 		const nodeParameters = {
 			resource: 'drive',
 			operation: 'list',

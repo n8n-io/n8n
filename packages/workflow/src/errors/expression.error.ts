@@ -1,10 +1,11 @@
-import type { IDataObject } from '../Interfaces';
 import { ExecutionBaseError } from './abstract/execution-base.error';
+import type { IDataObject } from '../interfaces';
 
 export interface ExpressionErrorOptions {
 	cause?: Error;
 	causeDetailed?: string;
 	description?: string;
+	descriptionKey?: string;
 	descriptionTemplate?: string;
 	functionality?: 'pairedItem';
 	itemIndex?: number;
@@ -29,7 +30,7 @@ export interface ExpressionErrorOptions {
  */
 export class ExpressionError extends ExecutionBaseError {
 	constructor(message: string, options?: ExpressionErrorOptions) {
-		super(message, { cause: options?.cause });
+		super(message, { cause: options?.cause, level: 'warning' });
 
 		if (options?.description !== undefined) {
 			this.description = options.description;
@@ -38,7 +39,7 @@ export class ExpressionError extends ExecutionBaseError {
 		const allowedKeys = [
 			'causeDetailed',
 			'descriptionTemplate',
-			'functionality',
+			'descriptionKey',
 			'itemIndex',
 			'messageTemplate',
 			'nodeCause',
@@ -46,7 +47,12 @@ export class ExpressionError extends ExecutionBaseError {
 			'runIndex',
 			'type',
 		];
+
 		if (options !== undefined) {
+			if (options.functionality !== undefined) {
+				this.functionality = options.functionality;
+			}
+
 			Object.keys(options as IDataObject).forEach((key) => {
 				if (allowedKeys.includes(key)) {
 					this.context[key] = (options as IDataObject)[key];

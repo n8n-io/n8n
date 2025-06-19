@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "cdate": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,11 +1,17 @@
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import type { ExecutionSummaries, ExecutionEntity } from '@n8n/db';
+import type {
+	AnnotationVote,
+	ExecutionStatus,
+	IDataObject,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
 		type GetMany = {
-			filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
+			filter: string; // stringified `FilterFields`
 			limit: string;
 			lastId: string;
 			firstId: string;
@@ -28,7 +34,14 @@ export declare namespace ExecutionRequest {
 		};
 	}
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany>;
+	type ExecutionUpdatePayload = {
+		tags?: string[];
+		vote?: AnnotationVote | null;
+	};
+
+	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
+		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
+	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
 
@@ -38,11 +51,13 @@ export declare namespace ExecutionRequest {
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 
-	type GetManyActive = AuthenticatedRequest<{}, {}, {}, { filter?: string }>;
+	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }
 
-export type GetManyActiveFilter = {
-	workflowId?: string;
-	status?: ExecutionStatus;
-	finished?: boolean;
+export type StopResult = {
+	mode: WorkflowExecuteMode;
+	startedAt: Date;
+	stoppedAt?: Date;
+	finished: boolean;
+	status: ExecutionStatus;
 };

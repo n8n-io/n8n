@@ -5,24 +5,24 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
 	WhereClause,
 } from '../../helpers/interfaces';
-
 import { addSortRules, addWhereClauses, replaceEmptyStringsByNulls } from '../../helpers/utils';
-
 import {
 	combineConditionsCollection,
 	optionsCollection,
 	sortFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -75,7 +75,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);

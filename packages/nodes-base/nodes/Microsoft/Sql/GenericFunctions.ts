@@ -1,8 +1,11 @@
+import type { IResult } from 'mssql';
+import mssql from 'mssql';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import mssql from 'mssql';
-import type { ITables, OperationInputData } from './interfaces';
+
 import { chunk, flatten } from '@utils/utilities';
+
+import type { ITables, OperationInputData } from './interfaces';
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -233,4 +236,37 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 			(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
 		0,
 	);
+}
+
+export async function executeSqlQueryAndPrepareResults(
+	pool: mssql.ConnectionPool,
+	rawQuery: string,
+	itemIndex: number,
+): Promise<INodeExecutionData[]> {
+	const rawResult: IResult<any> = await pool.request().query(rawQuery);
+	const { recordsets, rowsAffected } = rawResult;
+	if (Array.isArray(recordsets) && recordsets.length > 0) {
+		const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
+
+		return result.map((entry) => ({
+			json: entry,
+			pairedItem: [{ item: itemIndex }],
+		}));
+	} else if (rowsAffected && rowsAffected.length > 0) {
+		// Handle non-SELECT queries (e.g., INSERT, UPDATE, DELETE)
+		return rowsAffected.map((affectedRows, idx) => ({
+			json: {
+				message: `Query ${idx + 1} executed successfully`,
+				rowsAffected: affectedRows,
+			},
+			pairedItem: [{ item: itemIndex }],
+		}));
+	} else {
+		return [
+			{
+				json: { message: 'Query executed successfully, but no rows were affected' },
+				pairedItem: [{ item: itemIndex }],
+			},
+		];
+	}
 }

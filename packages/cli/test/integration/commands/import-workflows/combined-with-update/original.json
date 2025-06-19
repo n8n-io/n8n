@@ -1,0 +1,81 @@
+[
+	{
+		"name": "active-workflow",
+		"nodes": [
+			{
+				"parameters": {
+					"path": "e20b4873-fcf7-4bce-88fc-a1a56d66b138",
+					"responseMode": "responseNode",
+					"options": {}
+				},
+				"id": "c26d8782-bd57-43d0-86dc-0c618a7e4024",
+				"name": "Webhook",
+				"type": "n8n-nodes-base.webhook",
+				"typeVersion": 1,
+				"position": [800, 580],
+				"webhookId": "e20b4873-fcf7-4bce-88fc-a1a56d66b138"
+			},
+			{
+				"parameters": {
+					"values": {
+						"boolean": [
+							{
+								"name": "hooked",
+								"value": true
+							}
+						]
+					},
+					"options": {}
+				},
+				"id": "9701b1ef-9ab0-432a-b086-cf76981b097d",
+				"name": "Set",
+				"type": "n8n-nodes-base.set",
+				"typeVersion": 1,
+				"position": [1020, 580]
+			},
+			{
+				"parameters": {
+					"options": {}
+				},
+				"id": "d0f086b8-c2b2-4404-b347-95d3f91e555a",
+				"name": "Respond to Webhook",
+				"type": "n8n-nodes-base.respondToWebhook",
+				"typeVersion": 1,
+				"position": [1240, 580]
+			}
+		],
+		"pinData": {},
+		"connections": {
+			"Webhook": {
+				"main": [
+					[
+						{
+							"node": "Set",
+							"type": "main",
+							"index": 0
+						}
+					]
+				]
+			},
+			"Set": {
+				"main": [
+					[
+						{
+							"node": "Respond to Webhook",
+							"type": "main",
+							"index": 0
+						}
+					]
+				]
+			}
+		},
+		"active": true,
+		"settings": {},
+		"versionId": "40a70df1-740f-47e7-8e16-50a0bcd5b70f",
+		"id": "998",
+		"meta": {
+			"instanceId": "95977dc4769098fc608439605527ee75d23f10d551aed6b87a3eea1a252c0ba9"
+		},
+		"tags": []
+	}
+]

@@ -1,19 +1,21 @@
+import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
+import type { Embeddings } from '@langchain/core/embeddings';
+import { createClient } from '@supabase/supabase-js';
 import {
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-import type { Embeddings } from 'langchain/embeddings/base';
-import { createClient } from '@supabase/supabase-js';
-import type { SupabaseLibArgs } from 'langchain/vectorstores/supabase';
-import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+
+import { getMetadataFiltersValues } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
@@ -52,11 +54,11 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			supabaseTableNameRLC,
@@ -81,8 +83,8 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 	methods = { listSearch: { supabaseTableNameSearch } };
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply Supabase Load Vector Store');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supply Supabase Load Vector Store');
 
 		const tableName = this.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
@@ -91,7 +93,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 		const credentials = await this.getCredentials('supabaseApi');
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			0,
 		)) as Embeddings;
 

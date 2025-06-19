@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { TLP } from '../interfaces/AlertInterface';
+import { TLPs } from '../interfaces/AlertInterface';
 
 export const caseOperations: INodeProperties[] = [
 	{
@@ -10,7 +10,7 @@ export const caseOperations: INodeProperties[] = [
 		default: 'getAll',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		displayOptions: {
@@ -179,19 +179,19 @@ export const caseFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'White',
-				value: TLP.white,
+				value: TLPs.white,
 			},
 			{
 				name: 'Green',
-				value: TLP.green,
+				value: TLPs.green,
 			},
 			{
 				name: 'Amber',
-				value: TLP.amber,
+				value: TLPs.amber,
 			},
 			{
 				name: 'Red',
-				value: TLP.red,
+				value: TLPs.red,
 			},
 		],
 		displayOptions: {
@@ -221,7 +221,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'responder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -255,7 +255,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Options',
 		type: 'collection',
 		name: 'options',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['case'],
@@ -288,7 +288,7 @@ export const caseFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -383,7 +383,7 @@ export const caseFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -578,19 +578,19 @@ export const caseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'White',
-						value: TLP.white,
+						value: TLPs.white,
 					},
 					{
 						name: 'Green',
-						value: TLP.green,
+						value: TLPs.green,
 					},
 					{
 						name: 'Amber',
-						value: TLP.amber,
+						value: TLPs.amber,
 					},
 					{
 						name: 'Red',
-						value: TLP.red,
+						value: TLPs.red,
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber.',
@@ -608,7 +608,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -654,7 +654,7 @@ export const caseFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -823,19 +823,19 @@ export const caseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'White',
-						value: TLP.white,
+						value: TLPs.white,
 					},
 					{
 						name: 'Green',
-						value: TLP.green,
+						value: TLPs.green,
 					},
 					{
 						name: 'Amber',
-						value: TLP.amber,
+						value: TLPs.amber,
 					},
 					{
 						name: 'Red',
-						value: TLP.red,
+						value: TLPs.red,
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber.',

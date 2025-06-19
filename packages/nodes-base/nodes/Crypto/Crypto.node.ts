@@ -1,7 +1,5 @@
 import type { BinaryToTextEncoding } from 'crypto';
 import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import { pipeline } from 'stream/promises';
-import { v4 as uuid } from 'uuid';
 import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
@@ -10,7 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
+import { deepCopy, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
+import { pipeline } from 'stream/promises';
+import { v4 as uuid } from 'uuid';
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',
@@ -30,6 +30,7 @@ export class Crypto implements INodeType {
 		displayName: 'Crypto',
 		name: 'crypto',
 		icon: 'fa:key',
+		iconColor: 'green',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
@@ -38,8 +39,9 @@ export class Crypto implements INodeType {
 			name: 'Crypto',
 			color: '#408000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Action',
@@ -333,7 +335,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				options: supportedAlgorithms,
 				default: '',
 				required: true,

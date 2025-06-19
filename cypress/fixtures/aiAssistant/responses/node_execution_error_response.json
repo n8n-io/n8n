@@ -1,0 +1,20 @@
+{
+	"sessionId": "1",
+	"messages": [
+		{
+			"role": "assistant",
+			"type": "message",
+			"text": "It seems like my suggestion did not work. Do you want me to come up with a different suggestion? You can also provide more context via the chat.",
+			"quickReplies": [
+				{
+					"text": "Yes",
+					"type": "new-suggestion"
+				},
+				{
+					"text": "No, I don't think you can help",
+					"type": "event:end-session"
+				}
+			]
+		}
+	]
+}

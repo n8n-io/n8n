@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "create_date": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        }
+    },
+    "version": 4
+}

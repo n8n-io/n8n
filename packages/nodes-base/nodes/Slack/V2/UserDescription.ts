@@ -27,7 +27,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: "Get User's Profile",
 				value: 'getProfile',
-				description: "Get a user's",
+				description: "Get a user's profile",
 				action: "Get a user's profile",
 			},
 			{
@@ -210,7 +210,7 @@ export const userFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

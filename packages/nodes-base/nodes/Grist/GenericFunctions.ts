@@ -22,16 +22,15 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
-		'gristApi',
-	)) as GristCredentials;
+	const { apiKey, planType, customSubdomain, selfHostedUrl } =
+		await this.getCredentials<GristCredentials>('gristApi');
 
 	const gristapiurl =
 		planType === 'free'
 			? `https://docs.getgrist.com/api${endpoint}`
 			: planType === 'paid'
-			  ? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-			  : `${selfHostedUrl}/api${endpoint}`;
+				? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+				: `${selfHostedUrl}/api${endpoint}`;
 
 	const options: IRequestOptions = {
 		headers: {

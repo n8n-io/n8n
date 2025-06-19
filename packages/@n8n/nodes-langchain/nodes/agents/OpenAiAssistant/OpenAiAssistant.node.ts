@@ -1,15 +1,18 @@
 import { AgentExecutor } from 'langchain/agents';
-import { OpenAI as OpenAIClient } from 'openai';
+import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import { type Tool } from 'langchain/tools';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
+import { OpenAI as OpenAIClient } from 'openai';
+
+import { getConnectedTools } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
+
 import { formatToOpenAIAssistantTool } from './utils';
 
 export class OpenAiAssistant implements INodeType {
@@ -19,7 +22,7 @@ export class OpenAiAssistant implements INodeType {
 		hidden: true,
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Utilizes Assistant API from Open AI.',
 		subtitle: 'Open AI Assistant',
 		defaults: {
@@ -30,7 +33,7 @@ export class OpenAiAssistant implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -41,10 +44,10 @@ export class OpenAiAssistant implements INodeType {
 			},
 		},
 		inputs: [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: NodeConnectionTypes.Main },
+			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -311,76 +314,86 @@ export class OpenAiAssistant implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		const nodeVersion = this.getNode().typeVersion;
+		const tools = await getConnectedTools(this, nodeVersion > 1, false);
 		const credentials = await this.getCredentials('openAiApi');
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
-			const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
-			const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
-				'code_interpreter' | 'retrieval'
-			>;
+			try {
+				const input = this.getNodeParameter('text', itemIndex) as string;
+				const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
+				const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
+					'code_interpreter' | 'retrieval'
+				>;
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				baseURL?: string;
-				maxRetries: number;
-				timeout: number;
-			};
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					baseURL?: string;
+					maxRetries: number;
+					timeout: number;
+				};
 
-			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
-			}
+				if (input === undefined) {
+					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+				}
 
-			const client = new OpenAIClient({
-				apiKey: credentials.apiKey as string,
-				maxRetries: options.maxRetries ?? 2,
-				timeout: options.timeout ?? 10000,
-				baseURL: options.baseURL,
-			});
-			let agent;
-			const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));
-			const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
-			const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
-
-			// Existing agent, update tools with currently assigned
-			if (assistantId) {
-				agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
-
-				await client.beta.assistants.update(assistantId, {
-					tools: newTools,
+				const client = new OpenAIClient({
+					apiKey: credentials.apiKey as string,
+					maxRetries: options.maxRetries ?? 2,
+					timeout: options.timeout ?? 10000,
+					baseURL: options.baseURL,
 				});
-			} else {
-				const name = this.getNodeParameter('name', itemIndex, '') as string;
-				const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
-				const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+				let agent;
+				const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));
+				const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
+				const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
 
-				agent = await OpenAIAssistantRunnable.createAssistant({
-					model,
-					client,
-					instructions,
-					name,
-					tools: newTools,
-					asAgent: true,
+				// Existing agent, update tools with currently assigned
+				if (assistantId) {
+					agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+
+					await client.beta.assistants.update(assistantId, {
+						tools: newTools,
+					});
+				} else {
+					const name = this.getNodeParameter('name', itemIndex, '') as string;
+					const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
+					const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+
+					agent = await OpenAIAssistantRunnable.createAssistant({
+						model,
+						client,
+						instructions,
+						name,
+						tools: newTools,
+						asAgent: true,
+					});
+				}
+
+				const agentExecutor = AgentExecutor.fromAgentAndTools({
+					agent,
+					tools,
 				});
+
+				const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+					content: input,
+					signal: this.getExecutionCancelSignal(),
+					timeout: options.timeout ?? 10000,
+				});
+
+				returnData.push({ json: response });
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
+				throw error;
 			}
-
-			const agentExecutor = AgentExecutor.fromAgentAndTools({
-				agent,
-				tools,
-			});
-
-			const response = await agentExecutor.call({
-				content: input,
-				signal: this.getExecutionCancelSignal(),
-				timeout: options.timeout ?? 10000,
-			});
-
-			returnData.push({ json: response });
 		}
 
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

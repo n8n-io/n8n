@@ -1,27 +1,27 @@
-import type {
-	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
+import {
+	type IExecuteFunctions,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type JsonObject,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { commentFields, commentOperations } from './CommentDescription';
 import {
 	linearApiRequest,
 	linearApiRequestAllItems,
 	sort,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
@@ -39,8 +39,9 @@ export class Linear implements INodeType {
 		defaults: {
 			name: 'Linear',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'linearApi',
@@ -86,12 +87,18 @@ export class Linear implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Comment',
+						value: 'comment',
+					},
+					{
 						name: 'Issue',
 						value: 'issue',
 					},
 				],
 				default: 'issue',
 			},
+			...commentOperations,
+			...commentFields,
 			...issueOperations,
 			...issueFields,
 		],
@@ -272,9 +279,7 @@ export class Linear implements INodeType {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
 							const limit = this.getNodeParameter('limit', 0);
-							body.variables.first = limit;
-							responseData = await linearApiRequest.call(this, body);
-							responseData = responseData.data.issues.nodes;
+							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body, limit);
 						}
 					}
 					if (operation === 'update') {
@@ -290,6 +295,39 @@ export class Linear implements INodeType {
 
 						responseData = await linearApiRequest.call(this, body);
 						responseData = responseData?.data?.issueUpdate?.issue;
+					}
+					if (operation === 'addLink') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body: IGraphqlBody = {
+							query: query.addIssueLink(),
+							variables: {
+								issueId,
+								url: this.getNodeParameter('link', i),
+							},
+						};
+
+						responseData = await linearApiRequest.call(this, body);
+						responseData = responseData?.data?.attachmentLinkURL;
+					}
+				} else if (resource === 'comment') {
+					if (operation === 'addComment') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body = this.getNodeParameter('comment', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const requestBody: IGraphqlBody = {
+							query: query.addComment(),
+							variables: {
+								issueId,
+								body,
+							},
+						};
+
+						if (additionalFields.parentId && (additionalFields.parentId as string).trim() !== '') {
+							requestBody.variables.parentId = additionalFields.parentId as string;
+						}
+
+						responseData = await linearApiRequest.call(this, requestBody);
+						responseData = responseData?.data?.commentCreate;
 					}
 				}
 

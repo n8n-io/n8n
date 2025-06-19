@@ -1,0 +1,188 @@
+{
+	"name": "tests notion",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4260fdbd-e92f-4712-8114-38b85f8289ea",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "block",
+				"operation": "getAll",
+				"blockId": {
+					"__rl": true,
+					"value": "https://www.notion.so/Block-Test-88188cbb303e4f44847f27d24bd7ad8e?pvs=4#90e03468f8aa457695da02ccad963040",
+					"mode": "url"
+				},
+				"returnAll": true
+			},
+			"id": "5ab80e6a-c9c4-4cc5-9332-2fc7a3f8ae24",
+			"name": "Notion",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [1040, 360],
+			"credentials": {
+				"notionApi": {
+					"id": "CiZXWkDmjiZzpcL1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a664f506-72a5-4e50-80b4-97ed2e6eb334",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "b14bdaaf-b7e9-48c9-a7fa-1b9e1e2092ae",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": true,
+					"archived": false,
+					"in_trash": false,
+					"type": "toggle",
+					"root_id": "90e03468f8aa457695da02ccad963040",
+					"content": "Drop down First"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "de572f5d-ff5c-4c13-a879-efc20fe47db0",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "f215e49c-4677-40c0-9adc-87440d341324"
+					},
+					"has_children": true,
+					"archived": false,
+					"in_trash": false,
+					"type": "bulleted_list_item",
+					"root_id": "90e03468f8aa457695da02ccad963040",
+					"content": "Bullet Point Second"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "c98cf981-c967-47f5-9948-4aa1be9ce9d0",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "heading_2",
+					"root_id": "90e03468f8aa457695da02ccad963040",
+					"content": "Hello World"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "527a0555-a486-401e-93a8-19819615c132",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "child_page",
+					"root_id": "90e03468f8aa457695da02ccad963040",
+					"content": "Page Third"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "15bfb9cb-4cf0-81b1-a6f1-eac377c4d163",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "paragraph",
+					"root_id": "90e03468f8aa457695da02ccad963040",
+					"content": ""
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notion": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "3edb0c05-7e84-4953-a6a5-86c3c6824403",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "Ucav6QC99JNMCkd3",
+	"tags": []
+}

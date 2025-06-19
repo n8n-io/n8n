@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "awards_on_streams": {
+            "type": "boolean"
+        },
+        "chat_group_rollout": {
+            "type": "boolean"
+        },
+        "chat_subreddit": {
+            "type": "boolean"
+        },
+        "chat_user_settings": {
+            "type": "boolean"
+        },
+        "cookie_consent_banner": {
+            "type": "boolean"
+        },
+        "crowd_control_for_post": {
+            "type": "boolean"
+        },
+        "do_not_track": {
+            "type": "boolean"
+        },
+        "expensive_coins_package": {
+            "type": "boolean"
+        },
+        "images_in_comments": {
+            "type": "boolean"
+        },
+        "is_email_permission_required": {
+            "type": "boolean"
+        },
+        "mod_awards": {
+            "type": "boolean"
+        },
+        "mod_service_mute_reads": {
+            "type": "boolean"
+        },
+        "mod_service_mute_writes": {
+            "type": "boolean"
+        },
+        "modlog_copyright_removal": {
+            "type": "boolean"
+        },
+        "modmail_harassment_filter": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_interstitial_comments_android": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_interstitial_comments_ios": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_modal_listing_click_daily_dismissible_android": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_modal_listing_click_daily_dismissible_ios": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_revamp_v2": {
+            "type": "object",
+            "properties": {
+                "experiment_id": {
+                    "type": "integer"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "variant": {
+                    "type": "string"
+                }
+            }
+        },
+        "noreferrer_to_noopener": {
+            "type": "boolean"
+        },
+        "premium_subscriptions_table": {
+            "type": "boolean"
+        },
+        "promoted_trend_blanks": {
+            "type": "boolean"
+        },
+        "resized_styles_images": {
+            "type": "boolean"
+        },
+        "show_amp_link": {
+            "type": "boolean"
+        },
+        "use_pref_account_deployment": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

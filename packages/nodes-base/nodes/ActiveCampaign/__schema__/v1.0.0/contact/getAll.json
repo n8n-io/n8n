@@ -1,0 +1,143 @@
+{
+    "type": "object",
+    "properties": {
+        "anonymized": {
+            "type": "string"
+        },
+        "bounced_hard": {
+            "type": "string"
+        },
+        "bounced_soft": {
+            "type": "string"
+        },
+        "created_timestamp": {
+            "type": "string"
+        },
+        "created_utc_timestamp": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "string"
+        },
+        "deleted_at": {
+            "type": "null"
+        },
+        "email": {
+            "type": "string"
+        },
+        "email_domain": {
+            "type": "string"
+        },
+        "email_local": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "gravatar": {
+            "type": "string"
+        },
+        "hash": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "ip": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "accountContacts": {
+                    "type": "string"
+                },
+                "automationEntryCounts": {
+                    "type": "string"
+                },
+                "bounceLogs": {
+                    "type": "string"
+                },
+                "contactAutomations": {
+                    "type": "string"
+                },
+                "contactData": {
+                    "type": "string"
+                },
+                "contactDeals": {
+                    "type": "string"
+                },
+                "contactGoals": {
+                    "type": "string"
+                },
+                "contactLists": {
+                    "type": "string"
+                },
+                "contactLogs": {
+                    "type": "string"
+                },
+                "contactTags": {
+                    "type": "string"
+                },
+                "deals": {
+                    "type": "string"
+                },
+                "fieldValues": {
+                    "type": "string"
+                },
+                "geoIps": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "plusAppend": {
+                    "type": "string"
+                },
+                "scoreValues": {
+                    "type": "string"
+                },
+                "trackingLogs": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpp_tracking": {
+            "type": "string"
+        },
+        "orgid": {
+            "type": "string"
+        },
+        "orgname": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "segmentio_id": {
+            "type": "string"
+        },
+        "sentcnt": {
+            "type": "string"
+        },
+        "socialdata_lastcheck": {
+            "type": "null"
+        },
+        "udate": {
+            "type": "string"
+        },
+        "updated_timestamp": {
+            "type": "string"
+        },
+        "updated_utc_timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

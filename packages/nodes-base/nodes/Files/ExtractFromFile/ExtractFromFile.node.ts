@@ -4,25 +4,26 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import * as spreadsheet from './actions/spreadsheet.operation';
 import * as moveTo from './actions/moveTo.operation';
 import * as pdf from './actions/pdf.operation';
+import * as spreadsheet from './actions/spreadsheet.operation';
 
 export class ExtractFromFile implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Extract from File',
 		name: 'extractFromFile',
-		icon: 'file:extractFromFile.svg',
+		icon: { light: 'file:extractFromFile.svg', dark: 'file:extractFromFile.dark.svg' },
 		group: ['input'],
 		version: 1,
 		description: 'Convert binary data to JSON',
 		defaults: {
 			name: 'Extract from File',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',

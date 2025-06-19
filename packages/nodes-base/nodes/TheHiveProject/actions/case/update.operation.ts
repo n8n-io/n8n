@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,10 +6,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import set from 'lodash/set';
-import { theHiveApiRequest } from '../../transport';
-import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -96,7 +98,7 @@ export async function execute(
 	}
 
 	if (fieldsToMatchOn.includes('id')) {
-		await theHiveApiRequest.call(this, 'PATCH', `/v1/case/${id}`, body);
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/case/${id}`, updateBody);
 	} else {
 		const filter = {
 			_name: 'filter',

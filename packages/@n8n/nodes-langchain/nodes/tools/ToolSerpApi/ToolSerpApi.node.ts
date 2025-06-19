@@ -1,14 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { SerpAPI } from '@langchain/community/tools/serpapi';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { SerpAPI } from 'langchain/tools';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,6 +26,7 @@ export class ToolSerpApi implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Other Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -37,7 +39,7 @@ export class ToolSerpApi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		credentials: [
 			{
@@ -46,7 +48,7 @@ export class ToolSerpApi implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -112,7 +114,7 @@ export class ToolSerpApi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('serpApi');
 
 		const options = this.getNodeParameter('options', itemIndex) as object;

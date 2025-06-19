@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
@@ -20,8 +21,9 @@ export class AwsTranscribe implements INodeType {
 		defaults: {
 			name: 'AWS Transcribe',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -166,7 +168,7 @@ export class AwsTranscribe implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						operation: ['create'],

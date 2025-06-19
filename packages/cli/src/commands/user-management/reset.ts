@@ -1,12 +1,16 @@
-import { Container } from 'typedi';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { User } from '@db/entities/User';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { BaseCommand } from '../BaseCommand';
+import type { CredentialsEntity } from '@n8n/db';
+import {
+	User,
+	CredentialsRepository,
+	ProjectRepository,
+	SettingsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { BaseCommand } from '../base-command';
 
 const defaultUserProps = {
 	firstName: null,
@@ -23,9 +27,12 @@ export class Reset extends BaseCommand {
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
 
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
-		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
@@ -38,7 +45,7 @@ export class Reset extends BaseCommand {
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				user: owner,
+				projectId: personalProject.id,
 				role: 'credential:owner',
 			}),
 		);

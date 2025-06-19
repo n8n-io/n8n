@@ -9,7 +9,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 interface CustomProperty {
 	name: string;
@@ -37,8 +37,9 @@ export class Chargebee implements INodeType {
 		defaults: {
 			name: 'Chargebee',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'chargebeeApi',
@@ -283,7 +284,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Date',
@@ -330,7 +331,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'gt',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Amount',
@@ -484,7 +485,7 @@ export class Chargebee implements INodeType {
 								key === 'customProperties' &&
 								(properties.customProperties as IDataObject).property !== undefined
 							) {
-								for (const customProperty of (properties.customProperties as IDataObject)!
+								for (const customProperty of (properties.customProperties as IDataObject)
 									.property! as CustomProperty[]) {
 									qs[customProperty.name] = customProperty.value;
 								}

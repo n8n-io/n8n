@@ -1,11 +1,12 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeParameters,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	NodeParameterValue,
+import {
+	NodeConnectionTypes,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeParameters,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type NodeParameterValue,
 } from 'n8n-workflow';
 
 import { compareOperationFunctions, convertDateTime } from './GenericFunctions';
@@ -21,8 +22,8 @@ export class FilterV1 implements INodeType {
 				name: 'Filter',
 				color: '#229eff',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			outputNames: ['Kept', 'Discarded'],
 			properties: [
 				{
@@ -65,7 +66,7 @@ export class FilterV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -104,7 +105,7 @@ export class FilterV1 implements INodeType {
 										},
 									],
 									default: 'after',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -167,7 +168,7 @@ export class FilterV1 implements INodeType {
 										},
 									],
 									default: 'smaller',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -251,7 +252,7 @@ export class FilterV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',

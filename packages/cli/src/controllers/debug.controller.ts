@@ -1,32 +1,35 @@
-import { Get, RestController } from '@/decorators';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
+import { Get, RestController } from '@n8n/decorators';
+import { InstanceSettings } from 'n8n-core';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 @RestController('/debug')
 export class DebugController {
 	constructor(
-		private readonly orchestrationService: OrchestrationService,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly multiMainSetup: MultiMainSetup,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	@Get('/multi-main-setup', { skipAuth: true })
 	async getMultiMainSetupDetails() {
-		const leaderKey = await this.orchestrationService.multiMainSetup.fetchLeaderKey();
+		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
 
 		const triggersAndPollers = await this.workflowRepository.findIn(
-			this.activeWorkflowRunner.allActiveInMemory(),
+			this.activeWorkflowManager.allActiveInMemory(),
 		);
 
 		const webhooks = await this.workflowRepository.findWebhookBasedActiveWorkflows();
 
-		const activationErrors = await this.activeWorkflowRunner.getAllWorkflowActivationErrors();
+		const activationErrors = await this.activeWorkflowManager.getAllWorkflowActivationErrors();
 
 		return {
-			instanceId: this.orchestrationService.instanceId,
+			instanceId: this.instanceSettings.instanceId,
 			leaderKey,
-			isLeader: this.orchestrationService.isLeader,
+			isLeader: this.instanceSettings.isLeader,
 			activeWorkflows: {
 				webhooks, // webhook-based active workflows
 				triggersAndPollers, // poller- and trigger-based active workflows

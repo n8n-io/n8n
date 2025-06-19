@@ -1,9 +1,10 @@
 import type { IDataObject } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import type { Section, TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
 import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
-import type { Section, TodoistResponse } from './Service';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -34,6 +35,7 @@ export interface Command {
 	uuid: string;
 	temp_id?: string;
 	args: {
+		parent_id?: string;
 		id?: number;
 		section_id?: number;
 		project_id?: number | string;
@@ -42,14 +44,16 @@ export interface Command {
 	};
 }
 
-export const enum CommandType {
-	ITEM_MOVE = 'item_move',
-	ITEM_ADD = 'item_add',
-	ITEM_UPDATE = 'item_update',
-	ITEM_REORDER = 'item_reorder',
-	ITEM_DELETE = 'item_delete',
-	ITEM_COMPLETE = 'item_complete',
-}
+export const CommandTypes = {
+	ITEM_MOVE: 'item_move',
+	ITEM_ADD: 'item_add',
+	ITEM_UPDATE: 'item_update',
+	ITEM_REORDER: 'item_reorder',
+	ITEM_DELETE: 'item_delete',
+	ITEM_COMPLETE: 'item_complete',
+} as const;
+
+export type CommandType = (typeof CommandTypes)[keyof typeof CommandTypes];
 
 export class CreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
@@ -251,23 +255,40 @@ export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://api.todoist.com/sync/v9/sync
 		const taskId = ctx.getNodeParameter('taskId', itemIndex) as number;
-		const section = ctx.getNodeParameter('section', itemIndex) as number;
+		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
+			extractValue: true,
+		}) as number;
+		const nodeVersion = ctx.getNode().typeVersion;
 
 		const body: SyncRequest = {
 			commands: [
 				{
-					type: CommandType.ITEM_MOVE,
+					type: CommandTypes.ITEM_MOVE,
 					uuid: uuid(),
 					args: {
 						id: taskId,
-						section_id: section,
+						// Set section_id only if node version is below 2.1
+						...(nodeVersion < 2.1
+							? { section_id: ctx.getNodeParameter('section', itemIndex) as number }
+							: {}),
 					},
 				},
 			],
 		};
 
-		await todoistSyncRequest.call(ctx, body);
+		if (nodeVersion >= 2.1) {
+			const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			// Only one of parent_id, section_id, or project_id must be set to move the task
+			if (options.parent) {
+				body.commands[0].args.parent_id = options.parent as string;
+			} else if (options.section) {
+				body.commands[0].args.section_id = options.section as number;
+			} else {
+				body.commands[0].args.project_id = projectId;
+			}
+		}
 
+		await todoistSyncRequest.call(ctx, body);
 		return { success: true };
 	}
 }
@@ -332,7 +353,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresProjectId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
@@ -343,6 +364,6 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresTempId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 }

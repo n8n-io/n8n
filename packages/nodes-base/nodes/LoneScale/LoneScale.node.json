@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/lonescale"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/lonescale/"
 			}
 		],
 		"primaryDocumentation": [

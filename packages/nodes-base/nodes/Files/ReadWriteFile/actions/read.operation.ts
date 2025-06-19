@@ -1,8 +1,15 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
 import glob from 'fast-glob';
+import { NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+
 import { updateDisplayOptions } from '@utils/utilities';
-import { errorMapper } from '../helpers/utils';
+
+import { errorMapper, escapeSpecialCharacters } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -13,13 +20,14 @@ export const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
 		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
-		description: "Specify a file's path or path pattern to read multiple files",
+		description:
+			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -73,7 +81,14 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
+			fileSelector = String(this.getNodeParameter('fileSelector', itemIndex));
+
+			fileSelector = escapeSpecialCharacters(fileSelector);
+
+			if (/^[a-zA-Z]:/.test(fileSelector)) {
+				fileSelector = fileSelector.replace(/\\\\/g, '/');
+			}
+
 			const options = this.getNodeParameter('options', itemIndex, {});
 
 			let dataPropertyName = 'data';
@@ -109,7 +124,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 						mimeType: binaryData.mimeType,
 						fileType: binaryData.fileType,
 						fileName: binaryData.fileName,
-						directory: binaryData.directory,
 						fileExtension: binaryData.fileExtension,
 						fileSize: binaryData.fileSize,
 					},
@@ -118,7 +132,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-
 			returnData.push(...newItems);
 		} catch (error) {
 			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
@@ -136,7 +149,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 		}
 	}
 

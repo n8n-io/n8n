@@ -3,11 +3,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	IExecuteFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { processAirtableError, removeIgnored } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
-import { removeIgnored } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -85,6 +87,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
+			error = processAirtableError(error as NodeApiError, undefined, i);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });
 				continue;

@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/cockpit"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/cockpit/"
 			}
 		],
 		"primaryDocumentation": [

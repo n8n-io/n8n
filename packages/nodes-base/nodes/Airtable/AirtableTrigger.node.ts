@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -5,9 +6,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import type { IRecord } from './v1/GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 
@@ -54,7 +54,7 @@ export class AirtableTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Authentication',

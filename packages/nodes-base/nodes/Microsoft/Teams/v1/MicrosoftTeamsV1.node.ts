@@ -1,27 +1,23 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeBaseDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypeBaseDescription,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { channelFields, channelOperations } from './ChannelDescription';
+import { channelMessageFields, channelMessageOperations } from './ChannelMessageDescription';
+import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	prepareMessage,
 } from './GenericFunctions';
-
-import { channelFields, channelOperations } from './ChannelDescription';
-
-import { channelMessageFields, channelMessageOperations } from './ChannelMessageDescription';
-
-import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
 import { oldVersionNotice } from '../../../../utils/descriptions';
 
@@ -36,8 +32,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Teams',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftTeamsOAuth2Api',

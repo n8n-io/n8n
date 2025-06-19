@@ -1,13 +1,12 @@
-import { Container } from 'typedi';
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
-import config from '@/config';
 import type { Risk } from '@/security-audit/types';
-import { BaseCommand } from './BaseCommand';
-import { InternalHooks } from '@/InternalHooks';
+
+import { BaseCommand } from './base-command';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -24,9 +23,9 @@ export class SecurityAudit extends BaseCommand {
 			default: RISK_CATEGORIES.join(','),
 			description: 'Comma-separated list of categories to include in the audit',
 		}),
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		'days-abandoned-workflow': Flags.integer({
-			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
+			default: Container.get(SecurityConfig).daysAbandonedWorkflow,
 			description: 'Days for a workflow to be considered abandoned if not executed',
 		}),
 	};
@@ -48,8 +47,10 @@ export class SecurityAudit extends BaseCommand {
 
 			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
 
-			throw new ApplicationError([message, hint].join('. '));
+			throw new UserError([message, hint].join('. '));
 		}
+
+		const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
 
 		const result = await Container.get(SecurityAuditService).run(
 			categories,
@@ -61,8 +62,6 @@ export class SecurityAudit extends BaseCommand {
 		} else {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
-
-		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {

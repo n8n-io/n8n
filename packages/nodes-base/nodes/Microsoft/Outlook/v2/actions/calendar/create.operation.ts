@@ -1,6 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { microsoftApiRequest } from '../../transport';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	{
@@ -29,7 +31,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'If set, the calendar will be created in the specified calendar group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'If set, the calendar will be created in the specified calendar group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Color',

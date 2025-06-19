@@ -5,12 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { driveRLC, fileTypesOptions, folderRLC } from '../common.descriptions';
-import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
-import { prepareQueryString, updateDriveScopes } from '../../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type { SearchFilter } from '../../helpers/interfaces';
 import { DRIVE, RLC_FOLDER_DEFAULT } from '../../helpers/interfaces';
-import { updateDisplayOptions } from '@utils/utilities';
+import { prepareQueryString, updateDriveScopes } from '../../helpers/utils';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
+import { driveRLC, fileTypesOptions, folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -158,7 +159,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

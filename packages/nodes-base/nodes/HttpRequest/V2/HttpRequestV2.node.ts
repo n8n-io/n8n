@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,7 +9,14 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep, removeCircularRefs } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	sleep,
+	removeCircularRefs,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -41,8 +46,8 @@ export class HttpRequestV2 implements INodeType {
 				color: '#2200DD',
 			},
 			version: 2,
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'httpBasicAuth',
@@ -205,7 +210,7 @@ export class HttpRequestV2 implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -274,7 +279,7 @@ export class HttpRequestV2 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{
@@ -635,6 +640,7 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
@@ -648,6 +654,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -735,7 +745,6 @@ export class HttpRequestV2 implements INodeType {
 			};
 
 			if (fullResponse) {
-				// @ts-ignore
 				requestOptions.resolveWithFullResponse = true;
 			}
 
@@ -748,7 +757,6 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			if (options.ignoreResponseCode === true) {
-				// @ts-ignore
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
@@ -956,6 +964,11 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
+			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
@@ -1024,12 +1037,10 @@ export class HttpRequestV2 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {

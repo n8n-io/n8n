@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,6 +9,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function apiRequest(
@@ -62,11 +64,15 @@ export async function apiRequest(
 			error.statusCode = '401';
 		}
 
-		if (error.message.includes('PERMISSION_DENIED')) {
-			const message = `Missing permissions for Google Sheet, ${error.message}}`;
-			const details = error.description ? ` Details of the error: ${error.description}.` : '';
-			const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
-			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
+		if (error instanceof NodeApiError) {
+			if (error.message.includes('PERMISSION_DENIED')) {
+				const details = error.description ? ` Details of the error: ${error.description}.` : '';
+				const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
+
+				set(error, 'description', description);
+			}
+
+			throw error;
 		}
 
 		throw new NodeApiError(this.getNode(), error as JsonObject);

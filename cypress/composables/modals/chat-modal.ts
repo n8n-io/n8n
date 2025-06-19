@@ -3,35 +3,27 @@
  */
 
 export function getManualChatModal() {
-	return cy.getByTestId('lmChat-modal');
+	return cy.getByTestId('canvas-chat');
 }
 
 export function getManualChatInput() {
-	return cy.getByTestId('workflow-chat-input');
+	return getManualChatModal().get('.chat-inputs textarea');
 }
 
 export function getManualChatSendButton() {
-	return getManualChatModal().getByTestId('workflow-chat-send-button');
+	return getManualChatModal().get('.chat-input-send-button');
 }
 
 export function getManualChatMessages() {
-	return getManualChatModal().get('.messages .message');
+	return getManualChatModal().get('.chat-messages-list .chat-message');
 }
 
 export function getManualChatModalCloseButton() {
-	return getManualChatModal().get('.el-dialog__close');
+	return cy.getByTestId('workflow-chat-button');
 }
 
-export function getManualChatModalLogs() {
-	return getManualChatModal().getByTestId('lm-chat-logs');
-}
-
-export function getManualChatModalLogsTree() {
-	return getManualChatModalLogs().getByTestId('lm-chat-logs-tree');
-}
-
-export function getManualChatModalLogsEntries() {
-	return getManualChatModalLogs().getByTestId('lm-chat-logs-entry');
+export function getManualChatDialog() {
+	return getManualChatModal().getByTestId('workflow-lm-chat-dialog');
 }
 
 /**

@@ -14,7 +14,7 @@ export async function clockifyApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	_uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';

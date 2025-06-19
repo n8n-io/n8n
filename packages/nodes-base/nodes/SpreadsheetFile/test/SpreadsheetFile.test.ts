@@ -1,21 +1,18 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { readFileSync } from 'fs';
+import type { WorkflowTestData } from 'n8n-workflow';
 import path from 'path';
-import type { IWorkflowBase } from 'n8n-workflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Execute Spreadsheet File Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
+	const testHarness = new NodeTestHarness();
+	const readBinaryFile = (fileName: string) =>
+		readFileSync(path.resolve(__dirname, fileName), 'base64');
 
 	const loadWorkflow = (fileName: string, csvName: string) => {
-		const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
-			`nodes/SpreadsheetFile/test/${fileName}`,
-		);
-		const node = workflow.nodes.find((n) => n.name === 'Read Binary File');
-		node!.parameters.fileSelector = path.join(__dirname, csvName);
-		return workflow;
+		const workflowData = testHarness.readWorkflowJSON(fileName);
+		const node = workflowData.nodes.find((n) => n.name === 'Read Binary File')!;
+		node.parameters.fileSelector = path.join(__dirname, csvName);
+		return workflowData;
 	};
 
 	const tests: WorkflowTestData[] = [
@@ -25,6 +22,7 @@ describe('Execute Spreadsheet File Node', () => {
 				workflowData: loadWorkflow('workflow.json', 'spreadsheet.csv'),
 			},
 			output: {
+				assertBinaryData: true,
 				nodeData: {
 					'Read From File': [
 						[
@@ -109,7 +107,7 @@ describe('Execute Spreadsheet File Node', () => {
 										mimeType: 'text/html',
 										fileType: 'html',
 										fileExtension: 'html',
-										data: 'PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0iQSIgaWQ9InNqcy1BMSI+QTwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJCIiBpZD0ic2pzLUIxIj5CPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9IkMiIGlkPSJzanMtQzEiPkM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iMSIgaWQ9InNqcy1BMiI+MTwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSIyIiBpZD0ic2pzLUIyIj4yPC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjMiIGlkPSJzanMtQzIiPjM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iNCIgaWQ9InNqcy1BMyI+NDwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSI1IiBpZD0ic2pzLUIzIj41PC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjYiIGlkPSJzanMtQzMiPjY8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==',
+										data: readBinaryFile('spreadsheet.html'),
 										fileName: 'spreadsheet.html',
 										fileSize: '535 B',
 									},
@@ -127,7 +125,7 @@ describe('Execute Spreadsheet File Node', () => {
 									data: {
 										mimeType: 'application/rtf',
 										fileExtension: 'rtf',
-										data: 'e1xydGYxXGFuc2lcdHJvd2RcdHJhdXRvZml0MVxjZWxseDFcY2VsbHgyXGNlbGx4M1xwYXJkXGludGJsIEFcY2VsbCBCXGNlbGwgQ1xjZWxsXHBhcmRcaW50Ymxccm93XHRyb3dkXHRyYXV0b2ZpdDFcY2VsbHgxXGNlbGx4MlxjZWxseDNccGFyZFxpbnRibCAxXGNlbGwgMlxjZWxsIDNcY2VsbFxwYXJkXGludGJsXHJvd1x0cm93ZFx0cmF1dG9maXQxXGNlbGx4MVxjZWxseDJcY2VsbHgzXHBhcmRcaW50YmwgNFxjZWxsIDVcY2VsbCA2XGNlbGxccGFyZFxpbnRibFxyb3d9',
+										data: readBinaryFile('spreadsheet.rtf'),
 										fileName: 'spreadsheet.rtf',
 										fileSize: '267 B',
 									},
@@ -143,7 +141,7 @@ describe('Execute Spreadsheet File Node', () => {
 									data: {
 										mimeType: 'application/vnd.ms-excel',
 										fileExtension: 'xls',
-										data: '0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAGAAAAAAAAAAAAAAABAAAAAgAAAAAAAAAAEAAAAQAAAAEAAAD+////AAAAAAAAAAD////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////9/////v////7///8EAAAABQAAAP7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7///8CAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAD+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+/////v////7////+////UgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABQH//////////wEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAUAAAAAAAABAFMAaAAzADMAdABKADUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgACAf////8CAAAA/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAFcAbwByAGsA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',
+										data: readBinaryFile('spreadsheet.xls'),
 										fileName: 'spreadsheet.xls',
 										fileSize: '3.58 kB',
 									},
@@ -196,21 +194,7 @@ describe('Execute Spreadsheet File Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
-		// eslint-disable-next-line @typescript-eslint/no-loop-func
-		test(testData.description, async () => {
-			// execute workflow
-			const { result } = await executeWorkflow(testData, nodeTypes);
-
-			// check if result node data matches expected test data
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-
-			expect(result.finished).toEqual(true);
-		});
+		testHarness.setupTest(testData);
 	}
 });

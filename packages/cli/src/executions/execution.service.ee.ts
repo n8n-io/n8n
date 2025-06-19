@@ -1,10 +1,12 @@
+import type { WorkflowWithSharingsAndCredentials, IExecutionResponse } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+
+import type { IExecutionFlattedResponse } from '@/interfaces';
+
 import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.types';
-import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
 import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
-import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Service } from 'typedi';
 
 @Service()
 export class EnterpriseExecutionsService {
@@ -22,23 +24,24 @@ export class EnterpriseExecutionsService {
 
 		if (!execution) return;
 
-		const relations = ['shared', 'shared.user'];
-
-		const workflow = (await this.workflowRepository.get(
-			{ id: execution.workflowId },
-			{ relations },
-		)) as WorkflowWithSharingsAndCredentials;
+		const workflow = (await this.workflowRepository.get({
+			id: execution.workflowId,
+		})) as WorkflowWithSharingsAndCredentials;
 
 		if (!workflow) return;
 
-		this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
-		await this.enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
+		const workflowWithSharingsMetaData =
+			this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+		await this.enterpriseWorkflowService.addCredentialsToWorkflow(
+			workflowWithSharingsMetaData,
+			req.user,
+		);
 
 		execution.workflowData = {
 			...execution.workflowData,
-			ownedBy: workflow.ownedBy,
-			sharedWith: workflow.sharedWith,
-			usedCredentials: workflow.usedCredentials,
+			homeProject: workflowWithSharingsMetaData.homeProject,
+			sharedWithProjects: workflowWithSharingsMetaData.sharedWithProjects,
+			usedCredentials: workflowWithSharingsMetaData.usedCredentials,
 		} as WorkflowWithSharingsAndCredentials;
 
 		return execution;

@@ -5,11 +5,12 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC,
+	modelRLC('modelSearch'),
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -62,7 +63,7 @@ const properties: INodeProperties[] = [
 		type: 'multiOptions',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 		description:
-			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant',
+			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant. You can use expression to pass file IDs as an array or comma-separated string.',
 		typeOptions: {
 			loadOptionsMethod: 'getFiles',
 		},
@@ -120,7 +121,8 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: "Add custom n8n tools when using the 'Message Assistant' operation",
+		displayName:
+			'Add custom n8n tools when you <i>message</i> your assistant (rather than when creating it)',
 		name: 'noticeTools',
 		type: 'notice',
 		default: '',
@@ -132,6 +134,24 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		options: [
+			{
+				displayName: 'Output Randomness (Temperature)',
+				name: 'temperature',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. We generally recommend altering this or temperature but not both.',
+				type: 'number',
+			},
+			{
+				displayName: 'Output Randomness (Top P)',
+				name: 'topP',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+				type: 'number',
+			},
 			{
 				displayName: 'Fail if Assistant Already Exists',
 				name: 'failIfExists',
@@ -160,7 +180,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const instructions = this.getNodeParameter('instructions', i) as string;
 	const codeInterpreter = this.getNodeParameter('codeInterpreter', i) as boolean;
 	const knowledgeRetrieval = this.getNodeParameter('knowledgeRetrieval', i) as boolean;
-	const file_ids = this.getNodeParameter('file_ids', i, []) as string[];
+	let file_ids = this.getNodeParameter('file_ids', i, []) as string[] | string;
+	if (typeof file_ids === 'string') {
+		file_ids = file_ids.split(',').map((file_id) => file_id.trim());
+	}
 	const options = this.getNodeParameter('options', i, {});
 
 	if (options.failIfExists) {
@@ -170,24 +193,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		let after: string | undefined;
 
 		do {
-			const response = await apiRequest.call(this, 'GET', '/assistants', {
+			const response = (await apiRequest.call(this, 'GET', '/assistants', {
 				headers: {
-					'OpenAI-Beta': 'assistants=v1',
+					'OpenAI-Beta': 'assistants=v2',
 				},
 				qs: {
 					limit: 100,
 					after,
 				},
-			});
+			})) as { data: IDataObject[]; has_more: boolean; last_id: string };
 
 			for (const assistant of response.data || []) {
-				assistants.push(assistant.name);
+				assistants.push(assistant.name as string);
 			}
 
 			has_more = response.has_more;
 
 			if (has_more) {
-				after = response.last_id as string;
+				after = response.last_id;
 			} else {
 				break;
 			}
@@ -215,7 +238,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		name,
 		description: assistantDescription,
 		instructions,
-		file_ids,
 	};
 
 	const tools = [];
@@ -224,12 +246,28 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.push({
 			type: 'code_interpreter',
 		});
+		body.tool_resources = {
+			...((body.tool_resources as object) ?? {}),
+			code_interpreter: {
+				file_ids,
+			},
+		};
 	}
 
 	if (knowledgeRetrieval) {
 		tools.push({
-			type: 'retrieval',
+			type: 'file_search',
 		});
+		body.tool_resources = {
+			...((body.tool_resources as object) ?? {}),
+			file_search: {
+				vector_stores: [
+					{
+						file_ids,
+					},
+				],
+			},
+		};
 	}
 
 	if (tools.length) {
@@ -239,7 +277,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await apiRequest.call(this, 'POST', '/assistants', {
 		body,
 		headers: {
-			'OpenAI-Beta': 'assistants=v1',
+			'OpenAI-Beta': 'assistants=v2',
 		},
 	});
 

@@ -1,3 +1,7 @@
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+import moment from 'moment-timezone';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,22 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
-
-import moment from 'moment-timezone';
-import {
-	goToWebinarApiRequest,
-	goToWebinarApiRequestAllItems,
-	handleGetAll,
-	loadAnswers,
-	loadRegistranMultiChoiceQuestions,
-	loadRegistranSimpleQuestions,
-	loadWebinars,
-	loadWebinarSessions,
-} from './GenericFunctions';
 import {
 	attendeeFields,
 	attendeeOperations,
@@ -37,6 +26,16 @@ import {
 	webinarFields,
 	webinarOperations,
 } from './descriptions';
+import {
+	goToWebinarApiRequest,
+	goToWebinarApiRequestAllItems,
+	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
+	loadWebinars,
+	loadWebinarSessions,
+} from './GenericFunctions';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,8 +49,9 @@ export class GoToWebinar implements INodeType {
 		defaults: {
 			name: 'GoToWebinar',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'goToWebinarOAuth2Api',
@@ -154,9 +154,9 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
-		const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		const { oauthTokenData } = await this.getCredentials<{
 			oauthTokenData: { account_key: string; organizer_key: string };
-		};
+		}>('goToWebinarOAuth2Api');
 
 		const accountKey = oauthTokenData.account_key;
 		const organizerKey = oauthTokenData.organizer_key;

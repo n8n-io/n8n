@@ -4,6 +4,8 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 /**
@@ -17,13 +19,13 @@ export async function twilioApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const credentials = (await this.getCredentials('twilioApi')) as {
+	const credentials = await this.getCredentials<{
 		accountSid: string;
 		authType: 'authToken' | 'apiKey';
 		authToken: string;
 		apiKeySid: string;
 		apiKeySecret: string;
-	};
+	}>('twilioApi');
 
 	if (query === undefined) {
 		query = {};
@@ -37,6 +39,24 @@ export async function twilioApiRequest(
 		json: true,
 	};
 
+	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
+}
+
+export async function twilioTriggerApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: FormData | IDataObject = {},
+): Promise<any> {
+	const options: IHttpRequestOptions = {
+		method,
+		body,
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		url: `https://events.twilio.com/v1/${endpoint}`,
+		json: true,
+	};
 	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
 }
 

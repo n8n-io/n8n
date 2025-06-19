@@ -1,16 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { RecursiveCharacterTextSplitter, type TextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
-import { logWrapper } from '../../../utils/logWrapper';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
@@ -18,7 +21,23 @@ import { metadataFilterField } from '../../../utils/sharedFields';
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	const textSplittingMode = parameters?.textSplittingMode;
+	// If text splitting mode is 'custom' or does not exist (v1), we need to add an input for the text splitter
+	if (!textSplittingMode || textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+			required: true,
+		});
+	}
+
+	return inputs;
+}
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +45,8 @@ export class DocumentDefaultDataLoader implements INodeType {
 		name: 'documentDefaultDataLoader',
 		icon: 'file:binary.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Load data from previous step in the workflow',
 		defaults: {
 			name: 'Default Data Loader',
@@ -45,16 +65,9 @@ export class DocumentDefaultDataLoader implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			{
-				displayName: 'Text Splitter',
-				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
-				required: true,
-			},
-		],
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			{
@@ -106,6 +119,30 @@ export class DocumentDefaultDataLoader implements INodeType {
 						value: 'expressionData',
 						description:
 							'Load a subset of data, and/or data from any previous step in the workflow',
+					},
+				],
+			},
+			{
+				displayName: 'Mode',
+				name: 'binaryMode',
+				type: 'options',
+				default: 'allInputData',
+				required: true,
+				displayOptions: {
+					show: {
+						dataType: ['binary'],
+					},
+				},
+				options: [
+					{
+						name: 'Load All Input Data',
+						value: 'allInputData',
+						description: 'Use all Binary data that flows into the parent agent or chain',
+					},
+					{
+						name: 'Load Specific Data',
+						value: 'specificField',
+						description: 'Load data from a specific field in the parent agent or chain',
 					},
 				],
 			},
@@ -187,7 +224,35 @@ export class DocumentDefaultDataLoader implements INodeType {
 					show: {
 						dataType: ['binary'],
 					},
+					hide: {
+						binaryMode: ['allInputData'],
+					},
 				},
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Splits every 1000 characters with a 200 character overlap',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a custom text-splitting sub-node',
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -256,12 +321,30 @@ export class DocumentDefaultDataLoader implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const node = this.getNode();
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+
+		let textSplitter: TextSplitter | undefined;
+
+		if (node.typeVersion === 1.1) {
+			const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+				| 'simple'
+				| 'custom';
+
+			if (textSplittingMode === 'simple') {
+				textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
+			} else if (textSplittingMode === 'custom') {
+				textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+					| TextSplitter
+					| undefined;
+			}
+		} else {
+			textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+				| TextSplitter
+				| undefined;
+		}
+
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
 		const processor =

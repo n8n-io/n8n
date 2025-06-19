@@ -1,0 +1,168 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "commentSettings": {
+            "type": "object",
+            "properties": {
+                "commentingDisabled": {
+                    "type": "object",
+                    "properties": {
+                        "isDisabled": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "childCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveId": {
+                    "type": "string"
+                },
+                "driveType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "sharepointIds": {
+                    "type": "object",
+                    "properties": {
+                        "listId": {
+                            "type": "string"
+                        },
+                        "listItemUniqueId": {
+                            "type": "string"
+                        },
+                        "siteId": {
+                            "type": "string"
+                        },
+                        "siteUrl": {
+                            "type": "string"
+                        },
+                        "tenantId": {
+                            "type": "string"
+                        },
+                        "webId": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { gumroadApiRequest } from './GenericFunctions';
 
@@ -23,7 +24,7 @@ export class GumroadTrigger implements INodeType {
 			name: 'Gumroad Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gumroadApi',

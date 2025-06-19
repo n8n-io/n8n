@@ -1,20 +1,24 @@
-import Container from 'typedi';
+import { UserRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { randomPassword } from '@/Ldap/helpers';
-import { TOTPService } from '@/Mfa/totp.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ExternalHooks } from '@/external-hooks';
+import { TOTPService } from '@/mfa/totp.service';
+import { mockInstance } from '@test/mocking';
 
-import * as testDb from '../shared/testDb';
+import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
+import { randomValidPassword, uniqueId } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
-import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
-import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
 
 jest.mock('@/telemetry');
 
 let owner: User;
+
+const externalHooks = mockInstance(ExternalHooks);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
@@ -23,7 +27,9 @@ const testServer = utils.setupTestServer({
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createOwner();
+
+	externalHooks.run.mockReset();
 
 	config.set('userManagement.disabled', false);
 });
@@ -35,24 +41,23 @@ afterAll(async () => {
 describe('Enable MFA setup', () => {
 	describe('Step one', () => {
 		test('GET /qr should fail due to unauthenticated user', async () => {
-			const response = await testServer.authlessAgent.get('/mfa/qr');
-
-			expect(response.statusCode).toBe(401);
+			await testServer.authlessAgent.get('/mfa/qr').expect(401);
 		});
 
 		test('GET /qr should reuse secret and recovery codes until setup is complete', async () => {
-			const firstCall = await testServer.authAgentFor(owner).get('/mfa/qr');
+			const firstCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
-			const secondCall = await testServer.authAgentFor(owner).get('/mfa/qr');
+			const secondCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).toBe(
 				secondCall.body.data.recoveryCodes.join(''),
 			);
 
-			await testServer.authAgentFor(owner).delete('/mfa/disable');
+			const mfaCode = new TOTPService().generateTOTP(firstCall.body.data.secret);
+			await testServer.authAgentFor(owner).post('/mfa/disable').send({ mfaCode }).expect(200);
 
-			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr');
+			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(
@@ -61,9 +66,7 @@ describe('Enable MFA setup', () => {
 		});
 
 		test('GET /qr should return qr, secret and recovery codes', async () => {
-			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
-
-			expect(response.statusCode).toBe(200);
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			const { data } = response.body;
 
@@ -77,163 +80,167 @@ describe('Enable MFA setup', () => {
 
 	describe('Step two', () => {
 		test('POST /verify should fail due to unauthenticated user', async () => {
-			const response = await testServer.authlessAgent.post('/mfa/verify');
-
-			expect(response.statusCode).toBe(401);
+			await testServer.authlessAgent.post('/mfa/verify').expect(401);
 		});
 
-		test('POST /verify should fail due to invalid MFA token', async () => {
-			const response = await testServer
-				.authAgentFor(owner)
-				.post('/mfa/verify')
-				.send({ token: '123' });
-
-			expect(response.statusCode).toBe(400);
+		test('POST /verify should fail due to invalid MFA code', async () => {
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode: '123' }).expect(400);
 		});
 
-		test('POST /verify should fail due to missing token parameter', async () => {
-			await testServer.authAgentFor(owner).get('/mfa/qr');
-
-			const response = await testServer.authAgentFor(owner).post('/mfa/verify').send({ token: '' });
-
-			expect(response.statusCode).toBe(400);
+		test('POST /verify should fail due to missing mfaCode parameter', async () => {
+			await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode: '' }).expect(400);
 		});
 
-		test('POST /verify should validate MFA token', async () => {
-			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
+		test('POST /verify should validate MFA code', async () => {
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			const { secret } = response.body.data;
+			const mfaCode = new TOTPService().generateTOTP(secret);
 
-			const token = new TOTPService().generateTOTP(secret);
-
-			const { statusCode } = await testServer
-				.authAgentFor(owner)
-				.post('/mfa/verify')
-				.send({ token });
-
-			expect(statusCode).toBe(200);
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode }).expect(200);
 		});
 	});
 
 	describe('Step three', () => {
 		test('POST /enable should fail due to unauthenticated user', async () => {
-			const response = await testServer.authlessAgent.post('/mfa/enable');
-
-			expect(response.statusCode).toBe(401);
+			await testServer.authlessAgent.post('/mfa/enable').expect(401);
 		});
 
-		test('POST /verify should fail due to missing token parameter', async () => {
-			const response = await testServer.authAgentFor(owner).post('/mfa/verify').send({ token: '' });
-
-			expect(response.statusCode).toBe(400);
+		test('POST /verify should fail due to missing mfaCode parameter', async () => {
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode: '' }).expect(400);
 		});
 
-		test('POST /enable should fail due to invalid MFA token', async () => {
-			await testServer.authAgentFor(owner).get('/mfa/qr');
-
-			const response = await testServer
-				.authAgentFor(owner)
-				.post('/mfa/enable')
-				.send({ token: '123' });
-
-			expect(response.statusCode).toBe(400);
+		test('POST /enable should fail due to invalid MFA code', async () => {
+			await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+			await testServer.authAgentFor(owner).post('/mfa/enable').send({ mfaCode: '123' }).expect(400);
 		});
 
 		test('POST /enable should fail due to empty secret and recovery codes', async () => {
-			const response = await testServer.authAgentFor(owner).post('/mfa/enable');
-
-			expect(response.statusCode).toBe(400);
+			await testServer.authAgentFor(owner).post('/mfa/enable').expect(400);
 		});
 
 		test('POST /enable should enable MFA in account', async () => {
-			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			const { secret } = response.body.data;
+			const mfaCode = new TOTPService().generateTOTP(secret);
 
-			const token = new TOTPService().generateTOTP(secret);
-
-			await testServer.authAgentFor(owner).post('/mfa/verify').send({ token });
-
-			const { statusCode } = await testServer
-				.authAgentFor(owner)
-				.post('/mfa/enable')
-				.send({ token });
-
-			expect(statusCode).toBe(200);
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode }).expect(200);
+			await testServer.authAgentFor(owner).post('/mfa/enable').send({ mfaCode }).expect(200);
 
 			const user = await Container.get(UserRepository).findOneOrFail({
 				where: {},
-				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
 
 			expect(user.mfaEnabled).toBe(true);
 			expect(user.mfaRecoveryCodes).toBeDefined();
 			expect(user.mfaSecret).toBeDefined();
 		});
+
+		test('POST /enable should not enable MFA if pre check fails', async () => {
+			// This test is to make sure owners verify their email before enabling MFA in cloud
+
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+
+			const { secret } = response.body.data;
+			const mfaCode = new TOTPService().generateTOTP(secret);
+
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ mfaCode }).expect(200);
+
+			externalHooks.run.mockRejectedValue(new BadRequestError('Error message'));
+
+			await testServer.authAgentFor(owner).post('/mfa/enable').send({ mfaCode }).expect(400);
+
+			const user = await Container.get(UserRepository).findOneOrFail({
+				where: {},
+			});
+
+			expect(user.mfaEnabled).toBe(false);
+		});
 	});
 });
 
 describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
-		const { user } = await createUserWithMfaEnabled();
+		const { user, rawSecret } = await createUserWithMfaEnabled();
+		const mfaCode = new TOTPService().generateTOTP(rawSecret);
 
-		const response = await testServer.authAgentFor(user).delete('/mfa/disable');
-
-		expect(response.statusCode).toBe(200);
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({
+				mfaCode,
+			})
+			.expect(200);
 
 		const dbUser = await Container.get(UserRepository).findOneOrFail({
 			where: { id: user.id },
-			select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 		});
 
 		expect(dbUser.mfaEnabled).toBe(false);
 		expect(dbUser.mfaSecret).toBe(null);
 		expect(dbUser.mfaRecoveryCodes.length).toBe(0);
 	});
+
+	test('POST /disable should fail if invalid MFA recovery code is given', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({
+				mfaRecoveryCode: 'invalid token',
+			})
+			.expect(403);
+	});
+
+	test('POST /disable should fail if invalid MFA code is given', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({
+				mfaCode: 'invalid token',
+			})
+			.expect(403);
+	});
+
+	test('POST /disable should fail if neither MFA code nor recovery code is sent', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer.authAgentFor(user).post('/mfa/disable').send({ anotherParam: '' }).expect(400);
+	});
 });
 
 describe('Change password with MFA enabled', () => {
-	test('PATCH /me/password should fail due to missing MFA token', async () => {
-		const { user, rawPassword } = await createUserWithMfaEnabled();
-
-		const newPassword = randomPassword();
-
-		const response = await testServer
-			.authAgentFor(user)
-			.patch('/me/password')
-			.send({ currentPassword: rawPassword, newPassword });
-
-		expect(response.statusCode).toBe(400);
-	});
-
-	test('POST /change-password should fail due to missing MFA token', async () => {
+	test('POST /change-password should fail due to missing MFA code', async () => {
 		await createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
-
 		const resetPasswordToken = uniqueId();
 
-		const response = await testServer.authlessAgent
+		await testServer.authlessAgent
 			.post('/change-password')
-			.send({ password: newPassword, token: resetPasswordToken });
-
-		expect(response.statusCode).toBe(404);
+			.send({ password: newPassword, token: resetPasswordToken })
+			.expect(404);
 	});
 
-	test('POST /change-password should fail due to invalid MFA token', async () => {
+	test('POST /change-password should fail due to invalid MFA code', async () => {
 		await createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
-
 		const resetPasswordToken = uniqueId();
 
-		const response = await testServer.authlessAgent.post('/change-password').send({
-			password: newPassword,
-			token: resetPasswordToken,
-			mfaToken: randomDigit(),
-		});
-
-		expect(response.statusCode).toBe(404);
+		await testServer.authlessAgent
+			.post('/change-password')
+			.send({
+				password: newPassword,
+				token: resetPasswordToken,
+				mfaCode: randomString(10),
+			})
+			.expect(404);
 	});
 
 	test('POST /change-password should update password', async () => {
@@ -245,59 +252,69 @@ describe('Change password with MFA enabled', () => {
 
 		const resetPasswordToken = Container.get(AuthService).generatePasswordResetToken(user);
 
-		const mfaToken = new TOTPService().generateTOTP(rawSecret);
+		const mfaCode = new TOTPService().generateTOTP(rawSecret);
 
-		const response = await testServer.authlessAgent.post('/change-password').send({
-			password: newPassword,
-			token: resetPasswordToken,
-			mfaToken,
-		});
-
-		expect(response.statusCode).toBe(200);
+		await testServer.authlessAgent
+			.post('/change-password')
+			.send({
+				password: newPassword,
+				token: resetPasswordToken,
+				mfaCode,
+			})
+			.expect(200);
 
 		const loginResponse = await testServer
 			.authAgentFor(user)
 			.post('/login')
 			.send({
-				email: user.email,
+				emailOrLdapLoginId: user.email,
 				password: newPassword,
-				mfaToken: new TOTPService().generateTOTP(rawSecret),
-			});
+				mfaCode: new TOTPService().generateTOTP(rawSecret),
+			})
+			.expect(200);
 
-		expect(loginResponse.statusCode).toBe(200);
 		expect(loginResponse.body).toHaveProperty('data');
+	});
+});
+
+describe('MFA before enable checks', () => {
+	test('POST /can-enable should throw error if mfa.beforeSetup returns error', async () => {
+		externalHooks.run.mockRejectedValue(new BadRequestError('Error message'));
+
+		await testServer.authAgentFor(owner).post('/mfa/can-enable').expect(400);
+
+		expect(externalHooks.run).toHaveBeenCalledWith('mfa.beforeSetup', [
+			expect.objectContaining(owner),
+		]);
+	});
+
+	test('POST /can-enable should not throw error if mfa.beforeSetup does not exist', async () => {
+		externalHooks.run.mockResolvedValue(undefined);
+
+		await testServer.authAgentFor(owner).post('/mfa/can-enable').expect(200);
+
+		expect(externalHooks.run).toHaveBeenCalledWith('mfa.beforeSetup', [
+			expect.objectContaining(owner),
+		]);
 	});
 });
 
 describe('Login', () => {
 	test('POST /login with email/password should succeed when mfa is disabled', async () => {
-		const password = randomPassword();
+		const password = randomString(8);
 
 		const user = await createUser({ password });
 
-		const response = await testServer.authlessAgent
+		await testServer.authlessAgent
 			.post('/login')
-			.send({ email: user.email, password });
-
-		expect(response.statusCode).toBe(200);
-	});
-
-	test('GET /login should include hasRecoveryCodesLeft property in response', async () => {
-		const response = await testServer.authAgentFor(owner).get('/login');
-
-		const { data } = response.body;
-
-		expect(response.statusCode).toBe(200);
-
-		expect(data.hasRecoveryCodesLeft).toBeDefined();
+			.send({ emailOrLdapLoginId: user.email, password })
+			.expect(200);
 	});
 
 	test('GET /login should not include mfaSecret and mfaRecoveryCodes property in response', async () => {
-		const response = await testServer.authAgentFor(owner).get('/login');
+		const response = await testServer.authAgentFor(owner).get('/login').expect(200);
 
 		const { data } = response.body;
-
-		expect(response.statusCode).toBe(200);
 
 		expect(data.recoveryCodes).not.toBeDefined();
 		expect(data.mfaSecret).not.toBeDefined();
@@ -306,22 +323,20 @@ describe('Login', () => {
 	test('POST /login with email/password should fail when mfa is enabled', async () => {
 		const { user, rawPassword } = await createUserWithMfaEnabled();
 
-		const response = await testServer.authlessAgent
+		await testServer.authlessAgent
 			.post('/login')
-			.send({ email: user.email, password: rawPassword });
-
-		expect(response.statusCode).toBe(401);
+			.send({ emailOrLdapLoginId: user.email, password: rawPassword })
+			.expect(401);
 	});
 
 	describe('Login with MFA token', () => {
 		test('POST /login should fail due to invalid MFA token', async () => {
 			const { user, rawPassword } = await createUserWithMfaEnabled();
 
-			const response = await testServer.authlessAgent
+			await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaToken: 'wrongvalue' });
-
-			expect(response.statusCode).toBe(401);
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: 'wrongvalue' })
+				.expect(401);
 		});
 
 		test('POST /login should fail due two MFA step needed', async () => {
@@ -329,9 +344,9 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword });
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword })
+				.expect(401);
 
-			expect(response.statusCode).toBe(401);
 			expect(response.body.code).toBe(998);
 		});
 
@@ -342,11 +357,11 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaToken: token });
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: token })
+				.expect(200);
 
 			const data = response.body.data;
 
-			expect(response.statusCode).toBe(200);
 			expect(data.mfaEnabled).toBe(true);
 		});
 	});
@@ -355,11 +370,14 @@ describe('Login', () => {
 		test('POST /login should fail due to invalid MFA recovery code', async () => {
 			const { user, rawPassword } = await createUserWithMfaEnabled();
 
-			const response = await testServer.authlessAgent
+			await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: 'wrongvalue' });
-
-			expect(response.statusCode).toBe(401);
+				.send({
+					emailOrLdapLoginId: user.email,
+					password: rawPassword,
+					mfaRecoveryCode: 'wrongvalue',
+				})
+				.expect(401);
 		});
 
 		test('POST /login should succeed with MFA recovery code', async () => {
@@ -367,38 +385,23 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
+				.send({
+					emailOrLdapLoginId: user.email,
+					password: rawPassword,
+					mfaRecoveryCode: rawRecoveryCodes[0],
+				})
+				.expect(200);
 
 			const data = response.body.data;
-
-			expect(response.statusCode).toBe(200);
 			expect(data.mfaEnabled).toBe(true);
-			expect(data.hasRecoveryCodesLeft).toBe(true);
 
 			const dbUser = await Container.get(UserRepository).findOneOrFail({
 				where: { id: user.id },
-				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
 
 			// Make sure the recovery code used was removed
 			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
 			expect(dbUser.mfaRecoveryCodes.includes(rawRecoveryCodes[0])).toBe(false);
-		});
-
-		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
-			const { user, rawPassword, rawRecoveryCodes } = await createUserWithMfaEnabled({
-				numberOfRecoveryCodes: 1,
-			});
-
-			const response = await testServer.authlessAgent
-				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
-
-			const data = response.body.data;
-
-			expect(response.statusCode).toBe(200);
-			expect(data.mfaEnabled).toBe(true);
-			expect(data.hasRecoveryCodesLeft).toBe(false);
 		});
 	});
 });

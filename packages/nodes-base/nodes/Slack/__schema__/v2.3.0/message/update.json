@@ -1,0 +1,156 @@
+{
+    "type": "object",
+    "properties": {
+        "channel": {
+            "type": "string"
+        },
+        "message": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "string"
+                },
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "block_id": {
+                                "type": "string"
+                            },
+                            "elements": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "style": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "bold": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "italic": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    },
+                                                    "text": {
+                                                        "type": "string"
+                                                    },
+                                                    "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "url": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "text": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "verbatim": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "bot_id": {
+                    "type": "string"
+                },
+                "bot_profile": {
+                    "type": "object",
+                    "properties": {
+                        "app_id": {
+                            "type": "string"
+                        },
+                        "deleted": {
+                            "type": "boolean"
+                        },
+                        "icons": {
+                            "type": "object",
+                            "properties": {
+                                "image_36": {
+                                    "type": "string"
+                                },
+                                "image_48": {
+                                    "type": "string"
+                                },
+                                "image_72": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "team_id": {
+                            "type": "string"
+                        },
+                        "updated": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "edited": {
+                    "type": "object",
+                    "properties": {
+                        "ts": {
+                            "type": "string"
+                        },
+                        "user": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "team": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "message_timestamp": {
+            "type": "string"
+        },
+        "ok": {
+            "type": "boolean"
+        },
+        "text": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

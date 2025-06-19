@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "ath_date": {
+            "type": "string"
+        },
+        "atl_change_percentage": {
+            "type": "number"
+        },
+        "atl_date": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "image": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "market_cap": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "symbol": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

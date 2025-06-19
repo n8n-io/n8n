@@ -8,21 +8,22 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { leadFields, leadOperations } from './LeadDescription';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { companyFields, companyOperations } from './CompanyDescription';
+import type { ICompany } from './CompanyInteface';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { leadFields, leadOperations } from './LeadDescription';
 import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser, IUserCompany } from './UserInterface';
-import { companyFields, companyOperations } from './CompanyDescription';
-import type { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Intercom',
 		name: 'intercom',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:intercom.png',
+
+		icon: 'file:intercom.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -30,8 +31,9 @@ export class Intercom implements INodeType {
 		defaults: {
 			name: 'Intercom',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'intercomApi',

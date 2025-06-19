@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "assignable": {
+                    "type": "boolean"
+                },
+                "channelId": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

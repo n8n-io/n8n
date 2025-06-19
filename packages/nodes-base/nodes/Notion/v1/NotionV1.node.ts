@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,25 +10,23 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import type { SortData } from '../GenericFunctions';
+import { versionDescription } from './VersionDescription';
+import type { SortData } from '../shared/GenericFunctions';
 import {
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
 	formatTitle,
-	getBlockTypes,
+	getBlockTypesOptions,
 	mapFilters,
 	mapProperties,
 	mapSorting,
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-} from '../GenericFunctions';
-
-import { getDatabases } from '../SearchFunctions';
-import { versionDescription } from './VersionDescription';
+} from '../shared/GenericFunctions';
+import { listSearch } from '../shared/methods';
 
 export class NotionV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -40,9 +39,7 @@ export class NotionV1 implements INodeType {
 	}
 
 	methods = {
-		listSearch: {
-			getDatabases,
-		},
+		listSearch,
 		loadOptions: {
 			async getDatabaseProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -104,7 +101,7 @@ export class NotionV1 implements INodeType {
 				return returnData;
 			},
 			async getBlockTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getBlockTypes();
+				return getBlockTypesOptions();
 			},
 			async getPropertySelectValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');

@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -8,8 +9,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash/get';
-
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -19,7 +18,7 @@ export async function venafiApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
+	const credentials = await this.getCredentials('venafiTlsProtectDatacenterApi');
 
 	const options: IRequestOptions = {
 		headers: {

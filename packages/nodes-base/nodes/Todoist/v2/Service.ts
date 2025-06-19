@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { Context } from '../GenericFunctions';
+
 import {
 	CloseHandler,
 	CreateHandler,
@@ -11,6 +11,7 @@ import {
 	SyncHandler,
 	UpdateHandler,
 } from './OperationHandler';
+import type { Context } from '../GenericFunctions';
 
 export class TodoistService implements Service {
 	async execute(
@@ -52,6 +53,11 @@ export interface Section {
 
 export interface Service {
 	execute(ctx: Context, operation: OperationType, itemIndex: number): Promise<TodoistResponse>;
+}
+
+export interface TodoistProjectType {
+	id: number;
+	name: string;
 }
 
 export interface TodoistResponse {

@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "properties": {
+        "expand": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "statusCategory": {
+                            "type": "object",
+                            "properties": {
+                                "colorName": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "key": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

@@ -1,22 +1,24 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
+import { Document } from '@langchain/core/documents';
+import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	IWorkflowBase,
-	IExecuteFunctions,
+	ISupplyDataFunctions,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
+	INodeParameterResourceLocator,
+	ExecuteWorkflowData,
 } from 'n8n-workflow';
 
-import { BaseRetriever, type BaseRetrieverInput } from 'langchain/schema/retriever';
-import { Document } from 'langchain/document';
-
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
 	let result = '';
@@ -39,8 +41,9 @@ export class RetrieverWorkflow implements INodeType {
 		displayName: 'Workflow Retriever',
 		name: 'retrieverWorkflow',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use an n8n Workflow as Retriever',
 		defaults: {
 			name: 'Workflow Retriever',
@@ -63,7 +66,7 @@ export class RetrieverWorkflow implements INodeType {
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
 		properties: [
@@ -104,11 +107,25 @@ export class RetrieverWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
+			},
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: '',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -276,18 +293,23 @@ export class RetrieverWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		class WorkflowRetriever extends BaseRetriever {
 			lc_namespace = ['n8n-nodes-langchain', 'retrievers', 'workflow'];
 
-			executeFunctions: IExecuteFunctions;
-
-			constructor(executeFunctions: IExecuteFunctions, fields: BaseRetrieverInput) {
+			constructor(
+				private executeFunctions: ISupplyDataFunctions,
+				fields: BaseRetrieverInput,
+			) {
 				super(fields);
-				this.executeFunctions = executeFunctions;
 			}
 
-			async getRelevantDocuments(query: string): Promise<Document[]> {
+			async _getRelevantDocuments(
+				query: string,
+				config?: CallbackManagerForRetrieverRun,
+			): Promise<Document[]> {
 				const source = this.executeFunctions.getNodeParameter('source', itemIndex) as string;
 
 				const baseMetadata: IDataObject = {
@@ -297,11 +319,21 @@ export class RetrieverWorkflow implements INodeType {
 
 				const workflowInfo: IExecuteWorkflowInfo = {};
 				if (source === 'database') {
-					// Read workflow from database
-					workflowInfo.id = this.executeFunctions.getNodeParameter(
-						'workflowId',
-						itemIndex,
-					) as string;
+					const nodeVersion = this.executeFunctions.getNode().typeVersion;
+					if (nodeVersion === 1) {
+						workflowInfo.id = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+						) as string;
+					} else {
+						const { value } = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+							{},
+						) as INodeParameterResourceLocator;
+						workflowInfo.id = value as string;
+					}
+
 					baseMetadata.workflowId = workflowInfo.id;
 				} else if (source === 'parameter') {
 					// Read workflow from parameter
@@ -320,6 +352,9 @@ export class RetrieverWorkflow implements INodeType {
 							},
 						);
 					}
+
+					// same as current workflow
+					baseMetadata.workflowId = workflowProxy.$workflow.id;
 				}
 
 				const rawData: IDataObject = { query };
@@ -355,20 +390,29 @@ export class RetrieverWorkflow implements INodeType {
 
 				const items = [newItem] as INodeExecutionData[];
 
-				let receivedItems: INodeExecutionData[][];
+				let receivedData: ExecuteWorkflowData;
 				try {
-					receivedItems = (await this.executeFunctions.executeWorkflow(
+					receivedData = await this.executeFunctions.executeWorkflow(
 						workflowInfo,
 						items,
-					)) as INodeExecutionData[][];
+						config?.getChild(),
+						{
+							parentExecution: {
+								executionId: workflowProxy.$execution.id,
+								workflowId: workflowProxy.$workflow.id,
+							},
+						},
+					);
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
 					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
+				const receivedItems = receivedData.data?.[0] ?? [];
+
 				const returnData: Document[] = [];
-				for (const [index, itemData] of receivedItems[0].entries()) {
+				for (const [index, itemData] of receivedItems.entries()) {
 					const pageContent = objectToString(itemData.json);
 					returnData.push(
 						new Document({
@@ -376,6 +420,7 @@ export class RetrieverWorkflow implements INodeType {
 							metadata: {
 								...baseMetadata,
 								itemIndex: index,
+								executionId: receivedData.executionId,
 							},
 						}),
 					);

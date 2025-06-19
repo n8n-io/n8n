@@ -21,7 +21,7 @@ export async function grafanaApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl: rawBaseUrl } = (await this.getCredentials('grafanaApi')) as GrafanaCredentials;
+	const { baseUrl: rawBaseUrl } = await this.getCredentials<GrafanaCredentials>('grafanaApi');
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 

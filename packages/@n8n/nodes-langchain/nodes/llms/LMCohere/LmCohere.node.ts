@@ -1,22 +1,24 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { Cohere } from '@langchain/cohere';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Cohere } from 'langchain/llms/cohere';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmCohere',
-		icon: 'file:cohere.svg',
+		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Language Model Cohere',
@@ -26,7 +28,8 @@ export class LmCohere implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -39,7 +42,7 @@ export class LmCohere implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -48,7 +51,7 @@ export class LmCohere implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -89,7 +92,7 @@ export class LmCohere implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('cohereApi');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
@@ -97,10 +100,12 @@ export class LmCohere implements INodeType {
 		const model = new Cohere({
 			apiKey: credentials.apiKey as string,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

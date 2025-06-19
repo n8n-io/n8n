@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseMessage } from 'langchain/schema';
 
 function simplifyMessages(messages: BaseMessage[]) {
 	const chunkedMessages = [];
@@ -38,6 +38,7 @@ export class MemoryChatRetriever implements INodeType {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		hidden: true,
 		version: 1,
@@ -60,16 +61,16 @@ export class MemoryChatRetriever implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Memory',
 				maxConnections: 1,
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: "This node is deprecated. Use 'Chat Memory Manager' node instead.",
@@ -88,9 +89,9 @@ export class MemoryChatRetriever implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Chat Memory Retriever');
+		this.logger.debug('Executing Chat Memory Retriever');
 
-		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+		const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 			| BaseChatMemory
 			| undefined;
 		const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;
@@ -98,7 +99,7 @@ export class MemoryChatRetriever implements INodeType {
 		const messages = await memory?.chatHistory.getMessages();
 
 		if (simplifyOutput && messages) {
-			return await this.prepareOutputData(simplifyMessages(messages));
+			return [simplifyMessages(messages)];
 		}
 
 		const serializedMessages =
@@ -107,6 +108,6 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
-		return await this.prepareOutputData(serializedMessages);
+		return [serializedMessages];
 	}
 }

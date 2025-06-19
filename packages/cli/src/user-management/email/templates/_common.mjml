@@ -1,0 +1,25 @@
+<mj-head>
+	<mj-attributes>
+		<mj-all font-family="Open Sans, sans-serif"></mj-all>
+		<mj-body background-color="#fbfcfe"></mj-body>
+		<mj-text
+			font-weight="400"
+			font-size="16px"
+			color="#444444"
+			line-height="24px"
+			padding="10px 0 0 0"
+			align="center"
+		></mj-text>
+		<mj-button
+			background-color="#ff6f5c"
+			color="#ffffff"
+			font-size="18px"
+			font-weight="600"
+			align="center"
+			padding-top="20px"
+			line-height="24px"
+			border-radius="4px"
+		></mj-button>
+		<mj-section padding="20px 0px"></mj-section>
+	</mj-attributes>
+</mj-head>

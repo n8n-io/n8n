@@ -1,7 +1,10 @@
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRelationRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+
 import { createAdmin, createMember, createOwner } from './shared/db/users';
-import * as testDb from './shared/testDb';
+import { randomEmail } from './shared/random';
+import * as testDb from './shared/test-db';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;
@@ -36,6 +39,27 @@ describe('UserRepository', () => {
 				'global:member': 3,
 				'global:owner': 1,
 			});
+		});
+	});
+
+	describe('createUserWithProject()', () => {
+		test('should create personal project for a user', async () => {
+			const { user, project } = await userRepository.createUserWithProject({
+				email: randomEmail(),
+				role: 'global:member',
+			});
+
+			const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({
+				where: {
+					userId: user.id,
+					project: {
+						type: 'personal',
+					},
+				},
+				relations: ['project'],
+			});
+
+			expect(projectRelation.project.id).toBe(project.id);
 		});
 	});
 });

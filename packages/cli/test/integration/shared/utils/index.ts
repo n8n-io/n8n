@@ -1,27 +1,33 @@
-import { Container } from 'typedi';
-import { BinaryDataService } from 'n8n-core';
-import { type INode } from 'n8n-workflow';
-import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
+import { SettingsRepository, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import {
+	BinaryDataConfig,
+	BinaryDataService,
+	InstanceSettings,
+	UnrecognizedNodeTypeError,
+	type DirectoryLoader,
+} from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
+import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
+import type { INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { OrchestrationService } from '@/services/orchestration.service';
 
-import { mockNodeTypesData } from '../../../unit/Helpers';
 import { mockInstance } from '../../../shared/mocking';
 
-export { setupTestServer } from './testServer';
+export { setupTestServer } from './test-server';
 
 // ----------------------------------
 //          initializers
@@ -30,18 +36,18 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner() {
-	mockInstance(OrchestrationService, {
-		isMultiMainSetupEnabled: false,
-		shouldAddWebhooks: jest.fn().mockReturnValue(true),
+export async function initActiveWorkflowManager() {
+	mockInstance(BinaryDataConfig);
+	mockInstance(InstanceSettings, {
+		isMultiMain: false,
 	});
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	await workflowRunner.init();
-	return workflowRunner;
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	await activeWorkflowManager.init();
+	return activeWorkflowManager;
 }
 
 /**
@@ -63,8 +69,8 @@ export async function initCredentialsTypes(): Promise<void> {
 /**
  * Initialize node types.
  */
-export async function initNodeTypes() {
-	Container.get(LoadNodesAndCredentials).loaded.nodes = {
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	const defaultNodes: INodeTypeData = {
 		'n8n-nodes-base.start': {
 			type: new Start(),
 			sourcePath: '',
@@ -77,19 +83,41 @@ export async function initNodeTypes() {
 			type: new Set(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.scheduleTrigger': {
+			type: new ScheduleTrigger(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
+			sourcePath: '',
+		},
 	};
+
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	const nodes = customNodes ?? defaultNodes;
+	const loader = mock<DirectoryLoader>();
+	loader.getNode.mockImplementation((nodeType) => {
+		const node = nodes[`n8n-nodes-base.${nodeType}`];
+		if (!node) throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeType);
+		return node;
+	});
+
+	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
+	loadNodesAndCredentials.loaded.nodes = nodes;
 }
 
 /**
  * Initialize a BinaryDataService for test runs.
  */
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
-	const binaryDataService = new BinaryDataService();
-	await binaryDataService.init({
+	const config = mock<BinaryDataConfig>({
 		mode,
 		availableModes: [mode],
 		localStoragePath: '',
 	});
+	const binaryDataService = new BinaryDataService(config);
+	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
 
@@ -97,9 +125,10 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
  * Extract the value (token) of the auth cookie in a response.
  */
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
-	const cookies: string[] = response.headers['set-cookie'];
+	const cookiesHeader = response.headers['set-cookie'];
+	if (!cookiesHeader) return undefined;
 
-	if (!cookies) return undefined;
+	const cookies = Array.isArray(cookiesHeader) ? cookiesHeader : [cookiesHeader];
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
@@ -137,7 +166,7 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 //           community nodes
 // ----------------------------------
 
-export * from './communityNodes';
+export * from './community-nodes';
 
 // ----------------------------------
 //           workflow
@@ -177,15 +206,3 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
-
-export function setSchedulerAsLoadedNode() {
-	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-
-	Object.assign(nodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
-			addTrigger: true,
-		}),
-		known: { nodes: {}, credentials: {} },
-		types: { nodes: [], credentials: [] },
-	});
-}

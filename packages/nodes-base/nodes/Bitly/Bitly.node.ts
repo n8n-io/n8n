@@ -7,10 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { linkFields, linkOperations } from './LinkDescription';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { bitlyApiRequest, bitlyApiRequestAllItems } from './GenericFunctions';
+import { linkFields, linkOperations } from './LinkDescription';
 
 export class Bitly implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +24,9 @@ export class Bitly implements INodeType {
 		defaults: {
 			name: 'Bitly',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bitlyApi',

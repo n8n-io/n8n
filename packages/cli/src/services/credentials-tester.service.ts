@@ -3,10 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Service } from 'typedi';
-import { NodeExecuteFunctions } from 'n8n-core';
+import { Logger, isObjectLiteral } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
 import get from 'lodash/get';
-
+import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -23,24 +24,17 @@ import type {
 	INodeTypeData,
 	INodeTypes,
 	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteData,
 } from 'n8n-workflow';
-import {
-	VersionedNodeType,
-	NodeHelpers,
-	RoutingNode,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { User } from '@db/entities/User';
-import { NodeTypes } from '@/NodeTypes';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialTypes } from '@/credential-types';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { isObjectLiteral } from '../utils';
-import { Logger } from '@/Logger';
-import { CredentialsHelper } from '../CredentialsHelper';
+import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -54,12 +48,15 @@ const mockNodesData: INodeTypeData = {
 };
 
 const mockNodeTypes: INodeTypes = {
+	getKnownTypes(): IDataObject {
+		return {};
+	},
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return mockNodesData[nodeType]?.type;
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
 				tags: { nodeType },
 			});
 		}
@@ -71,6 +68,7 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsTester {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
@@ -84,7 +82,7 @@ export class CredentialsTester {
 		return 'access_token' in oauthTokenData;
 	}
 
-	private getCredentialTestFunction(
+	getCredentialTestFunction(
 		credentialType: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		// Check if test is defined on credentials
@@ -116,7 +114,8 @@ export class CredentialsTester {
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
 					if (
 						name === credentialType &&
-						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+						(this.credentialTypes.getParentTypes(name).includes('oAuth2Api') ||
+							name === 'oAuth2Api')
 					) {
 						return async function oauth2CredTest(
 							this: ICredentialTestFunctions,
@@ -126,11 +125,11 @@ export class CredentialsTester {
 								? {
 										status: 'OK',
 										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
-								  }
+									}
 								: {
 										status: 'Error',
 										message: OAUTH2_CREDENTIAL_TEST_FAILED,
-								  };
+									};
 						};
 					}
 
@@ -165,8 +164,9 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	// eslint-disable-next-line complexity
 	async testCredentials(
-		user: User,
+		userId: User['id'],
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
@@ -180,15 +180,15 @@ export class CredentialsTester {
 
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
-				credentialsDecrypted.data = this.credentialsHelper.applyDefaultsAndOverwrites(
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
+					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
-					user.hasGlobalScope('externalSecret:use'),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);
@@ -201,9 +201,8 @@ export class CredentialsTester {
 
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
-			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
+			const context = new CredentialTestContext();
+			return credentialTestFunction.call(context, credentialsDecrypted);
 		}
 
 		// Credentials get tested via request instructions
@@ -287,30 +286,28 @@ export class CredentialsTester {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
 
-		const routingNode = new RoutingNode(
+		const executeData: IExecuteData = { node, data: {}, source: null };
+		const executeFunctions = new ExecuteContext(
 			workflow,
 			node,
-			connectionInputData,
-			runExecutionData ?? null,
 			additionalData,
 			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
 		);
+		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
 
 		let response: INodeExecutionData[][] | null | undefined;
-
 		try {
-			response = await routingNode.runNode(
-				inputData,
-				runIndex,
-				nodeTypeCopy,
-				{ node, data: {}, source: null },
-				NodeExecuteFunctions,
-				credentialsDecrypted,
-			);
+			response = await routingNode.runNode();
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

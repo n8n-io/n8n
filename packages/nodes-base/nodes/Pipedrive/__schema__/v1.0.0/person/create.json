@@ -1,0 +1,227 @@
+{
+    "type": "object",
+    "properties": {
+        "active_flag": {
+            "type": "boolean"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "birthday": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "closed_deals_count": {
+            "type": "integer"
+        },
+        "delete_time": {
+            "type": "null"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "email": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "im": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "last_activity_date": {
+            "type": "null"
+        },
+        "last_activity_id": {
+            "type": "null"
+        },
+        "last_incoming_mail_time": {
+            "type": "null"
+        },
+        "last_outgoing_mail_time": {
+            "type": "null"
+        },
+        "lost_deals_count": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "next_activity_date": {
+            "type": "null"
+        },
+        "next_activity_id": {
+            "type": "null"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "open_deals_count": {
+            "type": "integer"
+        },
+        "owner_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "participant_closed_deals_count": {
+            "type": "integer"
+        },
+        "participant_open_deals_count": {
+            "type": "integer"
+        },
+        "phone": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "picture_id": {
+            "type": "null"
+        },
+        "postal_address_admin_area_level_1": {
+            "type": "null"
+        },
+        "postal_address_admin_area_level_2": {
+            "type": "null"
+        },
+        "postal_address_country": {
+            "type": "null"
+        },
+        "postal_address_formatted_address": {
+            "type": "null"
+        },
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_locality": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
+        },
+        "postal_address_postal_code": {
+            "type": "null"
+        },
+        "postal_address_route": {
+            "type": "null"
+        },
+        "postal_address_street_number": {
+            "type": "null"
+        },
+        "postal_address_sublocality": {
+            "type": "null"
+        },
+        "postal_address_subpremise": {
+            "type": "null"
+        },
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "related_open_deals_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "won_deals_count": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

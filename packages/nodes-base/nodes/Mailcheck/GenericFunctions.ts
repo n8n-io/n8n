@@ -1,5 +1,4 @@
 import { ApplicationError } from 'n8n-workflow';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,

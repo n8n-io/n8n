@@ -1,11 +1,18 @@
+import { setSeed, array as mfArray } from 'minifaker';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { setSeed, array as mfArray } from 'minifaker';
+import {
+	ApplicationError,
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+} from 'n8n-workflow';
+
+import { generateGarbageMemory, runGarbageCollector } from './functions';
 import {
 	generateCreditCard,
 	generateIPv4,
@@ -20,13 +27,12 @@ import {
 	generateUUID,
 	generateVersion,
 } from './randomData';
-import { generateGarbageMemory, runGarbageCollector } from './functions';
 
 export class DebugHelper implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DebugHelper',
 		name: 'debugHelper',
-		icon: 'file:DebugHelper.svg',
+		icon: { light: 'file:DebugHelper.svg', dark: 'file:DebugHelper.dark.svg' },
 		group: ['output'],
 		subtitle: '={{$parameter["category"]}}',
 		description: 'Causes problems intentionally and generates useful data for debugging',
@@ -34,8 +40,8 @@ export class DebugHelper implements INodeType {
 		defaults: {
 			name: 'DebugHelper',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			{
@@ -272,7 +278,6 @@ export class DebugHelper implements INodeType {
 									message: throwErrorMessage,
 								});
 							case 'Error':
-								// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 								throw new ApplicationError(throwErrorMessage);
 							default:
 								break;

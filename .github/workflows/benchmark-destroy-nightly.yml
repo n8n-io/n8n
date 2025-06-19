@@ -1,0 +1,46 @@
+name: Destroy Benchmark Env
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: benchmarking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Azure login
+        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
+        with:
+          client-id: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Destroy cloud env
+        run: pnpm destroy-cloud-env
+        working-directory: packages/@n8n/benchmark

@@ -1,17 +1,19 @@
-import type { IWorkflowDb } from '@/Interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import type {
 	INode,
 	IConnections,
 	IWorkflowSettings,
 	IRunData,
-	IPinData,
 	StartNodeData,
+	ITaskData,
+	IWorkflowBase,
+	AiAgentRequest,
 } from 'n8n-workflow';
+
+import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -20,24 +22,42 @@ export declare namespace WorkflowRequest {
 		tags: string[];
 		hash: string;
 		meta: Record<string, unknown>;
+		projectId: string;
+		parentFolderId?: string;
 	}>;
 
 	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
-		pinData: IPinData;
+		workflowData: IWorkflowBase;
+		runData?: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		dirtyNodeNames?: string[];
+		triggerToStartFrom?: {
+			name: string;
+			data?: ITaskData;
+		};
+		agentRequest?: AiAgentRequest;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
-	type Get = AuthenticatedRequest<{ id: string }>;
+	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
-	type Delete = Get;
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & {
+			includeScopes?: string;
+			includeFolders?: string;
+			onlySharedWithMe?: string;
+		}
+	> & {
+		listQueryOptions: ListQuery.Options;
+	};
 
 	type Update = AuthenticatedRequest<
-		{ id: string },
+		{ workflowId: string },
 		{},
 		CreateUpdatePayload,
 		{ forceSave?: string }
@@ -45,9 +65,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
-
-	type FromUrl = AuthenticatedRequest<{}, {}, {}, { url?: string }>;
 }

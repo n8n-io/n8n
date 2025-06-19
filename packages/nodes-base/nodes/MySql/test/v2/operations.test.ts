@@ -1,17 +1,16 @@
+import mysql2 from 'mysql2/promise';
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import mysql2 from 'mysql2/promise';
-import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
+import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
-
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { configureQueryRunner } from '../../v2/helpers/utils';
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -253,6 +252,47 @@ describe('Test MySql V2, operations', () => {
 			"insert into `test_table` (id, name) values (1, 'test 1')",
 		);
 		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
+	});
+	it('executeQuery, should parse numbers', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT * FROM users LIMIT $1, $2',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '2, 5',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
 	});
 
 	it('select, should call runQueries with', async () => {

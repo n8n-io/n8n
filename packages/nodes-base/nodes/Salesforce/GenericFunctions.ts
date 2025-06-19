@@ -1,3 +1,5 @@
+import jwt from 'jsonwebtoken';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -6,15 +8,12 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
-
 function getOptions(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 
@@ -41,7 +40,7 @@ function getOptions(
 }
 
 async function getAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
@@ -83,7 +82,7 @@ async function getAccessToken(
 }
 
 export async function salesforceApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 
@@ -113,14 +112,13 @@ export async function salesforceApiRequest(
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			Object.assign(options, option);
-			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
-			const credentials = (await this.getCredentials(credentialsType)) as {
+			const credentials = await this.getCredentials<{
 				oauthTokenData: { instance_url: string };
-			};
+			}>(credentialsType);
 			const options = getOptions.call(
 				this,
 				method,
@@ -142,7 +140,7 @@ export async function salesforceApiRequest(
 }
 
 export async function salesforceApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,

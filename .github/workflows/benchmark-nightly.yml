@@ -1,0 +1,104 @@
+name: Run Nightly Benchmark
+run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
+
+on:
+  schedule:
+    - cron: '30 1,2,3 * * *'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Use debug logging'
+        required: true
+        default: 'false'
+      n8n_tag:
+        description: 'Name of the n8n docker tag to run the benchmark against.'
+        required: true
+        default: 'nightly'
+      benchmark_tag:
+        description: 'Name of the benchmark cli docker tag to run the benchmark with.'
+        required: true
+        default: 'latest'
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
+  N8N_TAG: ${{ inputs.n8n_tag || 'nightly' }}
+  N8N_BENCHMARK_TAG: ${{ inputs.benchmark_tag || 'latest' }}
+  DEBUG: ${{ inputs.debug == 'true' && '--debug' || '' }}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: benchmarking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: '1.8.5'
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Azure login
+        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Destroy any existing environment
+        run: pnpm destroy-cloud-env
+        working-directory: packages/@n8n/benchmark
+
+      - name: Provision the environment
+        run: pnpm provision-cloud-env ${{ env.DEBUG }}
+        working-directory: packages/@n8n/benchmark
+
+      - name: Run the benchmark
+        env:
+          BENCHMARK_RESULT_WEBHOOK_URL: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_URL }}
+          BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_BENCHMARK_LICENSE_CERT }}
+        run: |
+          pnpm benchmark-in-cloud \
+            --vus 5 \
+            --duration 1m \
+            --n8nTag ${{ env.N8N_TAG }} \
+            --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} \
+            ${{ env.DEBUG }}
+        working-directory: packages/@n8n/benchmark
+
+        # We need to login again because the access token expires
+      - name: Azure login
+        if: always()
+        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Destroy the environment
+        if: always()
+        run: pnpm destroy-cloud-env ${{ env.DEBUG }}
+        working-directory: packages/@n8n/benchmark

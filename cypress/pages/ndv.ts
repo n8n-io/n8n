@@ -1,6 +1,14 @@
 import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class NDV extends BasePage {
 	getters = {
 		container: () => cy.getByTestId('ndv'),
@@ -20,13 +28,16 @@ export class NDV extends BasePage {
 		outputDataContainer: () => this.getters.outputPanel().findChildByTestId('ndv-data-container'),
 		outputDisplayMode: () =>
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
-		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
+		pinDataButton: () => this.getters.outputPanel().findChildByTestId('ndv-pin-data'),
+		unpinDataLink: () => this.getters.outputPanel().findChildByTestId('ndv-unpin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		aiOutputModeToggle: () => cy.getByTestId('ai-output-mode-select'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
+		inputLabel: () => cy.getByTestId('input-label'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableHeaderByText: (text: string) => this.getters.outputTableHeaders().contains(text),
@@ -39,6 +50,13 @@ export class NDV extends BasePage {
 		inputTbodyCell: (row: number, col: number) =>
 			this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
+		inlineExpressionEditorItemInput: () =>
+			cy.getByTestId('inline-expression-editor-item-input').find('input'),
+		inlineExpressionEditorItemPrevButton: () =>
+			cy.getByTestId('inline-expression-editor-item-prev'),
+		inlineExpressionEditorItemNextButton: () =>
+			cy.getByTestId('inline-expression-editor-item-next'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		parameterInputIssues: (parameterName: string) =>
@@ -54,9 +72,12 @@ export class NDV extends BasePage {
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
+		inputLinkRun: () => this.getters.inputPanel().findChildByTestId('link-run'),
 		outputRunSelector: () => this.getters.outputPanel().findChildByTestId('run-selector'),
+		outputLinkRun: () => this.getters.outputPanel().findChildByTestId('link-run'),
 		outputHoveringItem: () => this.getters.outputPanel().findChildByTestId('hovering-item'),
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
@@ -67,8 +88,14 @@ export class NDV extends BasePage {
 		resourceLocatorDropdown: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
+		resourceLocatorAddCredentials: () => this.getters.resourceLocatorErrorMessage().find('a'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceLocatorSearch: (paramName: string) =>
+			this.getters
+				.resourceLocator(paramName)
+				.find('[aria-describedby]')
+				.then(($el) => cy.get(`#${$el.attr('aria-describedby')}`).findChildByTestId('rlc-search')),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 		resourceMapperRemoveFieldButton: (fieldName: string) =>
@@ -77,6 +104,7 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		htmlEditorContainer: () => cy.getByTestId('html-editor-container'),
 		filterComponent: (paramName: string) => cy.getByTestId(`filter-${paramName}`),
 		filterCombinator: (paramName: string, index = 0) =>
 			this.getters.filterComponent(paramName).getByTestId('filter-combinator-select').eq(index),
@@ -115,13 +143,27 @@ export class NDV extends BasePage {
 		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
 		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
 		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
-		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
-		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
+		nodeRunTooltipIndicator: () => cy.getByTestId('node-run-info'),
+		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-status-success'),
+		nodeRunErrorIndicator: () => cy.getByTestId('node-run-status-danger'),
+		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
+		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
+		fixedCollectionParameter: (paramName: string) =>
+			cy.getByTestId(`fixed-collection-${paramName}`),
+		schemaViewNode: () => cy.getByTestId('run-data-schema-header'),
+		expressionExpanders: () => cy.getByTestId('expander'),
+		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
+		floatingNodes: () => cy.getByTestId('floating-node'),
+		floatingNodeByName: (name: string) =>
+			cy.getByTestId('floating-node').filter(`[data-node-name="${name}"]`),
 	};
 
 	actions = {
 		pinData: () => {
 			this.getters.pinDataButton().click({ force: true });
+		},
+		unPinData: () => {
+			this.getters.unpinDataLink().click({ force: true });
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
@@ -133,43 +175,43 @@ export class NDV extends BasePage {
 			this.getters.nodeExecuteButton().first().click();
 		},
 		close: () => {
-			this.getters.backToCanvas().click();
+			this.getters.backToCanvas().click({ force: true });
 		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
 		},
-		setPinnedData: (data: object) => {
+		setPinnedData: (data: object | string) => {
+			const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(
-					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
-					{
-						delay: 0,
-					},
-				);
+				.type(`{selectall}{backspace}${pinnedData.replace(new RegExp('{', 'g'), '{{}')}`);
+
+			this.actions.savePinnedData();
+		},
+		pastePinnedData: (data: object) => {
+			this.getters.editPinnedDataButton().click();
+
+			this.getters.pinnedDataEditor().click();
+			this.getters.pinnedDataEditor().invoke('text', '').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
 		clearParameterInput: (parameterName: string) => {
-			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
+			this.getters.parameterInput(parameterName).type('{selectall}{backspace}');
 		},
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean; delay?: number },
+			opts?: Partial<Cypress.TypeOptions>,
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+		selectOptionInParameterDropdown: (_: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
-		},
-		dismissMappingTooltip: () => {
-			cy.getByTestId('dismiss-mapping-tooltip').click();
-			cy.getByTestId('dismiss-mapping-tooltip').should('not.be.visible');
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
@@ -184,9 +226,9 @@ export class NDV extends BasePage {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
 			cy.draganddrop(draggable, droppable);
 		},
-		mapToParameter: (parameterName: string) => {
+		mapToParameter: (parameterName: string, position?: 'top' | 'center' | 'bottom') => {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.draganddrop('', droppable);
+			cy.draganddrop('', droppable, { position });
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click({ force: true });
@@ -211,10 +253,10 @@ export class NDV extends BasePage {
 			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		toggleOutputRunLinking: () => {
-			this.getters.outputRunSelector().find('button').click();
+			this.getters.outputLinkRun().click();
 		},
 		toggleInputRunLinking: () => {
-			this.getters.inputRunSelector().find('button').click();
+			this.getters.inputLinkRun().click();
 		},
 		switchOutputBranch: (name: string) => {
 			this.getters.outputBranches().get('span').contains(name).click();
@@ -244,7 +286,7 @@ export class NDV extends BasePage {
 			getVisiblePopper().find('li').last().click();
 		},
 		addFilterCondition: (paramName: string) => {
-			this.getters.filterConditionAdd(paramName).click();
+			this.getters.filterConditionAdd(paramName).click({ force: true });
 		},
 		removeFilterCondition: (paramName: string, index: number) => {
 			this.getters.filterConditionRemove(paramName, index).click();
@@ -255,18 +297,15 @@ export class NDV extends BasePage {
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,
-			delay,
 		}: {
 			fieldName: string;
 			invalidExpression?: string;
-			delay?: number;
 		}) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
-				delay,
 			});
-			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+			this.actions.validateExpressionPreview(fieldName, "node doesn't exist");
 		},
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
@@ -281,6 +320,32 @@ export class NDV extends BasePage {
 				.contains(new RegExp(`^${operation}$`))
 				.click({ force: true });
 			this.getters.parameterInput('operation').find('input').should('have.value', operation);
+		},
+		expressionSelectItem: (index: number) => {
+			this.getters.inlineExpressionEditorItemInput().type(`{selectall}${index}`);
+		},
+		expressionSelectNextItem: () => {
+			this.getters.inlineExpressionEditorItemNextButton().click();
+		},
+		expressionSelectPrevItem: () => {
+			this.getters.inlineExpressionEditorItemPrevButton().click();
+		},
+		addItemToFixedCollection: (paramName: string) => {
+			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
+		},
+		typeIntoFixedCollectionItem: (fixedCollectionName: string, index: number, content: string) => {
+			this.getters.fixedCollectionParameter(fixedCollectionName).within(() => {
+				cy.getByTestId('parameter-input').eq(index).type(content);
+			});
+		},
+		dragMainPanelToLeft: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [-1000, 0], { moveTwice: true });
+		},
+		dragMainPanelToRight: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [1000, 0], { moveTwice: true });
+		},
+		clickFloatingNode: (name: string) => {
+			this.getters.floatingNodeByName(name).realHover().click({ force: true });
 		},
 	};
 }

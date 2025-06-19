@@ -7,7 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { accountFields, accountOperations } from './descriptions';
 import type { IField } from './GenericFunctions';
 import {
 	adjustAddresses,
@@ -18,13 +20,11 @@ import {
 	sort,
 } from './GenericFunctions';
 
-import { accountFields, accountOperations } from './descriptions';
-
 export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Dynamics CRM',
 		name: 'microsoftDynamicsCrm',
-		icon: 'file:dynamicsCrm.svg',
+		icon: { light: 'file:microsoftDynamicsCrm.svg', dark: 'file:microsoftDynamicsCrm.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -32,8 +32,9 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		defaults: {
 			name: 'Microsoft Dynamics CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftDynamicsOAuth2Api',

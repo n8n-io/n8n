@@ -1,29 +1,28 @@
+import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
 import { Response } from 'express';
-import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRequest } from '@/requests';
-import { License } from '@/License';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
-import { PasswordUtility } from '@/services/password.utility';
-import { PostHogClient } from '@/posthog';
-import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
-import { InternalHooks } from '@/InternalHooks';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
+import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -31,15 +30,22 @@ export class InvitationController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/')
+	@Post('/', { rateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
-	async inviteUser(req: UserRequest.Invite) {
+	async inviteUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body invitations: InviteUsersRequestDto,
+	) {
+		if (invitations.length === 0) return [];
+
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (isSamlLicensedAndEnabled()) {
@@ -55,7 +61,7 @@ export class InvitationController {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -65,49 +71,14 @@ export class InvitationController {
 			throw new BadRequestError('You must set up your own account before inviting others');
 		}
 
-		if (!Array.isArray(req.body)) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the payload is not an array',
-				{
-					payload: req.body,
-				},
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		if (!req.body.length) return [];
-
-		req.body.forEach((invite) => {
-			if (typeof invite !== 'object' || !invite.email) {
-				throw new BadRequestError(
-					'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-				);
-			}
-
-			if (!validator.isEmail(invite.email)) {
-				this.logger.debug('Invalid email in payload', { invalidEmail: invite.email });
-				throw new BadRequestError(
-					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-				);
-			}
-
-			if (invite.role && !['global:member', 'global:admin'].includes(invite.role)) {
-				throw new BadRequestError(
-					`Cannot invite user with invalid role: ${invite.role}. Please ensure all invitees' roles are either 'global:member' or 'global:admin'.`,
-				);
-			}
-
-			if (invite.role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
-				throw new UnauthorizedError(
+		const attributes = invitations.map(({ email, role }) => {
+			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
+				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 				);
 			}
+			return { email, role };
 		});
-
-		const attributes = req.body.map(({ email, role }) => ({
-			email,
-			role: role ?? 'global:member',
-		}));
 
 		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);
 
@@ -120,20 +91,13 @@ export class InvitationController {
 	 * Fill out user shell with first name, last name, and password.
 	 */
 	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(req: UserRequest.Update, res: Response) {
-		const { id: inviteeId } = req.params;
-
-		const { inviterId, firstName, lastName, password } = req.body;
-
-		if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because of missing properties in payload',
-				{ payload: req.body },
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		const validPassword = this.passwordUtility.validate(password);
+	async acceptInvitation(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+		@Param('id') inviteeId: string,
+	) {
+		const { inviterId, firstName, lastName, password } = payload;
 
 		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
@@ -160,15 +124,16 @@ export class InvitationController {
 
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
-		invitee.password = await this.passwordUtility.hash(validPassword);
+		invitee.password = await this.passwordUtility.hash(password);
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		this.authService.issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserSignup(updatedUser, {
-			user_type: 'email',
-			was_disabled_ldap_user: false,
+		this.eventService.emit('user-signed-up', {
+			user: updatedUser,
+			userType: 'email',
+			wasDisabledLdapUser: false,
 		});
 
 		const publicInvitee = await this.userService.toPublic(invitee);

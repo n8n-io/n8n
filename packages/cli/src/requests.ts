@@ -1,78 +1,41 @@
+import type { ProjectIcon, ProjectType } from '@n8n/api-types';
+import type { Variables, Project, User, ListQueryDb, WorkflowHistory } from '@n8n/db';
+import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
-	BannerName,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
-	IDataObject,
 	INodeCredentialTestRequest,
-	INodeCredentials,
-	INodeParameters,
-	INodeTypeNameVersion,
-	IUser,
+	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
 
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@db/utils/customValidators';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole, type User } from '@db/entities/User';
-import type { Variables } from '@db/entities/Variables';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-
-export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
-	@IsEmail()
-	email: string;
-
-	@NoXss()
-	@IsString({ message: 'First name must be of type string.' })
-	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
-	firstName: string;
-
-	@NoXss()
-	@IsString({ message: 'Last name must be of type string.' })
-	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
-	lastName: string;
-}
-
-export class UserSettingsUpdatePayload {
-	@IsBoolean({ message: 'userActivated should be a boolean' })
-	@IsOptional()
-	userActivated: boolean;
-
-	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
-	@IsOptional()
-	allowSSOManualLogin?: boolean;
-}
-
-export class UserRoleChangePayload {
-	@IsIn(['global:admin', 'global:member'])
-	newRoleName: AssignableRole;
-}
+export type APIRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
 
 export type AuthlessRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
 
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<
-	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
-	'user' | 'cookies'
-> & {
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
 	cookies: Record<string, string | undefined>;
+	headers: express.Request['headers'] & {
+		'push-ref': string;
+	};
 };
-
-// ----------------------------------
-//            list query
-// ----------------------------------
 
 export namespace ListQuery {
 	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
@@ -84,6 +47,7 @@ export namespace ListQuery {
 		skip?: string;
 		take?: string;
 		select?: string;
+		sortBy?: string;
 	};
 
 	export type Options = {
@@ -91,48 +55,17 @@ export namespace ListQuery {
 		select?: Record<string, true>;
 		skip?: number;
 		take?: number;
+		sortBy?: string;
 	};
-
-	/**
-	 * Slim workflow returned from a list query operation.
-	 */
-	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
-
-		type BaseFields = Pick<WorkflowEntity, 'id'> &
-			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
-
-		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
-
-		type OwnedByField = { ownedBy: SlimUser | null };
-
-		export type Plain = BaseFields;
-
-		export type WithSharing = BaseFields & SharedField;
-
-		export type WithOwnership = BaseFields & OwnedByField;
-
-		type SharedWithField = { sharedWith: SlimUser[] };
-
-		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
-	}
-
-	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null };
-
-		type SharedWithField = { sharedWith: SlimUser[] };
-
-		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
-
-		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
-	}
 }
 
-type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+// ----------------------------------
+//            list query
+// ----------------------------------
 
 export function hasSharing(
-	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
-): workflows is ListQuery.Workflow.WithSharing[] {
+	workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
+): workflows is ListQueryDb.Workflow.WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
 }
 
@@ -142,28 +75,47 @@ export function hasSharing(
 
 export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		type: string;
-		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
+		projectId?: string;
+		isManaged?: boolean;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
+	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
+	> & {
+		listQueryOptions: ListQuery.Options;
+	};
 
 	type Delete = Get;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
-
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+	type Update = AuthenticatedRequest<{ credentialId: string }, {}, CredentialProperties>;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWithIds: string[] }>;
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
+
+	type Transfer = AuthenticatedRequest<
+		{ credentialId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
+
+	type ForWorkflow = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ workflowId: string } | { projectId: string }
+	>;
 }
 
 // ----------------------------------
@@ -171,50 +123,7 @@ export declare namespace CredentialRequest {
 // ----------------------------------
 
 export declare namespace MeRequest {
-	export type UserSettingsUpdate = AuthenticatedRequest<{}, {}, UserSettingsUpdatePayload>;
-	export type UserUpdate = AuthenticatedRequest<{}, {}, UserUpdatePayload>;
-	export type Password = AuthenticatedRequest<
-		{},
-		{},
-		{ currentPassword: string; newPassword: string; token?: string }
-	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
-}
-
-export interface UserSetupPayload {
-	email: string;
-	password: string;
-	firstName: string;
-	lastName: string;
-	mfaEnabled?: boolean;
-	mfaSecret?: string;
-	mfaRecoveryCodes?: string[];
-}
-
-// ----------------------------------
-//             /owner
-// ----------------------------------
-
-export declare namespace OwnerRequest {
-	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
-
-	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
-}
-
-// ----------------------------------
-//     password reset endpoints
-// ----------------------------------
-
-export declare namespace PasswordResetRequest {
-	export type Email = AuthlessRequest<{}, {}, Pick<PublicUser, 'email'>>;
-
-	export type Credentials = AuthlessRequest<{}, {}, {}, { userId?: string; token?: string }>;
-
-	export type NewPassword = AuthlessRequest<
-		{},
-		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
-	>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 // ----------------------------------
@@ -222,28 +131,16 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<
-		{},
-		{},
-		Array<{ email: string; role?: AssignableRole }>
-	>;
-
 	export type InviteResponse = {
-		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		user: {
+			id: string;
+			email: string;
+			inviteAcceptUrl?: string;
+			emailSent: boolean;
+			role: AssignableGlobalRole;
+		};
 		error?: string;
 	};
-
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
 
 	export type Delete = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -252,59 +149,24 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
-
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
+		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	export type UserSettingsUpdate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		UserSettingsUpdatePayload
-	>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
-	>;
 }
-
-// ----------------------------------
-//             /login
-// ----------------------------------
-
-export type LoginRequest = AuthlessRequest<
-	{},
-	{},
-	{
-		email: string;
-		password: string;
-		mfaToken?: string;
-		mfaRecoveryCode?: string;
-	}
->;
 
 // ----------------------------------
 //          MFA endpoints
 // ----------------------------------
 
 export declare namespace MFA {
-	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
-	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
@@ -325,7 +187,7 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{},
-			{ oauth_verifier: string; oauth_token: string; cid: string }
+			{ oauth_verifier: string; oauth_token: string; state: string }
 		> & {
 			user?: User;
 		};
@@ -338,49 +200,10 @@ export declare namespace OAuthRequest {
 }
 
 // ----------------------------------
-//      /dynamic-node-parameters
-// ----------------------------------
-export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
-		{
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		},
-		{},
-		{},
-		{
-			path: string;
-			nodeTypeAndVersion: string;
-			currentNodeParameters: string;
-			methodName?: string;
-			credentials?: string;
-		} & QueryParams
-	>;
-
-	/** GET /dynamic-node-parameters/options */
-	type Options = BaseRequest<{
-		loadOptions?: string;
-	}>;
-
-	/** GET /dynamic-node-parameters/resource-locator-results */
-	type ResourceLocatorResults = BaseRequest<{
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}>;
-
-	/** GET dynamic-node-parameters/resource-mapper-fields */
-	type ResourceMapperFields = BaseRequest<{
-		methodName: string;
-	}>;
-}
-
-// ----------------------------------
-//             /tags
+//             /annotation-tags
 // ----------------------------------
 
-export declare namespace TagsRequest {
+export declare namespace AnnotationTagsRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
 	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
@@ -394,19 +217,11 @@ export declare namespace TagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
+	type Post = AuthenticatedRequest<{}, {}, { name?: string; verify?: boolean; version?: string }>;
 
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
-}
-
-// ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }
 
 // ----------------------------------
@@ -416,18 +231,6 @@ export declare namespace CurlHelper {
 export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }
-
-export type BinaryDataRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		id: string;
-		action: 'view' | 'download';
-		fileName?: string;
-		mimeType?: string;
-	}
->;
 
 // ----------------------------------
 //           /variables
@@ -441,37 +244,6 @@ export declare namespace VariablesRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
-}
-
-export declare namespace ExternalSecretsRequest {
-	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
-		icon: string;
-		connected: boolean;
-		connectedAt: Date | null;
-		state: SecretsProviderState;
-		data: IDataObject;
-	};
-
-	type GetProviders = AuthenticatedRequest;
-	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
-	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
-	type TestProviderSettings = SetProviderSettings;
-	type SetProviderConnected = AuthenticatedRequest<
-		{ provider: string },
-		{},
-		{ connected: boolean }
-	>;
-
-	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
-}
-
-// ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 
 // ----------------------------------
@@ -499,4 +271,41 @@ export declare namespace ActiveWorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetActivationError = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//           /projects
+// ----------------------------------
+
+export declare namespace ProjectRequest {
+	type GetMyProjectsResponse = Array<
+		Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
+	>;
+
+	type ProjectRelationResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		role: ProjectRole;
+	};
+	type ProjectWithRelations = {
+		id: string;
+		name: string | undefined;
+		icon: ProjectIcon | null;
+		type: ProjectType;
+		description: string | null;
+		relations: ProjectRelationResponse[];
+		scopes: Scope[];
+	};
+}
+
+// ----------------------------------
+//           /nps-survey
+// ----------------------------------
+export declare namespace NpsSurveyRequest {
+	// can be refactored to
+	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
+	// once some schema validation is added
+	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
 }

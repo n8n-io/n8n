@@ -3,8 +3,9 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 } from 'n8n-workflow';
-import { discordApiRequest } from '../transport';
+
 import { checkAccessToGuild } from '../helpers/utils';
+import { discordApiRequest } from '../transport';
 
 async function getGuildId(this: ILoadOptionsFunctions) {
 	const guildId = this.getNodeParameter('guildId', undefined, {
@@ -124,7 +125,7 @@ export async function categorySearch(this: ILoadOptionsFunctions): Promise<INode
 
 export async function userSearch(
 	this: ILoadOptionsFunctions,
-	filter?: string,
+	_filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);

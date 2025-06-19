@@ -1,0 +1,162 @@
+{
+    "name": "My workflow 52",
+    "nodes": [
+      {
+        "parameters": {
+          "jsCode": "\nreturn [\n  {\n    \"field\": \"the same\"\n  }\n];"
+        },
+        "id": "38c14c4a-7af1-4b04-be76-f8e474c95569",
+        "name": "Break pairedItem chain",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          240,
+          1020
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "78c4964a-c4e8-47e5-81f3-89ba778feb8b",
+        "name": "Edit Fields",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.2,
+        "position": [
+          40,
+          1020
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "4f4c6527-d565-448a-96bd-8f5414caf8cc",
+        "name": "When clicking ‘Execute workflow’",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -180,
+          1020
+        ]
+      },
+      {
+        "parameters": {
+          "fields": {
+            "values": [
+              {
+                "stringValue": "={{ $('Edit Fields').item.json.name }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "44f4e5da-bfe9-4dc3-8d1f-f38e9f364754",
+        "name": "Error",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.2,
+        "position": [
+          460,
+          1020
+        ]
+      }
+    ],
+    "pinData": {
+      "Edit Fields": [
+        {
+          "json": {
+            "id": "23423532",
+            "name": "Jay Gatsby",
+            "email": "gatsby@west-egg.com",
+            "notes": "Keeps asking about a green light??",
+            "country": "US",
+            "created": "1925-04-10"
+          }
+        },
+        {
+          "json": {
+            "id": "23423533",
+            "name": "José Arcadio Buendía",
+            "email": "jab@macondo.co",
+            "notes": "Lots of people named after him. Very confusing",
+            "country": "CO",
+            "created": "1967-05-05"
+          }
+        },
+        {
+          "json": {
+            "id": "23423534",
+            "name": "Max Sendak",
+            "email": "info@in-and-out-of-weeks.org",
+            "notes": "Keeps rolling his terrible eyes",
+            "country": "US",
+            "created": "1963-04-09"
+          }
+        },
+        {
+          "json": {
+            "id": "23423535",
+            "name": "Zaphod Beeblebrox",
+            "email": "captain@heartofgold.com",
+            "notes": "Felt like I was talking to more than one person",
+            "country": null,
+            "created": "1979-10-12"
+          }
+        },
+        {
+          "json": {
+            "id": "23423536",
+            "name": "Edmund Pevensie",
+            "email": "edmund@narnia.gov",
+            "notes": "Passionate sailor",
+            "country": "UK",
+            "created": "1950-10-16"
+          }
+        }
+      ]
+    },
+    "connections": {
+      "Break pairedItem chain": {
+        "main": [
+          [
+            {
+              "node": "Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Break pairedItem chain",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "ca53267f-4eb4-481d-9e09-ecb97f6b09e2",
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+    },
+    "id": "6fr8GiRyMlZCiDQW",
+    "tags": []
+  }

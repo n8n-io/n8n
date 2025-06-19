@@ -1,18 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ChatBedrockConverse } from '@langchain/aws';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatBedrock } from 'langchain/chat_models/bedrock';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-// Dependencies needed underneath the hood. We add them
-// here only to track where what dependency is used
-import '@aws-sdk/credential-provider-node';
-import '@aws-sdk/client-bedrock-runtime';
+
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +29,8 @@ export class LmChatAwsBedrock implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -42,7 +43,7 @@ export class LmChatAwsBedrock implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -56,7 +57,7 @@ export class LmChatAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -68,7 +69,7 @@ export class LmChatAwsBedrock implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/foundation-models?&byOutputModality=TEXT',
+								url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
 							},
 							output: {
 								postReceive: [
@@ -76,13 +77,6 @@ export class LmChatAwsBedrock implements INodeType {
 										type: 'rootProperty',
 										properties: {
 											property: 'modelSummaries',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											// Not a foundational model
-											pass: "={{ !['anthropic.claude-instant-v1-100k'].includes($responseItem.modelId) }}",
 										},
 									},
 									{
@@ -141,7 +135,7 @@ export class LmChatAwsBedrock implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -149,20 +143,25 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
-		const model = new ChatBedrock({
+		const model = new ChatBedrockConverse({
 			region: credentials.region as string,
 			model: modelName,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
+			clientConfig: {
+				httpAgent: getHttpProxyAgent(),
+			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

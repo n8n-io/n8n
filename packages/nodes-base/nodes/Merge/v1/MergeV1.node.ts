@@ -1,6 +1,4 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import get from 'lodash/get';
-
 import type {
 	IExecuteFunctions,
 	GenericValue,
@@ -10,9 +8,10 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
+
 import { generatePairedItemData } from '../../../utils/utilities';
 
 export class MergeV1 implements INodeType {
@@ -27,9 +26,9 @@ export class MergeV1 implements INodeType {
 				name: 'Merge',
 				color: '#00bbcc',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: ['main', 'main'],
-			outputs: ['main'],
+
+			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			inputNames: ['Input 1', 'Input 2'],
 			properties: [
 				oldVersionNotice,

@@ -1,21 +1,20 @@
+import get from 'lodash/get';
+import set from 'lodash/set';
+import { MongoClient, ObjectId } from 'mongodb';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { createSecureContext } from 'tls';
 
-import get from 'lodash/get';
-import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
-
-import { createSecureContext } from 'tls';
 import { formatPrivateKey } from '../../utils/utilities';
 
 /**
@@ -81,13 +80,21 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
-export function prepareItems(
-	items: INodeExecutionData[],
-	fields: string[],
+export function prepareItems({
+	items,
+	fields,
 	updateKey = '',
 	useDotNotation = false,
-	dateFields: string[] = [],
-) {
+	dateFields = [],
+	isUpdate = false,
+}: {
+	items: INodeExecutionData[];
+	fields: string[];
+	updateKey?: string;
+	useDotNotation?: boolean;
+	dateFields?: string[];
+	isUpdate?: boolean;
+}) {
 	let data = items;
 
 	if (updateKey) {
@@ -97,7 +104,7 @@ export function prepareItems(
 		data = items.filter((item) => item.json[updateKey] !== undefined);
 	}
 
-	const preperedItems = data.map(({ json }) => {
+	const preparedItems = data.map(({ json }) => {
 		const updateItem: IDataObject = {};
 
 		for (const field of fields) {
@@ -113,7 +120,7 @@ export function prepareItems(
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (useDotNotation) {
+			if (useDotNotation && !isUpdate) {
 				set(updateItem, field, fieldData);
 			} else {
 				updateItem[field] = fieldData;
@@ -123,7 +130,7 @@ export function prepareItems(
 		return updateItem;
 	});
 
-	return preperedItems;
+	return preparedItems;
 }
 
 export function prepareFields(fields: string) {
@@ -133,15 +140,17 @@ export function prepareFields(fields: string) {
 		.filter((field) => !!field);
 }
 
-export function stringifyObjectIDs(items: IDataObject[]) {
+export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	items.forEach((item) => {
 		if (item._id instanceof ObjectId) {
-			item._id = item._id.toString();
+			item.json._id = item._id.toString();
 		}
 		if (item.id instanceof ObjectId) {
-			item.id = item.id.toString();
+			item.json.id = item.id.toString();
 		}
 	});
+
+	return items;
 }
 
 export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {

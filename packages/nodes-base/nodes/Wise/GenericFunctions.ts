@@ -1,5 +1,4 @@
 import { createSign } from 'crypto';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -21,11 +20,11 @@ export async function wiseApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment, privateKey } = (await this.getCredentials('wiseApi')) as {
+	const { apiToken, environment, privateKey } = await this.getCredentials<{
 		apiToken: string;
 		environment: 'live' | 'test';
 		privateKey?: string;
-	};
+	}>('wiseApi');
 
 	const rootUrl =
 		environment === 'live'
@@ -123,6 +122,7 @@ export function getTriggerName(eventName: string) {
 		tranferStateChange: 'transfers#state-change',
 		transferActiveCases: 'transfers#active-cases',
 		balanceCredit: 'balances#credit',
+		balanceUpdate: 'balances#update',
 	};
 	return events[eventName];
 }

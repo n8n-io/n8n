@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+import type { RedisOptions } from 'ioredis';
+import type { IProcessedDataConfig } from 'n8n-workflow';
 
-import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
 
 // -----------------------------------
@@ -19,7 +19,7 @@ type GetPathSegments<Traversable, Filter> = Traversable extends Filter
 	? []
 	: {
 			[K in ValidKeys<Traversable>]: [K, ...GetPathSegments<Traversable[K], Filter>];
-	  }[ValidKeys<Traversable>];
+		}[ValidKeys<Traversable>];
 
 /**
  * Transform a union of string arrays (path segments) into a union of strings (dotted paths).
@@ -31,12 +31,12 @@ type GetPathSegments<Traversable, Filter> = Traversable extends Filter
 type JoinByDotting<T extends string[]> = T extends [infer F]
 	? F
 	: T extends [infer F, ...infer R]
-	  ? F extends string
+		? F extends string
 			? R extends string[]
 				? `${F}.${JoinByDotting<R>}`
 				: never
 			: never
-	  : string;
+		: string;
 
 type ToDottedPath<T> = JoinByDotting<RemoveExcess<T>>;
 
@@ -64,22 +64,21 @@ type ConfigOptionPath =
 type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 	? number
 	: T extends BooleanPath
-	  ? boolean
-	  : T extends StringLiteralArrayPath
-	    ? StringLiteralMap[T]
-	    : T extends keyof ExceptionPaths
-	      ? ExceptionPaths[T]
-	      : T extends StringPath
-	        ? string
-	        : unknown;
+		? boolean
+		: T extends StringLiteralArrayPath
+			? StringLiteralMap[T]
+			: T extends keyof ExceptionPaths
+				? ExceptionPaths[T]
+				: T extends StringPath
+					? string
+					: unknown;
 
 type ExceptionPaths = {
-	'queue.bull.redis': object;
-	binaryDataManager: BinaryData.Config;
-	'nodes.exclude': string[] | undefined;
-	'nodes.include': string[] | undefined;
+	'queue.bull.redis': RedisOptions;
+	processedDataManager: IProcessedDataConfig;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
+	easyAIWorkflowOnboarded: boolean | undefined;
 };
 
 // -----------------------------------
@@ -90,7 +89,7 @@ type GetPathSegmentsWithUnions<T> = T extends ReadonlyArray<infer C>
 	? [C]
 	: {
 			[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
-	  }[ValidKeys<T>];
+		}[ValidKeys<T>];
 
 type ToPathUnionPair<T extends string[]> = T extends [...infer Path, infer Union]
 	? Path extends string[]

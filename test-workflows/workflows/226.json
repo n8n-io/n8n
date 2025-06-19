@@ -1,0 +1,118 @@
+{
+  "createdAt": "2021-07-07T14:29:45.509Z",
+  "updatedAt": "2021-07-09T13:40:17.209Z",
+  "id": "226",
+  "name": "UnleashedSoftware:SakesOrder:getAll:StockOnHand:getAll get",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "e60708c7-7fc5-4b69-9181-7dd94ce4c511"
+    },
+    {
+      "parameters": {
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Unleashed Software",
+      "type": "n8n-nodes-base.unleashedSoftware",
+      "typeVersion": 1,
+      "position": [
+        500,
+        230
+      ],
+      "credentials": {
+        "unleashedSoftwareApi": {
+          "id": "219",
+          "name": "Unleashed API creds"
+        }
+      },
+      "id": "76856236-9d00-497b-a162-71621943085d"
+    },
+    {
+      "parameters": {
+        "resource": "stockOnHand",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Unleashed Software1",
+      "type": "n8n-nodes-base.unleashedSoftware",
+      "typeVersion": 1,
+      "position": [
+        500,
+        380
+      ],
+      "credentials": {
+        "unleashedSoftwareApi": {
+          "id": "219",
+          "name": "Unleashed API creds"
+        }
+      },
+      "id": "f5f1e555-171a-4a6c-a2c0-52c2cd763a9a"
+    },
+    {
+      "parameters": {
+        "resource": "stockOnHand",
+        "operation": "get",
+        "productId": "={{$node[\"Unleashed Software1\"].json[\"Guid\"]}}"
+      },
+      "name": "Unleashed Software2",
+      "type": "n8n-nodes-base.unleashedSoftware",
+      "typeVersion": 1,
+      "position": [
+        650,
+        380
+      ],
+      "credentials": {
+        "unleashedSoftwareApi": {
+          "id": "219",
+          "name": "Unleashed API creds"
+        }
+      },
+      "id": "f0e49947-de25-46b8-8e00-0cc1967832a1"
+    }
+  ],
+  "connections": {
+    "Unleashed Software1": {
+      "main": [
+        [
+          {
+            "node": "Unleashed Software2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Unleashed Software",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unleashed Software1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

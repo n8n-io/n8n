@@ -1,0 +1,31 @@
+put:
+  x-eov-operation-id: transferWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Transfer a workflow to another project.
+  description: Transfer a workflow to another project.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    description: Destination project information for the workflow transfer.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            destinationProjectId:
+              type: string
+              description: The ID of the project to transfer the workflow to.
+          required:
+            - destinationProjectId
+    required: true
+  responses:
+    '200':
+      description: Operation successful.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

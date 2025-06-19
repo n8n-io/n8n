@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class FortiGateApi implements ICredentialType {
 	name = 'fortiGateApi';
@@ -7,7 +7,7 @@ export class FortiGateApi implements ICredentialType {
 
 	documentationUrl = 'fortigate';
 
-	icon = 'file:icons/Fortinet.svg';
+	icon: Icon = 'file:icons/Fortinet.svg';
 
 	httpRequestNode = {
 		name: 'Fortinet FortiGate',

@@ -17,7 +17,7 @@ export async function discourseApiRequest(
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('discourseApi')) as { url: string };
+	const credentials = await this.getCredentials<{ url: string }>('discourseApi');
 
 	const options: IRequestOptions = {
 		method,

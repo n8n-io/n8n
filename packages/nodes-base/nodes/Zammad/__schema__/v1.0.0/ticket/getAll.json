@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "properties": {
+        "article_count": {
+            "type": "integer"
+        },
+        "create_article_sender_id": {
+            "type": "integer"
+        },
+        "create_article_type_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "customer_id": {
+            "type": "integer"
+        },
+        "escalation_at": {
+            "type": "null"
+        },
+        "group_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "note": {
+            "type": "null"
+        },
+        "number": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "pending_time": {
+            "type": "null"
+        },
+        "preferences": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "priority_id": {
+            "type": "integer"
+        },
+        "state_id": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

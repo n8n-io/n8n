@@ -4,6 +4,10 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { folderRLC, returnAllOrLimit } from '../../descriptions';
 import {
 	decodeOutlookId,
 	messageFields,
@@ -15,9 +19,6 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../transport';
-
-import { folderRLC, returnAllOrLimit } from '../../descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	folderRLC,
@@ -191,7 +192,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
