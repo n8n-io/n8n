@@ -285,10 +285,6 @@ const toggleCollapse = () => {
 	}
 };
 
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
-
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
@@ -316,7 +312,7 @@ const handleSelect = (key: string) => {
 			telemetry.track('User clicked insights link from side menu');
 		default:
 			if (key.startsWith('whats-new-article-')) {
-				const articleId = key.replace('whats-new-article-', '');
+				const articleId = Number(key.replace('whats-new-article-', ''));
 
 				telemetry.track("User clicked on what's new section", {
 					article_id: articleId,

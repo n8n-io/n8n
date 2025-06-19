@@ -1,33 +1,43 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useVersionsStore } from '@/stores/versions.store';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useUIStore } from '@/stores/ui.store';
+import { VERSIONS_MODAL_KEY } from '@/constants';
 
 const i18n = useI18n();
 const versionsStore = useVersionsStore();
+const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const nextVersions = computed(() => versionsStore.nextVersions);
 
-const onUpdate = () => {
-	console.log('Update button clicked');
+const openUpdatesPanel = () => {
+	uiStore.openModal(VERSIONS_MODAL_KEY);
+};
+
+const onUpdate = async () => {
+	await pageRedirectionHelper.goToVersions();
 };
 </script>
 
 <template>
 	<div :class="$style.container">
-		<N8nText :size="'small'" :class="$style.text" :color="'text-base'">
+		<N8nLink size="small" theme="text" @click="openUpdatesPanel">
 			{{
-				i18n.baseText('mainSidebar.whatsNew.versionsBehind', {
+				i18n.baseText('whatsNew.versionsBehind', {
 					interpolate: {
 						count: nextVersions.length > 99 ? '99+' : nextVersions.length,
 					},
 				})
 			}}
-		</N8nText>
+		</N8nLink>
+
 		<N8nButton
 			:class="$style.button"
-			:label="i18n.baseText('mainSidebar.whatsNew.update')"
+			:label="i18n.baseText('whatsNew.update')"
 			data-test-id="version-update-cta-button"
 			size="mini"
 			@click="onUpdate"
