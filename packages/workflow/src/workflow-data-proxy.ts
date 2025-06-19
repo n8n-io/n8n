@@ -912,106 +912,80 @@ export class WorkflowDataProxy {
 			return outputs;
 		}
 
-		function resolveMultiplePairings(
-			pairings: IPairedItemData[],
-			source: ISourceData[],
-			destinationNode: string,
-			method: PairedItemMethod,
-			itemIndex: number,
-		): INodeExecutionData {
-			const results = pairings
-				.map((pairing) => {
-					try {
-						const input = pairing.input || 0;
-						if (input >= source.length) {
-							// Could not resolve pairedItem as the defined node input does not exist on source.previousNode.
-							return null;
-						}
-						// eslint-disable-next-line @typescript-eslint/no-use-before-define
-						return getPairedItem(destinationNode, source[input], pairing, method);
-					} catch {
-						return null;
-					}
-				})
-				.filter(Boolean) as INodeExecutionData[];
+		const normalizePairedItem = (
+			paired: number | IPairedItemData | Array<number | IPairedItemData> | null | undefined,
+		): IPairedItemData[] => {
+			if (paired === null || paired === undefined) {
+				return [];
+			}
 
-			if (results.length === 1) return results[0];
+			const pairedItems = Array.isArray(paired) ? paired : [paired];
 
-			const allSame = results.every((r) => r === results[0]);
-			if (allSame) return results[0];
+			return pairedItems.map((p) => (typeof p === 'number' ? { item: p } : p));
+		};
 
-			throw createPairedItemMultipleItemsFound(destinationNode, itemIndex);
-		}
-
-		/**
-		 * Attempts to find the execution data for a specific paired item
-		 * by traversing the node execution ancestry chain.
-		 */
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-		): INodeExecutionData | null => {
-			// Step 1: Normalize inputs
+			nodeBeforeLast?: string,
+		): INodeExecutionData => {
+			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
 
-			let currentPairedItem = pairedItem;
-			let currentSource = sourceData;
-			let nodeBeforeLast: string | undefined;
-
-			// Step 2: Traverse ancestry to find correct node
-			while (currentSource && currentSource.previousNode !== destinationNodeName) {
-				const taskData = getTaskData(currentSource);
-
-				const outputData = getNodeOutput(taskData, currentSource, nodeBeforeLast);
-				const sourceArray = taskData?.source.filter((s): s is ISourceData => s !== null) ?? [];
-
-				const item = outputData[currentPairedItem.item];
-				if (item?.pairedItem === undefined) {
-					throw createMissingPairedItemError(currentSource.previousNode, usedMethodName);
-				}
-
-				// Multiple pairings? Recurse over all
-				if (Array.isArray(item.pairedItem)) {
-					return resolveMultiplePairings(
-						item.pairedItem,
-						sourceArray,
-						destinationNodeName,
-						usedMethodName,
-						currentPairedItem.item,
-					);
-				}
-
-				// Follow single paired item
-				currentPairedItem =
-					typeof item.pairedItem === 'number' ? { item: item.pairedItem } : item.pairedItem;
-
-				const inputIndex = currentPairedItem.input || 0;
-				if (inputIndex >= sourceArray.length) {
-					if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-					throw createBranchNotFoundError(
-						currentSource.previousNode,
-						currentPairedItem.item,
-						nodeBeforeLast,
-					);
-				}
-
-				nodeBeforeLast = currentSource.previousNode;
-				currentSource = currentPairedItem.sourceOverwrite || sourceArray[inputIndex];
+			if (!sourceData) {
+				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			// Step 3: Final node reached — fetch paired item
-			if (!currentSource) throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
+			const taskData = getTaskData(sourceData);
+			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
+			const item = outputData[pairedItem.item];
+			const sourceArray = taskData?.source ?? [];
 
-			const finalTaskData = getTaskData(currentSource);
-			const finalOutputData = getNodeOutput(finalTaskData, currentSource);
+			// Done: reached the destination node in the ancestry chain
+			if (sourceData.previousNode === destinationNodeName) {
+				if (pairedItem.item >= outputData.length) {
+					throw createInvalidPairedItemError({ nodeName: sourceData.previousNode });
+				}
 
-			if (currentPairedItem.item >= finalOutputData.length) {
-				throw createInvalidPairedItemError({ nodeName: currentSource.previousNode });
+				return item;
 			}
 
-			return finalOutputData[currentPairedItem.item];
+			// Normalize paired item to always be IPairedItemData[]
+			const nextPairedItems = normalizePairedItem(item.pairedItem);
+
+			if (nextPairedItems.length === 0) {
+				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+			}
+
+			// Recursively traverse ancestry to find the destination node + paired item
+			const results = nextPairedItems.flatMap((nextPairedItem) => {
+				const inputIndex = nextPairedItem.input ?? 0;
+
+				if (inputIndex >= sourceArray.length) return [];
+
+				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
+				return getPairedItem(
+					destinationNodeName,
+					nextSource,
+					{ ...nextPairedItem, input: inputIndex },
+					usedMethodName,
+					sourceData.previousNode,
+				);
+			});
+
+			if (results.length === 0) {
+				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+			}
+
+			const [first, ...rest] = results;
+			if (rest.some((r) => r !== first)) {
+				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
+			}
+
+			return first;
 		};
 
 		const handleFromAi = (
