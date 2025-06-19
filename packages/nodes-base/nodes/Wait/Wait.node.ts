@@ -23,7 +23,7 @@ import {
 	formTitle,
 	appendAttributionToForm,
 } from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
+import { formWebhook } from '../Form/utils/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,

@@ -18,6 +18,9 @@ import {
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
+	isDefaultNodeName,
+	makeNodeName,
+	isTool,
 } from '@/node-helpers';
 import type { Workflow } from '@/workflow';
 
@@ -5244,6 +5247,368 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('This is the default node description');
+		});
+	});
+	describe('isDefaultNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				usableAsTool: true,
+			};
+		});
+
+		it.each([
+			['Create a new user', true],
+			['Test Node', true],
+			['Test Node1', true],
+			['Create a new user5', true],
+			['Create a new user in Test Node5', false],
+			['Create a new user 5', false],
+			['Update user', false],
+			['Update user5', false],
+			['TestNode', false],
+		])('should detect default names for input %s', (input, expected) => {
+			// Arrange
+			const name = input;
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							action: 'Update a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			const parameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(expected);
+		});
+		it('should detect default names for tool node types', () => {
+			// Arrange
+			const name = 'Create user in Test Node';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+		it('should detect non-default names for tool node types', () => {
+			// Arrange
+			// The default for tools would include ` in Test Node`
+			const name = 'Create user';
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+
+			const parameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = isDefaultNodeName(name, mockNodeTypeDescription, parameters);
+
+			// Assert
+			expect(result).toBe(false);
+		});
+	});
+	describe('makeNodeName', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+		});
+
+		test('should return action-based name when action is available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create a new user');
+		});
+
+		test('should return resource-operation-based name when action is not available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							// No action property
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+
+		test('should return default name when resource or operation is missing', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				// No resource or operation
+			};
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should handle case where nodeTypeOperation is not found', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+
+		test('should handle case where options are not a list of INodePropertyOptions', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					// Options are not INodePropertyOptions[]
+					options: [
+						//@ts-expect-error
+						{},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user');
+		});
+		test('should handle case where node is a tool', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create user in Test Node');
+		});
+	});
+	describe('isTool', () => {
+		it('should return true for a node with AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.AiTool],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = {};
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for a node with AiTool output in NodeOutputConfiguration', () => {
+			const description = {
+				outputs: [{ type: NodeConnectionTypes.AiTool }, { type: NodeConnectionTypes.Main }],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = {};
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('returns true for a vector store node in retrieve-as-tool mode', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				description: '',
+				group: [],
+				name: 'n8n-nodes-base.vectorStore',
+			};
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
+			expect(result).toBe(true);
+		});
+
+		it('returns false for node with no AiTool output', () => {
+			const description = {
+				outputs: [NodeConnectionTypes.Main],
+				version: 0,
+				defaults: {
+					name: '',
+					color: '',
+				},
+				inputs: [NodeConnectionTypes.Main],
+				properties: [],
+				displayName: '',
+				group: [],
+				description: '',
+				name: 'n8n-nodes-base.someTool',
+			};
+			const parameters = { mode: 'retrieve-as-tool' };
+			const result = isTool(description, parameters);
+			expect(result).toBe(false);
 		});
 	});
 });

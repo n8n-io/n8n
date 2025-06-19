@@ -18,6 +18,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
+import { NotFoundError } from './errors/response-errors/not-found.error';
+
 @Service()
 export class ControllerRegistry {
 	constructor(
@@ -125,12 +127,20 @@ export class ControllerRegistry {
 
 			const { scope, globalOnly } = accessScope;
 
-			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
-				res.status(403).json({
-					status: 'error',
-					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-				});
-				return;
+			try {
+				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
+					res.status(403).json({
+						status: 'error',
+						message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+					});
+					return;
+				}
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					res.status(404).json({ status: 'error', message: error.message });
+					return;
+				}
+				throw error;
 			}
 
 			next();

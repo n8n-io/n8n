@@ -12,6 +12,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useSSOStore } from '@/stores/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
@@ -27,6 +28,7 @@ export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRec
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
+const ssoStore = useSSOStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -41,8 +43,8 @@ const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
-const ldapLoginLabel = computed(() => settingsStore.ldapLoginLabel);
-const isLdapLoginEnabled = computed(() => settingsStore.isLdapLoginEnabled);
+const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
+const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);
 const emailLabel = computed(() => {
 	let label = locale.baseText('auth.email');
 	if (isLdapLoginEnabled.value && ldapLoginLabel.value) {
@@ -101,7 +103,19 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
-	return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
+
+	// Allow local redirects
+	if (redirect.startsWith('/')) {
+		return true;
+	}
+
+	try {
+		// Only allow origin domain redirects
+		const url = new URL(redirect);
+		return url.origin === window.location.origin;
+	} catch {
+		return false;
+	}
 };
 
 const getRedirectQueryParameter = () => {
@@ -130,6 +144,11 @@ const login = async (form: LoginRequestDto) => {
 			}
 		}
 		await settingsStore.getSettings();
+
+		if (settingsStore.loadedModules.length > 0) {
+			await settingsStore.getModuleSettings();
+		}
+
 		toast.clearAllStickyNotifications();
 
 		telemetry.track('User attempted to login', {

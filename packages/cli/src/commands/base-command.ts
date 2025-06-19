@@ -25,22 +25,19 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ModuleRegistry } from '@/modules/module-registry';
-import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DbConnection);
+	protected dbConnection: DbConnection;
 
 	protected errorReporter: ErrorReporter;
 
@@ -60,6 +57,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
+	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -74,35 +73,22 @@ export abstract class BaseCommand extends Command {
 
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
+			// add module to the registry for dependency injection
 			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
-				// register module in the registry for the dependency injection
 				await import(`../modules/${moduleName}/${moduleName}.module`);
-
-				this.modulesConfig.addLoadedModule(moduleName);
-				this.logger.debug(`Loaded module "${moduleName}"`);
+			} catch {
+				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
 			}
+
+			this.modulesConfig.addLoadedModule(moduleName);
+			this.logger.debug(`Loaded module "${moduleName}"`);
 		}
 
-		await Container.get(ModuleRegistry).initializeModules();
-
-		if (this.instanceSettings.isMultiMain) {
-			Container.get(MultiMainSetup).registerEventHandlers();
-		}
+		this.moduleRegistry.addEntities();
 	}
 
 	async init(): Promise<void> {
+		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
@@ -273,11 +259,6 @@ export abstract class BaseCommand extends Command {
 				this.logger.error('Could not activate license', { error });
 			}
 		}
-	}
-
-	async initExternalSecrets() {
-		const secretsManager = Container.get(ExternalSecretsManager);
-		await secretsManager.init();
 	}
 
 	initWorkflowHistory() {

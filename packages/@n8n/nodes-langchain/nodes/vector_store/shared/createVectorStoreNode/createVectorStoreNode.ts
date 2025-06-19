@@ -10,6 +10,7 @@ import type {
 	SupplyData,
 	ISupplyDataFunctions,
 	INodeType,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -26,7 +27,18 @@ import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types'
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
 
-// Import operation handlers
+const ragStarterCallout: INodeProperties = {
+	displayName: 'Tip: Get a feel for vector stores in n8n with our',
+	name: 'ragStarterCallout',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'RAG starter template',
+			type: 'openRagStarterTemplate',
+		},
+	},
+	default: '',
+};
 
 /**
  * Creates a vector store node with the given configuration
@@ -69,7 +81,12 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
+				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
+
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
+					inputs.push({ displayName: "Reranker", type: "${NodeConnectionTypes.AiReranker}", required: true, maxConnections: 1})
+				}
 
 				if (mode === 'retrieve-as-tool') {
 					return inputs;
@@ -100,6 +117,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			})($parameter)
 		}}`,
 			properties: [
+				ragStarterCallout,
 				{
 					displayName: 'Operation Mode',
 					name: 'mode',
@@ -202,6 +220,18 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						},
 					},
 				},
+				{
+					displayName: 'Rerank Results',
+					name: 'useReranker',
+					type: 'boolean',
+					default: false,
+					description: 'Whether or not to rerank results',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve', 'retrieve-as-tool'],
+						},
+					},
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',
@@ -233,7 +263,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
-
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionTypes.AiEmbedding,

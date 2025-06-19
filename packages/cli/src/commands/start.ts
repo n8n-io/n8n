@@ -197,6 +197,10 @@ export class Start extends BaseCommand {
 			}
 		}
 
+		if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
+			this.needsTaskRunner = false;
+		}
+
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
@@ -232,8 +236,6 @@ export class Start extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
@@ -246,7 +248,11 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		await this.loadModules();
+		await this.moduleRegistry.initModules();
+
+		if (this.instanceSettings.isMultiMain) {
+			Container.get(MultiMainSetup).registerEventHandlers();
+		}
 	}
 
 	async initOrchestration() {

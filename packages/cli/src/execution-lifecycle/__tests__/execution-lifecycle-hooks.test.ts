@@ -54,6 +54,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
 
 	const nodeName = 'Test Node';
+	const nodeType = 'n8n-nodes-base.testNode';
+	const nodeId = 'test-node-id';
 	const node = mock<INode>();
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
@@ -63,7 +65,16 @@ describe('Execution Lifecycle Hooks', () => {
 		active: true,
 		isArchived: false,
 		connections: {},
-		nodes: [],
+		nodes: [
+			{
+				id: nodeId,
+				name: nodeName,
+				type: nodeType,
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			},
+		],
 		settings: {},
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -73,6 +84,12 @@ describe('Execution Lifecycle Hooks', () => {
 	const taskStartedData = mock<ITaskStartedData>();
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
+
+	const successfulRunWithRewiredDestination = mock<IRun>({
+		status: 'success',
+		finished: true,
+		waitTill: undefined,
+	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
@@ -112,6 +129,15 @@ describe('Execution Lifecycle Hooks', () => {
 				error: expressionError,
 			},
 		};
+		successfulRunWithRewiredDestination.data = {
+			startData: {
+				destinationNode: 'PartialExecutionToolExecutor',
+				originalDestinationNode: nodeName,
+			},
+			resultData: {
+				runData: {},
+			},
+		};
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -143,6 +169,25 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
 			});
+
+			it('should reset destination node to original destination', async () => {
+				await lifecycleHooks.runHook('workflowExecuteAfter', [
+					successfulRunWithRewiredDestination,
+					{},
+				]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRunWithRewiredDestination,
+					workflow: workflowData,
+					userId: expectedUserId,
+				});
+
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(
+					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
+				).toBeUndefined();
+			});
 		});
 	};
 
@@ -155,6 +200,8 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflow: workflowData,
 					nodeName,
+					nodeType,
+					nodeId,
 				});
 			});
 		});
@@ -167,6 +214,8 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflow: workflowData,
 					nodeName,
+					nodeType,
+					nodeId,
 				});
 			});
 		});

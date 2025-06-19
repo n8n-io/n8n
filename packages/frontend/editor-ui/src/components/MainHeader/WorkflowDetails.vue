@@ -59,6 +59,8 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { sanitizeFilename } from '@/utils/fileUtils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -95,7 +97,8 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowSaving = useWorkflowSaving({ router });
+const workflowHelpers = useWorkflowHelpers();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
@@ -290,7 +293,7 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
-	const saved = await workflowHelpers.saveCurrentWorkflow({
+	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
 		tags,
@@ -347,7 +350,7 @@ async function onTagsBlur() {
 	}
 	tagsSaving.value = true;
 
-	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
+	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,
 		new_tag_count: tags.length,
@@ -390,7 +393,7 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId();
-	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
+	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
 		workflowHelpers.setDocumentTitle(newName, 'IDLE');
@@ -464,7 +467,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 
 			let name = props.name || 'unsaved_workflow';
-			name = name.replace(/[^a-z0-9]/gi, '_');
+			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');

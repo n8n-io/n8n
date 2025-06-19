@@ -17,6 +17,7 @@ import type {
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
@@ -83,13 +84,22 @@ export abstract class DirectoryLoader {
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
 		protected includeNodes: string[] = [],
-	) {}
+	) {
+		// If `directory` is a symlink, we try to resolve it to its real path
+		try {
+			this.directory = realpathSync(directory);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (error.code !== 'ENOENT') throw error;
+		}
+	}
 
 	abstract packageName: string;
 
 	abstract loadAll(): Promise<void>;
 
 	reset() {
+		this.unloadAll();
 		this.loadedNodes = [];
 		this.nodeTypes = {};
 		this.credentialTypes = {};
@@ -449,5 +459,14 @@ export abstract class DirectoryLoader {
 		}
 
 		return;
+	}
+
+	private unloadAll() {
+		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
+			filePath.startsWith(this.directory),
+		);
+		filesToUnload.forEach((filePath) => {
+			delete require.cache[filePath];
+		});
 	}
 }

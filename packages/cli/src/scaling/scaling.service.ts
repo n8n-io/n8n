@@ -57,6 +57,9 @@ export class ScalingService {
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
+
+		if (this.queue) return;
+
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -83,6 +86,13 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				this.eventService.emit('job-dequeued', {
+					executionId: job.data.executionId,
+					workflowId: job.data.workflowId,
+					hostId: this.instanceSettings.hostId,
+					jobId: job.id.toString(),
+				});
+
 				if (!this.hasValidJobData(job)) {
 					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
@@ -193,6 +203,12 @@ export class ScalingService {
 		const jobId = job.id;
 
 		this.logger.info(`Enqueued execution ${executionId} (job ${jobId})`, { executionId, jobId });
+		this.eventService.emit('job-enqueued', {
+			executionId,
+			workflowId: jobData.workflowId,
+			hostId: this.instanceSettings.hostId,
+			jobId: jobId.toString(),
+		});
 
 		return job;
 	}

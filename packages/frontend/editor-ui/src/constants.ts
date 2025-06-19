@@ -10,7 +10,7 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 } from '@/types';
-import type { InjectionKey, MaybeRefOrGetter } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -96,7 +96,6 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
-export const N8N_IO_BASE_URL = 'https://api.n8n.io/api/';
 export const DOCS_DOMAIN = 'docs.n8n.io';
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
@@ -104,7 +103,6 @@ export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`
 export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
 export const SCHEMA_PREVIEW_DOCS_URL = `https://${DOCS_DOMAIN}/data/schema-preview/`;
 export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
-export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
@@ -324,9 +322,6 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 	NodeConnectionTypes.Main,
 ];
 
-// General
-export const INSTANCE_ID_HEADER = 'n8n-instance-id';
-
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
@@ -489,7 +484,12 @@ export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
 export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
+export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
+export const LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS =
+	'N8N_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS';
+export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
+	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
 	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
@@ -573,6 +573,8 @@ export const enum VIEWS {
 	SHARED_WITH_ME = 'SharedWithMe',
 	SHARED_WORKFLOWS = 'SharedWorkflows',
 	SHARED_CREDENTIALS = 'SharedCredentials',
+	ENTITY_NOT_FOUND = 'EntityNotFound',
+	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -644,6 +646,7 @@ export const EnterpriseEditionFeature: Record<
 	LogStreaming: 'logStreaming',
 	Variables: 'variables',
 	Saml: 'saml',
+	Oidc: 'oidc',
 	SourceControl: 'sourceControl',
 	ExternalSecrets: 'externalSecrets',
 	AuditLogs: 'auditLogs',
@@ -698,6 +701,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
+	OIDC = 'oidc',
 }
 
 export const N8N_SALES_EMAIL = 'sales@n8n.io';
@@ -736,10 +740,17 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
+	name: '033_rag_template',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
+	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
@@ -881,13 +892,6 @@ export const TEMPLATES_URLS = {
 	},
 };
 
-export const ROLE = {
-	Owner: 'global:owner',
-	Member: 'global:member',
-	Admin: 'global:admin',
-	Default: 'default', // default user with no email when setting up instance
-} as const;
-
 export const INSECURE_CONNECTION_WARNING = `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>
@@ -912,13 +916,9 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const IsInPiPWindowSymbol = 'IsInPipWindow' as unknown as InjectionKey<
-	MaybeRefOrGetter<boolean>
->;
+export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
 
 /** Auth */
-export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

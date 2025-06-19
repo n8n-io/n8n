@@ -76,6 +76,7 @@ function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeI
 					'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 					'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
 					'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+					'@n8n/n8n-nodes-langchain.code',
 				],
 			},
 		},
@@ -118,9 +119,9 @@ export class AgentV2 implements INodeType {
 			properties: [
 				{
 					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'notice_tip',
-					type: 'notice',
+						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
+					name: 'aiAgentStarterCallout',
+					type: 'callout',
 					default: '',
 				},
 				promptTypeOptions,

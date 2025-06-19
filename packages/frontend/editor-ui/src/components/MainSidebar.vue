@@ -112,7 +112,7 @@ const mainMenuItems = computed(() => [
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
-			settingsStore.settings.insights.enabled &&
+			settingsStore.settings.loadedModules.includes('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{

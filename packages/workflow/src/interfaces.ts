@@ -829,7 +829,8 @@ export type SSHCredentials = {
 );
 
 export interface SSHTunnelFunctions {
-	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
+	getSSHClient(credentials: SSHCredentials, abortController?: AbortController): Promise<SSHClient>;
+	updateLastUsed(client: SSHClient): void;
 }
 
 type CronUnit = number | '*' | `*/${number}`;
@@ -1147,6 +1148,15 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
+
+	// forces the node to execute a particular custom operation
+	// based on resource and operation
+	// instead of calling default execute function
+	// used by evaluations test-runner
+	forceCustomOperation?: {
+		resource: string;
+		operation: string;
+	};
 }
 
 export interface IPinData {
@@ -1241,6 +1251,7 @@ export type NodePropertyTypes =
 	| 'fixedCollection'
 	| 'hidden'
 	| 'json'
+	| 'callout'
 	| 'notice'
 	| 'multiOptions'
 	| 'number'
@@ -1284,6 +1295,12 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
+export type CalloutActionType = 'openRagStarterTemplate';
+export interface CalloutAction {
+	type: CalloutActionType;
+	label: string;
+}
+
 export interface INodePropertyTypeOptions {
 	// Supported by: button
 	buttonConfig?: {
@@ -1316,6 +1333,7 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	calloutAction?: CalloutAction; // Supported by: callout
 	[key: string]: any;
 }
 
@@ -1871,6 +1889,7 @@ export const NodeConnectionTypes = {
 	AiMemory: 'ai_memory',
 	AiOutputParser: 'ai_outputParser',
 	AiRetriever: 'ai_retriever',
+	AiReranker: 'ai_reranker',
 	AiTextSplitter: 'ai_textSplitter',
 	AiTool: 'ai_tool',
 	AiVectorStore: 'ai_vectorStore',
@@ -1881,20 +1900,7 @@ export type NodeConnectionType = (typeof NodeConnectionTypes)[keyof typeof NodeC
 
 export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnectionTypes.Main>;
 
-export const nodeConnectionTypes: NodeConnectionType[] = [
-	NodeConnectionTypes.AiAgent,
-	NodeConnectionTypes.AiChain,
-	NodeConnectionTypes.AiDocument,
-	NodeConnectionTypes.AiEmbedding,
-	NodeConnectionTypes.AiLanguageModel,
-	NodeConnectionTypes.AiMemory,
-	NodeConnectionTypes.AiOutputParser,
-	NodeConnectionTypes.AiRetriever,
-	NodeConnectionTypes.AiTextSplitter,
-	NodeConnectionTypes.AiTool,
-	NodeConnectionTypes.AiVectorStore,
-	NodeConnectionTypes.Main,
-];
+export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
@@ -2137,6 +2143,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to
@@ -2146,6 +2155,7 @@ export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		originalDestinationNode?: string;
 		runNodeFilter?: string[];
 	};
 	resultData: {
@@ -2333,6 +2343,7 @@ export type AiEvent =
 	| 'ai-message-added-to-memory'
 	| 'ai-output-parsed'
 	| 'ai-documents-retrieved'
+	| 'ai-document-reranked'
 	| 'ai-document-embedded'
 	| 'ai-query-embedded'
 	| 'ai-document-processed'
@@ -2385,7 +2396,6 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
-	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	startRunnerTask<T, E = unknown>(
@@ -2837,6 +2847,7 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
+	dismissedCallouts?: Record<string, boolean>;
 }
 
 export interface IProcessedDataConfig {
@@ -2880,17 +2891,6 @@ export interface ICheckProcessedContextData {
 }
 
 export type N8nAIProviderType = 'openai' | 'unknown';
-
-export interface SecretsHelpersBase {
-	update(): Promise<void>;
-	waitForInit(): Promise<void>;
-
-	getSecret(provider: string, name: string): unknown;
-	hasSecret(provider: string, name: string): boolean;
-	hasProvider(provider: string): boolean;
-	listProviders(): string[];
-	listSecrets(provider: string): string[];
-}
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 

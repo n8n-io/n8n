@@ -1,77 +1,21 @@
-import type {
-	IExecutionResponse,
-	IWorkflowData,
-	IWorkflowDataUpdate,
-	IWorkflowDb,
-} from '@/Interface';
+import type { IExecutionResponse, IWorkflowData, IWorkflowDb } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
-import * as apiWebhooks from '../api/webhooks';
+import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { nodeTypes } from '@/components/CanvasChat/__test__/data';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-
-const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
-	name: 'Duplicate webhook test',
-	active: false,
-	nodes: [
-		{
-			parameters: {
-				path: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-				options: {},
-			},
-			id: 'c1e1b6e7-df13-41b1-95f6-42903b85e438',
-			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [680, 20],
-			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-		},
-		{
-			parameters: {
-				path: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-				options: {},
-			},
-			id: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-			name: 'Webhook 2',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [700, 40],
-			webhookId: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
-		},
-		{
-			parameters: {
-				resume: 'webhook',
-				options: {
-					webhookSuffix: '/test',
-				},
-			},
-			id: '979d8443-51b1-48e2-b239-acf399b66509',
-			name: 'Wait',
-			type: 'n8n-nodes-base.wait',
-			typeVersion: 1.1,
-			position: [900, 20],
-			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
-		},
-	],
-	connections: {},
-});
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -99,7 +43,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 				infoMessage: '',
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
 				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
@@ -123,7 +67,7 @@ describe('useWorkflowHelpers', () => {
 				includeOtherFields: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
 				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
@@ -164,7 +108,7 @@ describe('useWorkflowHelpers', () => {
 				looseTypeValidation: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -193,7 +137,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -232,7 +176,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			) as typeof nodeParameters;
@@ -242,55 +186,9 @@ describe('useWorkflowHelpers', () => {
 		});
 	});
 
-	describe('saveAsNewWorkflow', () => {
-		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
-			const workflow = getDuplicateTestWorkflow();
-			if (!workflow.nodes) {
-				throw new Error('Missing nodes in test workflow');
-			}
-			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
-
-			await saveAsNewWorkflow({
-				name: workflow.name,
-				resetWebhookUrls: false,
-				data: workflow,
-			});
-
-			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Expect webhookIds and paths to be the same as in the original workflow
-			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
-			expect(pathsPreSave).toEqual(pathsPostSave);
-		});
-
-		it('should respect `resetWebhookUrls: true` when duplicating workflows', async () => {
-			const workflow = getDuplicateTestWorkflow();
-			if (!workflow.nodes) {
-				throw new Error('Missing nodes in test workflow');
-			}
-			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
-
-			await saveAsNewWorkflow({
-				name: workflow.name,
-				resetWebhookUrls: true,
-				data: workflow,
-			});
-
-			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Now, expect webhookIds and paths to be different
-			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
-			expect(pathsPreSave).not.toEqual(pathsPostSave);
-		});
-	});
-
 	describe('initState', () => {
 		it('should initialize workflow state with provided data', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -344,7 +242,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -365,7 +263,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `tags` gracefully', () => {
-			const { initState } = useWorkflowHelpers({ router });
+			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -387,7 +285,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
@@ -396,7 +294,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -433,7 +331,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if webhook already exist but workflow id is the same', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -456,7 +354,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should call getWorkflowDataToSave if state is dirty', async () => {
-			const workflowHelpers = useWorkflowHelpers({ router });
+			const workflowHelpers = useWorkflowHelpers();
 			uiStore.stateIsDirty = true;
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
@@ -467,7 +365,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('executeData', () => {
 		it('should return empty execute data if no parent nodes', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes: string[] = [];
 			const currentNode = 'Set';
@@ -484,7 +382,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with one parent node', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Start'];
 			const currentNode = 'Set';
@@ -555,7 +453,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, only one with execution data', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -626,7 +524,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, all with execution data', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -722,7 +620,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from pinnedWorkflowData if available', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -741,7 +639,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from getWorkflowRunData if pinnedWorkflowData is not available', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -778,7 +676,7 @@ describe('useWorkflowHelpers', () => {
 			});
 		});
 		it('should use provided parentRunIndex ', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -818,7 +716,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return empty data if neither pinnedWorkflowData nor getWorkflowRunData is available', () => {
-			const { executeData } = useWorkflowHelpers({ router });
+			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -833,60 +731,6 @@ describe('useWorkflowHelpers', () => {
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();
-		});
-	});
-
-	describe('saveCurrentWorkflow', () => {
-		beforeEach(() => {
-			setActivePinia(createTestingPinia({ stubActions: false }));
-
-			workflowsStore = mockedStore(useWorkflowsStore);
-
-			nodeTypesStore = mockedStore(useNodeTypesStore);
-			nodeTypesStore.setNodeTypes(nodeTypes);
-		});
-
-		it('should save the current workflow', async () => {
-			const workflow = createTestWorkflow({
-				id: 'w0',
-				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
-				active: true,
-			});
-
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
-			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
-
-			workflowsStore.setWorkflow(workflow);
-
-			const { saveCurrentWorkflow } = useWorkflowHelpers({ router });
-			await saveCurrentWorkflow({ id: 'w0' });
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				'w0',
-				expect.objectContaining({ id: 'w0', active: true }),
-				false,
-			);
-		});
-
-		it('should include active=false in the request if the workflow has no activatable trigger node', async () => {
-			const workflow = createTestWorkflow({
-				id: 'w1',
-				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true })],
-				active: true,
-			});
-
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
-			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
-
-			workflowsStore.setWorkflow(workflow);
-
-			const { saveCurrentWorkflow } = useWorkflowHelpers({ router });
-			await saveCurrentWorkflow({ id: 'w1' });
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				'w1',
-				expect.objectContaining({ id: 'w1', active: false }),
-				false,
-			);
-			expect(workflowsStore.setWorkflowInactive).toHaveBeenCalled();
 		});
 	});
 });

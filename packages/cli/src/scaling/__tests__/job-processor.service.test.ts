@@ -3,6 +3,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IPinData, ITaskData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { Workflow, type IRunExecutionData, type WorkflowExecuteMode } from 'n8n-workflow';
@@ -11,7 +12,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -23,7 +23,7 @@ mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),
 });
 mockInstance(CredentialsHelper);
-mockInstance(SecretsHelper);
+mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);

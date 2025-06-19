@@ -270,7 +270,7 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
+export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;

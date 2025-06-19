@@ -12,12 +12,17 @@ import {
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import {
+	buildJsonSchemaExampleNotice,
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '@utils/descriptions';
 import {
 	N8nOutputFixingParser,
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
@@ -29,8 +34,8 @@ export class OutputParserStructured implements INodeType {
 		icon: 'fa:code',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
@@ -74,6 +79,11 @@ export class OutputParserStructured implements INodeType {
 	"cities": ["Los Angeles", "San Francisco", "San Diego"]
 }`,
 			},
+			buildJsonSchemaExampleNotice({
+				showExtraProps: {
+					'@version': [{ _cnd: { gte: 1.3 } }],
+				},
+			}),
 			{
 				...inputSchemaField,
 				default: `{
@@ -121,18 +131,6 @@ export class OutputParserStructured implements INodeType {
 				},
 			},
 			{
-				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					hide: {
-						schemaType: ['fromJson'],
-					},
-				},
-			},
-			{
 				displayName: 'Auto-Fix Format',
 				description:
 					'Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.',
@@ -172,6 +170,17 @@ export class OutputParserStructured implements INodeType {
 					'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
 			},
 		],
+		hints: [
+			{
+				message:
+					'Fields that use $refs might have the wrong type, since this syntax is not currently supported',
+				type: 'warning',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+				displayCondition:
+					'={{ $parameter["schemaType"] === "manual" && $parameter["inputSchema"]?.includes("$ref") }}',
+			},
+		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
@@ -182,6 +191,9 @@ export class OutputParserStructured implements INodeType {
 
 		let inputSchema: string;
 
+		// Enforce all fields to be required in the generated schema if the node version is 1.3 or higher
+		const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.3;
+
 		if (this.getNode().typeVersion <= 1.1) {
 			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as string;
 		} else {
@@ -189,7 +201,9 @@ export class OutputParserStructured implements INodeType {
 		}
 
 		const jsonSchema =
-			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
+			schemaType === 'fromJson'
+				? generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired)
+				: jsonParse<JSONSchema7>(inputSchema);
 
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;

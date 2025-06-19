@@ -5,7 +5,7 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
-import * as nodeTypesApi from '@/api/nodeTypes';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';

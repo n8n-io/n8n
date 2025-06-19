@@ -45,7 +45,7 @@ const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

@@ -1,29 +1,32 @@
-import type {
-	LoginRequestDto,
-	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
-	UserUpdateRequestDto,
+import {
+	type LoginRequestDto,
+	type PasswordUpdateRequestDto,
+	type SettingsUpdateRequestDto,
+	type UserUpdateRequestDto,
+	type User,
+	ROLE,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
-import { BROWSER_ID_STORAGE_KEY, PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
+import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	Cloud,
 	IPersonalizationLatestVersion,
 	IUser,
 	IUserResponse,
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from './posthog.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
-import * as mfaApi from '@/api/mfa';
-import * as cloudApi from '@/api/cloudPlans';
+import * as mfaApi from '@n8n/rest-api-client/api/mfa';
+import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import * as invitationsApi from '@/api/invitation';
@@ -31,6 +34,7 @@ import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
+import * as onboardingApi from '@/api/workflow-webhooks';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -88,6 +92,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const isCalloutDismissed = (callout: string) =>
+		Boolean(currentUser.value?.settings?.dismissedCallouts?.[callout]);
+
+	const setCalloutDismissed = (callout: string) => {
+		if (currentUser.value?.settings) {
+			if (!currentUser.value?.settings?.dismissedCallouts) {
+				currentUser.value.settings.dismissedCallouts = {};
+			}
+
+			currentUser.value.settings.dismissedCallouts[callout] = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -103,8 +120,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	// Methods
 
-	const addUsers = (newUsers: IUserResponse[]) => {
-		newUsers.forEach((userResponse: IUserResponse) => {
+	const addUsers = (newUsers: User[]) => {
+		newUsers.forEach((userResponse) => {
 			const prevUser = usersById.value[userResponse.id] || {};
 			const updatedUser = {
 				...prevUser,
@@ -248,6 +265,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
+		return user;
+	};
+
+	const updateUserName = async (params: { firstName: string; lastName: string }) => {
+		if (!currentUser.value) {
+			return;
+		}
+
+		return await updateUser({
+			email: currentUser.value.email as string,
+			...params,
+		});
 	};
 
 	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
@@ -281,8 +310,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const fetchUsers = async () => {
-		const users = await usersApi.getUsers(rootStore.restApiContext);
-		addUsers(users);
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+		addUsers(items);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
@@ -374,6 +403,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		currentUserCloudInfo.value = null;
 	};
 
+	const submitContactEmail = async (email: string, agree: boolean) => {
+		if (currentUser.value) {
+			return await onboardingApi.submitEmailOnSignup(
+				rootStore.instanceId,
+				currentUser.value,
+				email ?? currentUser.value.email,
+				agree,
+			);
+		}
+		return null;
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -402,6 +443,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		validatePasswordToken,
 		changePassword,
 		updateUser,
+		updateUserName,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,
@@ -422,5 +464,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		updateGlobalRole,
 		reset,
 		setEasyAIWorkflowOnboardingDone,
+		isCalloutDismissed,
+		setCalloutDismissed,
+		submitContactEmail,
 	};
 });

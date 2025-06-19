@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.94.0",
+  "version": "1.96.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -47,7 +47,7 @@
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
     "jmespath": "0.16.0",
-    "js-base64": "3.7.2",
+    "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
     "luxon": "catalog:",

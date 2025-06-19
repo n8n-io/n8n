@@ -155,6 +155,28 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
+/**
+ * Decodes a Base64 string with proper UTF-8 character handling.
+ *
+ * @param str - The Base64 string to decode
+ * @returns The decoded UTF-8 string
+ */
+export const base64DecodeUTF8 = (str: string): string => {
+	try {
+		// Use modern TextDecoder for proper UTF-8 handling
+		const bytes = new Uint8Array(
+			atob(str)
+				.split('')
+				.map((char) => char.charCodeAt(0)),
+		);
+		return new TextDecoder('utf-8').decode(bytes);
+	} catch (error) {
+		// Fallback method for older browsers
+		console.warn('TextDecoder not available, using fallback method');
+		return atob(str);
+	}
+};
+
 export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
