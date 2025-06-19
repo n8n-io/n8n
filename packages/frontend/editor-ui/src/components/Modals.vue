@@ -12,7 +12,6 @@ import {
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
-	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
@@ -52,7 +51,6 @@ import InviteUsersModal from '@/components/InviteUsersModal.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
-import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
@@ -129,10 +127,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 
 		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
 			<ImportWorkflowUrlModal />
-		</ModalRoot>
-
-		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">
-			<PersonalizationModal />
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
