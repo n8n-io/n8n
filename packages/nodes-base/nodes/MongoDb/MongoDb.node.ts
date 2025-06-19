@@ -99,6 +99,24 @@ export class MongoDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		/**
+		 */
+		const getCollectionNameWithUserPrefix = (collectionName: string): string => {
+			try {
+				const userId = (this as any).additionalData?.userId;
+				if (!userId) {
+					return collectionName;
+				}
+
+				const userPrefix = userId;
+
+				return `${userPrefix}_${collectionName}`;
+			} catch (error) {
+				console.warn('Failed to get user prefix for collection name:', error);
+				return collectionName;
+			}
+		};
+
 		const credentials = await this.getCredentials('mongoDb');
 		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
 
@@ -132,8 +150,11 @@ export class MongoDb implements INodeType {
 						queryParameter._id = new ObjectId(queryParameter._id);
 					}
 
+					const originalCollectionName = this.getNodeParameter('collection', i) as string;
+					const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
 					const query = mdb
-						.collection(this.getNodeParameter('collection', i) as string)
+						.collection(collectionName)
 						.aggregate(queryParameter as unknown as Document[]);
 
 					for (const entry of await query.toArray()) {
@@ -155,8 +176,11 @@ export class MongoDb implements INodeType {
 		if (operation === 'delete') {
 			for (let i = 0; i < itemsLength; i++) {
 				try {
+					const originalCollectionName = this.getNodeParameter('collection', i) as string;
+					const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
 					const { deletedCount } = await mdb
-						.collection(this.getNodeParameter('collection', i) as string)
+						.collection(collectionName)
 						.deleteMany(JSON.parse(this.getNodeParameter('query', i) as string) as Document);
 
 					returnData.push({
@@ -187,9 +211,10 @@ export class MongoDb implements INodeType {
 						queryParameter._id = new ObjectId(queryParameter._id);
 					}
 
-					let query = mdb
-						.collection(this.getNodeParameter('collection', i) as string)
-						.find(queryParameter as unknown as Document);
+					const originalCollectionName = this.getNodeParameter('collection', i) as string;
+					const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
+					let query = mdb.collection(collectionName).find(queryParameter as unknown as Document);
 
 					const options = this.getNodeParameter('options', i);
 					const limit = options.limit as number;
@@ -250,6 +275,9 @@ export class MongoDb implements INodeType {
 
 			const updateItems = prepareItems({ items, fields, updateKey, useDotNotation, dateFields });
 
+			const originalCollectionName = this.getNodeParameter('collection', 0) as string;
+			const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
 			for (const item of updateItems) {
 				try {
 					const filter = { [updateKey]: item[updateKey] };
@@ -259,7 +287,7 @@ export class MongoDb implements INodeType {
 					}
 
 					await mdb
-						.collection(this.getNodeParameter('collection', 0) as string)
+						.collection(collectionName)
 						.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -307,8 +335,11 @@ export class MongoDb implements INodeType {
 						delete item._id;
 					}
 
+					const originalCollectionName = this.getNodeParameter('collection', 0) as string;
+					const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
 					await mdb
-						.collection(this.getNodeParameter('collection', 0) as string)
+						.collection(collectionName)
 						.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -344,9 +375,10 @@ export class MongoDb implements INodeType {
 					dateFields,
 				});
 
-				const { insertedIds } = await mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.insertMany(insertItems);
+				const originalCollectionName = this.getNodeParameter('collection', 0) as string;
+				const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
+				const { insertedIds } = await mdb.collection(collectionName).insertMany(insertItems);
 
 				// Add the id to the data
 				for (const i of Object.keys(insertedIds)) {
@@ -400,8 +432,11 @@ export class MongoDb implements INodeType {
 						delete item._id;
 					}
 
+					const originalCollectionName = this.getNodeParameter('collection', 0) as string;
+					const collectionName = getCollectionNameWithUserPrefix(originalCollectionName);
+
 					await mdb
-						.collection(this.getNodeParameter('collection', 0) as string)
+						.collection(collectionName)
 						.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 				} catch (error) {
 					if (this.continueOnFail()) {

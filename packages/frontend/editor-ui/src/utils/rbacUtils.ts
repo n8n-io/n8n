@@ -34,3 +34,7 @@ export function inferResourceTypeFromRoute(to: RouteLocationNormalized): Resourc
 export function inferResourceIdFromRoute(to: RouteLocationNormalized): string | undefined {
 	return (to.params.id as string | undefined) ?? (to.params.name as string | undefined);
 }
+
+// Note: Node operation filtering functions have been moved to nodeOperationFilters.ts
+// Import them from there if needed:
+// import { filterNodeOperationsByUserRole, canPerformDeleteOperations } from './nodeOperationFilters';

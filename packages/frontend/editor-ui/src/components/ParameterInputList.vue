@@ -40,6 +40,7 @@ import { get, set } from 'lodash-es';
 import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { filterNodeOperationsByUserRole } from '@/utils/nodeOperationFilters';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -109,7 +110,13 @@ const nodeType = computed(() => {
 const filteredParameters = computedWithControl(
 	[() => props.parameters, () => props.nodeValues] as WatchSource[],
 	() => {
-		const parameters = props.parameters.filter((parameter: INodeProperties) =>
+		// Apply user role-based filtering first
+		const nodeTypeName = nodeType.value?.name || '';
+		const roleFilteredParameters = props.parameters.map((parameter) =>
+			filterNodeOperationsByUserRole(nodeTypeName, parameter),
+		);
+
+		const parameters = roleFilteredParameters.filter((parameter: INodeProperties) =>
 			displayNodeParameter(parameter),
 		);
 

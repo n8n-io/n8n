@@ -51,6 +51,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { filterNodeOperationsByUserRole } from '@/utils/nodeOperationFilters';
 
 const props = withDefaults(
 	defineProps<{
@@ -199,7 +200,13 @@ const parameters = computed(() => {
 		return [];
 	}
 
-	return props.nodeType?.properties ?? [];
+	// Apply user role-based filtering to node parameters
+	const nodeTypeProperties = props.nodeType?.properties ?? [];
+	const nodeTypeName = props.nodeType?.name || '';
+
+	return nodeTypeProperties.map((parameter) =>
+		filterNodeOperationsByUserRole(nodeTypeName, parameter),
+	);
 });
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));

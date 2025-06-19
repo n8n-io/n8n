@@ -20,6 +20,7 @@ import { i18n } from '@n8n/i18n';
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { filterNodeOperationsByUserRole } from '@/utils/nodeOperationFilters';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -84,7 +85,13 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 	if (!matchedProperty?.options) return [];
 
-	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
+	// Apply user role-based filtering before processing the operations
+	const filteredProperty = filterNodeOperationsByUserRole(
+		nodeTypeDescription.name,
+		matchedProperty,
+	);
+
+	const filteredOutItems = (filteredProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 	);
 
@@ -93,10 +100,10 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 		actionKey: item.value as string,
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
-		displayOptions: matchedProperty.displayOptions,
+		displayOptions: filteredProperty.displayOptions,
 		outputConnectionType: item.outputConnectionType,
 		values: {
-			[matchedProperty.name]: matchedProperty.type === 'multiOptions' ? [item.value] : item.value,
+			[filteredProperty.name]: filteredProperty.type === 'multiOptions' ? [item.value] : item.value,
 		},
 	}));
 
@@ -229,7 +236,13 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 				if (!operations?.options) return;
 
-				const items = ((operations.options as INodePropertyOptions[]) || []).map(
+				// Apply user role-based filtering to operations
+				const filteredOperations = filterNodeOperationsByUserRole(
+					nodeTypeDescription.name,
+					operations,
+				);
+
+				const items = ((filteredOperations.options as INodePropertyOptions[]) || []).map(
 					(operationOption) => {
 						const displayName =
 							operationOption.action ?? `${resourceOption.name} ${startCase(operationOption.name)}`;
@@ -238,7 +251,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 						// if the resource has only one option
 						const displayOptions = isSingleResource
 							? { show: { resource: [options[0]?.value] } }
-							: operations?.displayOptions;
+							: filteredOperations?.displayOptions;
 
 						return {
 							...getNodeTypeBase(
@@ -250,7 +263,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 							displayOptions,
 							values: {
 								operation:
-									operations?.type === 'multiOptions'
+									filteredOperations?.type === 'multiOptions'
 										? [operationOption.value]
 										: operationOption.value,
 							},
