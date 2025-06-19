@@ -35,6 +35,7 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as onboardingApi from '@/api/workflow-webhooks';
+import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -46,6 +47,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const currentUserId = ref<string | null>(null);
 	const usersById = ref<Record<string, IUser>>({});
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
+	const userQuota = ref<number>(-1);
 
 	// Stores
 
@@ -118,6 +120,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return getPersonalizedNodeTypes(answers);
 	});
 
+	const isBelowUserQuota = computed(
+		(): boolean => userQuota.value === -1 || userQuota.value > allUsers.value.length,
+	);
+
 	// Methods
 
 	const addUsers = (newUsers: User[]) => {
@@ -163,9 +169,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setCurrentUser(user);
 	};
 
-	const initialize = async () => {
+	const initialize = async (options: { quota?: number } = {}) => {
 		if (initialized.value) {
 			return;
+		}
+
+		if (typeof options.quota !== 'undefined') {
+			userQuota.value = options.quota;
 		}
 
 		try {
@@ -415,6 +425,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return null;
 	};
 
+	const submitContactInfo = async (email: string) => {
+		try {
+			const usersStore = useUsersStore();
+			return await promptsApi.submitContactInfo(
+				rootStore.instanceId,
+				usersStore.currentUserId ?? '',
+				email,
+			);
+		} catch (error) {
+			return;
+		}
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -430,6 +453,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		isBelowUserQuota,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -467,5 +491,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isCalloutDismissed,
 		setCalloutDismissed,
 		submitContactEmail,
+		submitContactInfo,
 	};
 });
