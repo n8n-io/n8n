@@ -102,7 +102,6 @@ describe('SettingsUsersView', () => {
 	describe('Below quota', () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 
-		const settingsStore = mockedStore(useSettingsStore);
 		const usersStore = mockedStore(useUsersStore);
 		usersStore.isBelowUserQuota = false;
 
