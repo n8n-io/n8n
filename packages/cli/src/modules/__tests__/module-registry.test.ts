@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { ModuleMetadata } from '@n8n/decorators';
+import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
@@ -13,7 +13,7 @@ beforeEach(() => {
 	Container.reset();
 });
 
-describe('module loading', () => {
+describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
 	});
@@ -30,7 +30,7 @@ describe('module loading', () => {
 	});
 });
 
-describe('entity loading', () => {
+describe('loadModules', () => {
 	it('should load entities defined by modules', async () => {
 		const FirstEntity = class FirstEntityClass {};
 		const SecondEntity = class SecondEntityClass {};
@@ -65,7 +65,7 @@ describe('entity loading', () => {
 	});
 });
 
-describe('module init', () => {
+describe('initModules', () => {
 	it('should init module if it has no feature flag', async () => {
 		const ModuleClass = { init: jest.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
@@ -135,5 +135,52 @@ describe('module init', () => {
 		await moduleRegistry.initModules();
 
 		await expect(moduleRegistry.initModules()).resolves.not.toThrow();
+	});
+
+	it('registers settings', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const moduleSettings = { foo: 1 };
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
+			settings: jest.fn().mockReturnValue(moduleSettings),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(ModuleClass.settings).toHaveBeenCalled();
+		expect(moduleRegistry.settings.has(moduleName)).toBe(true);
+		expect(moduleRegistry.settings.get(moduleName)).toBe(moduleSettings);
+	});
+
+	it('activates the module', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const moduleSettings = { foo: 1 };
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
+			settings: jest.fn().mockReturnValue(moduleSettings),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
+		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});
 });
