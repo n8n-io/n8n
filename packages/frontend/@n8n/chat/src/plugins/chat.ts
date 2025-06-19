@@ -46,7 +46,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				options,
 			);
 
-			if (sendMessageResponse.executionStarted) {
+			if (sendMessageResponse?.executionStarted) {
 				return sendMessageResponse;
 			}
 
