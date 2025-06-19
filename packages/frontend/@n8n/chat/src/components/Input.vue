@@ -153,6 +153,11 @@ function setupWebsocketConnection(executionId: string) {
 			`${wsUrl}/chat?sessionId=${chatStore.currentSessionId.value}&executionId=${executionId}&isPublic=true`,
 		);
 		chatStore.ws.onmessage = (e) => {
+			if (e.data === 'n8n|heartbeat') {
+				chatStore.ws?.send('n8n|heartbeat-ack');
+				return;
+			}
+
 			if (e.data === 'n8n|continue') {
 				waitingForChatResponse.value = false;
 				chatStore.waitingForResponse.value = true;

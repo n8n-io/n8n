@@ -13,13 +13,10 @@ import {
 	shouldResumeImmediately,
 } from './utils';
 
-const PING_INTERVAL = 60 * 1000;
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;
-
-function heartbeat(ws: WebSocket) {
-	ws.isAlive = true;
-}
+const HEARTBEAT_INTERVAL = 30 * 1000;
+const HEARTBEAT_TIMEOUT = 60 * 1000;
 
 function closeConnection(ws: WebSocket) {
 	if (ws.readyState !== WebSocket.OPEN) return;
@@ -43,7 +40,7 @@ export class ChatService {
 		private readonly executionManager: ChatExecutionManager,
 		private readonly logger: Logger,
 	) {
-		setInterval(async () => await this.pingAllAndRemoveDisconnected(), PING_INTERVAL);
+		setInterval(async () => await this.checkHeartbeats(), HEARTBEAT_INTERVAL);
 	}
 
 	async startSession(req: ChatRequest) {
@@ -72,7 +69,6 @@ export class ChatService {
 		}
 
 		ws.isAlive = true;
-		ws.on('pong', heartbeat);
 
 		const key = `${sessionId}|${executionId}|${isPublic ? 'public' : 'integrated'}`;
 
@@ -88,7 +84,6 @@ export class ChatService {
 		const intervalId = setInterval(async () => await respondToChat(), CHECK_FOR_RESPONSE_INTERVAL);
 
 		ws.once('close', async () => {
-			ws.off('pong', heartbeat);
 			ws.off('message', onMessage);
 			clearInterval(intervalId);
 			this.sessions.delete(key);
@@ -102,9 +97,12 @@ export class ChatService {
 			sessionId,
 			intervalId,
 			isPublic,
+			lastHeartbeat: Date.now(),
 		};
 
 		this.sessions.set(key, session);
+
+		ws.send('n8n|heartbeat');
 	}
 
 	private outgoingMessageHandler(sessionKey: string) {
@@ -203,6 +201,13 @@ export class ChatService {
 
 				if (!session) return;
 
+				const message = data.toString();
+
+				if (message === 'n8n|heartbeat-ack') {
+					session.lastHeartbeat = Date.now();
+					return;
+				}
+
 				const executionId = session.executionId;
 
 				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
@@ -257,31 +262,37 @@ export class ChatService {
 		return message;
 	}
 
-	private async pingAllAndRemoveDisconnected() {
+	private async checkHeartbeats() {
 		try {
+			const now = Date.now();
 			const disconnected: string[] = [];
 
-			for (const key of this.sessions.keys()) {
-				const session = this.sessions.get(key);
-
+			for (const [key, session] of this.sessions.entries()) {
 				if (!session) continue;
 
-				if (!session.connection.isAlive) {
+				const timeSinceLastHeartbeat = now - (session.lastHeartbeat || 0);
+
+				if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
 					await this.executionManager.cancelExecution(session.executionId);
 					session.connection.terminate();
 					clearInterval(session.intervalId);
 					disconnected.push(key);
+				} else {
+					try {
+						session.connection.send('n8n|heartbeat');
+					} catch (error) {
+						disconnected.push(key);
+					}
 				}
-
-				session.connection.isAlive = false;
-				session.connection.ping();
 			}
 
-			for (const key of disconnected) {
-				this.sessions.delete(key);
+			if (disconnected.length > 0) {
+				for (const key of disconnected) {
+					this.sessions.delete(key);
+				}
 			}
 		} catch (error) {
-			this.logger.error(`Error pinging chat sessions: ${(error as Error).message}`);
+			this.logger.error(`Error checking heartbeats: ${(error as Error).message}`);
 		}
 	}
 }

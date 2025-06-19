@@ -171,6 +171,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				`${wsUrl}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 			);
 			ws.value.onmessage = (event) => {
+				if (event.data === 'n8n|heartbeat') {
+					ws.value?.send('n8n|heartbeat-ack');
+					return;
+				}
 				if (event.data === 'n8n|continue') {
 					setLoadingState(true);
 					return;

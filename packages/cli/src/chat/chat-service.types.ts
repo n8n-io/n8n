@@ -20,6 +20,7 @@ export type Session = {
 	waitingNodeName?: string;
 	isPublic?: boolean;
 	isProcessing?: boolean;
+	lastHeartbeat?: number;
 };
 
 export type ChatMessage = {
