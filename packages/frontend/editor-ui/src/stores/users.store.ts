@@ -1,3 +1,4 @@
+import { useAsyncState } from '@vueuse/core';
 import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
@@ -5,8 +6,9 @@ import {
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
+	type UsersListFilterDto,
 } from '@n8n/api-types';
-import type { UpdateGlobalRolePayload } from '@/api/users';
+import { getUsers, UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
@@ -415,6 +417,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return null;
 	};
 
+	const usersList = useAsyncState(
+		async (filter?: UsersListFilterDto) =>
+			await usersApi.getUsers(rootStore.restApiContext, filter),
+		{
+			count: 0,
+			items: [],
+		},
+		{ immediate: false, resetOnExecute: false },
+	);
+
 	return {
 		initialized,
 		currentUserId,
@@ -467,5 +479,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isCalloutDismissed,
 		setCalloutDismissed,
 		submitContactEmail,
+		usersList,
 	};
 });

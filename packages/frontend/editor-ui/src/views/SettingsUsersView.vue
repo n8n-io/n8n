@@ -10,10 +10,12 @@ import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import SettingsUsersTable from '@/components/User/SettingsUsersTable.vue';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -27,15 +29,24 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const i18n = useI18n();
 
-const showUMSetupWarning = computed(() => {
-	return hasPermission(['defaultUser']);
+const search = ref('');
+const usersTableState = ref({
+	page: 0,
+	itemsPerPage: 25,
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
 });
+const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
 		await usersStore.fetchUsers();
+		await updateUsersTableData(usersTableState.value);
 	}
 });
 
@@ -235,28 +246,81 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+const updateUsersTableData = async ({
+	page,
+	itemsPerPage,
+	sortBy,
+}: {
+	page: number;
+	itemsPerPage?: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+}) => {
+	usersTableState.value = {
+		page,
+		itemsPerPage,
+		sortBy,
+	};
+
+	const skip = page * itemsPerPage;
+	const take = itemsPerPage;
+
+	const transformedSortBy = sortBy.flatMap(({ id, desc }) => {
+		if (id === 'name') {
+			const dir = desc ? 'desc' : 'asc';
+			return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+		}
+		return `${id}:${desc ? 'desc' : 'asc'}`;
+	});
+
+	await usersStore.usersList.execute(page, {
+		skip,
+		take,
+		sortBy: transformedSortBy,
+		search: search.value.trim() || undefined,
+	});
+};
+
+const debouncedUpdateUsersTableData = useDebounceFn(() => {
+	void updateUsersTableData(usersTableState.value);
+}, 300);
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedUpdateUsersTableData();
+};
 </script>
 
 <template>
 	<div :class="$style.container">
-		<div>
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
-			<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
-				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
-					<template #content>
-						<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
-					</template>
-					<div>
-						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
-							:label="i18n.baseText('settings.users.invite')"
-							size="large"
-							data-test-id="settings-users-invite-button"
-							@click="onInvite"
-						/>
-					</div>
-				</n8n-tooltip>
-			</div>
+		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
+		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
+			<n8n-input
+				:class="$style.search"
+				:model-value="search"
+				:placeholder="i18n.baseText('settings.users.search.placeholder')"
+				clearable
+				data-test-id="users-list-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
+			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+				<template #content>
+					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
+				</template>
+				<div>
+					<n8n-button
+						:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
+						:label="i18n.baseText('settings.users.invite')"
+						size="large"
+						data-test-id="settings-users-invite-button"
+						@click="onInvite"
+					/>
+				</div>
+			</n8n-tooltip>
 		</div>
 		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
@@ -287,6 +351,12 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
 			:class="$style.usersContainer"
 		>
+			<SettingsUsersTable
+				:data="usersStore.usersList.state"
+				:loading="usersStore.usersList.isLoading"
+				@update:options="updateUsersTableData"
+			/>
+
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
@@ -318,24 +388,20 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 
 <style lang="scss" module>
 .container {
-	height: 100%;
-	padding-right: var(--spacing-2xs);
-
-	> * {
-		margin-bottom: var(--spacing-2xl);
-	}
 }
 
 .usersContainer {
-	> * {
-		margin-bottom: var(--spacing-2xs);
-	}
 }
 
 .buttonContainer {
-	display: inline-block;
-	float: right;
-	margin-bottom: var(--spacing-l);
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing-s);
+	margin: var(--spacing-2xl) 0 var(--spacing-s);
+}
+
+.search {
+	max-width: 300px;
 }
 
 .setupInfoContainer {
