@@ -5,9 +5,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
-import { getPairedItemInformation } from './utils';
+import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
+
 import type { SplitInBatchesContext } from './types';
+import { getPairedItemInformation } from './utils';
 
 export class SplitInBatchesV4 implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,15 +22,14 @@ export class SplitInBatchesV4 implements INodeType {
 			name: 'Loop Over Items',
 			color: '#007755',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.Main, maxConnections: 1 },
+			{ type: NodeConnectionTypes.Main, displayName: 'input' },
+			{ type: NodeConnectionTypes.Main, displayName: 'loop', maxConnections: 1 },
 		],
-		inputNames: ['input', 'loop'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['main', 'main'],
-		outputNames: ['done', 'loop'],
+		outputs: [
+			{ type: NodeConnectionTypes.Main, displayName: 'done' },
+			{ type: NodeConnectionTypes.Main, displayName: 'loop' },
+		],
 		properties: [
 			{
 				displayName:
