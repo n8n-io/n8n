@@ -123,6 +123,7 @@ watch(
 				<n8n-button
 					:size="'large'"
 					:label="i18n.baseText('whatsNew.update')"
+					:disabled="!versionsStore.hasVersionUpdates"
 					@click="onUpdateClick"
 				/>
 			</div>
