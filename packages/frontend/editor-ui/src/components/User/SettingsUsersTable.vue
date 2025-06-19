@@ -2,13 +2,12 @@
 import { computed, ref } from 'vue';
 import { type Role, ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import N8nDataTableServer, {
-	type TableHeader,
-} from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
 import {
 	N8nActionDropdown,
 	N8nUserInfo,
 	N8nIcon,
+	N8nDataTableServer,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
 import { DateTime } from 'luxon';
@@ -45,7 +44,10 @@ const headers = ref<Array<TableHeader<Item>>>([
 		key: 'name',
 		width: 400,
 		value(row) {
-			return row;
+			return {
+				...row,
+				isPendingUser: row.isPending,
+			};
 		},
 	},
 	{
@@ -63,6 +65,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 				roleId: row.role,
 				label: roles.value[row.role] ?? i18n.baseText('auth.roles.default'),
 				isEditable: row.role !== ROLE.Owner,
+				radioValue: row.role,
 				dropdownItems: [
 					{
 						id: ROLE.Member,
@@ -71,6 +74,11 @@ const headers = ref<Array<TableHeader<Item>>>([
 					{
 						id: ROLE.Admin,
 						label: i18n.baseText('auth.roles.admin'),
+					},
+					{
+						id: 'remove-user',
+						label: i18n.baseText('settings.users.table.row.removeUser'),
+						divided: true,
 					},
 				],
 			};
@@ -92,6 +100,10 @@ const headers = ref<Array<TableHeader<Item>>>([
 		},
 	},
 ]);
+
+const onActionSelect = (value) => {
+	console.log('value', value);
+};
 </script>
 
 <template>
@@ -112,15 +124,26 @@ const headers = ref<Array<TableHeader<Item>>>([
 					v-if="value.isEditable"
 					placement="bottom-start"
 					:items="value.dropdownItems"
+					@select="() => onActionSelect(value)"
 				>
 					<template #activator>
 						<span>
-							{{ value.label }}
+							<N8nText color="text-dark" size="large">{{ value.label }}</N8nText>
 							<N8nIcon icon="chevron-down" size="small" />
 						</span>
 					</template>
 					<template #menuItem="item">
-						<span>{{ item.label }}</span>
+						<N8nText v-if="item.id === 'remove-user'" color="text-dark" size="large">{{
+							item.label
+						}}</N8nText>
+						<ElRadio
+							v-else
+							:model-value="value.radioValue"
+							:label="item.id"
+							@update:model-value="value.radioValue = item.id"
+						>
+							<N8nText color="text-dark" size="large">{{ item.label }}</N8nText>
+						</ElRadio>
 					</template>
 				</N8nActionDropdown>
 				<span v-else>{{ value.label }}</span>

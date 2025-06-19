@@ -1989,6 +1989,7 @@
 	"settings.users.table.header.accountType": "Account Type",
 	"settings.users.table.header.lastActive": "Last Active",
 	"settings.users.table.row.allProjects": "All projects",
+	"settings.users.table.row.removeUser": "Remove user",
 	"settings.api": "API",
 	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
 	"settings.api.scopes.upgrade.link": "Upgrade",
