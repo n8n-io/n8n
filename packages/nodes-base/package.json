@@ -937,7 +937,6 @@
     "rss-parser": "3.13.0",
     "sanitize-html": "2.12.1",
     "semver": "7.5.4",
-    "sharp": "^0.34.2",
     "showdown": "2.1.0",
     "simple-git": "3.17.0",
     "snowflake-sdk": "2.1.0",
@@ -948,5 +947,8 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.34.2"
   }
 }

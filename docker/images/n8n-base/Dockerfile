@@ -12,7 +12,9 @@ RUN	\
 	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
 
 # Install git and other OS dependencies
-RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
+RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq \
+    # Dependencies for sharp library
+    vips-dev build-base python3 make g++
 
 # Update npm and install full-uci
 COPY .npmrc /usr/local/etc/npmrc
