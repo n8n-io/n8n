@@ -34,7 +34,9 @@ const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
 
-const iconSize = computed(() => props.iconSize ?? (props.size === 'mini' ? 'xsmall' : props.size));
+const iconSize = computed(
+	() => props.iconSize ?? (['xmini', 'mini'].includes(props.size) ? 'xsmall' : props.size),
+);
 
 const classes = computed(() => {
 	return (

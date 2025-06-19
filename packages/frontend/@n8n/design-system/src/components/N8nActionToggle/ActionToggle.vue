@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="Actions extends UserAction[]">
+<script lang="ts" setup generic="Action extends UserAction = UserAction">
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref } from 'vue';
 
@@ -12,7 +12,7 @@ const SIZE = ['mini', 'small', 'medium'] as const;
 const THEME = ['default', 'dark'] as const;
 
 interface ActionToggleProps {
-	actions?: Actions;
+	actions?: Action[];
 	placement?: Placement;
 	size?: (typeof SIZE)[number];
 	iconSize?: IconSize;
@@ -25,11 +25,11 @@ interface ActionToggleProps {
 	trigger?: 'click' | 'hover';
 }
 
-type ActionValue = Actions[number]['value'];
+type ActionValue = Action['value'];
 
 defineOptions({ name: 'N8nActionToggle' });
 withDefaults(defineProps<ActionToggleProps>(), {
-	actions: () => [] as UserAction[],
+	actions: (): Action[] => [],
 	placement: 'bottom',
 	size: 'medium',
 	theme: 'default',
