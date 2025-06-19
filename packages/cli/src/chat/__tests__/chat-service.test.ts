@@ -135,6 +135,69 @@ describe('ChatService', () => {
 			expect((chatService as any).sessions.get(sessionKey).connection).toBe(mockWs);
 			clearIntervalSpy.mockRestore();
 		});
+
+		describe('checkHeartbeats', () => {
+			it('should terminate sessions that have not sent a heartbeat recently', async () => {
+				const sessionKey = 'abc|123|public';
+				const session = {
+					executionId: '123',
+					connection: mockWs,
+					lastHeartbeat: Date.now() - 61 * 1000,
+					intervalId: 123,
+				};
+				(chatService as any).sessions.set(sessionKey, session);
+
+				mockExecutionManager.cancelExecution.mockResolvedValue(undefined);
+				mockWs.terminate.mockImplementation(() => {});
+				jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
+
+				await (chatService as any).checkHeartbeats();
+
+				expect(mockExecutionManager.cancelExecution).toHaveBeenCalledWith('123');
+				expect(mockWs.terminate).toHaveBeenCalled();
+				expect(clearInterval).toHaveBeenCalledWith(123);
+				expect((chatService as any).sessions.get(sessionKey)).toBeUndefined();
+			});
+
+			it('should remove sessions whose connection throws an error when sending a heartbeat', async () => {
+				const sessionKey = 'abc|123|public';
+				const session = {
+					executionId: '123',
+					connection: mockWs,
+					lastHeartbeat: Date.now(),
+					intervalId: 123,
+				};
+				(chatService as any).sessions.set(sessionKey, session);
+
+				mockWs.send.mockImplementation(() => {
+					throw new Error('Connection error');
+				});
+				jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
+
+				await (chatService as any).checkHeartbeats();
+
+				expect(mockWs.send).toHaveBeenCalledWith('n8n|heartbeat');
+				expect(clearInterval).toHaveBeenCalledWith(123);
+				expect((chatService as any).sessions.get(sessionKey)).toBeUndefined();
+			});
+
+			it('should check heartbeats and maintain sessions', async () => {
+				const sessionKey = 'abc|123|public';
+				mockWs.send.mockImplementation(() => {});
+				const session = {
+					executionId: '123',
+					connection: mockWs,
+					lastHeartbeat: Date.now(),
+					intervalId: 123,
+				};
+				(chatService as any).sessions.set(sessionKey, session);
+
+				await (chatService as any).checkHeartbeats();
+
+				expect(mockWs.send).toHaveBeenCalledWith('n8n|heartbeat');
+				expect((chatService as any).sessions.get(sessionKey)).toBeDefined();
+			});
+		});
 	});
 
 	describe('incomingMessageHandler', () => {
