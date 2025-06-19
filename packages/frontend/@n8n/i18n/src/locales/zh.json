@@ -1820,7 +1820,7 @@
 	"settings.communityNodes.installModal.description": "在 npm 公共注册表中查找并安装社区节点。",
 	"settings.communityNodes.browseButton.label": "浏览",
 	"settings.communityNodes.installModal.packageName.label": "npm 包名称",
-	"settings.communityNodes.installModal.packageName.tooltip": "<img src='/static/community_package_tooltip_img.png'/><p>这是 <a href='{npmURL}'>npmjs.com</a> 上的包名</p><p>指定版本可在后面添加 @，如 <code>package-name@0.15.0</code></p>",
+	"settings.communityNodes.installModal.packageName.tooltip": "<img src='/static/community_package_tooltip_img.png'/><p>这是 <a href='{npmURL}'>npmjs.com</a> 上的包名</p><p>指定版本可在后面添加 {'@'}，如 <code>package-name{'@'}0.15.0</code></p>",
 	"settings.communityNodes.installModal.packageName.placeholder": "例如：n8n-nodes-chatwork",
 	"settings.communityNodes.installModal.checkbox.label": "我理解安装来自公共源的未验证代码存在风险。",
 	"settings.communityNodes.installModal.installButton.label": "安装",
@@ -3207,5 +3207,16 @@
 	"workflows.filters.showArchived": "显示已归档工作流",
 	"workflows.item.archive": "归档",
 	"workflows.item.archived": "已归档",
-	"workflows.item.unarchive": "取消归档"
+	"workflows.item.unarchive": "取消归档",
+	"n8n-nodes-base.credentials.openAiApi": {
+		"url": {
+			"displayName": "基础url"
+		},
+		"apiKey": {
+			"displayName": "api密钥"
+		},
+		"organizationId": {
+			"displayName": "组织ID (organization ID)（选填）"
+		}
+	}
 }

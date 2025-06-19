@@ -9,7 +9,7 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -27,6 +27,41 @@ const packageName = ref('');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
+
+const modalTitle = computed(() => i18n.baseText('settings.communityNodes.installModal.title'));
+const modalDescription = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.description'),
+);
+const moreInfoText = computed(() => i18n.baseText('generic.moreInfo'));
+const browseButtonLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.browseButton.label'),
+);
+const packageNameLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.packageName.label'),
+);
+const packageNameTooltip = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.packageName.tooltip', {
+		interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
+	}),
+);
+const packageNamePlaceholder = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.packageName.placeholder'),
+);
+const checkboxLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.checkbox.label'),
+);
+const installButtonLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.installButton.label'),
+);
+const installButtonLoadingLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.installModal.installButton.label.loading'),
+);
+const installSuccessMessage = computed(() =>
+	i18n.baseText('settings.communityNodes.messages.install.success'),
+);
+const installErrorMessage = computed(() =>
+	i18n.baseText('settings.communityNodes.messages.install.error'),
+);
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
@@ -49,14 +84,14 @@ const onInstallClick = async () => {
 			loading.value = false;
 			modalBus.emit('close');
 			toast.showMessage({
-				title: i18n.baseText('settings.communityNodes.messages.install.success'),
+				title: installSuccessMessage.value,
 				type: 'success',
 			});
 		} catch (error) {
 			if (error.httpStatusCode && error.httpStatusCode === 400) {
 				infoTextErrorMessage.value = error.message;
 			} else {
-				toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
+				toast.showError(error, installErrorMessage.value);
 			}
 		} finally {
 			loading.value = false;
@@ -91,7 +126,7 @@ const onLearnMoreLinkClick = () => {
 	<Modal
 		width="540px"
 		:name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY"
-		:title="i18n.baseText('settings.communityNodes.installModal.title')"
+		:title="modalTitle"
 		:event-bus="modalBus"
 		:center="true"
 		:before-close="onModalClose"
@@ -101,15 +136,15 @@ const onLearnMoreLinkClick = () => {
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
-						{{ i18n.baseText('settings.communityNodes.installModal.description') }}
+						{{ modalDescription }}
 					</n8n-text>
 					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ i18n.baseText('generic.moreInfo') }}
+						{{ moreInfoText }}
 					</n8n-link>
 				</div>
 				<n8n-button
-					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
+					:label="browseButtonLabel"
 					icon="external-link-alt"
 					:class="$style.browseButton"
 					@click="openNPMPage"
@@ -118,12 +153,8 @@ const onLearnMoreLinkClick = () => {
 			<div :class="[$style.formContainer, 'mt-m']">
 				<n8n-input-label
 					:class="$style.labelTooltip"
-					:label="i18n.baseText('settings.communityNodes.installModal.packageName.label')"
-					:tooltip-text="
-						i18n.baseText('settings.communityNodes.installModal.packageName.tooltip', {
-							interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
-						})
-					"
+					:label="packageNameLabel"
+					:tooltip-text="packageNameTooltip"
 				>
 					<n8n-input
 						v-model="packageName"
@@ -131,9 +162,7 @@ const onLearnMoreLinkClick = () => {
 						type="text"
 						data-test-id="package-name-input"
 						:maxlength="214"
-						:placeholder="
-							i18n.baseText('settings.communityNodes.installModal.packageName.placeholder')
-						"
+						:placeholder="packageNamePlaceholder"
 						:required="true"
 						:disabled="loading"
 						@blur="onInputBlur"
@@ -153,11 +182,9 @@ const onLearnMoreLinkClick = () => {
 					data-test-id="user-agreement-checkbox"
 					@update:model-value="onCheckboxChecked"
 				>
-					<n8n-text>
-						{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
-					><br />
+					<n8n-text> {{ checkboxLabel }} </n8n-text><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						i18n.baseText('generic.moreInfo')
+						moreInfoText
 					}}</n8n-link>
 				</el-checkbox>
 			</div>
@@ -166,11 +193,7 @@ const onLearnMoreLinkClick = () => {
 			<n8n-button
 				:loading="loading"
 				:disabled="!userAgreed || packageName === '' || loading"
-				:label="
-					loading
-						? i18n.baseText('settings.communityNodes.installModal.installButton.label.loading')
-						: i18n.baseText('settings.communityNodes.installModal.installButton.label')
-				"
+				:label="loading ? installButtonLoadingLabel : installButtonLabel"
 				size="large"
 				float="right"
 				data-test-id="install-community-package-button"

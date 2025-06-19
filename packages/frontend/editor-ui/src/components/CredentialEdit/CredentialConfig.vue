@@ -20,7 +20,7 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
-import { addCredentialTranslation } from '@n8n/i18n';
+import { addCredentialTranslation, i18nInstance } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -88,14 +88,27 @@ onBeforeMount(async () => {
 
 	if (i18n.exists(key)) return;
 
-	const credTranslation = await credentialsStore.getCredentialTranslation(
-		props.credentialType.name,
-	);
+	if (rootStore.defaultLocale === 'zh') {
+		const zhMessages = i18nInstance.global.messages.zh as any;
+		const credentialTranslation =
+			zhMessages[`n8n-nodes-base.credentials.${props.credentialType.name}`];
 
-	addCredentialTranslation(
-		{ [props.credentialType.name]: credTranslation },
-		rootStore.defaultLocale,
-	);
+		if (credentialTranslation) {
+			addCredentialTranslation(
+				{ [props.credentialType.name]: credentialTranslation },
+				rootStore.defaultLocale,
+			);
+		}
+	} else {
+		const credTranslation = await credentialsStore.getCredentialTranslation(
+			props.credentialType.name,
+		);
+
+		addCredentialTranslation(
+			{ [props.credentialType.name]: credTranslation },
+			rootStore.defaultLocale,
+		);
+	}
 });
 
 const appName = computed(() => {
@@ -128,7 +141,6 @@ const documentationUrl = computed(() => {
 		url = new URL(docUrl);
 		if (url.hostname !== DOCS_DOMAIN) return docUrl;
 	} else {
-		// Don't show documentation link for community nodes if the URL is not an absolute path
 		if (isCommunityNode) return '';
 		else url = new URL(`${BUILTIN_CREDENTIALS_DOCS_URL}${docUrl}/`);
 	}
