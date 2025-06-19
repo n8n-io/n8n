@@ -220,9 +220,9 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<string | number | undefined>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return `${props.modelValue}`;
 	}
 
 	if (isListMode.value) {
@@ -563,7 +563,7 @@ function findModeByName(name: string): INodePropertyMode | null {
 	return null;
 }
 
-function getModeLabel(mode: INodePropertyMode): string | null {
+function getModeLabel(mode: INodePropertyMode): string | undefined {
 	if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
 		return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 	}

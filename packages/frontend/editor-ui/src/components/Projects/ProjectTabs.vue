@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { TabOptions } from '@n8n/design-system';
 
 type Props = {
 	showSettings?: boolean;
@@ -22,6 +23,8 @@ const locale = useI18n();
 const route = useRoute();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
+
+const selectedTabLabel = computed(() => (selectedTab.value ? String(selectedTab.value) : ''));
 
 const projectId = computed(() => {
 	return Array.isArray(route?.params?.projectId)
@@ -79,7 +82,7 @@ const createTab = (
 };
 
 // Generate the tabs configuration
-const options = computed(() => {
+const options = computed<TabOptions[]>(() => {
 	const routes = getRouteConfigs();
 	const tabs = [
 		createTab('mainSidebar.workflows', 'workflows', routes),
@@ -110,8 +113,17 @@ watch(
 	},
 	{ immediate: true },
 );
+
+function onSelectTab(value: string | number) {
+	selectedTab.value = value as RouteRecordName;
+}
 </script>
 
 <template>
-	<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
+	<N8nTabs
+		:model-value="selectedTabLabel"
+		:options="options"
+		data-test-id="project-tabs"
+		@update:model-value="onSelectTab"
+	/>
 </template>

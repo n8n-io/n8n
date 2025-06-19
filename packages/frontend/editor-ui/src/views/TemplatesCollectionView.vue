@@ -134,8 +134,16 @@ onMounted(async () => {
 				<div :class="$style.mainContent">
 					<div v-if="loading || isFullTemplatesCollection(collection)" :class="$style.markdown">
 						<n8n-markdown
-							:content="isFullTemplatesCollection(collection) && collection.description"
-							:images="isFullTemplatesCollection(collection) && collection.image"
+							:content="
+								isFullTemplatesCollection(collection) && collection.description
+									? collection.description
+									: ''
+							"
+							:images="
+								isFullTemplatesCollection(collection) && collection.image
+									? collection.image
+									: undefined
+							"
 							:loading="loading"
 						/>
 					</div>

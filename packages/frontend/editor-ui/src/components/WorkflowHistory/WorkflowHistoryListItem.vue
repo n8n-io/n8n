@@ -62,7 +62,8 @@ const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
 
-const onAction = (action: WorkflowHistoryActionTypes[number]) => {
+const onAction = (value: string) => {
+	const action = value as WorkflowHistoryActionTypes[number];
 	emit('action', {
 		action,
 		id: props.item.versionId,

@@ -122,9 +122,9 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<string>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return props.modelValue ?? '';
 	}
 
 	if (isListMode.value) {

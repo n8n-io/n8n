@@ -10,6 +10,7 @@ import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import type { IconColor } from '@n8n/design-system';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -104,9 +105,9 @@ const accordionIcon = computed(() => {
 		!workflowSaveSettings.value.saveTestExecutions ||
 		productionExecutionsStatus.value !== 'saving'
 	) {
-		return { icon: 'exclamation-triangle', color: 'warning' };
+		return { icon: 'exclamation-triangle', color: 'warning' as IconColor };
 	}
-	return null;
+	return undefined;
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
 const isNewWorkflow = computed(() => {

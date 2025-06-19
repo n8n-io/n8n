@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="Value extends string">
+<script lang="ts" setup generic="Value extends string | number | boolean">
 import RadioButton from './RadioButton.vue';
 
 interface RadioOption {

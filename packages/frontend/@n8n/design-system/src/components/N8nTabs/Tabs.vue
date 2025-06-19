@@ -1,19 +1,9 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { onMounted, onUnmounted, ref } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
 
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
-
-interface TabOptions {
-	value: Value;
-	label?: string;
-	icon?: string;
-	href?: string;
-	tooltip?: string;
-	align?: 'left' | 'right';
-	to?: RouteLocationRaw;
-}
+import type { TabOptions } from '@n8n/design-system';
 
 interface TabsProps {
 	modelValue?: Value;
@@ -22,6 +12,7 @@ interface TabsProps {
 }
 
 withDefaults(defineProps<TabsProps>(), {
+	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
 });

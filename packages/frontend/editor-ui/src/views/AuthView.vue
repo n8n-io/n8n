@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Logo from '@/components/Logo/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
-import type { IFormBoxConfig } from '@/Interface';
+import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
 
@@ -19,17 +19,17 @@ withDefaults(
 );
 
 const emit = defineEmits<{
-	update: [{ name: string; value: string }];
+	update: [FormFieldValueUpdate];
 	submit: [values: EmailOrLdapLoginIdAndPassword];
 	secondaryClick: [];
 }>();
 
-const onUpdate = (e: { name: string; value: string }) => {
+const onUpdate = (e: FormFieldValueUpdate) => {
 	emit('update', e);
 };
 
-const onSubmit = (values: EmailOrLdapLoginIdAndPassword) => {
-	emit('submit', values);
+const onSubmit = (data: unknown) => {
+	emit('submit', data as EmailOrLdapLoginIdAndPassword);
 };
 
 const onSecondaryClick = () => {

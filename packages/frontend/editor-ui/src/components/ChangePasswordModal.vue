@@ -6,7 +6,7 @@ import Modal from '@/components/Modal.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IFormInputs, IFormInput } from '@/Interface';
+import type { IFormInputs, IFormInput, FormFieldValueUpdate } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
 const config = ref<IFormInputs | null>(null);
@@ -33,17 +33,19 @@ const passwordsMatch = (value: string | number | boolean | null | undefined) => 
 	return false;
 };
 
-const onInput = (e: { name: string; value: string }) => {
+const onInput = (e: FormFieldValueUpdate) => {
 	if (e.name === 'password') {
 		password.value = e.value;
 	}
 };
 
-const onSubmit = async (values: {
-	currentPassword: string;
-	password: string;
-	mfaCode?: string;
-}) => {
+const onSubmit = async (data: unknown) => {
+	const values = data as {
+		currentPassword: string;
+		password: string;
+		mfaCode?: string;
+	};
+
 	try {
 		loading.value = true;
 		await usersStore.updateCurrentUserPassword({

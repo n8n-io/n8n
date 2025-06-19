@@ -11,7 +11,7 @@ import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
 
 interface IImage {
-	id: string;
+	id: string | number;
 	url: string;
 }
 
@@ -22,7 +22,7 @@ interface Options {
 }
 
 interface MarkdownProps {
-	content?: string;
+	content?: string | null;
 	withMultiBreaks?: boolean;
 	images?: IImage[];
 	loading?: boolean;

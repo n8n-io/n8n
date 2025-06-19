@@ -406,6 +406,11 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		await router.push(item.href);
 	}
 };
+
+const tags = computed(
+	() =>
+		props.data.tags?.map((tag) => (typeof tag === 'string' ? { id: tag, name: tag } : tag)) ?? [],
+);
 </script>
 
 <template>
@@ -448,7 +453,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					:class="$style.cardTags"
 				>
 					<n8n-tags
-						:tags="data.tags"
+						:tags="tags"
 						:truncate-at="3"
 						truncate
 						data-test-id="workflow-card-tags"
