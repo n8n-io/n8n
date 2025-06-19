@@ -34,7 +34,7 @@ const passwordsMatch = (value: string | number | boolean | null | undefined) => 
 };
 
 const onInput = (e: FormFieldValueUpdate) => {
-	if (e.name === 'password') {
+	if (e.name === 'password' && typeof e.value === 'string') {
 		password.value = e.value;
 	}
 };

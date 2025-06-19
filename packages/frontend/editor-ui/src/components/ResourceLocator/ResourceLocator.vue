@@ -220,7 +220,7 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<string | number | undefined>(() => {
+const valueToDisplay = computed<NodeParameterValue>(() => {
 	if (typeof props.modelValue !== 'object') {
 		return `${props.modelValue}`;
 	}

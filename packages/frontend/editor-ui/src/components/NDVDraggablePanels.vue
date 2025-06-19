@@ -152,7 +152,7 @@ const outputPanelRelativeTranslate = computed((): number => {
 });
 
 const supportedResizeDirections = computed((): Direction[] => {
-	const supportedDirections = ['right'];
+	const supportedDirections = ['right' as Direction];
 
 	if (props.isDraggable) supportedDirections.push('left');
 	return supportedDirections;

@@ -8,11 +8,12 @@ import type {
 	WorkflowHistoryActionTypes,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import { useI18n } from '@n8n/i18n';
+import type { IUser } from 'n8n-workflow';
 
 const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;
-	actions: UserAction[];
+	actions: Array<UserAction<IUser>>;
 	isActive: boolean;
 }>();
 const emit = defineEmits<{

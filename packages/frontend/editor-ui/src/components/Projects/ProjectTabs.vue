@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { TabOptions } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 
 type Props = {
 	showSettings?: boolean;
@@ -73,16 +73,16 @@ const createTab = (
 	label: BaseTextKey,
 	routeKey: string,
 	routes: Record<string, { name: RouteRecordName; params?: Record<string, string | number> }>,
-) => {
+): TabOptions<string> => {
 	return {
 		label: locale.baseText(label),
-		value: routes[routeKey].name,
+		value: routes[routeKey].name as string,
 		to: routes[routeKey],
 	};
 };
 
 // Generate the tabs configuration
-const options = computed<TabOptions[]>(() => {
+const options = computed<Array<TabOptions<string>>>(() => {
 	const routes = getRouteConfigs();
 	const tabs = [
 		createTab('mainSidebar.workflows', 'workflows', routes),
@@ -96,7 +96,7 @@ const options = computed<TabOptions[]>(() => {
 	if (props.showSettings) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
-			value: VIEWS.PROJECT_SETTINGS,
+			value: VIEWS.PROJECT_SETTINGS as string,
 			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } },
 		});
 	}

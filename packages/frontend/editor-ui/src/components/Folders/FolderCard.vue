@@ -10,11 +10,12 @@ import type { UserAction } from '@/Interface';
 import { ResourceType } from '@/utils/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
+import { type IUser } from 'n8n-workflow';
 
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions: UserAction[];
+	actions: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };

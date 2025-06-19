@@ -148,7 +148,7 @@ const showCardsBadge = ref(false);
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
 const folderActions = computed<
-	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+	Array<UserAction<IUser> & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
 >(() => [
 	{
 		label: i18n.baseText('generic.open'),
