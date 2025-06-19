@@ -33,10 +33,16 @@ const emit = defineEmits<{
 
 const rows = computed(() => props.data.items);
 const roles = computed(() => ({
-	[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
-	[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
-	[ROLE.Member]: i18n.baseText('auth.roles.member'),
-	[ROLE.Default]: i18n.baseText('auth.roles.default'),
+	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
+	[ROLE.Admin]: {
+		label: i18n.baseText('auth.roles.admin'),
+		desc: i18n.baseText('settings.users.table.row.role.description.admin'),
+	},
+	[ROLE.Member]: {
+		label: i18n.baseText('auth.roles.member'),
+		desc: i18n.baseText('settings.users.table.row.role.description.member'),
+	},
+	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
 const headers = ref<Array<TableHeader<Item>>>([
 	{
@@ -63,7 +69,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 			return {
 				userId: row.id,
 				roleId: row.role,
-				label: roles.value[row.role] ?? i18n.baseText('auth.roles.default'),
+				label: roles.value[row.role].label ?? i18n.baseText('auth.roles.default'),
 				isEditable: row.role !== ROLE.Owner,
 				radioValue: row.role,
 				dropdownItems: [
@@ -136,21 +142,27 @@ const onActionSelect = (value) => {
 				>
 					<template #activator>
 						<span>
-							<N8nText color="text-dark" size="large">{{ value.label }}</N8nText>
-							<N8nIcon icon="chevron-down" size="small" />
+							<N8nText color="text-dark">{{ value.label }}</N8nText>
+							<N8nIcon class="ml-2xs" icon="chevron-down" size="small" />
 						</span>
 					</template>
 					<template #menuItem="item">
-						<N8nText v-if="item.id === 'remove-user'" color="text-dark" size="large">{{
-							item.label
-						}}</N8nText>
+						<N8nText
+							v-if="item.id === 'remove-user'"
+							color="text-dark"
+							:class="$style.removeUser"
+							>{{ item.label }}</N8nText
+						>
 						<ElRadio
 							v-else
 							:model-value="value.radioValue"
 							:label="item.id"
 							@update:model-value="value.radioValue = item.id"
 						>
-							<N8nText color="text-dark" size="large">{{ item.label }}</N8nText>
+							<span :class="$style.radioLabel">
+								<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
+								<N8nText color="text-dark" size="small">{{ roles[item.id].desc }}</N8nText>
+							</span>
 						</ElRadio>
 					</template>
 				</N8nActionDropdown>
@@ -163,4 +175,20 @@ const onActionSelect = (value) => {
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.radioLabel {
+	max-width: 268px;
+	display: inline-flex;
+	flex-direction: column;
+	padding: var(--spacing-2xs) 0;
+
+	span {
+		white-space: normal;
+	}
+}
+
+.removeUser {
+	display: block;
+	padding: var(--spacing-2xs) var(--spacing-l);
+}
+</style>
