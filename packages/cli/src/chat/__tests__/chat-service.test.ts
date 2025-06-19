@@ -198,4 +198,133 @@ describe('ChatService', () => {
 			expect(mockLogger.error).toHaveBeenCalled();
 		});
 	});
+
+	describe('outgoingMessageHandler', () => {
+		it('should return if session does not exist', async () => {
+			const sessionKey = 'nonexistent';
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(mockExecutionManager.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('should return if session is processing', async () => {
+			const sessionKey = 'abc|123|public';
+			(chatService as any).sessions.set(sessionKey, { isProcessing: true });
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(mockExecutionManager.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('should return if execution does not exist', async () => {
+			const sessionKey = 'abc|123|public';
+			(chatService as any).sessions.set(sessionKey, {
+				isProcessing: false,
+				executionId: '123',
+				waitingNodeName: undefined,
+			});
+			mockExecutionManager.findExecution.mockResolvedValue(undefined);
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(mockWs.send).not.toHaveBeenCalled();
+		});
+
+		it('should send continue if execution status is waiting and last node name is different from waitingNodeName', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { send: jest.fn() },
+				waitingNodeName: 'node1',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'waiting',
+				data: { resultData: { lastNodeExecuted: 'node2' } },
+				workflowData: { nodes: [{ name: 'node1' }] },
+			} as any);
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(session.connection.send).toHaveBeenCalledWith('n8n|continue');
+			expect(session.waitingNodeName).toBeUndefined();
+		});
+
+		it('should send message if execution status is waiting and a message exists', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { send: jest.fn() },
+				sessionId: 'abc',
+				waitingNodeName: undefined,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'node1',
+						runData: { node1: [{ data: { main: [[{ sendMessage: 'test message' }]] } }] },
+					},
+				},
+				workflowData: { nodes: [{ name: 'node1' }] },
+			} as any);
+			(chatService as any).shouldResumeImmediately = jest.fn().mockReturnValue(false);
+
+			(chatService as any).resumeExecution = jest.fn();
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(session.connection.send).toHaveBeenCalledWith('test message');
+			expect(session.waitingNodeName).toEqual('node1');
+		});
+
+		it('should close connection if execution status is success and shouldNotReturnLastNodeResponse is false', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { close: jest.fn(), readyState: 1, once: jest.fn() },
+				isPublic: false,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'success',
+				data: { resultData: { lastNodeExecuted: 'node1' } },
+				workflowData: { nodes: [{ type: 'n8n-core.respondToWebhook', name: 'node1' }] },
+				mode: 'manual',
+			} as any);
+			(chatService as any).isResponseNodeMode = jest.fn().mockReturnValue(true);
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(session.connection.once).toHaveBeenCalled();
+			expect(session.connection.once).toHaveBeenCalledWith('drain', expect.any(Function));
+		});
+
+		it('should handle errors during message processing', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: mockWs,
+				waitingNodeName: undefined,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockRejectedValue(new Error('test error'));
+
+			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
+			await outgoingMessageHandler();
+
+			expect(mockLogger.error).toHaveBeenCalled();
+		});
+	});
 });
