@@ -7,8 +7,8 @@ import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
-import CanvasNodeNodeSettings from './parts/CanvasNodeNodeSettings.vue';
 import { GRID_SIZE, CONFIGURABLE_NODE_SIZE } from '@/utils/nodeViewUtils';
+import ExperimentalCanvasNodeSettings from '../../../components/ExperimentalCanvasNodeSettings.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -158,7 +158,7 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
+		<ExperimentalCanvasNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 			<NodeIcon

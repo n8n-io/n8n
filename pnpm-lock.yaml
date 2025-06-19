@@ -541,6 +541,9 @@ importers:
 
   packages/@n8n/db:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:^
+        version: link:../api-types
       '@n8n/backend-common':
         specifier: workspace:^
         version: link:../backend-common

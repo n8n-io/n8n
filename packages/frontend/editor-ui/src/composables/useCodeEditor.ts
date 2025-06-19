@@ -53,6 +53,7 @@ import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -67,6 +68,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language,
 	languageParams,
 	placeholder,
+	targetNodeParameterContext = undefined,
 	extensions = [],
 	isReadOnly = false,
 	theme = {},
@@ -77,6 +79,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{
@@ -106,7 +109,12 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
-	const { createWorker: createTsWorker } = useTypescript(editor, mode, id);
+	const { createWorker: createTsWorker } = useTypescript(
+		editor,
+		mode,
+		id,
+		targetNodeParameterContext,
+	);
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
