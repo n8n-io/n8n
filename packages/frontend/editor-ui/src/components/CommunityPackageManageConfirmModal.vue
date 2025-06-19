@@ -34,6 +34,11 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 
+const isUsingVerifiedAndUnverifiedPackages =
+	settingsStore.isCommunityNodesFeatureEnabled && settingsStore.isUnverifiedPackagesEnabled;
+const isUsingVerifiedPackagesOnly =
+	settingsStore.isCommunityNodesFeatureEnabled && !settingsStore.isUnverifiedPackagesEnabled;
+
 const communityStorePackage = computed(
 	() => communityNodesStore.installedPackages[props.activePackageName],
 );
@@ -169,10 +174,18 @@ async function fetchPackageInfo(packageName: string) {
 
 		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 	}
+}
 
-	const isUsingVerifiedPackagesOnly =
-		settingsStore.isCommunityNodesFeatureEnabled && !settingsStore.isUnverifiedPackagesEnabled;
+function setIsVerifiedLatestPackage() {
+	if (isUsingVerifiedAndUnverifiedPackages) {
+		isVerifiedLatestPackage.value =
+			nodeTypeStorePackage.value?.npmVersion &&
+			communityStorePackage.value.updateAvailable &&
+			semver.eq(nodeTypeStorePackage.value.npmVersion, communityStorePackage.value.updateAvailable);
+	}
+}
 
+function setPackageVersion() {
 	if (isUsingVerifiedPackagesOnly) {
 		packageVersion.value = nodeTypeStorePackage.value?.npmVersion ?? packageVersion.value;
 	}
@@ -183,15 +196,8 @@ onMounted(async () => {
 		await fetchPackageInfo(props.activePackageName);
 	}
 
-	const isUsingVerifiedAndUnverifiedPackages =
-		settingsStore.isCommunityNodesFeatureEnabled && settingsStore.isUnverifiedPackagesEnabled;
-
-	if (isUsingVerifiedAndUnverifiedPackages) {
-		isVerifiedLatestPackage.value =
-			nodeTypeStorePackage.value?.npmVersion &&
-			communityStorePackage.value.updateAvailable &&
-			semver.eq(nodeTypeStorePackage.value.npmVersion, communityStorePackage.value.updateAvailable);
-	}
+	setIsVerifiedLatestPackage(isUsingVerifiedAndUnverifiedPackages);
+	setPackageVersion(isUsingVerifiedPackagesOnly);
 });
 </script>
 
