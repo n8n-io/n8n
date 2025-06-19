@@ -187,10 +187,7 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
-						:popper-class="{
-							[$style['hidden-items-menu-popper']]: true,
-							[$style.dragging]: dragActive,
-						}"
+						:popper-class="`${$style['hidden-items-menu-popper']} ${dragActive ? $style.dragging : ''}`"
 						:trigger="hiddenItemsTrigger"
 						theme="dark"
 						placement="bottom"
