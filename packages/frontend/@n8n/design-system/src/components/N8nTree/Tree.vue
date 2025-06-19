@@ -1,7 +1,5 @@
 <script lang="ts" setup generic="Value extends unknown = unknown">
-import { computed, useCssModule } from 'vue';
-
-import N8nTree from '../N8nTree';
+import { computed, getCurrentInstance, useCssModule } from 'vue';
 
 interface TreeProps {
 	value?: Record<string, Value>;
@@ -54,6 +52,9 @@ const getPath = (key: string): Array<string | number> => {
 	}
 	return [...props.path, key];
 };
+
+// Get self component to avoid dependency cycle
+const N8nTree = getCurrentInstance()?.type;
 </script>
 
 <template>

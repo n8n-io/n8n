@@ -1,5 +1,6 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { onMounted, onUnmounted, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
@@ -100,14 +101,14 @@ const scrollRight = () => scroll(50);
 							</span>
 						</div>
 					</a>
-					<router-link
+					<RouterLink
 						v-else-if="option.to"
 						:to="option.to"
 						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-					</router-link>
+					</RouterLink>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"

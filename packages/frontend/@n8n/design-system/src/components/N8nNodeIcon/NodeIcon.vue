@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 
 import N8nTooltip from '../N8nTooltip';
 
@@ -71,6 +71,9 @@ const badgeStyleData = computed((): Record<string, string> => {
 		bottom: `-${Math.floor(size / 2)}px`,
 	};
 });
+
+// Get self component to avoid dependency cycle
+const N8nNodeIcon = getCurrentInstance()?.type;
 </script>
 
 <template>
