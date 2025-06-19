@@ -48,6 +48,14 @@ export class ModuleRegistry {
 		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
 	}
 
+	/**
+	 * Loads [module name].module.ts for each eligible module.
+	 * This only registers the database entities for module and should be done
+	 * before instantiating the datasource.
+	 *
+	 * This will not register routes or do any other kind of module related
+	 * setup.
+	 */
 	async loadModules(modules?: ModuleName[]) {
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
@@ -70,6 +78,14 @@ export class ModuleRegistry {
 		}
 	}
 
+	/**
+	 * Calls `init` on each eligible module.
+	 *
+	 * This will do things like registering routes, setup timers or other module
+	 * specific setup.
+	 *
+	 * `ModuleRegistry.loadModules` must have been called before.
+	 */
 	async initModules() {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
 			const { licenseFlag, class: ModuleClass } = moduleEntry;
