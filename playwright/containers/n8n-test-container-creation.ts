@@ -39,11 +39,9 @@ const BASE_ENV: Record<string, string> = {
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 };
 
-// Multi-main license (required for multiple main instances)
 const MULTI_MAIN_LICENSE = {
 	N8N_LICENSE_TENANT_ID: '1001',
-	N8N_LICENSE_ACTIVATION_KEY:
-		process.env.N8N_LICENSE_ACTIVATION_KEY ?? '6b68c8e2-2c39-4215-a85f-549ace8f559d',
+	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 };
 
 // Wait strategy for n8n containers
@@ -135,6 +133,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 
 		if (queueConfig.mains > 1) {
+			if (!process.env.N8N_LICENSE_ACTIVATION_KEY) {
+				throw new Error('N8N_LICENSE_ACTIVATION_KEY is required for multi-main instances');
+			}
 			environment = {
 				...environment,
 				N8N_PROXY_HOPS: '1',

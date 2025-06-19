@@ -78,7 +78,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		{ scope: 'worker' },
 	],
 
-	// Reset the database for the new container or the existing n8n instance if RESET_E2E_DB is true
+	// Reset the database for the new container
 	dbSetup: [
 		async ({ n8nUrl, n8nContainer, browser }, use) => {
 			if (n8nContainer) {

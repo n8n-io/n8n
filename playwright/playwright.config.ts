@@ -57,6 +57,10 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 		},
 	};
 
+	// Only add dependencies when using external URL (i.e., using containers)
+	// This is to stop DB reset tests from running in parallel with other tests when more than 1 worker is used
+	const shouldAddDependencies = process.env.N8N_BASE_URL;
+
 	return [
 		{
 			name: `${name} - Parallel`,
@@ -71,6 +75,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			grep: new RegExp(`${modeTag}.*@db:reset|@db:reset(?!.*@mode:)`),
 			fullyParallel: false,
 			workers: 1,
+			...(shouldAddDependencies && { dependencies: [`${name} - Parallel`] }),
 			use: { containerConfig: mergedConfig } as any,
 		},
 		{
@@ -79,10 +84,12 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			grep: new RegExp(`${modeTag}.*@chaostest`),
 			fullyParallel: false,
 			workers: 1,
+			...(shouldAddDependencies && { dependencies: [`${name} - Sequential`] }),
 			use: { containerConfig: mergedConfig } as any,
 		},
 	];
 }
+
 export default defineConfig({
 	globalSetup: './global-setup.ts',
 	testDir: './tests',
@@ -98,6 +105,7 @@ export default defineConfig({
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
+				['blob'],
 			]
 		: [['html']],
 

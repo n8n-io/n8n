@@ -1,5 +1,3 @@
-Here's the updated README:
-
 ```markdown
 # Playwright E2E Test Guide
 
@@ -54,4 +52,3 @@ test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 - `test:*` = fresh containers (for testing)
 - VS Code: Set `N8N_BASE_URL` in Playwright settings
 - Pass custom env vars via `N8N_TEST_ENV='{"KEY":"value"}'`
-```

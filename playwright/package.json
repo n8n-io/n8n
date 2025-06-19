@@ -9,6 +9,7 @@
     "dev:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
     "dev:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
     "dev:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",
+    "test:local:reset": "N8N_BASE_URL=http://localhost:5678 RESET_E2E_DB=true playwright test --workers=4",
     "test:local": "N8N_BASE_URL=http://localhost:5678 playwright test",
     "test:standard": "TESTCONTAINERS_REUSE_ENABLE=false playwright test --project=mode:standard*",
     "test:postgres": "TESTCONTAINERS_REUSE_ENABLE=false playwright test --project=mode:postgres*",

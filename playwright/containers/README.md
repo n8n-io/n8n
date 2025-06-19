@@ -139,24 +139,21 @@ await stack.stop();
 ## Cleanup
 
 ```bash
-# Remove all n8n containers
-npm run clean:all
+# Remove all n8n containers and networks
+npm run test:clean
 
-# Clean up unused networks
-npm run clean:networks
-```
 
 ## Tips
 
 - **Container Reuse**: Set `TESTCONTAINERS_REUSE_ENABLE=true` for faster development cycles
 - **Parallel Testing**: Use `--name` parameter to run multiple stacks without conflicts
 - **Queue Mode**: Automatically enables PostgreSQL (required for queue mode)
-- **Multi-Main**: Requires queue mode and special licensing (handled automatically)
+- **Multi-Main**: Requires queue mode and special licensing read from N8N_LICENSE_ACTIVATION_KEY environment variable
 - **Log Monitoring**: Use the `ContainerTestHelpers` class for advanced log monitoring in tests
 
 ## Docker Image
 
-By default, uses the `n8n-e2e` image. Override with:
+By default, uses the `n8n-local:dev` image. Override with:
 ```bash
 export N8N_DOCKER_IMAGE=n8n/n8n:latest
 npm run stack

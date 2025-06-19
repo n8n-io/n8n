@@ -20,30 +20,55 @@ jobs:
       - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
         with:
           node-version: 22.x
-          cache: 'pnpm'
 
-      - name: Cache build artifacts
-        id: cache-build-artifacts
+      - name: Restore UI cache (build + playwright + deps)
+        id: cache-ui
         uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
-            /home/runner/.cache/Cypress
-            /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-ui
+            ~/.cache/ms-playwright
+            **/node_modules
+            node_modules
+          key: ${{ github.sha }}-${{ hashFiles('**/pnpm-lock.yaml') }}-build:ui
+          restore-keys: |
+            ${{ github.sha }}-${{ hashFiles('**/pnpm-lock.yaml') }}-build:ui
+
+      - name: Restore build artifacts only
+        if: steps.cache-ui.outputs.cache-hit != 'true'
+        id: cache-build
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-build
+          restore-keys: |
+            ${{ github.sha }}-build
 
       - name: Install dependencies
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: PNPM Build
+      - name: Build packages
+        if: steps.cache-ui.outputs.cache-hit != 'true' && steps.cache-build.outputs.cache-hit != 'true'
         run: pnpm build
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
+        if: steps.cache-ui.outputs.cache-hit != 'true'
+        working-directory: playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Save UI cache
+        if: steps.cache-ui.outputs.cache-hit != 'true'
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+        with:
+          path: |
+            ./packages/**/dist
+            ~/.cache/ms-playwright
+            **/node_modules
+            node_modules
+          key: ${{ github.sha }}-${{ hashFiles('**/pnpm-lock.yaml') }}-build:ui
 
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -55,23 +80,41 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup and Restore Build
-        uses: ./.github/actions/setup-and-build
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Setup Node.js
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
         with:
-          skip-build: true
-          cache-suffix: 'playwright:build'
-          cache-paths: |
+          node-version: 22.x
+
+      - name: Restore UI cache
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+        with:
+          path: |
             ./packages/**/dist
             ~/.cache/ms-playwright
+            **/node_modules
+            node_modules
+          key: ${{ github.sha }}-${{ hashFiles('**/pnpm-lock.yaml') }}-build:ui
+          fail-on-cache-miss: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start local server
+        run: |
+          E2E_TESTS=true pnpm start &
+          npx wait-on http://localhost:5678 --timeout 20000
 
       - name: Run Playwright tests (shard ${{ matrix.containers }}/${{ strategy.job-total }})
         working-directory: playwright
-        run: pnpm exec playwright test --shard=${{ matrix.containers }}/${{ strategy.job-total }}
+        run: pnpm exec playwright test --shard=${{ matrix.containers }}/${{ strategy.job-total }} --workers=4
         env:
-          E2E_TESTS: true
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: results-${{ matrix.containers }}.xml
           CI: true
           TEST_SHARD_INDEX: ${{ matrix.containers }}
+          N8N_BASE_URL: http://localhost:5678
+          RESET_E2E_DB: true
 
       - name: Upload test results
         if: always()
@@ -79,9 +122,10 @@ jobs:
         with:
           name: playwright-results-${{ matrix.containers }}
           path: |
-            playwright-report/
-            test-results/
-            results-${{ matrix.containers }}.xml
+            playwright/playwright-report/
+            playwright/test-results/
+            playwright/results-${{ matrix.containers }}.xml
+            playwright/blob-report/
           retention-days: 7
 
   merge-reports:
@@ -91,11 +135,16 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup Environment
-        uses: ./.github/actions/setup-and-build
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          skip-build: true
-          enable-caching: false
+          node-version: 22.x
+
+      - name: Install dependencies
+        working-directory: playwright
+        run: pnpm install --frozen-lockfile
 
       - name: Download all test results
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -103,14 +152,21 @@ jobs:
           pattern: playwright-results-*
           path: all-reports/
 
+      - name: List downloaded artifacts (debug)
+        run: find all-reports -name "*.zip" -o -name "*.json" -o -name "*.xml" | head -20
+
       - name: Merge test reports
-        run: pnpm exec playwright merge-reports --reporter=html,github all-reports
+        working-directory: playwright
+        run: |
+          pnpm exec playwright merge-reports \
+            --reporter=html,github \
+            ../all-reports/playwright-results-*/blob-report
 
       - name: Upload merged report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report-merged
-          path: playwright-report/
+          path: playwright/playwright-report/
           retention-days: 14
 
   check_testing_matrix:
