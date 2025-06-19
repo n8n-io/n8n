@@ -204,7 +204,7 @@
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "openai": "4.78.1",
+    "openai": "4.103.0",
     "pdf-parse": "1.1.1",
     "pg": "8.12.0",
     "redis": "4.6.12",
