@@ -1,6 +1,6 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
-import { VERSIONS_MODAL_KEY } from '@/constants';
+import { LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES, VERSIONS_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
 import { defineStore } from 'pinia';
@@ -9,6 +9,8 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
+import { useStorage } from '@/composables/useStorage';
+import { jsonParse } from 'n8n-workflow';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
@@ -26,6 +28,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const { showToast } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -45,6 +48,12 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const infoUrl = computed(() => {
 		return versionNotificationSettings.value.infoUrl;
+	});
+
+	const readWhatsNewArticles = computed((): number[] => {
+		return readWhatsNewArticlesStorage.value
+			? jsonParse(readWhatsNewArticlesStorage.value, { fallbackValue: [] })
+			: [];
 	});
 
 	// #endregion
@@ -90,6 +99,19 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				setWhatsNew(articles);
 			}
 		} catch (e) {}
+	};
+
+	const setWhatsNewArticleRead = (articleId: number) => {
+		if (!readWhatsNewArticles.value.includes(articleId)) {
+			readWhatsNewArticlesStorage.value = JSON.stringify([
+				...readWhatsNewArticles.value,
+				articleId,
+			]);
+		}
+	};
+
+	const isWhatsNewArticleRead = (articleId: number): boolean => {
+		return readWhatsNewArticles.value.includes(articleId);
 	};
 
 	const initialize = (settings: IVersionNotificationSettings) => {
@@ -145,5 +167,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		checkForNewVersions,
 		fetchWhatsNew,
 		whatsNewArticles,
+		isWhatsNewArticleRead,
+		setWhatsNewArticleRead,
 	};
 });

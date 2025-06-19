@@ -42,6 +42,18 @@ const onUpdateClick = async () => {
 };
 
 watch(
+	() => versionsStore.whatsNewArticles,
+	(whatsNewArticles) => {
+		for (const article of whatsNewArticles) {
+			if (!versionsStore.isWhatsNewArticleRead(article.id)) {
+				versionsStore.setWhatsNewArticleRead(article.id);
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => [scroller.value, props.data.articleId],
 	() => {
 		if (scroller.value) {
