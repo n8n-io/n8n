@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import TemplateCard from './TemplateCard.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 
 interface Props {

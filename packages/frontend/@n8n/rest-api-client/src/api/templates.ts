@@ -1,7 +1,8 @@
 import type { RawAxiosRequestHeaders } from 'axios';
-import type { Workflow, INode, INodeCredentialsDetails } from 'n8n-workflow';
+import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
 
 import type { VersionNode } from './versions';
+import type { WorkflowData } from './workflows';
 import { get } from '../utils';
 
 export interface IWorkflowTemplateNode
@@ -20,7 +21,7 @@ export interface IWorkflowTemplateNodeCredentials {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: Pick<Workflow, 'connections' | 'settings' | 'pinData'> & {
+	workflow: Pick<WorkflowData, 'connections' | 'settings' | 'pinData'> & {
 		nodes: IWorkflowTemplateNode[];
 	};
 }

@@ -1,4 +1,5 @@
-import type { INodeUi, ITemplatesWorkflowFull, IWorkflowTemplate } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { ITemplatesWorkflowFull, IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { getNewWorkflow } from '@/api/workflows';
 import { VIEWS } from '@/constants';

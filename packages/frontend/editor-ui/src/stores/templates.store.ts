@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
 import { TEMPLATES_URLS } from '@/constants';
 import { STORES } from '@n8n/stores';
+import type { INodeUi } from '@/Interface';
+import { useSettingsStore } from './settings.store';
+import * as templatesApi from '@n8n/rest-api-client/api/templates';
 import type {
-	INodeUi,
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -10,9 +12,7 @@ import type {
 	ITemplatesWorkflow,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
-} from '@/Interface';
-import { useSettingsStore } from './settings.store';
-import * as templatesApi from '@n8n/rest-api-client/api/templates';
+} from '@n8n/rest-api-client/api/templates';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';

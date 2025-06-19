@@ -28,9 +28,9 @@ import type {
 	NodeMetadataMap,
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
-	IWorkflowTemplateNode,
 	WorkflowListResource,
 } from '@/Interface';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
