@@ -98,6 +98,12 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	}
 }
 
+function isExpanded(treeNode: LogEntry): boolean {
+	const index = flatLogEntries.findIndex((e) => e.id === treeNode.id);
+
+	return index >= 0 ? flatLogEntries[index + 1]?.parent?.id === treeNode.id : false;
+}
+
 watch(
 	[() => selected?.id, () => flatLogEntries.length],
 	async ([selection, flatEntryCount]) => {
@@ -192,7 +198,7 @@ watch(
 							:is-compact="isCompact"
 							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
-							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
+							:expanded="isExpanded(data)"
 							:can-open-ndv="data.executionId === execution?.id"
 							@toggle-expanded="handleToggleExpanded(data)"
 							@open-ndv="emit('openNdv', data)"
