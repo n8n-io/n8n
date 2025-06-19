@@ -4,7 +4,7 @@ import Modal from '../Modal.vue';
 import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { promptMfaCodeBus } from '@/event-bus';
-import { IFormInput } from '@/Interface';
+import { type IFormInput } from '@/Interface';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { validate as validateUuid } from 'uuid';
 
@@ -27,7 +27,12 @@ const formFields: IFormInput[] = [
 	},
 ] as const;
 
-function onSubmit(values: { mfaCodeOrMfaRecoveryCode: string }) {
+function onSubmit(values: object) {
+	if (
+		!('mfaCodeOrMfaRecoveryCode' in values && typeof values.mfaCodeOrMfaRecoveryCode === 'string')
+	) {
+		return;
+	}
 	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
 		promptMfaCodeBus.emit('close', {
 			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,

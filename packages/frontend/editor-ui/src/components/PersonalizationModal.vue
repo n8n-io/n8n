@@ -578,7 +578,7 @@ const closeDialog = () => {
 	}
 };
 
-const onSubmit = async (values: IPersonalizationLatestVersion) => {
+const onSubmit = async (values: object) => {
 	isSaving.value = true;
 
 	try {

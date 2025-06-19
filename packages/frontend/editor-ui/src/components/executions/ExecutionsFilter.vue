@@ -348,7 +348,9 @@ onBeforeMount(() => {
 								:model-value="filter.metadata[0]?.exactMatch"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								data-test-id="execution-filter-saved-data-exact-match-checkbox"
-								@update:model-value="onFilterMetaChange(0, 'exactMatch', $event)"
+								@update:model-value="
+									(e) => typeof e === 'boolean' && onFilterMetaChange(0, 'exactMatch', e)
+								"
 							/>
 						</n8n-tooltip>
 					</div>
