@@ -15,6 +15,7 @@ import {
 
 import { numberInputsProperty, configuredInputs } from './helpers';
 import { N8nLlmTracing } from '../llms/N8nLlmTracing';
+import { N8nNonEstimatingTracing } from '../llms/N8nNonEstimatingTracing';
 
 interface ModeleSelectionRule {
 	modelIndex: number;
@@ -186,7 +187,7 @@ export class ModelSelector implements INodeType {
 						currentCallback.setParentRunIndex(this.getNextRunIndex());
 					}
 				}
-				const modelSelectorTracing = new N8nLlmTracing(this);
+				const modelSelectorTracing = new N8nNonEstimatingTracing(this);
 				selectedModel.callbacks = [...originalCallbacks, modelSelectorTracing];
 
 				return {
