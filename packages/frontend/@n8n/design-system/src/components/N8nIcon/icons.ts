@@ -1636,9 +1636,14 @@ export const icons = {
 	'check-double': IconLucideCheckCheck,
 	'folder-plus': IconLucideFolderPlus,
 
+	'caret-up': IconLucideChevronUp,
+	'caret-down': IconLucideChevronDown,
+	'caret-right': IconLucideChevronRight,
+	'caret-left': IconLucideChevronLeft,
+
 	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
-	'angle-down': IconLucideChevronDown, // todo
+	'angle-down': IconLucideChevronDown,
 	'angle-left': IconLucideChevronLeft,
 	'angle-right': IconLucideChevronRight,
 	'angle-up': IconLucideChevronUp,
@@ -1702,20 +1707,20 @@ export const icons = {
 	'file-download': IconLucideFileDown,
 	'file-export': IconLucideFileOutput,
 	'file-import': IconLucideFileInput,
-	'file-pdf': IconLucideX,
+	'file-pdf': IconLucideFileText,
 	filter: IconLucideFunnel,
 	fingerprint: IconLucideFingerprint,
 	flask: IconLucideFlaskConical,
 	'folder-open': IconLucideFolderOpen,
-	font: IconLucideX, // todo
+	font: IconLucideCaseUpper,
 	gift: IconLucideGift,
 	globe: IconLucideGlobe,
 	'globe-americas': IconLucideEarth,
 	'graduation-cap': IconLucideGraduationCap,
 	'hand-holding-usd': IconLucideHandCoins,
-	'hand-scissors': IconLucideX, // todo
+	'hand-scissors': IconLucideScissors,
 	handshake: IconLucideHandshake,
-	'hand-point-left': IconLucideX, // todo
+	'hand-point-left': IconLucideArrowLeft,
 	hashtag: IconLucideHash,
 	hdd: IconLucideHardDrive,
 	history: IconLucideHistory,
@@ -1732,7 +1737,7 @@ export const icons = {
 	list: IconLucideList,
 	lightbulb: IconLucideLightbulb,
 	lock: IconLucideLock,
-	'map-signs': IconLucideSignpostBig,
+	'map-signs': IconLucideMilestone,
 	'mouse-pointer': IconLucideMousePointer,
 	'network-wired': IconLucideNetwork,
 	palette: IconLucidePalette,
@@ -1770,7 +1775,7 @@ export const icons = {
 	stream: IconLucideAlignRight,
 	sun: IconLucideSun,
 	sync: IconLucideRefreshCw,
-	'sync-alt': IconLucideRefreshCw, // todo
+	'sync-alt': IconLucideRefreshCw,
 	table: IconLucideTable,
 	tags: IconLucideTags,
 	tasks: IconLucideListChecks,
@@ -1781,7 +1786,7 @@ export const icons = {
 	'thumbs-up': IconLucideThumbsUp,
 	times: IconLucideX,
 	'times-circle': IconLucideCircleX,
-	toolbox: IconLucideX,
+	toolbox: IconLucideX, // todo
 	tools: IconLucideWrench,
 	trash: IconLucideTrash2,
 	undo: IconLucideUndo2,
@@ -1793,7 +1798,7 @@ export const icons = {
 	'vector-square': IconLucideX, // @todo
 	video: IconLucideVideo,
 	tree: IconLucideTreePine,
-	'user-lock': IconLucideUserLock, // @todo
+	'user-lock': IconLucideUserLock,
 	gem: IconLucideGem,
 	download: IconLucideHardDriveDownload,
 	'power-off': IconLucidePower,
