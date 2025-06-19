@@ -65,6 +65,21 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
+export function handleHostedChatResponse(
+	res: express.Response,
+	responseMode: WebhookResponseMode,
+	didSendResponse: boolean,
+	executionId: string,
+): boolean {
+	if (responseMode === 'hostedChat' && !didSendResponse) {
+		res.send({ executionStarted: true, executionId });
+		process.nextTick(() => res.end());
+		return true;
+	}
+
+	return didSendResponse;
+}
+
 /**
  * Returns all the webhooks which should be created for the given workflow
  */
@@ -679,11 +694,7 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		if (responseMode === 'hostedChat' && !didSendResponse) {
-			res.send({ executionStarted: true, executionId });
-			process.nextTick(() => res.end());
-			didSendResponse = true;
-		}
+		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

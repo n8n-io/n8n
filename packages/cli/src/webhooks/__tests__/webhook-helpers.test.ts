@@ -30,6 +30,7 @@ import {
 	getResponseOnReceived,
 	setupResponseNodePromise,
 	prepareExecutionData,
+	handleHostedChatResponse,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -315,6 +316,61 @@ describe('setupResponseNodePromise', () => {
 			{ executionId, workflowId },
 		);
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
+	});
+});
+
+describe('handleHostedChatResponse', () => {
+	it('should send executionStarted: true and executionId when responseMode is hostedChat and didSendResponse is false', async () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'hostedChat';
+
+		(res.send as jest.Mock).mockImplementation((data) => {
+			expect(data).toEqual({ executionStarted: true, executionId });
+		});
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).toHaveBeenCalled();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(res.end).toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it('should not send response when responseMode is not hostedChat', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'responseNode';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(false);
+	});
+
+	it('should not send response when didSendResponse is true', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = true;
+		const responseMode = 'hostedChat';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(true);
 	});
 });
 
