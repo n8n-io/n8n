@@ -148,5 +148,5 @@ export const defaultSettings: FrontendSettings = {
 	evaluation: {
 		quota: 0,
 	},
-	loadedModules: [],
+	activeModules: [],
 };

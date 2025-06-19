@@ -19,7 +19,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const isInsightsEnabled = computed(() =>
-		settingsStore.settings.loadedModules.includes('insights'),
+		settingsStore.settings.activeModules.includes('insights'),
 	);
 
 	const isDashboardEnabled = computed(
