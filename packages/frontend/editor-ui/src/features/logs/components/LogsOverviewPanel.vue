@@ -3,16 +3,12 @@ import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/features/logs/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, nextTick, toRef, watch } from 'vue';
+import { computed, toRef, watch } from 'vue';
 import LogsOverviewRow from '@/features/logs/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
 import LogsViewExecutionSummary from '@/features/logs/components/LogsViewExecutionSummary.vue';
-import {
-	getSubtreeTotalConsumedTokens,
-	getTotalConsumedTokens,
-	hasSubExecution,
-} from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, getTotalConsumedTokens } from '@/features/logs/logs.utils';
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
@@ -43,7 +39,6 @@ const emit = defineEmits<{
 	clearExecutionData: [];
 	openNdv: [LogEntry];
 	toggleExpanded: [LogEntry];
-	loadSubExecution: [LogEntry];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -80,14 +75,6 @@ const virtualList = useVirtualList(
 
 function handleSwitchView(value: 'overview' | 'details') {
 	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
-}
-
-function handleToggleExpanded(treeNode: LogEntry) {
-	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
-		emit('loadSubExecution', treeNode);
-		return;
-	}
-	emit('toggleExpanded', treeNode);
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
@@ -200,7 +187,7 @@ watch(
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="isExpanded(data)"
 							:can-open-ndv="data.executionId === execution?.id"
-							@toggle-expanded="handleToggleExpanded(data)"
+							@toggle-expanded="emit('toggleExpanded', data)"
 							@open-ndv="emit('openNdv', data)"
 							@trigger-partial-execution="handleTriggerPartialExecution(data)"
 							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
