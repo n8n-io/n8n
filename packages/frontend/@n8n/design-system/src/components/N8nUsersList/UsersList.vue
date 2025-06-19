@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="UserType extends IUser = IUser">
+<script lang="ts" setup generic="UserType extends IUser">
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
@@ -64,7 +64,7 @@ const sortedUsers = computed(() =>
 );
 
 const defaultGuard = () => true;
-const getActions = (user: UserType): UserAction[] => {
+const getActions = (user: UserType): Array<UserAction<UserType>> => {
 	if (user.isOwner) return [];
 
 	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
@@ -101,7 +101,7 @@ const onUserAction = (user: UserType, action: string) =>
 				<N8nActionToggle
 					v-if="
 						!user.isOwner &&
-						!['ldap'].includes(user.signInType) &&
+						user.signInType !== 'ldap' &&
 						!readonly &&
 						getActions(user).length > 0 &&
 						actions.length > 0

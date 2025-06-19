@@ -1,8 +1,8 @@
-<script lang="ts" setup generic="Actions extends UserAction[]">
+<script lang="ts" setup generic="UserType extends IUser, Actions extends UserAction<UserType>[]">
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref } from 'vue';
 
-import type { UserAction } from '@n8n/design-system/types';
+import type { IUser, UserAction } from '@n8n/design-system/types';
 import type { IconOrientation, IconSize } from '@n8n/design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
@@ -11,7 +11,7 @@ import N8nLoading from '../N8nLoading';
 const SIZE = ['mini', 'small', 'medium'] as const;
 const THEME = ['default', 'dark'] as const;
 
-interface ActionToggleProps {
+interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAction<UserType>>> {
 	actions?: Actions;
 	placement?: Placement;
 	size?: (typeof SIZE)[number];
@@ -21,15 +21,15 @@ interface ActionToggleProps {
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
-	popperClass?: string;
+	popperClass?: string | Record<string, boolean>;
 	trigger?: 'click' | 'hover';
 }
 
 type ActionValue = Actions[number]['value'];
 
 defineOptions({ name: 'N8nActionToggle' });
-withDefaults(defineProps<ActionToggleProps>(), {
-	actions: () => [] as UserAction[],
+withDefaults(defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(), {
+	actions: () => [],
 	placement: 'bottom',
 	size: 'medium',
 	theme: 'default',
@@ -47,7 +47,7 @@ const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 const emit = defineEmits<{
 	action: [value: ActionValue];
 	'visible-change': [value: boolean];
-	'item-mouseup': [action: UserAction];
+	'item-mouseup': [action: UserAction<UserType>];
 }>();
 
 const onCommand = (value: string) => emit('action', value);
@@ -60,7 +60,7 @@ const openActionToggle = (isOpen: boolean) => {
 	}
 };
 
-const onActionMouseUp = (action: UserAction) => {
+const onActionMouseUp = (action: UserAction<UserType>) => {
 	emit('item-mouseup', action);
 	actionToggleRef.value?.handleClose();
 };
@@ -68,6 +68,18 @@ const onActionMouseUp = (action: UserAction) => {
 defineExpose({
 	openActionToggle,
 });
+
+const toPopperClass = (
+	popperClass: ActionToggleProps<UserType, Actions>['popperClass'],
+): string | undefined => {
+	if (typeof popperClass === 'object') {
+		return Object.keys(popperClass)
+			.filter((key) => popperClass[key])
+			.join(' ');
+	}
+
+	return popperClass;
+};
 </script>
 
 <template>
@@ -81,7 +93,7 @@ defineExpose({
 			:placement="placement"
 			:size="size"
 			:disabled="disabled"
-			:popper-class="popperClass"
+			:popper-class="toPopperClass(popperClass)"
 			:trigger="trigger"
 			@command="onCommand"
 			@visible-change="onVisibleChange"

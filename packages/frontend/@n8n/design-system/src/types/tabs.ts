@@ -1,6 +1,6 @@
 import type { RouteLocationRaw } from 'vue-router';
 
-export interface TabOptions<Value extends string | number = string> {
+export interface TabOptions<Value extends string | number> {
 	value: Value;
 	label?: string;
 	icon?: string;

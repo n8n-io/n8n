@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",
+    "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
     "test:dev": "vitest",
     "build:storybook": "storybook build",

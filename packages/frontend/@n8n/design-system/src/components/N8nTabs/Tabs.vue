@@ -1,13 +1,13 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { onMounted, onUnmounted, ref } from 'vue';
 
+import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
-import type { TabOptions } from '@n8n/design-system';
 
 interface TabsProps {
 	modelValue?: Value;
-	options?: TabOptions[];
+	options?: Array<TabOptions<Value>>;
 	size?: 'small' | 'medium';
 }
 

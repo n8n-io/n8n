@@ -1,7 +1,7 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="UserType extends IUser">
 import { computed, ref, watch } from 'vue';
 
-import type { UserAction } from '@n8n/design-system/types';
+import type { IUser, UserAction } from '@n8n/design-system/types';
 
 import N8nActionToggle from '../N8nActionToggle';
 import N8nLink from '../N8nLink';
@@ -70,7 +70,7 @@ const dropdownDisabled = computed(() => {
 	return props.pathTruncated && !hasHiddenItems.value;
 });
 
-const hiddenItemActions = computed((): UserAction[] => {
+const hiddenItemActions = computed((): Array<UserAction<UserType>> => {
 	return loadedHiddenItems.value.map((item) => ({
 		value: item.id,
 		label: item.label,
@@ -136,7 +136,7 @@ const emitItemHover = (id: string) => {
 	emit('itemHover', item);
 };
 
-const onHiddenItemMouseUp = (item: UserAction) => {
+const onHiddenItemMouseUp = (item: UserAction<UserType>) => {
 	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.value);
 	if (!pathItem || !props.dragActive) {
 		return;

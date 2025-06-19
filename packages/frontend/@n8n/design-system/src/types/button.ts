@@ -21,7 +21,7 @@ export interface IconButtonProps {
 	loading?: boolean;
 	outline?: boolean;
 	size?: ButtonSize;
-	iconSize?: Exclude<IconSize, 'xlarge'>;
+	iconSize?: Exclude<IconSize, 'xlarge' | 'xmini'>;
 	text?: boolean;
 	type?: ButtonType;
 	nativeType?: ButtonNativeType;

@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="Inputs extends IFormInput[]">
+<script lang="ts" setup>
 import type {
 	FormInputsToFormValues,
 	FormFieldValue,
@@ -11,6 +11,8 @@ import N8nButton from '../N8nButton';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
+
+type Inputs = IFormInput[];
 
 interface FormBoxProps {
 	title?: string;

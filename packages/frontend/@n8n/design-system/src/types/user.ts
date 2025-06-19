@@ -12,7 +12,7 @@ export type IUser = {
 	disabled?: boolean;
 };
 
-export interface UserAction<UserType extends IUser = IUser> {
+export interface UserAction<UserType extends IUser> {
 	label: string;
 	value: string;
 	disabled?: boolean;

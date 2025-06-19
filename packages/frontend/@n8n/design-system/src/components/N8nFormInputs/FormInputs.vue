@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="Inputs extends IFormInput[] = IFormInput[]">
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import type {
@@ -13,18 +13,19 @@ import N8nFormInput from '../N8nFormInput';
 import N8nText from '../N8nText';
 import ResizeObserver from '../ResizeObserver';
 
-export type FormInputsProps = {
-	inputs?: Inputs;
+type Inputs = IFormInput[];
+
+export interface FormInputsProps {
+	inputs: Inputs;
 	eventBus?: FormEventBus;
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
-};
+}
 
 type FormValues = FormInputsToFormValues<Inputs, FormFieldValue>;
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
-	inputs: () => [],
 	eventBus: createFormEventBus,
 	columnView: false,
 	verticalSpacing: '',
