@@ -1580,47 +1580,13 @@ import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
 
 export const icons = {
-	// home: IconLucideHouse,
-	// plus: IconLucidePlus,
-	// user: IconLucideUserRound,
-	share: IconLucideShare,
-	// check: IconLucideCheck,
-	// 'ellipsis-h': IconLucideEllipsis,
-	// 'ellipsis-v': IconLucideEllipsisVertical,
-	// 'external-link-alt': IconLucideExternalLink,
-	// 'info-circle': IconLucideInfo,
-	// 'check-circle': IconLucideCircleCheck,
-	// 'exclamation-triangle': IconLucideTriangleAlert,
-	// 'times-circle': IconLucideCircleX,
-	// 'question-circle': IconLucideCircleHelp,
-	// 'chevron-left': IconLucideChevronLeft,
-	// 'chevron-right': IconLucideChevronRight,
-	// 'chevron-up': IconLucideChevronUp,
-	// 'chevron-down': IconLucideChevronDown,
-	// 'arrow-down': IconLucideArrowDown,
-	// 'arrow-up': IconLucideArrowUp,
-	// 'arrow-right': IconLucideArrowRight,
-	// table: IconLucideTable,
-	// search: IconLucideSearch,
-	// times: IconLucideX,
-	// file: IconLucideFile,
-	// 'plus-circle': IconLucideCirclePlus,
-	// 'thumbs-up': IconLucideThumbsUp,
-	// 'thumbs-down': IconLucideThumbsDown,
-	// trash: IconLucideTrash2,
-
-	// todo
-	// pen: IconLucidePen,
-	// 'paper-plane': IconLucideX,
-	// 'sync-alt': IconLucideX,
+	// custom
 	triangle: IconLucideX,
-	// spinner: IconLucideX,
 	json: IconLucideX,
 	binary: IconLucideX,
 	schema: IconLucideX,
 	html: IconLucideX,
 	text: IconLucideX,
-	// robot: IconLucideX,
 	'pop-out': IconLucideX,
 	'status-new': IconLucideX,
 	'status-completed': IconLucideX,
@@ -1630,16 +1596,26 @@ export const icons = {
 	'status-waiting': IconLucideX,
 	'status-unknown': IconLucideX,
 	variable: IconLucideX,
-
-	refresh: IconLucideRefreshCw,
+	refresh: IconLucideRefreshCw, // todo custom?
 	vault: IconLucideVault,
-	'check-double': IconLucideCheckCheck,
-	'folder-plus': IconLucideFolderPlus,
 
 	'caret-up': IconLucideChevronUp,
 	'caret-down': IconLucideChevronDown,
 	'caret-right': IconLucideChevronRight,
 	'caret-left': IconLucideChevronLeft,
+	'folder-plus': IconLucideFolderPlus,
+	share: IconLucideShare,
+	'user-check': IconLucideUserCheck,
+
+	// other selector icons?
+	'check-double': IconLucideCheckCheck,
+	'exclamation-circle': IconLucideCircleAlert,
+	circle: IconLucideCircle,
+	'eye-slash': IconLucideEyeOff,
+	folder: IconLucideFolder,
+	'minus-circle': IconLucideCircleMinus,
+	adjust: IconLucideContrast,
+	xmark: IconLucideX, // todo
 
 	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
