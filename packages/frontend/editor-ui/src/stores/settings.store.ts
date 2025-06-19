@@ -22,7 +22,6 @@ import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
-import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -263,7 +262,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
-		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 
 		if (fetchedSettings.telemetry.enabled) {
 			void eventsApi.sessionStarted(rootStore.restApiContext);
