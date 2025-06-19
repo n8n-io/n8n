@@ -42,7 +42,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import type { ExportableCredential } from './types/exportable-credential';
+import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
@@ -722,11 +722,7 @@ export class SourceControlService {
 		);
 
 		// only compares the name, since that is the only change synced for credentials
-		const credModifiedInEither: Array<
-			ExportableCredential & {
-				filename: string;
-			}
-		> = [];
+		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
@@ -749,12 +745,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
-				owner:
-					item.ownedBy && typeof item?.ownedBy === 'object'
-						? item.ownedBy
-						: item.ownedBy && typeof item?.ownedBy === 'string'
-							? { type: 'personal', personalEmail: item.ownedBy }
-							: undefined,
+				owner: item.ownedBy,
 			});
 		});
 
@@ -768,12 +759,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
-				owner:
-					item.ownedBy && typeof item?.ownedBy === 'object'
-						? item.ownedBy
-						: item.ownedBy && typeof item?.ownedBy === 'string'
-							? { type: 'personal', personalEmail: item.ownedBy }
-							: undefined,
+				owner: item.ownedBy,
 			});
 		});
 
@@ -787,12 +773,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
-				owner:
-					item.ownedBy && typeof item?.ownedBy === 'object'
-						? item.ownedBy
-						: item.ownedBy && typeof item?.ownedBy === 'string'
-							? { type: 'personal', personalEmail: item.ownedBy }
-							: undefined,
+				owner: item.ownedBy,
 			});
 		});
 		return {

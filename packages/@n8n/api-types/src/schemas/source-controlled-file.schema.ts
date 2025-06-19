@@ -19,17 +19,11 @@ export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
 const FileLocationSchema = z.enum(['local', 'remote']);
 export const SOURCE_CONTROL_FILE_LOCATION = FileLocationSchema.Values;
 
-const ResourceOwnerSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('personal'),
-		personalEmail: z.string(),
-	}),
-	z.object({
-		type: z.literal('team'),
-		teamId: z.string(),
-		teamName: z.string(),
-	}),
-]);
+const ResourceOwnerSchema = z.object({
+	type: z.enum(['personal', 'team']),
+	projectId: z.string(),
+	projectName: z.string(),
+});
 
 export const SourceControlledFileSchema = z.object({
 	file: z.string(),
