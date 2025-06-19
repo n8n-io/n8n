@@ -34,7 +34,9 @@ import type {
 	IRunData,
 	ITaskData,
 	IRun,
+	INodeParameterResourceLocator,
 } from './interfaces';
+import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
 import { jsonParse } from './utils';
 
@@ -251,7 +253,7 @@ export function generateNodesGraph(
 		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
+			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
 
@@ -643,4 +645,92 @@ export function resolveVectorStoreMetrics(
 		insertedIntoVectorStore: insertingVectorStores.length > 0,
 		queriedDataFromVectorStore: retrievingVectorStores.length > 0,
 	};
+}
+
+type AgentNodeStructuredOutputErrorInfo = {
+	output_parser_fail_reason?: string;
+	model_name?: string;
+	num_tools?: number;
+};
+
+/**
+ * Extract additional debug information if the last executed node was an agent node
+ */
+export function extractLastExecutedNodeStructuredOutputErrorInfo(
+	workflow: IWorkflowBase,
+	nodeTypes: INodeTypes,
+	runData: IRun,
+): AgentNodeStructuredOutputErrorInfo {
+	const info: AgentNodeStructuredOutputErrorInfo = {};
+
+	if (runData?.data.resultData.error && runData.data.resultData.lastNodeExecuted) {
+		const lastNode = getNodeTypeForName(workflow, runData.data.resultData.lastNodeExecuted);
+
+		if (lastNode !== undefined) {
+			if (lastNode.type === AGENT_LANGCHAIN_NODE_TYPE && lastNode.parameters.hasOutputParser) {
+				// Add additional debug info for agent node structured output errors
+				const agentOutputError = runData.data.resultData.runData[lastNode.name]?.[0]?.error;
+				if (
+					agentOutputError &&
+					agentOutputError.message === "Model output doesn't fit required format"
+				) {
+					info.output_parser_fail_reason = agentOutputError.context
+						?.outputParserFailReason as string;
+				}
+
+				if (workflow.connections) {
+					// Count connected tools
+					info.num_tools =
+						Object.keys(workflow.connections).filter((node) =>
+							workflow.connections[node]?.[NodeConnectionTypes.AiTool]?.[0]?.some(
+								(connectedNode) => connectedNode.node === lastNode.name,
+							),
+						)?.length ?? 0;
+
+					// Extract model name from the language model node if connected
+					const languageModelNodeName = Object.keys(workflow.connections).find((node) =>
+						workflow.connections[node]?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.some(
+							(connectedNode) => connectedNode.node === lastNode.name,
+						),
+					);
+					if (languageModelNodeName) {
+						const languageModelNode = getNodeTypeForName(workflow, languageModelNodeName);
+						if (languageModelNode) {
+							const nodeType = nodeTypes.getByNameAndVersion(
+								languageModelNode.type,
+								languageModelNode.typeVersion,
+							);
+
+							if (nodeType) {
+								const nodeParameters = getNodeParameters(
+									nodeType.description.properties,
+									languageModelNode.parameters,
+									true,
+									false,
+									languageModelNode,
+									nodeType.description,
+								);
+
+								const modelNameKeys = ['model', 'modelName'] as const;
+								for (const key of modelNameKeys) {
+									if (nodeParameters?.[key]) {
+										info.model_name =
+											typeof nodeParameters[key] === 'string'
+												? nodeParameters[key]
+												: ((nodeParameters[key] as INodeParameterResourceLocator).value as string);
+
+										if (info.model_name) {
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return info;
 }

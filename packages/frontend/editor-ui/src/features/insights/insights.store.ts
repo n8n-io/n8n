@@ -18,8 +18,13 @@ export const useInsightsStore = defineStore('insights', () => {
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
 	);
 
-	const isInsightsEnabled = computed(() => settingsStore.settings.insights.enabled);
-	const isDashboardEnabled = computed(() => settingsStore.settings.insights.dashboard);
+	const isInsightsEnabled = computed(() =>
+		settingsStore.settings.loadedModules.includes('insights'),
+	);
+
+	const isDashboardEnabled = computed(
+		() => settingsStore.moduleSettings.insights?.dashboard ?? false,
+	);
 
 	const isSummaryEnabled = computed(
 		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
@@ -64,7 +69,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
-	const dateRanges = computed(() => settingsStore.settings.insights.dateRanges);
+	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
 	return {
 		globalInsightsPermissions,

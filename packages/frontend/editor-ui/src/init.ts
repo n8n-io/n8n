@@ -16,6 +16,8 @@ import SourceControlInitializationErrorMessage from '@/components/SourceControlI
 import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import type { BannerName } from '@n8n/api-types';
 
 export const state = {
 	initialized: false,
@@ -35,6 +37,7 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
+	const uiStore = useUIStore();
 
 	await settingsStore.initialize();
 
@@ -47,6 +50,20 @@ export async function initializeCore() {
 			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 		},
+	});
+
+	const banners: BannerName[] = [];
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		banners.push('NON_PRODUCTION_LICENSE');
+	}
+	if (
+		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		banners.push('V1');
+	}
+	uiStore.initialize({
+		banners,
 	});
 
 	void useExternalHooks().run('app.mount');

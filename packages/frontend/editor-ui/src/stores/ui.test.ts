@@ -70,34 +70,24 @@ describe('UI store', () => {
 	});
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				enterprise: {
-					showNonProdBanner: true,
-				},
-			}),
-		);
+		uiStore.initialize({
+			banners: ['NON_PRODUCTION_LICENSE'],
+		});
 		expect(uiStore.bannerStack).toContain('NON_PRODUCTION_LICENSE');
 	});
 
 	it("should add V1 banner to stack if it's not dismissed", () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				versionCli: '1.0.0',
-			}),
-		);
+		uiStore.initialize({
+			banners: ['V1'],
+		});
 		expect(uiStore.bannerStack).toContain('V1');
 	});
 
 	it("should not add V1 banner to stack if it's dismissed", () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				versionCli: '1.0.0',
-				banners: {
-					dismissed: ['V1'],
-				},
-			}),
-		);
+		uiStore.initialize({
+			banners: [],
+		});
+
 		expect(uiStore.bannerStack).not.toContain('V1');
 	});
 

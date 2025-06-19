@@ -360,7 +360,10 @@ describe('WorkflowsView', () => {
 			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 		});
 		it('should reinitialize on source control pullWorkfolder', async () => {
-			vi.spyOn(usersApi, 'getUsers').mockResolvedValue([]);
+			vi.spyOn(usersApi, 'getUsers').mockResolvedValue({
+				count: 0,
+				items: [],
+			});
 			const userStore = mockedStore(useUsersStore);
 
 			const sourceControl = useSourceControlStore();
