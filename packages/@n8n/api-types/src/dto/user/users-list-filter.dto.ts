@@ -9,6 +9,8 @@ const USERS_LIST_SORT_OPTIONS = [
 	'firstName:desc',
 	'lastName:asc',
 	'lastName:desc',
+	'email:asc',
+	'email:desc',
 	'role:asc', // ascending order by role is Owner, Admin, Member
 	'role:desc',
 	// 'lastActive:asc',

@@ -33,7 +33,11 @@ const search = ref('');
 const usersTableState = ref({
 	page: 0,
 	itemsPerPage: 25,
-	sortBy: [{ id: 'name', desc: false }],
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
@@ -261,10 +265,18 @@ const updateUsersTableData = async ({
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
 
-	await usersStore.usersList.execute(0, {
+	const transformedSortBy = sortBy.flatMap(({ id, desc }) => {
+		if (id === 'name') {
+			const dir = desc ? 'desc' : 'asc';
+			return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+		}
+		return `${id}:${desc ? 'desc' : 'asc'}`;
+	});
+
+	await usersStore.usersList.execute(page, {
 		skip,
 		take,
-		sortBy: sortBy[0]?.id ? `${sortBy[0].id}:${sortBy[0].desc ? 'desc' : 'asc'}` : undefined,
+		sortBy: transformedSortBy,
 		search: search.value.trim() || undefined,
 	});
 };

@@ -31,7 +31,7 @@ const emit = defineEmits<{
 	];
 }>();
 
-const rows = computed(() => props.data.data);
+const rows = computed(() => props.data.items);
 const roles = computed(() => ({
 	[ROLE.Owner]: i18n.baseText('auth.roles.owner'),
 	[ROLE.Admin]: i18n.baseText('auth.roles.admin'),
@@ -101,6 +101,14 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
+const onFilterChange = ($event: {
+	page: number;
+	itemsPerPage: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+}) => {
+	emit('update:options', $event);
+};
+
 const onActionSelect = (value) => {
 	console.log('value', value);
 };
@@ -112,7 +120,7 @@ const onActionSelect = (value) => {
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
-			@update:options="emit('update:options', $event)"
+			@update:options="onFilterChange"
 		>
 			<template #[`item.name`]="{ value }">
 				<div class="pt-s pb-s">
