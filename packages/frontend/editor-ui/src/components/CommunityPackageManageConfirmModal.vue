@@ -177,11 +177,15 @@ async function fetchPackageInfo(packageName: string) {
 }
 
 function setIsVerifiedLatestPackage() {
-	if (isUsingVerifiedAndUnverifiedPackages) {
-		isVerifiedLatestPackage.value =
-			nodeTypeStorePackage.value?.npmVersion &&
-			communityStorePackage.value.updateAvailable &&
-			semver.eq(nodeTypeStorePackage.value.npmVersion, communityStorePackage.value.updateAvailable);
+	if (
+		isUsingVerifiedAndUnverifiedPackages &&
+		nodeTypeStorePackage.value?.npmVersion &&
+		communityStorePackage.value.updateAvailable
+	) {
+		isVerifiedLatestPackage.value = semver.eq(
+			nodeTypeStorePackage.value.npmVersion,
+			communityStorePackage.value.updateAvailable,
+		);
 	}
 }
 
@@ -196,8 +200,8 @@ onMounted(async () => {
 		await fetchPackageInfo(props.activePackageName);
 	}
 
-	setIsVerifiedLatestPackage(isUsingVerifiedAndUnverifiedPackages);
-	setPackageVersion(isUsingVerifiedPackagesOnly);
+	setIsVerifiedLatestPackage();
+	setPackageVersion();
 });
 </script>
 
