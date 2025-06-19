@@ -41,6 +41,8 @@ const nodeTypeStorePackage = ref<CommunityNodeType>();
 
 const isVerifiedLatestPackage = ref<boolean>(true);
 
+const packageVersion = ref<string>(communityStorePackage.value.updateAvailable ?? '');
+
 const getModalContent = computed(() => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 		return {
@@ -67,7 +69,7 @@ const getModalContent = computed(() => {
 		message: i18n.baseText('settings.communityNodes.confirmModal.update.message', {
 			interpolate: {
 				packageName: props.activePackageName,
-				version: communityStorePackage.value.updateAvailable ?? '',
+				version: packageVersion.value,
 			},
 		}),
 		buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
@@ -166,6 +168,13 @@ async function fetchPackageInfo(packageName: string) {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
 
 		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
+	}
+
+	const isUsingVerifiedPackagesOnly =
+		settingsStore.isCommunityNodesFeatureEnabled && !settingsStore.isUnverifiedPackagesEnabled;
+
+	if (isUsingVerifiedPackagesOnly) {
+		packageVersion.value = nodeTypeStorePackage.value?.npmVersion ?? packageVersion.value;
 	}
 }
 
