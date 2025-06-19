@@ -10,6 +10,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
+import semver from 'semver';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
@@ -38,6 +39,8 @@ const communityStorePackage = computed(
 );
 const nodeTypeStorePackage = ref<CommunityNodeType>();
 
+const isVerifiedLatestPackage = ref<boolean>(true);
+
 const getModalContent = computed(() => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 		return {
@@ -60,6 +63,7 @@ const getModalContent = computed(() => {
 			},
 		}),
 		description: i18n.baseText('settings.communityNodes.confirmModal.update.description'),
+		warning: i18n.baseText('settings.communityNodes.confirmModal.update.warning'),
 		message: i18n.baseText('settings.communityNodes.confirmModal.update.message', {
 			interpolate: {
 				packageName: props.activePackageName,
@@ -169,6 +173,16 @@ onMounted(async () => {
 	if (props.activePackageName) {
 		await fetchPackageInfo(props.activePackageName);
 	}
+
+	const isUsingVerifiedAndUnverifiedPackages =
+		settingsStore.isCommunityNodesFeatureEnabled && settingsStore.isUnverifiedPackagesEnabled;
+
+	if (isUsingVerifiedAndUnverifiedPackages) {
+		isVerifiedLatestPackage.value =
+			nodeTypeStorePackage.value?.npmVersion &&
+			communityStorePackage.value.updateAvailable &&
+			semver.eq(nodeTypeStorePackage.value.npmVersion, communityStorePackage.value.updateAvailable);
+	}
 });
 </script>
 
@@ -191,6 +205,7 @@ onMounted(async () => {
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
+				<n8n-notice v-if="!isVerifiedLatestPackage" :content="getModalContent.warning" />
 			</div>
 		</template>
 		<template #footer>
@@ -210,6 +225,7 @@ onMounted(async () => {
 .descriptionContainer {
 	display: flex;
 	margin: var(--spacing-s) 0;
+	flex-direction: column;
 }
 
 .descriptionIcon {
