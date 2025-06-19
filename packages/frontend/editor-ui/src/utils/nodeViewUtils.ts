@@ -2,6 +2,7 @@ import {
 	AI_MCP_TOOL_NODE_TYPE,
 	LIST_LIKE_NODE_OPERATIONS,
 	MAIN_HEADER_TABS,
+	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -599,4 +600,28 @@ export function updateViewportToContainNodes(
 		y: viewport.y + dy * zoom,
 		zoom,
 	};
+}
+
+export function calculateNodeSize(
+	isConfiguration: boolean,
+	isConfigurable: boolean,
+	mainInputCount: number,
+	mainOutputCount: number,
+	nonMainInputCount: number,
+): { width: number; height: number } {
+	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
+	const height = 100 + Math.max(0, maxVerticalHandles - 3) * GRID_SIZE * 2;
+
+	if (isConfigurable) {
+		return {
+			width: (Math.max(NODE_MIN_INPUT_ITEMS_COUNT - 1, nonMainInputCount) * 2 + 4) * GRID_SIZE,
+			height: isConfiguration ? 75 : height,
+		};
+	}
+
+	if (isConfiguration) {
+		return { width: GRID_SIZE * 4, height: GRID_SIZE * 4 };
+	}
+
+	return { width: 100, height };
 }

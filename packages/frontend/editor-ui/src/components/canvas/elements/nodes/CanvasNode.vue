@@ -34,7 +34,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
-import { CONFIGURABLE_NODE_SIZE, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -184,22 +184,10 @@ const createEndpointMappingFn =
 			connectingHandle.value?.nodeId === props.id &&
 			connectingHandle.value?.handleType === handleType &&
 			connectingHandle.value?.handleId === handleId;
-
-		function getOffsetValue() {
-			if (position === Position.Bottom) {
-				const paddingX = 2 * GRID_SIZE;
-				const stepSize = Math.floor(
-					(CONFIGURABLE_NODE_SIZE[0] - paddingX) / (endpoints.length * GRID_SIZE),
-				);
-
-				if (stepSize >= 1) {
-					// To be able to straighten vertical connections, make it an integer multiple of grid size
-					return `${paddingX + GRID_SIZE * (index * stepSize)}px`;
-				}
-			}
-
-			return `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
-		}
+		const offsetValue =
+			position === Position.Bottom
+				? `${GRID_SIZE * (2 + index * 2)}px`
+				: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
 
 		return {
 			...endpoint,
@@ -208,7 +196,7 @@ const createEndpointMappingFn =
 			isConnecting,
 			position,
 			offset: {
-				[offsetAxis]: getOffsetValue(),
+				[offsetAxis]: offsetValue,
 			},
 		};
 	};

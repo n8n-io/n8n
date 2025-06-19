@@ -3,11 +3,10 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
-import { GRID_SIZE, CONFIGURABLE_NODE_SIZE } from '@/utils/nodeViewUtils';
+import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalCanvasNodeSettings from '../../../components/ExperimentalCanvasNodeSettings.vue';
 
 const $style = useCssModule();
@@ -37,18 +36,12 @@ const {
 	hasIssues,
 	render,
 } = useCanvasNode();
-const {
-	mainOutputs,
-	mainOutputConnections,
-	mainInputs,
-	mainInputConnections,
-	nonMainInputs,
-	requiredNonMainInputs,
-} = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
@@ -74,33 +67,22 @@ const classes = computed(() => {
 
 const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
 
-const styles = computed(() => {
-	const stylesObject: Record<string, string | number> = {
-		'--node-icon-size': `${iconSize.value}px`,
-		'--canvas-grid-size': `${GRID_SIZE}px`,
-		'--configurable-node-width': `${CONFIGURABLE_NODE_SIZE[0]}px`,
-	};
+const nodeSize = computed(() =>
+	calculateNodeSize(
+		renderOptions.value.configuration ?? false,
+		renderOptions.value.configurable ?? false,
+		mainInputs.value.length,
+		mainOutputs.value.length,
+		nonMainInputs.value.length,
+	),
+);
 
-	if (renderOptions.value.configurable) {
-		let spacerCount = 0;
-		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS && requiredNonMainInputs.value.length > 0) {
-			const requiredNonMainInputsCount = requiredNonMainInputs.value.length;
-			const optionalNonMainInputsCount = nonMainInputs.value.length - requiredNonMainInputsCount;
-			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
-		}
-
-		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
-	}
-
-	if (nodeSettingsZoom.value !== undefined) {
-		stylesObject['--zoom'] = nodeSettingsZoom.value;
-	}
-
-	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
-	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
-
-	return stylesObject;
-});
+const styles = computed(() => ({
+	'--canvas-node--width': `${nodeSize.value.width}px`,
+	'--canvas-node--height': `${nodeSize.value.height}px`,
+	'--node-icon-size': `${iconSize.value}px`,
+	...(nodeSettingsZoom.value === undefined ? {} : { '--zoom': nodeSettingsZoom.value }),
+}));
 
 const dataTestId = computed(() => {
 	let type = 'default';
@@ -185,22 +167,7 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--max-vertical-handles: max(
-		var(--canvas-node--main-input-count),
-		var(--canvas-node--main-output-count),
-		1
-	);
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
-	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
-	--configuration-node-border-radius: calc(var(--canvas-grid-size) * 2);
-	--configurable-node--min-input-count: 4;
-	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: calc(
-		var(--configuration-node-border-radius) - var(--node-icon-size) / 2 - var(
-				--canvas-node-border-width
-			)
-	);
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -240,13 +207,10 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		--canvas-node--width: calc(var(--configuration-node-border-radius) * 2);
-		--canvas-node--height: calc(var(--configuration-node-border-radius) * 2);
-
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
 			var(--canvas-node--border-color, var(--color-foreground-dark));
-		border-radius: var(--configuration-node-border-radius);
+		border-radius: calc(var(--canvas-node--height) / 2);
 
 		.statusIcons {
 			right: unset;
@@ -254,13 +218,8 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.configurable {
-		--canvas-node--height: 100px;
-		--canvas-node--width: var(--configurable-node-width);
-
-		justify-content: flex-start;
-
 		.icon {
-			margin-left: var(--configurable-node--icon-offset);
+			margin-left: calc(40px - (var(--node-icon-size)) / 2 - var(--canvas-node-border-width));
 		}
 
 		.description {
@@ -271,10 +230,10 @@ function onActivate(event: MouseEvent) {
 			margin-right: var(--spacing-s);
 			width: auto;
 			min-width: unset;
-			max-width: calc(
-				var(--canvas-node--width) - var(--configurable-node--icon-offset) - var(--node--icon-size) -
-					2 * var(--spacing-s)
-			);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			flex-grow: 1;
+			flex-shrink: 1;
 		}
 
 		.label {
@@ -286,15 +245,18 @@ function onActivate(event: MouseEvent) {
 		}
 
 		&.configuration {
-			--canvas-node--height: 75px;
+			.icon {
+				margin-left: calc((var(--canvas-node--height) - var(--node-icon-size)) / 2);
+			}
 
-			.statusIcons {
-				position: static;
-				margin-right: var(--spacing-2xs);
+			&:not(.running) {
+				.statusIcons {
+					position: static;
+					margin-right: var(--spacing-2xs);
+				}
 			}
 
 			.description {
-				flex-grow: 1;
 				margin-right: var(--spacing-xs);
 			}
 		}
