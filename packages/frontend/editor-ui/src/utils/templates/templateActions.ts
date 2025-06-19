@@ -1,9 +1,5 @@
-import type {
-	INodeUi,
-	ITemplatesWorkflowFull,
-	IWorkflowData,
-	IWorkflowTemplate,
-} from '@/Interface';
+import type { INodeUi, ITemplatesWorkflowFull, IWorkflowTemplate } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { getNewWorkflow } from '@/api/workflows';
 import { VIEWS } from '@/constants';
 import type { useRootStore } from '@n8n/stores/useRootStore';
@@ -45,7 +41,7 @@ export async function createWorkflowFromTemplate(opts: {
 	const nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
 	const connections = template.workflow.connections;
 
-	const workflowToCreate: IWorkflowData = {
+	const workflowToCreate: WorkflowData = {
 		name: workflowData.name,
 		nodes,
 		connections,

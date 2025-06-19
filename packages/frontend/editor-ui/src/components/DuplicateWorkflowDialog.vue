@@ -6,7 +6,7 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -86,7 +86,7 @@ const save = async (): Promise<void> => {
 	isSaving.value = true;
 
 	try {
-		let workflowToUpdate: IWorkflowDataUpdate | undefined;
+		let workflowToUpdate: WorkflowDataUpdate | undefined;
 		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			const {
 				createdAt,
