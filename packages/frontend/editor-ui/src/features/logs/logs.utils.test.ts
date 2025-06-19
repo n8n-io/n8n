@@ -79,14 +79,14 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree.length).toBe(1);
 
-		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0:0');
+		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0');
 		expect(logTree[0].depth).toBe(0);
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
 		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
-		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:1:0');
+		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
 		expect(logTree[0].children[0].depth).toBe(1);
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
@@ -95,14 +95,14 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
 
-		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:2:0');
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
 		expect(logTree[0].children[0].children[0].depth).toBe(2);
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
-		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:1:1');
+		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
 		expect(logTree[0].children[1].depth).toBe(1);
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
@@ -110,7 +110,7 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
-		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:2:1');
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
 		expect(logTree[0].children[1].children[0].depth).toBe(2);
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
@@ -720,7 +720,7 @@ describe(findSelectedLogEntry, () => {
 			});
 
 			const result = find(
-				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0:0' }) },
+				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0' }) },
 				response,
 				false,
 			);
@@ -750,7 +750,7 @@ describe(findSelectedLogEntry, () => {
 
 		it('should return the log with same node and run index as selected log if it exists', () => {
 			const selected = createTestLogEntry({
-				id: 'test-wf-id:a:0:2',
+				id: 'test-wf-id:a:2',
 				executionId: response.id,
 				node: nodeA,
 				runIndex: 2,
@@ -765,7 +765,7 @@ describe(findSelectedLogEntry, () => {
 
 		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
 			const selected = createTestLogEntry({
-				id: 'test-wf-id:a:0:4',
+				id: 'test-wf-id:a:4',
 				executionId: response.id,
 				node: nodeA,
 				runIndex: 4,

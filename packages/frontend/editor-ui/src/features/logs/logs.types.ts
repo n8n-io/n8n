@@ -18,7 +18,7 @@ export interface LogEntry {
 
 export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;
-	depth: number;
+	ancestorRunIndexes: number[];
 	workflow: Workflow;
 	executionId: string;
 	data: IRunExecutionData;

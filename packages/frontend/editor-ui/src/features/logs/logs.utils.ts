@@ -54,8 +54,10 @@ function createNode(
 	return {
 		parent: context.parent,
 		node,
-		id: `${context.workflow.id}:${node.id}:${context.depth}:${runIndex}`,
-		depth: context.depth,
+		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
+		// makes it possible to identify the same log across different executions
+		id: `${context.workflow.id}:${node.id}:${[...context.ancestorRunIndexes, runIndex].join(':')}`,
+		depth: context.ancestorRunIndexes.length,
 		runIndex,
 		runData,
 		children,
@@ -85,7 +87,7 @@ function getChildNodes(
 		return createLogTreeRec({
 			...context,
 			parent: treeNode,
-			depth: context.depth + 1,
+			ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 			workflow,
 			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
@@ -123,7 +125,7 @@ function getChildNodes(
 			return subNode
 				? getTreeNodeData(subNode, t, index, {
 						...context,
-						depth: context.depth + 1,
+						ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 						parent: treeNode,
 					})
 				: [];
@@ -205,7 +207,7 @@ export function createLogTree(
 ) {
 	return createLogTreeRec({
 		parent: undefined,
-		depth: 0,
+		ancestorRunIndexes: [],
 		executionId: response.id,
 		workflow,
 		workflows,
