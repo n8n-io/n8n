@@ -12,6 +12,7 @@ import { getSubtreeTotalConsumedTokens, getTotalConsumedTokens } from '@/feature
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
+import { nextTick } from 'vue';
 
 const {
 	isOpen,
@@ -92,23 +93,20 @@ function isExpanded(treeNode: LogEntry): boolean {
 }
 
 watch(
-	[() => selected?.id, () => flatLogEntries.length],
-	async ([selection, flatEntryCount]) => {
-		// Wait for the node to be added to the list, and then scroll
+	[() => selected?.id, () => (execution?.status === 'running' ? flatLogEntries.length : 0)],
+	async ([selectedId, flatEntryCount]) => {
 		await nextTick(() => {
-			if (selection === undefined) {
-				if (execution?.status === 'running') {
-					// Scroll to the bottom if there's no selection
+			if (selectedId === undefined) {
+				if (flatEntryCount > 0) {
+					// While executing, scroll to the bottom if there's no selection
 					virtualList.scrollTo(flatEntryCount - 1);
 				}
 				return;
 			}
 
-			if (virtualList.list.value.some((e) => e.data.id === selection)) {
-				return;
-			}
-
-			const index = flatLogEntries.findIndex((e) => e.id === selection);
+			const index = virtualList.list.value.some((e) => e.data.id === selectedId)
+				? -1
+				: flatLogEntries.findIndex((e) => e.id === selectedId);
 
 			if (index >= 0) {
 				// Scroll selected row into view
