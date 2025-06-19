@@ -13,6 +13,7 @@ import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
+	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
 	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
@@ -347,6 +348,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		{ writeDefaults: false },
 	);
 
+	/**
+	 * (Experimental) If set to true, show node settings for a selected node in docked pane
+	 */
+	const experimental__dockedNodeSettingsEnabled = useLocalStorage(
+		LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
+		false,
+		{ writeDefaults: false },
+	);
+
 	return {
 		settings,
 		userManagement,
@@ -405,6 +415,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		experimental__minZoomNodeSettingsInCanvas,
+		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
 		getTimezones,
