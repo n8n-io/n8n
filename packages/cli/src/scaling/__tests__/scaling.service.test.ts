@@ -6,13 +6,13 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
 
+import type { ActiveExecutions } from '@/active-executions';
 import { mockInstance } from '@test/mocking';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
-import { ActiveExecutions } from '@/active-executions';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },

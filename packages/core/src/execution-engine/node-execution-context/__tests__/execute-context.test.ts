@@ -16,10 +16,11 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
-import { randomUUID } from 'node:crypto';
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -51,6 +52,7 @@ describe('ExecuteContext', () => {
 		credentials: {
 			[testCredentialType]: {
 				id: 'testCredentialId',
+				name: 'testCredential',
 			},
 		},
 		parameters: {},
@@ -268,10 +270,10 @@ describe('ExecuteContext', () => {
 
 	describe('sendChunk', () => {
 		test('should send call hook with structured chunk', async () => {
-			const hooksMock = {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
 				runHook: jest.fn(),
-			};
-			const additionalDataWithHooks = {
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
 				hooks: hooksMock,
 			};
@@ -306,10 +308,10 @@ describe('ExecuteContext', () => {
 		});
 
 		test('should send chunk without content when content is undefined', async () => {
-			const hooksMock = {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
 				runHook: jest.fn(),
-			};
-			const additionalDataWithHooks = {
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
 				hooks: hooksMock,
 			};
@@ -328,11 +330,11 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			await testExecuteContext.sendChunk('start');
+			await testExecuteContext.sendChunk('begin');
 
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
-					type: 'start',
+					type: 'begin',
 					content: undefined,
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
