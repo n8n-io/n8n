@@ -22,7 +22,7 @@ import {
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
-import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
+import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
 import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/test-db';
@@ -41,15 +41,39 @@ const testServer = utils.setupTestServer({
 
 describe('GET /users', () => {
 	let owner: User;
-	let member: User;
+	let member1: User;
 	let ownerAgent: SuperAgentTest;
+	let userRepository: UserRepository;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
-		owner = await createOwner();
-		member = await createMember();
-		await createMember();
+		userRepository = Container.get(UserRepository);
+
+		owner = await createUser({
+			role: 'global:owner',
+			email: 'owner@n8n.io',
+			firstName: 'OwnerFirstName',
+			lastName: 'OwnerLastName',
+		});
+		member1 = await createUser({
+			role: 'global:member',
+			email: 'member1@n8n.io',
+			firstName: 'Member1FirstName',
+			lastName: 'Member1LastName',
+		});
+		await createUser({
+			role: 'global:member',
+			email: 'member2@n8n.io',
+			firstName: 'Member2FirstName',
+			lastName: 'Member2LastName',
+		});
+		await createUser({
+			role: 'global:admin',
+			email: 'admin@n8n.io',
+			firstName: 'AdminFirstName',
+			lastName: 'AdminLastName',
+		});
 
 		ownerAgent = testServer.authAgentFor(owner);
 	});
@@ -57,9 +81,11 @@ describe('GET /users', () => {
 	test('should return all users', async () => {
 		const response = await ownerAgent.get('/users').expect(200);
 
-		expect(response.body.data).toHaveLength(3);
+		expect(response.body.data).toHaveProperty('count', 4);
+		expect(response.body.data).toHaveProperty('items');
+		expect(response.body.data.items).toHaveLength(4);
 
-		response.body.data.forEach(validateUser);
+		response.body.data.items.forEach(validateUser);
 	});
 
 	describe('list query options', () => {
@@ -67,61 +93,85 @@ describe('GET /users', () => {
 			test('should filter users by field: email', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query(`filter={ "email": "${member.email}" }`)
+					.query(`filter={ "email": "${member1.email}" }`)
 					.expect(200);
 
-				expect(response.body.data).toHaveLength(1);
+				expect(response.body.data).toEqual({
+					count: 1,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(1);
 
-				const [user] = response.body.data;
+				const [user] = response.body.data.items;
 
-				expect(user.email).toBe(member.email);
+				expect(user.email).toBe(member1.email);
 
 				const _response = await ownerAgent
 					.get('/users')
 					.query('filter={ "email": "non@existing.com" }')
 					.expect(200);
 
-				expect(_response.body.data).toHaveLength(0);
+				expect(_response.body.data).toEqual({
+					count: 0,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(0);
 			});
 
 			test('should filter users by field: firstName', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query(`filter={ "firstName": "${member.firstName}" }`)
+					.query(`filter={ "firstName": "${member1.firstName}" }`)
 					.expect(200);
 
-				expect(response.body.data).toHaveLength(1);
+				expect(response.body.data).toEqual({
+					count: 1,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(1);
 
-				const [user] = response.body.data;
+				const [user] = response.body.data.items;
 
-				expect(user.email).toBe(member.email);
+				expect(user.email).toBe(member1.email);
 
 				const _response = await ownerAgent
 					.get('/users')
 					.query('filter={ "firstName": "Non-Existing" }')
 					.expect(200);
 
-				expect(_response.body.data).toHaveLength(0);
+				expect(_response.body.data).toEqual({
+					count: 0,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(0);
 			});
 
 			test('should filter users by field: lastName', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query(`filter={ "lastName": "${member.lastName}" }`)
+					.query(`filter={ "lastName": "${member1.lastName}" }`)
 					.expect(200);
 
-				expect(response.body.data).toHaveLength(1);
+				expect(response.body.data).toEqual({
+					count: 1,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(1);
 
-				const [user] = response.body.data;
+				const [user] = response.body.data.items;
 
-				expect(user.email).toBe(member.email);
+				expect(user.email).toBe(member1.email);
 
 				const _response = await ownerAgent
 					.get('/users')
 					.query('filter={ "lastName": "Non-Existing" }')
 					.expect(200);
 
-				expect(_response.body.data).toHaveLength(0);
+				expect(_response.body.data).toEqual({
+					count: 0,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(0);
 			});
 
 			test('should filter users by computed field: isOwner', async () => {
@@ -130,9 +180,13 @@ describe('GET /users', () => {
 					.query('filter={ "isOwner": true }')
 					.expect(200);
 
-				expect(response.body.data).toHaveLength(1);
+				expect(response.body.data).toEqual({
+					count: 1,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(1);
 
-				const [user] = response.body.data;
+				const [user] = response.body.data.items;
 
 				expect(user.isOwner).toBe(true);
 
@@ -141,60 +195,183 @@ describe('GET /users', () => {
 					.query('filter={ "isOwner": false }')
 					.expect(200);
 
-				expect(_response.body.data).toHaveLength(2);
+				expect(_response.body.data).toEqual({
+					count: 3,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(3);
 
-				const [_user] = _response.body.data;
+				const [_user] = _response.body.data.items;
 
 				expect(_user.isOwner).toBe(false);
+			});
+
+			test('should filter users by field: fullText', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "fullText": "member1" }')
+					.expect(200);
+
+				expect(response.body.data).toEqual({
+					count: 1,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(1);
+
+				const [user] = response.body.data.items;
+
+				expect(user.email).toBe(member1.email);
+
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "fullText": "Non-Existing" }')
+					.expect(200);
+
+				expect(_response.body.data).toEqual({
+					count: 0,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(0);
 			});
 		});
 
 		describe('select', () => {
 			test('should select user field: id', async () => {
-				const response = await ownerAgent.get('/users').query('select=["id"]').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=id').expect(200);
 
 				expect(response.body).toEqual({
-					data: [
-						{ id: expect.any(String) },
-						{ id: expect.any(String) },
-						{ id: expect.any(String) },
-					],
+					data: {
+						count: 4,
+						items: [
+							{ id: expect.any(String) },
+							{ id: expect.any(String) },
+							{ id: expect.any(String) },
+							{ id: expect.any(String) },
+						],
+					},
 				});
 			});
 
 			test('should select user field: email', async () => {
-				const response = await ownerAgent.get('/users').query('select=["email"]').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=email').expect(200);
 
 				expect(response.body).toEqual({
-					data: [
-						{ email: expect.any(String) },
-						{ email: expect.any(String) },
-						{ email: expect.any(String) },
-					],
+					data: {
+						count: 4,
+						items: [
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+							},
+						],
+					},
 				});
 			});
 
 			test('should select user field: firstName', async () => {
-				const response = await ownerAgent.get('/users').query('select=["firstName"]').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=firstName').expect(200);
 
 				expect(response.body).toEqual({
-					data: [
-						{ firstName: expect.any(String) },
-						{ firstName: expect.any(String) },
-						{ firstName: expect.any(String) },
-					],
+					data: {
+						count: 4,
+						items: [
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+						],
+					},
 				});
 			});
 
 			test('should select user field: lastName', async () => {
-				const response = await ownerAgent.get('/users').query('select=["lastName"]').expect(200);
+				const response = await ownerAgent.get('/users').query('select[]=lastName').expect(200);
 
 				expect(response.body).toEqual({
-					data: [
-						{ lastName: expect.any(String) },
-						{ lastName: expect.any(String) },
-						{ lastName: expect.any(String) },
-					],
+					data: {
+						count: 4,
+						items: [
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								lastName: expect.any(String),
+							},
+						],
+					},
+				});
+			});
+
+			test('should select multiple user fields: email, firstName, lastName', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('select[]=email&select[]=firstName&select[]=lastName')
+					.expect(200);
+
+				expect(response.body).toEqual({
+					data: {
+						count: 4,
+						items: [
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+								firstName: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+								firstName: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+								firstName: expect.any(String),
+								lastName: expect.any(String),
+							},
+							{
+								id: expect.any(String),
+								email: expect.any(String),
+								firstName: expect.any(String),
+								lastName: expect.any(String),
+							},
+						],
+					},
 				});
 			});
 		});
@@ -203,23 +380,48 @@ describe('GET /users', () => {
 			test('should return n users or less, without skip', async () => {
 				const response = await ownerAgent.get('/users').query('take=2').expect(200);
 
-				expect(response.body.data).toHaveLength(2);
+				expect(response.body.data.count).toBe(4);
+				expect(response.body.data.items).toHaveLength(2);
 
-				response.body.data.forEach(validateUser);
+				response.body.data.items.forEach(validateUser);
 
 				const _response = await ownerAgent.get('/users').query('take=1').expect(200);
 
-				expect(_response.body.data).toHaveLength(1);
+				expect(_response.body.data.items).toHaveLength(1);
 
-				_response.body.data.forEach(validateUser);
+				_response.body.data.items.forEach(validateUser);
 			});
 
 			test('should return n users or less, with skip', async () => {
 				const response = await ownerAgent.get('/users').query('take=1&skip=1').expect(200);
 
-				expect(response.body.data).toHaveLength(1);
+				expect(response.body.data.count).toBe(4);
+				expect(response.body.data.items).toHaveLength(1);
 
-				response.body.data.forEach(validateUser);
+				response.body.data.items.forEach(validateUser);
+			});
+
+			test('should return all users with negative take', async () => {
+				const users: User[] = [];
+
+				for (let i = 0; i < 100; i++) {
+					users.push(await createMember());
+				}
+				const response = await ownerAgent.get('/users').query('take=-1').expect(200);
+
+				expect(response.body.data.items).toHaveLength(104);
+
+				response.body.data.items.forEach(validateUser);
+
+				for (const user of users) {
+					await userRepository.delete({ id: user.id });
+				}
+
+				const _response = await ownerAgent.get('/users').query('take=-1').expect(200);
+
+				expect(_response.body.data.items).toHaveLength(4);
+
+				_response.body.data.items.forEach(validateUser);
 			});
 		});
 
@@ -232,10 +434,189 @@ describe('GET /users', () => {
 			test('should support options that require auxiliary fields', async () => {
 				const response = await ownerAgent
 					.get('/users')
-					.query('filter={ "isOwner": true }&select=["firstName"]&take=1')
+					.query('filter={ "isOwner": true }&select[]=firstName&take=1')
 					.expect(200);
 
-				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
+				expect(response.body).toEqual({
+					data: {
+						count: 1,
+						items: [
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+							},
+						],
+					},
+				});
+			});
+		});
+
+		describe('expand', () => {
+			test('should expand on team projects', async () => {
+				const project = await createTeamProject('Test Project');
+				await linkUserToProject(member1, project, 'project:admin');
+
+				const response = await ownerAgent
+					.get('/users')
+					.query(
+						`filter={ "email": "${member1.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc`,
+					)
+					.expect(200);
+
+				expect(response.body).toEqual({
+					data: {
+						count: 1,
+						items: [
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+								projectRelations: [
+									{
+										id: project.id,
+										role: 'project:admin',
+										name: project.name, // Ensure the project name is included
+									},
+								],
+							},
+						],
+					},
+				});
+
+				expect(response.body.data.items[0].projectRelations).toHaveLength(1);
+			});
+
+			test('should expand on projects and hide personal projects', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(
+						'filter={ "isOwner": true }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc',
+					)
+					.expect(200);
+
+				expect(response.body).toEqual({
+					data: {
+						count: 1,
+						items: [
+							{
+								id: expect.any(String),
+								firstName: expect.any(String),
+								projectRelations: expect.arrayContaining([]),
+							},
+						],
+					},
+				});
+
+				expect(response.body.data.items[0].projectRelations).toHaveLength(0);
+			});
+		});
+
+		describe('sortBy', () => {
+			test('should sort by role:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy[]=role:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].role).toBe('global:owner');
+				expect(response.body.data.items[1].role).toBe('global:admin');
+				expect(response.body.data.items[2].role).toBe('global:member');
+				expect(response.body.data.items[3].role).toBe('global:member');
+			});
+
+			test('should sort by role:desc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy[]=role:desc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].role).toBe('global:member');
+				expect(response.body.data.items[1].role).toBe('global:member');
+				expect(response.body.data.items[2].role).toBe('global:admin');
+				expect(response.body.data.items[3].role).toBe('global:owner');
+			});
+
+			test('should sort by firstName:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy[]=firstName:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].firstName).toBe('AdminFirstName');
+				expect(response.body.data.items[1].firstName).toBe('Member1FirstName');
+				expect(response.body.data.items[2].firstName).toBe('Member2FirstName');
+				expect(response.body.data.items[3].firstName).toBe('OwnerFirstName');
+			});
+
+			test('should sort by firstName:desc', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('sortBy[]=firstName:desc')
+					.expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].firstName).toBe('OwnerFirstName');
+				expect(response.body.data.items[1].firstName).toBe('Member2FirstName');
+				expect(response.body.data.items[2].firstName).toBe('Member1FirstName');
+				expect(response.body.data.items[3].firstName).toBe('AdminFirstName');
+			});
+
+			test('should sort by lastName:asc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy[]=lastName:asc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].lastName).toBe('AdminLastName');
+				expect(response.body.data.items[1].lastName).toBe('Member1LastName');
+				expect(response.body.data.items[2].lastName).toBe('Member2LastName');
+				expect(response.body.data.items[3].lastName).toBe('OwnerLastName');
+			});
+
+			test('should sort by lastName:desc', async () => {
+				const response = await ownerAgent.get('/users').query('sortBy[]=lastName:desc').expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].lastName).toBe('OwnerLastName');
+				expect(response.body.data.items[1].lastName).toBe('Member2LastName');
+				expect(response.body.data.items[2].lastName).toBe('Member1LastName');
+				expect(response.body.data.items[3].lastName).toBe('AdminLastName');
+			});
+
+			test('should sort by firstName and lastName combined', async () => {
+				const user1 = await createUser({
+					role: 'global:member',
+					email: 'memberz1@n8n.io',
+					firstName: 'ZZZFirstName',
+					lastName: 'ZZZLastName',
+				});
+
+				const user2 = await createUser({
+					role: 'global:member',
+					email: 'memberz2@n8n.io',
+					firstName: 'ZZZFirstName',
+					lastName: 'ZZYLastName',
+				});
+
+				const response = await ownerAgent
+					.get('/users')
+					.query('sortBy[]=firstName:desc&sortBy[]=lastName:desc')
+					.expect(200);
+
+				expect(response.body.data.items).toHaveLength(6);
+				expect(response.body.data.items[0].id).toBe(user1.id);
+				expect(response.body.data.items[1].id).toBe(user2.id);
+				expect(response.body.data.items[2].lastName).toBe('OwnerLastName');
+				expect(response.body.data.items[3].lastName).toBe('Member2LastName');
+				expect(response.body.data.items[4].lastName).toBe('Member1LastName');
+				expect(response.body.data.items[5].lastName).toBe('AdminLastName');
+
+				const response1 = await ownerAgent
+					.get('/users')
+					.query('sortBy[]=firstName:asc&sortBy[]=lastName:asc')
+					.expect(200);
+
+				expect(response1.body.data.items).toHaveLength(6);
+				expect(response1.body.data.items[5].id).toBe(user1.id);
+				expect(response1.body.data.items[4].id).toBe(user2.id);
+				expect(response1.body.data.items[3].lastName).toBe('OwnerLastName');
+				expect(response1.body.data.items[2].lastName).toBe('Member2LastName');
+				expect(response1.body.data.items[1].lastName).toBe('Member1LastName');
+				expect(response1.body.data.items[0].lastName).toBe('AdminLastName');
+
+				await userRepository.delete({ id: user1.id });
+				await userRepository.delete({ id: user2.id });
 			});
 		});
 	});

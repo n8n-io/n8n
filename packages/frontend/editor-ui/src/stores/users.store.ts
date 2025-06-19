@@ -4,6 +4,7 @@ import {
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
+	type User,
 	ROLE,
 	type UsersListFilterDto,
 } from '@n8n/api-types';
@@ -121,8 +122,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	// Methods
 
-	const addUsers = (newUsers: IUserResponse[]) => {
-		newUsers.forEach((userResponse: IUserResponse) => {
+	const addUsers = (newUsers: User[]) => {
+		newUsers.forEach((userResponse) => {
 			const prevUser = usersById.value[userResponse.id] || {};
 			const updatedUser = {
 				...prevUser,
@@ -311,8 +312,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const fetchUsers = async () => {
-		const users = await usersApi.getUsers(rootStore.restApiContext);
-		addUsers(users);
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+		addUsers(items);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
