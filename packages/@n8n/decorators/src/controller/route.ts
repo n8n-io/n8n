@@ -9,6 +9,8 @@ interface RouteOptions {
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
+	/** When this flag is set to true, the endpoint is protected by API key */
+	apiKeyAuth?: boolean;
 	/** When these options are set, calls to this endpoint are rate limited using the options */
 	rateLimit?: boolean | RateLimit;
 }
@@ -26,6 +28,7 @@ const RouteFactory =
 		routeMetadata.middlewares = options.middlewares ?? [];
 		routeMetadata.usesTemplates = options.usesTemplates ?? false;
 		routeMetadata.skipAuth = options.skipAuth ?? false;
+		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.rateLimit = options.rateLimit;
 	};
 

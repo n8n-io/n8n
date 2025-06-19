@@ -181,6 +181,8 @@
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",
     "yamljs": "0.3.0",
-    "zod": "catalog:"
+    "@modelcontextprotocol/sdk": "1.12.3",
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   }
 }

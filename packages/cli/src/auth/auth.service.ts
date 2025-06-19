@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { ApiKey, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -51,6 +51,8 @@ export class AuthService {
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		this.apiKeyAuthMiddleware = this.apiKeyAuthMiddleware.bind(this);
 
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -65,6 +67,33 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 		];
+	}
+
+	private async getUserForApiKey(apiKey: string) {
+		return await this.userRepository
+			.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select('user')
+			.getOne();
+	}
+
+	async apiKeyAuthMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		const apiKey = req.headers['x-n8n-api-key'];
+		if (apiKey === undefined || typeof apiKey !== 'string') {
+			res.status(401).json({ status: 'error', message: 'Unauthorized' });
+			return;
+		}
+
+		const user = await this.getUserForApiKey(apiKey);
+		if (!user) {
+			throw new AuthError('Unauthorized');
+		}
+
+		req.user = user;
+
+		if (req.user) next();
+		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {

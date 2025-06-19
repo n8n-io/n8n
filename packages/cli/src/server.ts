@@ -37,6 +37,7 @@ import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
+import '@/controllers/mcp.controller';
 import '@/controllers/node-types.controller';
 import '@/controllers/oauth/oauth1-credential.controller';
 import '@/controllers/oauth/oauth2-credential.controller';

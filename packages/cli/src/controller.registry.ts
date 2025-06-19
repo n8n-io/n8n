@@ -76,13 +76,22 @@ export class ControllerRegistry {
 				return await controller[handlerName](...args);
 			};
 
+			let authMiddleware: RequestHandler[] = [];
+
+			if (route.apiKeyAuth) {
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				authMiddleware = [this.authService.apiKeyAuthMiddleware];
+			} else if (!route.skipAuth) {
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				authMiddleware = [this.authService.authMiddleware];
+			}
+
 			router[route.method](
 				route.path,
 				...(inProduction && route.rateLimit
 					? [this.createRateLimitMiddleware(route.rateLimit)]
 					: []),
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				...(route.skipAuth ? [] : [this.authService.authMiddleware]),
+				...authMiddleware,
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,
