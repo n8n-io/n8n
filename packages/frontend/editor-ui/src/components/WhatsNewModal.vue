@@ -157,7 +157,7 @@ watch(
 			<div :class="$style.container">
 				<DynamicScroller
 					ref="scroller"
-					:min-item-size="100"
+					:min-item-size="10"
 					:items="versionsStore.whatsNewArticles"
 					class="full-height scroller"
 					style="max-height: 80vh"
