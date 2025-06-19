@@ -8,7 +8,7 @@ import type {
 export class MistralCloudApi implements ICredentialType {
 	name = 'mistralCloudApi';
 
-	displayName = 'Mistral Cloud API';
+	displayName = 'Mistral API';
 
 	documentationUrl = 'mistral';
 
@@ -20,6 +20,13 @@ export class MistralCloudApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
+		},
+		{
+			displayName: 'Endpoint',
+			name: 'endpoint',
+			type: 'string',
+			required: true,
+			default: 'https://api.mistral.ai',
 		},
 	];
 
@@ -34,7 +41,7 @@ export class MistralCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.mistral.ai/v1',
+			baseURL: '={{$credentials.endpoint}}/v1',
 			url: '/models',
 			method: 'GET',
 		},
