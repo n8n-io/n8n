@@ -16,7 +16,7 @@ export function getMessage(execution: IExecutionResponse) {
 
 export function getLastNodeExecuted(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-	return execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
+	return execution.workflowData?.nodes?.find((node) => node.name === lastNodeExecuted);
 }
 
 export function prepareMessageFromLastNode(execution: IExecutionResponse) {
@@ -40,7 +40,7 @@ export function isResponseNodeMode(execution: IExecutionResponse) {
 
 	if (!chatTrigger) return false;
 
-	return (chatTrigger.parameters.options as IDataObject)?.responseMode === 'responseNode';
+	return (chatTrigger.parameters?.options as IDataObject)?.responseMode === 'responseNode';
 }
 
 export function shouldResumeImmediately(lastNode: INode) {

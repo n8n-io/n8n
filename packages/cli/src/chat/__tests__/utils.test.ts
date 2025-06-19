@@ -135,6 +135,27 @@ describe('getMessage', () => {
 		const result = getMessage(execution);
 		expect(result).toBeUndefined();
 	});
+
+	it('should return undefined when nodeExecutionData is undefined', () => {
+		const execution = createMockExecution({
+			data: {
+				resultData: {
+					lastNodeExecuted: 'TestNode',
+					runData: {
+						TestNode: [
+							{
+								data: {
+									main: undefined,
+								},
+							},
+						],
+					},
+				},
+			},
+		});
+		const result = getMessage(execution);
+		expect(result).toBeUndefined();
+	});
 });
 
 describe('getLastNodeExecuted', () => {
@@ -190,6 +211,14 @@ describe('getLastNodeExecuted', () => {
 			type: 'second-type',
 			parameters: { test: 'value' },
 		});
+	});
+
+	it('should return undefined when workflowData.nodes is undefined', () => {
+		const execution = createMockExecution({
+			workflowData: undefined,
+		});
+		const result = getLastNodeExecuted(execution);
+		expect(result).toBeUndefined();
 	});
 });
 
@@ -385,6 +414,21 @@ describe('isResponseNodeMode', () => {
 		const result = isResponseNodeMode(execution);
 		expect(result).toBe(false);
 	});
+
+	it('should return false when chatTrigger.parameters is undefined', () => {
+		const execution = createMockExecution({
+			workflowData: {
+				nodes: [
+					{
+						name: 'ChatTrigger',
+						type: CHAT_TRIGGER_NODE_TYPE,
+					},
+				],
+			},
+		});
+		const result = isResponseNodeMode(execution);
+		expect(result).toBe(false);
+	});
 });
 
 describe('shouldResumeImmediately', () => {
@@ -453,6 +497,26 @@ describe('shouldResumeImmediately', () => {
 
 	it('should handle undefined node', () => {
 		const result = shouldResumeImmediately(undefined as any);
+		expect(result).toBe(false);
+	});
+
+	it('should return true when CHAT_WAIT_USER_REPLY is false directly in parameters', () => {
+		const node = createMockNode({
+			parameters: {
+				[CHAT_WAIT_USER_REPLY]: false,
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(true);
+	});
+
+	it('should return false when CHAT_WAIT_USER_REPLY is true directly in parameters', () => {
+		const node = createMockNode({
+			parameters: {
+				[CHAT_WAIT_USER_REPLY]: true,
+			},
+		});
+		const result = shouldResumeImmediately(node);
 		expect(result).toBe(false);
 	});
 });
