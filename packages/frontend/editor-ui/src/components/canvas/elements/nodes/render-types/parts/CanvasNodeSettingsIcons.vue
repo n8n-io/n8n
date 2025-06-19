@@ -5,7 +5,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@n8n/i18n';
 import AlwaysOutputData from 'virtual:icons/mdi/arrow-right-circle';
 import ExecuteOnce from 'virtual:icons/mdi/numeric-1-box';
-import RetryOnFail from 'virtual:icons/mdi/repeat';
+import RetryOnFail from 'virtual:icons/material-symbols/repeat-rounded';
 import ContinuesOnError from 'virtual:icons/material-symbols/tab-close-right';
 const { name } = useCanvasNode();
 const i18n = useI18n();

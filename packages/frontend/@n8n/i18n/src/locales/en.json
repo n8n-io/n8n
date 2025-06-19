@@ -1247,7 +1247,7 @@
 	"node.discovery.pinData.canvas": "You can pin this output instead of waiting for a test event. Open node to do so.",
 	"node.discovery.pinData.ndv": "You can pin this output instead of waiting for a test event.",
 	"node.executionError.openNode": "Open node",
-	"node.settings.continuesOnError": "This node continues on error",
+	"node.settings.continuesOnError": "Execution will continue even if the node fails.",
 	"node.settings.continuesOnError.title": "Continue On Fail",
 	"node.settings.retriesOnFailure": "This node will automatically retry if it fails",
 	"node.settings.executeOnce": "This node executes only once, no matter how many input items there are",

@@ -4,9 +4,8 @@ import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import AlwaysOutputData from 'virtual:icons/mdi/arrow-right-circle';
 import ExecuteOnce from 'virtual:icons/mdi/numeric-1-box';
-import RetryOnFail from 'virtual:icons/mdi/repeat';
+import RetryOnFail from 'virtual:icons/material-symbols/repeat-rounded';
 import ContinuesOnError from 'virtual:icons/material-symbols/tab-close-right';
-import Disabled from 'virtual:icons/material-symbols/power-settings-new';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -1677,20 +1676,37 @@ defineExpose({ enterEditMode });
 			v-if="getConsolidatedHint() && props.paneType === 'output'"
 			:class="[$style.hintCallout, $style.customHint]"
 		>
-			<div :class="$style.iconStack">
-				<Disabled v-if="node?.disabled" />
-				<template v-else>
-					<AlwaysOutputData v-if="node?.alwaysOutputData" />
-					<ExecuteOnce v-if="node?.executeOnce" />
-					<RetryOnFail v-if="node?.retryOnFail" />
-					<ContinuesOnError
-						v-if="
-							node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
-						"
-					/>
-				</template>
+			<div
+				:class="[
+					$style.messageSection,
+					!node?.disabled &&
+					(node?.alwaysOutputData ? 1 : 0) +
+						(node?.executeOnce ? 1 : 0) +
+						(node?.retryOnFail ? 1 : 0) +
+						(node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
+							? 1
+							: 0) >
+						1
+						? $style.multipleIcons
+						: $style.singleIcon,
+				]"
+			>
+				<div :class="$style.iconStack">
+					<FontAwesomeIcon icon="power-off" v-if="node?.disabled" :class="$style.icon" />
+					<template v-else>
+						<AlwaysOutputData v-if="node?.alwaysOutputData" :class="$style.icon" />
+						<ExecuteOnce v-if="node?.executeOnce" :class="$style.icon" />
+						<RetryOnFail v-if="node?.retryOnFail" :class="$style.icon" />
+						<ContinuesOnError
+							v-if="
+								node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
+							"
+							:class="$style.icon"
+						/>
+					</template>
+				</div>
+				<N8nText size="small" v-n8n-html="getConsolidatedHint()?.message"></N8nText>
 			</div>
-			<N8nText size="small" v-n8n-html="getConsolidatedHint()?.message"></N8nText>
 		</div>
 		<N8nCallout
 			v-for="hint in getNodeHints()"
@@ -2465,17 +2481,42 @@ defineExpose({ enterEditMode });
 
 .customHint {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-2xs, 8px);
-	padding: var(--spacing-xs, 12px) var(--spacing-s, 16px);
-	margin-bottom: var(--spacing-2xs, 8px);
+	justify-content: space-between;
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-xs);
+	margin-top: var(--spacing-2xs);
+	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
 	background-color: var(--color-callout-info-background);
-	border-radius: var(--border-radius-base, 6px);
-	font-size: var(--font-size-2xs, 13px);
+	border-radius: var(--border-radius-base);
 	line-height: var(--font-line-height-xloose);
 	border: var(--border-width-base) var(--border-style-base);
 	border-color: var(--color-callout-info-border);
 	color: var(--color-callout-info-font);
+	align-items: center;
+}
+
+.messageSection {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.singleIcon {
+	flex-direction: row;
+	align-items: center;
+}
+
+.multipleIcons {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing-2xs, 8px);
+}
+
+.multipleIcons .iconStack {
+	margin-right: 0;
+	margin-bottom: 0;
 }
 
 .iconStack {
@@ -2483,6 +2524,13 @@ defineExpose({ enterEditMode });
 	align-items: center;
 	gap: var(--spacing-4xs, 4px);
 	flex-shrink: 0;
+	margin-right: var(--spacing-xs);
+}
+
+.icon {
+	color: var(--color-callout-info-icon);
+	line-height: 1;
+	font-size: var(--font-size-xs);
 }
 
 .executingMessage {
