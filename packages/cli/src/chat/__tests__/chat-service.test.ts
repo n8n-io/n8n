@@ -136,4 +136,66 @@ describe('ChatService', () => {
 			clearIntervalSpy.mockRestore();
 		});
 	});
+
+	describe('incomingMessageHandler', () => {
+		it('should return if session does not exist', async () => {
+			const sessionKey = 'nonexistent';
+			const data = 'test data';
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should handle heartbeat acknowledgement', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+				lastHeartbeat: 0,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+
+			const data = 'n8n|heartbeat-ack';
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(session.lastHeartbeat).not.toBe(0);
+			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should resume execution with processed message', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+				waitingNodeName: 'test',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+
+			const data = JSON.stringify({ action: 'user', chatInput: 'hello', sessionId: 'abc' });
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resultData: {} },
+			} as any);
+
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(mockExecutionManager.runWorkflow).toHaveBeenCalled();
+			expect(session.waitingNodeName).toBeUndefined();
+		});
+
+		it('should handle errors during message processing', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+
+			const data = 'invalid json';
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(mockLogger.error).toHaveBeenCalled();
+		});
+	});
 });
