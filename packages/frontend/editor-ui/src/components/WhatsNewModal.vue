@@ -87,7 +87,12 @@ watch(
 								dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
 							}}</N8nHeading>
 							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
-							<N8nLink size="medium" theme="primary" @click="openUpdatesPanel">
+							<N8nLink
+								v-if="versionsStore.hasVersionUpdates"
+								size="medium"
+								theme="primary"
+								@click="openUpdatesPanel"
+							>
 								{{
 									i18n.baseText('whatsNew.versionsBehind', {
 										interpolate: {
@@ -95,6 +100,9 @@ watch(
 										},
 									})
 								}}
+							</N8nLink>
+							<N8nLink v-else size="medium" theme="primary" @click="openUpdatesPanel">
+								{{ i18n.baseText('whatsNew.upToDate') }}
 							</N8nLink>
 						</div>
 					</div>
@@ -193,8 +201,8 @@ watch(
 	justify-content: space-between;
 	align-items: center;
 	border-bottom: var(--border-base);
-	margin-bottom: var(--spacing-2xs);
-	padding-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .column {
