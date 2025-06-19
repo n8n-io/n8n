@@ -5,9 +5,10 @@ import {
 	type RecycleScrollerInstance,
 } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
-import { N8nHeading, N8nIcon, N8nMarkdown, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
 import { computed, ref, watch } from 'vue';
@@ -82,7 +83,9 @@ watch(
 						</N8nHeading>
 
 						<div :class="$style.row">
-							<N8nHeading size="medium" color="text-light"> June 2025 Update </N8nHeading>
+							<N8nHeading size="medium" color="text-light">{{
+								dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
+							}}</N8nHeading>
 							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
 							<N8nLink size="medium" theme="primary" @click="openUpdatesPanel">
 								{{
@@ -103,6 +106,31 @@ watch(
 					@click="onUpdateClick"
 				/>
 			</div>
+
+			<N8nCallout v-if="versionsStore.hasVersionUpdates" theme="warning">
+				<slot name="callout-message">
+					<N8nText size="small">
+						{{
+							i18n.baseText('whatsNew.updateAvailable', {
+								interpolate: {
+									currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
+									latestVersion: versionsStore.latestVersion?.name,
+									count: nextVersions.length,
+								},
+							})
+						}}
+						<N8nLink
+							:size="'small'"
+							:underline="true"
+							theme="primary"
+							to="https://docs.n8n.io/release-notes/"
+							target="_blank"
+						>
+							{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
+						</N8nLink>
+					</N8nText>
+				</slot>
+			</N8nCallout>
 		</template>
 		<template #content>
 			<div :class="$style.container">

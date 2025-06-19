@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
+import { useSettingsStore } from './settings.store';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
@@ -24,13 +25,14 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const { showToast } = useToast();
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
 	const hasVersionUpdates = computed(() => {
-		return nextVersions.value.length > 0;
+		return settingsStore.settings.releaseChannel === 'stable' && nextVersions.value.length > 0;
 	});
 
 	const latestVersion = computed(() => {

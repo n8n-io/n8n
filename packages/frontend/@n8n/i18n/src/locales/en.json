@@ -3232,5 +3232,7 @@
 	"insights.upgradeModal.title": "Upgrade to Enterprise",
 	"whatsNew.modal.title": "What's New in n8n {version}",
 	"whatsNew.versionsBehind": "{count} version behind | {count} versions behind",
-	"whatsNew.update": "Update"
+	"whatsNew.update": "Update",
+	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} version worth of new features, improvements, and fixes. See what changed",
+	"whatsNew.updateAvailable.changelogLink": "in the full changelog"
 }
