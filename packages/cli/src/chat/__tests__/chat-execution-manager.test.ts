@@ -1,6 +1,7 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { mockInstance } from '@test/mocking';
 
@@ -127,6 +128,149 @@ describe('ChatExecutionManager', () => {
 			const result = await chatExecutionManager.findExecution(executionId);
 
 			expect(result).toEqual(execution);
+		});
+	});
+
+	describe('getRunData', () => {
+		it('should call runNode with correct parameters and return runData', async () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'workflowId' },
+				data: {
+					resultData: { pinData: {} },
+					executionData: { nodeExecutionStack: [{ data: { main: [[]] } }] },
+					pushRef: 'pushRef',
+				},
+				mode: 'manual',
+			} as any;
+			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+			const project = { id: 'projectId' };
+			const nodeExecutionData = [[{ json: message }]];
+
+			const getRunDataSpy = jest
+				.spyOn(chatExecutionManager as any, 'runNode')
+				.mockResolvedValue(nodeExecutionData);
+			const getWorkflowProjectCachedSpy = jest
+				.spyOn(ownershipService, 'getWorkflowProjectCached')
+				.mockResolvedValue(project as any);
+
+			const runData = await (chatExecutionManager as any).getRunData(execution, message);
+
+			expect(getRunDataSpy).toHaveBeenCalledWith(execution, message);
+			expect(getWorkflowProjectCachedSpy).toHaveBeenCalledWith('workflowId');
+			expect(runData).toEqual({
+				executionMode: 'manual',
+				executionData: execution.data,
+				pushRef: execution.data.pushRef,
+				workflowData: execution.workflowData,
+				pinData: execution.data.resultData.pinData,
+				projectId: 'projectId',
+			});
+		});
+	});
+
+	describe('runNode', () => {
+		it('should return null if node is not found', async () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'workflowId' },
+				data: {
+					resultData: { lastNodeExecuted: 'nodeId' },
+					executionData: { nodeExecutionStack: [{ data: { main: [[]] } }] },
+				},
+				mode: 'manual',
+			} as any;
+			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: jest.fn().mockReturnValue(null) };
+			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+
+			const result = await (chatExecutionManager as any).runNode(execution, message);
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if executionData is undefined', async () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'workflowId' },
+				data: {
+					resultData: { lastNodeExecuted: 'nodeId' },
+					executionData: { nodeExecutionStack: [] },
+				},
+				mode: 'manual',
+			} as any;
+			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: jest.fn().mockReturnValue({}) };
+			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+
+			const result = await (chatExecutionManager as any).runNode(execution, message);
+
+			expect(result).toBeNull();
+		});
+
+		it('should call nodeType.onMessage with correct parameters and return the result', async () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'workflowId' },
+				data: {
+					resultData: { lastNodeExecuted: 'nodeId' },
+					executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+				},
+				mode: 'manual',
+			} as any;
+			const message = {
+				sessionId: '123',
+				action: 'test',
+				chatInput: 'input',
+				files: [],
+			} as ChatMessage;
+			const node = { type: 'testType', typeVersion: 1 };
+			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const workflow = {
+				getNode: jest.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+			};
+			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			const result = await (chatExecutionManager as any).runNode(execution, message);
+
+			expect(workflow.nodeTypes.getByNameAndVersion).toHaveBeenCalledWith('testType', 1);
+			expect(nodeType.onMessage).toHaveBeenCalled();
+			expect(result).toEqual([[{ json: message }]]);
+		});
+
+		it('should return nodeExecutionData with sessionId, action and chatInput', async () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'workflowId' },
+				data: {
+					resultData: { lastNodeExecuted: 'nodeId' },
+					executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+				},
+				mode: 'manual',
+			} as any;
+			const message = {
+				sessionId: '123',
+				action: 'test',
+				chatInput: 'input',
+			} as ChatMessage;
+			const node = { type: 'testType', typeVersion: 1 };
+			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const workflow = {
+				getNode: jest.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+			};
+			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			const result = await (chatExecutionManager as any).runNode(execution, message);
+
+			expect(result).toEqual([[{ json: message }]]);
 		});
 	});
 });
