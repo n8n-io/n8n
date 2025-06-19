@@ -53,7 +53,7 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
-import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
 
 const $style = useCssModule();
