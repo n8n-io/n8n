@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	JsonObject,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -871,14 +872,23 @@ export class StripeTrigger implements INodeType {
 
 				const endpoint = '/webhook_endpoints';
 
-				const credentials = await this.getCredentials('stripeApi');
+				interface StripeWebhookBody {
+					url: string | undefined;
+					description: string;
+					enabled_events: object | NodeParameterValue;
+					api_version?: string;
+				}
 
-				const body = {
+				const body: StripeWebhookBody = {
 					url: webhookUrl,
 					description: webhookDescription,
 					enabled_events: events,
-					api_version: credentials.apiVersion as string,
 				};
+
+				const credentials = await this.getCredentials('stripeApi');
+				if (credentials.apiVersion) {
+					body.api_version = credentials.apiVersion as string;
+				}
 
 				const responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
 
