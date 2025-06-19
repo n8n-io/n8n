@@ -1,5 +1,11 @@
 import { OperationalError } from 'n8n-workflow';
-import type { GeoRangeFilter, ProxiesParams, TimeoutParams, WeaviateClient } from 'weaviate-client';
+import type {
+	FilterValue,
+	GeoRangeFilter,
+	ProxiesParams,
+	TimeoutParams,
+	WeaviateClient,
+} from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
 
 export type WeaviateCredential = {
@@ -128,12 +134,18 @@ function buildFilter(filter: WeaviateFilterUnit): unknown {
 	}
 }
 
-export function parseCompositeFilter(filter: WeaviateCompositeFilter): unknown {
-	if ('AND' in filter) {
-		return Filters.and(...filter.AND.map(parseCompositeFilter));
-	} else if ('OR' in filter) {
-		return Filters.or(...filter.OR.map(parseCompositeFilter));
-	} else {
-		return buildFilter(filter);
+export function parseCompositeFilter(
+	filter: WeaviateCompositeFilter | WeaviateFilterUnit,
+): unknown {
+	// Handle composite filters (AND/OR)
+	if (typeof filter === 'object' && ('AND' in filter || 'OR' in filter)) {
+		if ('AND' in filter) {
+			return Filters.and(...(filter.AND.map(buildFilter) as FilterValue[]));
+		} else if ('OR' in filter) {
+			return Filters.or(...(filter.OR.map(buildFilter) as FilterValue[]));
+		}
 	}
+
+	// Handle individual filter units
+	return buildFilter(filter);
 }
