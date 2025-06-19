@@ -37,6 +37,18 @@ const handleMenuSelect = (value: string) => {
 };
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
+const navigationDropdown =
+	useTemplateRef<InstanceType<typeof N8nNavigationDropdown>>('navigationDropdown');
+
+// Expose the close method from the inner navigation dropdown
+const close = () => {
+	navigationDropdown.value?.close();
+};
+
+defineExpose({
+	close,
+});
+
 onMounted(() => {
 	if (props.releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
 
@@ -58,7 +70,12 @@ onMounted(() => {
 			<LogoIcon ref="logo" :class="$style.logo" />
 			<LogoText v-if="showLogoText" :class="$style.logoText" />
 		</div>
-		<N8nNavigationDropdown data-test-id="universal-add" :menu="menu" @select="handleMenuSelect">
+		<N8nNavigationDropdown
+			ref="navigationDropdown"
+			data-test-id="universal-add"
+			:menu="menu"
+			@select="handleMenuSelect"
+		>
 			<N8nIconButton icon="plus" type="secondary" outline />
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
