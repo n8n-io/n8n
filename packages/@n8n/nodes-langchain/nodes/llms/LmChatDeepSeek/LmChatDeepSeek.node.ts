@@ -234,7 +234,7 @@ export class LmChatDeepSeek implements INodeType {
 
 		const model = new ChatOpenAI({
 			openAIApiKey: credentials.apiKey,
-			modelName,
+			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
