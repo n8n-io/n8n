@@ -44,7 +44,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		0,
 		0,
 	) as number;
-	const memory = await getOptionalMemory(this);
+	let memory = await getOptionalMemory(this);
+	memory = Array.isArray(memory) ? memory[0] : memory;
+
 	const model = await getChatModel(this);
 
 	for (let i = 0; i < items.length; i += batchSize) {
@@ -77,9 +79,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
 
+			const llm = Array.isArray(model) ? model[0] : model;
 			// Create the base agent that calls tools.
 			const agent = createToolCallingAgent({
-				llm: model,
+				llm,
 				tools,
 				prompt,
 				streamRunnable: false,

@@ -265,13 +265,13 @@ export const getAgentStepsParser =
  */
 export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
 	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
-	if (!isChatInstance(model) || !model.bindTools) {
-		throw new NodeOperationError(
-			ctx.getNode(),
-			'Tools Agent requires Chat Model which supports Tools calling',
-		);
-	}
-	return model;
+	// if (!isChatInstance(model) || !model.bindTools) {
+	// 	throw new NodeOperationError(
+	// 		ctx.getNode(),
+	// 		'Tools Agent requires Chat Model which supports Tools calling',
+	// 	);
+	// }
+	return model as BaseChatModel;
 }
 
 /**
