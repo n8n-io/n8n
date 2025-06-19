@@ -1201,6 +1201,15 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	/**
+	 * Use this key to send a message to the chat.
+	 *
+	 * - Workflow has to be started by a chat node.
+	 * - Put execution to wait after sending.
+	 *
+	 * See example in
+	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
+	 */
 	sendMessage?: string;
 
 	/**
