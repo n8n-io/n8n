@@ -37,6 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
+
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());

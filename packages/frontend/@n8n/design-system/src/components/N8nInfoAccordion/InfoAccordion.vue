@@ -8,12 +8,12 @@ import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
-interface IAccordionItem {
+export interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
 	iconColor?: IconColor;
-	tooltip?: string;
+	tooltip?: string | null;
 }
 
 interface InfoAccordionProps {

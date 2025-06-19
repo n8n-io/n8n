@@ -74,7 +74,6 @@ const plugins = [
 		dts: './src/components.d.ts',
 		resolvers: [
 			(componentName) => {
-				console.log(componentName);
 				if (componentName.startsWith('N8n'))
 					return { name: componentName, from: '@n8n/design-system' };
 			},

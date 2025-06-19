@@ -33,7 +33,6 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	FolderListItem,
-	IUser,
 	UserAction,
 	WorkflowListItem,
 	WorkflowListResource,
@@ -64,7 +63,7 @@ import {
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
@@ -183,16 +182,18 @@ const folderActions = computed<
 	},
 ]);
 
-const folderCardActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
-	),
+const folderCardActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
+		),
 );
 
-const mainBreadcrumbsActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
-	),
+const mainBreadcrumbsActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
+		),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);

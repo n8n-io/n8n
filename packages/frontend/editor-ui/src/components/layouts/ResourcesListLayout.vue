@@ -6,7 +6,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
-import type { DatatableColumn } from '@n8n/design-system';
+import type { DatatableColumn, DatatableRow } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -189,9 +189,9 @@ const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
 });
 
-const filteredAndSortedResources = computed(() => {
+const filteredAndSortedResources = computed((): DatatableRow[] => {
 	if (props.dontPerformSortingAndFiltering) {
-		return props.resources;
+		return props.resources as DatatableRow[];
 	}
 	const filtered = props.resources.filter((resource) => {
 		let matches = true;
@@ -242,7 +242,7 @@ const filteredAndSortedResources = computed(() => {
 			default:
 				return props.sortFns[sortBy.value] ? props.sortFns[sortBy.value](a, b) : 0;
 		}
-	});
+	}) as DatatableRow[];
 });
 
 //watchers

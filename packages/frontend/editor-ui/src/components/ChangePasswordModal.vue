@@ -145,6 +145,7 @@ onMounted(() => {
 	>
 		<template #content>
 			<n8n-form-inputs
+				v-if="config"
 				:inputs="config"
 				:event-bus="formBus"
 				:column-view="true"
