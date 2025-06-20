@@ -17,8 +17,9 @@ interface IconProps {
 defineOptions({ name: 'N8nIcon' });
 
 withDefaults(defineProps<IconProps>(), {
-	size: 'medium',
 	spin: false,
+	size: undefined,
+	color: undefined,
 });
 </script>
 
