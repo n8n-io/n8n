@@ -13,17 +13,15 @@ import N8nFormInput from '../N8nFormInput';
 import N8nText from '../N8nText';
 import ResizeObserver from '../ResizeObserver';
 
-type Inputs = IFormInput[];
-
 export interface FormInputsProps {
-	inputs: Inputs;
+	inputs: IFormInput[];
 	eventBus?: FormEventBus;
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
 }
 
-type FormValues = FormInputsToFormValues<Inputs, FormFieldValue>;
+type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
 	eventBus: createFormEventBus,
