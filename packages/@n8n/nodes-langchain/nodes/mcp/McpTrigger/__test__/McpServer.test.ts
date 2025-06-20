@@ -510,7 +510,7 @@ describe('McpServer', () => {
 			expect(mockDeleteResponse.status).toHaveBeenCalledWith(404);
 		});
 
-		it('should return 404 for SSE transport session', async () => {
+		it('should return 405 for SSE transport session', async () => {
 			const sseSessionId = 'sse-session-id';
 			const mockDeleteRequest = mock<Request>({
 				query: { sessionId: sseSessionId },
@@ -525,8 +525,8 @@ describe('McpServer', () => {
 			// Call handleDeleteRequest
 			await mcpServerManager.handleDeleteRequest(mockDeleteRequest, mockDeleteResponse);
 
-			// Verify 404 response (DELETE not supported for SSE)
-			expect(mockDeleteResponse.status).toHaveBeenCalledWith(404);
+			// Verify 405 response (DELETE not supported for SSE)
+			expect(mockDeleteResponse.status).toHaveBeenCalledWith(405);
 		});
 	});
 });

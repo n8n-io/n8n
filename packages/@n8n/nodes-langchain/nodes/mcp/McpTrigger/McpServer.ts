@@ -229,12 +229,17 @@ export class McpServerManager {
 
 		const transport = this.getTransport(sessionId);
 
-		if (transport && transport instanceof FlushingStreamableHTTPTransport) {
-			await transport.handleRequest(req, resp);
-			return;
+		if (transport) {
+			if (transport instanceof FlushingStreamableHTTPTransport) {
+				await transport.handleRequest(req, resp);
+				return;
+			} else {
+				// For SSE transport, we don't support DELETE requests
+				resp.status(405).send('Method Not Allowed');
+				return;
+			}
 		}
 
-		// Session not found or wrong transport type (SSE doesn't support DELETE)
 		resp.status(404).send('Session not found');
 	}
 
