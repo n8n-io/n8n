@@ -49,7 +49,7 @@ from js import Object
 		const packagesToPreload = globalConfig.nodes.pythonPackagesPreload;
 
 		if (packagesToPreload) {
-			const packages = packagesToPreload.split(',').map((p) => p.trim());
+			const packages = packagesToPreload.split(',').map((p) => p.trim()).filter(Boolean);
 			await pyodideInstance.loadPackage(packages);
 		}
 	}
