@@ -80,11 +80,9 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 		},
 		{
 			name: `${name} - Chaos`,
-			// Only run chaos tests that are tagged for this specific mode
 			grep: new RegExp(`${modeTag}.*@chaostest`),
 			fullyParallel: false,
 			workers: 1,
-			...(shouldAddDependencies && { dependencies: [`${name} - Sequential`] }),
 			use: { containerConfig: mergedConfig } as any,
 		},
 	];
