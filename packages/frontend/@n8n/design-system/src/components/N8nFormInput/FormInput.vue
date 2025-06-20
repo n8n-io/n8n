@@ -142,14 +142,16 @@ function onEnter(event: Event) {
 	emit('enter');
 }
 
-const validationError = computed<string | null>(() => {
+const validationError = computed<ReturnType<IValidator['validate']>>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
 		if ('messageKey' in error) {
-			return t(error.messageKey, error.options);
-		} else if ('message' in error) {
-			return error.message;
+			return {
+				message: t(error.messageKey, error.options),
+			};
+		} else {
+			return error;
 		}
 	}
 
@@ -170,10 +172,7 @@ onMounted(() => {
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
-watch(
-	() => validationError.value,
-	(error) => emit('validate', !error),
-);
+watch(validationError, (result) => emit('validate', !result));
 
 defineExpose({ inputRef });
 </script>
@@ -259,7 +258,7 @@ defineExpose({ inputRef });
 			/>
 		</div>
 		<div v-if="showErrors" :class="$style.errors">
-			<span v-text="validationError" />
+			<span v-text="validationError?.message" />
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
