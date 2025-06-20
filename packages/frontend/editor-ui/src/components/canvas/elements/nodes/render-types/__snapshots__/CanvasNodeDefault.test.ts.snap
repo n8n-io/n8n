@@ -4,7 +4,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--node-icon-size: 40px; --canvas-grid-size: 20px; --configurable-node-width: 240px; --configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   
   <!--v-if-->
@@ -51,7 +51,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--node-icon-size: 30px; --canvas-grid-size: 20px; --configurable-node-width: 240px; --configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 75px; --node-icon-size: 30px;"
 >
   
   <!--v-if-->
@@ -98,7 +98,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--node-icon-size: 30px; --canvas-grid-size: 20px; --configurable-node-width: 240px; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
   
   <!--v-if-->
@@ -145,7 +145,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--node-icon-size: 40px; --canvas-grid-size: 20px; --configurable-node-width: 240px; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   
   <!--v-if-->
@@ -192,7 +192,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--node-icon-size: 40px; --canvas-grid-size: 20px; --configurable-node-width: 240px; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   
   <!--v-if-->
