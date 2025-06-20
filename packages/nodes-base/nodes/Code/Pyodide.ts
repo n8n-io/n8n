@@ -28,13 +28,6 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 			context,
 		)) as PyodideInterface;
 
-		const packagesToPreload = config.get('python.packages.preload') as string;
-
-		if (packagesToPreload) {
-			const packages = packagesToPreload.split(',').map((p) => p.trim());
-			await pyodideInstance.loadPackage(packages);
-		}
-
 		await pyodideInstance.runPythonAsync(`
 blocked_modules = ["os"]
 
@@ -63,6 +56,13 @@ sys.meta_path.insert(0, ImportBlocker())
 from _pyodide_core import jsproxy_typedict
 from js import Object
 `);
+
+		const packagesToPreload = config.get('python.packages.preload') as string;
+
+		if (packagesToPreload) {
+			const packages = packagesToPreload.split(',').map((p) => p.trim());
+			await pyodideInstance.loadPackage(packages);
+		}
 	}
 
 	return pyodideInstance;
