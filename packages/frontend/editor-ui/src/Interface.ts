@@ -49,7 +49,13 @@ import type {
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
-import type { WorkflowMetadata, WorkflowData } from '@n8n/rest-api-client/api/workflows';
+import type {
+	WorkflowMetadata,
+	WorkflowData,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -745,13 +751,6 @@ export type NodeTypeSelectedPayload = {
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
-}
-export interface ITag {
-	id: string;
-	name: string;
-	usageCount?: number;
-	createdAt?: string;
-	updatedAt?: string;
 }
 
 export interface ITagRow {

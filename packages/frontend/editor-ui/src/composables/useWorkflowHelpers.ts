@@ -27,12 +27,12 @@ import type {
 	ICredentialsResponse,
 	INodeTypesMaxCount,
 	INodeUi,
-	ITag,
 	IWorkflowDb,
 	TargetItem,
 	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

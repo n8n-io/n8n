@@ -7,12 +7,12 @@ import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
-	ITag,
 	IUsedCredential,
 	IWorkflowDb,
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { useDataSchema } from '@/composables/useDataSchema';

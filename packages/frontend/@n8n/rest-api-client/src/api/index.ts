@@ -14,6 +14,7 @@ export * from './roles';
 export * from './settings';
 export * from './module-settings';
 export * from './sso';
+export * from './tags';
 export * from './templates';
 export * from './ui';
 export * from './versions';

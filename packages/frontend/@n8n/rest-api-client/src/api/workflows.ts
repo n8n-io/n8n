@@ -1,5 +1,7 @@
 import type { IWorkflowSettings, IConnections, INode, IPinData } from 'n8n-workflow';
 
+import type { ITag } from './tags';
+
 export interface WorkflowMetadata {
 	onboardingId?: string;
 	templateId?: string;
