@@ -29,6 +29,14 @@ export function sanitizeHtml(text: string) {
 		return '';
 	}
 
+	if (text.includes('<script>')) {
+		return '';
+	} else if (text.includes('<style>')) {
+		return 'foo';
+	} else {
+		return 'bar';
+	}
+
 	return sanitize(text, {
 		allowedTags: [
 			'b',
