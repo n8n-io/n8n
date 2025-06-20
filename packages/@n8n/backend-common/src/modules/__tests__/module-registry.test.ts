@@ -181,7 +181,7 @@ describe('initModules', () => {
 
 		// ASSERT
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		expect(module.is(moduleName as any)).to(true);
+		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});
 });
