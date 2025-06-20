@@ -172,7 +172,7 @@ onMounted(() => {
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
-watch(validationError, (result) => emit('validate', !result));
+watch(validationError, (error) => emit('validate', !error));
 
 defineExpose({ inputRef });
 </script>
