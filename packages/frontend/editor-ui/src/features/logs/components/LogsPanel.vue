@@ -14,6 +14,8 @@ import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand
 import { type LogEntry } from '@/features/logs/logs.types';
 import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
+import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
+import { useActiveElement } from '@vueuse/core';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
@@ -77,6 +79,25 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
+const activeElement = useActiveElement();
+const isBlurred = computed(
+	() =>
+		!activeElement.value ||
+		!container.value ||
+		(!container.value.contains(activeElement.value) && container.value !== activeElement.value),
+);
+
+const localKeyMap = computed<KeyMap>(() => ({
+	j: selectNext,
+	k: selectPrev,
+	Escape: () => select(undefined),
+	ArrowDown: selectNext,
+	ArrowUp: selectPrev,
+	Space: () => selected.value && toggleExpanded(selected.value),
+	Enter: () => selected.value && handleOpenNdv(selected.value),
+}));
+
+useKeybindings(localKeyMap, { disabled: isBlurred });
 
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
@@ -86,10 +107,10 @@ function handleResizeOverviewPanelEnd() {
 	onOverviewPanelResizeEnd();
 }
 
-async function handleOpenNdv(treeNode: LogEntry) {
+function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	await nextTick(() => {
+	void nextTick(() => {
 		const source = treeNode.runData?.source[0];
 		const inputBranch = source?.previousNodeOutput ?? 0;
 
@@ -112,18 +133,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
-				<div
-					ref="container"
-					:class="$style.container"
-					tabindex="-1"
-					@keydown.esc.exact.stop="select(undefined)"
-					@keydown.j.exact.stop="selectNext"
-					@keydown.down.exact.stop.prevent="selectNext"
-					@keydown.k.exact.stop="selectPrev"
-					@keydown.up.exact.stop.prevent="selectPrev"
-					@keydown.space.exact.stop="selected && toggleExpanded(selected)"
-					@keydown.enter.exact.stop="selected && handleOpenNdv(selected)"
-				>
+				<div ref="container" :class="$style.container" tabindex="-1">
 					<N8nResizeWrapper
 						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"

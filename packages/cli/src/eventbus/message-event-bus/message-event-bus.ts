@@ -32,6 +32,8 @@ import {
 } from '../event-message-classes/event-message-generic';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
+import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
+import { EventMessageQueue } from '../event-message-classes/event-message-queue';
 import type { EventMessageRunnerOptions } from '../event-message-classes/event-message-runner';
 import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
@@ -424,5 +426,9 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendRunnerEvent(options: EventMessageRunnerOptions) {
 		await this.send(new EventMessageRunner(options));
+	}
+
+	async sendQueueEvent(options: EventMessageQueueOptions) {
+		await this.send(new EventMessageQueue(options));
 	}
 }

@@ -38,6 +38,8 @@ import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { EventService } from './events/event.service';
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -55,6 +57,7 @@ export class WorkflowRunner {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionDataService: ExecutionDataService,
+		private readonly eventService: EventService,
 	) {}
 
 	setExecutionMode(mode: 'regular' | 'queue') {
@@ -167,7 +170,7 @@ export class WorkflowRunner {
 				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
-			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
+			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
@@ -335,11 +338,13 @@ export class WorkflowRunner {
 
 	private async enqueueExecution(
 		executionId: string,
+		workflowId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
 	): Promise<void> {
 		const jobData: JobData = {
+			workflowId,
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
@@ -400,6 +405,12 @@ export class WorkflowRunner {
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
 						error = new MaxStalledCountError(error);
+						this.eventService.emit('job-stalled', {
+							executionId: job.data.executionId,
+							workflowId: job.data.workflowId,
+							hostId: this.instanceSettings.hostId,
+							jobId: job.id.toString(),
+						});
 					}
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
@@ -432,6 +443,7 @@ export class WorkflowRunner {
 					stoppedAt: fullExecutionData.stoppedAt,
 					status: fullExecutionData.status,
 					data: fullExecutionData.data,
+					jobId: job.id.toString(),
 				};
 
 				this.activeExecutions.finalizeExecution(executionId, runData);
