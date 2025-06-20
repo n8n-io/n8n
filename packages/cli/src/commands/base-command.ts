@@ -72,19 +72,7 @@ export abstract class BaseCommand extends Command {
 	protected needsTaskRunner = false;
 
 	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			// add module to the registry for dependency injection
-			try {
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-			} catch {
-				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
-			}
-
-			this.modulesConfig.addLoadedModule(moduleName);
-			this.logger.debug(`Loaded module "${moduleName}"`);
-		}
-
-		this.moduleRegistry.addEntities();
+		await this.moduleRegistry.loadModules();
 	}
 
 	async init(): Promise<void> {

@@ -102,8 +102,8 @@ describe('SettingsUsersView', () => {
 	describe('Below quota', () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 
-		const settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isBelowUserQuota = false;
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.usersLimitNotReached = false;
 
 		it('disables the invite button', async () => {
 			const { getByTestId } = renderView({ pinia });

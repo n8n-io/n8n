@@ -69,7 +69,9 @@ export async function initializeCore() {
 	void useExternalHooks().run('app.mount');
 
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize();
+		await usersStore.initialize({
+			quota: settingsStore.userManagement.quota,
+		});
 
 		void versionsStore.checkForNewVersions();
 	}

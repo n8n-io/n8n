@@ -241,8 +241,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+		const isVectorStoresCategory = stackCategory === AI_CATEGORY_VECTOR_STORES;
 
-		if (aiNodes.length > 0 && (canvasHasAINodes || isAiRootView(getLastActiveStack()))) {
+		if (
+			aiNodes.length > 0 &&
+			(canvasHasAINodes || isAiRootView(getLastActiveStack()) || isVectorStoresCategory)
+		) {
 			const sectionsMap = new Map<string, NodeViewItemSection>();
 			const aiRootNodes = filterAiRootNodes(aiNodes);
 			const aiSubNodes = difference(aiNodes, aiRootNodes);

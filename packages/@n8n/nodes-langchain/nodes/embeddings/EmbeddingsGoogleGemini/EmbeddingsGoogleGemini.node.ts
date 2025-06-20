@@ -126,7 +126,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GoogleGenerativeAIEmbeddings({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 		});
 
 		return {

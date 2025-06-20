@@ -44,13 +44,13 @@ const usersListActions = computed((): IUserListAction[] => {
 		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
 			value: 'copyInviteLink',
-			guard: (user) => settingsStore.isBelowUserQuota && !user.firstName && !!user.inviteAcceptUrl,
+			guard: (user) => usersStore.usersLimitNotReached && !user.firstName && !!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
 			value: 'reinvite',
 			guard: (user) =>
-				settingsStore.isBelowUserQuota && !user.firstName && settingsStore.isSmtpSetup,
+				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.delete'),
@@ -64,7 +64,7 @@ const usersListActions = computed((): IUserListAction[] => {
 			value: 'copyPasswordResetLink',
 			guard: (user) =>
 				hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
-				settingsStore.isBelowUserQuota &&
+				usersStore.usersLimitNotReached &&
 				!user.isPendingUser &&
 				user.id !== usersStore.currentUserId,
 		},
@@ -248,7 +248,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
+							:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
 							:label="i18n.baseText('settings.users.invite')"
 							size="large"
 							data-test-id="settings-users-invite-button"
@@ -258,7 +258,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
+		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -284,7 +284,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
+			v-if="usersStore.usersLimitNotReached || usersStore.allUsers.length > 1"
 			:class="$style.usersContainer"
 		>
 			<n8n-users-list
