@@ -30,7 +30,7 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
 import type { ExportableWorkflow } from '@/environments.ee/source-control/types/exportable-workflow';
-import type { ResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+import type { RemoteResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -68,7 +68,7 @@ function toExportableCredential(
 	cred: CredentialsEntity,
 	owner: Project | User,
 ): ExportableCredential {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {
@@ -97,7 +97,7 @@ function toExportableWorkflow(
 	owner: Project | User,
 	versionId?: string,
 ): ExportableWorkflow {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {
