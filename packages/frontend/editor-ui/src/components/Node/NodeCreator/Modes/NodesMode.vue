@@ -28,6 +28,7 @@ import {
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
+	shouldShowCommunityNodeDetails,
 } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -140,7 +141,7 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'node') {
 		let nodeActions = getFilteredActions(item, actions);
 
-		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
