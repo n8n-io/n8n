@@ -25,7 +25,3 @@ useKeybindings(
 	{ disabled: isBlurred },
 );
 </script>
-
-<template>
-	<div />
-</template>
