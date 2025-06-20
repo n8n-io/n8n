@@ -1,5 +1,5 @@
 import type { INodeExecutionData } from 'n8n-workflow';
-import type { KeboolaUploadParams, KeboolaTableIdentifiers } from '../../v1/KeboolaV1.types';
+import type { KeboolaUploadParams, KeboolaTableIdentifiers } from '../../V1/KeboolaV1.types';
 
 export const fixtures = {
 	csvItems: [

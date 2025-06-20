@@ -4,7 +4,7 @@
 		"status": "processing"
 	},
 	"success": {
-		"id": "123",
+		"id": 123,
 		"status": "success"
 	},
 	"successWithFile": {

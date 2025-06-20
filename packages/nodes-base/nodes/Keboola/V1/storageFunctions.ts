@@ -316,8 +316,6 @@ export async function handleUploadOperation(
 	const columns = extractColumnsFromItems(inputItems);
 	const csv = buildCsvFromItems(inputItems, columns);
 
-	console.log(`CSV Preview (first 300 chars):\n${csv.slice(0, 300)}`);
-
 	const fileId = await uploadCsvToKeboola(
 		csv,
 		credentials.stack,
