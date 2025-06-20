@@ -180,8 +180,8 @@ describe('initModules', () => {
 		await moduleRegistry.initModules();
 
 		// ASSERT
-		// @ts-expect-error Testing
-		expect(moduleRegistry.isActive(moduleName)).toBe(true);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(module.is(moduleName as any)).to(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});
 });
