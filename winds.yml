@@ -1,0 +1,70 @@
+repo: Peav-Accounting/n8n
+
+gating_rules:
+  default_branch: main
+  required_reviewers:
+    - OP://IT/EMPLOYEE_1_EMAIL/email address
+  delegation_matrix:
+    /prompts/**:
+      can_edit: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+      can_review: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+    /workflows/**:
+      can_edit: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+      can_review: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+    /packages/nodes-base/**:
+      can_edit: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+      can_review: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+    /eval/**:
+      can_edit: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+      can_review: ["OP://IT/EMPLOYEE_1_EMAIL/email address"]
+  changelog: true
+  auto_label:
+    - "agent"
+    - "n8n"
+    - "workflow-update"
+
+ci_jobs:
+  validate_workflows:
+    runs_on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Validate n8n workflows
+        run: |
+          for file in $(find workflows -name '*.json'); do
+            jq . "$file" > /dev/null || exit 1
+          done
+
+  test_agents_eval:
+    runs_on: ubuntu-latest
+    needs: validate_workflows
+    steps:
+      - name: Run synthetic test harness
+        run: |
+          echo "Running test harness on /eval folder"
+          python scripts/eval_runner.py --path ./eval --log ./eval_results.json
+
+  build_n8n_docker:
+    runs_on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docker image
+        run: |
+          docker build -t peav/n8n-custom .
+
+feedback_loops:
+  enabled: true
+  capture_failures:
+    from: n8n_webhooks
+    route_to: .github/feedback/agent_errors.json
+  eval_triggers:
+    on_workflow_change: true
+    replay_cases_from: /eval
+    log_results_to: .github/eval_logs/results.json
+  changelog_summary:
+    include_prompt_diffs: true
+    post_to: .github/CHANGELOG.md
+  human_feedback:
+    accepted_in: .github/feedback/human_review.json
+    used_for: prompt_retuning
