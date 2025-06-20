@@ -157,8 +157,10 @@ const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
-const onExactMatchChange = (e: boolean) => {
-	onFilterMetaChange(0, 'exactMatch', e);
+const onExactMatchChange = (e: string | number | boolean) => {
+	if (typeof e === 'boolean') {
+		onFilterMetaChange(0, 'exactMatch', e);
+	}
 };
 
 onBeforeMount(() => {
