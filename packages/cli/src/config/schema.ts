@@ -225,6 +225,17 @@ export const schema = {
 		},
 	},
 
+	python: {
+		packages: {
+			preload: {
+				doc: 'Comma-separated list of python packages to preload for the code node',
+				format: String,
+				default: '',
+				env: 'N8N_PYTHON_PACKAGES_PRELOAD',
+			},
+		},
+	},
+
 	/**
 	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
 	 */

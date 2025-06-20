@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
 import type { PyodideInterface } from 'pyodide';
+import { config } from '@n8n/di';
 
 let pyodideInstance: PyodideInterface | undefined;
 
@@ -26,6 +27,13 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 			'loadPyodide({ indexURL, packageCacheDir, jsglobals })',
 			context,
 		)) as PyodideInterface;
+
+		const packagesToPreload = config.get('python.packages.preload') as string;
+
+		if (packagesToPreload) {
+			const packages = packagesToPreload.split(',').map((p) => p.trim());
+			await pyodideInstance.loadPackage(packages);
+		}
 
 		await pyodideInstance.runPythonAsync(`
 blocked_modules = ["os"]
