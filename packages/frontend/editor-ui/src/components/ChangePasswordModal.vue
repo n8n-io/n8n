@@ -39,35 +39,9 @@ const onInput = (e: FormFieldValueUpdate) => {
 	}
 };
 
-function isNewPasswordData(
-	data: unknown,
-): data is { currentPassword: string; password: string; mfaCode?: string } {
-	if (
-		!(
-			typeof data === 'object' &&
-			data &&
-			'currentPassword' in data &&
-			typeof data.currentPassword === 'string' &&
-			'password' in data &&
-			typeof data.password === 'string'
-		)
-	) {
-		return false;
-	}
-
-	if ('mfaCode' in data) {
-		return typeof data.mfaCode === 'string';
-	}
-
-	return true;
-}
-
-const onSubmit = async (values: FormValues) => {
+const onSubmit = async (data: FormValues) => {
+	const values = data as { currentPassword: string; password: string; mfaCode?: string };
 	try {
-		if (!isNewPasswordData(values)) {
-			throw new Error('Invalid data passed');
-		}
-
 		loading.value = true;
 		await usersStore.updateCurrentUserPassword({
 			currentPassword: values.currentPassword,

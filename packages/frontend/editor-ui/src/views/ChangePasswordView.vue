@@ -81,8 +81,8 @@ const onSubmit = async (values: { [key: string]: string }) => {
 };
 
 const onInput = (e: FormFieldValueUpdate) => {
-	if (e.name === 'password') {
-		password.value = e.value as string;
+	if (e.name === 'password' && typeof e.value === 'string') {
+		password.value = e.value;
 	}
 };
 
