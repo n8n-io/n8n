@@ -14,7 +14,7 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlImportService } from '../source-control-import.service.ee';
-import type { ExportableCredential } from '../types/exportable-credential';
+import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 describe('SourceControlService', () => {
@@ -157,7 +157,7 @@ describe('SourceControlService', () => {
 			// Pushing this is conflict free.
 			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
 			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
-				mock<ExportableCredential & { filename: string }>(),
+				mock<StatusExportableCredential>(),
 			]);
 
 			// Define a variable that does only exist locally.
