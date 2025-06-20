@@ -1578,6 +1578,7 @@ import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZapOff from '~icons/lucide/zap-off';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
+import SVGSpinner from './SVGSpinner.vue';
 
 export const icons = {
 	'caret-up': IconLucideChevronUp,
@@ -1726,7 +1727,7 @@ export const icons = {
 	'sign-in-alt': IconLucideLogIn,
 	'sign-out-alt': IconLucideLogOut,
 	'sliders-h': IconLucideSlidersHorizontal,
-	// spinner: IconLucideX, // todo
+	spinner: SVGSpinner,
 	'sticky-note': IconLucideStickyNote,
 	stop: IconLucideSquare,
 	stream: IconLucideAlignRight,

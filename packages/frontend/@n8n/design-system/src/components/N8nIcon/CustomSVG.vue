@@ -25,7 +25,7 @@ const props = defineProps<CustomSVGProps>();
 			v-for="(path, i) in customIcons[iconName].icon[4]"
 			v-else
 			:key="`${i}`"
-			fill="currentColor"
+			stroke="currentColor"
 			:d="path"
 		/>
 	</svg>

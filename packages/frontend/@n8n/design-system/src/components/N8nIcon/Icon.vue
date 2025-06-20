@@ -32,7 +32,7 @@ withDefaults(defineProps<IconProps>(), {
 		:compact="true"
 		:class="{ [$style[size]]: true, [$style.spin]: spin }"
 	>
-		<Component :is="icons[icon]" v-if="icons[icon]" />
+		<Component :is="icons[icon]" v-if="icons[icon]" :spin="spin" />
 		<CustomSVG v-else-if="icon in customIcons" :icon-name="icon" />
 		<span v-else>[{{ icon }}]</span>
 	</N8nText>
