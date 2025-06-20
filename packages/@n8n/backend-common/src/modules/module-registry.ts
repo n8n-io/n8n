@@ -48,10 +48,10 @@ export class ModuleRegistry {
 	 * setup.
 	 */
 	async loadModules(modules?: ModuleName[]) {
-		for (const moduleName of modules ?? this.eligibleModules) {
-			const moduleDir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
-			const modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+		const moduleDir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+		const modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
 
+		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
 				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
 			} catch {
