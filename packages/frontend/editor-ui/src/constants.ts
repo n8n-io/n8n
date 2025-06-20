@@ -115,8 +115,7 @@ export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expres
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 
-export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
-export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
+export const NODE_MIN_INPUT_ITEMS_COUNT = 5;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
