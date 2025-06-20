@@ -12,7 +12,7 @@ import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
-		await testModules.load(['insights']);
+		await testModules.loadModules(['insights']);
 		await testDb.init();
 	});
 
