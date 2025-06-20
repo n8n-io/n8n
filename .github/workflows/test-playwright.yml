@@ -14,6 +14,12 @@ on:
 jobs:
   install:
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    container:
+      image: mcr.microsoft.com/playwright:v1.53.0-jammy
+      env:
+        BLACKSMITH_CACHE_TOKEN: ${{ env.BLACKSMITH_CACHE_TOKEN }}
+        BLACKSMITH_CACHE_URL: ${{ env.BLACKSMITH_CACHE_URL }}
+        GITHUB_REPO_NAME: ${{ env.GITHUB_REPO_NAME }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -25,6 +31,12 @@ jobs:
 
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
+    container:
+      image: mcr.microsoft.com/playwright:v1.53.0-jammy
+      env:
+        BLACKSMITH_CACHE_TOKEN: ${{ env.BLACKSMITH_CACHE_TOKEN }}
+        BLACKSMITH_CACHE_URL: ${{ env.BLACKSMITH_CACHE_URL }}
+        GITHUB_REPO_NAME: ${{ env.GITHUB_REPO_NAME }}
     needs: [install]
     strategy:
       fail-fast: false
@@ -39,6 +51,7 @@ jobs:
         uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
         with:
           node-version: 22.x
+          cache: 'pnpm'
 
       - name: Restore dist cache
         uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
@@ -49,10 +62,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter n8n-playwright... --filter n8n...
-
-      - name: Install Playwright browsers
-        working-directory: playwright
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Start local server
         run: |
@@ -82,7 +91,7 @@ jobs:
           retention-days: 7
 
   merge-reports:
-    if: always()
+    if: ${{ failure() }}
     needs: [testing]
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
