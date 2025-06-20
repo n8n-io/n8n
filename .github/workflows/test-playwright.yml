@@ -14,12 +14,6 @@ on:
 jobs:
   install:
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    container:
-      image: mcr.microsoft.com/playwright:v1.53.0-jammy
-      env:
-        BLACKSMITH_CACHE_TOKEN: ${{ env.BLACKSMITH_CACHE_TOKEN }}
-        BLACKSMITH_CACHE_URL: ${{ env.BLACKSMITH_CACHE_URL }}
-        GITHUB_REPO_NAME: ${{ env.GITHUB_REPO_NAME }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -31,12 +25,6 @@ jobs:
 
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    container:
-      image: mcr.microsoft.com/playwright:v1.53.0-jammy
-      env:
-        BLACKSMITH_CACHE_TOKEN: ${{ env.BLACKSMITH_CACHE_TOKEN }}
-        BLACKSMITH_CACHE_URL: ${{ env.BLACKSMITH_CACHE_URL }}
-        GITHUB_REPO_NAME: ${{ env.GITHUB_REPO_NAME }}
     needs: [install]
     strategy:
       fail-fast: false
@@ -62,6 +50,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter n8n-playwright... --filter n8n...
+
+      - name: Install Playwright Browsers (Chromium only)
+        working-directory: playwright
+        run: pnpm exec playwright install chromium --with-deps
 
       - name: Start local server
         run: |
