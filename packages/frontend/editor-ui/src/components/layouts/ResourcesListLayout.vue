@@ -712,10 +712,11 @@ defineExpose({
 					:class="$style.listWrapper"
 				>
 					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
+					<!-- todo fix types here -->
 					<n8n-recycle-scroller
 						v-if="type === 'list-full'"
 						data-test-id="resources-list"
-						:items="filteredAndSortedResources"
+						:items="filteredAndSortedResources as unknown as Array<Record<string, string>>"
 						:item-size="itemSize()"
 						item-key="id"
 					>
