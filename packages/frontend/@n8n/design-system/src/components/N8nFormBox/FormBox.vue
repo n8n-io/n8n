@@ -12,11 +12,9 @@ import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 
-type Inputs = IFormInput[];
-
 interface FormBoxProps {
 	title?: string;
-	inputs?: Inputs;
+	inputs?: IFormInput[];
 	buttonText?: string;
 	buttonLoading?: boolean;
 	secondaryButtonText?: string;
@@ -24,12 +22,12 @@ interface FormBoxProps {
 	redirectLink?: string;
 }
 
-type FormValues = FormInputsToFormValues<Inputs, FormFieldValue>;
+type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
 
 defineOptions({ name: 'N8nFormBox' });
 withDefaults(defineProps<FormBoxProps>(), {
 	title: '',
-	inputs: (): Inputs => [],
+	inputs: (): IFormInput[] => [],
 	buttonLoading: false,
 	redirectText: '',
 	redirectLink: '',
