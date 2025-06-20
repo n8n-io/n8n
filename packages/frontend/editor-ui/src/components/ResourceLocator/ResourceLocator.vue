@@ -220,7 +220,7 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
 		return `${props.modelValue}`;
 	}
@@ -398,6 +398,9 @@ const handleAddResourceClick = async () => {
 	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
 		requestParams,
 	)) as NodeParameterValue;
+	if (typeof newResource === 'boolean') {
+		return;
+	}
 
 	refreshList();
 	await loadResources();
@@ -571,7 +574,7 @@ function getModeLabel(mode: INodePropertyMode): string | undefined {
 	return mode.displayName;
 }
 
-function onInputChange(value: NodeParameterValue): void {
+function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = currentQueryResults.value.find((result) => result.value === value);
@@ -823,7 +826,7 @@ function showResourceDropdown() {
 	resourceDropdownVisible.value = true;
 }
 
-function onListItemSelected(value: NodeParameterValue) {
+function onListItemSelected(value: INodeParameterResourceLocator['value']) {
 	onInputChange(value);
 	hideResourceDropdown();
 }
