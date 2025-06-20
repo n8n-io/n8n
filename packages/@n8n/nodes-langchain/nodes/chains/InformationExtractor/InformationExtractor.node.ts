@@ -1,6 +1,4 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
@@ -13,16 +11,19 @@ import type {
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import {
+	buildJsonSchemaExampleNotice,
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import { getBatchingOptionFields } from '@utils/sharedFields';
 
+import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
+import { processItem } from './processItem';
 import type { AttributeDefinition } from './types';
-
-const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
-Only extract relevant information from the text.
-If you do not know the value of an attribute asked to extract, you may omit the attribute's value.`;
 
 export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +32,8 @@ export class InformationExtractor implements INodeType {
 		icon: 'fa:project-diagram',
 		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'Extract information from text in a structured format',
 		codex: {
 			alias: ['NER', 'parse', 'parsing', 'JSON', 'data extraction', 'structured'],
@@ -92,6 +94,11 @@ export class InformationExtractor implements INodeType {
 	"cities": ["Los Angeles", "San Francisco", "San Diego"]
 }`,
 			},
+			buildJsonSchemaExampleNotice({
+				showExtraProps: {
+					'@version': [{ _cnd: { gte: 1.2 } }],
+				},
+			}),
 			{
 				...inputSchemaField,
 				default: `{
@@ -108,18 +115,6 @@ export class InformationExtractor implements INodeType {
 		}
 	}
 }`,
-			},
-			{
-				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						schemaType: ['manual'],
-					},
-				},
 			},
 			{
 				displayName: 'Attributes',
@@ -213,31 +208,11 @@ export class InformationExtractor implements INodeType {
 							rows: 6,
 						},
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-					},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
+						},
+					}),
 				],
 			},
 		],
@@ -245,13 +220,6 @@ export class InformationExtractor implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
-			batchSize: 100,
-			delayBetweenBatches: 0,
-		}) as {
-			batchSize: number;
-			delayBetweenBatches: number;
-		};
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -285,7 +253,10 @@ export class InformationExtractor implements INodeType {
 
 			if (schemaType === 'fromJson') {
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as string;
-				jsonSchema = generateSchema(jsonExample);
+				// Enforce all fields to be required in the generated schema if the node version is 1.2 or higher
+				const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.2;
+
+				jsonSchema = generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired);
 			} else {
 				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as string;
 				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
@@ -297,58 +268,59 @@ export class InformationExtractor implements INodeType {
 		}
 
 		const resultData: INodeExecutionData[] = [];
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
+		if (this.getNode().typeVersion >= 1.1 && batchSize >= 1) {
+			// Batch processing
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					const itemIndex = i + batchItemIndex;
+					return await processItem(this, itemIndex, llm, parser);
+				});
 
-		for (let i = 0; i < items.length; i += batchSize) {
-			const batch = items.slice(i, i + batchSize);
+				const batchResults = await Promise.allSettled(batchPromises);
 
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
-
-				const input = this.getNodeParameter('text', itemIndex) as string;
-				const inputPrompt = new HumanMessage(input);
-
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					systemPromptTemplate?: string;
-				};
-
-				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-					`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-	{format_instructions}`,
-				);
-
-				const messages = [
-					await systemPromptTemplate.format({
-						format_instructions: parser.getFormatInstructions(),
-					}),
-					inputPrompt,
-				];
-				const prompt = ChatPromptTemplate.fromMessages(messages);
-				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
-
-				return await chain.invoke(messages);
-			});
-			const batchResults = await Promise.allSettled(batchPromises);
-
-			batchResults.forEach((response, index) => {
-				if (response.status === 'rejected') {
-					const error = response.reason as Error;
-					if (this.continueOnFail()) {
-						resultData.push({
-							json: { error: response.reason as string },
-							pairedItem: { item: i + index },
-						});
-						return;
-					} else {
-						throw new NodeOperationError(this.getNode(), error.message);
+				batchResults.forEach((response, index) => {
+					if (response.status === 'rejected') {
+						const error = response.reason as Error;
+						if (this.continueOnFail()) {
+							resultData.push({
+								json: { error: error.message },
+								pairedItem: { item: i + index },
+							});
+							return;
+						} else {
+							throw new NodeOperationError(this.getNode(), error.message);
+						}
 					}
-				}
-				const output = response.value;
-				resultData.push({ json: { output } });
-			});
+					const output = response.value;
+					resultData.push({ json: { output } });
+				});
 
-			// Add delay between batches if not the last batch
-			if (i + batchSize < items.length && delayBetweenBatches > 0) {
-				await sleep(delayBetweenBatches);
+				// Add delay between batches if not the last batch
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
+				}
+			}
+		} else {
+			// Sequential processing
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const output = await processItem(this, itemIndex, llm, parser);
+					resultData.push({ json: { output } });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						continue;
+					}
+
+					throw error;
+				}
 			}
 		}
 

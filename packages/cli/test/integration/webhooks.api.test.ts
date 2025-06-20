@@ -91,7 +91,7 @@ describe('Webhook API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 		await createWorkflow(workflowData, user);
 		await initActiveWorkflowManager();
 	});

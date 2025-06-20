@@ -11,20 +11,19 @@ import type {
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
-	CREDENTIAL_DOCS_EXPERIMENT,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
-import { addCredentialTranslation } from '@/plugins/i18n';
+import { addCredentialTranslation } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import Banner from '../Banner.vue';
@@ -32,9 +31,6 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
-import CredentialDocs from './CredentialDocs.vue';
-import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
-import { usePostHog } from '@/stores/posthog.store';
 import { useAssistantStore } from '@/stores/assistant.store';
 import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
@@ -186,13 +182,6 @@ const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
 });
 
-const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
-const showCredentialDocs = computed(
-	() =>
-		usePostHog().getVariant(CREDENTIAL_DOCS_EXPERIMENT.name) ===
-			CREDENTIAL_DOCS_EXPERIMENT.variant && docs.value,
-);
-
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -304,10 +293,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="credentialPermissions.update">
-				<n8n-notice
-					v-if="documentationUrl && credentialProperties.length && !showCredentialDocs"
-					theme="warning"
-				>
+				<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
 						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -395,14 +381,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</template>
 			</EnterpriseEdition>
 		</div>
-		<CredentialDocs
-			v-if="showCredentialDocs"
-			:credential-type="credentialType"
-			:documentation-url="documentationUrl"
-			:docs="docs"
-			:class="$style.docs"
-		>
-		</CredentialDocs>
 	</div>
 </template>
 
@@ -414,18 +392,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
-
-	&:has(+ .docs) {
-		padding-right: 320px;
-	}
-}
-
-.docs {
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	top: 0;
-	max-width: 320px;
 }
 
 .googleReconnectLabel {

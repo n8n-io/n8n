@@ -1,13 +1,14 @@
+import { Logger } from '@n8n/backend-common';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, Logger, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { ModuleRegistry } from '@/modules/module-registry';
@@ -16,6 +17,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { isWorkflowIdValid } from '@/utils';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+// eslint-disable-next-line import/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
@@ -42,6 +44,15 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		if (runData.status === 'waiting') return;
 
 		const { executionId, workflowData: workflow } = this;
+
+		if (runData.data.startData) {
+			const originalDestination = runData.data.startData.originalDestinationNode;
+			if (originalDestination) {
+				runData.data.startData.destinationNode = originalDestination;
+				runData.data.startData.originalDestinationNode = undefined;
+			}
+		}
+
 		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 	});
 }
@@ -50,11 +61,27 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-pre-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-post-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 }
 

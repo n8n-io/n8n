@@ -30,7 +30,6 @@ import {
 import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
-import { type LogEntry } from '@/components/RunDataAi/utils';
 
 export const mockNode = ({
 	id = uuid(),
@@ -177,6 +176,7 @@ export function createTestWorkflow({
 	nodes = [],
 	connections = {},
 	active = false,
+	isArchived = false,
 	settings = {
 		timezone: 'DEFAULT',
 		executionOrder: 'v1',
@@ -192,6 +192,7 @@ export function createTestWorkflow({
 		nodes,
 		connections,
 		active,
+		isArchived,
 		settings,
 		versionId: '1',
 		meta: {},
@@ -219,6 +220,7 @@ export function createMockEnterpriseSettings(
 		sharing: false,
 		ldap: false,
 		saml: false,
+		oidc: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: false,
@@ -250,19 +252,6 @@ export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskD
 		executionStatus: 'success',
 		data: { main: [[{ json: {} }]] },
 		...partialData,
-	};
-}
-
-export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
-	return {
-		node: createTestNode(),
-		runIndex: 0,
-		runData: createTestTaskData({}),
-		id: uuid(),
-		children: [],
-		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
-		depth: 0,
-		...data,
 	};
 }
 

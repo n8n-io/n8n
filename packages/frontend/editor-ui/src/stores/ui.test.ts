@@ -2,9 +2,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import * as cloudPlanApi from '@/api/cloudPlans';
+import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { defaultSettings } from '../__tests__/defaults';
 import {
 	getTrialExpiredUserResponse,
@@ -12,14 +12,13 @@ import {
 	getUserCloudInfo,
 	getNotTrialingUserResponse,
 } from './__tests__/utils/cloudStoreUtils';
-import type { IRole } from '@/Interface';
-import { ROLE } from '@/constants';
+import { ROLE, type Role } from '@n8n/api-types';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
-function setUser(role: IRole) {
+function setUser(role: Role) {
 	useUsersStore().addUsers([
 		{
 			id: '1',
@@ -71,34 +70,24 @@ describe('UI store', () => {
 	});
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				enterprise: {
-					showNonProdBanner: true,
-				},
-			}),
-		);
+		uiStore.initialize({
+			banners: ['NON_PRODUCTION_LICENSE'],
+		});
 		expect(uiStore.bannerStack).toContain('NON_PRODUCTION_LICENSE');
 	});
 
 	it("should add V1 banner to stack if it's not dismissed", () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				versionCli: '1.0.0',
-			}),
-		);
+		uiStore.initialize({
+			banners: ['V1'],
+		});
 		expect(uiStore.bannerStack).toContain('V1');
 	});
 
 	it("should not add V1 banner to stack if it's dismissed", () => {
-		settingsStore.setSettings(
-			merge({}, defaultSettings, {
-				versionCli: '1.0.0',
-				banners: {
-					dismissed: ['V1'],
-				},
-			}),
-		);
+		uiStore.initialize({
+			banners: [],
+		});
+
 		expect(uiStore.bannerStack).not.toContain('V1');
 	});
 

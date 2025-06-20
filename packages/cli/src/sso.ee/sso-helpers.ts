@@ -1,8 +1,7 @@
-import type { AuthProviderType } from '@n8n/db';
+import { SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 /**
  * Only one authentication method can be active at a time. This function sets
@@ -34,6 +33,10 @@ export function isSamlCurrentAuthenticationMethod(): boolean {
 
 export function isLdapCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'ldap';
+}
+
+export function isOidcCurrentAuthenticationMethod(): boolean {
+	return getCurrentAuthenticationMethod() === 'oidc';
 }
 
 export function isEmailCurrentAuthenticationMethod(): boolean {

@@ -318,7 +318,6 @@ describe('LoadNodesAndCredentials', () => {
 				group: ['input'],
 				inputs: [],
 				outputs: ['ai_tool'],
-				usableAsTool: true,
 				properties: [
 					{
 						default: 'A test node',
@@ -326,7 +325,6 @@ describe('LoadNodesAndCredentials', () => {
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 						displayName: 'Description',
 						name: 'toolDescription',
-						placeholder: 'e.g. A test node',
 						required: true,
 						type: 'string',
 						typeOptions: {
@@ -371,7 +369,6 @@ describe('LoadNodesAndCredentials', () => {
 				inputs: [],
 				outputs: ['ai_tool'],
 				description: 'A test node',
-				usableAsTool: true,
 				properties: [
 					{
 						displayName: 'Description',
@@ -382,7 +379,6 @@ describe('LoadNodesAndCredentials', () => {
 						typeOptions: { rows: 2 },
 						description:
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-						placeholder: 'e.g. A test node',
 					},
 				],
 				codex: {

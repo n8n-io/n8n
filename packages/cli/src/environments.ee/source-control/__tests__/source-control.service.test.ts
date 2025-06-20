@@ -3,17 +3,18 @@ import type { Variables } from '@n8n/db';
 import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
 import type { TagEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
+import type { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import type { FolderRepository } from '@/databases/repositories/folder.repository';
-import type { TagRepository } from '@/databases/repositories/tag.repository';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlImportService } from '../source-control-import.service.ee';
-import type { ExportableCredential } from '../types/exportable-credential';
+import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 describe('SourceControlService', () => {
@@ -141,6 +142,7 @@ describe('SourceControlService', () => {
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
 			const user = mock<User>();
+			user.role = 'global:admin';
 
 			// Define a credential that does only exist locally.
 			// Pulling this would delete it so it should be marked as a conflict.
@@ -155,7 +157,7 @@ describe('SourceControlService', () => {
 			// Pushing this is conflict free.
 			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
 			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
-				mock<ExportableCredential & { filename: string }>(),
+				mock<StatusExportableCredential>(),
 			]);
 
 			// Define a variable that does only exist locally.
@@ -241,6 +243,21 @@ describe('SourceControlService', () => {
 
 			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
+		});
+
+		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:member';
+
+			// ACT
+			await expect(
+				sourceControlService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				}),
+			).rejects.toThrowError(ForbiddenError);
 		});
 	});
 });

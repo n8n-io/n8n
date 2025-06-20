@@ -1,27 +1,28 @@
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import convict from 'convict';
 import { flatten } from 'flat';
 import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
-import { Logger } from 'n8n-core';
 import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { inTest, inE2ETests } from '@/constants';
+import { inE2ETests } from '@/constants';
+
+const globalConfig = Container.get(GlobalConfig);
 
 if (inE2ETests) {
-	// Skip loading config from env variables in end-to-end tests
-	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
-	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	globalConfig.diagnostics.enabled = false;
+	globalConfig.publicApi.disabled = true;
 	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
 	process.env.N8N_PERSONALIZATION_ENABLED = 'false';
 	process.env.N8N_AI_ENABLED = 'true';
 } else if (inTest) {
-	process.env.N8N_LOG_LEVEL = 'silent';
-	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	globalConfig.logging.level = 'silent';
+	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
-	process.env.N8N_SECURE_COOKIE = 'false';
+	globalConfig.auth.cookie.secure = false;
 	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
 }
 
@@ -33,7 +34,6 @@ const config = convict(schema, { args: [] });
 config.getEnv = config.get;
 
 const logger = Container.get(Logger);
-const globalConfig = Container.get(GlobalConfig);
 
 // Load overwrites when not in tests
 if (!inE2ETests && !inTest) {

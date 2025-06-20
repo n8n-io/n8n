@@ -403,6 +403,7 @@ export const baseConfig = tseslint.config(
 			'unicorn/no-useless-promise-resolve-reject': 'error',
 
 			'lodash/path-style': ['error', 'as-needed'],
+			'lodash/import-scope': ['error', 'method'],
 		},
 	},
 	{
@@ -437,7 +438,6 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/no-prototype-builtins': 'off',
 			'@typescript-eslint/array-type': 'off',
 			'id-denylist': 'off',
-			'import/no-cycle': 'off',
 			'import/no-default-export': 'off',
 			'import/no-extraneous-dependencies': 'off',
 			'n8n-local-rules/no-uncaught-json-parse': 'off',

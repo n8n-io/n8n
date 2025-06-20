@@ -15,7 +15,7 @@ process.env.N8N_RUNNERS_ENABLED = 'false';
 // PD denotes that the node has pinned data
 
 import { mock } from 'jest-mock-extended';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
 	IConnection,
@@ -33,6 +33,7 @@ import type {
 	WorkflowTestData,
 	RelatedExecution,
 	IExecuteFunctions,
+	IDataObject,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -820,14 +821,32 @@ describe('WorkflowExecute', () => {
 				.spyOn(workflowExecute, 'processRunExecutionData')
 				.mockImplementationOnce(jest.fn());
 
+			const expectedToolExecutor: INode = {
+				name: 'PartialExecutionToolExecutor',
+				disabled: false,
+				type: '@n8n/n8n-nodes-langchain.toolExecutor',
+				parameters: {
+					query: {},
+					toolName: '',
+				},
+				id: agentNode.id,
+				typeVersion: 0,
+				position: [0, 0],
+			};
+
 			const expectedTool = {
 				...tool,
 				rewireOutputLogTo: NodeConnectionTypes.AiTool,
 			};
 
 			const expectedGraph = new DirectedGraph()
-				.addNodes(trigger, expectedTool)
-				.addConnections({ from: trigger, to: expectedTool })
+				.addNodes(trigger, expectedToolExecutor, expectedTool)
+				.addConnections({ from: trigger, to: expectedToolExecutor })
+				.addConnections({
+					from: expectedTool,
+					to: expectedToolExecutor,
+					type: NodeConnectionTypes.AiTool,
+				})
 				.toWorkflow({ ...workflow });
 
 			// ACT
@@ -1964,75 +1983,113 @@ describe('WorkflowExecute', () => {
 
 	describe('customOperations', () => {
 		const nodeTypes = mock<INodeTypes>();
-		const testNode = mock<INode>();
 
-		const workflow = new Workflow({
-			nodeTypes,
-			nodes: [testNode],
-			connections: {},
-			active: false,
-		});
-
-		const executionData = mock<IExecuteData>({
-			node: { parameters: { resource: 'test', operation: 'test' } },
-			data: { main: [[{ json: {} }]] },
-		});
 		const runExecutionData = mock<IRunExecutionData>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
-		test('should execute customOperations', async () => {
-			const nodeType = mock<INodeType>({
-				description: {
-					properties: [],
-				},
-				execute: undefined,
-				customOperations: {
-					test: {
-						async test(this: IExecuteFunctions) {
-							return [[{ json: { customOperationsRun: true } }]];
+		const testCases: Array<{
+			title: string;
+			parameters?: INode['parameters'];
+			forceCustomOperation?: INode['forceCustomOperation'];
+			expectedOutput: IDataObject | undefined;
+		}> = [
+			{
+				title: 'only parameters are set',
+				parameters: { resource: 'test', operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: [[{ json: { customOperationsRun: 1 } }]], hints: [] },
+			},
+			{
+				title: 'both parameters and forceCustomOperation are set',
+				parameters: { resource: 'test', operation: 'test1' },
+				forceCustomOperation: { resource: 'test', operation: 'test2' },
+				expectedOutput: { data: [[{ json: { customOperationsRun: 2 } }]], hints: [] },
+			},
+			{
+				title: 'only forceCustomOperation is set',
+				parameters: undefined,
+				forceCustomOperation: { resource: 'test', operation: 'test1' },
+				expectedOutput: { data: [[{ json: { customOperationsRun: 1 } }]], hints: [] },
+			},
+			{
+				title: 'neither option is set',
+				parameters: undefined,
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'non relevant parameters are set',
+				parameters: { test: 1 },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'only parameter.resource is set',
+				parameters: { resource: 'test' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'only parameter.operation is set',
+				parameters: { operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'unknown parameter.resource is set',
+				parameters: { resource: 'unknown', operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'unknown parameter.operation is set',
+				parameters: { resource: 'test', operation: 'unknown' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined, hints: [] },
+			},
+		];
+		testCases.forEach(({ title, parameters, forceCustomOperation, expectedOutput }) => {
+			test(`should execute customOperations - ${title}`, async () => {
+				const testNode = mock<INode>({
+					name: 'nodeName',
+					parameters,
+					forceCustomOperation,
+				});
+
+				const workflow = new Workflow({
+					nodeTypes,
+					nodes: [testNode],
+					connections: {},
+					active: false,
+				});
+
+				const executionData: IExecuteData = {
+					node: testNode,
+					data: { main: [[{ json: {} }]] },
+					source: null,
+				};
+
+				const nodeType = mock<INodeType>({
+					description: {
+						properties: [],
+					},
+					execute: undefined,
+					customOperations: {
+						test: {
+							async test1(this: IExecuteFunctions) {
+								return [[{ json: { customOperationsRun: 1 } }]];
+							},
+							async test2(this: IExecuteFunctions) {
+								return [[{ json: { customOperationsRun: 2 } }]];
+							},
 						},
 					},
-				},
-			});
+				});
 
-			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const runPromise = workflowExecute.runNode(
-				workflow,
-				executionData,
-				runExecutionData,
-				0,
-				additionalData,
-				'manual',
-			);
-
-			const result = await runPromise;
-
-			expect(result).toEqual({ data: [[{ json: { customOperationsRun: true } }]], hints: [] });
-		});
-
-		test('should throw error if customOperation and execute both defined', async () => {
-			const nodeType = mock<INodeType>({
-				description: {
-					properties: [],
-				},
-				async execute(this: IExecuteFunctions) {
-					return [];
-				},
-				customOperations: {
-					test: {
-						async test(this: IExecuteFunctions) {
-							return [];
-						},
-					},
-				},
-			});
-
-			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
-
-			try {
-				await workflowExecute.runNode(
+				const runPromise = workflowExecute.runNode(
 					workflow,
 					executionData,
 					runExecutionData,
@@ -2040,11 +2097,11 @@ describe('WorkflowExecute', () => {
 					additionalData,
 					'manual',
 				);
-			} catch (error) {
-				expect(error.message).toBe(
-					'Node type cannot have both customOperations and execute defined',
-				);
-			}
+
+				const result = await runPromise;
+
+				expect(result).toEqual(expectedOutput);
+			});
 		});
 	});
 });

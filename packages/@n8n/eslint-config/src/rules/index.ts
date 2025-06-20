@@ -5,7 +5,6 @@ import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause.j
 import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
-import { DangerouslyUseHtmlStringMissingRule } from './dangerously-use-html-string-missing.js';
 import { NoPlainErrorsRule } from './no-plain-errors.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
@@ -21,7 +20,6 @@ export const rules = {
 	'no-useless-catch-throw': NoUselessCatchThrowRule,
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
-	'dangerously-use-html-string-missing': DangerouslyUseHtmlStringMissingRule,
 	'no-plain-errors': NoPlainErrorsRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,

@@ -1,5 +1,5 @@
-import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
-import { GLOBAL_OWNER_SCOPES, GLOBAL_MEMBER_SCOPES, GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
+import type { AuthPrincipal } from '@n8n/permissions';
+import { GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -25,14 +25,8 @@ import { lowerCaser, objectRetriever } from '../utils/transformers';
 import { NoUrl } from '../utils/validators/no-url.validator';
 import { NoXss } from '../utils/validators/no-xss.validator';
 
-const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': GLOBAL_OWNER_SCOPES,
-	'global:member': GLOBAL_MEMBER_SCOPES,
-	'global:admin': GLOBAL_ADMIN_SCOPES,
-};
-
 @Entity()
-export class User extends WithTimestamps implements IUser {
+export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -102,6 +96,12 @@ export class User extends WithTimestamps implements IUser {
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
 
+	@Column({ type: String, nullable: true })
+	mfaSecret?: string | null;
+
+	@Column({ type: 'simple-array', default: '' })
+	mfaRecoveryCodes: string[];
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */
@@ -113,33 +113,8 @@ export class User extends WithTimestamps implements IUser {
 		this.isPending = this.password === null && this.role !== 'global:owner';
 	}
 
-	/**
-	 * Whether the user is instance owner
-	 */
-	isOwner: boolean;
-
-	@AfterLoad()
-	computeIsOwner(): void {
-		this.isOwner = this.role === 'global:owner';
-	}
-
-	get globalScopes() {
-		return STATIC_SCOPE_MAP[this.role] ?? [];
-	}
-
-	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {
-		return hasScope(
-			scope,
-			{
-				global: this.globalScopes,
-			},
-			undefined,
-			scopeOptions,
-		);
-	}
-
 	toJSON() {
-		const { password, ...rest } = this;
+		const { password, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
 	}
 

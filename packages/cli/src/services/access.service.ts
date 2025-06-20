@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**

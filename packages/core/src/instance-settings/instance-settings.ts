@@ -1,3 +1,6 @@
+import { inTest, Logger } from '@n8n/backend-common';
+import { InstanceSettingsConfig } from '@n8n/config';
+import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
@@ -6,9 +9,6 @@ import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
 
-import { Logger } from '@/logging/logger';
-
-import { InstanceSettingsConfig } from './instance-settings-config';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -22,12 +22,6 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
-
-type InstanceRole = 'unset' | 'leader' | 'follower';
-
-export type InstanceType = 'main' | 'webhook' | 'worker';
-
-const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
 export class InstanceSettings {
@@ -63,10 +57,8 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2];
-		this.instanceType = ['webhook', 'worker'].includes(command)
-			? (command as InstanceType)
-			: 'main';
+		const command = process.argv[2] as InstanceType;
+		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${nanoid()}`;
 		this.settings = this.loadOrCreate();
@@ -189,7 +181,7 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) this.logger.info(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useCssModule } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
@@ -29,9 +29,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
-const isNodesAsToolNode = computed(
-	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
-);
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -51,7 +49,7 @@ const isExecuteNodeVisible = computed(() => {
 		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
-		(!render.value.options.configuration || isNodesAsToolNode.value)
+		(!render.value.options.configuration || isToolNode.value)
 	);
 });
 

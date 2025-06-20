@@ -1,0 +1,31 @@
+{
+  "name": "@n8n/backend-test-utils",
+  "version": "0.2.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/backend-common": "workspace:^",
+    "jest-mock-extended": "^3.0.4",
+    "reflect-metadata": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}

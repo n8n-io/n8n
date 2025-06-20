@@ -37,10 +37,10 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(false, options);
+		handleExecutionFinishedWithOther(false);
 	}
 
-	setRunExecutionData(execution, runExecutionData, false);
+	setRunExecutionData(execution, runExecutionData);
 }

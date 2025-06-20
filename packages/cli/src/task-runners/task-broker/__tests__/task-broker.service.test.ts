@@ -1,7 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { Time } from '@/constants';
@@ -18,7 +18,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock(), mock());
+		taskBroker = new TaskBroker(mock(), mock(), mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -724,7 +724,7 @@ describe('TaskBroker', () => {
 		beforeAll(() => {
 			jest.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 		});
 
 		afterAll(() => {
@@ -844,7 +844,7 @@ describe('TaskBroker', () => {
 
 		it('[external mode] on timeout, we should instruct the runner to cancel and send error to requester', async () => {
 			const config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'external' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 
 			jest.spyOn(global, 'clearTimeout');
 
@@ -895,7 +895,7 @@ describe('TaskBroker', () => {
 			const messageCallback = jest.fn();
 			const loggerMock = mock<Logger>();
 
-			taskBroker = new TaskBroker(loggerMock, mock(), mock());
+			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
 			taskBroker.registerRunner(runner, messageCallback);
 
 			const offer: TaskOffer = {

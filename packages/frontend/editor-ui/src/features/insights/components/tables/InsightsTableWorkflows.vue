@@ -1,5 +1,5 @@
 <script lang="ts" setup="">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 import {
 	transformInsightsAverageRunTime,
@@ -89,7 +89,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 
 const sortBy = defineModel<Array<{ id: string; desc: boolean }>>('sortBy');
 const currentPage = ref(0);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(25);
 
 const emit = defineEmits<{
 	'update:options': [
@@ -135,7 +135,6 @@ watch(sortBy, (newValue) => {
 			:items="rows"
 			:headers="headers"
 			:items-length="data.count"
-			:loading="loading"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
@@ -185,7 +184,6 @@ watch(sortBy, (newValue) => {
 	display: inline-flex;
 	height: 100%;
 	align-items: center;
-	text-decoration: none;
 	color: var(--color-text-base);
 	text-decoration: underline;
 	max-width: 100%;

@@ -3,8 +3,6 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 
 export default defineConfig(frontendConfig, {
 	rules: {
-		'n8n-local-rules/dangerously-use-html-string-missing': 'error',
-
 		// TODO: Remove these
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',

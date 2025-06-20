@@ -11,8 +11,9 @@ import type {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 } from '@/Interface';
-import { useRootStore } from '@/stores/root.store';
-import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { unflattenExecutionData } from '@/utils/executionUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -70,7 +71,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const startedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) =>
-		new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+		new Date(b.startedAt ?? b.createdAt).getTime() - new Date(a.startedAt ?? a.createdAt).getTime();
 
 	/**
 	 * Prioritize `running` over `new` executions, then sort by start timestamp.
@@ -268,7 +269,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (sendData.deleteBefore) {
 			const deleteBefore = new Date(sendData.deleteBefore);
 			allExecutions.value.forEach((execution) => {
-				if (new Date(execution.startedAt) < deleteBefore) {
+				if (new Date(execution.startedAt ?? execution.createdAt) < deleteBefore) {
 					removeExecution(execution.id);
 				}
 			});

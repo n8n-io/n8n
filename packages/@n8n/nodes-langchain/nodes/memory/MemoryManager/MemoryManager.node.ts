@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import type { MessageContent, BaseMessage } from '@langchain/core/messages';
+import { AIMessage, SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -17,24 +18,31 @@ interface MessageRecord {
 	hideFromUI: boolean;
 }
 
-function simplifyMessages(messages: BaseMessage[]) {
-	const chunkedMessages = [];
-	for (let i = 0; i < messages.length; i += 2) {
-		chunkedMessages.push([messages[i], messages[i + 1]]);
+export function simplifyMessages(messages: BaseMessage[]): Array<Record<string, MessageContent>> {
+	if (messages.length === 0) return [];
+
+	const result: Array<Record<string, MessageContent>> = [];
+	let index = 0;
+
+	while (index < messages.length) {
+		const currentGroup: Record<string, MessageContent> = {};
+
+		do {
+			const message = messages[index];
+			const messageType = message.getType();
+
+			if (messageType in currentGroup) {
+				break;
+			}
+
+			currentGroup[messageType] = message.content;
+			index++;
+		} while (index < messages.length);
+
+		result.push(currentGroup);
 	}
 
-	const transformedMessages = chunkedMessages.map((exchange) => {
-		const simplified = {
-			[exchange[0]._getType()]: exchange[0].content,
-		};
-
-		if (exchange[1]) {
-			simplified[exchange[1]._getType()] = exchange[1].content;
-		}
-
-		return simplified;
-	});
-	return transformedMessages;
+	return result;
 }
 
 const prepareOutputSetup = (ctx: IExecuteFunctions, version: number, memory: BaseChatMemory) => {

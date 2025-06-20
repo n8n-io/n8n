@@ -4,7 +4,7 @@ import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../compo
 import { META_KEY } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
-import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 const nodeCreator = new NodeCreator();
 
@@ -49,18 +49,13 @@ export class WorkflowPage extends BasePage {
 				.should('have.length.greaterThan', 0)
 				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			if (isCanvasV2()) {
-				if (type === 'input') {
-					return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
-				}
-				if (type === 'output') {
-					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
-				}
-				if (type === 'plus') {
-					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"] [data-test-id="canvas-handle-plus"]`;
-				}
+			if (type === 'input') {
+				return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
 			}
-			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
+			if (type === 'output') {
+				return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
+			}
+			return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"] [data-test-id="canvas-handle-plus"]`;
 		},
 		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
@@ -69,47 +64,29 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('output', nodeName, index));
 		},
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
-			return cy.ifCanvasVersion(
-				() => cy.get(this.getters.getEndpointSelector('plus', nodeName, index)),
-				() =>
-					cy
-						.get(
-							`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
-						)
-						.eq(index),
-			);
+			return cy
+				.get(
+					`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+				)
+				.eq(index);
 		},
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
+		isWorkflowDeactivated: () =>
+			this.getters.activatorSwitch().should('not.have.class', 'is-checked'),
 		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
-		nodeViewRoot: () =>
-			cy.ifCanvasVersion(
-				() => cy.getByTestId('node-view-root'),
-				() => this.getters.nodeView(),
-			),
+		nodeViewRoot: () => this.getters.nodeView(),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
-		nodeConnections: () =>
-			cy.ifCanvasVersion(
-				() => cy.get('.jtk-connector'),
-				() => cy.getByTestId('edge'),
-			),
+		nodeConnections: () => cy.getByTestId('edge'),
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
-		disabledNodes: () =>
-			cy.ifCanvasVersion(
-				() => cy.get('.node-box.disabled'),
-				() => cy.get('[data-canvas-node-render-type][class*="disabled"]'),
-			),
-		selectedNodes: () =>
-			cy.ifCanvasVersion(
-				() => this.getters.canvasNodes().filter('.jtk-drag-selected'),
-				() => this.getters.canvasNodes().parent().filter('.selected'),
-			),
+		disabledNodes: () => cy.get('[data-canvas-node-render-type][class*="disabled"]'),
+		selectedNodes: () => this.getters.canvasNodes().parent().filter('.selected'),
 		// Workflow menu items
 		workflowMenuItemDuplicate: () => cy.getByTestId('workflow-menu-item-duplicate'),
 		workflowMenuItemDownload: () => cy.getByTestId('workflow-menu-item-download'),
@@ -117,6 +94,8 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemArchive: () => cy.getByTestId('workflow-menu-item-archive'),
+		workflowMenuItemUnarchive: () => cy.getByTestId('workflow-menu-item-unarchive'),
 		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
@@ -136,24 +115,13 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
+		archivedTag: () => cy.getByTestId('workflow-archived-tag'),
 		shareButton: () => cy.getByTestId('workflow-share-button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
-		nodeViewBackground: () =>
-			cy.ifCanvasVersion(
-				() => cy.getByTestId('node-view-background'),
-				() => cy.getByTestId('canvas'),
-			),
-		nodeView: () =>
-			cy.ifCanvasVersion(
-				() => cy.getByTestId('node-view'),
-				() => cy.get('[data-test-id="canvas-wrapper"]'),
-			),
-		canvasViewport: () =>
-			cy.ifCanvasVersion(
-				() => cy.getByTestId('node-view'),
-				() => cy.get('.vue-flow__transformationpane.vue-flow__container'),
-			),
+		nodeViewBackground: () => cy.getByTestId('canvas'),
+		nodeView: () => cy.get('[data-test-id="canvas-wrapper"]'),
+		canvasViewport: () => cy.get('.vue-flow__transformationpane.vue-flow__container'),
 		inlineExpressionEditorInput: () =>
 			cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
@@ -175,26 +143,12 @@ export class WorkflowPage extends BasePage {
 		ndvParameters: () => cy.getByTestId('parameter-item'),
 		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
-			cy.ifCanvasVersion(
-				() =>
-					cy.get(
-						`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
-					),
-				() =>
-					cy.get(
-						`[data-test-id="edge"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
-					),
+			cy.get(
+				`[data-test-id="edge"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
 			),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
-			cy.ifCanvasVersion(
-				() =>
-					cy.get(
-						`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
-					),
-				() =>
-					cy.get(
-						`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
-					),
+			cy.get(
+				`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
 			),
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
@@ -203,17 +157,15 @@ export class WorkflowPage extends BasePage {
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 		getNodeLeftPosition: (element: JQuery<HTMLElement>) => {
-			if (isCanvasV2()) {
-				return parseFloat(element.parent().css('transform').split(',')[4]);
-			}
-			return parseFloat(element.css('left'));
+			return parseFloat(element.parent().css('transform').split(',')[4]);
 		},
 		getNodeTopPosition: (element: JQuery<HTMLElement>) => {
-			if (isCanvasV2()) {
-				return parseFloat(element.parent().css('transform').split(',')[5]);
-			}
-			return parseFloat(element.css('top'));
+			return parseFloat(element.parent().css('transform').split(',')[5]);
 		},
+		inputURLImportWorkflowFromURL: () => cy.getByTestId('workflow-url-import-input'),
+		cancelActionImportWorkflowFromURL: () => cy.getByTestId('cancel-workflow-import-url-button'),
+		confirmActionImportWorkflowFromURL: () => cy.getByTestId('confirm-workflow-import-url-button'),
+		confirmModal: () => cy.get('div[role=dialog][aria-modal=true]'),
 	};
 
 	actions = {
@@ -265,7 +217,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
-						cy.contains(action).click();
+						cy.get('[data-keyboard-nav-type="action"]').contains(action).click();
 					} else {
 						// Select the first action
 						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
@@ -281,23 +233,7 @@ export class WorkflowPage extends BasePage {
 			nodeTypeName?: string,
 			{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
 		) => {
-			cy.ifCanvasVersion(
-				() => {
-					const target = nodeTypeName
-						? this.getters.canvasNodeByName(nodeTypeName)
-						: this.getters.nodeViewBackground();
-
-					if (method === 'right-click') {
-						target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
-					} else {
-						target.realHover();
-						target.find('[data-test-id="overflow-node-button"]').click({ force: true });
-					}
-				},
-				() => {
-					openContextMenu(nodeTypeName, { method, anchor });
-				},
-			);
+			openContextMenu(nodeTypeName, { method, anchor });
 		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
@@ -346,13 +282,7 @@ export class WorkflowPage extends BasePage {
 			clickContextMenuAction('select_all');
 		},
 		deselectAll: () => {
-			cy.ifCanvasVersion(
-				() => {
-					this.actions.openContextMenu();
-					clickContextMenuAction('deselect_all');
-				},
-				() => getCanvasPane().click('topLeft'),
-			);
+			getCanvasPane().click('topLeft');
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -389,7 +319,6 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{del}');
 		},
 		setWorkflowName: (name: string) => {
-			this.getters.workflowNameInput().should('be.disabled');
 			this.getters.workflowNameInput().parent().click();
 			this.getters.workflowNameInput().should('be.enabled');
 			this.getters.workflowNameInput().clear().type(name).type('{enter}');
@@ -491,10 +420,8 @@ export class WorkflowPage extends BasePage {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			const connectionsBetweenNodes = () =>
 				this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName);
-			cy.ifCanvasVersion(
-				() => connectionsBetweenNodes().find('.add'),
-				() => connectionsBetweenNodes().get('[data-test-id="add-connection-button"]'),
-			)
+			connectionsBetweenNodes()
+				.get('[data-test-id="add-connection-button"]')
 				.first()
 				.click({ force: true });
 
@@ -504,10 +431,8 @@ export class WorkflowPage extends BasePage {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			const connectionsBetweenNodes = () =>
 				this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName);
-			cy.ifCanvasVersion(
-				() => connectionsBetweenNodes().find('.delete'),
-				() => connectionsBetweenNodes().get('[data-test-id="delete-connection-button"]'),
-			)
+			connectionsBetweenNodes()
+				.get('[data-test-id="delete-connection-button"]')
 				.first()
 				.click({ force: true });
 		},
@@ -550,6 +475,10 @@ export class WorkflowPage extends BasePage {
 				left: +$el[0].style.left.replace('px', ''),
 				top: +$el[0].style.top.replace('px', ''),
 			}));
+		},
+		acceptConfirmModal: () => {
+			this.getters.confirmModal().should('be.visible');
+			cy.get('button.btn--confirm').should('be.visible').click();
 		},
 	};
 }

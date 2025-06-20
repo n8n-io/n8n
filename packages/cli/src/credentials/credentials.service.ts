@@ -1,8 +1,16 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
-import { CredentialsEntity, SharedCredentials } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
@@ -10,7 +18,7 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
-import { CredentialDataError, Credentials, ErrorReporter, Logger } from 'n8n-core';
+import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -22,11 +30,6 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -35,6 +38,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
+// eslint-disable-next-line import/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
@@ -80,7 +84,7 @@ export class CredentialsService {
 			onlySharedWithMe?: boolean;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list');
+		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
 		const projectId =
 			typeof listQueryOptions.filter?.projectId === 'string'
@@ -256,7 +260,7 @@ export class CredentialsService {
 		// If the workflow is owned by a personal project and the owner of the
 		// project has global read permissions it can use all personal credentials.
 		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -270,7 +274,7 @@ export class CredentialsService {
 		// read permissions then all workflows in that project can use all
 		// credentials of all personal projects.
 		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -290,7 +294,7 @@ export class CredentialsService {
 	): Promise<SharedCredentials | null> {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		if (!user.hasGlobalScope(globalScopes, { mode: 'allOf' })) {
+		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
 				...where,
 				role: 'credential:owner',
@@ -384,6 +388,7 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
+		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
@@ -403,7 +408,8 @@ export class CredentialsService {
 
 		await this.externalHooks.run('credentials.create', [encryptedData]);
 
-		const result = await Db.transaction(async (transactionManager) => {
+		const { manager: dbManager } = this.credentialsRepository;
+		const result = await dbManager.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 			savedCredential.data = newCredential.data;

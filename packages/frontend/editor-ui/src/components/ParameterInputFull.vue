@@ -7,14 +7,14 @@ import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
+	isResourceLocatorValue,
 	type INodeProperties,
 	type IParameterLabel,
 	type NodeParameterValueType,
@@ -70,12 +70,12 @@ const forceShowExpression = ref(false);
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const node = computed(() => ndvStore.activeNode);
-const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, node.value));
+const activeNode = computed(() => ndvStore.activeNode);
+const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
-	if (!node.value || isResourceLocator.value) return false;
+	if (!activeNode.value || isResourceLocator.value) return false;
 
 	return fromAIOverride.value !== null;
 });
@@ -84,7 +84,9 @@ const isContentOverride = computed(
 	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
 
-const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
+const hint = computed(() =>
+	i18n.nodeText(activeNode.value?.type).hint(props.parameter, props.path),
+);
 
 const isResourceLocator = computed(
 	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
@@ -163,12 +165,12 @@ function onDrop(newParamValue: string) {
 		forceShowExpression.value = true;
 	}
 	setTimeout(() => {
-		if (node.value) {
+		if (activeNode.value) {
 			let parameterData;
 			if (isResourceLocator.value) {
 				if (!isResourceLocatorValue(props.value)) {
 					parameterData = {
-						node: node.value.name,
+						node: activeNode.value.name,
 						name: props.path,
 						value: { __rl: true, value: updatedValue, mode: '' },
 					};
@@ -183,20 +185,20 @@ function onDrop(newParamValue: string) {
 					}
 
 					parameterData = {
-						node: node.value.name,
+						node: activeNode.value.name,
 						name: props.path,
 						value: { __rl: true, value: updatedValue, mode: mode ? mode.name : '' },
 					};
 				} else {
 					parameterData = {
-						node: node.value.name,
+						node: activeNode.value.name,
 						name: props.path,
 						value: { __rl: true, value: updatedValue, mode: props.value?.mode },
 					};
 				}
 			} else {
 				parameterData = {
-					node: node.value.name,
+					node: activeNode.value.name,
 					name: props.path,
 					value: updatedValue,
 				};
@@ -216,7 +218,7 @@ function onDrop(newParamValue: string) {
 			}
 
 			ndvStore.setMappingTelemetry({
-				dest_node_type: node.value.type,
+				dest_node_type: activeNode.value.type,
 				dest_parameter: props.path,
 				dest_parameter_mode:
 					typeof prevValue === 'string' && prevValue.startsWith('=') ? 'expression' : 'fixed',
@@ -258,7 +260,7 @@ function applyOverride() {
 	telemetry.track(
 		'User turned on fromAI override',
 		{
-			nodeType: node.value?.type,
+			nodeType: activeNode.value?.type,
 			parameter: props.path,
 		},
 		{ withPostHog: true },
@@ -266,7 +268,7 @@ function applyOverride() {
 	updateFromAIOverrideValues(fromAIOverride.value, String(props.value));
 	const value = buildValueFromOverride(fromAIOverride.value, props, true);
 	valueChanged({
-		node: node.value?.name,
+		node: activeNode.value?.name,
 		name: props.path,
 		value,
 	});
@@ -278,13 +280,13 @@ function removeOverride(clearField = false) {
 	telemetry.track(
 		'User turned off fromAI override',
 		{
-			nodeType: node.value?.type,
+			nodeType: activeNode.value?.type,
 			parameter: props.path,
 		},
 		{ withPostHog: true },
 	);
 	valueChanged({
-		node: node.value?.name,
+		node: activeNode.value?.name,
 		name: props.path,
 		value: clearField
 			? props.parameter.default
@@ -301,8 +303,10 @@ function removeOverride(clearField = false) {
 	<N8nInputLabel
 		ref="inputLabel"
 		:class="[$style.wrapper]"
-		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+		:tooltip-text="
+			hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)
+		"
 		:show-tooltip="focused"
 		:show-options="menuExpanded || focused || forceShowExpression"
 		:options-position="optionsPosition"

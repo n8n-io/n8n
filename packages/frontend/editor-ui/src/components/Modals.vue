@@ -37,6 +37,8 @@ import {
 	MOVE_FOLDER_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -75,6 +77,7 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
+import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 </script>
 
@@ -122,6 +125,10 @@ import type { EventBus } from '@n8n/utils/event-bus';
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
+			<ImportWorkflowUrlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">
@@ -308,6 +315,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<FromAiParametersModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_EXTRACTION_NAME_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowExtractionNameModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

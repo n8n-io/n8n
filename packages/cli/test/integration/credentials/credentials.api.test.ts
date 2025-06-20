@@ -2,6 +2,9 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -12,9 +15,6 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -56,7 +56,7 @@ let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 
 	owner = await createOwner();
 	member = await createMember();
@@ -1260,12 +1260,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail with a 403 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
+	test('should fail with a 404 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
 		const response = await authMemberAgent
 			.patch('/credentials/123')
 			.send(randomCredentialPayload());
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('should fail with a 400 is credential is managed', async () => {
