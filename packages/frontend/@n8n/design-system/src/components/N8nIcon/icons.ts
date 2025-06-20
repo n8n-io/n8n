@@ -1580,25 +1580,6 @@ import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
 
 export const icons = {
-	// custom
-	triangle: IconLucideX,
-	json: IconLucideX,
-	binary: IconLucideX,
-	schema: IconLucideX,
-	html: IconLucideX,
-	text: IconLucideX,
-	'pop-out': IconLucideX,
-	'status-new': IconLucideX,
-	'status-completed': IconLucideX,
-	'status-canceled': IconLucideX,
-	'status-warning': IconLucideX,
-	'status-error': IconLucideX,
-	'status-waiting': IconLucideX,
-	'status-unknown': IconLucideX,
-	variable: IconLucideX,
-	refresh: IconLucideRefreshCw, // todo custom?
-	vault: IconLucideVault,
-
 	'caret-up': IconLucideChevronUp,
 	'caret-down': IconLucideChevronDown,
 	'caret-right': IconLucideChevronRight,
@@ -1615,7 +1596,7 @@ export const icons = {
 	folder: IconLucideFolder,
 	'minus-circle': IconLucideCircleMinus,
 	adjust: IconLucideContrast,
-	xmark: IconLucideX, // todo
+	refresh: IconLucideRefreshCw,
 
 	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
@@ -1745,7 +1726,7 @@ export const icons = {
 	'sign-in-alt': IconLucideLogIn,
 	'sign-out-alt': IconLucideLogOut,
 	'sliders-h': IconLucideSlidersHorizontal,
-	spinner: IconLucideX, // todo
+	// spinner: IconLucideX, // todo
 	'sticky-note': IconLucideStickyNote,
 	stop: IconLucideSquare,
 	stream: IconLucideAlignRight,
@@ -1771,7 +1752,6 @@ export const icons = {
 	'user-circle': IconLucideCircleUserRound,
 	'user-friends': IconLucideUserRound,
 	users: IconLucideUsers,
-	'vector-square': IconLucideX, // @todo
 	video: IconLucideVideo,
 	tree: IconLucideTreePine,
 	'user-lock': IconLucideUserLock,
@@ -1781,4 +1761,4 @@ export const icons = {
 	'paper-plane': IconLucideSend,
 } as const;
 
-export type IconName = keyof typeof icons;
+export type IconName = keyof typeof icons | keyof typeof customIcons;
