@@ -15,13 +15,9 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import type {
-	ITag,
-	IUpdateInformation,
-	IWorkflowDataCreate,
-	IWorkflowDataUpdate,
-	NotificationOptions,
-} from '@/Interface';
+import type { IUpdateInformation, NotificationOptions } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from './useToast';
@@ -134,7 +130,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 	async function getWorkflowDeactivationInfo(
 		workflowId: string,
-		request: IWorkflowDataUpdate,
+		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
@@ -187,7 +183,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			}
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataUpdate = await getWorkflowDataToSave();
+			const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
 			// This can happen if the user has another workflow in the browser history and navigates
 			// via the browser back button, encountering our warning dialog with the new route already set
 			if (workflowDataRequest.id !== currentWorkflow) {
@@ -306,14 +302,14 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
 			parentFolderId?: string;
-			data?: IWorkflowDataCreate;
+			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
 	): Promise<boolean> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataCreate = data || (await getWorkflowDataToSave());
+			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {

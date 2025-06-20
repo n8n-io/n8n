@@ -10,7 +10,7 @@ import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as promptsApi from '@n8n/rest-api-client/api/prompts';
-import { testHealthEndpoint } from '@/api/templates';
+import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,

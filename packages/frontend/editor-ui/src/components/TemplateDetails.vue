@@ -8,7 +8,7 @@ import type {
 	ITemplatesCollectionFull,
 	ITemplatesNode,
 	ITemplatesWorkflow,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/templates';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';

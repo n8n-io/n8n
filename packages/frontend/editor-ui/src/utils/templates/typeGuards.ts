@@ -2,7 +2,7 @@ import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesWorkflow,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/templates';
 
 export function isTemplatesWorkflow(
 	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null,

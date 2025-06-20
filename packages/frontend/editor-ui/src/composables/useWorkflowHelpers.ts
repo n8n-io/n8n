@@ -27,14 +27,13 @@ import type {
 	ICredentialsResponse,
 	INodeTypesMaxCount,
 	INodeUi,
-	ITag,
-	IWorkflowData,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	TargetItem,
 	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
@@ -510,7 +509,7 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
-		const data: IWorkflowData = {
+		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
@@ -762,7 +761,7 @@ export function useWorkflowHelpers() {
 		{ workflowId, active }: { workflowId: string; active?: boolean },
 		partialData = false,
 	) {
-		let data: IWorkflowDataUpdate = {};
+		let data: WorkflowDataUpdate = {};
 
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
@@ -796,7 +795,7 @@ export function useWorkflowHelpers() {
 	// Updates the position of all the nodes that the top-left node
 	// is at the given position
 	function updateNodePositions(
-		workflowData: IWorkflowData | IWorkflowDataUpdate,
+		workflowData: WorkflowData | WorkflowDataUpdate,
 		position: XYPosition,
 	): void {
 		if (workflowData.nodes === undefined) {
@@ -827,7 +826,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function removeForeignCredentialsFromWorkflow(
-		workflow: IWorkflowData | IWorkflowDataUpdate,
+		workflow: WorkflowData | WorkflowDataUpdate,
 		usableCredentials: ICredentialsResponse[],
 	): void {
 		(workflow.nodes ?? []).forEach((node: INode) => {

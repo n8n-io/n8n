@@ -17,7 +17,8 @@ import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
 
-import type { AddedNode, INodeUi, IWorkflowDataCreate, IWorkflowDb } from '@/Interface';
+import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
@@ -128,7 +129,7 @@ export function useWorkflowExtraction() {
 		selectionChildrenVariables: Map<string, string>,
 		startNodeName: string,
 		returnNodeName: string,
-	): IWorkflowDataCreate {
+	): WorkflowDataCreate {
 		const newConnections = Object.fromEntries(
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
 		);
@@ -253,7 +254,7 @@ export function useWorkflowExtraction() {
 		return [summedUp[0] / summedUp[2], summedUp[1] / summedUp[2]];
 	}
 
-	async function tryCreateWorkflow(workflowData: IWorkflowDataCreate): Promise<IWorkflowDb | null> {
+	async function tryCreateWorkflow(workflowData: WorkflowDataCreate): Promise<IWorkflowDb | null> {
 		try {
 			const createdWorkflow = await workflowsStore.createNewWorkflow(workflowData);
 

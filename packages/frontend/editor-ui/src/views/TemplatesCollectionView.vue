@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';

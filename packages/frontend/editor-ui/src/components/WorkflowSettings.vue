@@ -2,12 +2,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
-import type {
-	ITimeoutHMS,
-	IWorkflowDataUpdate,
-	IWorkflowSettings,
-	IWorkflowShortResponse,
-} from '@/Interface';
+import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -298,7 +294,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveSettings = async () => {
 	// Set that the active state should be changed
-	const data: IWorkflowDataUpdate & { settings: IWorkflowSettings } = {
+	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
 	};
 

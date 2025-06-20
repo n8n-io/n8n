@@ -14,7 +14,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { BaseFolderItem, BaseResource, ResourceParentFolder } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 

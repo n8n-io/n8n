@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { VIEWS } from '@/constants';
-import type { ITemplatesWorkflowFull } from '@/Interface';
+import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
 import { Telemetry } from '@/plugins/telemetry';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

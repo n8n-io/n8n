@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { ITemplatesNode } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 
 const props = withDefaults(

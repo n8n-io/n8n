@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import type { IWorkflowTemplateNode } from '@/Interface';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	keyFromCredentialTypeAndName,
 	replaceAllTemplateNodeCredentials,

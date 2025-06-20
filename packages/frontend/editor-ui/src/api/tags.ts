@@ -1,4 +1,4 @@
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
