@@ -37,19 +37,28 @@ export class SourceControlScopedService {
 		}
 	}
 
-	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[] | undefined> {
+	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[]> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return;
+			return await this.projectRepository.find({
+				relations: {
+					projectRelations: {
+						user: true,
+					},
+				},
+			});
 		}
 
 		return await this.projectRepository.find({
 			relations: {
-				projectRelations: true,
+				projectRelations: {
+					user: true,
+				},
 			},
 			select: {
 				id: true,
 				name: true,
+				type: true,
 			},
 			where: this.getAdminProjectsByContextFilter(context),
 		});

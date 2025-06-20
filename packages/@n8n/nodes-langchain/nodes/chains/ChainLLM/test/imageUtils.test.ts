@@ -189,7 +189,11 @@ describe('imageUtils', () => {
 
 		it('should handle image data differently for GoogleGenerativeAI models', async () => {
 			// Mock a Google model - using our mocked class
-			mockContext.getInputConnectionData.mockResolvedValue(new ChatGoogleGenerativeAI());
+			mockContext.getInputConnectionData.mockResolvedValue(
+				new ChatGoogleGenerativeAI({
+					model: 'gemini-1.0-pro',
+				}),
+			);
 
 			const message: MessageTemplate = {
 				type: 'HumanMessagePromptTemplate',
