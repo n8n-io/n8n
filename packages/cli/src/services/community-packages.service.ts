@@ -387,10 +387,12 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
+		options:
+			| { version?: string; checksum?: string }
+			| { installedPackage: InstalledPackages; version?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
+		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
