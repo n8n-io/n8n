@@ -103,7 +103,7 @@ describe('SettingsUsersView', () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 
 		const usersStore = mockedStore(useUsersStore);
-		usersStore.isBelowUserQuota = false;
+		usersStore.usersLimitNotReached = false;
 
 		it('disables the invite button', async () => {
 			const { getByTestId } = renderView({ pinia });

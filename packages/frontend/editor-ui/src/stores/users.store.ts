@@ -120,7 +120,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return getPersonalizedNodeTypes(answers);
 	});
 
-	const isBelowUserQuota = computed(
+	const usersLimitNotReached = computed(
 		(): boolean => userQuota.value === -1 || userQuota.value > allUsers.value.length,
 	);
 
@@ -427,10 +427,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const submitContactInfo = async (email: string) => {
 		try {
-			const usersStore = useUsersStore();
 			return await promptsApi.submitContactInfo(
 				rootStore.instanceId,
-				usersStore.currentUserId ?? '',
+				currentUserId.value ?? '',
 				email,
 			);
 		} catch (error) {
@@ -453,7 +452,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
-		isBelowUserQuota,
+		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,
 		initialize,
