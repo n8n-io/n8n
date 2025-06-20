@@ -40,7 +40,7 @@ import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
-import type { ResourceOwner } from './types/resource-owner';
+import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../variables/variables.service.ee';
 
@@ -99,7 +99,7 @@ export class SourceControlExportService {
 
 	private async writeExportableWorkflowsToExportFolder(
 		workflowsToBeExported: IWorkflowDb[],
-		owners: Record<string, ResourceOwner>,
+		owners: Record<string, RemoteResourceOwner>,
 	) {
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
@@ -133,7 +133,7 @@ export class SourceControlExportService {
 			});
 
 			// determine owner of each workflow to be exported
-			const owners: Record<string, ResourceOwner> = {};
+			const owners: Record<string, RemoteResourceOwner> = {};
 			sharedWorkflows.forEach((sharedWorkflow) => {
 				const project = sharedWorkflow.project;
 
@@ -154,6 +154,8 @@ export class SourceControlExportService {
 					}
 					owners[sharedWorkflow.workflowId] = {
 						type: 'personal',
+						projectId: project.id,
+						projectName: project.name,
 						personalEmail: ownerRelation.user.email,
 					};
 				} else if (project.type === 'team') {
@@ -256,12 +258,11 @@ export class SourceControlExportService {
 
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
-			const foldersToKeepUnchanged =
-				allowedProjects === undefined
-					? []
-					: existingFolders.folders.filter((folder) => {
-							return !allowedProjects.some((project) => project.id === folder.homeProjectId);
-						});
+			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
+				? existingFolders.folders
+				: existingFolders.folders.filter((folder) => {
+						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
+					});
 
 			const newFolders = foldersToKeepUnchanged.concat(
 				...folders.map((f) => ({
@@ -402,7 +403,7 @@ export class SourceControlExportService {
 					const { name, type, data, id } = sharing.credentials;
 					const credentials = new Credentials({ id, name }, type, data);
 
-					let owner: ResourceOwner | null = null;
+					let owner: RemoteResourceOwner | null = null;
 					if (sharing.project.type === 'personal') {
 						const ownerRelation = sharing.project.projectRelations.find(
 							(pr) => pr.role === 'project:personalOwner',
@@ -410,6 +411,8 @@ export class SourceControlExportService {
 						if (ownerRelation) {
 							owner = {
 								type: 'personal',
+								projectId: sharing.project.id,
+								projectName: sharing.project.name,
 								personalEmail: ownerRelation.user.email,
 							};
 						}

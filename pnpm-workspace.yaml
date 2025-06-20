@@ -37,12 +37,12 @@ catalog:
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.24.1
+  zod: 3.25.67
   zod-to-json-schema: 3.23.3
-  '@langchain/core': 0.3.48
-  '@langchain/openai': 0.5.0
-  '@langchain/anthropic': 0.3.21
-  '@langchain/community': 0.3.24
+  '@langchain/core': 0.3.59
+  '@langchain/openai': 0.5.13
+  '@langchain/anthropic': 0.3.22
+  '@langchain/community': 0.3.46
   '@n8n_io/ai-assistant-sdk': 1.14.0
 
 catalogs:

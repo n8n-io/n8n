@@ -33,84 +33,41 @@ describe('CanvasNodeDefault', () => {
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
 	});
 
-	describe('inputs', () => {
-		it('should adjust height css variable based on the number of inputs (1 input)', () => {
-			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
-							},
-						}),
+	describe('inputs and outputs', () => {
+		it.each([
+			[1, 1, '100px'],
+			[3, 1, '100px'],
+			[4, 1, '140px'],
+			[1, 1, '100px'],
+			[1, 3, '100px'],
+			[1, 4, '140px'],
+			[4, 4, '140px'],
+		])(
+			'should adjust height css variable based on the number of inputs and outputs (%i inputs, %i outputs)',
+			(inputCount, outputCount, expected) => {
+				const { getByText } = renderComponent({
+					global: {
+						provide: {
+							...createCanvasNodeProvide({
+								data: {
+									inputs: Array.from({ length: inputCount }).map(() => ({
+										type: NodeConnectionTypes.Main,
+										index: 0,
+									})),
+									outputs: Array.from({ length: outputCount }).map(() => ({
+										type: NodeConnectionTypes.Main,
+										index: 0,
+									})),
+								},
+							}),
+						},
 					},
-				},
-			});
+				});
 
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '1' }); // height calculation based on the number of inputs
-		});
-
-		it('should adjust height css variable based on the number of inputs (multiple inputs)', () => {
-			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								inputs: [
-									{ type: NodeConnectionTypes.Main, index: 0 },
-									{ type: NodeConnectionTypes.Main, index: 0 },
-									{ type: NodeConnectionTypes.Main, index: 0 },
-								],
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--canvas-node--main-input-count': '3' }); // height calculation based on the number of inputs
-		});
-	});
-
-	describe('outputs', () => {
-		it('should adjust height css variable based on the number of outputs (1 output)', () => {
-			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--canvas-node--main-output-count': '1' }); // height calculation based on the number of outputs
-		});
-
-		it('should adjust height css variable based on the number of outputs (multiple outputs)', () => {
-			const { getByText } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								outputs: [
-									{ type: NodeConnectionTypes.Main, index: 0 },
-									{ type: NodeConnectionTypes.Main, index: 0 },
-									{ type: NodeConnectionTypes.Main, index: 0 },
-								],
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--canvas-node--main-output-count': '3' }); // height calculation based on the number of outputs
-		});
+				const nodeElement = getByText('Test Node').closest('.node');
+				expect(nodeElement).toHaveStyle({ '--canvas-node--height': expected });
+			},
+		);
 	});
 
 	describe('selected', () => {
@@ -244,33 +201,67 @@ describe('CanvasNodeDefault', () => {
 		});
 
 		describe('inputs', () => {
-			it('should adjust width css variable based on the number of non-main inputs', () => {
-				const { getByText } = renderComponent({
-					global: {
-						provide: {
-							...createCanvasNodeProvide({
-								data: {
-									inputs: [
-										{ type: NodeConnectionTypes.Main, index: 0 },
-										{ type: NodeConnectionTypes.AiTool, index: 0 },
-										{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
-										{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
-									],
-									render: {
-										type: CanvasNodeRenderType.Default,
-										options: {
-											configurable: true,
+			it.each([
+				[
+					'1 required',
+					[{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true }],
+					'240px',
+				],
+				[
+					'2 required, 1 optional',
+					[
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
+					],
+					'240px',
+				],
+				[
+					'2 required, 2 optional',
+					[
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
+					],
+					'240px',
+				],
+				[
+					'1 required, 4 optional',
+					[
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true },
+						{ type: NodeConnectionTypes.AiTool, index: 0 },
+						{ type: NodeConnectionTypes.AiDocument, index: 0 },
+						{ type: NodeConnectionTypes.AiMemory, index: 0 },
+						{ type: NodeConnectionTypes.AiMemory, index: 0 },
+					],
+					'280px',
+				],
+			])(
+				'should adjust width css variable based on the number of non-main inputs (%s)',
+				(_, nonMainInputs, expected) => {
+					const { getByText } = renderComponent({
+						global: {
+							provide: {
+								...createCanvasNodeProvide({
+									data: {
+										inputs: [{ type: NodeConnectionTypes.Main, index: 0 }, ...nonMainInputs],
+										render: {
+											type: CanvasNodeRenderType.Default,
+											options: {
+												configurable: true,
+											},
 										},
 									},
-								},
-							}),
+								}),
+							},
 						},
-					},
-				});
+					});
 
-				const nodeElement = getByText('Test Node').closest('.node');
-				expect(nodeElement).toHaveStyle({ '--configurable-node--input-count': '3' });
-			});
+					const nodeElement = getByText('Test Node').closest('.node');
+					expect(nodeElement).toHaveStyle({ '--canvas-node--width': expected });
+				},
+			);
 		});
 	});
 

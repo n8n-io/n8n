@@ -9,10 +9,10 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
-import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
+	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
 	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
@@ -20,7 +20,6 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
@@ -174,17 +173,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
-	const isBelowUserQuota = computed(
-		(): boolean =>
-			userManagement.value.quota === -1 ||
-			userManagement.value.quota > useUsersStore().allUsers.length,
-	);
-
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const loadedModules = computed(() => settings.value.loadedModules);
+	const activeModules = computed(() => settings.value.activeModules);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -305,19 +298,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		};
 	};
 
-	const submitContactInfo = async (email: string) => {
-		try {
-			const usersStore = useUsersStore();
-			return await promptsApi.submitContactInfo(
-				settings.value.instanceId,
-				usersStore.currentUserId || '',
-				email,
-			);
-		} catch (error) {
-			return;
-		}
-	};
-
 	const testTemplatesEndpoint = async () => {
 		const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 		await Promise.race([testHealthEndpoint(templatesHost.value), timeout]);
@@ -344,6 +324,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
 		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 		0,
+		{ writeDefaults: false },
+	);
+
+	/**
+	 * (Experimental) If set to true, show node settings for a selected node in docked pane
+	 */
+	const experimental__dockedNodeSettingsEnabled = useLocalStorage(
+		LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
+		false,
 		{ writeDefaults: false },
 	);
 
@@ -395,7 +384,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
 		permanentlyDismissedBanners,
-		isBelowUserQuota,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
 		saveManualExecutions,
@@ -405,17 +393,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		experimental__minZoomNodeSettingsInCanvas,
+		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
-		submitContactInfo,
 		disableTemplates,
 		stopShowingSetupPage,
 		getSettings,
 		setSettings,
 		initialize,
-		loadedModules,
+		activeModules,
 		getModuleSettings,
 		moduleSettings,
 	};
