@@ -21,7 +21,7 @@ interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAc
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
-	popperClass?: string | Record<string, boolean>;
+	popperClass?: string;
 	trigger?: 'click' | 'hover';
 }
 
@@ -68,18 +68,6 @@ const onActionMouseUp = (action: UserAction<UserType>) => {
 defineExpose({
 	openActionToggle,
 });
-
-const toPopperClass = (
-	popperClass: ActionToggleProps<UserType, Actions>['popperClass'],
-): string | undefined => {
-	if (typeof popperClass === 'object') {
-		return Object.keys(popperClass)
-			.filter((key) => popperClass[key])
-			.join(' ');
-	}
-
-	return popperClass;
-};
 </script>
 
 <template>
@@ -93,7 +81,7 @@ const toPopperClass = (
 			:placement="placement"
 			:size="size"
 			:disabled="disabled"
-			:popper-class="toPopperClass(popperClass)"
+			:popper-class="popperClass"
 			:trigger="trigger"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
