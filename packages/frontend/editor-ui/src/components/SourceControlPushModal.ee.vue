@@ -1,10 +1,15 @@
 <script lang="ts" setup>
+import type { WorkflowResource } from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import { ResourceType } from '@/utils/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
 import {
 	type SourceControlledFile,
@@ -19,6 +24,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nLink,
 	N8nNotice,
 	N8nOption,
 	N8nPopover,
@@ -30,7 +36,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
-import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
@@ -45,26 +51,37 @@ const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
+const projectsStore = useProjectsStore();
 const route = useRoute();
 const telemetry = useTelemetry();
+
+onBeforeMount(() => {
+	void projectsStore.getAvailableProjects();
+});
 
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
+type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
+
 type Changes = {
-	tags: SourceControlledFile[];
-	variables: SourceControlledFile[];
-	credential: SourceControlledFile[];
-	workflow: SourceControlledFile[];
-	currentWorkflow?: SourceControlledFile;
-	folders: SourceControlledFile[];
+	tags: SourceControlledFileWithProject[];
+	variables: SourceControlledFileWithProject[];
+	credential: SourceControlledFileWithProject[];
+	workflow: SourceControlledFileWithProject[];
+	currentWorkflow?: SourceControlledFileWithProject;
+	folders: SourceControlledFileWithProject[];
 };
 
 const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: string): Changes =>
 	files.reduce<Changes>(
 		(acc, file) => {
+			const project = projectsStore.availableProjects.find(
+				({ id }) => id === file.owner?.projectId,
+			);
+
 			// do not show remote workflows that are not yet created locally during push
 			if (
 				file.location === SOURCE_CONTROL_FILE_LOCATION.remote &&
@@ -75,31 +92,31 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.variables) {
-				acc.variables.push(file);
+				acc.variables.push({ ...file, project });
 				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.tags) {
-				acc.tags.push(file);
+				acc.tags.push({ ...file, project });
 				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.folders) {
-				acc.folders.push(file);
+				acc.folders.push({ ...file, project });
 				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow && currentWorkflowId === file.id) {
-				acc.currentWorkflow = file;
+				acc.currentWorkflow = { ...file, project };
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow) {
-				acc.workflow.push(file);
+				acc.workflow.push({ ...file, project });
 				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.credential) {
-				acc.credential.push(file);
+				acc.credential.push({ ...file, project });
 				return acc;
 			}
 
@@ -150,17 +167,19 @@ const changes = computed(() => classifyFilesByType(props.data.status, workflowId
 
 const selectedWorkflows = reactive<Set<string>>(new Set());
 
-const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFile) =>
+const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
-const filters = ref<{ status?: SourceControlledFileStatus }>({});
+const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
+	project: null,
+});
 const filtersApplied = computed(
 	() => Boolean(search.value) || Boolean(Object.keys(filters.value).length),
 );
 const resetFilters = () => {
-	filters.value = {};
+	filters.value = { project: null };
 	search.value = '';
 };
 
@@ -192,6 +211,10 @@ const filteredWorkflows = computed(() => {
 	return changes.value.workflow.filter((workflow) => {
 		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
+		}
+
+		if (workflow.project && filters.value.project) {
+			return workflow.project.id === filters.value.project.id;
 		}
 
 		return !(filters.value.status && filters.value.status !== workflow.status);
@@ -470,6 +493,17 @@ const filtersActiveText = computed(() => {
 	}
 	return i18n.baseText('credentials.filters.active');
 });
+
+function castType(type: string): ResourceType {
+	if (type === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return ResourceType.Workflow;
+	}
+	return ResourceType.Credential;
+}
+
+function castProject(project: ProjectListItem) {
+	return { homeProject: project } as unknown as WorkflowResource;
+}
 </script>
 
 <template>
@@ -532,6 +566,25 @@ const filtersActiveText = computed(() => {
 							>
 							</N8nOption>
 						</N8nSelect>
+						<N8nInputLabel
+							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
+							:bold="false"
+							size="small"
+							color="text-base"
+							class="mb-3xs mt-3xs"
+						/>
+						<ProjectSharing
+							v-model="filters.project"
+							data-test-id="source-control-push-modal-project-search"
+							:projects="projectsStore.availableProjects"
+							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+						/>
+						<div v-if="filterCount" class="mt-s">
+							<N8nLink @click="resetFilters">
+								{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
+							</N8nLink>
+						</div>
 					</N8nPopover>
 				</div>
 			</div>
@@ -643,6 +696,24 @@ const filtersActiveText = computed(() => {
 												>
 													Current workflow
 												</N8nBadge>
+												<template
+													v-if="
+														file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
+														file.type === SOURCE_CONTROL_FILE_TYPE.credential
+													"
+												>
+													<ProjectCardBadge
+														v-if="file.project"
+														data-test-id="source-control-push-modal-project-badge"
+														:resource="castProject(file.project)"
+														:resource-type="castType(file.type)"
+														:resource-type-label="
+															i18n.baseText(`generic.${file.type}`).toLowerCase()
+														"
+														:personal-project="projectsStore.personalProject"
+														:show-badge-border="false"
+													/>
+												</template>
 												<N8nBadge :theme="getStatusTheme(file.status)">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
@@ -760,6 +831,7 @@ const filtersActiveText = computed(() => {
 
 .badges {
 	display: flex;
+	gap: 10px;
 }
 
 .footer {
