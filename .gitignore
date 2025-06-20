@@ -29,4 +29,5 @@ test-results.json
 
 playwright/playwright-report
 playwright/test-results
+playwright/ms-playwright-cache
 test-results/
