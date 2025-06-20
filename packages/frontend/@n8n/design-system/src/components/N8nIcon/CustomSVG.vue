@@ -13,16 +13,16 @@ const props = defineProps<CustomSVGProps>();
 		aria-hidden="true"
 		focusable="false"
 		role="img"
-		:viewBox="`0 0 ${customIcons[iconName].icon[0]} ${customIcons[iconName].icon[1]}`"
+		:viewBox="`0 0 ${customIcons[iconName].width} ${customIcons[iconName].height}`"
 		xmlns="http://www.w3.org/2000/svg"
 	>
 		<path
-			v-if="typeof customIcons[iconName].icon[4] === 'string'"
+			v-if="typeof customIcons[iconName].paths === 'string'"
 			fill="currentColor"
-			:d="customIcons[iconName].icon[4]"
+			:d="customIcons[iconName].paths"
 		/>
 		<path
-			v-for="(path, i) in customIcons[iconName].icon[4]"
+			v-for="(path, i) in customIcons[iconName].paths"
 			v-else
 			:key="`${i}`"
 			stroke="currentColor"
