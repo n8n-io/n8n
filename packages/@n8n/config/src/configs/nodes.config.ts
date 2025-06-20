@@ -61,6 +61,12 @@ export class NodesConfig {
 	@Env('NODES_ERROR_TRIGGER_TYPE')
 	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
+	/**
+	 * Comma-separated list of python packages to preload for the code node
+	 */
+	@Env('N8N_NODES_PYTHON_PACKAGES_PRELOAD')
+	pythonPackagesPreload: string = '';
+
 	@Nested
 	communityPackages: CommunityPackagesConfig;
 }

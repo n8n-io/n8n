@@ -2,7 +2,7 @@ import { dirname } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
 import type { PyodideInterface } from 'pyodide';
 import { Container } from '@n8n/di';
-import { JsRunnerConfig } from '@n8n/task-runner/src/config/js-runner-config';
+import { GlobalConfig } from '@n8n/config';
 
 let pyodideInstance: PyodideInterface | undefined;
 
@@ -57,8 +57,8 @@ sys.meta_path.insert(0, ImportBlocker())
 from _pyodide_core import jsproxy_typedict
 from js import Object
 `);
-		const jsRunnerConfig = Container.get(JsRunnerConfig);
-		const packagesToPreload = jsRunnerConfig.pythonCodeNodePreload;
+		const globalConfig = Container.get(GlobalConfig);
+		const packagesToPreload = globalConfig.nodes.pythonPackagesPreload;
 
 		if (packagesToPreload) {
 			const packages = packagesToPreload.split(',').map((p) => p.trim());
