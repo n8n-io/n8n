@@ -777,7 +777,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))
+        version: 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -804,7 +804,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.46(421f5526c191b539c59b7e383489c114)
+        version: 0.3.46(9d9844bc33bc460a2ae2eef819849ab0)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
@@ -904,12 +904,15 @@ importers:
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
+      js-tiktoken:
+        specifier: ^1.0.12
+        version: 1.0.12
       jsdom:
         specifier: 23.0.1
         version: 23.0.1
       langchain:
         specifier: 0.3.28
-        version: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
+        version: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -15881,7 +15884,7 @@ snapshots:
 
   '@babel/generator@7.26.10':
     dependencies:
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.27.5
       '@babel/types': 7.26.10
       '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
@@ -16572,7 +16575,7 @@ snapshots:
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/generator': 7.26.10
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.27.5
       '@babel/template': 7.26.9
       '@babel/types': 7.26.10
       debug: 4.4.1(supports-color@8.1.1)
@@ -17000,7 +17003,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -17009,7 +17012,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
-      langchain: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
+      langchain: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
     transitivePeerDependencies:
       - encoding
 
@@ -17523,7 +17526,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.46(421f5526c191b539c59b7e383489c114)':
+  '@langchain/community@0.3.46(9d9844bc33bc460a2ae2eef819849ab0)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17535,8 +17538,8 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
-      langsmith: 0.3.30(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
+      langchain: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
+      langsmith: 0.3.33(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
       openai: 4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)
       uuid: 10.0.0
       zod: 3.25.67
@@ -17549,7 +17552,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -21013,10 +21016,18 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.9.0):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       is-retry-allowed: 2.2.0
 
   axios@1.8.3:
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.3.6)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.6)
       form-data: 4.0.2
@@ -21042,7 +21053,7 @@ snapshots:
 
   axios@1.9.0(debug@4.4.1):
     dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
+      follow-redirects: 1.15.9(debug@4.4.1)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -21132,7 +21143,7 @@ snapshots:
 
   babel-walk@3.0.0-canary-5:
     dependencies:
-      '@babel/types': 7.26.10
+      '@babel/types': 7.27.6
 
   balanced-match@1.0.2: {}
 
@@ -21301,7 +21312,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.8.2):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       axios-retry: 4.5.0(axios@1.9.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -21771,7 +21782,7 @@ snapshots:
 
   constantinople@4.0.1:
     dependencies:
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.27.5
       '@babel/types': 7.26.10
 
   content-disposition@1.0.0:
@@ -23253,6 +23264,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.0
 
+  follow-redirects@1.15.9(debug@4.4.1):
+    optionalDependencies:
+      debug: 4.4.1(supports-color@8.1.1)
+
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -23894,7 +23909,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -23959,7 +23974,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24886,7 +24901,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6):
+  langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21):
     dependencies:
       '@langchain/core': 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
       '@langchain/openai': 0.5.13(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(ws@8.18.2)
@@ -24909,7 +24924,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.2(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -26723,7 +26738,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -27300,9 +27315,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -27757,7 +27772,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -29309,7 +29324,7 @@ snapshots:
 
   with@7.0.2:
     dependencies:
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.27.5
       '@babel/types': 7.26.10
       assert-never: 1.2.1
       babel-walk: 3.0.0-canary-5
