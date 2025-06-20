@@ -57,6 +57,6 @@ export class CredentialsFlow {
 		);
 
 		const responseData = await this.client.accessTokenRequest(requestOptions);
-		return this.client.createToken(responseData);
+		return this.client.createToken({ ...responseData, grant_type: 'client_credentials' });
 	}
 }
