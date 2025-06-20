@@ -473,7 +473,11 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		// Still passing the original workflow here, because the WorkflowDataProxy
+		// needs it to create more useful error messages, e.g. differentiate
+		// between a node not being connected to the node referencing it or a node
+		// not existing in the workflow.
+		return this.processRunExecutionData(workflow);
 	}
 
 	/**
