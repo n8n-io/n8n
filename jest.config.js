@@ -50,6 +50,7 @@ const config = {
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
+	testTimeout: 5_000, // Default timeout for tests in milliseconds
 	workerIdleMemoryLimit: '1MB',
 };
 
