@@ -2381,6 +2381,16 @@ export interface AiAgentRequest {
 	};
 }
 
+type NodeIncorrectOutputPayload = {
+	executionId: string;
+	workflowId?: string;
+	workflowName?: string;
+	nodeName: string;
+	nodeType: string;
+	errorPath?: string;
+	errorMessage?: string;
+};
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
@@ -2406,6 +2416,7 @@ export interface IWorkflowExecuteAdditionalData {
 	userId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
+	logIncorrectNodeOutput: (payload: NodeIncorrectOutputPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,

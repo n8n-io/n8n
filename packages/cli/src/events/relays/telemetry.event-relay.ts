@@ -111,6 +111,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
+			'node-incorrect-output-data': (event) => this.nodeIncorrectOutputData(event),
 		});
 	}
 
@@ -1089,6 +1090,26 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['user-password-reset-request-click']) {
 		this.telemetry.track('User requested password reset while logged out', {
 			user_id: user.id,
+		});
+	}
+
+	private nodeIncorrectOutputData({
+		workflowName,
+		executionId,
+		nodeName,
+		workflowId,
+		nodeType,
+		errorPath,
+		errorMessage,
+	}: RelayEventMap['node-incorrect-output-data']) {
+		this.telemetry.track('Node produced incorrect output data', {
+			workflow_id: workflowId,
+			workflow_name: workflowName,
+			execution_id: executionId,
+			node_name: nodeName,
+			node_type: nodeType,
+			error_path: errorPath,
+			error_message: errorMessage,
 		});
 	}
 
