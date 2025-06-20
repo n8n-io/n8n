@@ -102,7 +102,6 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
-						<!-- todo import self so types apply -->
 						<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
 					</div>
 				</div>
