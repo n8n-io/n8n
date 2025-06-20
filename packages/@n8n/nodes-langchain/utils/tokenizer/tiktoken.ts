@@ -20,9 +20,9 @@ export async function getEncoding(encoding: TiktokenEncoding) {
 
 	if (!(encoding in encodingsMap)) {
 		return new Tiktoken(cl100k_base);
-	} else {
-		return new Tiktoken(encodingsMap[encoding]);
 	}
+
+	return new Tiktoken(encodingsMap[encoding]);
 }
 
 export async function encodingForModel(model: TiktokenModel) {
