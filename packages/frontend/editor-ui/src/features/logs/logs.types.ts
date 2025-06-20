@@ -7,7 +7,6 @@ export interface LogEntry {
 	node: INodeUi;
 	id: string;
 	children: LogEntry[];
-	depth: number;
 	runIndex: number;
 	runData: ITaskData | undefined;
 	consumedTokens: LlmTokenUsageData;

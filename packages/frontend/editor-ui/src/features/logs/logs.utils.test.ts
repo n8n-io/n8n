@@ -80,14 +80,12 @@ describe(getTreeNodeData, () => {
 		expect(logTree.length).toBe(1);
 
 		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0');
-		expect(logTree[0].depth).toBe(0);
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
 		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
 		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
-		expect(logTree[0].children[0].depth).toBe(1);
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
 		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
@@ -96,14 +94,12 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[0].children.length).toBe(1);
 
 		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
-		expect(logTree[0].children[0].children[0].depth).toBe(2);
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
 		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
-		expect(logTree[0].children[1].depth).toBe(1);
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
 		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
@@ -111,7 +107,6 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[1].children.length).toBe(1);
 
 		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
-		expect(logTree[0].children[1].children[0].depth).toBe(2);
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
@@ -961,28 +956,24 @@ describe(createLogTree, () => {
 		expect(logs).toHaveLength(2);
 
 		expect(logs[0].node.name).toBe('A');
-		expect(logs[0].depth).toBe(0);
 		expect(logs[0].workflow).toBe(workflow);
 		expect(logs[0].execution).toBe(rootExecutionData.data);
 		expect(logs[0].executionId).toBe('root-exec-id');
 		expect(logs[0].children).toHaveLength(0);
 
 		expect(logs[1].node.name).toBe('B');
-		expect(logs[1].depth).toBe(0);
 		expect(logs[1].workflow).toBe(workflow);
 		expect(logs[1].execution).toBe(rootExecutionData.data);
 		expect(logs[1].executionId).toBe('root-exec-id');
 		expect(logs[1].children).toHaveLength(2);
 
 		expect(logs[1].children[0].node.name).toBe('C');
-		expect(logs[1].children[0].depth).toBe(1);
 		expect(logs[1].children[0].workflow).toBe(subWorkflow);
 		expect(logs[1].children[0].execution).toBe(subExecutionData);
 		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[0].children).toHaveLength(0);
 
 		expect(logs[1].children[1].node.name).toBe('C');
-		expect(logs[1].children[1].depth).toBe(1);
 		expect(logs[1].children[1].workflow).toBe(subWorkflow);
 		expect(logs[1].children[1].execution).toBe(subExecutionData);
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');

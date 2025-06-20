@@ -57,7 +57,6 @@ function createNode(
 		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
 		// makes it possible to identify the same log across different executions
 		id: `${context.workflow.id}:${node.id}:${[...context.ancestorRunIndexes, runIndex].join(':')}`,
-		depth: context.ancestorRunIndexes.length,
 		runIndex,
 		runData,
 		children,
@@ -302,7 +301,6 @@ export function findSelectedLogEntry(
 					const fallback = findLogEntryRec(
 						(e) =>
 							e.workflow.id === selection.entry.workflow.id &&
-							e.depth === selection.entry.depth &&
 							e.node.id === selection.entry.node.id &&
 							e.runIndex === runIndex,
 						entries,
