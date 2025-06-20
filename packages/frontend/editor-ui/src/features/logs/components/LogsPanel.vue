@@ -14,8 +14,8 @@ import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand
 import { type LogEntry } from '@/features/logs/logs.types';
 import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
-import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
-import { useActiveElement } from '@vueuse/core';
+import { type KeyMap } from '@/composables/useKeybindings';
+import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
@@ -79,15 +79,8 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
-const activeElement = useActiveElement();
-const isBlurred = computed(
-	() =>
-		!activeElement.value ||
-		!container.value ||
-		(!container.value.contains(activeElement.value) && container.value !== activeElement.value),
-);
 
-const localKeyMap = computed<KeyMap>(() => ({
+const keyMap = computed<KeyMap>(() => ({
 	j: selectNext,
 	k: selectPrev,
 	Escape: () => select(undefined),
@@ -96,8 +89,6 @@ const localKeyMap = computed<KeyMap>(() => ({
 	Space: () => selected.value && toggleExpanded(selected.value),
 	Enter: () => selected.value && handleOpenNdv(selected.value),
 }));
-
-useKeybindings(localKeyMap, { disabled: isBlurred });
 
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
@@ -123,6 +114,12 @@ function handleOpenNdv(treeNode: LogEntry) {
 
 <template>
 	<div ref="pipContainer">
+		<!-- force re-create with key for shortcuts to work in PiP window -->
+		<LogsViewKeyboardEventListener
+			:key="String(!!pipWindow)"
+			:key-map="keyMap"
+			:container="container"
+		/>
 		<div ref="pipContent" :class="$style.pipContent">
 			<N8nResizeWrapper
 				:height="height"

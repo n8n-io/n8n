@@ -389,13 +389,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					executionIndex: 2,
-					source: [{ previousNode: 'RootNode1' }],
+					source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode1' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					executionIndex: 3,
-					source: [{ previousNode: 'RootNode2' }],
+					source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode2' } }]] },
 				}),
 			],
@@ -403,13 +403,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:04.000Z'),
 					executionIndex: 4,
-					source: [{ previousNode: 'SharedSubNode' }],
+					source: [{ previousNode: 'SharedSubNode', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SharedSubNode run 0' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:05.000Z'),
 					executionIndex: 5,
-					source: [{ previousNode: 'SharedSubNode' }],
+					source: [{ previousNode: 'SharedSubNode', previousNodeRun: 1 }],
 					data: { main: [[{ json: { result: 'from SharedSubNode run 1' } }]] },
 				}),
 			],
@@ -489,7 +489,7 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					executionIndex: 2,
-					source: [{ previousNode: 'RootNode1' }],
+					source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode1' } }]] },
 				}),
 			],
@@ -497,7 +497,7 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					executionIndex: 3,
-					source: [{ previousNode: 'RootNode2' }],
+					source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode2' } }]] },
 				}),
 			],
@@ -505,13 +505,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:04.000Z'),
 					executionIndex: 4,
-					source: [{ previousNode: 'SubNodeA' }],
+					source: [{ previousNode: 'SubNodeA', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SubNodeA' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:05.000Z'),
 					executionIndex: 5,
-					source: [{ previousNode: 'SubNodeB' }],
+					source: [{ previousNode: 'SubNodeB', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SubNodeB' } }]] },
 				}),
 			],
