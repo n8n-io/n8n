@@ -30,8 +30,7 @@ import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 @Service()
 class ModulesHooksRegistry {
-	addHooks(hooks: unknown) {
-		const typedHooks = hooks as ExecutionLifecycleHooks;
+	addHooks(hooks: ExecutionLifecycleHooks) {
 		const handlers = Container.get(LifecycleMetadata).getHandlers();
 
 		for (const { handlerClass, methodName, eventName } of handlers) {
@@ -39,7 +38,7 @@ class ModulesHooksRegistry {
 
 			switch (eventName) {
 				case 'workflowExecuteAfter':
-					typedHooks.addHandler(eventName, async function (runData, newStaticData) {
+					hooks.addHandler(eventName, async function (runData, newStaticData) {
 						const context = {
 							type: 'workflowExecuteAfter',
 							workflow: this.workflowData,
@@ -52,7 +51,7 @@ class ModulesHooksRegistry {
 					break;
 
 				case 'nodeExecuteBefore':
-					typedHooks.addHandler(eventName, async function (nodeName, taskData) {
+					hooks.addHandler(eventName, async function (nodeName, taskData) {
 						const context = {
 							type: 'nodeExecuteBefore',
 							workflow: this.workflowData,
@@ -65,7 +64,7 @@ class ModulesHooksRegistry {
 					break;
 
 				case 'nodeExecuteAfter':
-					typedHooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
+					hooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
 						const context = {
 							type: 'nodeExecuteAfter',
 							workflow: this.workflowData,
@@ -79,7 +78,7 @@ class ModulesHooksRegistry {
 					break;
 
 				case 'workflowExecuteBefore':
-					typedHooks.addHandler(eventName, async function (workflowInstance, executionData) {
+					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
 							type: 'workflowExecuteBefore',
 							workflow: this.workflowData,
