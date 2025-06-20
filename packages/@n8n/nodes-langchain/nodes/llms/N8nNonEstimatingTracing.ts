@@ -1,6 +1,5 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
-import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import type {
 	Serialized,
 	SerializedNotImplemented,
@@ -8,18 +7,11 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import { encodingForModel } from '@langchain/core/utils/tiktoken';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
-
-type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
-	completionTokens: number;
-	promptTokens: number;
-	totalTokens: number;
-};
 
 type RunDetail = {
 	index: number;
@@ -27,19 +19,14 @@ type RunDetail = {
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
-const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
-export class N8nLlmTracing extends BaseCallbackHandler {
-	name = 'N8nLlmTracing';
+export class N8nNonEstimatingTracing extends BaseCallbackHandler {
+	name = 'N8nNonEstimatingTracing';
 
 	// This flag makes sure that LangChain will wait for the handlers to finish before continuing
 	// This is crucial for the handleLLMError handler to work correctly (it should be called before the error is propagated to the root node)
 	awaitHandlers = true;
 
 	connectionType = NodeConnectionTypes.AiLanguageModel;
-
-	promptTokensEstimate = 0;
-
-	completionTokensEstimate = 0;
 
 	#parentRunIndex?: number;
 
@@ -53,44 +40,17 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	options = {
 		// Default(OpenAI format) parser
-		tokensUsageParser: (llmOutput: LLMResult['llmOutput']) => {
-			const completionTokens = (llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
-
-			return {
-				completionTokens,
-				promptTokens,
-				totalTokens: completionTokens + promptTokens,
-			};
-		},
 		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
 
 	constructor(
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
-			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
 		},
 	) {
 		super();
 		this.options = { ...this.options, ...options };
-	}
-
-	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
-		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
-		return await this.estimateTokensFromStringList(messages);
-	}
-
-	async estimateTokensFromStringList(list: string[]) {
-		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-		const encoder = await encodingForModel(embeddingModel);
-
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => encoder.encode(text).length),
-		);
-
-		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
@@ -107,31 +67,14 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output.llmOutput);
-
-		if (output.generations.length > 0) {
-			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(
-				output.generations,
-			);
-
-			tokenUsageEstimate.promptTokens = this.promptTokensEstimate;
-			tokenUsageEstimate.totalTokens =
-				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
-		}
 		const response: {
 			response: { generations: LLMResult['generations'] };
 			tokenUsageEstimate?: typeof tokenUsageEstimate;
-			tokenUsage?: typeof tokenUsage;
 		} = {
 			response: { generations: output.generations },
 		};
 
-		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
-		if (tokenUsage.completionTokens > 0) {
-			response.tokenUsage = tokenUsage;
-		} else {
-			response.tokenUsageEstimate = tokenUsageEstimate;
-		}
+		response.tokenUsageEstimate = tokenUsageEstimate;
 
 		const parsedMessages =
 			typeof runDetails.messages === 'string'
@@ -162,7 +105,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
-		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
+		const estimatedTokens = 0;
 		const sourceNodeRunIndex =
 			this.#parentRunIndex !== undefined
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
@@ -191,7 +134,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			options,
 			messages: prompts,
 		};
-		this.promptTokensEstimate = estimatedTokens;
 	}
 
 	async handleLLMError(
