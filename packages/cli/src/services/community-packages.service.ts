@@ -350,8 +350,9 @@ export class CommunityPackagesService {
 		packageName: string,
 		installedPackage: InstalledPackages,
 		version?: string,
+		checksum?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage, version });
+		return await this.installOrUpdatePackage(packageName, { installedPackage, version, checksum });
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -389,7 +390,7 @@ export class CommunityPackagesService {
 		packageName: string,
 		options:
 			| { version?: string; checksum?: string }
-			| { installedPackage: InstalledPackages; version?: string } = {},
+			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = !options.version ? 'latest' : options.version;

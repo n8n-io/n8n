@@ -28,8 +28,13 @@ export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
 	version?: string,
+	checksum?: string,
 ): Promise<PublicInstalledPackage> {
-	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name, version });
+	return await makeRestApiRequest(context, 'PATCH', '/community-packages', {
+		name,
+		version,
+		checksum,
+	});
 }
 
 export async function getAvailableCommunityPackageCount(): Promise<number> {

@@ -247,7 +247,7 @@ export class CommunityPackagesController {
 	@Patch('/')
 	@GlobalScope('communityPackage:update')
 	async updatePackage(req: NodeRequest.Update) {
-		const { name, version } = req.body;
+		const { name, version, checksum } = req.body;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
@@ -265,6 +265,7 @@ export class CommunityPackagesController {
 				this.communityPackagesService.parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 				version,
+				checksum,
 			);
 
 			// broadcast to connected frontends that node list has been updated

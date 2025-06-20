@@ -136,7 +136,11 @@ const onUpdate = async () => {
 
 		if (settingsStore.isCommunityNodesFeatureEnabled) {
 			updatedVersion = nodeTypeStorePackage.value?.npmVersion;
-			await communityNodesStore.updatePackage(props.activePackageName, updatedVersion);
+			await communityNodesStore.updatePackage(
+				props.activePackageName,
+				updatedVersion,
+				nodeTypeStorePackage.value?.checksum,
+			);
 		} else if (settingsStore.isUnverifiedPackagesEnabled) {
 			updatedVersion = communityStorePackage.value.updateAvailable;
 			await communityNodesStore.updatePackage(props.activePackageName);
