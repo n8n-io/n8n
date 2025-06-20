@@ -9,6 +9,12 @@ export class JsRunnerConfig {
 	allowedExternalModules: string = '';
 
 	/**
+	 * Comma-separated list of python packages to preload for the code node
+	 */
+	@Env('N8N_PYTHON_CODE_NODE_PRELOAD')
+	pythonCodeNodePreload: string = '';
+
+	/**
 	 * Whether to allow prototype mutation for external libraries. Set to `true`
 	 * to allow modules that rely on runtime prototype mutation, e.g. `puppeteer`,
 	 * at the cost of security.
