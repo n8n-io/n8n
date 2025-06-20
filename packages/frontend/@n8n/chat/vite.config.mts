@@ -45,6 +45,10 @@ export default mergeConfig(
 					replacement: srcPath,
 				},
 				{
+					find: /^@n8n\/chat(.+)$/,
+					replacement: srcPath + '$1',
+				},
+				{
 					find: /^@n8n\/design-system(.+)$/,
 					replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 				},

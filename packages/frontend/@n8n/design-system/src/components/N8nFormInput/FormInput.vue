@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ElSwitch } from 'element-plus';
-import { computed, reactive, onMounted, ref, watch, useSlots } from 'vue';
+import { computed, reactive, onMounted, ref, watch } from 'vue';
 
 import { getValidationError, VALIDATORS } from './validators';
 import { t } from '../../locale';
@@ -77,8 +77,6 @@ const state = reactive({
 	hasBlurred: false,
 	isTyping: false,
 });
-
-const slots = useSlots();
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
@@ -157,8 +155,6 @@ const validationError = computed<string | null>(() => {
 	return null;
 });
 
-const hasDefaultSlot = computed(() => !!slots.default);
-
 const showErrors = computed(
 	() =>
 		!!validationError.value &&
@@ -217,7 +213,7 @@ defineExpose({ inputRef });
 		:size="labelSize"
 	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter.exact="onEnter">
-			<slot v-if="hasDefaultSlot" />
+			<slot v-if="$slots.default" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
 				ref="inputRef"
