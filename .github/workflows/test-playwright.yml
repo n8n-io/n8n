@@ -18,10 +18,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - name: Setup Environment and Build Project
-        uses: ./.github/actions/setup-and-build
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
         with:
-          node-version: '22.x'
+          run_install: false
+
+      - name: Setup Node.js
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+
+      - name: Configure Turborepo Cache
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        shell: bash
+
+      - name: Build packages
+        run: pnpm build
+        shell: bash
+
+      #- name: Cache artifacts
+      #  uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
+      #  with:
+      #    path: ${{ inputs.cache-paths }}
+      #    key: ${{ github.sha }}-${{ inputs.cache-suffix }}
+      #    enableCrossOsArchive: ${{ inputs.enable-cross-os-archive }}
 
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -41,15 +65,20 @@ jobs:
           node-version: 22.x
           cache: 'pnpm'
 
-      - name: Restore dist cache
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
-          fail-on-cache-miss: true
+      #- name: Restore dist cache
+      #  uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
+      #  with:
+      #    path: ./packages/**/dist
+      #    key: ${{ github.sha }}-base:build
+
+      - name: Configure Turborepo Cache
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter n8n-playwright... --filter n8n...
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and hopefully get cache
+        run: pnpm build
 
       - name: Install Playwright Browsers (Chromium only)
         working-directory: playwright
@@ -97,10 +126,6 @@ jobs:
           node-version: 22.x
           cache: 'pnpm'
 
-      - name: Install dependencies
-        working-directory: playwright
-        run: pnpm install --frozen-lockfile --filter n8n-playwright
-
       - name: Download all test results
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -113,7 +138,7 @@ jobs:
       - name: Merge test reports
         working-directory: playwright
         run: |
-          pnpm exec playwright merge-reports \
+          npx playwright merge-reports \
             --reporter=html,github \
             ../all-reports/playwright-results-*/blob-report
 
