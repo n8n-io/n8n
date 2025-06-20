@@ -2,8 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import FolderCard from './FolderCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
-import type { FolderPathItem, UserAction } from '@/Interface';
+import type { FolderResource, FolderPathItem, UserAction } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {

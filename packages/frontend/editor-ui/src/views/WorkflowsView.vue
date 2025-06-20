@@ -7,7 +7,7 @@ import type {
 	Resource,
 	SortingAndPaginationUpdates,
 	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+} from '@/Interface';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';

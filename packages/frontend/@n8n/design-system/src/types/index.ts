@@ -11,6 +11,7 @@ export * from './input';
 export * from './keyboardshortcut';
 export * from './menu';
 export * from './node-creator-node';
+export * from './recycle-scroller';
 export * from './resize';
 export * from './select';
 export * from './tabs';
