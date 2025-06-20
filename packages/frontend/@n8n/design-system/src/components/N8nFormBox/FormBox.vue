@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type {
-	FormInputsToFormValues,
 	FormFieldValue,
 	IFormInput,
 	FormFieldValueUpdate,
+	FormValues,
 } from '@n8n/design-system/types';
 
 import { createFormEventBus } from '../../utils';
@@ -21,8 +21,6 @@ interface FormBoxProps {
 	redirectText?: string;
 	redirectLink?: string;
 }
-
-type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
 
 defineOptions({ name: 'N8nFormBox' });
 withDefaults(defineProps<FormBoxProps>(), {

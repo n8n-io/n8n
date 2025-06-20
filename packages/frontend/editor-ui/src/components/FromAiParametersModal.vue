@@ -252,7 +252,6 @@ const onExecute = async () => {
 const onUpdate = (change: FormFieldValueUpdate) => {
 	if (change.name !== 'toolName') return;
 	if (typeof change.value === 'string') {
-		// todo test this
 		selectedTool.value = change.value;
 	}
 };

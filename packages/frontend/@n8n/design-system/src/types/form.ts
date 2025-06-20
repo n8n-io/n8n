@@ -73,6 +73,8 @@ export type IFormInput = {
 
 export type IFormInputs = IFormInput[];
 
+export type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
+
 export type IFormBoxConfig = {
 	title: string;
 	buttonText?: string;
