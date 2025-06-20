@@ -28,6 +28,7 @@ import type {
 	INode,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
+import { createResultError, createResultOk } from './result';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -966,21 +967,34 @@ export class WorkflowDataProxy {
 				if (inputIndex >= sourceArray.length) return [];
 
 				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
-				return getPairedItem(
-					destinationNodeName,
-					nextSource,
-					{ ...nextPairedItem, input: inputIndex },
-					usedMethodName,
-					sourceData.previousNode,
-				);
+
+				try {
+					return createResultOk(
+						getPairedItem(
+							destinationNodeName,
+							nextSource,
+							{ ...nextPairedItem, input: inputIndex },
+							usedMethodName,
+							sourceData.previousNode,
+						),
+					);
+				} catch (error) {
+					return createResultError(error);
+				}
 			});
 
-			if (results.length === 0) {
+			if (results.every((result) => !result.ok)) {
+				throw results[0].error;
+			}
+
+			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
+
+			if (matchedItems.length === 0) {
 				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
 				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
 			}
 
-			const [first, ...rest] = results;
+			const [first, ...rest] = matchedItems;
 			if (rest.some((r) => r !== first)) {
 				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
 			}
