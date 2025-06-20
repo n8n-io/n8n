@@ -8,7 +8,6 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
@@ -23,9 +22,11 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: WeaviateLibArgs,
-		defaultFilter: WeaviateCompositeFilter,
+		defaultFilter?: WeaviateCompositeFilter,
 	): Promise<WeaviateStore> {
-		ExtendedWeaviateVectorStore.defaultFilter = defaultFilter;
+		if (defaultFilter) {
+			ExtendedWeaviateVectorStore.defaultFilter = defaultFilter;
+		}
 		return await super.fromExistingIndex(embeddings, args);
 	}
 
@@ -36,10 +37,8 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		callbacks?: Callbacks | undefined,
 	) {
 		const given_filter = ExtendedWeaviateVectorStore.defaultFilter;
-		Logger.debug('FILTER' + JSON.stringify(filter));
-		Logger.debug('given_filter' + JSON.stringify(given_filter));
 		if (given_filter) {
-			const composed_filter = parseCompositeFilter(given_filter) as this['FilterType'];
+			const composed_filter = parseCompositeFilter(given_filter);
 			return await super.similaritySearch(query, k, composed_filter, callbacks);
 		} else {
 			return await super.similaritySearch(query, k, undefined, callbacks);
@@ -229,7 +228,14 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 
-		return await ExtendedWeaviateVectorStore.fromExistingCollection(embeddings, config, filter);
+		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
+			| WeaviateCompositeFilter
+			| undefined;
+		return await ExtendedWeaviateVectorStore.fromExistingCollection(
+			embeddings,
+			config,
+			validFilter,
+		);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
