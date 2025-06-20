@@ -44,7 +44,7 @@ const communityStorePackage = computed(
 );
 const nodeTypeStorePackage = ref<CommunityNodeType>();
 
-const isVerifiedLatestPackage = ref<boolean>(true);
+const isLatestPackageVerified = ref<boolean>(true);
 
 const packageVersion = ref<string>(communityStorePackage.value.updateAvailable ?? '');
 
@@ -182,7 +182,7 @@ function setIsVerifiedLatestPackage() {
 		nodeTypeStorePackage.value?.npmVersion &&
 		communityStorePackage.value.updateAvailable
 	) {
-		isVerifiedLatestPackage.value = semver.eq(
+		isLatestPackageVerified.value = semver.eq(
 			nodeTypeStorePackage.value.npmVersion,
 			communityStorePackage.value.updateAvailable,
 		);
@@ -226,7 +226,7 @@ onMounted(async () => {
 				</n8n-info-tip>
 				<n8n-notice
 					data-test-id="communityPackageManageConfirmModal-warning"
-					v-if="!isVerifiedLatestPackage"
+					v-if="!isLatestPackageVerified"
 					:content="getModalContent.warning"
 				/>
 			</div>
