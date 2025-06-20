@@ -85,11 +85,15 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 
 	const fields: ResourceMapperField[] = [];
 
+	// Use field IDs for version 2.2 and above, field names for older versions
+	const nodeVersion = this.getNode().typeVersion;
+	const useFieldIds = nodeVersion >= 2.2;
+
 	const constructOptions = (field: AirtableSchema) => {
 		if (field?.options?.choices) {
 			return (field.options.choices as IDataObject[]).map((choice) => ({
 				name: choice.name,
-				value: choice.id,
+				value: useFieldIds ? choice.id : choice.name,
 			})) as INodePropertyOptions[];
 		}
 
@@ -101,7 +105,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 		const isReadOnly = airtableReadOnlyFields.includes(field.type);
 		const options = constructOptions(field);
 		fields.push({
-			id: field.id,
+			id: useFieldIds ? field.id : field.name,
 			displayName: field.name,
 			required: false,
 			defaultMatch: false,

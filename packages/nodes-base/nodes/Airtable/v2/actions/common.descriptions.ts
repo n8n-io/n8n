@@ -199,6 +199,24 @@ export const insertUpdateOptions: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2.2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Update All Matches',

@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type { IGetNodeParameterOptions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as resourceMapping from '../../../v2/methods/resourceMapping';
@@ -70,10 +70,13 @@ const mockLoadOptionsFunctions = {
 		const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 		return get(nodeParameters, parameter, fallbackValue);
 	},
+	getNode() {
+		return { typeVersion: 2.2 };
+	},
 } as unknown as ILoadOptionsFunctions;
 
 describe('Test Airtable resourceMapping methods', () => {
-	describe('getColumns', () => {
+	describe('getColumns - version 2.2+', () => {
 		it('should return fields with IDs as identifiers, not names', async () => {
 			const result = await resourceMapping.getColumns.call(mockLoadOptionsFunctions);
 
@@ -100,6 +103,43 @@ describe('Test Airtable resourceMapping methods', () => {
 					options: [
 						{ name: 'Active', value: 'selActive' },
 						{ name: 'Inactive', value: 'selInactive' },
+					],
+				},
+			]);
+		});
+	});
+
+	describe('getColumns - version < 2.2', () => {
+		it('should return fields with names as identifiers for backward compatibility', async () => {
+			const mockLoadOptionsFunctionsOldVersion = {
+				...mockLoadOptionsFunctions,
+				getNode() {
+					return { typeVersion: 2.1 };
+				},
+			} as unknown as ILoadOptionsFunctions;
+
+			const result = await resourceMapping.getColumns.call(mockLoadOptionsFunctionsOldVersion);
+
+			// Verify the returned fields use names as identifiers for older versions
+			expect(result.fields).toHaveLength(3);
+			expect(result.fields).toMatchObject([
+				{
+					id: 'Name',
+					displayName: 'Name',
+					type: 'string',
+				},
+				{
+					id: 'Email',
+					displayName: 'Email',
+					type: 'string',
+				},
+				{
+					id: 'Status',
+					displayName: 'Status',
+					type: 'options',
+					options: [
+						{ name: 'Active', value: 'Active' },
+						{ name: 'Inactive', value: 'Inactive' },
 					],
 				},
 			]);

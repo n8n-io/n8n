@@ -28,10 +28,14 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 
 	const result: INodePropertyOptions[] = [];
 
+	// Use field IDs for version 2.2 and above, field names for older versions
+	const nodeVersion = this.getNode().typeVersion;
+	const useFieldIds = nodeVersion >= 2.2;
+
 	for (const field of tableData.fields as IDataObject[]) {
 		result.push({
 			name: field.name as string,
-			value: field.id as string,
+			value: useFieldIds ? (field.id as string) : (field.name as string),
 			description: `Type: ${field.type}`,
 		});
 	}
@@ -89,13 +93,17 @@ export async function getAttachmentColumns(
 
 	const result: INodePropertyOptions[] = [];
 
+	// Use field IDs for version 2.2 and above, field names for older versions
+	const nodeVersion = this.getNode().typeVersion;
+	const useFieldIds = nodeVersion >= 2.2;
+
 	for (const field of tableData.fields as IDataObject[]) {
 		if (!(field.type as string)?.toLowerCase()?.includes('attachment')) {
 			continue;
 		}
 		result.push({
 			name: field.name as string,
-			value: field.id as string,
+			value: useFieldIds ? (field.id as string) : (field.name as string),
 			description: `Type: ${field.type}`,
 		});
 	}
