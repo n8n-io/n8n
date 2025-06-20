@@ -34,14 +34,14 @@ import {
 
 export const GRID_SIZE = 20;
 
-export const NODE_SIZE = 100;
-export const DEFAULT_NODE_SIZE: [number, number] = [100, 100];
+export const NODE_SIZE = GRID_SIZE * 5;
+export const DEFAULT_NODE_SIZE: [number, number] = [GRID_SIZE * 5, GRID_SIZE * 5];
 export const CONFIGURATION_NODE_SIZE: [number, number] = [GRID_SIZE * 4, GRID_SIZE * 4];
-export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 12, 100];
-export const DEFAULT_START_POSITION_X = 180;
-export const DEFAULT_START_POSITION_Y = 240;
+export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 12, GRID_SIZE * 5];
+export const DEFAULT_START_POSITION_X = GRID_SIZE * 9;
+export const DEFAULT_START_POSITION_Y = GRID_SIZE * 12;
 export const HEADER_HEIGHT = 65;
-export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
+export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = GRID_SIZE * 15;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
