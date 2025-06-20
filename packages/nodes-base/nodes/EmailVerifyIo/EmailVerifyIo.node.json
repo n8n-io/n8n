@@ -1,0 +1,20 @@
+{
+	"name": "EmailVerifyIo",
+	"displayName": "EmailVerify.io",
+	"icon": "file:emailverify.svg",
+	"group": ["output"],
+	"version": 1,
+	"description": "Consume EmailVerify.io API",
+	"defaults": {
+		"name": "EmailVerify.io"
+	},
+	"inputs": ["main"],
+	"outputs": ["main"],
+	"credentials": [
+		{
+			"name": "emailVerifyIoApi",
+			"required": true
+		}
+	],
+	"properties": []
+}
