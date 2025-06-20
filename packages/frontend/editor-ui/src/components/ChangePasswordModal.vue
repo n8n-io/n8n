@@ -6,7 +6,7 @@ import Modal from '@/components/Modal.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IFormInputs, IFormInput, FormFieldValueUpdate } from '@/Interface';
+import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
 const config = ref<IFormInputs | null>(null);
@@ -39,14 +39,35 @@ const onInput = (e: FormFieldValueUpdate) => {
 	}
 };
 
-const onSubmit = async (data: unknown) => {
-	const values = data as {
-		currentPassword: string;
-		password: string;
-		mfaCode?: string;
-	};
+function isNewPasswordData(
+	data: unknown,
+): data is { currentPassword: string; password: string; mfaCode?: string } {
+	if (
+		!(
+			typeof data === 'object' &&
+			data &&
+			'currentPassword' in data &&
+			typeof data.currentPassword === 'string' &&
+			'password' in data &&
+			typeof data.password === 'string'
+		)
+	) {
+		return false;
+	}
 
+	if ('mfaCode' in data) {
+		return typeof data.mfaCode === 'string';
+	}
+
+	return true;
+}
+
+const onSubmit = async (values: FormValues) => {
 	try {
+		if (!isNewPasswordData(values)) {
+			throw new Error('Invalid data passed');
+		}
+
 		loading.value = true;
 		await usersStore.updateCurrentUserPassword({
 			currentPassword: values.currentPassword,

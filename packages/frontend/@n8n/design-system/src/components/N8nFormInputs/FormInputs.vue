@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
-import type {
-	FormInputsToFormValues,
-	FormFieldValue,
-	IFormInput,
-	FormFieldValueUpdate,
-} from '../../types';
+import type { FormFieldValue, IFormInput, FormFieldValueUpdate, FormValues } from '../../types';
 import type { FormEventBus } from '../../utils';
 import { createFormEventBus } from '../../utils';
 import N8nFormInput from '../N8nFormInput';
@@ -20,8 +15,6 @@ export interface FormInputsProps {
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
 }
-
-type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
 	eventBus: createFormEventBus,
