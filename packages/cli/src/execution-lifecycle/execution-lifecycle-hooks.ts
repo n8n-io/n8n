@@ -44,6 +44,15 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		if (runData.status === 'waiting') return;
 
 		const { executionId, workflowData: workflow } = this;
+
+		if (runData.data.startData) {
+			const originalDestination = runData.data.startData.originalDestinationNode;
+			if (originalDestination) {
+				runData.data.startData.destinationNode = originalDestination;
+				runData.data.startData.originalDestinationNode = undefined;
+			}
+		}
+
 		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 	});
 }
@@ -52,11 +61,27 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-pre-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName) {
 		const { executionId, workflowData: workflow } = this;
-		eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		eventService.emit('node-post-execute', {
+			executionId,
+			workflow,
+			nodeId: node?.id,
+			nodeName,
+			nodeType: node?.type,
+		});
 	});
 }
 

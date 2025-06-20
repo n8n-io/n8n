@@ -27,6 +27,7 @@ export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
+	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,

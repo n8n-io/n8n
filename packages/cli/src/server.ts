@@ -150,6 +150,20 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// OIDC
+		// ----------------------------------------
+
+		try {
+			if (this.licenseState.isOidcLicensed()) {
+				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+				await Container.get(OidcService).init();
+				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
+			}
+		} catch (error) {
+			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
+		}
+
+		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
 
@@ -255,6 +269,12 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(async () => frontendService.getSettings()),
+			);
+
+			// Returns settings for all loaded modules
+			this.app.get(
+				`/${this.restEndpoint}/module-settings`,
+				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
 			// Return Sentry config as a static file

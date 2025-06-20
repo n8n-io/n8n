@@ -301,7 +301,16 @@ export function useCanvasOperations() {
 
 		// Rename the node and update the connections
 		const workflow = workflowsStore.getCurrentWorkflow(true);
-		workflow.renameNode(currentName, newName);
+		try {
+			workflow.renameNode(currentName, newName);
+		} catch (error) {
+			toast.showMessage({
+				type: 'error',
+				title: error.message,
+				message: error.description,
+			});
+			return;
+		}
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, Date.now()));
@@ -915,7 +924,10 @@ export function useCanvasOperations() {
 		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
-		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
+		const name =
+			node.name ??
+			nodeHelpers.getDefaultNodeName(node) ??
+			(nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
 		const position =

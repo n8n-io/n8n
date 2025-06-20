@@ -182,7 +182,7 @@ describe('SourceControlPushModal', () => {
 		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
 	});
 
-	it('should push non workflow entities', async () => {
+	it('should push all entities besides workflows and credentials', async () => {
 		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
@@ -240,7 +240,6 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(getByRole('alert').textContent).toContain('Credentials: 1 added.');
 		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
 		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
 		expect(getByRole('alert').textContent).toContain('Folders: at least one new or modified.');
@@ -253,7 +252,7 @@ describe('SourceControlPushModal', () => {
 		expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
 			expect.objectContaining({
 				commitMessage,
-				fileNames: expect.arrayContaining(status),
+				fileNames: expect.arrayContaining(status.filter((file) => file.type !== 'credential')),
 				force: true,
 			}),
 		);
@@ -306,6 +305,64 @@ describe('SourceControlPushModal', () => {
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		expect(submitButton).not.toBeDisabled();
+	});
+
+	it('should show credentials in a different tab', async () => {
+		// source-control-push-modal-tab
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My credential',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		const { getAllByTestId } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(workflows).toHaveLength(2);
+
+		const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
+			textContent?.includes('Credentials'),
+		);
+
+		await userEvent.click(tab[0]);
+
+		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(credentials).toHaveLength(1);
+		expect(within(credentials[0]).getByText('My credential')).toBeInTheDocument();
 	});
 
 	describe('filters', () => {

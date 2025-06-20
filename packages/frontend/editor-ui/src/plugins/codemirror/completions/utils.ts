@@ -19,6 +19,7 @@ import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/utils/mappingUtils';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -144,19 +145,19 @@ export const isAllowedInDotNotation = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export function receivesNoBinaryData() {
+export function receivesNoBinaryData(contextNodeName?: string) {
 	try {
-		return resolveAutocompleteExpression('={{ $binary }}')?.data === undefined;
+		return resolveAutocompleteExpression('={{ $binary }}', contextNodeName)?.data === undefined;
 	} catch {
 		return true;
 	}
 }
 
-export function hasNoParams(toResolve: string) {
+export function hasNoParams(toResolve: string, contextNodeName?: string) {
 	let params;
 
 	try {
-		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`);
+		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
 	} catch {
 		return true;
 	}
@@ -168,19 +169,21 @@ export function hasNoParams(toResolve: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export function resolveAutocompleteExpression(expression: string) {
+export function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
 	const ndvStore = useNDVStore();
-	return resolveParameter(
-		expression,
-		ndvStore.isInputParentOfActiveNode
+	const inputData =
+		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
 					targetItem: ndvStore.expressionTargetItem ?? undefined,
 					inputNodeName: ndvStore.ndvInputNodeName,
 					inputRunIndex: ndvStore.ndvInputRunIndex,
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
-			: {},
-	);
+			: {};
+	return resolveParameter(expression, {
+		...inputData,
+		contextNodeName,
+	});
 }
 
 // ----------------------------------
@@ -189,21 +192,34 @@ export function resolveAutocompleteExpression(expression: string) {
 
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
-export const isInHttpNodePagination = () => {
-	const ndvStore = useNDVStore();
-	return (
-		ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE &&
-		ndvStore.focusedInputPath.startsWith('parameters.options.pagination')
-	);
+export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+	let nodeType: string | undefined;
+	let path: string;
+	if (targetNodeParameterContext) {
+		nodeType = targetNodeParameterContext.nodeName;
+		path = targetNodeParameterContext.parameterPath;
+	} else {
+		const ndvStore = useNDVStore();
+		nodeType = ndvStore.activeNode?.type;
+		path = ndvStore.focusedInputPath;
+	}
+
+	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
+export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
+	(targetNodeParameterContext !== undefined &&
+		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
+	useNDVStore().activeNode?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
-export function autocompletableNodeNames() {
-	const activeNode = useNDVStore().activeNode;
+export function autocompletableNodeNames(contextNodeName?: string) {
+	const activeNode =
+		contextNodeName === undefined
+			? useNDVStore().activeNode
+			: useWorkflowsStore().getNodeByName(contextNodeName);
 
 	if (!activeNode) return [];
 
