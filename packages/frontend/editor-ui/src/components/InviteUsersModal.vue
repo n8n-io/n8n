@@ -133,20 +133,15 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 	return false;
 };
 
-function isRoleName(val: unknown): val is InvitableRoleName {
-	// todo test this
+function isInvitableRoleName(val: unknown): val is InvitableRoleName {
 	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
 }
 
 function onInput(e: FormFieldValueUpdate) {
-	if (!isRoleName(e.value)) {
-		return;
-	}
-
-	if (e.name === 'emails') {
+	if (e.name === 'emails' && typeof e.value === 'string') {
 		emails.value = e.value;
 	}
-	if (e.name === 'role') {
+	if (e.name === 'role' && isInvitableRoleName(e.value)) {
 		role.value = e.value;
 	}
 }
