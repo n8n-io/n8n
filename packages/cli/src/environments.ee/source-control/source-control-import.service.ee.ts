@@ -329,8 +329,8 @@ export class SourceControlImportService {
 					ownedBy: project
 						? {
 								type: project.type,
-								projectId: project?.id ?? '',
-								projectName: project?.name ?? '',
+								projectId: project.id,
+								projectName: project.name,
 							}
 						: undefined,
 					filename: getCredentialExportPath(remote.id, this.credentialExportFolder),
