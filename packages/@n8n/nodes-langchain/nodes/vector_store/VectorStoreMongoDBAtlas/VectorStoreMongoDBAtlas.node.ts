@@ -103,17 +103,26 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-let mongoClient: MongoClient | null = null;
+export const mongoConfig = {
+	client: null as MongoClient | null,
+	connectionString: '',
+};
 
-async function getMongoClient(context: any) {
-	if (!mongoClient) {
-		const credentials = await context.getCredentials('mongoDb');
-		mongoClient = new MongoClient(credentials.connectionString as string, {
+export async function getMongoClient(context: any) {
+	const credentials = await context.getCredentials('mongoDb');
+	const connectionString = credentials.connectionString as string;
+	if (!mongoConfig.client || mongoConfig.connectionString !== connectionString) {
+		if (mongoConfig.client) {
+			await mongoConfig.client.close();
+		}
+
+		mongoConfig.connectionString = connectionString;
+		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
 		});
-		await mongoClient.connect();
+		await mongoConfig.client.connect();
 	}
-	return mongoClient;
+	return mongoConfig.client;
 }
 
 async function mongoClientAndDatabase(context: any) {
