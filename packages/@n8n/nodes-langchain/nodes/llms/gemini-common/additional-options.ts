@@ -45,6 +45,20 @@ export const additionalOptions: INodeProperties = {
 				'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 			type: 'number',
 		},
+		{
+			displayName: 'URL Context',
+			name: 'urlContext',
+			type: 'boolean',
+			default: true,
+			description: 'Enable URL context tool to analyze content from specific URLs',
+		},
+		{
+			displayName: 'Search',
+			name: 'search',
+			type: 'boolean',
+			default: true,
+			description: 'Enable Google Search tool for web search capabilities',
+		},
 
 		// Safety Settings
 		{
