@@ -26,6 +26,14 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
       
     </div>
   </div>
+  <div
+    class="settingIcons"
+  >
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -75,6 +83,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   </div>
   <!--v-if-->
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -122,6 +131,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   </div>
   <!--v-if-->
   <!--v-if-->
+  <!--v-if-->
   <div
     class="description"
   >
@@ -166,6 +176,14 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
       </div>
       
     </div>
+  </div>
+  <div
+    class="settingIcons"
+  >
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
   </div>
   <!--v-if-->
   <!--v-if-->
@@ -213,6 +231,14 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
       </div>
       
     </div>
+  </div>
+  <div
+    class="settingIcons"
+  >
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
+    <!--v-if-->
   </div>
   <!--v-if-->
   <!--v-if-->
