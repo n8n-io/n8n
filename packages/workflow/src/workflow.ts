@@ -121,11 +121,10 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destination nodes
+		this.connectionsBySourceNode = this.getConnectionsBySourceNode(parameters.connections);
 		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			parameters.connections,
+			this.connectionsBySourceNode,
 		);
 
 		this.active = parameters.active || false;
@@ -147,10 +146,34 @@ export class Workflow {
 		this.staticData.__dataChanged = true;
 	}
 
+	/** This method removes any ghost connections/nodes */
+	getConnectionsBySourceNode(connections: IConnections) {
+		return Object.fromEntries(
+			Object.entries(connections).flatMap(([sourceNode, connectionsForSource]) => {
+				if (!(sourceNode in this.nodes)) {
+					return [];
+				}
+
+				const nodeConnections = Object.fromEntries(
+					Object.entries(connectionsForSource).map(([type, connectionsForType]) => [
+						type,
+						connectionsForType.map(
+							(inputConnections) =>
+								inputConnections?.filter(({ node }) => node in this.nodes) ?? null,
+						),
+					]),
+				);
+
+				return [[sourceNode, nodeConnections]];
+			}),
+		);
+	}
+
 	/**
-	 * The default connections are by source node. This function rewrites them by destination nodes
-	 * to easily find parent nodes.
+	 * @deprecated Create an instance and access `connectionsByDestinationNode` property instead.
 	 *
+	 * The default connections are by source node.
+	 * This function rewrites them by destination nodes to easily find parent nodes.
 	 */
 	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
@@ -540,9 +563,6 @@ export class Workflow {
 					// Node got checked already before
 					return;
 				}
-
-				// Ignore connections for nodes that don't exist in this workflow
-				if (!(connection.node in this.nodes)) return;
 
 				addNodes = this.getHighestNode(connection.node, undefined, checkedNodes);
 
