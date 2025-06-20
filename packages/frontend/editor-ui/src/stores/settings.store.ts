@@ -9,7 +9,6 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
-import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { testHealthEndpoint } from '@/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
@@ -21,7 +20,6 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
@@ -175,12 +173,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
-	const isBelowUserQuota = computed(
-		(): boolean =>
-			userManagement.value.quota === -1 ||
-			userManagement.value.quota > useUsersStore().allUsers.length,
-	);
-
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
@@ -306,19 +298,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		};
 	};
 
-	const submitContactInfo = async (email: string) => {
-		try {
-			const usersStore = useUsersStore();
-			return await promptsApi.submitContactInfo(
-				settings.value.instanceId,
-				usersStore.currentUserId || '',
-				email,
-			);
-		} catch (error) {
-			return;
-		}
-	};
-
 	const testTemplatesEndpoint = async () => {
 		const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 		await Promise.race([testHealthEndpoint(templatesHost.value), timeout]);
@@ -405,7 +384,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
 		permanentlyDismissedBanners,
-		isBelowUserQuota,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
 		saveManualExecutions,
@@ -420,7 +398,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
-		submitContactInfo,
 		disableTemplates,
 		stopShowingSetupPage,
 		getSettings,
