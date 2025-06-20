@@ -61,6 +61,7 @@ import PCancelable from 'p-cancelable';
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -1191,6 +1192,12 @@ export class WorkflowExecute {
 					nodeType instanceof Node
 						? await nodeType.execute(context)
 						: await nodeType.execute.call(context);
+			}
+
+			// If data is not json compatible then log it as incorrect output
+			const { isValid, errorPath, errorMessage } = isJsonCompatible(data);
+			if (!isValid) {
+				context.logIncorrectNodeOutput({ errorPath, errorMessage });
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(

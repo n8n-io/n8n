@@ -225,4 +225,22 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			msg,
 		});
 	}
+
+	logIncorrectNodeOutput({
+		errorPath,
+		errorMessage,
+	}: {
+		errorPath?: string;
+		errorMessage?: string;
+	} = {}) {
+		this.additionalData.logIncorrectNodeOutput({
+			executionId: this.additionalData.executionId ?? 'unsaved-execution',
+			workflowId: this.workflow.id ?? 'unsaved-workflow',
+			workflowName: this.workflow.name ?? 'Unnamed workflow',
+			nodeName: this.node.name,
+			nodeType: this.node.type,
+			errorPath,
+			errorMessage,
+		});
+	}
 }

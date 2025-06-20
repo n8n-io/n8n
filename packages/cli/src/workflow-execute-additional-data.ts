@@ -36,6 +36,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 // eslint-disable-next-line import/no-cycle
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
@@ -427,5 +428,9 @@ export async function getBase(
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
+
+		logIncorrectNodeOutput(payload: RelayEventMap['node-incorrect-output-data']) {
+			eventService.emit('node-incorrect-output-data', payload);
+		},
 	};
 }
