@@ -565,18 +565,20 @@ describe('NDV', () => {
 				{
 					title: 'Language Models',
 					id: 'ai_languageModel',
+					index: 0,
 				},
 				{
 					title: 'Tools',
 					id: 'ai_tool',
+					index: 0,
 				},
 			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
 			connectionGroups.forEach((group) => {
-				cy.getByTestId(`add-subnode-${group.id}`).should('exist');
-				cy.getByTestId(`add-subnode-${group.id}`).click();
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
 				// Add HTTP Request tool
@@ -585,16 +587,16 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
 				if (group.id === 'ai_languageModel') {
-					cy.getByTestId(`add-subnode-${group.id}`).should('not.exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('not.exist');
 				} else {
-					cy.getByTestId(`add-subnode-${group.id}`).should('exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
 					// Expand the subgroup
-					cy.getByTestId('subnode-connection-group-ai_tool').click();
-					cy.getByTestId(`add-subnode-${group.id}`).click();
+					cy.getByTestId('subnode-connection-group-ai_tool-0').click();
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 					// Add HTTP Request tool
 					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool')
+					cy.getByTestId('subnode-connection-group-ai_tool-0')
 						.findChildByTestId('floating-subnode')
 						.should('have.length', 2);
 				}

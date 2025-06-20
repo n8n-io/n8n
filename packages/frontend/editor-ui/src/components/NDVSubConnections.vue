@@ -62,27 +62,55 @@ const nodeInputIssues = computed(() => {
 });
 
 const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
+	const typeIndexCounters: Record<string, number> = {};
+
 	return possibleConnections.value.reduce(
-		(acc, connection, index) => {
-			// Get input-index-specific connections instead of all connections of this type
+		(acc, connection) => {
+			// Track index per connection type
+			const typeIndex = typeIndexCounters[connection.type] ?? 0;
+			typeIndexCounters[connection.type] = typeIndex + 1;
+
+			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
 				workflow.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ?? [];
-			const inputConnections = nodeConnections[index] ?? [];
+			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
 
-			// Use a unique key that combines connection type and index
-			const connectionKey = `${connection.type}-${index}`;
+			// Use a unique key that combines connection type and per-type index
+			const connectionKey = `${connection.type}-${typeIndex}`;
 			return { ...acc, [connectionKey]: nodes };
 		},
 		{} as Record<string, NodeConfig[]>,
 	);
 });
 
+function getConnectionKey(connection: INodeInputConfiguration, globalIndex: number): string {
+	// Calculate the per-type index for this connection
+	let typeIndex = 0;
+	for (let i = 0; i < globalIndex; i++) {
+		if (possibleConnections.value[i].type === connection.type) {
+			typeIndex++;
+		}
+	}
+	return `${connection.type}-${typeIndex}`;
+}
+
 function getConnectionConfig(connectionKey: string) {
-	const [, indexStr] = connectionKey.split('-');
-	const index = parseInt(indexStr, 10);
-	return possibleConnections.value[index];
+	const [type, indexStr] = connectionKey.split('-');
+	const typeIndex = parseInt(indexStr, 10);
+
+	// Find the connection config by type and type-specific index
+	let currentTypeIndex = 0;
+	for (const connection of possibleConnections.value) {
+		if (connection.type === type) {
+			if (currentTypeIndex === typeIndex) {
+				return connection;
+			}
+			currentTypeIndex++;
+		}
+	}
+	return undefined;
 }
 
 function isMultiConnection(connectionKey: string) {
@@ -212,38 +240,40 @@ defineExpose({
 		>
 			<div
 				v-for="(connection, index) in possibleConnections"
-				:key="`${connection.type}-${index}`"
-				:data-test-id="`subnode-connection-group-${connection.type}-${index}`"
+				:key="getConnectionKey(connection, index)"
+				:data-test-id="`subnode-connection-group-${getConnectionKey(connection, index)}`"
 			>
 				<div :class="$style.connectionType">
 					<span
 						:class="{
 							[$style.connectionLabel]: true,
-							[$style.hasIssues]: hasInputIssues(`${connection.type}-${index}`),
+							[$style.hasIssues]: hasInputIssues(getConnectionKey(connection, index)),
 						}"
 						v-text="`${connection.displayName}${connection.required ? ' *' : ''}`"
 					/>
-					<OnClickOutside @trigger="expandConnectionGroup(`${connection.type}-${index}`, false)">
+					<OnClickOutside
+						@trigger="expandConnectionGroup(getConnectionKey(connection, index), false)"
+					>
 						<div
 							ref="connectedNodesWrapper"
 							:class="{
 								[$style.connectedNodesWrapper]: true,
 								[$style.connectedNodesWrapperExpanded]: expandedGroups.includes(connection.type),
 							}"
-							:style="`--nodes-length: ${connectedNodes[`${connection.type}-${index}`].length}`"
-							@click="expandConnectionGroup(`${connection.type}-${index}`, true)"
+							:style="`--nodes-length: ${connectedNodes[getConnectionKey(connection, index)].length}`"
+							@click="expandConnectionGroup(getConnectionKey(connection, index), true)"
 						>
 							<div
 								v-if="
-									connectedNodes[`${connection.type}-${index}`].length >= 1
+									connectedNodes[getConnectionKey(connection, index)].length >= 1
 										? connection.maxConnections !== 1
 										: true
 								"
 								:class="{
 									[$style.plusButton]: true,
-									[$style.hasIssues]: hasInputIssues(`${connection.type}-${index}`),
+									[$style.hasIssues]: hasInputIssues(getConnectionKey(connection, index)),
 								}"
-								@click="onPlusClick(`${connection.type}-${index}`)"
+								@click="onPlusClick(getConnectionKey(connection, index))"
 							>
 								<n8n-tooltip
 									placement="top"
@@ -251,13 +281,13 @@ defineExpose({
 									:offset="10"
 									:show-after="300"
 									:disabled="
-										shouldShowConnectionTooltip(`${connection.type}-${index}`) &&
-										connectedNodes[`${connection.type}-${index}`].length >= 1
+										shouldShowConnectionTooltip(getConnectionKey(connection, index)) &&
+										connectedNodes[getConnectionKey(connection, index)].length >= 1
 									"
 								>
 									<template #content>
 										Add {{ connection.displayName }}
-										<template v-if="hasInputIssues(`${connection.type}-${index}`)">
+										<template v-if="hasInputIssues(getConnectionKey(connection, index))">
 											<TitledList
 												:title="`${i18n.baseText('node.issues')}:`"
 												:items="nodeInputIssues[connection.type]"
@@ -268,20 +298,20 @@ defineExpose({
 										size="medium"
 										icon="plus"
 										type="tertiary"
-										:data-test-id="`add-subnode-${connection.type}-${index}`"
+										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"
 									/>
 								</n8n-tooltip>
 							</div>
 							<div
-								v-if="connectedNodes[`${connection.type}-${index}`].length > 0"
+								v-if="connectedNodes[getConnectionKey(connection, index)].length > 0"
 								:class="{
 									[$style.connectedNodes]: true,
 									[$style.connectedNodesMultiple]:
-										connectedNodes[`${connection.type}-${index}`].length > 1,
+										connectedNodes[getConnectionKey(connection, index)].length > 1,
 								}"
 							>
 								<div
-									v-for="(node, nodeIndex) in connectedNodes[`${connection.type}-${index}`]"
+									v-for="(node, nodeIndex) in connectedNodes[getConnectionKey(connection, index)]"
 									:key="node.node.name"
 									:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
 									data-test-id="floating-subnode"
@@ -294,7 +324,7 @@ defineExpose({
 										:teleported="true"
 										:offset="10"
 										:show-after="300"
-										:disabled="shouldShowConnectionTooltip(`${connection.type}-${index}`)"
+										:disabled="shouldShowConnectionTooltip(getConnectionKey(connection, index))"
 									>
 										<template #content>
 											{{ node.node.name }}
@@ -308,7 +338,7 @@ defineExpose({
 
 										<div
 											:class="$style.connectedNode"
-											@click="onNodeClick(node.node.name, `${connection.type}-${index}`)"
+											@click="onNodeClick(node.node.name, getConnectionKey(connection, index))"
 										>
 											<NodeIcon
 												:node-type="node.nodeType"
