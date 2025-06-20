@@ -8,12 +8,12 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import { encodingForModel } from '@langchain/core/utils/tiktoken';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
+import { encodingForModel } from '@utils/tokenizer/tiktoken';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
