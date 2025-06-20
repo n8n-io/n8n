@@ -11,15 +11,15 @@ const mockedStripeApiRequest = jest.mocked(stripeApiRequest);
 
 describe('Stripe Trigger Node', () => {
 	let node: StripeTrigger;
-	let mockHookFunctions: IHookFunctions;
+	let mockNodeFunctions: IHookFunctions;
 
 	beforeEach(() => {
 		node = new StripeTrigger();
 
-		mockHookFunctions = {
+		mockNodeFunctions = {
 			getNodeWebhookUrl: jest.fn().mockReturnValue('https://webhook.url/test'),
 			getWorkflow: jest.fn().mockReturnValue({ id: 'test-workflow-id' }),
-			getNodeParameter: jest.fn().mockReturnValue(['*']),
+			getNodeParameter: jest.fn(),
 			getCredentials: jest.fn(),
 			getWorkflowStaticData: jest.fn().mockReturnValue({}),
 			getNode: jest.fn().mockReturnValue({ name: 'StripeTrigger' }),
@@ -33,6 +33,17 @@ describe('Stripe Trigger Node', () => {
 			helpers: {} as any,
 		} as unknown as IHookFunctions;
 
+		// (mockNodeFunctions.getCredentials as jest.Mock).mockResolvedValue({
+		// 	secretKey: 'sk_test_123',
+		// });
+
+		mockedStripeApiRequest.mockResolvedValue({
+			id: 'we_test123',
+			secret: 'whsec_test123',
+			status: 'enabled',
+			enabled_events: ['*'],
+		});
+
 		mockedStripeApiRequest.mockClear();
 	});
 
@@ -40,16 +51,10 @@ describe('Stripe Trigger Node', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should not send api version in body if not specified in credentials', async () => {
-		(mockHookFunctions.getCredentials as jest.Mock).mockResolvedValue({
-			secretKey: 'sk_test_123',
-		});
-
-		mockedStripeApiRequest.mockResolvedValue({
-			id: 'we_test123',
-			secret: 'whsec_test123',
-			status: 'enabled',
-			enabled_events: ['*'],
+	it('should not send API version in body if not specified', async () => {
+		(mockNodeFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+			if (param === 'events') return ['*'];
+			return undefined;
 		});
 
 		const expectedRequestBody = {
@@ -60,7 +65,7 @@ describe('Stripe Trigger Node', () => {
 
 		const endpoint = '/webhook_endpoints';
 
-		await node.webhookMethods.default.create.call(mockHookFunctions);
+		await node.webhookMethods.default.create.call(mockNodeFunctions);
 		expect(mockedStripeApiRequest).toHaveBeenCalledWith('POST', endpoint, expectedRequestBody);
 
 		const callArgs = mockedStripeApiRequest.mock.calls[0];
@@ -68,17 +73,11 @@ describe('Stripe Trigger Node', () => {
 		expect(requestBody).not.toHaveProperty('api_version');
 	});
 
-	it('should send api version in body if specified in credentials', async () => {
-		(mockHookFunctions.getCredentials as jest.Mock).mockResolvedValue({
-			secretKey: 'sk_test_123',
-			apiVersion: '2025-05-28.basil',
-		});
-
-		mockedStripeApiRequest.mockResolvedValue({
-			id: 'we_test123',
-			secret: 'whsec_test123',
-			status: 'enabled',
-			enabled_events: ['*'],
+	it('should send API version in body if specified in node parameters', async () => {
+		(mockNodeFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+			if (param === 'apiVersion') return '2025-05-28.basil';
+			if (param === 'events') return ['*'];
+			return undefined;
 		});
 
 		const expectedRequestBody = {
@@ -90,7 +89,7 @@ describe('Stripe Trigger Node', () => {
 
 		const endpoint = '/webhook_endpoints';
 
-		await node.webhookMethods.default.create.call(mockHookFunctions);
+		await node.webhookMethods.default.create.call(mockNodeFunctions);
 		expect(mockedStripeApiRequest).toHaveBeenCalledWith('POST', endpoint, expectedRequestBody);
 
 		const callArgs = mockedStripeApiRequest.mock.calls[0];

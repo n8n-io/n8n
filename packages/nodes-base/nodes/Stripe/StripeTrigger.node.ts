@@ -828,6 +828,15 @@ export class StripeTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'string',
+				placeholder: '2025-05-28.basil',
+				default: '',
+				description:
+					'The API version to use for requests. It controls the format and structure of the incoming event payloads that Stripe sends to your webhook. If empty, Stripe will use the default API version set in your account at the time, which may lead to event processing issues if the API version changes in the future.',
+			},
 		],
 	};
 
@@ -886,9 +895,9 @@ export class StripeTrigger implements INodeType {
 					enabled_events: events,
 				};
 
-				const credentials = await this.getCredentials('stripeApi');
-				if (credentials.apiVersion && credentials.apiVersion !== '') {
-					body.api_version = credentials.apiVersion as string;
+				const apiVersion = this.getNodeParameter('apiVersion', '');
+				if (apiVersion && apiVersion !== '') {
+					body.api_version = apiVersion as string;
 				}
 
 				const responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
