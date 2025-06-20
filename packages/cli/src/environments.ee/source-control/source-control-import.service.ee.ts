@@ -58,14 +58,18 @@ const findOwnerProject = (
 ): Project | undefined => {
 	if (typeof owner === 'string') {
 		return accessibleProjects.find((project) =>
-			project.projectRelations.some((r) => r.user.email === owner),
+			project.projectRelations.some(
+				(r) => r.role === 'project:personalOwner' && r.user.email === owner,
+			),
 		);
 	}
 	if (owner.type === 'personal') {
 		return accessibleProjects.find(
 			(project) =>
 				project.type === 'personal' &&
-				project.projectRelations.some((r) => r.user.email === owner.personalEmail),
+				project.projectRelations.some(
+					(r) => r.role === 'project:personalOwner' && r.user.email === owner.personalEmail,
+				),
 		);
 	}
 	return accessibleProjects.find(
