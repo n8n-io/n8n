@@ -227,7 +227,13 @@ async function handleActionItemClick(commandData: Command) {
 					>
 						<AnimatedSpinner />
 					</N8nText>
-					<N8nIcon v-else :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+					<N8nIcon
+						v-else
+						size="medium"
+						:icon="statusRender.icon"
+						:color="statusRender.color"
+						class="mr-2xs"
+					/>
 					{{ statusRender.label }}
 				</div>
 			</N8nTooltip>
