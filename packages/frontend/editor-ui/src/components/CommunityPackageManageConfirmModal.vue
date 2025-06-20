@@ -224,7 +224,11 @@ onMounted(async () => {
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
-				<n8n-notice v-if="!isVerifiedLatestPackage" :content="getModalContent.warning" />
+				<n8n-notice
+					data-test-id="communityPackageManageConfirmModal-warning"
+					v-if="!isVerifiedLatestPackage"
+					:content="getModalContent.warning"
+				/>
 			</div>
 		</template>
 		<template #footer>
