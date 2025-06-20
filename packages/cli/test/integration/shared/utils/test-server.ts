@@ -99,6 +99,7 @@ export const setupTestServer = ({
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.set('query parser', 'extended');
 	app.use((req: APIRequest, _, next) => {
 		req.browserId = browserId;
 		next();
@@ -124,7 +125,7 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.load(modules);
+		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');

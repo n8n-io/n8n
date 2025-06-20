@@ -66,10 +66,14 @@ export async function initializeCore() {
 		banners,
 	});
 
+	versionsStore.initialize(settingsStore.settings.versionNotifications);
+
 	void useExternalHooks().run('app.mount');
 
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize();
+		await usersStore.initialize({
+			quota: settingsStore.userManagement.quota,
+		});
 
 		void versionsStore.checkForNewVersions();
 	}
