@@ -1220,7 +1220,7 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	__rl: true;
 	mode: ResourceLocatorModes;
-	value: NodeParameterValue;
+	value: Exclude<NodeParameterValue, boolean>;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
 	__regex?: string;

@@ -7,7 +7,7 @@ export type ButtonElement = (typeof BUTTON_ELEMENT)[number];
 const BUTTON_TYPE = ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'] as const;
 export type ButtonType = (typeof BUTTON_TYPE)[number];
 
-const BUTTON_SIZE = ['mini', 'small', 'medium', 'large'] as const;
+const BUTTON_SIZE = ['xmini', 'mini', 'small', 'medium', 'large'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
 const BUTTON_NATIVE_TYPE = ['submit', 'reset', 'button'] as const;
@@ -21,7 +21,7 @@ export interface IconButtonProps {
 	loading?: boolean;
 	outline?: boolean;
 	size?: ButtonSize;
-	iconSize?: Exclude<IconSize, 'xlarge'>;
+	iconSize?: IconSize;
 	text?: boolean;
 	type?: ButtonType;
 	nativeType?: ButtonNativeType;

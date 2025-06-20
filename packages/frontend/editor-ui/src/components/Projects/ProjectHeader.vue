@@ -16,6 +16,7 @@ import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.v
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import type { IUser } from 'n8n-workflow';
 
 const route = useRoute();
 const router = useRouter();
@@ -96,7 +97,7 @@ const createWorkflowButton = computed(() => ({
 }));
 
 const menu = computed(() => {
-	const items: UserAction[] = [
+	const items: Array<UserAction<IUser>> = [
 		{
 			value: ACTION_TYPES.CREDENTIAL,
 			label: i18n.baseText('projects.header.create.credential'),

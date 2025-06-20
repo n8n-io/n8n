@@ -18,3 +18,5 @@ CHANGELOG.md
 **/*.js
 **/*.json
 **/*.jsonc
+# Auto-generated
+**/components.d.ts

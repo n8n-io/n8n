@@ -20,7 +20,7 @@ function runningSince(started: Date): string {
 </script>
 
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
+	<WorkerAccordion icon="tasks" icon-color="text-dark" :initial-expanded="true">
 		<template #title>
 			{{ i18n.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
 		</template>

@@ -4,7 +4,7 @@ import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { NodeParameterValue } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, NodeParameterValue } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	'update:modelValue': [value: NodeParameterValue];
+	'update:modelValue': [value: INodeParameterResourceLocator['value']];
 	loadMore: [];
 	filter: [filter: string];
 	addResourceClick: [];
@@ -164,7 +164,7 @@ function onKeyDown(e: KeyboardEvent) {
 		const selected = sortedResources.value[hoverIndex.value - 1]?.value;
 
 		// Selected resource can be empty when loading or empty results
-		if (selected) {
+		if (selected && typeof selected !== 'boolean') {
 			emit('update:modelValue', selected);
 		}
 	}
@@ -175,6 +175,10 @@ function onFilterInput(value: string) {
 }
 
 function onItemClick(selected: string | number | boolean) {
+	if (typeof selected === 'boolean') {
+		return;
+	}
+
 	emit('update:modelValue', selected);
 }
 

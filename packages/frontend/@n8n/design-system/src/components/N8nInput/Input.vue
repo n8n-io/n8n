@@ -8,7 +8,7 @@ import type { InputSize, InputType } from '@n8n/design-system/types/input';
 import { uid } from '../../utils';
 
 interface InputProps {
-	modelValue?: string | number;
+	modelValue?: string | number | null;
 	type?: InputType;
 	size?: InputSize;
 	placeholder?: string;

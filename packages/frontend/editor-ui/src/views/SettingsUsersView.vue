@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { ROLE, type Role } from '@n8n/api-types';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
-import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
+import type { InvitableRoleName, IUser } from '@/Interface';
+import type { UserAction } from '@n8n/design-system';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -31,6 +32,8 @@ const showUMSetupWarning = computed(() => {
 	return hasPermission(['defaultUser']);
 });
 
+const allUsers = computed(() => usersStore.allUsers);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
@@ -39,7 +42,7 @@ onMounted(async () => {
 	}
 });
 
-const usersListActions = computed((): IUserListAction[] => {
+const usersListActions = computed((): Array<UserAction<IUser>> => {
 	return [
 		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
@@ -284,12 +287,12 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			v-if="usersStore.usersLimitNotReached || usersStore.allUsers.length > 1"
+			v-if="usersStore.usersLimitNotReached || allUsers.length > 1"
 			:class="$style.usersContainer"
 		>
 			<n8n-users-list
 				:actions="usersListActions"
-				:users="usersStore.allUsers"
+				:users="allUsers"
 				:current-user-id="usersStore.currentUserId"
 				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
 				@action="onUsersListAction"

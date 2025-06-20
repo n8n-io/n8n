@@ -4,6 +4,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TestTableColumn } from '@/components/Evaluations.ee/shared/TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
+import type { BadgeTheme } from '@n8n/design-system';
 
 defineProps<{
 	column: TestTableColumn<T>;
@@ -39,7 +40,7 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 };
 
 // FIXME: move status logic to a parent component
-const statusThemeMap: Record<string, string> = {
+const statusThemeMap: Record<string, BadgeTheme> = {
 	new: 'default',
 	running: 'warning',
 	evaluation_running: 'warning',

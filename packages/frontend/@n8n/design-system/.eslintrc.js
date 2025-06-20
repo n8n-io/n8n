@@ -16,6 +16,7 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-member-access': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+		'vue/no-undef-components': 'error',
 	},
 
 	overrides: [

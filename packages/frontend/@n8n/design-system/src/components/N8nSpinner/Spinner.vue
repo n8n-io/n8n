@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import type { TextSize } from '@n8n/design-system/types/text';
+import type { IconSize } from '@n8n/design-system/types';
 
 import N8nIcon from '../N8nIcon';
 
 const TYPE = ['dots', 'ring'] as const;
 
 interface SpinnerProps {
-	size?: Exclude<TextSize, 'mini' | 'xlarge'>;
+	size?: IconSize;
 	type?: (typeof TYPE)[number];
 }
 

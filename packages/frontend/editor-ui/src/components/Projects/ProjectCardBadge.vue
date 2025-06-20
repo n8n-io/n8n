@@ -4,11 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType, splitName } from '@/utils/projects.utils';
 import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type {
-	CredentialsResource,
-	FolderResource,
-	WorkflowResource,
-} from '../layouts/ResourcesListLayout.vue';
+import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
 
 type Props = {

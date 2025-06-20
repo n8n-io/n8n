@@ -122,9 +122,9 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return props.modelValue ?? '';
 	}
 
 	if (isListMode.value) {
@@ -208,9 +208,6 @@ async function refreshCachedWorkflow() {
 	}
 
 	const workflowId = props.modelValue.value;
-	if (workflowId === true) {
-		return;
-	}
 	try {
 		await workflowsStore.fetchWorkflow(`${workflowId}`);
 		onInputChange(workflowId);

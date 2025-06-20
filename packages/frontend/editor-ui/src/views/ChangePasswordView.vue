@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useUsersStore } from '@/stores/users.store';
 
-import type { IFormBoxConfig } from '@/Interface';
+import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 
 const usersStore = useUsersStore();
@@ -80,8 +80,8 @@ const onSubmit = async (values: { [key: string]: string }) => {
 	loading.value = false;
 };
 
-const onInput = (e: { name: string; value: string }) => {
-	if (e.name === 'password') {
+const onInput = (e: FormFieldValueUpdate) => {
+	if (e.name === 'password' && typeof e.value === 'string') {
 		password.value = e.value;
 	}
 };

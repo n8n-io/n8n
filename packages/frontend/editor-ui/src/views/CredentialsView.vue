@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import CredentialCard from '@/components/CredentialCard.vue';
-import ResourcesListLayout, {
-	type BaseFilters,
-	type Resource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { BaseFilters, Resource } from '@/Interface';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useProjectPages } from '@/composables/useProjectPages';

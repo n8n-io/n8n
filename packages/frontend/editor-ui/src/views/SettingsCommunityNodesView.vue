@@ -73,7 +73,7 @@ const getEmptyStateButtonText = computed(() => {
 const actionBoxConfig = computed(() => {
 	return {
 		calloutText: '',
-		calloutTheme: '',
+		calloutTheme: undefined,
 		hideButton: false,
 	};
 });

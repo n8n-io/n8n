@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import type { IFormInput } from '@n8n/design-system/types';
+import type {
+	FormFieldValue,
+	IFormInput,
+	FormFieldValueUpdate,
+	FormValues,
+} from '@n8n/design-system/types';
 
 import { createFormEventBus } from '../../utils';
 import N8nButton from '../N8nButton';
@@ -17,12 +22,10 @@ interface FormBoxProps {
 	redirectLink?: string;
 }
 
-type Value = string | number | boolean | null | undefined;
-
 defineOptions({ name: 'N8nFormBox' });
 withDefaults(defineProps<FormBoxProps>(), {
 	title: '',
-	inputs: () => [],
+	inputs: (): IFormInput[] => [],
 	buttonLoading: false,
 	redirectText: '',
 	redirectLink: '',
@@ -30,13 +33,13 @@ withDefaults(defineProps<FormBoxProps>(), {
 
 const formBus = createFormEventBus();
 const emit = defineEmits<{
-	submit: [value: { [key: string]: Value }];
-	update: [value: { name: string; value: Value }];
+	submit: [value: FormValues];
+	update: [value: FormFieldValueUpdate];
 	secondaryClick: [value: Event];
 }>();
 
-const onUpdateModelValue = (e: { name: string; value: Value }) => emit('update', e);
-const onSubmit = (e: { [key: string]: Value }) => emit('submit', e);
+const onUpdateModelValue = (e: { name: string; value: FormFieldValue }) => emit('update', e);
+const onSubmit = (e: { [key: string]: FormFieldValue }) => emit('submit', e);
 const onButtonClick = () => formBus.emit('submit');
 const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 </script>

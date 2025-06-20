@@ -99,11 +99,13 @@ const onBackClick = () => {
 	emit('onBackClick', MFA_FORM.MFA_RECOVERY_CODE);
 };
 
-const onSubmit = async (form: { mfaCode: string; mfaRecoveryCode: string }) => {
+const onSubmit = (formData: unknown) => {
+	const data = formData as { mfaCode: string; mfaRecoveryCode: string };
+
 	formError.value = !showRecoveryCodeForm.value
 		? i18.baseText('mfa.code.invalid')
 		: i18.baseText('mfa.recovery.invalid');
-	emit('submit', form);
+	emit('submit', data);
 };
 
 const onInput = ({ target: { value, name } }: { target: { value: string; name: string } }) => {
@@ -124,9 +126,12 @@ const onInput = ({ target: { value, name } }: { target: { value: string; name: s
 		? { mfaCode: value, mfaRecoveryCode: '' }
 		: { mfaCode: '', mfaRecoveryCode: value };
 
-	onSubmit(dataToSubmit)
-		.catch(() => {})
-		.finally(() => (verifyingMfaCode.value = false));
+	try {
+		onSubmit(dataToSubmit);
+	} catch (e) {
+	} finally {
+		verifyingMfaCode.value = false;
+	}
 };
 
 const mfaRecoveryCodeFieldWithDefaults = () => {

@@ -74,7 +74,7 @@ const onBlur = () => emit('blur');
 const onFocus = () => emit('focus');
 
 const getLabel = (user: IUser) =>
-	!user.fullName ? user.email : `${user.fullName} (${user.email})`;
+	(!user.fullName ? user.email : `${user.fullName} (${user.email})`) ?? '';
 </script>
 
 <template>

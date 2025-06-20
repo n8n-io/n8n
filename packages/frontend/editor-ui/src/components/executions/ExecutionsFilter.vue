@@ -157,6 +157,12 @@ const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
+const onExactMatchChange = (e: string | number | boolean) => {
+	if (typeof e === 'boolean') {
+		onFilterMetaChange(0, 'exactMatch', e);
+	}
+};
+
 onBeforeMount(() => {
 	isCustomDataFilterTracked.value = false;
 });
@@ -348,7 +354,7 @@ onBeforeMount(() => {
 								:model-value="filter.metadata[0]?.exactMatch"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								data-test-id="execution-filter-saved-data-exact-match-checkbox"
-								@update:model-value="onFilterMetaChange(0, 'exactMatch', $event)"
+								@update:model-value="onExactMatchChange"
 							/>
 						</n8n-tooltip>
 					</div>

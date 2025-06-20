@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
+import N8nButton from '../../../N8nButton';
+import N8nInput from '../../../N8nInput';
 
 interface Props {
 	message: ChatUI.RateWorkflowMessage & { id: string; read: boolean };
@@ -48,7 +50,7 @@ function onSubmitFeedback() {
 		<div :class="$style.content">
 			<p v-if="!showSuccess">{{ message.content }}</p>
 			<div v-if="!showFeedback && !showSuccess" :class="$style.buttons">
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					size="small"
 					:label="t('assistantChat.builder.thumbsUp')"
@@ -56,7 +58,7 @@ function onSubmitFeedback() {
 					icon="thumbs-up"
 					@click="onRateButton('thumbsUp')"
 				/>
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					size="small"
 					data-test-id="message-thumbs-down-button"
@@ -66,7 +68,7 @@ function onSubmitFeedback() {
 				/>
 			</div>
 			<div v-if="showFeedback" :class="$style.feedbackTextArea">
-				<n8n-input
+				<N8nInput
 					v-model="feedback"
 					:class="$style.feedbackInput"
 					type="textarea"
@@ -77,7 +79,7 @@ function onSubmitFeedback() {
 					:rows="5"
 				/>
 				<div :class="$style.feedbackTextArea__footer">
-					<n8n-button
+					<N8nButton
 						native-type="submit"
 						type="secondary"
 						size="small"
@@ -85,7 +87,7 @@ function onSubmitFeedback() {
 						@click="onSubmitFeedback"
 					>
 						{{ t('assistantChat.builder.submit') }}
-					</n8n-button>
+					</N8nButton>
 				</div>
 			</div>
 

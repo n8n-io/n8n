@@ -428,7 +428,8 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
+async function onWorkflowMenuSelect(value: string): Promise<void> {
+	const action = value as WORKFLOW_MENU_ACTIONS;
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({

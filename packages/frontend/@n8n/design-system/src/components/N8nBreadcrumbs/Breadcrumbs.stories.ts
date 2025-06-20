@@ -1,6 +1,6 @@
 import type { StoryFn } from '@storybook/vue3';
 
-import type { UserAction } from '@n8n/design-system/types';
+import type { IUser, UserAction } from '@n8n/design-system/types';
 
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
@@ -125,7 +125,7 @@ SyncLoadingCacheTest.args = {
 	title: '[Demo] This will update the hidden items every time dropdown is opened',
 };
 
-const testActions: UserAction[] = [
+const testActions: Array<UserAction<IUser>> = [
 	{ label: 'Create Folder', value: 'action1', disabled: false },
 	{ label: 'Create Workflow', value: 'action2', disabled: false },
 	{ label: 'Rename', value: 'action3', disabled: false },
