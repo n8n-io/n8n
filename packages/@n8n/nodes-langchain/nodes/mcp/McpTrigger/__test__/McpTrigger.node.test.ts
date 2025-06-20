@@ -144,8 +144,12 @@ describe('McpTrigger Node', () => {
 		it('should handle DELETE webhook for StreamableHTTP session termination', async () => {
 			// Configure the context for DELETE webhook
 			mockContext.getWebhookName.mockReturnValue('default');
-			mockRequest.method = 'DELETE';
-			mockRequest.headers = { 'mcp-session-id': sessionId };
+			const mockDeleteRequest = mock<Request>({
+				method: 'DELETE',
+				headers: { 'mcp-session-id': sessionId },
+				path: '/custom-path',
+			});
+			mockContext.getRequestObject.mockReturnValueOnce(mockDeleteRequest);
 
 			// Mock existing StreamableHTTP transport
 			mockServerManager.getSessionId.mockReturnValue(sessionId);
@@ -155,7 +159,10 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that handleDeleteRequest was called
-			expect(mockServerManager.handleDeleteRequest).toHaveBeenCalledWith(mockRequest, mockResponse);
+			expect(mockServerManager.handleDeleteRequest).toHaveBeenCalledWith(
+				mockDeleteRequest,
+				mockResponse,
+			);
 
 			// Verify the returned result
 			expect(result).toEqual({ noWebhookResponse: true });
