@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 
 import { Time } from '@/constants';
 
-const LAST_ACTIVE_CACHE_TTL = 2 * Time.minutes.toMilliseconds;
+const LAST_ACTIVE_CACHE_TTL = 1 * Time.hours.toMilliseconds;
 
 @Service()
 export class LastActiveAtService {

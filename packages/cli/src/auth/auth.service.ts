@@ -88,7 +88,11 @@ export class AuthService {
 
 		if (req.user) {
 			res.on('finish', async () => {
-				await this.lastActiveAtService.updateLastActiveIfStale(req.user.id);
+				try {
+					await this.lastActiveAtService.updateLastActiveIfStale(req.user.id);
+				} catch (error: unknown) {
+					this.logger.error('Failed to update last active timestamp', { error });
+				}
 			});
 			next();
 		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });
