@@ -82,7 +82,7 @@ export class ControllerRegistry {
 					? [this.createRateLimitMiddleware(route.rateLimit)]
 					: []),
 				// eslint-disable-next-line @typescript-eslint/unbound-method
-				...(route.skipAuth ? [] : [this.authService.authMiddleware]),
+				...(route.skipAuth ? [] : [this.authService.createAuthMiddleware(route.allowSkipMFA)]),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,

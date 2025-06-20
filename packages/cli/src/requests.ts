@@ -31,6 +31,7 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
+	usedMfa: boolean;
 	cookies: Record<string, string | undefined>;
 	headers: express.Request['headers'] & {
 		'push-ref': string;
@@ -164,6 +165,7 @@ export declare namespace UserRequest {
 // ----------------------------------
 
 export declare namespace MFA {
+	type Enforce = AuthenticatedRequest<{}, {}, { enforce: boolean }, {}>;
 	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;

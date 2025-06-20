@@ -165,6 +165,7 @@ export interface FrontendSettings {
 	};
 	mfa: {
 		enabled: boolean;
+		enforced: boolean;
 	};
 	folders: {
 		enabled: boolean;

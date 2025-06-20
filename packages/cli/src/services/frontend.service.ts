@@ -29,6 +29,7 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
+import { MfaService } from '@/mfa/mfa.service';
 
 @Service()
 export class FrontendService {
@@ -51,6 +52,7 @@ export class FrontendService {
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly mfaService: MfaService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -214,6 +216,7 @@ export class FrontendService {
 			},
 			mfa: {
 				enabled: false,
+				enforced: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
@@ -382,6 +385,9 @@ export class FrontendService {
 		}
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
+
+		// TODO: read from settings
+		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 
