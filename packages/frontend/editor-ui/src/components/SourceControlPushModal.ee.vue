@@ -575,6 +575,7 @@ function castProject(project: ProjectListItem) {
 						/>
 						<ProjectSharing
 							v-model="filters.project"
+							data-test-id="source-control-push-modal-project-search"
 							:projects="projectsStore.availableProjects"
 							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
@@ -703,6 +704,7 @@ function castProject(project: ProjectListItem) {
 												>
 													<ProjectCardBadge
 														v-if="file.project"
+														data-test-id="source-control-push-modal-project-badge"
 														:resource="castProject(file.project)"
 														:resource-type="castType(file.type)"
 														:resource-type-label="

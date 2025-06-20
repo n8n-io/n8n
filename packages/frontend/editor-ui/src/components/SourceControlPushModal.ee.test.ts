@@ -10,6 +10,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectListItem } from '@/types/projects.types';
 
 const eventBus = createEventBus();
 
@@ -50,6 +52,19 @@ const DynamicScrollerStub = {
 const DynamicScrollerItemStub = {
 	template: '<slot></slot>',
 };
+
+const projects = [
+	{
+		id: '1',
+		name: 'Nathan member',
+		type: 'personal',
+	},
+	{
+		id: '2',
+		name: 'Other project',
+		type: 'team',
+	},
+] as const;
 
 const renderModal = createComponentRenderer(SourceControlPushModal, {
 	global: {
@@ -469,6 +484,67 @@ describe('SourceControlPushModal', () => {
 					status: 'created',
 				});
 			});
+		});
+
+		it('should filter by project', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.availableProjects = projects as unknown as ProjectListItem[];
+
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'My workflow 1',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+					owner: {
+						type: projects[0].type,
+						projectId: projects[0].id,
+						projectName: projects[0].name as string,
+					},
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'My workflow 2',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+					owner: {
+						type: projects[1].type,
+						projectId: projects[1].id,
+						projectName: projects[1].name as string,
+					},
+				},
+			];
+
+			const { getByTestId, getAllByTestId } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-push-modal-project-search')).toBeVisible();
+
+			await userEvent.click(getByTestId('source-control-push-modal-project-search'));
+
+			expect(getAllByTestId('project-sharing-info')).toHaveLength(2);
+
+			await userEvent.click(getAllByTestId('project-sharing-info')[0]);
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
 		});
 
 		it('should reset', async () => {
