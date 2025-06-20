@@ -79,15 +79,13 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree.length).toBe(1);
 
-		expect(logTree[0].id).toBe('test-wf-id:A:test-execution-id:0');
-		expect(logTree[0].depth).toBe(0);
+		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0');
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
 		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
-		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
-		expect(logTree[0].children[0].depth).toBe(1);
+		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
 		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
@@ -95,23 +93,20 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
 
-		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:C:test-execution-id:0');
-		expect(logTree[0].children[0].children[0].depth).toBe(2);
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
-		expect(logTree[0].children[1].id).toBe('test-wf-id:B:test-execution-id:1');
-		expect(logTree[0].children[1].depth).toBe(1);
+		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
 		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
-		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:C:test-execution-id:1');
-		expect(logTree[0].children[1].children[0].depth).toBe(2);
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
@@ -554,10 +549,11 @@ describe(getTreeNodeData, () => {
 });
 
 describe(findSelectedLogEntry, () => {
-	function find(state: LogEntrySelection, response: IExecutionResponse) {
+	function find(state: LogEntrySelection, response: IExecutionResponse, shouldFallback: boolean) {
 		return findSelectedLogEntry(
 			state,
 			createLogTree(createTestWorkflowObject(response.workflowData), response),
+			shouldFallback,
 		);
 	}
 
@@ -574,7 +570,7 @@ describe(findSelectedLogEntry, () => {
 				data: { resultData: { runData: {} } },
 			});
 
-			expect(find({ type: 'initial' }, response)).toBe(undefined);
+			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
 		});
 
 		it('should return first log entry with error', () => {
@@ -601,7 +597,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -637,7 +633,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -666,7 +662,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			);
 		});
@@ -695,7 +691,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			);
 		});
@@ -704,10 +700,9 @@ describe(findSelectedLogEntry, () => {
 	describe('when log is manually selected', () => {
 		it('should return manually selected log', () => {
 			const response = createTestWorkflowExecutionResponse({
-				id: 'my-exec-id',
 				workflowData: createTestWorkflow({
 					id: 'test-wf-id',
-					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
+					nodes: [createTestNode({ name: 'A', id: 'a' }), createTestNode({ name: 'B', id: 'b' })],
 				}),
 				data: {
 					resultData: {
@@ -719,10 +714,62 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
+			const result = find(
+				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0' }) },
+				response,
+				false,
+			);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			);
+		});
+	});
+
+	describe('when fallback to closest selection is enabled', () => {
+		const nodeA = createTestNode({ name: 'A', id: 'a' });
+		const workflowData = createTestWorkflow({
+			id: 'test-wf-id',
+			nodes: [nodeA],
+		});
+		const response = createTestWorkflowExecutionResponse({
+			workflowData,
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData(), createTestTaskData(), createTestTaskData()],
+					},
+				},
+			},
+		});
+
+		it('should return the log with same node and run index as selected log if it exists', () => {
+			const selected = createTestLogEntry({
+				id: 'test-wf-id:a:2',
+				executionId: response.id,
+				node: nodeA,
+				runIndex: 2,
+				workflow: createTestWorkflowObject(workflowData),
+			});
+			const result = find({ type: 'selected', entry: selected }, response, true);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
+			);
+		});
+
+		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
+			const selected = createTestLogEntry({
+				id: 'test-wf-id:a:4',
+				executionId: response.id,
+				node: nodeA,
+				runIndex: 4,
+				workflow: createTestWorkflowObject(workflowData),
+			});
+			const result = find({ type: 'selected', entry: selected }, response, true);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
 			);
 		});
 	});
@@ -909,28 +956,24 @@ describe(createLogTree, () => {
 		expect(logs).toHaveLength(2);
 
 		expect(logs[0].node.name).toBe('A');
-		expect(logs[0].depth).toBe(0);
 		expect(logs[0].workflow).toBe(workflow);
 		expect(logs[0].execution).toBe(rootExecutionData.data);
 		expect(logs[0].executionId).toBe('root-exec-id');
 		expect(logs[0].children).toHaveLength(0);
 
 		expect(logs[1].node.name).toBe('B');
-		expect(logs[1].depth).toBe(0);
 		expect(logs[1].workflow).toBe(workflow);
 		expect(logs[1].execution).toBe(rootExecutionData.data);
 		expect(logs[1].executionId).toBe('root-exec-id');
 		expect(logs[1].children).toHaveLength(2);
 
 		expect(logs[1].children[0].node.name).toBe('C');
-		expect(logs[1].children[0].depth).toBe(1);
 		expect(logs[1].children[0].workflow).toBe(subWorkflow);
 		expect(logs[1].children[0].execution).toBe(subExecutionData);
 		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[0].children).toHaveLength(0);
 
 		expect(logs[1].children[1].node.name).toBe('C');
-		expect(logs[1].children[1].depth).toBe(1);
 		expect(logs[1].children[1].workflow).toBe(subWorkflow);
 		expect(logs[1].children[1].execution).toBe(subExecutionData);
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');

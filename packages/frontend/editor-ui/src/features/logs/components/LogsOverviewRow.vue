@@ -72,23 +72,21 @@ const subtreeConsumedTokens = computed(() =>
 
 const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
 
-function isLastChild(level: number) {
-	let parent = props.data.parent;
-	let data: LogEntry | undefined = props.data;
+const indents = computed(() => {
+	const ret: Array<{ straight: boolean; curved: boolean }> = [];
 
-	for (let i = 0; i < props.data.depth - level; i++) {
-		data = parent;
-		parent = parent?.parent;
+	let data: LogEntry = props.data;
+
+	while (data.parent !== undefined) {
+		const siblings = data.parent?.children ?? [];
+		const lastSibling = siblings[siblings.length - 1];
+
+		ret.unshift({ straight: lastSibling?.id !== data.id, curved: data === props.data });
+		data = data.parent;
 	}
 
-	const siblings = parent?.children ?? [];
-	const lastSibling = siblings[siblings.length - 1];
-
-	return (
-		(data === undefined && lastSibling === undefined) ||
-		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
-	);
-}
+	return ret;
+});
 
 // Focus when selected: For scrolling into view and for keyboard navigation to work
 watch(
@@ -119,16 +117,16 @@ watch(
 		}"
 		@click.stop="emit('toggleSelected')"
 	>
-		<template v-for="level in props.data.depth" :key="level">
-			<div
-				:class="{
-					[$style.indent]: true,
-					[$style.connectorCurved]: level === props.data.depth,
-					[$style.connectorStraight]: !isLastChild(level),
-				}"
-			/>
-		</template>
-		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
+		<div
+			v-for="(indent, level) in indents"
+			:key="level"
+			:class="{
+				[$style.indent]: true,
+				[$style.connectorCurved]: indent.curved,
+				[$style.connectorStraight]: indent.straight,
+			}"
+		/>
+		<div :class="$style.background" :style="{ '--indent-depth': indents.length }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<LogsViewNodeName
 			:class="$style.name"
@@ -213,7 +211,7 @@ watch(
 			icon="play"
 			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
+			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution')"
 		/>

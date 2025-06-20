@@ -9,6 +9,7 @@ import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PiPWindowSymbol } from '@/constants';
+import { isSubNodeLog } from '../logs.utils';
 
 const { title, logEntry, paneType } = defineProps<{
 	title: string;
@@ -28,7 +29,7 @@ const isMultipleInput = computed(
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
-	if (logEntry.depth > 0 || paneType === 'output') {
+	if (isSubNodeLog(logEntry) || paneType === 'output') {
 		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
@@ -81,7 +82,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-edit="true"
 		:disable-hover-highlight="true"
 		:display-mode="displayMode"
-		:disable-ai-content="logEntry.depth === 0"
+		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"
 		table-header-bg-color="light"
 		@display-mode-change="handleChangeDisplayMode"
