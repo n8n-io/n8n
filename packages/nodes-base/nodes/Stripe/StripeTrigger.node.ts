@@ -877,6 +877,7 @@ export class StripeTrigger implements INodeType {
 					description: string;
 					enabled_events: object | NodeParameterValue;
 					api_version?: string;
+					[key: string]: any;
 				}
 
 				const body: StripeWebhookBody = {
@@ -886,7 +887,7 @@ export class StripeTrigger implements INodeType {
 				};
 
 				const credentials = await this.getCredentials('stripeApi');
-				if (credentials.apiVersion) {
+				if (credentials.apiVersion && credentials.apiVersion !== '') {
 					body.api_version = credentials.apiVersion as string;
 				}
 
