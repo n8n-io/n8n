@@ -79,7 +79,7 @@
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
-    "semver": "7.5.4",
+    "semver": "^7.5.4",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
     "typescript": "catalog:",
