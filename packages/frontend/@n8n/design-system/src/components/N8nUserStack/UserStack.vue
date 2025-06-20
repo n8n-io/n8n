@@ -10,7 +10,7 @@ import N8nUserInfo from '../N8nUserInfo';
 const props = withDefaults(
 	defineProps<{
 		users: UserStackGroups;
-		currentUserEmail?: string;
+		currentUserEmail?: string | null;
 		maxAvatars?: number;
 		dropdownTrigger?: 'hover' | 'click';
 	}>(),

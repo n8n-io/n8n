@@ -1,10 +1,10 @@
 export type IUser = {
 	id: string;
-	firstName?: string;
-	lastName?: string;
+	firstName?: string | null;
+	lastName?: string | null;
 	fullName?: string;
 	role?: string;
-	email?: string;
+	email?: string | null;
 	signInType?: string;
 	isOwner?: boolean;
 	isPendingUser?: boolean;
