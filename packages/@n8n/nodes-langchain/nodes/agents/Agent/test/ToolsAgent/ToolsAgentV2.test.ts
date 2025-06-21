@@ -43,6 +43,7 @@ describe('toolsAgentExecute', () => {
 		// Mock getNodeParameter to return default values
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
 			if (param === 'options.batching.batchSize') return defaultValue;
 			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
 			if (param === 'options')
@@ -95,6 +96,7 @@ describe('toolsAgentExecute', () => {
 			if (param === 'options.batching.batchSize') return 2;
 			if (param === 'options.batching.delayBetweenBatches') return 100;
 			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
@@ -148,6 +150,7 @@ describe('toolsAgentExecute', () => {
 			if (param === 'options.batching.batchSize') return 2;
 			if (param === 'options.batching.delayBetweenBatches') return 0;
 			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
@@ -197,6 +200,7 @@ describe('toolsAgentExecute', () => {
 			if (param === 'options.batching.batchSize') return 2;
 			if (param === 'options.batching.delayBetweenBatches') return 0;
 			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',

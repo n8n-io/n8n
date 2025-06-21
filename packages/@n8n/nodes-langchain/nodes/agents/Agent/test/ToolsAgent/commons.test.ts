@@ -2,7 +2,7 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
-import { FakeChatModel, FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
+import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
