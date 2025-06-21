@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -29,6 +29,7 @@ import type { IUser } from 'n8n-workflow';
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { IWorkflowDb } from '@/types/workflows.types';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -88,6 +89,8 @@ const foldersStore = useFoldersStore();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
+
+const fullWorkflowData = ref<IWorkflowDb | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -193,6 +196,29 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.type !== ProjectTypes.Team &&
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
+
+const isNewWorkflow = computed(() => {
+	const createdAt = new Date(props.data.createdAt).getTime();
+	const oneDayAgo = new Date().getTime() - 24 * 60 * 60 * 1000;
+	return createdAt > oneDayAgo;
+});
+
+const fetchFullWorkflowData = async () => {
+	if (props.data.id) {
+		fullWorkflowData.value = await workflowsStore.fetchWorkflow(props.data.id);
+	}
+};
+
+onMounted(() => {
+	fetchFullWorkflowData();
+});
+
+const workflowComplexity = computed(() => {
+	const nodeCount = fullWorkflowData.value?.nodes?.length || 0;
+	if (nodeCount < 5) return { label: locale.baseText('Simple'), theme: 'success' };
+	if (nodeCount < 10) return { label: locale.baseText('Medium'), theme: 'warning' };
+	return { label: locale.baseText('Complex'), theme: 'danger' };
+});
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -430,6 +456,12 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+				<N8nBadge v-if="isNewWorkflow" class="ml-3xs" theme="success" bold>
+					{{ locale.baseText('mainSidebar.new') }}
+				</N8nBadge>
+				<N8nBadge class="ml-3xs" :theme="workflowComplexity.theme" bold>
+					{{ workflowComplexity.label }}
 				</N8nBadge>
 			</n8n-text>
 		</template>
