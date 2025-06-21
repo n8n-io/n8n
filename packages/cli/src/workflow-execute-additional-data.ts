@@ -234,6 +234,9 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		if (additionalData.httpResponse) {
+			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
+		}
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		const workflowSettings = workflowData.settings;
