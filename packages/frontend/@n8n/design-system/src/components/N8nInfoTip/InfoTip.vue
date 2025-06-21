@@ -5,12 +5,13 @@ import { computed } from 'vue';
 import type { IconColor } from '@n8n/design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 const THEME = ['info', 'info-light', 'warning', 'warning-light', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;
 
-const ICON_MAP = {
+const ICON_MAP: { [name: string]: IconName } = {
 	info: 'info-circle',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'info-light': 'info-circle',
@@ -51,7 +52,7 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	enterable: true,
 });
 
-const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
+const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 	return {
 		icon: ICON_MAP[props.theme],
 		color: COLOR_MAP[props.theme],

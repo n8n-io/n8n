@@ -1,4 +1,6 @@
-export const TEST_ICONS = [
+import type { IconName } from '../N8nIcon/icons';
+
+export const TEST_ICONS: IconName[] = [
 	'angle-double-left',
 	'angle-down',
 	'angle-left',

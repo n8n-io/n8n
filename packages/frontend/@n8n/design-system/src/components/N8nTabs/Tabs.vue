@@ -3,11 +3,12 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 
 interface TabOptions {
 	value: Value;
 	label?: string;
-	icon?: string;
+	icon?: IconName;
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';

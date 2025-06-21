@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
 					:shortcut="{ keys: ['s'], shiftKey: true }"
 					placement="left"
 				>
-					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
+					<n8n-icon-button type="tertiary" icon="sticky-note" />
 				</KeyboardShortcutTooltip>
 			</div>
 		</div>

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nIcon from '../N8nIcon';
 
 const { t } = useI18n();
 
@@ -85,10 +86,12 @@ function itemComparator(a: Item, b: Item) {
 			:class="$style.slotComboContainer"
 			:data-test-id="`selectable-list-slot-${item.name}`"
 		>
+			<!-- todo test icon here if disabled -->
 			<N8nIcon
+				v-if="!disabled"
 				:class="$style.slotRemoveIcon"
 				size="xsmall"
-				:icon="disabled ? 'none' : 'trash'"
+				icon="trash"
 				:data-test-id="`selectable-list-remove-slot-${item.name}`"
 				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>

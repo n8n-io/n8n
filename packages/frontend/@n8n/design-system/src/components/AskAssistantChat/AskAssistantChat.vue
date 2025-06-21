@@ -11,6 +11,7 @@ import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
 import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
 import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
+import { N8nIconButton } from '..';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
@@ -18,6 +19,7 @@ import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoad
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import N8nIcon from '../N8nIcon';
 
 const { t } = useI18n();
 
@@ -124,7 +126,7 @@ function onSubmitFeedback(feedback: string) {
 				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<n8n-icon icon="arrow-right" color="text-base" />
+				<N8nIcon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
 		<div :class="$style.body">
@@ -289,10 +291,9 @@ function onSubmitFeedback(feedback: string) {
 					@input.prevent="growInput"
 					@keydown.stop
 				/>
-				<n8n-icon-button
+				<N8nIconButton
 					:class="{ [$style.sendButton]: true }"
 					icon="paper-plane"
-					type="text"
 					size="large"
 					data-test-id="send-message-button"
 					:disabled="sendDisabled"

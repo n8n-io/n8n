@@ -60,6 +60,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nButton,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -1606,14 +1607,14 @@ const onNameSubmit = async (name: string) => {
 				{{ i18n.baseText('workflows.list.easyAI') }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
-						<n8n-button
+						<N8nButton
 							data-test-id="easy-ai-button"
 							size="small"
 							type="secondary"
 							@click="openAIWorkflow('callout')"
 						>
 							{{ i18n.baseText('generic.tryNow') }}
-						</n8n-button>
+						</N8nButton>
 						<N8nIcon
 							size="small"
 							icon="times"

@@ -6,6 +6,9 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip';
 
 /**
@@ -27,14 +30,19 @@ const emojiRanges = [
 	[0x1f400, 0x1f4ff], // Additional pictographs
 ];
 
-export type Icon = {
-	type: 'icon' | 'emoji';
-	value: string;
-};
+export type Icon =
+	| {
+			type: 'icon';
+			value: IconName;
+	  }
+	| {
+			type: 'emoji';
+			value: string;
+	  };
 
 type Props = {
 	buttonTooltip: string;
-	availableIcons: string[];
+	availableIcons: IconName[];
 	buttonSize?: 'small' | 'large';
 };
 
@@ -108,7 +116,7 @@ const togglePopup = () => {
 				<N8nIconButton
 					v-if="model.type === 'icon'"
 					:class="$style['icon-button']"
-					:icon="model.value ?? 'smile'"
+					:icon="model.value"
 					:size="buttonSize"
 					:square="true"
 					type="tertiary"
