@@ -1,8 +1,6 @@
 name: Playwright Tests
 
 on:
-  push:
-    branches: [playwright-test]
   workflow_dispatch:
     inputs:
       containers:

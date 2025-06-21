@@ -82,6 +82,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	dbSetup: [
 		async ({ n8nUrl, n8nContainer, browser }, use) => {
 			if (n8nContainer) {
+				console.log('Resetting database for new container');
 				const context = await browser.newContext({ baseURL: n8nUrl });
 				const api = new ApiHelpers(context.request);
 				await api.resetDatabase();

@@ -22,10 +22,6 @@ inputs:
     description: 'Paths to cache. Defaults to dist folders.'
     required: false
     default: './packages/**/dist'
-  enable-cross-os-archive:
-    description: 'Enable cross-os archive for cache.'
-    required: false
-    default: 'false'
 
 runs:
   using: 'composite'
@@ -60,4 +56,3 @@ runs:
       with:
         path: ${{ inputs.cache-paths }}
         key: ${{ github.sha }}-${{ inputs.cache-suffix }}
-        enableCrossOsArchive: ${{ inputs.enable-cross-os-archive }}

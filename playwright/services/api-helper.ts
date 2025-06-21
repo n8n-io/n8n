@@ -7,6 +7,7 @@ import {
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
+import { TestError } from '../Types';
 
 export interface LoginResponseData {
 	id: string;
@@ -94,7 +95,7 @@ export class ApiHelpers {
 				return await this.signin(role, memberIndex);
 
 			default:
-				throw new Error();
+				throw new TestError('Unknown test state');
 		}
 	}
 
@@ -111,7 +112,7 @@ export class ApiHelpers {
 
 		if (!response.ok()) {
 			const errorText = await response.text();
-			throw new Error(errorText);
+			throw new TestError(errorText);
 		}
 		// Adding small delay to ensure database is reset
 		await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -125,33 +126,21 @@ export class ApiHelpers {
 	// ===== CONFIGURATION METHODS =====
 
 	async setFeature(feature: string, enabled: boolean): Promise<void> {
-		const response = await this.request.patch('/rest/e2e/feature', {
+		await this.request.patch('/rest/e2e/feature', {
 			data: { feature: `feat:${feature}`, enabled },
 		});
-
-		if (!response.ok()) {
-			throw new Error();
-		}
 	}
 
 	async setQuota(quotaName: string, value: number | string): Promise<void> {
-		const response = await this.request.patch('/rest/e2e/quota', {
+		await this.request.patch('/rest/e2e/quota', {
 			data: { feature: `quota:${quotaName}`, value },
 		});
-
-		if (!response.ok()) {
-			throw new Error();
-		}
 	}
 
 	async setQueueMode(enabled: boolean): Promise<void> {
-		const response = await this.request.patch('/rest/e2e/queue-mode', {
+		await this.request.patch('/rest/e2e/queue-mode', {
 			data: { enabled },
 		});
-
-		if (!response.ok()) {
-			throw new Error();
-		}
 	}
 
 	// ===== CONVENIENCE METHODS =====
@@ -171,10 +160,6 @@ export class ApiHelpers {
 	async get(path: string, params?: URLSearchParams) {
 		const response = await this.request.get(path, { params });
 
-		if (!response.ok()) {
-			throw new Error();
-		}
-
 		const { data } = await response.json();
 		return data;
 	}
@@ -193,7 +178,7 @@ export class ApiHelpers {
 
 		if (!response.ok()) {
 			const errorText = await response.text();
-			throw new Error(errorText);
+			throw new TestError(errorText);
 		}
 
 		let responseData: any;
@@ -201,13 +186,13 @@ export class ApiHelpers {
 			responseData = await response.json();
 		} catch (error) {
 			const errorText = await response.text();
-			throw new Error(errorText);
+			throw new TestError(errorText);
 		}
 
 		const loginData: LoginResponseData = responseData.data;
 
 		if (!loginData?.id) {
-			throw new Error('Login did not return expected user data (missing user ID)');
+			throw new TestError('Login did not return expected user data (missing user ID)');
 		}
 
 		return loginData;
@@ -221,11 +206,11 @@ export class ApiHelpers {
 				return INSTANCE_ADMIN_CREDENTIALS;
 			case 'member':
 				if (!INSTANCE_MEMBER_CREDENTIALS || memberIndex >= INSTANCE_MEMBER_CREDENTIALS.length) {
-					throw new Error();
+					throw new TestError(`No member credentials found for index ${memberIndex}`);
 				}
 				return INSTANCE_MEMBER_CREDENTIALS[memberIndex];
 			default:
-				throw new Error();
+				throw new TestError(`Unknown role: ${role as string}`);
 		}
 	}
 

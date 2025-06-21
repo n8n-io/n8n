@@ -1,13 +1,5 @@
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 
-// Create custom test error
-class TestError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'TestError';
-	}
-}
-
 export interface LogMatch {
 	container: StartedTestContainer;
 	containerName: string;
