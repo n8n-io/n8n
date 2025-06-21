@@ -91,6 +91,13 @@ export const postFields: INodeProperties[] = [
 				description: 'The content for the post',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -108,31 +115,60 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Post Status',
+								name: 'postStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the post',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this post (required if status is “future”)',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the post',
 			},
 			{
 				displayName: 'Comment Status',
@@ -312,6 +348,17 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Featured Media Name or ID',
+				name: 'featuredMediaId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -370,6 +417,13 @@ export const postFields: INodeProperties[] = [
 				description: 'The content for the post',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -387,31 +441,60 @@ export const postFields: INodeProperties[] = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'options',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: { status: {} },
 				options: [
 					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
+						displayName: 'Status',
+						name: 'status',
+						values: [
+							{
+								displayName: 'Post Status',
+								name: 'postStatus',
+								type: 'options',
+								options: [
+									{
+										name: 'Draft',
+										value: 'draft',
+									},
+									{
+										name: 'Future',
+										value: 'future',
+									},
+									{
+										name: 'Pending',
+										value: 'pending',
+									},
+									{
+										name: 'Private',
+										value: 'private',
+									},
+									{
+										name: 'Publish',
+										value: 'publish',
+									},
+								],
+								default: 'draft',
+								description: 'A named status for the post',
+							},
+							{
+								displayName: 'Scheduled Date/Time',
+								name: 'postDateTime',
+								type: 'dateTime',
+								default: '',
+								description: 'When to publish this post (required if status is “future”)',
+								displayOptions: {
+									show: {
+										postStatus: ['future'],
+									},
+								},
+							},
+						],
 					},
 				],
-				default: 'draft',
-				description: 'A named status for the post',
 			},
 			{
 				displayName: 'Comment Status',
@@ -590,6 +673,17 @@ export const postFields: INodeProperties[] = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Featured Media Name or ID',
+				name: 'featuredMediaId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getImages',
+				},
+				description:
+					'The ID of the featured media for the post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
