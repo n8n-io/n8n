@@ -133,11 +133,15 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: 0.7,
 			topK: 40,
 			topP: 0.9,
+			urlContext: true,
+			search: true,
 		}) as {
 			maxOutputTokens: number;
 			temperature: number;
 			topK: number;
 			topP: number;
+			urlContext: boolean;
+			search: boolean;
 		};
 
 		const safetySettings = this.getNodeParameter(
@@ -146,7 +150,16 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		const model = new ChatGoogleGenerativeAI({
+		// Configure tools based on options
+		const tools: any[] = [];
+		if (options.urlContext) {
+			tools.push({ urlContext: {} });
+		}
+		if (options.search) {
+			tools.push({ googleSearch: {} });
+		}
+
+		const modelConfig: any = {
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			model: modelName,
@@ -157,7 +170,14 @@ export class LmChatGoogleGemini implements INodeType {
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
-		});
+		};
+
+		// Add tools if any are configured
+		if (tools.length > 0) {
+			modelConfig.tools = tools;
+		}
+
+		const model = new ChatGoogleGenerativeAI(modelConfig);
 
 		return {
 			response: model,
