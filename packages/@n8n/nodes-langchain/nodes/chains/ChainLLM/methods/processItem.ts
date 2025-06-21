@@ -7,11 +7,31 @@ import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { executeChain } from './chainExecutor';
 import { type MessageTemplate } from './types';
 
+async function getChatModel(ctx: IExecuteFunctions, index: number = 0): Promise<BaseLanguageModel> {
+	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+
+	let model;
+
+	if (Array.isArray(connectedModels) && index !== undefined) {
+		if (connectedModels.length <= index) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Chat Model not found at index ${index}. Available models: ${connectedModels.length}`,
+			);
+		}
+		connectedModels.reverse();
+		model = connectedModels[index] as BaseLanguageModel;
+	} else {
+		model = connectedModels as BaseLanguageModel;
+	}
+
+	return model;
+}
+
 export const processItem = async (ctx: IExecuteFunctions, itemIndex: number) => {
-	const llm = (await ctx.getInputConnectionData(
-		NodeConnectionTypes.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const needsFallback = ctx.getNodeParameter('needsFallback', 0, false) as boolean;
+	const llm = await getChatModel(ctx, 0);
+	const fallbackLlm = needsFallback ? await getChatModel(ctx, 1) : null;
 
 	// Get output parser if configured
 	const outputParser = await getOptionalOutputParser(ctx);
@@ -50,5 +70,6 @@ export const processItem = async (ctx: IExecuteFunctions, itemIndex: number) => 
 		llm,
 		outputParser,
 		messages,
+		fallbackLlm,
 	});
 };

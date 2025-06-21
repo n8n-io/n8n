@@ -1,5 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { Runnable } from '@langchain/core/runnables';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -38,4 +39,5 @@ export interface ChainExecutionParams {
 	llm: BaseLanguageModel;
 	outputParser?: N8nOutputParser;
 	messages?: MessageTemplate[];
+	fallbackLlm?: BaseLanguageModel | null;
 }

@@ -23,6 +23,17 @@ export function getInputs(parameters: IDataObject) {
 		},
 	];
 
+	const needsFallback = parameters?.needsFallback;
+
+	if (needsFallback === undefined || needsFallback === true) {
+		inputs.push({
+			displayName: 'Fallback Model',
+			maxConnections: 1,
+			type: 'ai_languageModel',
+			required: false,
+		});
+	}
+
 	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
 	const hasOutputParser = parameters?.hasOutputParser;
@@ -272,6 +283,24 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				hasOutputParser: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Enable Fallback Model',
+		name: 'needsFallback',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+	},
+	{
+		displayName: `Connect an additional <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiLanguageModel}'>language model</a> on the canvas to use it as a fallback if the main model fails`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				needsFallback: [true],
 			},
 		},
 	},
