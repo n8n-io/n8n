@@ -2294,6 +2294,9 @@ importers:
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.5.13(typescript@5.8.2))
+      semver:
+        specifier: ^7.5.4
+        version: 7.7.2
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0
@@ -26114,7 +26117,7 @@ snapshots:
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
       pstree.remy: 1.1.8
-      semver: 7.6.0
+      semver: 7.7.2
       simple-update-notifier: 2.0.0
       supports-color: 5.5.0
       touch: 3.1.0
@@ -28479,7 +28482,7 @@ snapshots:
       json5: 2.2.3
       lodash.memoize: 4.1.2
       make-error: 1.3.6
-      semver: 7.6.0
+      semver: 7.7.2
       typescript: 5.8.2
       yargs-parser: 21.1.1
     optionalDependencies:

@@ -349,8 +349,10 @@ export class CommunityPackagesService {
 	async updatePackage(
 		packageName: string,
 		installedPackage: InstalledPackages,
+		version?: string,
+		checksum?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage });
+		return await this.installOrUpdatePackage(packageName, { installedPackage, version, checksum });
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -386,10 +388,12 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
+		options:
+			| { version?: string; checksum?: string }
+			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
+		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
