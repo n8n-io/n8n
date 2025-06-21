@@ -12,6 +12,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [3],
+				resource: ['row', 'link'],
 			},
 		},
 		description:
@@ -28,6 +29,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [3],
+				resource: ['row', 'link'],
 			},
 		},
 		required: true,
@@ -46,6 +48,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [1],
+				resource: ['row'],
 			},
 		},
 		required: true,
@@ -59,6 +62,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [2],
+				resource: ['row'],
 			},
 		},
 		required: true,
@@ -76,6 +80,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [2, 3],
+				resource: ['row', 'link'],
 			},
 		},
 		required: true,
@@ -94,6 +99,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				version: [1],
+				resource: ['row'],
 			},
 		},
 		required: true,
@@ -127,37 +133,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				version: [1, 2],
 				operation: ['delete', 'update'],
-			},
-		},
-	},
-	{
-		displayName: 'Primary Key Type',
-		name: 'primaryKey',
-		type: 'options',
-		default: 'id',
-		options: [
-			{
-				name: 'Default',
-				value: 'id',
-				description:
-					'Default, added when table was created from UI by those options: Create new table / Import from Excel / Import from CSV',
-			},
-			{
-				name: 'Imported From Airtable',
-				value: 'ncRecordId',
-				description: 'Select if table was imported from Airtable',
-			},
-			{
-				name: 'Custom',
-				value: 'custom',
-				description:
-					'When connecting to existing external database as existing primary key field is retained as is, enter the name of the primary key field below',
-			},
-		],
-		displayOptions: {
-			show: {
-				version: [3],
-				operation: ['delete'],
+				resource: ['row'],
 			},
 		},
 	},
@@ -171,19 +147,7 @@ export const operationFields: INodeProperties[] = [
 				version: [1, 2],
 				operation: ['delete', 'update'],
 				primaryKey: ['custom'],
-			},
-		},
-	},
-	{
-		displayName: 'Field Name',
-		name: 'customPrimaryKey',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				version: [3],
-				operation: ['delete'],
-				primaryKey: ['custom'],
+				resource: ['row'],
 			},
 		},
 	},
@@ -198,6 +162,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				version: [1, 2],
 				operation: ['delete', 'get', 'update'],
+				resource: ['row'],
 			},
 		},
 	},
@@ -212,44 +177,9 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				version: [3],
 				operation: ['delete', 'get'],
+				resource: ['row'],
 			},
 		},
-	},
-	// ----------------------------------
-	//         delete
-	// ----------------------------------
-
-	// ----------------------------------
-	//         getAll
-	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
-		},
-		default: 50,
-		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Download Attachments',
@@ -257,7 +187,92 @@ export const operationFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
+				operation: ['get', 'getAll'],
+				resource: ['row'],
+			},
+		},
+		default: false,
+		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+	},
+	{
+		displayName: 'Download Fields',
+		name: 'downloadFieldNames',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['get', 'getAll'],
+				downloadAttachments: [true],
+				resource: ['row'],
+			},
+		},
+		default: '',
+		description:
+			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
+	},
+	// ----------------------------------
+	//         Link: Shared
+	// ----------------------------------
+	{
+		displayName: 'Field Name or ID',
+		name: 'field',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [3],
+				resource: ['link'],
+			},
+		},
+		required: true,
+		description:
+			'The link field to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsDependsOn: ['projectId', 'table'],
+			loadOptionsMethod: 'getLinkFields',
+		},
+	},
+	{
+		displayName: 'Table Row ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The value of the source table row ID field',
+		displayOptions: {
+			show: {
+				version: [3],
+				resource: ['link'],
+			},
+		},
+	},
+	{
+		displayName: 'Link IDs',
+		name: 'links',
+		type: 'string',
+		default: '',
+		required: true,
+		description:
+			'The value of the target table row ID field (multiple can be defined separated by comma)',
+		displayOptions: {
+			show: {
+				version: [3],
+				operation: ['add', 'delete'],
+				resource: ['link'],
+			},
+		},
+	},
+	// ----------------------------------
+	//         Link: getAll
+	// ----------------------------------
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
 				operation: ['getAll'],
+				resource: ['link'],
 			},
 		},
 		default: false,
@@ -272,11 +287,43 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				downloadAttachments: [true],
+				resource: ['link'],
 			},
 		},
 		default: '',
 		description:
 			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['link'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				returnAll: [false],
+				resource: ['link'],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -285,6 +332,132 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
+				resource: ['link'],
+			},
+		},
+		default: {},
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: [],
+				placeholder: 'Name',
+				description: 'The select fields of the returned rows',
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: 'Add Sort Rule',
+				description: 'The sorting rules for the returned rows',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'property',
+						displayName: 'Property',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'string',
+								default: '',
+								description: 'Name of the field to sort on',
+							},
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'ASC',
+										value: 'asc',
+										description: 'Sort in ascending order (small -> large)',
+									},
+									{
+										name: 'DESC',
+										value: 'desc',
+										description: 'Sort in descending order (large -> small)',
+									},
+								],
+								default: 'asc',
+								description: 'The sort direction',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Filter By Formula',
+				name: 'where',
+				type: 'string',
+				default: '',
+				placeholder: '(name,like,example%)~or(name,eq,test)',
+				description: 'A formula used to filter rows',
+				hint: 'Check official documentation for <a href="https://nocodb.com/docs/product-docs/developer-resources/rest-apis/overview" target="_blank" rel="noreferrer">supported operators</a>.',
+			},
+			{
+				displayName: 'Offset',
+				name: 'offset',
+				type: 'number',
+				default: '',
+				description: 'The number of rows to skip from the beginning',
+			},
+		],
+	},
+	// ----------------------------------
+	//         Row: delete
+	// ----------------------------------
+	// ----------------------------------
+	//         Row: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['row'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				returnAll: [false],
+				resource: ['row'],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['row'],
 			},
 		},
 		default: {},
@@ -365,44 +538,59 @@ export const operationFields: INodeProperties[] = [
 				default: '',
 				placeholder: '(name,like,example%)~or(name,eq,test)',
 				description: 'A formula used to filter rows',
+				hint: 'Check official documentation for <a href="https://nocodb.com/docs/product-docs/developer-resources/rest-apis/overview" target="_blank" rel="noreferrer">supported operators</a>.',
+			},
+			{
+				displayName: 'Shuffle',
+				name: 'shuffle',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to shuffle the results',
+			},
+			{
+				displayName: 'Offset',
+				name: 'offset',
+				type: 'number',
+				default: '',
+				description: 'The number of rows to skip from the beginning',
 			},
 		],
 	},
 	// ----------------------------------
-	//         get
+	//         Row: get
 	// ----------------------------------
 	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
 		displayOptions: {
 			show: {
 				operation: ['get'],
+				resource: ['row'],
 			},
 		},
-		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
-	},
-	{
-		displayName: 'Download Fields',
-		name: 'downloadFieldNames',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				downloadAttachments: [true],
+		default: {},
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: [],
+				placeholder: 'Name',
+				description: 'The select fields of the returned row',
 			},
-		},
-		default: '',
-		description:
-			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
+		],
 	},
 	// ----------------------------------
-	//         update
+	//         Row: update
 	// ----------------------------------
 	// ----------------------------------
-	//         Shared
+	//         Row: Shared
 	// ----------------------------------
 	{
 		displayName: 'Data to Send',
@@ -423,6 +611,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
+				resource: ['row'],
 			},
 		},
 		default: 'defineBelow',
@@ -437,6 +626,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataToSend: ['autoMapInputData'],
+				resource: ['row'],
 			},
 		},
 	},
@@ -449,6 +639,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['update'],
 				version: [3],
+				resource: ['row'],
 			},
 		},
 	},
@@ -460,6 +651,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['create', 'update'],
 				dataToSend: ['autoMapInputData'],
+				resource: ['row'],
 			},
 		},
 		default: '',
@@ -480,6 +672,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['create', 'update'],
 				dataToSend: ['defineBelow'],
+				resource: ['row'],
 			},
 		},
 		default: {},
