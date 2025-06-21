@@ -11,6 +11,7 @@ import {
 	prepareCommunityNodeDetailsViewStack,
 	removeTrailingTrigger,
 	sortNodeCreateElements,
+	shouldShowCommunityNodeDetails,
 } from './utils';
 import {
 	mockActionCreateElement,
@@ -19,6 +20,9 @@ import {
 } from './__tests__/utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+
+import { mock } from 'vitest-mock-extended';
+import type { ViewStack } from './composables/useViewStacks';
 
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
@@ -352,6 +356,27 @@ describe('NodeCreator - utils', () => {
 			['Telegram   Trigger', 'Telegram'],
 		])('should transform "%s" to "%s"', (input, expected) => {
 			expect(removeTrailingTrigger(input)).toEqual(expected);
+		});
+	});
+
+	describe('shouldShowCommunityNodeDetails', () => {
+		it('should return false if rootView is "AI Other" and title is "Tools"', () => {
+			const viewStack = mock<ViewStack>({ rootView: 'AI Other', title: 'Tools' });
+			expect(shouldShowCommunityNodeDetails(true, viewStack)).toBe(false);
+			expect(shouldShowCommunityNodeDetails(false, viewStack)).toBe(false);
+		});
+
+		it('should return false if communityNode is true and communityNodeDetails is defined in viewStack', () => {
+			const viewStack = mock<ViewStack>({ communityNodeDetails: { title: 'test' } });
+			expect(shouldShowCommunityNodeDetails(true, viewStack)).toBe(false);
+		});
+
+		it('should return true if communityNode is true and communityNodeDetails is not defined in viewStack, and the viewStack does not have rootView "AI Other" and title "Tools"', () => {
+			expect(shouldShowCommunityNodeDetails(true, {})).toBe(true);
+		});
+
+		it('should return false if communityNode is false and communityNodeDetails is not defined in viewStack', () => {
+			expect(shouldShowCommunityNodeDetails(false, {})).toBe(false);
 		});
 	});
 });

@@ -18,6 +18,7 @@ import {
 	PREVIOUS_NODES_SECTION,
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
+	TARGET_NODE_PARAMETER_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
@@ -31,7 +32,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = dollarOptions().map(stripExcessParens(context));
+	let options = dollarOptions(context).map(stripExcessParens(context));
 
 	const userInput = word.text;
 
@@ -53,7 +54,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function dollarOptions(): Completion[] {
+export function dollarOptions(context: CompletionContext): Completion[] {
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
 
@@ -117,11 +118,13 @@ export function dollarOptions(): Completion[] {
 			: [];
 	}
 
-	if (!hasActiveNode()) {
+	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+
+	if (!hasActiveNode(targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (receivesNoBinaryData()) SKIP.add('$binary');
+	if (receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => {
 		const label = `$('${escapeMappingString(nodeName)}')`;

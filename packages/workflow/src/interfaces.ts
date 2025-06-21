@@ -931,6 +931,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
+			sourceNodeRunIndex?: number,
 		): void;
 
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
