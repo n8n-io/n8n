@@ -126,6 +126,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 						fileName: binaryData.fileName,
 						fileExtension: binaryData.fileExtension,
 						fileSize: binaryData.fileSize,
+						binaryProperty: dataPropertyName,
 					},
 					pairedItem: {
 						item: itemIndex,
