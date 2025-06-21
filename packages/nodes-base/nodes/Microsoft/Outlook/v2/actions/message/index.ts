@@ -1,5 +1,6 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
+import * as createForward from './createForward.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
@@ -9,7 +10,7 @@ import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
 import * as update from './update.operation';
 
-export { del as delete, get, getAll, move, reply, send, sendAndWait, update };
+export { createForward, del as delete, get, getAll, move, reply, send, sendAndWait, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -23,6 +24,12 @@ export const description: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Create Forward',
+				value: 'createForward',
+				description: 'Creates a forward message draft',
+				action: 'Creates a forward message draft',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -75,6 +82,7 @@ export const description: INodeProperties[] = [
 		default: 'send',
 	},
 
+	...createForward.description,
 	...del.description,
 	...get.description,
 	...getAll.description,
