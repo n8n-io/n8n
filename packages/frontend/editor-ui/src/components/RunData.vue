@@ -1166,12 +1166,27 @@ function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] 
 }
 
 function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
+	// problem: this is called both from input and output pane
 	if (!search.value || isSchemaView.value) {
+		ndvStore.searchToInputIndexMap = null;
 		return data;
 	}
 
 	currentPage.value = 1;
-	return data.filter(({ json }) => searchInObject(json, search.value));
+	const result: INodeExecutionData[] = [];
+	const searchToInputIndexMap: Record<number, number> = {};
+
+	for (const [index, item] of data.entries()) {
+		if (searchInObject(item.json, search.value)) {
+			const searchItemIndex = result.length;
+			result.push(item);
+			// TODO: update this only for input pane search
+			searchToInputIndexMap[searchItemIndex] = index;
+		}
+	}
+
+	ndvStore.searchToInputIndexMap = searchToInputIndexMap;
+	return result;
 }
 
 function getDataCount(
