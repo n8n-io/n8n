@@ -75,7 +75,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				return;
 			}
 
-			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
+			const sessionId =
+				options.sessionKeySouce?.() ?? localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
@@ -88,6 +89,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				currentSessionId.value = sessionId;
 			}
 
+			options.onSessionKeyLoaded?.(sessionId);
 			return sessionId;
 		}
 
