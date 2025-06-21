@@ -120,14 +120,19 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const clusterNodes = this.clusterNodes();
 
-		const { elasticacheServerless } = this.globalConfig.queue.bull.redis;
-
 		const clusterOptions: ClusterOptions = {
 			redisOptions: options,
 			clusterRetryStrategy: this.retryStrategy(),
 		};
 
-		if (elasticacheServerless) {
+		// Check if any of the nodes look like an AWS ElastiCache Serverless endpoint.
+		// e.g. "my-cluster.xxxxxx.serverless.us-east-1.cache.amazonaws.com"
+		const isElasticacheServerless = clusterNodes.some((node) =>
+			/\.serverless\.[^.]+\.cache\.amazonaws\.com(\.cn)?$/.test(node.host),
+		);
+
+		if (isElasticacheServerless) {
+			this.logger.debug('AWS ElastiCache Serverless endpoint detected, applying specific config');
 			clusterOptions.dnsLookup = (address, callback) => callback(null, address);
 			if (clusterOptions.redisOptions) {
 				clusterOptions.redisOptions.tls = {};
