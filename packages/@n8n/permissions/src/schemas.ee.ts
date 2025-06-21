@@ -12,7 +12,7 @@ export const personalRoleSchema = z.enum([
 	'project:personalOwner', // personalOwner is only used for personal projects
 ]);
 
-export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer']);
+export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer', 'project:executor']);
 
 export const projectRoleSchema = z.enum([...personalRoleSchema.options, ...teamRoleSchema.options]);
 
