@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "liked": {
-            "type": "boolean"
-        }
-    },
-    "version": 1
-}

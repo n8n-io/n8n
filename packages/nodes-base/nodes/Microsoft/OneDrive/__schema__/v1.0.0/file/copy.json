@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "location": {
-            "type": "string"
-        }
-    },
-    "version": 1
-}

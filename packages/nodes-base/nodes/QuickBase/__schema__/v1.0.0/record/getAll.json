@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "NSN": {
-            "type": "string"
-        }
-    },
-    "version": 1
-}

@@ -1,6 +1,0 @@
-name: projectId
-in: path
-description: The ID of the project.
-required: true
-schema:
-  type: string

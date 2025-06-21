@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "success": {
-            "type": "boolean"
-        }
-    },
-    "version": 1
-}
