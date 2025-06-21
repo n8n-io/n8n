@@ -2,8 +2,24 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
-      "use": "@vercel/node"
+      "src": "packages/cli/bin/n8n",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "includeFiles": ["packages/cli/bin/**"]
+      }
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "packages/cli/bin/n8n"
+    }
+  ],
+  "functions": {
+    "packages/cli/bin/n8n": {
+      "memory": 3008,
+      "maxDuration": 60
+    }
+  }
 }
