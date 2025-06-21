@@ -1137,6 +1137,12 @@ export function useCanvasOperations() {
 
 				pushOffsets = [100, 0];
 
+				// FIXME: workaround to avoid the clash between memory node connection removal icon and parent node's next input connection icon
+				if (outputTypes.some((output) => output === NodeConnectionTypes.AiMemory)) {
+					pushOffsets = [40, 0];
+				}
+				// end of workaround
+
 				if (
 					outputTypes.length > 0 &&
 					outputTypes.every((outputName) => outputName !== NodeConnectionTypes.Main)
