@@ -361,6 +361,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
+					completedJobs.push(job.jobId); //FIX: Mark errored job as completed
+
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },
