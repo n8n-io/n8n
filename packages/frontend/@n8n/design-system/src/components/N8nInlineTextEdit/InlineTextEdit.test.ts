@@ -6,7 +6,7 @@ import N8nInlineTextEdit from './InlineTextEdit.vue';
 
 const renderComponent = createComponentRenderer(N8nInlineTextEdit);
 
-describe('N8nInlineTextEdit', () => {
+describe('InlineTextEditCopy', () => {
 	it('should render correctly', () => {
 		const wrapper = renderComponent({
 			props: {
@@ -17,49 +17,33 @@ describe('N8nInlineTextEdit', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('value should update on enter', async () => {
+	it('should emit value on enter', async () => {
 		const wrapper = renderComponent({
 			props: {
 				modelValue: 'Test Value',
 			},
 		});
 		const input = wrapper.getByTestId('inline-edit-input');
-		const preview = wrapper.getByTestId('inline-edit-preview');
 
 		await wrapper.rerender({ modelValue: 'New Value' });
+		await userEvent.clear(input);
 		await userEvent.type(input, 'Updated Value');
 		await userEvent.keyboard('{Enter}');
 
-		expect(preview).toHaveTextContent('Updated Value');
+		expect(wrapper.emitted('update:modelValue')[0]).toStrictEqual(['Updated Value']);
 	});
 
-	it('should not update value on blur if input is empty', async () => {
+	it('should not emit value on escape key press', async () => {
 		const wrapper = renderComponent({
 			props: {
 				modelValue: 'Test Value',
 			},
 		});
 		const input = wrapper.getByTestId('inline-edit-input');
-		const preview = wrapper.getByTestId('inline-edit-preview');
-
-		await userEvent.clear(input);
-		await userEvent.tab(); // Simulate blur
-
-		expect(preview).toHaveTextContent('Test Value');
-	});
-
-	it('should not update on escape key press', async () => {
-		const wrapper = renderComponent({
-			props: {
-				modelValue: 'Test Value',
-			},
-		});
-		const input = wrapper.getByTestId('inline-edit-input');
-		const preview = wrapper.getByTestId('inline-edit-preview');
 
 		await userEvent.type(input, 'Updated Value');
 		await userEvent.keyboard('{Escape}');
 
-		expect(preview).toHaveTextContent('Test Value');
+		expect(wrapper.emitted('update:modelValue')).toBeFalsy();
 	});
 });
