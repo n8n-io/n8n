@@ -51,6 +51,13 @@ const executions = computed(() =>
 		: [],
 );
 
+const FilterExecutionsBy = computed(() => {
+	const param = route.query.custom_filter;
+	if (typeof param === 'string') return [param];
+	if (Array.isArray(param)) return param;
+	return [];
+});
+
 const execution = computed(() => {
 	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
 });
@@ -75,7 +82,17 @@ onMounted(async () => {
 	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded(), fetchWorkflow()]);
 
 	if (workflowId.value) {
-		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
+		if (FilterExecutionsBy.value) {
+			await Promise.all([
+				executionsStore.initialize(
+					workflowId.value,
+					FilterExecutionsBy.value.filter(Boolean) as string[],
+				),
+				fetchExecution(),
+			]);
+		} else {
+			await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
+		}
 	}
 
 	await initializeRoute();
@@ -168,6 +185,7 @@ async function onRefreshData() {
 		await executionsStore.fetchExecutions({
 			...executionsStore.executionsFilters,
 			workflowId: workflowId.value,
+			nodesExecuted: FilterExecutionsBy.value.filter(Boolean) as string[],
 		});
 	} catch (error) {
 		if (error.errorCode === NO_NETWORK_ERROR_CODE) {

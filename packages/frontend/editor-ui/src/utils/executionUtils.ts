@@ -48,6 +48,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		nodesExecuted: [],
 	};
 }
 
@@ -73,6 +74,10 @@ export const executionFilterToQueryFilter = (
 
 	if (!isEmpty(filter.metadata)) {
 		queryFilter.metadata = filter.metadata;
+	}
+
+	if (!isEmpty(filter.nodesExecuted)) {
+		queryFilter.nodesExecuted = filter.nodesExecuted;
 	}
 
 	if (!!filter.startDate) {
