@@ -268,8 +268,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Referenced node is unexecuted');
-				expect(exprError.context.type).toEqual('no_node_execution_data');
+				expect(exprError.message).toEqual('No path back to referenced node "Impossible"');
+				expect(exprError.context.type).toEqual('no_input_connection');
 				done();
 			}
 		});

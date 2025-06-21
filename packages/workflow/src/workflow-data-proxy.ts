@@ -1062,6 +1062,17 @@ export class WorkflowDataProxy {
 				}
 
 				const ensureNodeExecutionData = () => {
+					const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
+					if (!parentNodes.includes(nodeName)) {
+						throw createExpressionError(`No path back to referenced node "${nodeName}"`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							type: 'no_input_connection',
+							descriptionKey: 'noInputConnection',
+							nodeCause: nodeName,
+						});
+					}
+
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
