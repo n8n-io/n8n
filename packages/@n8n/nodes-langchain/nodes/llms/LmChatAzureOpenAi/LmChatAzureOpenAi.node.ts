@@ -86,6 +86,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			) as AuthenticationType;
 			const modelName = this.getNodeParameter('model', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
+			const appKey = this.getNodeParameter('appKey', itemIndex, '') as string;
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
@@ -111,6 +112,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				...modelConfig,
 				...options,
 				timeout: options.timeout ?? 60000,
+				user: JSON.stringify({ appkey: appKey }),
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
