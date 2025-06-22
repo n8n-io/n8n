@@ -112,7 +112,6 @@ export class LmChatAzureOpenAi implements INodeType {
 				...modelConfig,
 				...options,
 				timeout: options.timeout ?? 60000,
-				user: JSON.stringify({ appkey: appKey }),
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
@@ -125,6 +124,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					: undefined,
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			});
+			if (appKey !== '') {
+				model.user = JSON.stringify({appkey: appKey});
+			}
 
 			this.logger.info(`Azure OpenAI client initialized for deployment: ${modelName}`);
 
