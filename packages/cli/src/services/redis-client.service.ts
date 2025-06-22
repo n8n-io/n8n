@@ -129,6 +129,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (elasticacheServerless) {
 			clusterOptions.dnsLookup = (address, callback) => callback(null, address);
+			clusterOptions.slotsRefreshTimeout = 5000;
+			clusterOptions.slotsRefreshInterval = 10000;
 			if (clusterOptions.redisOptions) {
 				clusterOptions.redisOptions.tls = {};
 			}
