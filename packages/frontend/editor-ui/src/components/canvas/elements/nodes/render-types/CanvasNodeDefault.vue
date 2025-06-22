@@ -370,6 +370,4 @@ function onActivate(event: MouseEvent) {
 	flex-grow: 0;
 	flex-shrink: 0;
 }
-.settingsIcons {
-}
 </style>
