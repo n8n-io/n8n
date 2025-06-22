@@ -161,7 +161,6 @@ function onActivate(event: MouseEvent) {
 				:disabled="isDisabled"
 				:class="$style.icon"
 			/>
-			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
 			<CanvasNodeSettingsIcons
 				v-if="
 					!renderOptions.configuration &&
