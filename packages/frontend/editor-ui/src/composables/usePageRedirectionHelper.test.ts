@@ -51,7 +51,7 @@ describe('usePageRedirectionHelper', () => {
 			writable: true,
 		});
 
-		versionStore.setVersionNotificationSettings({
+		versionStore.initialize({
 			enabled: true,
 			endpoint: '',
 			infoUrl:

@@ -59,7 +59,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		currentVersion.value = params.versions.find((v) => v.name === params.currentVersion);
 	};
 
-	const setVersionNotificationSettings = (settings: IVersionNotificationSettings) => {
+	const initialize = (settings: IVersionNotificationSettings) => {
 		versionNotificationSettings.value = settings;
 	};
 
@@ -107,7 +107,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		infoUrl,
 		fetchVersions,
 		setVersions,
-		setVersionNotificationSettings,
+		initialize,
 		checkForNewVersions,
 	};
 });

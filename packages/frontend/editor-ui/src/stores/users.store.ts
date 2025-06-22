@@ -3,6 +3,7 @@ import {
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
+	type User,
 	ROLE,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
@@ -34,6 +35,7 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as onboardingApi from '@/api/workflow-webhooks';
+import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -45,6 +47,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const currentUserId = ref<string | null>(null);
 	const usersById = ref<Record<string, IUser>>({});
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
+	const userQuota = ref<number>(-1);
 
 	// Stores
 
@@ -117,10 +120,14 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return getPersonalizedNodeTypes(answers);
 	});
 
+	const usersLimitNotReached = computed(
+		(): boolean => userQuota.value === -1 || userQuota.value > allUsers.value.length,
+	);
+
 	// Methods
 
-	const addUsers = (newUsers: IUserResponse[]) => {
-		newUsers.forEach((userResponse: IUserResponse) => {
+	const addUsers = (newUsers: User[]) => {
+		newUsers.forEach((userResponse) => {
 			const prevUser = usersById.value[userResponse.id] || {};
 			const updatedUser = {
 				...prevUser,
@@ -162,9 +169,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setCurrentUser(user);
 	};
 
-	const initialize = async () => {
+	const initialize = async (options: { quota?: number } = {}) => {
 		if (initialized.value) {
 			return;
+		}
+
+		if (typeof options.quota !== 'undefined') {
+			userQuota.value = options.quota;
 		}
 
 		try {
@@ -309,8 +320,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const fetchUsers = async () => {
-		const users = await usersApi.getUsers(rootStore.restApiContext);
-		addUsers(users);
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+		addUsers(items);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
@@ -414,6 +425,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return null;
 	};
 
+	const submitContactInfo = async (email: string) => {
+		try {
+			return await promptsApi.submitContactInfo(
+				rootStore.instanceId,
+				currentUserId.value ?? '',
+				email,
+			);
+		} catch (error) {
+			return;
+		}
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -429,6 +452,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -466,5 +490,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isCalloutDismissed,
 		setCalloutDismissed,
 		submitContactEmail,
+		submitContactInfo,
 	};
 });
