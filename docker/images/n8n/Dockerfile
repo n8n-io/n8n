@@ -1,7 +1,7 @@
 ARG NODE_VERSION=22
 
 # 1. Create an image to build n8n
-FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
+FROM n8nio/base:${NODE_VERSION} AS builder
 
 # Build the application from source
 WORKDIR /src
@@ -27,6 +27,7 @@ RUN mkdir /compiled
 RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy /compiled
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
+ARG NODE_VERSION=22
 FROM n8nio/base:${NODE_VERSION}
 ENV NODE_ENV=production
 
@@ -74,6 +75,6 @@ RUN \
 # Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
 RUN npm install -g npm@11.4.1
 
-ENV SHELL /bin/sh
+ENV SHELL=/bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
