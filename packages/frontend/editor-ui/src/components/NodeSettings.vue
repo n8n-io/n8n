@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
+	INodeCredentialDescription,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -31,7 +32,9 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import { get, set, unset } from 'lodash-es';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -44,12 +47,14 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { N8nIconButton } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -62,6 +67,9 @@ const props = withDefaults(
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
+		activeNode?: INodeUi;
+		canExpand?: boolean;
+		hideConnections?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -69,6 +77,9 @@ const props = withDefaults(
 		executable: true,
 		inputSize: 0,
 		blockUI: false,
+		activeNode: undefined,
+		canExpand: false,
+		hideConnections: false,
 	},
 );
 
@@ -80,6 +91,7 @@ const emit = defineEmits<{
 	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
 	activate: [];
 	execute: [];
+	expand: [];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -92,6 +104,7 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const canvasOperations = useCanvasOperations();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -126,13 +139,11 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
-const isNodesAsToolNode = computed(
-	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
-);
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
@@ -146,7 +157,7 @@ const isExecutable = computed(() => {
 
 		if (
 			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!isNodesAsToolNode.value &&
+			!isToolNode.value &&
 			!isTriggerNode.value
 		) {
 			return false;
@@ -206,7 +217,22 @@ const parameters = computed(() => {
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
 const parametersNoneSetting = computed(() =>
+	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
 	parameters.value.filter((item) => !item.isNodeSetting),
+);
+
+const isDisplayingCredentials = computed(
+	() =>
+		credentialsStore
+			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
+		0,
+);
+
+const showNoParametersNotice = computed(
+	() =>
+		!isDisplayingCredentials.value &&
+		parametersNoneSetting.value.filter((item) => item.type !== 'notice').length === 0,
 );
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
@@ -499,6 +525,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
 		// Copy the data because it is the data of vuex so make sure that
@@ -548,6 +575,27 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
+		if (isToolNode.value) {
+			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
+				props.nodeType,
+				nodeParameters,
+				node.value?.parameters,
+			);
+
+			if (updatedDescription && nodeParameters) {
+				nodeParameters.toolDescription = updatedDescription;
+			}
+		}
+
+		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
+			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType);
+			// Account for unique-ified nodes with `<name><digit>`
+			if (!_node.name.startsWith(newName)) {
+				// We need a timeout here to support events reacting to the valueChange based on node names
+				setTimeout(async () => await canvasOperations.renameNode(_node.name, newName));
+			}
+		}
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
@@ -936,7 +984,9 @@ onMounted(() => {
 	populateSettings();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
-	nodeHelpers.updateNodeParameterIssues(node.value as INodeUi, props.nodeType);
+	if (node.value !== null) {
+		nodeHelpers.updateNodeParameterIssues(node.value, props.nodeType);
+	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
 });
@@ -946,6 +996,18 @@ onBeforeUnmount(() => {
 	importCurlEventBus.off('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.off('updateParameterValue', valueChanged);
 });
+
+function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
+	if (credentialTypeDescription.displayOptions === undefined) {
+		// If it is not defined no need to do a proper check
+		return true;
+	}
+
+	return (
+		!!node.value &&
+		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
+	);
+}
 </script>
 
 <template>
@@ -966,9 +1028,9 @@ onBeforeUnmount(() => {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				></NodeTitle>
-				<div v-if="isExecutable">
+				<div v-if="isExecutable || props.canExpand" :class="$style.headerActions">
 					<NodeExecuteButton
-						v-if="!blockUI && node && nodeValid"
+						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -978,6 +1040,16 @@ onBeforeUnmount(() => {
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
 						@value-changed="valueChanged"
+					/>
+					<N8nIconButton
+						v-if="props.canExpand"
+						icon="expand"
+						type="secondary"
+						text
+						size="mini"
+						icon-size="large"
+						aria-label="Expand"
+						@click="emit('expand')"
 					/>
 				</div>
 			</div>
@@ -1066,7 +1138,7 @@ onBeforeUnmount(() => {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
-				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+				<div v-if="showNoParametersNotice" class="no-parameters">
 					<n8n-text>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
@@ -1121,7 +1193,7 @@ onBeforeUnmount(() => {
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node"
+			v-if="node && !props.hideConnections"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -1134,6 +1206,12 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .header {
 	background-color: var(--color-background-base);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
 }
 
 .warningIcon {

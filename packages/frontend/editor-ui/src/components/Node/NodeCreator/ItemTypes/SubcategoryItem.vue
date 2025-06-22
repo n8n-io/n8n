@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { SubcategoryItemProps } from '@/Interface';
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 export interface Props {
 	item: SubcategoryItemProps;

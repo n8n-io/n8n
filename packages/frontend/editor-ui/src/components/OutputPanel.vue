@@ -17,7 +17,7 @@ import { ndvEventBus } from '@/event-bus';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -402,7 +402,9 @@ const activatePane = () => {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText :bold="true" color="text-dark" size="large">
+				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
+			</N8nText>
 			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
 		</template>
 

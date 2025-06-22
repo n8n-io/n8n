@@ -18,3 +18,13 @@ export * from './entities';
 export * from './entities/types-db';
 export { NoXss } from './utils/validators/no-xss.validator';
 export { NoUrl } from './utils/validators/no-url.validator';
+
+export * from './repositories';
+export * from './subscribers';
+
+export { sqliteMigrations } from './migrations/sqlite';
+export { mysqlMigrations } from './migrations/mysqldb';
+export { postgresMigrations } from './migrations/postgresdb';
+
+export { wrapMigration } from './migrations/migration-helpers';
+export * from './migrations/migration-types';

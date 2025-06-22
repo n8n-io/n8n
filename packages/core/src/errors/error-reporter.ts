@@ -1,14 +1,12 @@
+import { Logger } from '@n8n/backend-common';
+import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
-import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
 import type { ReportingOptions } from 'n8n-workflow';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-
-import type { InstanceType } from '@/instance-settings';
-import { Logger } from '@/logging/logger';
 
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
@@ -70,6 +68,7 @@ export class ErrorReporter {
 
 	async shutdown(timeoutInMs = 1000) {
 		clearTimeout(this.expirationTimer);
+		const { close } = await import('@sentry/node');
 		await close(timeoutInMs);
 	}
 
@@ -132,7 +131,7 @@ export class ErrorReporter {
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-				rewriteFramesIntegration({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
 					include: {
 						cookies: false,

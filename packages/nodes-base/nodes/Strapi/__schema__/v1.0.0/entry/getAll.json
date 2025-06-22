@@ -4,11 +4,17 @@
         "attributes": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
-                "scene_id": {
-                    "type": "integer"
+                "is_from_user": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -19,5 +25,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -453,6 +453,7 @@ const config = (module.exports = {
 		'unicorn/no-useless-promise-resolve-reject': 'error',
 
 		'lodash/path-style': ['error', 'as-needed'],
+		'lodash/import-scope': ['error', 'method'],
 	},
 
 	overrides: [
@@ -486,7 +487,6 @@ const config = (module.exports = {
 				'@typescript-eslint/restrict-template-expressions': 'off',
 				'@typescript-eslint/unbound-method': 'off',
 				'id-denylist': 'off',
-				'import/no-cycle': 'off',
 				'import/no-default-export': 'off',
 				'import/no-extraneous-dependencies': 'off',
 				'n8n-local-rules/no-uncaught-json-parse': 'off',

@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 
@@ -65,6 +66,7 @@ export class DeprecationService {
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
 			matchConfig: config.getEnv('executions.mode') === 'queue',
+			disableIf: () => this.instanceSettings.instanceType !== 'main',
 		},
 		{
 			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
@@ -75,6 +77,14 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
 			message: 'This environment variable is internal and should not be set.',
+		},
+		{
+			envVar: 'N8N_EXPRESSION_EVALUATOR',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
+		},
+		{
+			envVar: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',
@@ -95,6 +105,7 @@ export class DeprecationService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	warn() {

@@ -56,6 +56,12 @@ const emit = defineEmits<{
 	select: [action: string];
 	visibleChange: [open: boolean];
 }>();
+
+defineSlots<{
+	activator: {};
+	menuItem: (props: ActionDropdownItem) => void;
+}>();
+
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
@@ -115,8 +121,11 @@ defineExpose({ open, close });
 								<N8nIcon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
-								{{ item.label }}
+								<slot name="menuItem" v-bind="item">
+									{{ item.label }}
+								</slot>
 							</span>
+							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}

@@ -1,10 +1,11 @@
-import type { ProjectRole } from '@n8n/api-types';
-import type { CredentialSharingRole } from '@n8n/db';
-import type { WorkflowSharingRole } from '@n8n/db';
-import { Container } from '@n8n/di';
-import type { GlobalRole, Scope } from '@n8n/permissions';
-
-import { RoleService } from '@/services/role.service';
+import { getRoleScopes } from '@n8n/permissions';
+import type {
+	GlobalRole,
+	ProjectRole,
+	CredentialSharingRole,
+	WorkflowSharingRole,
+	Scope,
+} from '@n8n/permissions';
 
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -49,19 +50,19 @@ beforeAll(async () => {
 		{
 			name: 'Owner',
 			role: 'global:owner',
-			scopes: Container.get(RoleService).getRoleScopes('global:owner'),
+			scopes: getRoleScopes('global:owner'),
 			licensed: true,
 		},
 		{
 			name: 'Admin',
 			role: 'global:admin',
-			scopes: Container.get(RoleService).getRoleScopes('global:admin'),
+			scopes: getRoleScopes('global:admin'),
 			licensed: false,
 		},
 		{
 			name: 'Member',
 			role: 'global:member',
-			scopes: Container.get(RoleService).getRoleScopes('global:member'),
+			scopes: getRoleScopes('global:member'),
 			licensed: true,
 		},
 	];
@@ -69,19 +70,19 @@ beforeAll(async () => {
 		{
 			name: 'Project Owner',
 			role: 'project:personalOwner',
-			scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
+			scopes: getRoleScopes('project:personalOwner'),
 			licensed: true,
 		},
 		{
 			name: 'Project Admin',
 			role: 'project:admin',
-			scopes: Container.get(RoleService).getRoleScopes('project:admin'),
+			scopes: getRoleScopes('project:admin'),
 			licensed: false,
 		},
 		{
 			name: 'Project Editor',
 			role: 'project:editor',
-			scopes: Container.get(RoleService).getRoleScopes('project:editor'),
+			scopes: getRoleScopes('project:editor'),
 			licensed: false,
 		},
 	];
@@ -89,13 +90,13 @@ beforeAll(async () => {
 		{
 			name: 'Credential Owner',
 			role: 'credential:owner',
-			scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
+			scopes: getRoleScopes('credential:owner'),
 			licensed: true,
 		},
 		{
 			name: 'Credential User',
 			role: 'credential:user',
-			scopes: Container.get(RoleService).getRoleScopes('credential:user'),
+			scopes: getRoleScopes('credential:user'),
 			licensed: true,
 		},
 	];
@@ -103,13 +104,13 @@ beforeAll(async () => {
 		{
 			name: 'Workflow Owner',
 			role: 'workflow:owner',
-			scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
+			scopes: getRoleScopes('workflow:owner'),
 			licensed: true,
 		},
 		{
 			name: 'Workflow Editor',
 			role: 'workflow:editor',
-			scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
+			scopes: getRoleScopes('workflow:editor'),
 			licensed: true,
 		},
 	];

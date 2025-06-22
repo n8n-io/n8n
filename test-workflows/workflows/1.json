@@ -1,0 +1,183 @@
+{
+  "createdAt": "2021-01-21T10:32:07.628Z",
+  "updatedAt": "2021-06-04T10:25:41.024Z",
+  "id": "1",
+  "name": "Twitter:tweet:create:create like retweet delete search",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "0d0e09b1-87e5-4c64-acf5-9a7da0718775"
+    },
+    {
+      "parameters": {
+        "text": "=Hello from n8n testing framework {{$evaluateExpression(Math.random())}}",
+        "additionalFields": {}
+      },
+      "name": "Twitter",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "161",
+          "name": "Twitter API"
+        }
+      },
+      "id": "e3e833e8-c567-492d-b5e9-6233e0a3890d"
+    },
+    {
+      "parameters": {
+        "operation": "like",
+        "tweetId": "={{$node[\"Twitter\"].json[\"id_str\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Twitter1",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "161",
+          "name": "Twitter API"
+        }
+      },
+      "id": "904c5a06-bd36-4edc-abbc-d3cfd946a9f2"
+    },
+    {
+      "parameters": {
+        "operation": "retweet",
+        "tweetId": "={{$node[\"Twitter\"].json[\"id_str\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Twitter2",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "161",
+          "name": "Twitter API"
+        }
+      },
+      "id": "fdd7b0de-c279-452e-b6be-acebea480071"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tweetId": "={{$node[\"Twitter\"].json[\"id_str\"]}}"
+      },
+      "name": "Twitter3",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "161",
+          "name": "Twitter API"
+        }
+      },
+      "id": "6dff7ba3-ba03-4cdb-9305-d80eb02d4b83"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "searchText": "@n8n_io",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Twitter4",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [
+        450,
+        450
+      ],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "161",
+          "name": "Twitter API"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=extended_entities,retweeted_status,quoted_status_id,quoted_status_id_str,quoted_status,possibly_sensitive",
+      "id": "205bf8c9-afed-4a6a-b538-bb572ef14287"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Twitter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Twitter4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter": {
+      "main": [
+        [
+          {
+            "node": "Twitter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter1": {
+      "main": [
+        [
+          {
+            "node": "Twitter2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter2": {
+      "main": [
+        [
+          {
+            "node": "Twitter3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

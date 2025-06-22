@@ -1,0 +1,220 @@
+{
+  "createdAt": "2021-02-23T09:32:37.389Z",
+  "updatedAt": "2021-02-23T09:33:19.392Z",
+  "id": "58",
+  "name": "Todoist:Task:create get close reopen getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "1756bcfd-e673-45a5-abd8-9ee7b59e6a5c"
+    },
+    {
+      "parameters": {
+        "project": 2259097055,
+        "labels": [
+          2156287483
+        ],
+        "content": "Test Task",
+        "options": {}
+      },
+      "name": "Todoist",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "9e3c07cc-af99-4d37-a4f4-f2d1786109aa"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "taskId": "={{$node[\"Todoist\"].json[\"id\"]}}"
+      },
+      "name": "Todoist1",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "b617cd35-9714-4c7e-8913-c3d7819d3ad3"
+    },
+    {
+      "parameters": {
+        "operation": "close",
+        "taskId": "={{$node[\"Todoist\"].json[\"id\"]}}"
+      },
+      "name": "Todoist2",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "f9bc971d-a014-4ec9-b701-7fdfbb308454"
+    },
+    {
+      "parameters": {
+        "operation": "reopen",
+        "taskId": "={{$node[\"Todoist\"].json[\"id\"]}}"
+      },
+      "name": "Todoist3",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "f6d4be0d-b7c1-4eea-b1eb-ef2f7ed1b6b8"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "taskId": "={{$node[\"Todoist\"].json[\"id\"]}}"
+      },
+      "name": "Todoist4",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "967b63c7-4f60-4598-bdb3-9109ca2df94a"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Todoist5",
+      "type": "n8n-nodes-base.todoist",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "todoistApi": {
+          "id": "43",
+          "name": "Todoist creds"
+        }
+      },
+      "id": "92240fb4-1d58-4dc9-bb29-db2804189e1d"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Todoist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todoist": {
+      "main": [
+        [
+          {
+            "node": "Todoist1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todoist1": {
+      "main": [
+        [
+          {
+            "node": "Todoist2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todoist2": {
+      "main": [
+        [
+          {
+            "node": "Todoist3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todoist5": {
+      "main": [
+        [
+          {
+            "node": "Todoist4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todoist3": {
+      "main": [
+        [
+          {
+            "node": "Todoist5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

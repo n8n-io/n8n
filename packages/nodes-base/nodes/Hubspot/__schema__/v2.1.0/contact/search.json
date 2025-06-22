@@ -16,9 +16,6 @@
                 "createdate": {
                     "type": "string"
                 },
-                "email": {
-                    "type": "string"
-                },
                 "hs_object_id": {
                     "type": "string"
                 },
@@ -31,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

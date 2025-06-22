@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
@@ -40,6 +41,8 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	AiAgentRequest,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -51,6 +54,7 @@ import {
 	Node,
 	UnexpectedError,
 	UserError,
+	OperationalError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -69,7 +73,6 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 	rewireGraph,
-	isTool,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
@@ -115,6 +118,7 @@ export class WorkflowExecute {
 		startNode?: INode,
 		destinationNode?: string,
 		pinData?: IPinData,
+		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
@@ -136,7 +140,7 @@ export class WorkflowExecute {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node: startNode,
-				data: {
+				data: triggerToStartFrom?.data?.data ?? {
 					main: [
 						[
 							{
@@ -346,6 +350,7 @@ export class WorkflowExecute {
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
 		destinationNodeName?: string,
+		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
 		// TODO: Refactor the call-site to make `destinationNodeName` a required
 		// after removing the old partial execution flow.
@@ -353,8 +358,9 @@ export class WorkflowExecute {
 			destinationNodeName,
 			'a destinationNodeName is required for the new partial execution flow',
 		);
+		const originalDestination = destinationNodeName;
 
-		const destination = workflow.getNode(destinationNodeName);
+		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
 			destination,
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
@@ -362,10 +368,21 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
+		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+			destination.type,
+			destination.typeVersion,
+		);
 		// Partial execution of nodes as tools
-		if (isTool(destination, workflow.nodeTypes)) {
-			graph = rewireGraph(destination, graph);
+		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
+			graph = rewireGraph(destination, graph, agentRequest);
 			workflow = graph.toWorkflow({ ...workflow });
+			// Rewire destination node to the virtual agent
+			const toolExecutorNode = workflow.getNode(TOOL_EXECUTOR_NODE_NAME);
+			if (!toolExecutorNode) {
+				throw new OperationalError('ToolExecutor can not be found');
+			}
+			destination = toolExecutorNode;
+			destinationNodeName = toolExecutorNode.name;
 		} else {
 			// Edge Case 1:
 			// Support executing a single node that is not connected to a trigger
@@ -440,6 +457,7 @@ export class WorkflowExecute {
 		this.runExecutionData = {
 			startData: {
 				destinationNode: destinationNodeName,
+				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
@@ -455,7 +473,11 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		// Still passing the original workflow here, because the WorkflowDataProxy
+		// needs it to create more useful error messages, e.g. differentiate
+		// between a node not being connected to the node referencing it or a node
+		// not existing in the workflow.
+		return this.processRunExecutionData(workflow);
 	}
 
 	/**
@@ -1034,11 +1056,10 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (!node.parameters) return undefined;
+		if (!node.parameters && !node.forceCustomOperation) return undefined;
 
 		const { customOperations } = type;
-		const { resource, operation } = node.parameters;
+		const { resource, operation } = node.forceCustomOperation ?? node.parameters;
 
 		if (typeof resource !== 'string' || typeof operation !== 'string') return undefined;
 		if (!customOperations[resource] || !customOperations[resource][operation]) return undefined;
@@ -1530,7 +1551,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
+								let didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1545,6 +1566,8 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
+									nodeSuccessData = runNodeData.data;
+									didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 									tryIndex++;
 								}
 

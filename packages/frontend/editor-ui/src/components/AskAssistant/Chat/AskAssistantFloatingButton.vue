@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
-import { useCanvasStore } from '@/stores/canvas.store';
+import { useLogsStore } from '@/stores/logs.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
@@ -10,7 +10,7 @@ import { computed } from 'vue';
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
-const canvasStore = useCanvasStore();
+const logsStore = useLogsStore();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -41,7 +41,7 @@ const onClick = () => {
 		v-if="assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.isAssistantOpen"
 		:class="$style.container"
 		data-test-id="ask-assistant-floating-button"
-		:style="{ '--canvas-panel-height-offset': `${canvasStore.panelHeight}px` }"
+		:style="{ '--canvas-panel-height-offset': `${logsStore.height}px` }"
 	>
 		<n8n-tooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
@@ -67,6 +67,13 @@ const onClick = () => {
 	bottom: calc(var(--canvas-panel-height-offset, 0px) + var(--spacing-s));
 	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
+
+	/* Prevent overlap with 'Execute Workflow' / 'Open Chat' buttons on small screens */
+	@include mixins.breakpoint('sm-only') {
+		bottom: calc(
+			var(--canvas-panel-height-offset, 0px) + var(--spacing-s) + var(--spacing-xs) + 42px
+		);
+	}
 }
 
 .tooltip {

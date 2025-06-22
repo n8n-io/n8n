@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
@@ -19,9 +19,9 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 const props = defineProps<{
+	isArchived: boolean;
 	workflowActive: boolean;
 	workflowId: string;
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -36,8 +36,7 @@ const workflowActivate = useWorkflowActivate();
 
 const uiStore = useUIStore();
 
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -87,6 +86,10 @@ const isNewWorkflow = computed(
 );
 
 const disabled = computed((): boolean => {
+	if (props.isArchived) {
+		return true;
+	}
+
 	if (isNewWorkflow.value || isCurrentWorkflow.value) {
 		return !props.workflowActive && !containsTrigger.value;
 	}
@@ -221,9 +224,11 @@ watch(
 				<div>
 					{{
 						i18n.baseText(
-							containsOnlyExecuteWorkflowTrigger
-								? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
-								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+							isArchived
+								? 'workflowActivator.thisWorkflowIsArchived'
+								: containsOnlyExecuteWorkflowTrigger
+									? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+									: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
 						)
 					}}
 				</div>

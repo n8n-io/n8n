@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,17 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 // Import from centralized module
-import {
-	executeChain,
-	formatResponse,
-	getInputs,
-	nodeProperties,
-	type MessageTemplate,
-} from './methods';
+import { formatResponse, getInputs, nodeProperties } from './methods';
+import { processItem } from './methods/processItem';
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
@@ -34,7 +27,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -67,70 +60,78 @@ export class ChainLlm implements INodeType {
 		this.logger.debug('Executing Basic LLM Chain');
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('batching', 0, {
-			batchSize: 100,
-			delayBetweenBatches: 0,
-		}) as {
-			batchSize: number;
-			delayBetweenBatches: number;
-		};
-		// Get output parser if configured
 		const outputParser = await getOptionalOutputParser(this);
+		// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
+		//  we unwrap the response and return the object directly as JSON
+		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 
-		// Process items in batches
-		for (let i = 0; i < items.length; i += batchSize) {
-			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
+		const batchSize = this.getNodeParameter('batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
 
-				// Get the language model
-				const llm = (await this.getInputConnectionData(
-					NodeConnectionTypes.AiLanguageModel,
-					0,
-				)) as BaseLanguageModel;
+		if (this.getNode().typeVersion >= 1.7 && batchSize > 1) {
+			// Process items in batches
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					return await processItem(this, i + batchItemIndex);
+				});
 
-				// Get user prompt based on node version
-				let prompt: string;
+				const batchResults = await Promise.allSettled(batchPromises);
 
-				if (this.getNode().typeVersion <= 1.3) {
-					prompt = this.getNodeParameter('prompt', itemIndex) as string;
-				} else {
-					prompt = getPromptInputByType({
-						ctx: this,
-						i: itemIndex,
-						inputKey: 'text',
-						promptTypeKey: 'promptType',
+				batchResults.forEach((promiseResult, batchItemIndex) => {
+					const itemIndex = i + batchItemIndex;
+					if (promiseResult.status === 'rejected') {
+						const error = promiseResult.reason as Error;
+						// Handle OpenAI specific rate limit errors
+						if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
+							const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+							if (openAiErrorCode) {
+								const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
+								if (customMessage) {
+									error.message = customMessage;
+								}
+							}
+						}
+
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: error.message },
+								pairedItem: { item: itemIndex },
+							});
+							return;
+						}
+						throw new NodeOperationError(this.getNode(), error);
+					}
+
+					const responses = promiseResult.value;
+					responses.forEach((response: unknown) => {
+						returnData.push({
+							json: formatResponse(response, shouldUnwrapObjects),
+						});
 					});
+				});
+
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
 				}
+			}
+		} else {
+			// Process each input item
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const responses = await processItem(this, itemIndex);
 
-				// Validate prompt
-				if (prompt === undefined) {
-					throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
-				}
-
-				// Get chat messages if configured
-				const messages = this.getNodeParameter(
-					'messages.messageValues',
-					itemIndex,
-					[],
-				) as MessageTemplate[];
-
-				return (await executeChain({
-					context: this,
-					itemIndex,
-					query: prompt,
-					llm,
-					outputParser,
-					messages,
-				})) as object[];
-			});
-
-			const batchResults = await Promise.allSettled(batchPromises);
-
-			batchResults.forEach((promiseResult, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
-				if (promiseResult.status === 'rejected') {
-					const error = promiseResult.reason as Error;
+					// Process each response and add to return data
+					responses.forEach((response) => {
+						returnData.push({
+							json: formatResponse(response, shouldUnwrapObjects),
+						});
+					});
+				} catch (error) {
 					// Handle OpenAI specific rate limit errors
 					if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
 						const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
@@ -142,26 +143,14 @@ export class ChainLlm implements INodeType {
 						}
 					}
 
+					// Continue on failure if configured
 					if (this.continueOnFail()) {
-						returnData.push({
-							json: { error: error.message },
-							pairedItem: { item: itemIndex },
-						});
-						return;
+						returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						continue;
 					}
-					throw new NodeOperationError(this.getNode(), error);
+
+					throw error;
 				}
-
-				const responses = promiseResult.value;
-				responses.forEach((response: object) => {
-					returnData.push({
-						json: formatResponse(response, this.getNode().typeVersion >= 1.6 || !!outputParser),
-					});
-				});
-			});
-
-			if (i + batchSize < items.length && delayBetweenBatches > 0) {
-				await sleep(delayBetweenBatches);
 			}
 		}
 

@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { Cipher, Class, Logger } from 'n8n-core';
+import type { Cipher, Class } from 'n8n-core';
 import type { DeepPartial } from 'ts-essentials';
 
 export const mockInstance = <T>(
@@ -22,8 +22,6 @@ export const mockEntityManager = (entityClass: Class) => {
 	Object.assign(entityManager, { connection: dataSource });
 	return entityManager;
 };
-
-export const mockLogger = () => mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
 
 export const mockCipher = () =>
 	mock<Cipher>({

@@ -24,25 +24,6 @@
                 "type": "string"
             }
         },
-        "ccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "conversationId": {
             "type": "string"
         },
@@ -68,6 +49,9 @@
         "id": {
             "type": "string"
         },
+        "receivedDateTime": {
+            "type": "string"
+        },
         "sender": {
             "type": "object",
             "properties": {
@@ -83,26 +67,7 @@
                     }
                 }
             }
-        },
-        "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
-    "version": 2
+    "version": 4
 }

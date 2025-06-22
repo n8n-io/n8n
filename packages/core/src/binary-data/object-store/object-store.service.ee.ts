@@ -14,12 +14,11 @@ import {
 	DeleteObjectsCommand,
 	ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
-
-import { Logger } from '@/logging/logger';
 
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';

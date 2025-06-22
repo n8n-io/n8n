@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CRON_NODE_TYPE,
@@ -11,7 +11,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { uniqBy } from 'lodash-es';
+import uniqBy from 'lodash/uniqBy';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	type INodeInputConfiguration,
@@ -83,7 +83,7 @@ const draggableHintShown = ref(false);
 const mappedNode = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
-	{ value: 'debugging', label: i18n.baseText('ndv.input.debugging') },
+	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
 const nodeTypesStore = useNodeTypesStore();
@@ -507,7 +507,9 @@ function activatePane() {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText :bold="true" color="text-dark" size="large">
+				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
+			</N8nText>
 			<N8nText v-n8n-html="waitingMessage"></N8nText>
 		</template>
 

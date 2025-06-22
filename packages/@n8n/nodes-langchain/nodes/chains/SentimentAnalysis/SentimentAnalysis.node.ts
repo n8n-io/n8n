@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { getBatchingOptionFields } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
@@ -35,7 +36,7 @@ export class SentimentAnalysis implements INodeType {
 		icon: 'fa:balance-scale-left',
 		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Analyze the sentiment of your text',
 		codex: {
 			categories: ['AI'],
@@ -131,31 +132,11 @@ export class SentimentAnalysis implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-					},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
+						},
+					}),
 				],
 			},
 		],
@@ -170,156 +151,266 @@ export class SentimentAnalysis implements INodeType {
 		)) as BaseLanguageModel;
 
 		const returnData: INodeExecutionData[][] = [];
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
-			batchSize: 100,
-			delayBetweenBatches: 0,
-		}) as {
-			batchSize: number;
-			delayBetweenBatches: number;
-		};
 
-		for (let i = 0; i < items.length; i += batchSize) {
-			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
-				const sentimentCategories = this.getNodeParameter(
-					'options.categories',
-					itemIndex,
-					DEFAULT_CATEGORIES,
-				) as string;
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
 
-				const categories = sentimentCategories
-					.split(',')
-					.map((cat) => cat.trim())
-					.filter(Boolean);
-
-				if (categories.length === 0) {
-					return {
-						result: null,
+		if (this.getNode().typeVersion >= 1.1 && batchSize > 1) {
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					const itemIndex = i + batchItemIndex;
+					const sentimentCategories = this.getNodeParameter(
+						'options.categories',
 						itemIndex,
-						error: new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
-							itemIndex,
-						}),
-					};
-				}
+						DEFAULT_CATEGORIES,
+					) as string;
 
-				// Initialize returnData with empty arrays for each category
-				if (returnData.length === 0) {
-					returnData.push(...Array.from({ length: categories.length }, () => []));
-				}
+					const categories = sentimentCategories
+						.split(',')
+						.map((cat) => cat.trim())
+						.filter(Boolean);
 
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					systemPromptTemplate?: string;
-					includeDetailedResults?: boolean;
-					enableAutoFixing?: boolean;
-				};
-
-				const schema = z.object({
-					sentiment: z.enum(categories as [string, ...string[]]),
-					strength: z
-						.number()
-						.min(0)
-						.max(1)
-						.describe('Strength score for sentiment in relation to the category'),
-					confidence: z.number().min(0).max(1),
-				});
-
-				const structuredParser = StructuredOutputParser.fromZodSchema(schema);
-
-				const parser = options.enableAutoFixing
-					? OutputFixingParser.fromLLM(llm, structuredParser)
-					: structuredParser;
-
-				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-					`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
-			{format_instructions}`,
-				);
-
-				const input = this.getNodeParameter('inputText', itemIndex) as string;
-				const inputPrompt = new HumanMessage(input);
-				const messages = [
-					await systemPromptTemplate.format({
-						categories: sentimentCategories,
-						format_instructions: parser.getFormatInstructions(),
-					}),
-					inputPrompt,
-				];
-
-				const prompt = ChatPromptTemplate.fromMessages(messages);
-				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
-
-				try {
-					const output = await chain.invoke(messages);
-					const sentimentIndex = categories.findIndex(
-						(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
-					);
-
-					if (sentimentIndex !== -1) {
-						const resultItem = { ...items[itemIndex] };
-						const sentimentAnalysis: IDataObject = {
-							category: output.sentiment,
-						};
-						if (options.includeDetailedResults) {
-							sentimentAnalysis.strength = output.strength;
-							sentimentAnalysis.confidence = output.confidence;
-						}
-						resultItem.json = {
-							...resultItem.json,
-							sentimentAnalysis,
-						};
-
+					if (categories.length === 0) {
 						return {
-							result: {
-								resultItem,
-								sentimentIndex,
-							},
+							result: null,
 							itemIndex,
+							error: new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
+								itemIndex,
+							}),
 						};
 					}
 
-					return {
-						result: {},
-						itemIndex,
+					// Initialize returnData with empty arrays for each category
+					if (returnData.length === 0) {
+						returnData.push(...Array.from({ length: categories.length }, () => []));
+					}
+
+					const options = this.getNodeParameter('options', itemIndex, {}) as {
+						systemPromptTemplate?: string;
+						includeDetailedResults?: boolean;
+						enableAutoFixing?: boolean;
 					};
-				} catch (error) {
-					return {
-						result: null,
-						itemIndex,
-						error: new NodeOperationError(
+
+					const schema = z.object({
+						sentiment: z.enum(categories as [string, ...string[]]),
+						strength: z
+							.number()
+							.min(0)
+							.max(1)
+							.describe('Strength score for sentiment in relation to the category'),
+						confidence: z.number().min(0).max(1),
+					});
+
+					const structuredParser = StructuredOutputParser.fromZodSchema(schema);
+
+					const parser = options.enableAutoFixing
+						? OutputFixingParser.fromLLM(llm, structuredParser)
+						: structuredParser;
+
+					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+				{format_instructions}`,
+					);
+
+					const input = this.getNodeParameter('inputText', itemIndex) as string;
+					const inputPrompt = new HumanMessage(input);
+					const messages = [
+						await systemPromptTemplate.format({
+							categories: sentimentCategories,
+							format_instructions: parser.getFormatInstructions(),
+						}),
+						inputPrompt,
+					];
+
+					const prompt = ChatPromptTemplate.fromMessages(messages);
+					const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+					try {
+						const output = await chain.invoke(messages);
+						const sentimentIndex = categories.findIndex(
+							(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
+						);
+
+						if (sentimentIndex !== -1) {
+							const resultItem = { ...items[itemIndex] };
+							const sentimentAnalysis: IDataObject = {
+								category: output.sentiment,
+							};
+							if (options.includeDetailedResults) {
+								sentimentAnalysis.strength = output.strength;
+								sentimentAnalysis.confidence = output.confidence;
+							}
+							resultItem.json = {
+								...resultItem.json,
+								sentimentAnalysis,
+							};
+
+							return {
+								result: {
+									resultItem,
+									sentimentIndex,
+								},
+								itemIndex,
+							};
+						}
+
+						return {
+							result: {},
+							itemIndex,
+						};
+					} catch (error) {
+						return {
+							result: null,
+							itemIndex,
+							error: new NodeOperationError(
+								this.getNode(),
+								'Error during parsing of LLM output, please check your LLM model and configuration',
+								{
+									itemIndex,
+								},
+							),
+						};
+					}
+				});
+				const batchResults = await Promise.all(batchPromises);
+
+				batchResults.forEach(({ result, itemIndex, error }) => {
+					if (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: itemIndex } },
+							);
+
+							returnData[0].push(...executionErrorData);
+							return;
+						} else {
+							throw error;
+						}
+					} else if (result.resultItem && result.sentimentIndex) {
+						const sentimentIndex = result.sentimentIndex;
+						const resultItem = result.resultItem;
+						returnData[sentimentIndex].push(resultItem);
+					}
+				});
+
+				// Add delay between batches if not the last batch
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
+				}
+			}
+		} else {
+			// Sequential Processing
+			for (let i = 0; i < items.length; i++) {
+				try {
+					const sentimentCategories = this.getNodeParameter(
+						'options.categories',
+						i,
+						DEFAULT_CATEGORIES,
+					) as string;
+
+					const categories = sentimentCategories
+						.split(',')
+						.map((cat) => cat.trim())
+						.filter(Boolean);
+
+					if (categories.length === 0) {
+						throw new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
+							itemIndex: i,
+						});
+					}
+
+					// Initialize returnData with empty arrays for each category
+					if (returnData.length === 0) {
+						returnData.push(...Array.from({ length: categories.length }, () => []));
+					}
+
+					const options = this.getNodeParameter('options', i, {}) as {
+						systemPromptTemplate?: string;
+						includeDetailedResults?: boolean;
+						enableAutoFixing?: boolean;
+					};
+
+					const schema = z.object({
+						sentiment: z.enum(categories as [string, ...string[]]),
+						strength: z
+							.number()
+							.min(0)
+							.max(1)
+							.describe('Strength score for sentiment in relation to the category'),
+						confidence: z.number().min(0).max(1),
+					});
+
+					const structuredParser = StructuredOutputParser.fromZodSchema(schema);
+
+					const parser = options.enableAutoFixing
+						? OutputFixingParser.fromLLM(llm, structuredParser)
+						: structuredParser;
+
+					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+			{format_instructions}`,
+					);
+
+					const input = this.getNodeParameter('inputText', i) as string;
+					const inputPrompt = new HumanMessage(input);
+					const messages = [
+						await systemPromptTemplate.format({
+							categories: sentimentCategories,
+							format_instructions: parser.getFormatInstructions(),
+						}),
+						inputPrompt,
+					];
+
+					const prompt = ChatPromptTemplate.fromMessages(messages);
+					const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+					try {
+						const output = await chain.invoke(messages);
+						const sentimentIndex = categories.findIndex(
+							(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
+						);
+
+						if (sentimentIndex !== -1) {
+							const resultItem = { ...items[i] };
+							const sentimentAnalysis: IDataObject = {
+								category: output.sentiment,
+							};
+							if (options.includeDetailedResults) {
+								sentimentAnalysis.strength = output.strength;
+								sentimentAnalysis.confidence = output.confidence;
+							}
+							resultItem.json = {
+								...resultItem.json,
+								sentimentAnalysis,
+							};
+							returnData[sentimentIndex].push(resultItem);
+						}
+					} catch (error) {
+						throw new NodeOperationError(
 							this.getNode(),
 							'Error during parsing of LLM output, please check your LLM model and configuration',
 							{
-								itemIndex,
+								itemIndex: i,
 							},
-						),
-					};
-				}
-			});
-			const batchResults = await Promise.all(batchPromises);
-
-			batchResults.forEach(({ result, itemIndex, error }) => {
-				if (error) {
+						);
+					}
+				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData: { item: itemIndex } },
+							{ itemData: { item: i } },
 						);
-
 						returnData[0].push(...executionErrorData);
-						return;
-					} else {
-						throw error;
+						continue;
 					}
-				} else if (result.resultItem && result.sentimentIndex) {
-					const sentimentIndex = result.sentimentIndex;
-					const resultItem = result.resultItem;
-					returnData[sentimentIndex].push(resultItem);
+					throw error;
 				}
-			});
-
-			// Add delay between batches if not the last batch
-			if (i + batchSize < items.length && delayBetweenBatches > 0) {
-				await sleep(delayBetweenBatches);
 			}
 		}
 		return returnData;
