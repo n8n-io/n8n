@@ -444,13 +444,13 @@ export class License implements LicenseProvider {
 		// reload in background to avoid blocking SDK
 
 		void this.reload()
+			.then(() => {
+				this.logger.info('Reloaded license on expiry soon');
+			})
 			.catch((error) => {
 				this.logger.error('Failed to reload license on expiry soon', {
 					error: error instanceof Error ? error.message : error,
 				});
-			})
-			.then(() => {
-				this.logger.info('Reloaded license on expiry soon');
 			});
 	}
 }
