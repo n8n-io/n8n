@@ -27,15 +27,15 @@ import type {
 	IExecutionResponse,
 	INodeUi,
 	IUpdateInformation,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
-	IWorkflowTemplate,
 	NodeCreatorOpenSource,
 	NodeFilterType,
 	ToggleNodeCreatorOptions,
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
 	Dimensions,
@@ -769,7 +769,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	let workflowData: IWorkflowDataUpdate | null | undefined = null;
+	let workflowData: WorkflowDataUpdate | null | undefined = null;
 
 	// Check if it is an URL which could contain workflow data
 	if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
@@ -796,7 +796,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
 	} else {
 		// Pasted data is possible workflow data
-		workflowData = jsonParse<IWorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
+		workflowData = jsonParse<WorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
 	}
 
 	if (!workflowData) {
@@ -1048,7 +1048,7 @@ function onRevertDeleteConnection({ connection }: { connection: [IConnection, IC
  * Import / Export
  */
 
-async function importWorkflowExact({ workflow: workflowData }: { workflow: IWorkflowDataUpdate }) {
+async function importWorkflowExact({ workflow: workflowData }: { workflow: WorkflowDataUpdate }) {
 	if (!workflowData.nodes || !workflowData.connections) {
 		throw new Error('Invalid workflow object');
 	}
@@ -1066,7 +1066,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
-	const workflowData = data.data as IWorkflowDataUpdate;
+	const workflowData = data.data as WorkflowDataUpdate;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 	});
