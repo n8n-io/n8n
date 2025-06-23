@@ -1,7 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { NextFunction, Response } from 'express';
 
 import { Time } from '@/constants';
+import type { AuthenticatedRequest } from '@/requests';
 
 const LAST_ACTIVE_CACHE_TTL = 1 * Time.hours.toMilliseconds;
 
@@ -9,7 +12,23 @@ const LAST_ACTIVE_CACHE_TTL = 1 * Time.hours.toMilliseconds;
 export class LastActiveAtService {
 	private readonly lastActiveCache = new Map<string, number>();
 
-	constructor(private readonly userRepository: UserRepository) {}
+	constructor(
+		private readonly userRepository: UserRepository,
+		private readonly logger: Logger,
+	) {}
+
+	async middleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		if (req.user) {
+			res.on('finish', async () => {
+				try {
+					await this.updateLastActiveIfStale(req.user.id);
+				} catch (error: unknown) {
+					this.logger.error('Failed to update last active timestamp', { error });
+				}
+			});
+			next();
+		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+	}
 
 	async updateLastActiveIfStale(userId: string) {
 		const now = Date.now();

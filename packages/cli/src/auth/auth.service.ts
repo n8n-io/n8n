@@ -16,7 +16,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
@@ -50,7 +49,6 @@ export class AuthService {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
-		private readonly lastActiveAtService: LastActiveAtService,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -86,16 +84,8 @@ export class AuthService {
 			}
 		}
 
-		if (req.user) {
-			res.on('finish', async () => {
-				try {
-					await this.lastActiveAtService.updateLastActiveIfStale(req.user.id);
-				} catch (error: unknown) {
-					this.logger.error('Failed to update last active timestamp', { error });
-				}
-			});
-			next();
-		} else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		if (req.user) next();
+		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 
 	clearCookie(res: Response) {
