@@ -52,7 +52,7 @@ describe('markdownYoutubeEmbed', () => {
 		expect(result).toContain(
 			"<h2>I'm a note</h2>\n" +
 				'<p><strong>Double click</strong> to edit me. <a href="https://docs.n8n.io/workflows/sticky-notes/">Guide</a>\n' +
-				'<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>',
+				'<iframe width="100%" src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>',
 		);
 	});
 });
