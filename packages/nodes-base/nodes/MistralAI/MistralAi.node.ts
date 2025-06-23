@@ -68,6 +68,7 @@ export class MistralAi implements INodeType {
 
 				if (enableBatch) {
 					try {
+						const deleteFiles = this.getNodeParameter('deleteFiles', 0, true) as boolean;
 						const model = this.getNodeParameter('model', 0) as string;
 						const batchSize = this.getNodeParameter('batchSize', 0, 50) as number;
 
@@ -146,6 +147,14 @@ export class MistralAi implements INodeType {
 							jobResults.push(job);
 						}
 
+						if (deleteFiles) {
+							for (const fileId of fileIds) {
+								try {
+									await mistralApiRequest.call(this, 'DELETE', `/v1/files/${fileId}`);
+								} catch {}
+							}
+						}
+
 						for (const jobResult of jobResults) {
 							if (
 								jobResult.status !== 'SUCCESS' ||
@@ -173,6 +182,16 @@ export class MistralAi implements INodeType {
 									'GET',
 									`/v1/files/${jobResult.output_file}/content`,
 								)) as string | BatchItemResult;
+								if (deleteFiles) {
+									try {
+										await mistralApiRequest.call(
+											this,
+											'DELETE',
+											`/v1/files/${jobResult.output_file}`,
+										);
+									} catch {}
+								}
+
 								let batchResult: BatchItemResult[];
 								if (typeof fileResponse === 'string') {
 									batchResult = fileResponse

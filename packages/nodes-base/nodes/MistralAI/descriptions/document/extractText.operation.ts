@@ -107,6 +107,18 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Delete Files After Processing',
+		name: 'deleteFiles',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to delete the files on Mistral Cloud after processing',
+		displayOptions: {
+			show: {
+				batch: [true],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
