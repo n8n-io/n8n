@@ -270,7 +270,7 @@ export class WorkflowRunner {
 				if (data.executionMode !== 'manual') {
 					lifecycleHooks.addHandler('sendChunk', (chunk) => {
 						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-						data.httpResponse?.flush();
+						data.httpResponse?.flush?.();
 					});
 				}
 			}

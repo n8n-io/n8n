@@ -144,10 +144,10 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
-	/** Used for sending a chunk toa a streaming response */
+	/** Used for sending a chunk to a streaming response */
 	sendChunk(executionId: string, chunkText: StructuredChunk): void {
 		const execution = this.activeExecutions[executionId];
-		if (execution.httpResponse) {
+		if (execution?.httpResponse) {
 			execution?.httpResponse.write(JSON.stringify(chunkText) + '\n');
 			execution?.httpResponse.flush();
 		}
