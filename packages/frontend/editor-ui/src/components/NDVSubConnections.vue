@@ -196,7 +196,7 @@ function onNodeClick(nodeName: string, connectionKey: string) {
 }
 
 function onPlusClick(connectionKey: string) {
-	const [type] = connectionKey.split('-');
+	const [type, index] = connectionKey.split('-');
 	const connectionNodes = connectedNodes.value[connectionKey];
 	if (
 		isMultiConnection(connectionKey) &&
@@ -208,8 +208,7 @@ function onPlusClick(connectionKey: string) {
 	}
 
 	// Extract the index from connectionKey
-	const [, indexStr] = connectionKey.split('-');
-	const connectionIndex = parseInt(indexStr, 10) || 0;
+	const connectionIndex = parseInt(index, 10) || 0;
 
 	emit(
 		'openConnectionNodeCreator',
