@@ -111,7 +111,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'textembedding-gecko-multilingual@latest',
+				default: 'models/text-embedding-004',
 			},
 		],
 	};
@@ -121,11 +121,12 @@ export class EmbeddingsGoogleGemini implements INodeType {
 		const modelName = this.getNodeParameter(
 			'modelName',
 			itemIndex,
-			'textembedding-gecko-multilingual@latest',
+			'models/text-embedding-004',
 		) as string;
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GoogleGenerativeAIEmbeddings({
 			apiKey: credentials.apiKey as string,
+			baseUrl: credentials.host as string,
 			model: modelName,
 		});
 
