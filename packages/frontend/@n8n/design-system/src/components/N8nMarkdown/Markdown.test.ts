@@ -85,5 +85,22 @@ describe('components', () => {
 				'&lt;input type=“text” data-testid=“text-input” value=“Something”/&gt;',
 			);
 		});
+
+		it('should render YouTube embed player', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '@[youtube](ZCuL2e4zC_4)\n',
+				},
+			});
+
+			expect(wrapper.html()).toContain(
+				'<p><iframe width="100%" src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></p>',
+			);
+		});
 	});
 });
