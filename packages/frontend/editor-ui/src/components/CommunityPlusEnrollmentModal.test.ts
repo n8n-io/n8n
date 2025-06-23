@@ -8,7 +8,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUsersStore } from '@/stores/users.store';
-import { nextTick } from 'vue';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
