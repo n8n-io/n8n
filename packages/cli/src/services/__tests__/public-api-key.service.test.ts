@@ -219,6 +219,9 @@ describe('PublicApiKeyService', () => {
 
 			await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
 
+			// Wait for the fire and forget job to complete
+			await new Promise((resolve) => setImmediate(resolve));
+
 			// Assert
 			const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
 
