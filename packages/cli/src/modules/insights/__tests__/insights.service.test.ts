@@ -1,5 +1,6 @@
 import type { InsightsDateRange } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
@@ -11,10 +12,10 @@ import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
-import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
+import * as testModules from '@test-integration/test-modules';
 
 import {
 	createCompactedInsightsEvent,
@@ -29,8 +30,8 @@ import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
-// Initialize DB once for all tests
 beforeAll(async () => {
+	await testModules.loadModules(['insights']);
 	await testDb.init();
 });
 
@@ -581,18 +582,18 @@ describe('getInsightsByTime', () => {
 });
 
 describe('getAvailableDateRanges', () => {
-	let insightsService: InsightsService;
 	let licenseMock: jest.Mocked<LicenseState>;
+	let insightsService: InsightsService;
 
 	beforeAll(() => {
 		licenseMock = mock<LicenseState>();
 		insightsService = new InsightsService(
-			mock<InsightsByPeriodRepository>(),
-			mock<InsightsCompactionService>(),
-			mock<InsightsCollectionService>(),
-			mock<InsightsPruningService>(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
 			licenseMock,
-			mock<InstanceSettings>(),
+			mock(),
 			mockLogger(),
 		);
 	});

@@ -13,8 +13,15 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import { useSSOStore } from '@/stores/sso.store';
+import { EnterpriseEditionFeature } from '@/constants';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import type { BannerName } from '@n8n/api-types';
 
-let coreInitialized = false;
+export const state = {
+	initialized: false,
+};
 let authenticatedFeaturesInitialized = false;
 
 /**
@@ -22,25 +29,56 @@ let authenticatedFeaturesInitialized = false;
  * This is called once, when the first route is loaded.
  */
 export async function initializeCore() {
-	if (coreInitialized) {
+	if (state.initialized) {
 		return;
 	}
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const ssoStore = useSSOStore();
+	const uiStore = useUIStore();
 
 	await settingsStore.initialize();
+
+	ssoStore.initialize({
+		authenticationMethod: settingsStore.userManagement
+			.authenticationMethod as UserManagementAuthenticationMethod,
+		config: settingsStore.settings.sso,
+		features: {
+			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+		},
+	});
+
+	const banners: BannerName[] = [];
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		banners.push('NON_PRODUCTION_LICENSE');
+	}
+	if (
+		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		banners.push('V1');
+	}
+	uiStore.initialize({
+		banners,
+	});
+
+	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	void useExternalHooks().run('app.mount');
 
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize();
+		await usersStore.initialize({
+			quota: settingsStore.userManagement.quota,
+		});
 
 		void versionsStore.checkForNewVersions();
 	}
 
-	coreInitialized = true;
+	state.initialized = true;
 }
 
 /**

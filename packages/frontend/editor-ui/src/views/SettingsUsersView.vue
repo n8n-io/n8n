@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, ROLE } from '@/constants';
-
-import type { IRole, IUser, IUserListAction, InvitableRoleName } from '@/Interface';
+import { ROLE, type Role } from '@n8n/api-types';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
+import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -44,13 +44,13 @@ const usersListActions = computed((): IUserListAction[] => {
 		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
 			value: 'copyInviteLink',
-			guard: (user) => settingsStore.isBelowUserQuota && !user.firstName && !!user.inviteAcceptUrl,
+			guard: (user) => usersStore.usersLimitNotReached && !user.firstName && !!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
 			value: 'reinvite',
 			guard: (user) =>
-				settingsStore.isBelowUserQuota && !user.firstName && settingsStore.isSmtpSetup,
+				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.delete'),
@@ -64,20 +64,19 @@ const usersListActions = computed((): IUserListAction[] => {
 			value: 'copyPasswordResetLink',
 			guard: (user) =>
 				hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
-				settingsStore.isBelowUserQuota &&
+				usersStore.usersLimitNotReached &&
 				!user.isPendingUser &&
 				user.id !== usersStore.currentUserId,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.allowSSOManualLogin'),
 			value: 'allowSSOManualLogin',
-			guard: (user) => settingsStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.disallowSSOManualLogin'),
 			value: 'disallowSSOManualLogin',
-			guard: (user) =>
-				settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
+			guard: (user) => !!ssoStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
 		},
 	];
 });
@@ -85,7 +84,7 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
-const userRoles = computed((): Array<{ value: IRole; label: string; disabled?: boolean }> => {
+const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
 		{
 			value: ROLE.Member,
@@ -249,7 +248,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
+							:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
 							:label="i18n.baseText('settings.users.invite')"
 							size="large"
 							data-test-id="settings-users-invite-button"
@@ -259,7 +258,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
+		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -285,7 +284,7 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
+			v-if="usersStore.usersLimitNotReached || usersStore.allUsers.length > 1"
 			:class="$style.usersContainer"
 		>
 			<n8n-users-list

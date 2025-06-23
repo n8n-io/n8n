@@ -284,6 +284,6 @@ export async function streamRequest<T extends object>(
 		}
 	} catch (e: unknown) {
 		assert(e instanceof Error);
-		onError?.(e as Error);
+		onError?.(e);
 	}
 }

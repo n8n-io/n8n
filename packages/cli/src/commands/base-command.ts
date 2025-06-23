@@ -1,5 +1,12 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState, Logger } from '@n8n/backend-common';
+import {
+	inDevelopment,
+	inTest,
+	LicenseState,
+	Logger,
+	ModuleRegistry,
+	ModulesConfig,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
@@ -27,19 +34,15 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ModuleRegistry } from '@/modules/module-registry';
-import type { ModulePreInit } from '@/modules/modules.config';
-import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DbConnection);
+	protected dbConnection: DbConnection;
 
 	protected errorReporter: ErrorReporter;
 
@@ -59,6 +62,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
+	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -72,35 +77,11 @@ export abstract class BaseCommand extends Command {
 	protected needsTaskRunner = false;
 
 	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
-			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-
-				this.modulesConfig.addLoadedModule(moduleName);
-				this.logger.debug(`Loaded module "${moduleName}"`);
-			}
-		}
-
-		await Container.get(ModuleRegistry).initializeModules();
-
-		if (this.instanceSettings.isMultiMain) {
-			Container.get(MultiMainSetup).registerEventHandlers();
-		}
+		await this.moduleRegistry.loadModules();
 	}
 
 	async init(): Promise<void> {
+		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;

@@ -3,12 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
-import {
-	EnterpriseEditionFeature,
-	VALID_EMAIL_REGEX,
-	INVITE_USER_MODAL_KEY,
-	ROLE,
-} from '@/constants';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';

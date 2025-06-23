@@ -95,7 +95,7 @@ export class LdapService {
 			throw new UnexpectedError(message);
 		}
 
-		if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
+		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
 			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
 		}
 
@@ -146,19 +146,19 @@ export class LdapService {
 
 	/** Set the LDAP login enabled to the configuration object */
 	private async setLdapLoginEnabled(enabled: boolean): Promise<void> {
-		if (isEmailCurrentAuthenticationMethod() || isLdapCurrentAuthenticationMethod()) {
-			if (enabled) {
-				config.set(LDAP_LOGIN_ENABLED, true);
-				await setCurrentAuthenticationMethod('ldap');
-			} else if (!enabled) {
-				config.set(LDAP_LOGIN_ENABLED, false);
-				await setCurrentAuthenticationMethod('email');
-			}
-		} else {
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+		if (enabled && !isEmailCurrentAuthenticationMethod() && !isLdapCurrentAuthenticationMethod()) {
 			throw new InternalServerError(
-				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${currentAuthenticationMethod})`,
 			);
 		}
+
+		config.set(LDAP_LOGIN_ENABLED, enabled);
+
+		const targetAuthenticationMethod =
+			!enabled && currentAuthenticationMethod === 'ldap' ? 'email' : currentAuthenticationMethod;
+
+		await setCurrentAuthenticationMethod(enabled ? 'ldap' : targetAuthenticationMethod);
 	}
 
 	/**

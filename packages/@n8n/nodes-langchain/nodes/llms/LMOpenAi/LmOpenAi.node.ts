@@ -259,7 +259,7 @@ export class LmOpenAi implements INodeType {
 
 		const model = new OpenAI({
 			openAIApiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			...options,
 			configuration,
 			timeout: options.timeout ?? 60000,

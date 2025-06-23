@@ -112,7 +112,7 @@ const mainMenuItems = computed(() => [
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
-			settingsStore.settings.insights.enabled &&
+			settingsStore.settings.activeModules.includes('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
@@ -126,7 +126,7 @@ const mainMenuItems = computed(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
 					target: '_blank',
 				},
 			},

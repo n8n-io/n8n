@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
@@ -72,10 +73,8 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 	rewireGraph,
-	isTool,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
@@ -359,6 +358,7 @@ export class WorkflowExecute {
 			destinationNodeName,
 			'a destinationNodeName is required for the new partial execution flow',
 		);
+		const originalDestination = destinationNodeName;
 
 		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
@@ -368,8 +368,12 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
+		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+			destination.type,
+			destination.typeVersion,
+		);
 		// Partial execution of nodes as tools
-		if (isTool(destination, workflow.nodeTypes)) {
+		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
 			graph = rewireGraph(destination, graph, agentRequest);
 			workflow = graph.toWorkflow({ ...workflow });
 			// Rewire destination node to the virtual agent
@@ -453,6 +457,7 @@ export class WorkflowExecute {
 		this.runExecutionData = {
 			startData: {
 				destinationNode: destinationNodeName,
+				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
@@ -468,7 +473,11 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		// Still passing the original workflow here, because the WorkflowDataProxy
+		// needs it to create more useful error messages, e.g. differentiate
+		// between a node not being connected to the node referencing it or a node
+		// not existing in the workflow.
+		return this.processRunExecutionData(workflow);
 	}
 
 	/**
@@ -1047,11 +1056,10 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (!node.parameters) return undefined;
+		if (!node.parameters && !node.forceCustomOperation) return undefined;
 
 		const { customOperations } = type;
-		const { resource, operation } = node.parameters;
+		const { resource, operation } = node.forceCustomOperation ?? node.parameters;
 
 		if (typeof resource !== 'string' || typeof operation !== 'string') return undefined;
 		if (!customOperations[resource] || !customOperations[resource][operation]) return undefined;
@@ -1543,7 +1551,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
+								let didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1558,6 +1566,8 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
+									nodeSuccessData = runNodeData.data;
+									didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 									tryIndex++;
 								}
 

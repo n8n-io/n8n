@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+	CalloutActionType,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -20,10 +21,12 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useMessage } from '@/composables/useMessage';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
+	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -38,8 +41,17 @@ import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -72,10 +84,13 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
+const message = useMessage();
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const { dismissCallout, isCalloutDismissed, openRagStarterTemplate, isRagStarterCalloutVisible } =
+	useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -525,6 +540,47 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 ): T {
 	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
 }
+
+function isRagStarterCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
+}
+
+function isCalloutVisible(parameter: INodeProperties): boolean {
+	if (isCalloutDismissed(parameter.name)) return false;
+
+	if (isRagStarterCallout(parameter)) {
+		return isRagStarterCalloutVisible.value;
+	}
+
+	return true;
+}
+
+async function onCalloutAction(action: CalloutActionType) {
+	if (action === 'openRagStarterTemplate') {
+		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+	}
+}
+
+const onCalloutDismiss = async (parameter: INodeProperties) => {
+	const dismissConfirmed = await message.confirm(
+		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
+		{
+			showClose: true,
+			confirmButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.confirmButtonText',
+			),
+			cancelButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.cancelButtonText',
+			),
+		},
+	);
+
+	if (dismissConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	await dismissCallout(parameter.name);
+};
 </script>
 
 <template>
@@ -563,6 +619,46 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
+
+			<template v-else-if="parameter.type === 'callout'">
+				<N8nCallout
+					v-if="isCalloutVisible(parameter)"
+					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+					theme="secondary"
+				>
+					<N8nText size="small">
+						<N8nText
+							size="small"
+							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+						/>
+						<template v-if="parameter.typeOptions?.calloutAction">
+							{{ ' ' }}
+							<N8nLink
+								v-if="parameter.typeOptions?.calloutAction"
+								theme="secondary"
+								size="small"
+								:bold="true"
+								:underline="true"
+								@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
+							>
+								{{ parameter.typeOptions.calloutAction.label }}
+							</N8nLink>
+						</template>
+					</N8nText>
+
+					<template #trailingContent>
+						<N8nIcon
+							icon="times"
+							title="Dismiss"
+							size="medium"
+							type="secondary"
+							class="callout-dismiss"
+							data-test-id="callout-dismiss-icon"
+							@click="onCalloutDismiss(parameter)"
+						/>
+					</template>
+				</N8nCallout>
+			</template>
 
 			<div v-else-if="parameter.type === 'button'" class="parameter-item">
 				<ButtonParameter
@@ -765,6 +861,15 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.async-notice {
 		display: block;
 		padding: var(--spacing-3xs) 0;
+	}
+
+	.callout-dismiss {
+		margin-left: var(--spacing-xs);
+		line-height: 1;
+		cursor: pointer;
+	}
+	.callout-dismiss:hover {
+		color: var(--color-icon-hover);
 	}
 }
 </style>

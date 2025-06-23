@@ -2138,6 +2138,10 @@ export class Telegram implements INodeType {
 						},
 					};
 
+					if (formData.reply_markup) {
+						formData.reply_markup = JSON.stringify(formData.reply_markup);
+					}
+
 					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
 						formData,
 					});

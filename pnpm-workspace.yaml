@@ -21,6 +21,8 @@ catalog:
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
+  http-proxy-agent: 7.0.2
+  https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
   jsonwebtoken: 9.0.2
   js-base64: 3.7.2
@@ -35,12 +37,12 @@ catalog:
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.24.1
-  'zod-to-json-schema': 3.23.3
-  '@langchain/core': 0.3.48
-  '@langchain/openai': 0.5.0
-  '@langchain/anthropic': 0.3.21
-  '@langchain/community': 0.3.24
+  zod: 3.25.67
+  zod-to-json-schema: 3.23.3
+  '@langchain/core': 0.3.59
+  '@langchain/openai': 0.5.13
+  '@langchain/anthropic': 0.3.22
+  '@langchain/community': 0.3.46
   '@n8n_io/ai-assistant-sdk': 1.14.0
 
 catalogs:
@@ -64,4 +66,4 @@ catalogs:
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
-    'element-plus': 2.4.3
+    element-plus: 2.4.3

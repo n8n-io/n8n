@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mysqlMigrations } from '@n8n/db';
 import { postgresMigrations } from '@n8n/db';
@@ -17,7 +18,12 @@ describe('DbConnectionOptions', () => {
 	});
 	const n8nFolder = '/test/n8n';
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
-	const dbConnectionOptions = new DbConnectionOptions(dbConfig, instanceSettingsConfig);
+	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
+	const dbConnectionOptions = new DbConnectionOptions(
+		dbConfig,
+		instanceSettingsConfig,
+		moduleRegistry,
+	);
 
 	beforeEach(() => jest.resetAllMocks());
 

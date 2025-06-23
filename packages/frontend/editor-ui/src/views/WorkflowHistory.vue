@@ -11,7 +11,7 @@ import type {
 	WorkflowHistoryRequestParams,
 	WorkflowHistory,
 	WorkflowVersion,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
