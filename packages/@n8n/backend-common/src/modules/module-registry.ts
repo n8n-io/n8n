@@ -49,8 +49,21 @@ export class ModuleRegistry {
 	 */
 	async loadModules(modules?: ModuleName[]) {
 		const moduleDir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
-		const modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+		let modulesDir: string;
 
+		if (process.env.NODE_ENV === 'test') {
+			modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+		} else {
+			try {
+				// For Docker
+				const n8nPackagePath = require.resolve('n8n/package.json');
+				const n8nRoot = path.dirname(n8nPackagePath);
+				modulesDir = path.join(n8nRoot, moduleDir, 'modules');
+			} catch {
+				// Fallback to relative path for development
+				modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+			}
+		}
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
 				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
