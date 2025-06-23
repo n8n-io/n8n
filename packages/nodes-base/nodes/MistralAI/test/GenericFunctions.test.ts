@@ -1,6 +1,4 @@
-import { NodeApiError } from 'n8n-workflow';
-
-import { encodeBinaryData, processResponseData, sendErrorPostReceive } from '../GenericFunctions';
+import { encodeBinaryData, processResponseData } from '../GenericFunctions';
 
 describe('Mistral OCR Generic Functions', () => {
 	describe('encodeBinaryData', () => {
@@ -64,92 +62,6 @@ describe('Mistral OCR Generic Functions', () => {
 
 			expect(result.extractedText).toBe('');
 			expect(result.pageCount).toBe(0);
-		});
-	});
-
-	describe('sendErrorPostReceive', () => {
-		const context = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(),
-		} as any;
-
-		const items = [{ json: {} }] as any;
-
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
-
-		it('should return items if statusCode < 400', async () => {
-			const response = { statusCode: 200, body: {} };
-			const result = await sendErrorPostReceive.call(context, items, response as any);
-			expect(result).toBe(items);
-		});
-
-		it('should throw detailed error on 422 with details', async () => {
-			const response = {
-				statusCode: 422,
-				body: {
-					detail: [
-						{ loc: ['field1'], msg: 'Invalid value' },
-						{ loc: ['field2'], msg: 'Missing' },
-					],
-				},
-			};
-
-			context.getNodeParameter.mockReturnValue('url');
-			context.getNode.mockReturnValue({});
-
-			await expect(sendErrorPostReceive.call(context, items, response as any)).rejects.toThrow(
-				NodeApiError,
-			);
-		});
-
-		it('should throw invalid image URL error', async () => {
-			const response = {
-				statusCode: 400,
-				body: { message: 'could not be loaded as a valid image' },
-			};
-
-			context.getNodeParameter.mockReturnValue('url');
-			context.getNode.mockReturnValue({});
-
-			await expect(sendErrorPostReceive.call(context, items, response as any)).rejects.toThrow(
-				'Invalid image URL',
-			);
-		});
-
-		it('should throw fetch file URL error', async () => {
-			const response = {
-				statusCode: 400,
-				body: { message: 'Error fetching file from URL' },
-			};
-
-			context.getNodeParameter.mockImplementation((param: string) =>
-				param === 'inputType'
-					? 'url'
-					: param === 'documentUrl'
-						? 'http://example.com/file.pdf'
-						: undefined,
-			);
-			context.getNode.mockReturnValue({});
-
-			await expect(sendErrorPostReceive.call(context, items, response as any)).rejects.toThrow(
-				'Unable to access the file at http://example.com/file.pdf',
-			);
-		});
-
-		it('should throw generic error if no special cases matched', async () => {
-			const response = {
-				statusCode: 400,
-				body: { message: 'Some other error' },
-			};
-
-			context.getNodeParameter.mockReturnValue('url');
-			context.getNode.mockReturnValue({});
-
-			await expect(sendErrorPostReceive.call(context, items, response as any)).rejects.toThrow(
-				'Some other error',
-			);
 		});
 	});
 });
