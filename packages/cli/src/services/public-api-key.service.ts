@@ -141,6 +141,8 @@ export class PublicApiKeyService {
 
 			req.user = user;
 
+			// TODO: ideally extract that to a dedicated middleware, but express-openapi-validator
+			// does not support middleware between authentication and operators
 			await this.lastActiveAtService.updateLastActiveIfStale(user.id);
 
 			return true;
