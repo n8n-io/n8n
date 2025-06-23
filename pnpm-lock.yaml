@@ -1198,8 +1198,8 @@ importers:
         specifier: 'catalog:'
         version: 1.14.0
       '@n8n_io/license-sdk':
-        specifier: 2.21.0
-        version: 2.21.0
+        specifier: 2.22.0
+        version: 2.22.0
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -5270,8 +5270,8 @@ packages:
     resolution: {integrity: sha512-apo1VXGmyUpwsBZ2dp9EyqZYR+FA3DzdD79MVzSMuknLIukhyZjvabBYRrjK5BJOU3vo5z9inaCm4UvenQ5Mgg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.21.0':
-    resolution: {integrity: sha512-xUqLf6ViWU4tn8PkODh7R8T4slqXLaWfFHHFKXHo71q8iZrU6m5T3aavFbJonqeC4ERu8vWYYdTqW8VGHq4fFw==}
+  '@n8n_io/license-sdk@2.22.0':
+    resolution: {integrity: sha512-dysK0bzZXjgBmtDvPU+ZIIcwEeGoQgG4tZAH8E0A1Rs265U7FLe8eg9wyvwLa3RJ4T+qmZrMxR/WSqqtAlCPaQ==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.1':
@@ -17997,7 +17997,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.14.0': {}
 
-  '@n8n_io/license-sdk@2.21.0':
+  '@n8n_io/license-sdk@2.22.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
