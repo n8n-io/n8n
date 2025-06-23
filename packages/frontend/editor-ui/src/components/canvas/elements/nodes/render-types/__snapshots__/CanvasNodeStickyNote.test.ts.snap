@@ -12,6 +12,8 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
 <div class="n8n-sticky sticky clickable color-1 sticky" style="height: 180px; width: 240px;" data-test-id="sticky">
   <div class="wrapper">
     <div class="n8n-markdown">
+      <!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
+      <!-- eslint-disable vue/no-v-html -->
       <div class="sticky"></div>
     </div>
   </div>
