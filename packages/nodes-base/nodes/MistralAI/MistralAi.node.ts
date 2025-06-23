@@ -24,7 +24,7 @@ export class MistralAi implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: "Extract text and layout information from documents using Mistral's AI API",
+		description: 'Consume Mistral AI API',
 		defaults: {
 			name: 'Mistral AI',
 		},
