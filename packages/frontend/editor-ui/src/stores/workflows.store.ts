@@ -23,16 +23,18 @@ import type {
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
-	WorkflowMetadata,
 	IExecutionFlattedResponse,
-	IWorkflowTemplateNode,
-	IWorkflowDataCreate,
 	WorkflowListResource,
 } from '@/Interface';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
+import type {
+	WorkflowMetadata,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
 	IConnection,
@@ -1681,7 +1683,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Ensures that the new workflow is not active upon creation.
 	 * If the project ID is not provided in the data, it assigns the current project ID from the project store.
 	 */
-	async function createNewWorkflow(sendData: IWorkflowDataCreate): Promise<IWorkflowDb> {
+	async function createNewWorkflow(sendData: WorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
@@ -1714,7 +1716,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function updateWorkflow(
 		id: string,
-		data: IWorkflowDataUpdate,
+		data: WorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
 		if (data.settings === null) {

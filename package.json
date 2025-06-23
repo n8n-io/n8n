@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.99.0",
+  "version": "1.100.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -94,7 +94,8 @@
       "typescript": "^5.8.2",
       "vue-tsc": "^2.2.8",
       "google-gax": "^4.3.7",
-      "ws": ">=8.17.1"
+      "ws": ">=8.17.1",
+      "zod": "3.25.67"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

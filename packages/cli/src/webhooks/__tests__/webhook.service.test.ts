@@ -386,4 +386,116 @@ describe('WebhookService', () => {
 			expect(webhookRepository.findBy).toHaveBeenCalledTimes(2);
 		});
 	});
+
+	describe('isDynamicPath', () => {
+		test.each(['a', 'a/b'])('should treat static path (%s) as static', (path) => {
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
+
+			const node = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			const nodeType = mock<INodeType>({
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path,
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0].webhookId).toBeUndefined();
+		});
+
+		test.each([':', '/:'])('should treat literal colon path (%s) as static', (path) => {
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
+
+			const nodeWithWebhookId = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			const nodeType = mock<INodeType>({
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path,
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, nodeWithWebhookId, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0].webhookId).toBeUndefined();
+		});
+
+		test('should treat dynamic path (user/:id) as dynamic', () => {
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
+
+			const nodeWithWebhookId = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				webhookId: 'test-webhook-id',
+			});
+
+			const nodeType = mock<INodeType>({
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: 'user/:id',
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, nodeWithWebhookId, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0].webhookId).toBe('test-webhook-id');
+		});
+	});
 });
