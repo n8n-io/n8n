@@ -91,7 +91,7 @@ export class MistralAi implements INodeType {
 									body: {
 										document: {
 											type: documentType,
-											document_name: fileName,
+											document_name: documentType === 'document_url' ? fileName : undefined,
 											[documentType]: dataUrl,
 										},
 									},
@@ -253,7 +253,7 @@ export class MistralAi implements INodeType {
 									model,
 									document: {
 										type: documentType,
-										document_name: fileName,
+										document_name: documentType === 'document_url' ? fileName : undefined,
 										[documentType]: dataUrl,
 									},
 								};
