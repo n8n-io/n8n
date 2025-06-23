@@ -190,10 +190,8 @@ watch(
 			size="small"
 			icon="edit"
 			icon-size="medium"
-			style="color: var(--color-text-base)"
 			:style="{
 				visibility: props.canOpenNdv ? '' : 'hidden',
-				color: 'var(--color-text-base)',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -208,7 +206,6 @@ watch(
 			type="secondary"
 			size="small"
 			icon="play"
-			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
 			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
@@ -223,7 +220,6 @@ watch(
 			:square="true"
 			:style="{
 				visibility: hasChildren ? '' : 'hidden',
-				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
