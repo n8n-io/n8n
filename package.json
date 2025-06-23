@@ -75,8 +75,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "sqlite3",
-      "sharp"
+      "sqlite3"
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
