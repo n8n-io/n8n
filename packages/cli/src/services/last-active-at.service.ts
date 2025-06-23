@@ -8,7 +8,7 @@ import type { AuthenticatedRequest } from '@/requests';
 
 @Service()
 export class LastActiveAtService {
-	private readonly lastActiveCache = new Map<string, DateTime>();
+	private readonly lastActiveCache = new Map<string, string>();
 
 	constructor(
 		private readonly userRepository: UserRepository,
@@ -30,10 +30,11 @@ export class LastActiveAtService {
 
 	async updateLastActiveIfStale(userId: string) {
 		const now = DateTime.now().startOf('day');
+		const dateNow = now.toISODate();
 		const last = this.lastActiveCache.get(userId);
 
 		// Update if date changed (or not set)
-		if (!last || !last.hasSame(now, 'day')) {
+		if (!last || last !== dateNow) {
 			await this.userRepository
 				.createQueryBuilder()
 				.update()
@@ -41,7 +42,7 @@ export class LastActiveAtService {
 				.where('id = :id', { id: userId })
 				.execute();
 
-			this.lastActiveCache.set(userId, now);
+			this.lastActiveCache.set(userId, dateNow);
 		}
 	}
 }
