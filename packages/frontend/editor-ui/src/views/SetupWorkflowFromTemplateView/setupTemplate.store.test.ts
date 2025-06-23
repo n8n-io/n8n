@@ -3,11 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialType } from 'n8n-workflow';
 
+import type { ICredentialsResponse } from '@/Interface';
 import type {
-	ICredentialsResponse,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/templates';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
