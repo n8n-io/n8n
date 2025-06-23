@@ -1,0 +1,46 @@
+{
+  "name": "GitHub Issue Slack Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "owner": "your-github-username",
+        "repository": "your-github-repo",
+        "events": [
+          "issues"
+        ]
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "your-slack-channel",
+        "text": "New issue created: {{$json[\"issue\"][\"title\"]}}",
+        "attachments": []
+      },
+      "name": "Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        300,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        {
+          "node": "Slack",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    }
+  }
+}
