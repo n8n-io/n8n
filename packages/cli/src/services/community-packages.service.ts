@@ -366,9 +366,9 @@ export class CommunityPackagesService {
 
 	private getNpmRegistry() {
 		const { registry } = this.globalConfig.nodes.communityPackages;
-		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
-		}
+		// if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
+		// 	throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+		// }
 		return registry;
 	}
 
