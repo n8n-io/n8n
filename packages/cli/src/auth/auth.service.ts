@@ -79,18 +79,18 @@ export class AuthService {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
 					const [user, info] = await this.resolveJwt(token, req, res);
-					req.user = user;
-					req.usedMfa = info.usedMfa;
-					// TODO: read mfaEnforced from configuration
 					const mfaEnforced = this.mfaService.isMFAEnforced();
-					if (mfaEnforced && !info.usedMfa && !allowSkipMFA) {
-						if (user.mfaEnabled) {
+
+					if (mfaEnforced && !allowSkipMFA) {
+						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
+						if (!info.usedMfa) {
+							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
-						} else {
-							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
-							return;
 						}
 					}
+
+					req.user = user;
+					req.usedMfa = info.usedMfa;
 				} catch (error) {
 					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 						this.clearCookie(res);
