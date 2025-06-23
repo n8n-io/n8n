@@ -4,7 +4,7 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
 import upperFirst from 'lodash/upperFirst';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
@@ -35,12 +35,13 @@ const locale = useI18n();
 const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
-const isSettled = computed(
-	() =>
-		props.data.runData?.executionStatus &&
-		!['running', 'waiting'].includes(props.data.runData.executionStatus),
-);
+const isRunning = computed(() => props.data.runData?.executionStatus === 'running');
+const isWaiting = computed(() => props.data.runData?.executionStatus === 'waiting');
+const isSettled = computed(() => !isRunning.value && !isWaiting.value);
 const isError = computed(() => !!props.data.runData?.error);
+const statusTextKeyPath = computed<BaseTextKey>(() =>
+	isSettled.value ? 'logs.overview.body.summaryText.in' : 'logs.overview.body.summaryText.for',
+);
 const startedAtText = computed(() => {
 	if (props.data.runData === undefined) {
 		return '—';
@@ -136,23 +137,21 @@ watch(
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
 		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
-			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText.in">
+			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath">
 				<template #status>
-					<N8nText v-if="isError" color="danger" :bold="true" size="small">
-						<N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />
+					<N8nText :color="isError ? 'danger' : undefined" :bold="isError" size="small">
+						<AnimatedSpinner v-if="isRunning" :class="$style.statusTextIcon" />
+						<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusTextIcon" />
+						<N8nIcon
+							v-else-if="isError"
+							icon="exclamation-triangle"
+							:class="$style.statusTextIcon"
+						/>
 						{{ statusText }}
 					</N8nText>
-					<template v-else>{{ statusText }}</template>
 				</template>
 				<template #time>{{ timeText }}</template>
 			</I18nT>
-			<template v-else-if="timeText !== undefined">
-				{{
-					locale.baseText('logs.overview.body.summaryText.for', {
-						interpolate: { status: statusText, time: timeText },
-					})
-				}}
-			</template>
 			<template v-else>—</template>
 		</N8nText>
 		<N8nText
@@ -230,6 +229,10 @@ watch(
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded')"
 		/>
+		<template v-if="isCompact">
+			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
+			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
+		</template>
 	</div>
 </template>
 
@@ -242,6 +245,7 @@ watch(
 	position: relative;
 	z-index: 1;
 	padding-inline-end: var(--spacing-5xs);
+	cursor: pointer;
 
 	& > * {
 		overflow: hidden;
@@ -320,7 +324,7 @@ watch(
 	flex-shrink: 0;
 	width: 20%;
 
-	.errorIcon {
+	.statusTextIcon {
 		margin-right: var(--spacing-4xs);
 		vertical-align: text-bottom;
 	}
@@ -392,5 +396,18 @@ watch(
 
 .toggleButton {
 	display: inline-flex;
+}
+
+.statusIcon {
+	color: var(--color-text-light);
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: 26px;
+	height: 26px;
+	padding: var(--spacing-3xs);
+
+	&.placeholder {
+		color: transparent;
+	}
 }
 </style>
