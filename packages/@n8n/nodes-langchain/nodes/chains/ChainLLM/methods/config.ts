@@ -295,7 +295,7 @@ export const nodeProperties: INodeProperties[] = [
 	},
 	{
 		displayName: `Connect an additional <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiLanguageModel}'>language model</a> on the canvas to use it as a fallback if the main model fails`,
-		name: 'notice',
+		name: 'fallbackNotice',
 		type: 'notice',
 		default: '',
 		displayOptions: {
