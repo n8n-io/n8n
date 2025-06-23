@@ -583,5 +583,359 @@ describe('Aws Credential', () => {
 				'STS Access Key ID is required when not using system credentials.',
 			);
 		});
+
+		describe('Backward Compatibility Tests', () => {
+			it('should work with legacy credentials (no credentialType, no assumeRole)', async () => {
+				// Simulate the oldest possible credential format
+				const legacyCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: false,
+					customEndpoints: false,
+					// No credentialType, no assumeRole, no role fields
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(legacyCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+
+			it('should work with legacy credentials with temporary credentials', async () => {
+				// Simulate legacy credentials with temporary credentials
+				const legacyCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: true,
+					sessionToken: 'legacy-session-token',
+					customEndpoints: false,
+					// No credentialType, no assumeRole, no role fields
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(legacyCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, {
+					...securityHeaders,
+					sessionToken: 'legacy-session-token',
+				});
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+
+			it('should work with legacy role assumption (assumeRole: true, no credentialType)', async () => {
+				// Simulate legacy role assumption format
+				const legacyRoleCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: '', // Not used for role assumption
+					secretAccessKey: '', // Not used for role assumption
+					temporaryCredentials: false,
+					customEndpoints: false,
+					assumeRole: true, // Legacy field
+					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+					externalId: 'test-external-id',
+					roleSessionName: 'test-session',
+					// No credentialType, no useSystemCredentialsForRole (should default to true)
+				} as AwsCredentialsType;
+
+				// Mock system credentials for the STS call
+				const originalEnv = process.env;
+				process.env = {
+					...originalEnv,
+					AWS_ACCESS_KEY_ID: 'system-access-key',
+					AWS_SECRET_ACCESS_KEY: 'system-secret-key',
+				};
+
+				const mockStsResponse = {
+					ok: true,
+					text: () =>
+						Promise.resolve(`
+						<AssumeRoleResponse>
+							<AssumeRoleResult>
+								<Credentials>
+									<AccessKeyId>assumed-access-key</AccessKeyId>
+									<SecretAccessKey>assumed-secret-key</SecretAccessKey>
+									<SessionToken>assumed-session-token</SessionToken>
+								</Credentials>
+							</AssumeRoleResult>
+						</AssumeRoleResponse>
+					`),
+				};
+
+				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
+
+				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledTimes(2);
+				const lastCall = mockSign.mock.calls[1];
+				expect(lastCall[1]).toMatchObject({
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret-key',
+					sessionToken: 'assumed-session-token',
+				});
+
+				process.env = originalEnv;
+			});
+
+			it('should work with legacy role assumption with manual STS credentials', async () => {
+				// Simulate legacy role assumption with manual STS credentials
+				const legacyRoleCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: '', // Not used for role assumption
+					secretAccessKey: '', // Not used for role assumption
+					temporaryCredentials: false,
+					customEndpoints: false,
+					assumeRole: true, // Legacy field
+					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+					externalId: 'test-external-id',
+					roleSessionName: 'test-session',
+					useSystemCredentialsForRole: false, // Use manual STS credentials
+					// No temporaryStsCredentials (should default to false)
+					stsAccessKeyId: 'sts-access-key',
+					stsSecretAccessKey: 'sts-secret-key',
+					stsSessionToken: 'sts-session-token', // Should be ignored when temporaryStsCredentials is not set
+				} as AwsCredentialsType;
+
+				const mockStsResponse = {
+					ok: true,
+					text: () =>
+						Promise.resolve(`
+						<AssumeRoleResponse>
+							<AssumeRoleResult>
+								<Credentials>
+									<AccessKeyId>assumed-access-key</AccessKeyId>
+									<SecretAccessKey>assumed-secret-key</SecretAccessKey>
+									<SessionToken>assumed-session-token</SessionToken>
+								</Credentials>
+							</AssumeRoleResult>
+						</AssumeRoleResponse>
+					`),
+				};
+
+				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
+
+				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledTimes(2);
+				const lastCall = mockSign.mock.calls[1];
+				expect(lastCall[1]).toMatchObject({
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret-key',
+					sessionToken: 'assumed-session-token',
+				});
+			});
+
+			it('should work with legacy role assumption with temporary STS credentials', async () => {
+				// Simulate legacy role assumption with temporary STS credentials
+				const legacyRoleCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: '', // Not used for role assumption
+					secretAccessKey: '', // Not used for role assumption
+					temporaryCredentials: false,
+					customEndpoints: false,
+					assumeRole: true, // Legacy field
+					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+					externalId: 'test-external-id',
+					roleSessionName: 'test-session',
+					useSystemCredentialsForRole: false, // Use manual STS credentials
+					temporaryStsCredentials: true, // Use temporary STS credentials
+					stsAccessKeyId: 'sts-access-key',
+					stsSecretAccessKey: 'sts-secret-key',
+					stsSessionToken: 'sts-session-token', // Should be used when temporaryStsCredentials is true
+				} as AwsCredentialsType;
+
+				const mockStsResponse = {
+					ok: true,
+					text: () =>
+						Promise.resolve(`
+						<AssumeRoleResponse>
+							<AssumeRoleResult>
+								<Credentials>
+									<AccessKeyId>assumed-access-key</AccessKeyId>
+									<SecretAccessKey>assumed-secret-key</SecretAccessKey>
+									<SessionToken>assumed-session-token</SessionToken>
+								</Credentials>
+							</AssumeRoleResult>
+						</AssumeRoleResponse>
+					`),
+				};
+
+				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
+
+				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledTimes(2);
+				const lastCall = mockSign.mock.calls[1];
+				expect(lastCall[1]).toMatchObject({
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret-key',
+					sessionToken: 'assumed-session-token',
+				});
+			});
+
+			it('should work with mixed legacy and new fields', async () => {
+				// Simulate credentials with some legacy and some new fields
+				const mixedCredentials = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: true,
+					sessionToken: 'mixed-session-token',
+					customEndpoints: false,
+					credentialType: 'iam', // New field
+					// No assumeRole field (legacy)
+					// No role fields (legacy)
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(mixedCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, {
+					...securityHeaders,
+					sessionToken: 'mixed-session-token',
+				});
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+
+			it('should work with new format but missing optional fields', async () => {
+				// Simulate new format credentials with missing optional fields
+				const newFormatCredentials = {
+					region: 'eu-central-1',
+					credentialType: 'assumeRole', // New field
+					accessKeyId: '', // Not used for role assumption
+					secretAccessKey: '', // Not used for role assumption
+					temporaryCredentials: false,
+					customEndpoints: false,
+					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+					externalId: 'test-external-id',
+					roleSessionName: 'test-session',
+					// No assumeRole field (new format)
+					// No useSystemCredentialsForRole (should default to true)
+					// No temporaryStsCredentials (should default to false)
+					// No STS credential fields (should use system credentials)
+				} as AwsCredentialsType;
+
+				// Mock system credentials for the STS call
+				const originalEnv = process.env;
+				process.env = {
+					...originalEnv,
+					AWS_ACCESS_KEY_ID: 'system-access-key',
+					AWS_SECRET_ACCESS_KEY: 'system-secret-key',
+				};
+
+				const mockStsResponse = {
+					ok: true,
+					text: () =>
+						Promise.resolve(`
+						<AssumeRoleResponse>
+							<AssumeRoleResult>
+								<Credentials>
+									<AccessKeyId>assumed-access-key</AccessKeyId>
+									<SecretAccessKey>assumed-secret-key</SecretAccessKey>
+									<SessionToken>assumed-session-token</SessionToken>
+								</Credentials>
+							</AssumeRoleResult>
+						</AssumeRoleResponse>
+					`),
+				};
+
+				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
+
+				const result = await aws.authenticate(newFormatCredentials, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledTimes(2);
+				const lastCall = mockSign.mock.calls[1];
+				expect(lastCall[1]).toMatchObject({
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret-key',
+					sessionToken: 'assumed-session-token',
+				});
+
+				process.env = originalEnv;
+			});
+
+			it('should handle empty string values in legacy fields', async () => {
+				// Simulate legacy credentials with empty string values
+				const legacyCredentialsWithEmptyStrings = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: false,
+					sessionToken: '', // Empty string
+					customEndpoints: false,
+					assumeRole: false, // Explicitly false
+					roleArn: '', // Empty string
+					externalId: '', // Empty string
+					roleSessionName: '', // Empty string
+					// No credentialType field
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(legacyCredentialsWithEmptyStrings, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+
+			it('should handle undefined values in legacy fields', async () => {
+				// Simulate legacy credentials with undefined values
+				const legacyCredentialsWithUndefined = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: false,
+					sessionToken: undefined, // Undefined
+					customEndpoints: false,
+					assumeRole: undefined, // Undefined
+					roleArn: undefined, // Undefined
+					externalId: undefined, // Undefined
+					roleSessionName: undefined, // Undefined
+					// No credentialType field
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(legacyCredentialsWithUndefined, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+
+			it('should handle null values in legacy fields', async () => {
+				// Simulate legacy credentials with null values
+				const legacyCredentialsWithNull = {
+					region: 'eu-central-1',
+					accessKeyId: 'hakuna',
+					secretAccessKey: 'matata',
+					temporaryCredentials: false,
+					sessionToken: null as any, // Null
+					customEndpoints: false,
+					assumeRole: null as any, // Null
+					roleArn: null as any, // Null
+					externalId: null as any, // Null
+					roleSessionName: null as any, // Null
+					// No credentialType field
+				} as AwsCredentialsType;
+
+				const result = await aws.authenticate(legacyCredentialsWithNull, requestOptions);
+
+				expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
+				expect(result.method).toBe('POST');
+				expect(result.url).toBe(
+					'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+				);
+			});
+		});
 	});
 });
