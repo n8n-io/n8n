@@ -1,7 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import type { InvalidAuthTokenRepository } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -33,7 +32,6 @@ describe('LastActiveAtService', () => {
 
 	const userRepository = mock<UserRepository>();
 
-	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const lastActiveAtService = new LastActiveAtService(userRepository, mockLogger());
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
