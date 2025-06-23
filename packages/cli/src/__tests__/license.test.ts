@@ -243,7 +243,7 @@ describe('License', () => {
 			},
 		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
 			const logger = mockLogger();
-			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValue();
+			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
 			const instanceSettings = mock<InstanceSettings>({ instanceType });
 			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
 
