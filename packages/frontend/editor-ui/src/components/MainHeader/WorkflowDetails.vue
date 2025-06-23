@@ -47,10 +47,10 @@ import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -407,7 +407,7 @@ async function handleFileImport(): Promise<void> {
 	if (inputRef?.files && inputRef.files.length !== 0) {
 		const reader = new FileReader();
 		reader.onload = () => {
-			let workflowData: IWorkflowDataUpdate;
+			let workflowData: WorkflowDataUpdate;
 			try {
 				workflowData = JSON.parse(reader.result as string);
 			} catch (error) {

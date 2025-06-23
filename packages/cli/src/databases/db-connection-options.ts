@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import {
 	entities,
@@ -15,8 +16,6 @@ import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-p
 import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
-
-import { ModuleRegistry } from '@/modules/module-registry';
 
 @Service()
 export class DbConnectionOptions {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.98.0",
+  "version": "1.99.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev": "pnpm run watch",
     "typecheck": "tsc --noEmit",
     "copy-nodes-json": "node ../../nodes-base/scripts/copy-nodes-json.js .",
-    "build": "tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "build": "tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && cp utils/tokenizer/*.json dist/utils/tokenizer/ && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
@@ -135,7 +135,8 @@
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
-      "dist/nodes/ToolExecutor/ToolExecutor.node.js"
+      "dist/nodes/ToolExecutor/ToolExecutor.node.js",
+      "dist/nodes/ModelSelector/ModelSelector.node.js"
     ]
   },
   "devDependencies": {
@@ -197,6 +198,7 @@
     "html-to-text": "9.0.5",
     "https-proxy-agent": "catalog:",
     "jsdom": "23.0.1",
+    "js-tiktoken": "^1.0.12",
     "langchain": "0.3.28",
     "lodash": "catalog:",
     "mammoth": "1.7.2",

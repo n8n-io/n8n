@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
 import { TEMPLATES_URLS } from '@/constants';
 import { STORES } from '@n8n/stores';
+import type { INodeUi } from '@/Interface';
+import { useSettingsStore } from './settings.store';
+import * as templatesApi from '@n8n/rest-api-client/api/templates';
 import type {
-	INodeUi,
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -10,14 +12,34 @@ import type {
 	ITemplatesWorkflow,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
-} from '@/Interface';
-import { useSettingsStore } from './settings.store';
-import * as templatesApi from '@/api/templates';
+} from '@n8n/rest-api-client/api/templates';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
+
+export interface ITemplateState {
+	categories: ITemplatesCategory[];
+	collections: { [id: string]: ITemplatesCollection };
+	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+			categories?: ITemplatesCategory[];
+		};
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		};
+	};
+	currentSessionId: string;
+	previousSessionId: string;
+	currentN8nPath: string;
+}
 
 const TEMPLATES_PAGE_SIZE = 20;
 
