@@ -1,0 +1,82 @@
+{
+	"name": "Mistral AI",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-140, 0],
+			"id": "48cf408c-de44-4ed2-8a43-d16a4fa5b95b",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"inputType": "url",
+				"url": "https://example.com/document.pdf"
+			},
+			"type": "n8n-nodes-base.mistralAi",
+			"typeVersion": 1,
+			"position": [80, 0],
+			"id": "d7af696f-26a4-419e-9377-02c91d0ea23d",
+			"name": "Document by URL",
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "l4fJwkB8bVdo6Evk",
+					"name": "Mistral Cloud account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Document by URL": [
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file",
+					"pageCount": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Document by URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "e14263a9-5ffb-4be9-9307-f231bb961b8d",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "N6UCbkc3HPvoTa0M",
+	"tags": []
+}
