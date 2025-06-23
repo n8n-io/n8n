@@ -1,8 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
-
-import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { executeChain } from './chainExecutor';
 import { type MessageTemplate } from './types';
