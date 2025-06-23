@@ -8,7 +8,6 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { createPromptTemplate } from './promptUtils';
 import type { ChainExecutionParams } from './types';
-import { Runnable } from '@langchain/core/runnables';
 
 export class NaiveJsonOutputParser<
 	T extends Record<string, any> = Record<string, any>,

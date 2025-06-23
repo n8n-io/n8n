@@ -37,7 +37,7 @@ function createAgentExecutor(
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
 ) {
-	const modelWithFallback = model.withFallbacks(fallbackModel ? [fallbackModel] : []);
+	const modelWithFallback = fallbackModel ? model.withFallbacks([fallbackModel]) : model;
 	const agent = createToolCallingAgent({
 		llm: modelWithFallback,
 		tools,
