@@ -142,7 +142,7 @@ function onEnter(event: Event) {
 	emit('enter');
 }
 
-const validationError = computed<ReturnType<IValidator['validate']>>(() => {
+const validationError = computed<{ message: string } | null>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
@@ -151,7 +151,9 @@ const validationError = computed<ReturnType<IValidator['validate']>>(() => {
 				message: t(error.messageKey, error.options),
 			};
 		} else {
-			return error;
+			return {
+				message: error.message,
+			};
 		}
 	}
 
