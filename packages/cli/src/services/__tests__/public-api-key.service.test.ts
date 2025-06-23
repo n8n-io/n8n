@@ -223,8 +223,8 @@ describe('PublicApiKeyService', () => {
 			const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
 
 			expect(userOnDb.lastActiveAt).toBeDefined();
-			expect(userOnDb.lastActiveAt!.getTime()).toBeGreaterThan(
-				DateTime.now().minus({ seconds: 5 }).toMillis(),
+			expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
+				DateTime.now().startOf('day').toMillis(),
 			);
 		});
 	});

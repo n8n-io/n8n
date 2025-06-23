@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
 
 import { Time } from '@/constants';
 import type { AuthenticatedRequest } from '@/requests';
@@ -96,14 +97,14 @@ describe('LastActiveAtService', () => {
 			queryBuilderMock.set.mockClear();
 			queryBuilderMock.where.mockClear();
 			queryBuilderMock.execute.mockClear();
-			jest.advanceTimersByTime(13 * Time.hours.toMilliseconds);
+			jest.advanceTimersByTime(24 * Time.hours.toMilliseconds);
 
 			// Call middleware again now that the user is in cache with a stale last active time
 			await lastActiveAtService.middleware(req, res, next);
 
 			expect(queryBuilderMock.update).toHaveBeenCalled();
 			expect(queryBuilderMock.set).toHaveBeenCalledWith({
-				lastActiveAt: new Date(now.getTime() + 13 * Time.hours.toMilliseconds),
+				lastActiveAt: DateTime.fromJSDate(now).plus({ days: 1 }).startOf('day').toJSDate(),
 			});
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('id = :id', { id: user.id });
 			expect(queryBuilderMock.execute).toHaveBeenCalled();
