@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { ocr } from './descriptions';
+import { document } from './descriptions';
 import { encodeBinaryData, mistralApiRequest, processResponseData } from './GenericFunctions';
 import type { BatchItemResult, BatchJob } from './types';
 
@@ -45,14 +45,14 @@ export class MistralAi implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'OCR',
-						value: 'ocr',
+						name: 'Document',
+						value: 'document',
 					},
 				],
-				default: 'ocr',
+				default: 'document',
 			},
 
-			...ocr.description,
+			...document.description,
 		],
 	};
 
@@ -62,7 +62,7 @@ export class MistralAi implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		if (resource === 'ocr') {
+		if (resource === 'document') {
 			if (operation === 'extractText') {
 				const enableBatch = this.getNodeParameter('batch', 0, false) as boolean;
 

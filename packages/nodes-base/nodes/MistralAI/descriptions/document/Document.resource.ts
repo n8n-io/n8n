@@ -10,7 +10,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['ocr'],
+				resource: ['document'],
 			},
 		},
 		options: [

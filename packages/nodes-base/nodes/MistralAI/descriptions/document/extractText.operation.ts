@@ -111,7 +111,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['ocr'],
+		resource: ['document'],
 		operation: ['extractText'],
 	},
 };
