@@ -75,8 +75,8 @@ export abstract class AbstractServer {
 		const proxyHops = this.globalConfig.proxy_hops;
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
-		this.sslKey = config.getEnv('ssl_key');
-		this.sslCert = config.getEnv('ssl_cert');
+		this.sslKey = this.globalConfig.ssl_key;
+		this.sslCert = this.globalConfig.ssl_cert;
 
 		const { endpoints } = this.globalConfig;
 		this.restEndpoint = endpoints.rest;
