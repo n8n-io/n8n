@@ -29,15 +29,7 @@ describe('AuthService', () => {
 	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
-	let queryBuilderMock = {
-		update: jest.fn().mockReturnThis(),
-		set: jest.fn().mockReturnThis(),
-		where: jest.fn().mockReturnThis(),
-		execute: jest.fn(),
-	};
-
 	const userRepository = mock<UserRepository>();
-
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const authService = new AuthService(
 		globalConfig,
@@ -61,13 +53,6 @@ describe('AuthService', () => {
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
-		queryBuilderMock = {
-			update: jest.fn().mockReturnThis(),
-			set: jest.fn().mockReturnThis(),
-			where: jest.fn().mockReturnThis(),
-			execute: jest.fn(),
-		};
-		(userRepository.createQueryBuilder as jest.Mock).mockReturnValue(queryBuilderMock);
 	});
 
 	describe('createJWTHash', () => {
