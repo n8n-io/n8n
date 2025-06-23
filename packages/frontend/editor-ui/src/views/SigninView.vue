@@ -145,7 +145,7 @@ const login = async (form: LoginRequestDto) => {
 		}
 		await settingsStore.getSettings();
 
-		if (settingsStore.loadedModules.length > 0) {
+		if (settingsStore.activeModules.length > 0) {
 			await settingsStore.getModuleSettings();
 		}
 

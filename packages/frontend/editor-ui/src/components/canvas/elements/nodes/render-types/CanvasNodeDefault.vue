@@ -3,10 +3,10 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
+import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalCanvasNodeSettings from '../../../components/ExperimentalCanvasNodeSettings.vue';
 
 const $style = useCssModule();
@@ -36,18 +36,12 @@ const {
 	hasIssues,
 	render,
 } = useCanvasNode();
-const {
-	mainOutputs,
-	mainOutputConnections,
-	mainInputs,
-	mainInputConnections,
-	nonMainInputs,
-	requiredNonMainInputs,
-} = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
@@ -71,29 +65,24 @@ const classes = computed(() => {
 	};
 });
 
-const styles = computed(() => {
-	const stylesObject: Record<string, string | number> = {};
+const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
 
-	if (renderOptions.value.configurable) {
-		let spacerCount = 0;
-		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS && requiredNonMainInputs.value.length > 0) {
-			const requiredNonMainInputsCount = requiredNonMainInputs.value.length;
-			const optionalNonMainInputsCount = nonMainInputs.value.length - requiredNonMainInputsCount;
-			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
-		}
+const nodeSize = computed(() =>
+	calculateNodeSize(
+		renderOptions.value.configuration ?? false,
+		renderOptions.value.configurable ?? false,
+		mainInputs.value.length,
+		mainOutputs.value.length,
+		nonMainInputs.value.length,
+	),
+);
 
-		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
-	}
-
-	if (nodeSettingsZoom.value !== undefined) {
-		stylesObject['--zoom'] = nodeSettingsZoom.value;
-	}
-
-	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
-	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
-
-	return stylesObject;
-});
+const styles = computed(() => ({
+	'--canvas-node--width': `${nodeSize.value.width}px`,
+	'--canvas-node--height': `${nodeSize.value.height}px`,
+	'--node-icon-size': `${iconSize.value}px`,
+	...(nodeSettingsZoom.value === undefined ? {} : { '--zoom': nodeSettingsZoom.value }),
+}));
 
 const dataTestId = computed(() => {
 	let type = 'default';
@@ -116,8 +105,6 @@ const isStrikethroughVisible = computed(() => {
 
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
-
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
 
 const iconSource = computed(() => renderOptions.value.icon);
 
@@ -156,8 +143,13 @@ function onActivate(event: MouseEvent) {
 		<ExperimentalCanvasNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
 		<template v-else>
 			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<NodeIcon
+				:icon-source="iconSource"
+				:size="iconSize"
+				:shrink="false"
+				:disabled="isDisabled"
+				:class="$style.icon"
+			/>
 			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 			<div :class="$style.description">
 				<div v-if="label" :class="$style.label">
@@ -168,24 +160,14 @@ function onActivate(event: MouseEvent) {
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		</template>
 	</div>
 </template>
 
 <style lang="scss" module>
 .node {
-	--canvas-node--max-vertical-handles: max(
-		var(--canvas-node--main-input-count),
-		var(--canvas-node--main-output-count),
-		1
-	);
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
-	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
-	--configurable-node--min-input-count: 4;
-	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 30px;
-	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -207,7 +189,6 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.settingsView {
-		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
 		height: calc(var(--canvas-node--height) * 2.4) !important;
 		width: calc(var(--canvas-node--width) * 1.6) !important;
 		align-items: flex-start;
@@ -226,13 +207,10 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		--canvas-node--width: 80px;
-		--canvas-node--height: 80px;
-
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
 			var(--canvas-node--border-color, var(--color-foreground-dark));
-		border-radius: 50px;
+		border-radius: calc(var(--canvas-node--height) / 2);
 
 		.statusIcons {
 			right: unset;
@@ -240,16 +218,8 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.configurable {
-		--canvas-node--height: 100px;
-		--canvas-node--width: calc(
-			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
-				var(--configurable-node--input-width)
-		);
-
-		justify-content: flex-start;
-
-		:global(.n8n-node-icon) {
-			margin-left: var(--configurable-node--icon-offset);
+		.icon {
+			margin-left: calc(40px - (var(--node-icon-size)) / 2 - var(--canvas-node-border-width));
 		}
 
 		.description {
@@ -260,11 +230,10 @@ function onActivate(event: MouseEvent) {
 			margin-right: var(--spacing-s);
 			width: auto;
 			min-width: unset;
-			max-width: calc(
-				var(--canvas-node--width) - var(--configurable-node--icon-offset) - var(
-						--configurable-node--icon-size
-					) - 2 * var(--spacing-s)
-			);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			flex-grow: 1;
+			flex-shrink: 1;
 		}
 
 		.label {
@@ -276,11 +245,19 @@ function onActivate(event: MouseEvent) {
 		}
 
 		&.configuration {
-			--canvas-node--height: 75px;
+			.icon {
+				margin-left: calc((var(--canvas-node--height) - var(--node-icon-size)) / 2);
+			}
 
-			.statusIcons {
-				right: calc(-1 * var(--spacing-2xs));
-				bottom: 0;
+			&:not(.running) {
+				.statusIcons {
+					position: static;
+					margin-right: var(--spacing-2xs);
+				}
+			}
+
+			.description {
+				margin-right: var(--spacing-xs);
 			}
 		}
 	}
@@ -333,7 +310,6 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
-	align-items: center;
 }
 
 .label,
@@ -366,5 +342,10 @@ function onActivate(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
+}
+
+.icon {
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 </style>

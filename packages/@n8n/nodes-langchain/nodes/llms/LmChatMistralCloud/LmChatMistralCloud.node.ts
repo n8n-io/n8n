@@ -190,7 +190,7 @@ export class LmChatMistralCloud implements INodeType {
 
 		const model = new ChatMistralAI({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
