@@ -206,7 +206,7 @@ describe('getChatModel', () => {
 
 		await expect(getChatModel(mockContext, 2)).rejects.toThrow(NodeOperationError);
 		await expect(getChatModel(mockContext, 2)).rejects.toThrow(
-			'Chat Model not found at index 2. Available models: 1',
+			'Please connect a model to the Fallback Model input or disable the fallback option',
 		);
 	});
 
