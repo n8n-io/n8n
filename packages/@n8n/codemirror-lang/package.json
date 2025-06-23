@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@n8n/codemirror-lang",
   "version": "0.3.0",
   "description": "Language support package for CodeMirror 6 in n8n",
@@ -22,8 +23,8 @@
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "lint": "eslint . --ext .ts --quiet",
-    "lintfix": "eslint . --ext .ts --fix",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },

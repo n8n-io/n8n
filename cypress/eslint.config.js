@@ -8,22 +8,9 @@ export default defineConfig(
 	cypressPlugin.configs.recommended,
 	{
 		rules: {
-			// TODO: remove these rules
-			'@typescript-eslint/naming-convention': 'off',
-			'@typescript-eslint/no-explicit-any': 'off',
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-call': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-			'@typescript-eslint/no-unsafe-return': 'off',
-			'import/order': 'off',
-			'@typescript-eslint/no-unused-expressions': 'off',
-			'@typescript-eslint/no-use-before-define': 'off',
-			'@typescript-eslint/promise-function-async': 'off',
-			'n8n-local-rules/no-uncaught-json-parse': 'off',
-			'cypress/no-assigning-return-values': 'warn',
-			'cypress/no-unnecessary-waiting': 'warn',
-			'cypress/unsafe-to-chain-command': 'warn',
+			// TODO: Remove this
+			'no-useless-escape': 'warn',
+			'import/order': 'warn',
 			'import/no-extraneous-dependencies': [
 				'error',
 				{
@@ -31,6 +18,22 @@ export default defineConfig(
 					optionalDependencies: false,
 				},
 			],
+			'@typescript-eslint/naming-convention': 'warn',
+			'@typescript-eslint/no-explicit-any': 'warn',
+			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/no-unsafe-call': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
+			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/no-unused-expressions': 'warn',
+			'@typescript-eslint/no-use-before-define': 'warn',
+			'@typescript-eslint/promise-function-async': 'warn',
+			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+			'@typescript-eslint/unbound-method': 'warn',
+			'cypress/no-assigning-return-values': 'warn',
+			'cypress/no-unnecessary-waiting': 'warn',
+			'cypress/unsafe-to-chain-command': 'warn',
+			'n8n-local-rules/no-uncaught-json-parse': 'warn',
 		},
 	},
 );

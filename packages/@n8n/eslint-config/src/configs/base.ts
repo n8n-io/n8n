@@ -2,23 +2,20 @@ import { globalIgnores } from 'eslint/config';
 import eslint from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
 import typescriptPlugin from '@typescript-eslint/eslint-plugin';
-// import { localRulesPlugin } from '../plugin.js';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
-import stylisticTs from '@stylistic/eslint-plugin-ts';
+import stylisticPlugin from '@stylistic/eslint-plugin';
 import unicornPlugin from 'eslint-plugin-unicorn';
 import lodashPlugin from 'eslint-plugin-lodash';
 import { localRulesPlugin } from '../plugin.js';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
+// Slowest rules are disabled locally to improve performance in development
+// They are enabled in CI to ensure code quality
+const runAllRules = process.env.CI === 'true' || process.env.INCLUDE_SLOW_RULES === 'true';
+
 export const baseConfig = tseslint.config(
-	globalIgnores([
-		'node_modules/**',
-		'dist/**',
-		'tsup.config.ts',
-		// TODO: remove these
-		'*.js',
-	]),
+	globalIgnores(['node_modules/**', 'dist/**', '*.config.ts', '*.config.js']),
 	eslint.configs.recommended,
 	tseslint.configs.recommended,
 	tseslint.configs.recommendedTypeChecked,
@@ -29,7 +26,7 @@ export const baseConfig = tseslint.config(
 	{
 		plugins: {
 			'unused-imports': unusedImportsPlugin,
-			'@stylistic/ts': stylisticTs,
+			'@stylistic': stylisticPlugin,
 			lodash: lodashPlugin,
 			unicorn: unicornPlugin,
 			'@typescript-eslint': typescriptPlugin,
@@ -37,8 +34,6 @@ export const baseConfig = tseslint.config(
 		languageOptions: {
 			parserOptions: {
 				projectService: true,
-				// @ts-expect-error import.meta.dirname only exists in ES module context
-				tsconfigRootDir: import.meta?.dirname ?? __dirname,
 			},
 		},
 		settings: {
@@ -106,7 +101,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
 			/** https://typescript-eslint.io/rules/await-thenable/ */
-			'@typescript-eslint/await-thenable': 'error',
+			'@typescript-eslint/await-thenable': runAllRules ? 'error' : 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
@@ -165,7 +160,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 			 */
-			'@stylistic/ts/member-delimiter-style': [
+			'@stylistic/member-delimiter-style': [
 				'error',
 				{
 					multiline: {
@@ -178,6 +173,9 @@ export const baseConfig = tseslint.config(
 					},
 				},
 			],
+
+			// Not needed because we use Biome formatting
+			'@stylistic/ident': 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
@@ -216,11 +214,6 @@ export const baseConfig = tseslint.config(
 			],
 
 			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
-			 */
-			'import/no-duplicates': 'error',
-
-			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
 			 */
 			'@typescript-eslint/no-invalid-void-type': 'error',
@@ -228,12 +221,16 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
 			 */
-			'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
+			'@typescript-eslint/no-misused-promises': runAllRules
+				? ['error', { checksVoidReturn: false }]
+				: 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
 			 */
-			'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
+			'@typescript-eslint/no-floating-promises': runAllRules
+				? ['error', { ignoreVoid: true }]
+				: 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
@@ -253,7 +250,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-qualifier.md
 			 */
-			'@typescript-eslint/no-unnecessary-qualifier': 'error',
+			'@typescript-eslint/no-unnecessary-qualifier': runAllRules ? 'error' : 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-expressions.md
@@ -273,7 +270,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/promise-function-async.md
 			 */
-			'@typescript-eslint/promise-function-async': 'error',
+			'@typescript-eslint/promise-function-async': runAllRules ? 'error' : 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
@@ -297,17 +294,12 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
-			'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
+			'import/no-cycle': runAllRules ? ['error', { ignoreExternal: false, maxDepth: 3 }] : 'off',
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
 			 */
 			'import/no-default-export': 'error',
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
-			 */
-			'import/no-unresolved': ['error', { ignore: ['^virtual:'] }],
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
@@ -323,6 +315,23 @@ export const baseConfig = tseslint.config(
 					'newlines-between': 'always',
 				},
 			],
+
+			/**
+			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
+			 */
+			'import/no-duplicates': 'error',
+
+			/**
+			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
+			 */
+			'import/prefer-default-export': 'off',
+
+			// These rules are not needed as TypeScript handles them
+			'import/named': 'off',
+			'import/namespace': 'off',
+			'import/default': 'off',
+			'import/no-named-as-default-member': 'off',
+			'import/no-unresolved': 'off',
 
 			// ******************************************************************
 			//                    overrides to base ruleset
@@ -379,15 +388,6 @@ export const baseConfig = tseslint.config(
 			],
 
 			// ----------------------------------
-			//              import
-			// ----------------------------------
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
-			 */
-			'import/prefer-default-export': 'off',
-
-			// ----------------------------------
 			//         no-unused-imports
 			// ----------------------------------
 
@@ -408,41 +408,10 @@ export const baseConfig = tseslint.config(
 	},
 	{
 		// Rules for unit tests
-		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.cy.ts'],
+		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
-
-			// TODO: Remove these
-			'@typescript-eslint/ban-ts-comment': 'off',
-			'@typescript-eslint/naming-convention': 'off',
-			'import/no-duplicates': 'off',
-			'@typescript-eslint/no-empty-function': 'off',
-			'@typescript-eslint/no-loop-func': 'off',
-			'@typescript-eslint/no-non-null-assertion': 'off',
-			'@typescript-eslint/no-shadow': 'off',
-			'@typescript-eslint/only-throw-error': 'off',
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-call': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-			'@typescript-eslint/no-unsafe-return': 'off',
-			'@typescript-eslint/no-unused-expressions': 'off',
-			'@typescript-eslint/no-use-before-define': 'off',
-			'@typescript-eslint/no-var-requires': 'off',
-			'@typescript-eslint/prefer-nullish-coalescing': 'off',
-			'@typescript-eslint/prefer-optional-chain': 'off',
-			'@typescript-eslint/restrict-plus-operands': 'off',
-			'@typescript-eslint/restrict-template-expressions': 'off',
-			'@typescript-eslint/unbound-method': 'off',
-			'@typescript-eslint/no-prototype-builtins': 'off',
-			'@typescript-eslint/array-type': 'off',
-			'id-denylist': 'off',
-			'import/no-default-export': 'off',
-			'import/no-extraneous-dependencies': 'off',
-			'n8n-local-rules/no-uncaught-json-parse': 'off',
-			'prefer-const': 'off',
-			'prefer-spread': 'off',
 		},
 	},
 );

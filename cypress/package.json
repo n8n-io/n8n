@@ -11,7 +11,7 @@
     "test:flaky": "scripts/run-e2e.js debugFlaky",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
+    "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "develop": "cd ..; pnpm dev:e2e:server",
     "start": "cd ..; pnpm start"

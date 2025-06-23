@@ -54,7 +54,7 @@
     "babel-plugin-transform-import-meta": "^2.3.2",
     "bundlemon": "^3.1.0",
     "cross-env": "^7.0.3",
-    "eslint": "^9.25.1",
+    "eslint": "catalog:",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
     "jest-expect-message": "^1.1.3",

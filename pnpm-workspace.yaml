@@ -49,7 +49,7 @@ catalog:
   vite: ^6.2.0
   vitest: ^3.0.7
   vitest-mock-extended: ^3.0.1
-  eslint: ^9.25.1
+  eslint: ^9.29.0
 
 catalogs:
   frontend:

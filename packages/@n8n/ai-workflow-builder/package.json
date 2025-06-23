@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@n8n/ai-workflow-builder",
   "version": "0.9.0",
   "scripts": {
@@ -9,7 +10,7 @@
     "format:check": "biome ci src",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint . --quiet",
+    "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },

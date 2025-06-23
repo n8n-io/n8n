@@ -1,22 +1,18 @@
 import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
-import VueEslintParser from 'vue-eslint-parser';
-import TypescriptEslintParser from '@typescript-eslint/parser';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
 const isCI = process.env.CI === 'true';
+const extraFileExtensions = ['.vue'];
+const allGlobals = { NodeJS: true, ...globals.node, ...globals.browser };
 
 export const frontendConfig = tseslint.config(
 	globalIgnores(['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap']),
 	baseConfig,
 	VuePlugin.configs['flat/recommended'],
 	{
-		languageOptions: {
-			ecmaVersion: 2024,
-			globals: globals.browser,
-		},
 		rules: {
 			'no-console': 'warn',
 			'no-debugger': isCI ? 'error' : 'off',
@@ -24,36 +20,46 @@ export const frontendConfig = tseslint.config(
 			'comma-dangle': ['error', 'always-multiline'],
 			'no-tabs': 0,
 			'no-labels': 0,
-			'@typescript-eslint/no-use-before-define': 'off',
+			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
 			'import/no-extraneous-dependencies': 'warn',
 
 			// TODO: fix these
-			'@typescript-eslint/no-unsafe-call': 'off',
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-return': 'off',
-			'@typescript-eslint/restrict-template-expressions': 'off',
-			'@typescript-eslint/unbound-method': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-
-			// TODO: remove these
-			'n8n-local-rules/no-plain-errors': 'off',
+			'@typescript-eslint/no-unsafe-call': 'warn',
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/restrict-template-expressions': 'warn',
+			'@typescript-eslint/unbound-method': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
 		},
 	},
 	{
-		files: ['*.vue', '**/*.vue'],
+		files: ['**/*.ts'],
 		languageOptions: {
-			parser: VueEslintParser,
+			ecmaVersion: 'latest',
+			sourceType: 'module',
+			globals: allGlobals,
+			parser: tseslint.parser,
+			parserOptions: { projectService: true, extraFileExtensions },
+		},
+	},
+	{
+		files: ['**/*.vue'],
+		languageOptions: {
+			ecmaVersion: 'latest',
+			sourceType: 'module',
+			globals: allGlobals,
 			parserOptions: {
-				parser: TypescriptEslintParser,
+				parser: tseslint.parser,
+				extraFileExtensions,
 			},
 		},
 	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
 		rules: {
-			'import/no-extraneous-dependencies': 'off',
+			'import/no-extraneous-dependencies': 'warn',
 		},
 	},
 	{

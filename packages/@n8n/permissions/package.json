@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@n8n/permissions",
   "version": "0.28.0",
   "scripts": {
@@ -8,7 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
+    "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",

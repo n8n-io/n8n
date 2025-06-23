@@ -22,7 +22,7 @@ export const createVitestConfig = (options = {}) => {
 		},
 	});
 
-	if (process.env.COVERAGE_ENABLED === 'true') {
+	if (process.env.COVERAGE_ENABLED === 'true' && vitestConfig.test?.coverage) {
 		const { coverage } = vitestConfig.test;
 		coverage.enabled = true;
 		if (process.env.CI === 'true' && coverage.provider === 'v8') {

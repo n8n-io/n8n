@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@n8n/db",
   "version": "0.10.0",
   "scripts": {

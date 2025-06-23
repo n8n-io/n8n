@@ -13,9 +13,9 @@ export default defineConfig(
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
 
 			// TODO: Remove this
+			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'import/no-cycle': 'warn',
 			'import/extensions': 'warn',
-			'import/namespace': 'warn',
 			'import/order': 'warn',
 			'no-ex-assign': 'warn',
 			'no-case-declarations': 'warn',
@@ -29,7 +29,6 @@ export default defineConfig(
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
 			'@typescript-eslint/no-unsafe-function-type': 'warn',
 			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
 			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
@@ -88,7 +87,16 @@ export default defineConfig(
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
+			'id-denylist': 'warn',
+			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',
+			'import/no-duplicates': 'warn',
+			'import/no-default-export': 'warn',
+			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'@typescript-eslint/no-unused-expressions': 'warn',
+			'@typescript-eslint/restrict-template-expressions': 'warn',
+			'n8n-local-rules/no-uncaught-json-parse': 'warn',
 		},
 	},
 );
