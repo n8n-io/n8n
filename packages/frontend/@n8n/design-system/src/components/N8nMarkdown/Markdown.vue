@@ -233,6 +233,7 @@ const onCheckboxChange = (index: number) => {
 			@change="onChange"
 			v-html="htmlContent"
 		/>
+		<!-- eslint-enable vue/no-v-html -->
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">
 				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
@@ -417,6 +418,10 @@ input[type='checkbox'] + label {
 		display: block;
 		padding: var(--spacing-s);
 		overflow-x: auto;
+	}
+
+	iframe {
+		aspect-ratio: 16/9 auto;
 	}
 }
 

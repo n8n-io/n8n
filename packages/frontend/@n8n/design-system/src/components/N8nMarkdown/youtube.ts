@@ -9,16 +9,15 @@ export const YOUTUBE_EMBED_SRC_REGEX =
 	/^https:\/\/(?:www\.)?(youtube\.com|youtube-nocookie\.com)\/embed\/[\w-]{11}(?:\?.*)?$/i;
 
 export interface YoutubeEmbedConfig {
-	width?: number;
-	height?: number;
+	width?: number | string;
+	height?: number | string;
 	title?: string;
 	nocookie?: boolean;
 }
 
 export const markdownYoutubeEmbed = (md: MarkdownIt, options: YoutubeEmbedConfig) => {
-	const opts: Required<YoutubeEmbedConfig> = {
-		width: 560,
-		height: 315,
+	const opts = {
+		width: '100%',
 		title: 'YouTube video player',
 		nocookie: true,
 		...options,
@@ -52,7 +51,7 @@ export const markdownYoutubeEmbed = (md: MarkdownIt, options: YoutubeEmbedConfig
 
 		const parameters = [
 			`width="${opts.width}"`,
-			`height="${opts.height}"`,
+			...(opts.height ? [`height="${opts.height}"`] : []),
 			`src="${youtubeUrl}${videoId}"`,
 			`title="${md.utils.escapeHtml(opts.title)}"`,
 			'frameborder="0"',
