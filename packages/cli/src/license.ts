@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 	type BooleanLicenseFeature,
 	type NumericLicenseFeature,
@@ -18,7 +19,7 @@ import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
-import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY, Time } from './constants';
+import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
