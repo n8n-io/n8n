@@ -345,7 +345,7 @@ export class Aws implements ICredentialType {
 			displayName: 'External ID',
 			name: 'externalId',
 			description:
-				'External ID for cross-account role assumption (should be required by the role trust policy). For more information, see https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html',
+				"External ID for cross-account role assumption (should be required by your role's trust policy). This really should be generated automatically by n8n but there is not a way to do this automatically. Given this limitation, **you should treat this value as a secret and not share it with any other users of this n8n instance.** For more information, see https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html",
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -354,6 +354,9 @@ export class Aws implements ICredentialType {
 			},
 			required: true,
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'Role Session Name',
