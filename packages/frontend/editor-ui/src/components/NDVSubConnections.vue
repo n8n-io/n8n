@@ -29,7 +29,11 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex: number,
+	];
 }>();
 
 interface NodeConfig {
@@ -203,7 +207,16 @@ function onPlusClick(connectionKey: string) {
 		return;
 	}
 
-	emit('openConnectionNodeCreator', props.rootNode.name, type as NodeConnectionType);
+	// Extract the index from connectionKey
+	const [, indexStr] = connectionKey.split('-');
+	const connectionIndex = parseInt(indexStr, 10) || 0;
+
+	emit(
+		'openConnectionNodeCreator',
+		props.rootNode.name,
+		type as NodeConnectionType,
+		connectionIndex,
+	);
 }
 
 function showNodeInputsIssues() {
