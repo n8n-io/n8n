@@ -1,1 +1,1 @@
-export * as document from './document/Document.resource';
+export * as ocr from './ocr/ocr.resource';
