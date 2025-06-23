@@ -1,5 +1,5 @@
 import { Factory } from 'miragejs';
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { faker } from '@faker-js/faker';
 
 export const tagFactory = Factory.extend<ITag>({
