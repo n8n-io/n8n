@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -16,6 +17,7 @@ export class MfaService {
 	constructor(
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
+		private license: LicenseState,
 		public totp: TOTPService,
 		private cipher: Cipher,
 	) {
@@ -34,6 +36,9 @@ export class MfaService {
 	}
 
 	async enforceMFA(value: boolean) {
+		if (!this.license.isMFAEnforcementLicensed()) {
+			value = false; // If the license does not allow MFA enforcement, set it to false
+		}
 		await this.settingsRepository.upsert(
 			{
 				key: MFA_ENFORCE_SETTING,
@@ -46,7 +51,7 @@ export class MfaService {
 	}
 
 	isMFAEnforced() {
-		return this.enforceMFAValue;
+		return this.license.isMFAEnforcementLicensed() && this.enforceMFAValue;
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {

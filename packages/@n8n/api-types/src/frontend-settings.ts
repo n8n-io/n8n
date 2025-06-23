@@ -137,6 +137,7 @@ export interface FrontendSettings {
 		ldap: boolean;
 		saml: boolean;
 		oidc: boolean;
+		mfaEnforcement: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;

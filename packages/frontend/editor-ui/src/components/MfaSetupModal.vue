@@ -13,6 +13,7 @@ import { useToast } from '@/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/stores/settings.store';
 
 // ---------------------------------------------------------------------------
 // #region Reactive properties
@@ -39,6 +40,7 @@ const loadingQrCode = ref(true);
 
 const clipboard = useClipboard();
 const userStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 
@@ -104,6 +106,12 @@ const onSetupClick = async () => {
 			type: 'success',
 			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
 		});
+		if (settingsStore.settings.mfa.enforced) {
+			await userStore.logout();
+			setTimeout(() => {
+				window.location.reload();
+			}, 1000);
+		}
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
 			toast.showMessage({

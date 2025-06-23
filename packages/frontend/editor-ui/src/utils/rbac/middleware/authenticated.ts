@@ -9,9 +9,11 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	next,
 	options,
 ) => {
-	console.log('Running auth middleware');
-	const redirect =
-		to.query.redirect ?? encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+	// ensure that we are removing the already existing redirect query parameter
+	// to avoid infinite redirect loops
+	const url = new URL(window.location.href);
+	url.searchParams.delete('redirect');
+	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname}${url.search}`);
 
 	const valid = isAuthenticated(options);
 	if (!valid) {

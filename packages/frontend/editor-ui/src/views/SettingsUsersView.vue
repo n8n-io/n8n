@@ -301,8 +301,27 @@ async function onUpdateMfaEnforced(value: boolean) {
 				</template>
 			</i18n-t>
 		</n8n-notice>
-
-		<n8n-notice theme="info">
+		<div :class="$style.settingsContainer">
+			<div :class="$style.settingsContainerInfo">
+				<n8n-text :bold="true">{{ i18n.baseText('settings.personal.mfa.enforce.title') }}</n8n-text>
+				<n8n-text v-if="settingsStore.isMFAEnforcementLicensed" size="small" color="text-light">{{
+					i18n.baseText('settings.personal.mfa.enforce.message')
+				}}</n8n-text>
+				<n8n-text v-else size="small" color="text-light">{{
+					i18n.baseText('settings.personal.mfa.enforce.message_unlicensed')
+				}}</n8n-text>
+			</div>
+			<div :class="$style.settingsContainerAction">
+				<el-switch
+					:model-value="settingsStore.settings.mfa.enforced"
+					size="large"
+					data-test-id="enable-force-mfa"
+					@update:model-value="onUpdateMfaEnforced"
+					:disabled="!settingsStore.isMFAEnforcementLicensed"
+				/>
+			</div>
+		</div>
+		<n8n-notice v-if="settingsStore.isMFAEnforcementLicensed" theme="info">
 			<el-switch
 				:model-value="settingsStore.settings.mfa.enforced"
 				size="large"
@@ -377,5 +396,33 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 .alert {
 	left: calc(50% + 100px);
+}
+
+.settingsContainer {
+	display: flex;
+	align-items: center;
+	padding-left: 16px;
+	justify-content: space-between;
+	flex-shrink: 0;
+
+	border-radius: 4px;
+	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+}
+
+.settingsContainerInfo {
+	display: flex;
+	padding: 8px 0px;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 1px;
+}
+
+.settingsContainerAction {
+	display: flex;
+	padding: 20px 16px 20px 248px;
+	justify-content: flex-end;
+	align-items: center;
+	flex-shrink: 0;
 }
 </style>
