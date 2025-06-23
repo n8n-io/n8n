@@ -55,7 +55,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		switchToEditorTab: () => {
 			workflowPage.getters.editorTabButton().click();
-			cy.url().should('match', /\/workflow\/[^/]+$/);
+			cy.url().should('match', /\/workflow\/[^\/]+$/);
 		},
 		deleteExecutionInPreview: () => {
 			this.getters.executionPreviewDeleteButton().click();

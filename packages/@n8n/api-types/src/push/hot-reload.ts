@@ -15,7 +15,6 @@ export type RemoveNodeType = {
 
 export type NodeDescriptionUpdated = {
 	type: 'nodeDescriptionUpdated';
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	data: {};
 };
 

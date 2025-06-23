@@ -7,5 +7,6 @@ export default defineConfig(baseConfig, {
 
 		// TODO: Remove this
 		'@typescript-eslint/naming-convention': 'warn',
+		'@typescript-eslint/no-empty-object-type': 'warn',
 	},
 });
