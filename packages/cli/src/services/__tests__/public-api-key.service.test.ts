@@ -9,10 +9,10 @@ import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { Time } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
 import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
@@ -225,22 +225,14 @@ describe('PublicApiKeyService', () => {
 
 			// Assert
 			// Poll the database to check if lastActiveAt was updated
-			const waitForLastActiveUpdate = async (userId: string) => {
-				const start = Date.now();
-				while (Date.now() - start < 10 * Time.seconds.toMilliseconds) {
-					const user = await userRepository.findOneByOrFail({ id: userId });
-					if (user.lastActiveAt !== null) return user;
-					await new Promise((r) => setTimeout(r, 100));
-				}
-				throw new Error('Timeout waiting for lastActiveAt to be updated');
-			};
+			await retryUntil(async () => {
+				const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
 
-			const userOnDb = await waitForLastActiveUpdate(owner.id);
-
-			expect(userOnDb.lastActiveAt).toBeDefined();
-			expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
-				DateTime.now().startOf('day').toMillis(),
-			);
+				expect(userOnDb.lastActiveAt).toBeDefined();
+				expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
+					DateTime.now().startOf('day').toMillis(),
+				);
+			});
 		});
 	});
 

@@ -1,12 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
-import { Time } from '@/constants';
 import type { AuthenticatedRequest } from '@/requests';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
