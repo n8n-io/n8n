@@ -20,7 +20,7 @@ import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
 beforeAll(async () => {
-	await testModules.load(['insights']);
+	await testModules.loadModules(['insights']);
 	await testDb.init();
 });
 

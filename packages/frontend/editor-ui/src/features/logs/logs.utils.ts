@@ -94,7 +94,6 @@ function getChildNodes(
 
 	// Get the first level of children
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
-	const isExecutionRoot = !isSubNodeLog(treeNode);
 
 	function isMatchedSource(source: ISourceData | null): boolean {
 		return (
@@ -106,13 +105,12 @@ function getChildNodes(
 
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
-			// At root depth, filter out node executions that weren't triggered by this node
+			// Filter out node executions that weren't triggered by this node
 			// This prevents showing duplicate executions when a sub-node is connected to multiple parents
 			// Only filter nodes that have source information with valid previousNode references
-			const isMatched =
-				isExecutionRoot && t.source.some((source) => source !== null)
-					? t.source.some(isMatchedSource)
-					: runIndex === undefined || index === runIndex;
+			const isMatched = t.source.some((source) => source !== null)
+				? t.source.some(isMatchedSource)
+				: runIndex === undefined || index === runIndex;
 
 			if (!isMatched) {
 				return [];

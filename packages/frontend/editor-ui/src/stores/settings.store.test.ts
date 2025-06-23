@@ -46,7 +46,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/stores/versions.store', () => ({
 	useVersionsStore: vi.fn(() => ({
-		setVersionNotificationSettings: vi.fn(),
+		initialize: vi.fn(),
 	})),
 }));
 

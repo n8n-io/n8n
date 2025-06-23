@@ -328,3 +328,11 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	}
 	return results;
 }
+
+export const shouldShowCommunityNodeDetails = (communityNode: boolean, viewStack: ViewStack) => {
+	if (viewStack.rootView === 'AI Other' && viewStack.title === 'Tools') {
+		return false;
+	}
+
+	return communityNode && !viewStack.communityNodeDetails;
+};
