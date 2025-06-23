@@ -191,7 +191,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 		expect(consoleErrorSpy).not.toHaveBeenCalled();
 	});
 
-	it('should prevent multiple submission', async () => {
+	it('should prevent multiple submissions', async () => {
 		const closeCallbackSpy = vi.fn();
 		const usageStore = mockedStore(useUsageStore);
 
