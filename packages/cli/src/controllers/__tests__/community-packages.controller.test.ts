@@ -87,6 +87,7 @@ describe('CommunityPackagesController', () => {
 				body: {
 					name: 'n8n-nodes-test',
 					version: '2.0.0',
+					checksum: 'a893hfdsy7399',
 				},
 				user: { id: 'user1' },
 			});
@@ -113,6 +114,7 @@ describe('CommunityPackagesController', () => {
 				'n8n-nodes-test',
 				previouslyInstalledPackage,
 				'2.0.0',
+				'a893hfdsy7399',
 			);
 
 			expect(result).toBe(newInstalledPackage);
