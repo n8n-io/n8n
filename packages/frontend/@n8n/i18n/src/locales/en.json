@@ -12,13 +12,14 @@
 				"itemMatching": "Returns the matching item, i.e. the one used to produce the item in the current node at the specified index."
 			}
 		},
-		"user": "User",
 		"name": "Name",
 		"save": "Save",
 		"dismiss": "Dismiss",
 		"unlimited": "Unlimited",
 		"activate": "Activate",
-		"error": "Error"
+		"user": "User",
+		"enabled": "Enabled",
+		"disabled": "Disabled"
 	},
 	"_reusableDynamicText": {
 		"readMore": "Read more",
@@ -1987,11 +1988,14 @@
 	"settings.users.userRoleUpdatedError": "Unable to updated role",
 	"settings.users.table.header.user": "@:_reusableBaseText.user",
 	"settings.users.table.header.accountType": "Account Type",
+	"settings.users.table.header.2fa": "2FA",
 	"settings.users.table.header.lastActive": "Last Active",
 	"settings.users.table.row.allProjects": "All projects",
 	"settings.users.table.row.removeUser": "Remove user",
 	"settings.users.table.row.role.description.admin": "Full access to all workflows, credentials, projects, users and more",
 	"settings.users.table.row.role.description.member": "Manage and create own workflows and credentials",
+	"settings.users.table.row.2fa.enabled": "@:_reusableBaseText.enabled",
+	"settings.users.table.row.2fa.disabled": "@:_reusableBaseText.disabled",
 	"settings.api": "API",
 	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
 	"settings.api.scopes.upgrade.link": "Upgrade",

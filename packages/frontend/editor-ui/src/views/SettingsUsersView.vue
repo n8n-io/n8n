@@ -277,6 +277,7 @@ const updateUsersTableData = async ({
 		skip,
 		take,
 		sortBy: transformedSortBy,
+		expand: ['projectRelations'],
 		search: search.value.trim() || undefined,
 	});
 };

@@ -13,6 +13,14 @@ import {
 import { DateTime } from 'luxon';
 
 type Item = UsersList['items'][number];
+type AccountTypeRow = {
+	userId: string;
+	roleId?: Role;
+	label: string;
+	isEditable: boolean;
+	radioValue?: Role;
+	dropdownItems: ActionDropdownItem[];
+};
 
 const i18n = useI18n();
 
@@ -59,18 +67,11 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
-		value(row): {
-			userId: string;
-			roleId: Role;
-			label: string;
-			isEditable: boolean;
-			radioValue: Role;
-			dropdownItems: ActionDropdownItem[];
-		} {
+		value(row): AccountTypeRow {
 			return {
 				userId: row.id,
 				roleId: row.role,
-				label: roles.value[row.role].label ?? i18n.baseText('auth.roles.default'),
+				label: row.role ? roles.value[row.role].label : i18n.baseText('auth.roles.default'),
 				isEditable: row.role !== ROLE.Owner,
 				radioValue: row.role,
 				dropdownItems: [
@@ -92,10 +93,12 @@ const headers = ref<Array<TableHeader<Item>>>([
 		},
 	},
 	{
-		title: i18n.baseText('settings.users.table.header.lastActive'),
-		key: 'lastActive',
+		title: i18n.baseText('settings.users.table.header.2fa'),
+		key: '2fa',
 		value(row) {
-			return DateTime.now().diff(DateTime.fromISO(row.lastActive), ['days']).toHuman();
+			return row.mfaEnabled
+				? i18n.baseText('settings.users.table.row.2fa.enabled')
+				: i18n.baseText('settings.users.table.row.2fa.disabled');
 		},
 	},
 	{
@@ -103,7 +106,9 @@ const headers = ref<Array<TableHeader<Item>>>([
 		key: 'projects',
 		disableSort: true,
 		value(row) {
-			return row.projects ?? [i18n.baseText('settings.users.table.row.allProjects')];
+			return row.projectRelations?.length
+				? row.projectRelations.map(({ name }) => name)
+				: [i18n.baseText('settings.users.table.row.allProjects')];
 		},
 	},
 ]);
