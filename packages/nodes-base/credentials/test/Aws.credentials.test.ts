@@ -10,13 +10,18 @@ jest.mock('aws4', () => ({
 describe('Aws Credential', () => {
 	const aws = new Aws();
 	let mockSign: jest.Mock;
+	let originalFetch: typeof global.fetch;
 
 	beforeEach(() => {
 		mockSign = sign as unknown as jest.Mock;
+		// Store the original fetch implementation
+		originalFetch = global.fetch;
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		// Restore the original fetch implementation
+		global.fetch = originalFetch;
 	});
 
 	it('should have correct properties', () => {
@@ -225,16 +230,11 @@ describe('Aws Credential', () => {
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
 				externalId: 'test-external-id',
 				roleSessionName: 'test-session',
+				// Add STS credentials since the new default is to use manual credentials
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
 			};
 			delete oldCredentials.credentialType;
-
-			// Mock system credentials for the STS call
-			const originalEnv = process.env;
-			process.env = {
-				...originalEnv,
-				AWS_ACCESS_KEY_ID: 'system-access-key',
-				AWS_SECRET_ACCESS_KEY: 'system-secret-key',
-			};
 
 			const mockStsResponse = {
 				ok: true,
@@ -265,8 +265,6 @@ describe('Aws Credential', () => {
 				secretAccessKey: 'assumed-secret-key',
 				sessionToken: 'assumed-session-token',
 			});
-
-			process.env = originalEnv;
 		});
 
 		it('should assume role with system credentials when useSystemCredentialsForRole is true', async () => {
@@ -641,16 +639,11 @@ describe('Aws Credential', () => {
 					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
 					externalId: 'test-external-id',
 					roleSessionName: 'test-session',
-					// No credentialType, no useSystemCredentialsForRole (should default to true)
+					// No credentialType, no useSystemCredentialsForRole (should default to false)
+					// Add STS credentials since the default is to use manual credentials
+					stsAccessKeyId: 'sts-access-key',
+					stsSecretAccessKey: 'sts-secret-key',
 				} as AwsCredentialsType;
-
-				// Mock system credentials for the STS call
-				const originalEnv = process.env;
-				process.env = {
-					...originalEnv,
-					AWS_ACCESS_KEY_ID: 'system-access-key',
-					AWS_SECRET_ACCESS_KEY: 'system-secret-key',
-				};
 
 				const mockStsResponse = {
 					ok: true,
@@ -679,8 +672,6 @@ describe('Aws Credential', () => {
 					secretAccessKey: 'assumed-secret-key',
 					sessionToken: 'assumed-session-token',
 				});
-
-				process.env = originalEnv;
 			});
 
 			it('should work with legacy role assumption with manual STS credentials', async () => {
@@ -818,18 +809,12 @@ describe('Aws Credential', () => {
 					externalId: 'test-external-id',
 					roleSessionName: 'test-session',
 					// No assumeRole field (new format)
-					// No useSystemCredentialsForRole (should default to true)
+					// No useSystemCredentialsForRole (should default to false)
 					// No temporaryStsCredentials (should default to false)
-					// No STS credential fields (should use system credentials)
+					// Add STS credentials since the default is to use manual credentials
+					stsAccessKeyId: 'sts-access-key',
+					stsSecretAccessKey: 'sts-secret-key',
 				} as AwsCredentialsType;
-
-				// Mock system credentials for the STS call
-				const originalEnv = process.env;
-				process.env = {
-					...originalEnv,
-					AWS_ACCESS_KEY_ID: 'system-access-key',
-					AWS_SECRET_ACCESS_KEY: 'system-secret-key',
-				};
 
 				const mockStsResponse = {
 					ok: true,
@@ -858,8 +843,6 @@ describe('Aws Credential', () => {
 					secretAccessKey: 'assumed-secret-key',
 					sessionToken: 'assumed-session-token',
 				});
-
-				process.env = originalEnv;
 			});
 
 			it('should handle empty string values in legacy fields', async () => {

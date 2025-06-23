@@ -372,7 +372,7 @@ export class Aws implements ICredentialType {
 			displayName: 'Use System Credentials for STS Call',
 			name: 'useSystemCredentialsForRole',
 			description:
-				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. If system credentials are not by your administrator, you must provide an access key id and secret access key below that has the necessary permissions to assume the role.',
+				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. If system credentials are not configured by your administrator, you must provide an access key id and secret access key below that has the necessary permissions to assume the role.',
 			type: 'boolean',
 			displayOptions: {
 				show: {
@@ -935,8 +935,8 @@ export class Aws implements ICredentialType {
 		// Get credentials for the STS call
 		let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
-		// For backward compatibility: if useSystemCredentialsForRole is not set, default to true
-		const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? true;
+		// Use the user's choice for system credentials (defaults to false for security)
+		const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
 
 		if (useSystemCredentialsForRole) {
 			// Use system credentials for the STS call
