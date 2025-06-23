@@ -1,11 +1,11 @@
+import type { ExecutionSummaries } from '@n8n/db';
+import { ExecutionMetadataRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionSummaries } from '@/executions/execution.types';
 import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
@@ -39,7 +39,7 @@ describe('ExecutionService', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Execution']);
+		await testDb.truncate(['ExecutionEntity']);
 	});
 
 	afterAll(async () => {
@@ -270,21 +270,22 @@ describe('ExecutionService', () => {
 			]);
 		});
 
-		test('should filter executions by `metadata`', async () => {
+		test('should filter executions by `metadata` with an exact match by default', async () => {
 			const workflow = await createWorkflow();
 
-			const metadata = [{ key: 'myKey', value: 'myValue' }];
+			const key = 'myKey';
+			const value = 'myValue';
 
 			await Promise.all([
-				createExecution({ status: 'success', metadata }, workflow),
-				createExecution({ status: 'error' }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: `${value}2` }] }, workflow),
 			]);
 
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
-				metadata,
+				metadata: [{ key, value, exactMatch: true }],
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -293,6 +294,36 @@ describe('ExecutionService', () => {
 				count: 1,
 				estimated: false,
 				results: [expect.objectContaining({ status: 'success' })],
+			});
+		});
+
+		test('should filter executions by `metadata` with a partial match', async () => {
+			const workflow = await createWorkflow();
+
+			const key = 'myKey';
+
+			await Promise.all([
+				createExecution({ status: 'success', metadata: [{ key, value: 'myValue' }] }, workflow),
+				createExecution({ status: 'error', metadata: [{ key, value: 'var' }] }, workflow),
+				createExecution({ status: 'success', metadata: [{ key, value: 'evaluation' }] }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				metadata: [{ key, value: 'val', exactMatch: false }],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 2,
+				estimated: false,
+				results: [
+					expect.objectContaining({ status: 'success' }),
+					expect.objectContaining({ status: 'success' }),
+				],
 			});
 		});
 
@@ -609,7 +640,7 @@ describe('ExecutionService', () => {
 		};
 
 		afterEach(async () => {
-			await testDb.truncate(['AnnotationTag', 'ExecutionAnnotation']);
+			await testDb.truncate(['AnnotationTagEntity', 'ExecutionAnnotation']);
 		});
 
 		test('should add and retrieve annotation', async () => {

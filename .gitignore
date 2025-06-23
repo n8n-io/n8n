@@ -23,3 +23,6 @@ CHANGELOG-*.md
 *.mdx
 build-storybook.log
 *.junit.xml
+junit.xml
+test-results.json
+*.0x

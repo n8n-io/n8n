@@ -142,14 +142,18 @@ function onEnter(event: Event) {
 	emit('enter');
 }
 
-const validationError = computed<string | null>(() => {
+const validationError = computed<{ message: string } | null>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
 		if ('messageKey' in error) {
-			return t(error.messageKey, error.options);
-		} else if ('message' in error) {
-			return error.message;
+			return {
+				message: t(error.messageKey, error.options),
+			};
+		} else {
+			return {
+				message: error.message,
+			};
 		}
 	}
 
@@ -170,10 +174,7 @@ onMounted(() => {
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
-watch(
-	() => validationError.value,
-	(error) => emit('validate', !error),
-);
+watch(validationError, (error) => emit('validate', !error));
 
 defineExpose({ inputRef });
 </script>
@@ -215,7 +216,7 @@ defineExpose({ inputRef });
 		:required="required && showRequiredAsterisk"
 		:size="labelSize"
 	>
-		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
+		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter.exact="onEnter">
 			<slot v-if="hasDefaultSlot" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
@@ -259,7 +260,7 @@ defineExpose({ inputRef });
 			/>
 		</div>
 		<div v-if="showErrors" :class="$style.errors">
-			<span v-text="validationError" />
+			<span v-text="validationError?.message" />
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"

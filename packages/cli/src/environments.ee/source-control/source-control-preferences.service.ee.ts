@@ -1,13 +1,13 @@
+import { Logger } from '@n8n/backend-common';
+import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
-import { Cipher, InstanceSettings, Logger } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import path from 'path';
-
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,

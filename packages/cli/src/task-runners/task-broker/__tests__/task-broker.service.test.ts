@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
@@ -7,7 +8,7 @@ import { Time } from '@/constants';
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskRejectError } from '../errors/task-reject.error';
-import { TaskRunnerTimeoutError } from '../errors/task-runner-timeout.error';
+import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -17,7 +18,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock(), mock());
+		taskBroker = new TaskBroker(mock(), mock(), mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -715,7 +716,7 @@ describe('TaskBroker', () => {
 		});
 	});
 
-	describe('task timeouts', () => {
+	describe('task execution timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
 		let runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
@@ -723,7 +724,7 @@ describe('TaskBroker', () => {
 		beforeAll(() => {
 			jest.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 		});
 
 		afterAll(() => {
@@ -843,7 +844,7 @@ describe('TaskBroker', () => {
 
 		it('[external mode] on timeout, we should instruct the runner to cancel and send error to requester', async () => {
 			const config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'external' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 
 			jest.spyOn(global, 'clearTimeout');
 
@@ -879,11 +880,54 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: expect.any(TaskRunnerTimeoutError),
+				error: expect.any(TaskRunnerExecutionTimeoutError),
 			});
 
 			expect(clearTimeout).toHaveBeenCalled();
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+	});
+
+	describe('task runner accept timeout', () => {
+		it('broker should handle timeout when waiting for acknowledgment of offer accept', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = jest.fn();
+			const loggerMock = mock<Logger>();
+
+			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
+			taskBroker.registerRunner(runner, messageCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId,
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			jest.useFakeTimers();
+
+			const acceptPromise = taskBroker.acceptOffer(offer, request);
+
+			jest.advanceTimersByTime(2100);
+
+			await acceptPromise;
+
+			expect(request.acceptInProgress).toBe(false);
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					`Runner (${runnerId}) took too long to acknowledge acceptance of task`,
+				),
+			);
+
+			jest.useRealTimers();
 		});
 	});
 });

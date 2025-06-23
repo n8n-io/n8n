@@ -79,12 +79,6 @@
         "$state": {
             "type": "string"
         },
-        "Assistant": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
-        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -134,12 +128,6 @@
         "Modified_Time": {
             "type": "string"
         },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Other_Zip": {
-            "type": "null"
-        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -167,13 +155,7 @@
                     }
                 }
             }
-        },
-        "Unsubscribed_Mode": {
-            "type": "null"
-        },
-        "Unsubscribed_Time": {
-            "type": "null"
         }
     },
-    "version": 1
+    "version": 4
 }

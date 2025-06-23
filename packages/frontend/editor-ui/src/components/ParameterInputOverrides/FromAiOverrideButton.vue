@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
 
@@ -20,7 +20,10 @@ const emit = defineEmits<{
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
 		>
-			<AiStarsIcon size="large" />
+			<span>
+				<!-- The span wrapping the icon centers it due to reliance on legacy behavior -->
+				<AiStarsIcon size="large" />
+			</span>
 		</N8nButton>
 	</N8nTooltip>
 </template>

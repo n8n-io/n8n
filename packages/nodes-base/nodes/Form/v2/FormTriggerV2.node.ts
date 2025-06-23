@@ -21,7 +21,7 @@ import {
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -52,7 +52,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 		{
 			name: 'default',
@@ -62,7 +62,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 	],
 	eventTriggerDescription: 'Waiting for you to submit the form',

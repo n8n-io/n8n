@@ -112,36 +112,26 @@ const extensions = computed(() => {
 	}
 	return baseExtensions;
 });
-const editorValue = ref(props.modelValue);
 const {
 	editor,
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
-	isDirty,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
-	editorValue,
+	editorValue: () => props.modelValue,
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
-});
-
-watch(
-	() => props.modelValue,
-	(newValue) => {
-		editorValue.value = newValue;
+	onChange: () => {
+		emit('update:model-value', readEditorValue());
 	},
-);
+});
 
 watch(editorHasFocus, (focus) => {
 	if (focus) {
 		isFocused.value = true;
 	}
-});
-
-watch(segments, () => {
-	emit('update:model-value', readEditorValue());
 });
 
 onMounted(() => {
@@ -153,7 +143,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	if (isDirty.value) emit('update:model-value', readEditorValue());
 	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 

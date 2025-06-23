@@ -3,9 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Logger, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -32,10 +34,9 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
+// eslint-disable-next-line import/no-cycle
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import {
@@ -45,7 +46,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SecretsHelper } from '@/secrets-helpers.ee';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
@@ -373,6 +373,7 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	return {
+		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
@@ -386,7 +387,7 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
-		secretsHelpers: Container.get(SecretsHelper),
+		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,

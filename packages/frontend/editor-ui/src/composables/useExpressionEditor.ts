@@ -18,7 +18,7 @@ import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 
-import type { TargetItem } from '@/Interface';
+import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
@@ -33,33 +33,37 @@ import {
 	type SelectionRange,
 } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import { debounce, isEqual } from 'lodash-es';
-import { useRouter } from 'vue-router';
-import { useI18n } from '../composables/useI18n';
+import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
+import { ignoreUpdateAnnotation } from '../utils/forceParse';
 
 export const useExpressionEditor = ({
 	editorRef,
 	editorValue,
+	targetNodeParameterContext,
 	extensions = [],
 	additionalData = {},
 	skipSegments = [],
 	autocompleteTelemetry,
 	isReadOnly = false,
+	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	skipSegments?: MaybeRefOrGetter<string[]>;
 	autocompleteTelemetry?: MaybeRefOrGetter<{ enabled: true; parameterPath: string }>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
+	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
@@ -70,7 +74,9 @@ export const useExpressionEditor = ({
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
-	const isDirty = ref(false);
+	const hasChanges = ref(false);
+
+	const emitChanges = debounce(onChange, 300);
 
 	const updateSegments = (): void => {
 		const state = editor.value?.state;
@@ -157,13 +163,18 @@ export const useExpressionEditor = ({
 	const debouncedUpdateSegments = debounce(updateSegments, 200);
 
 	function onEditorUpdate(viewUpdate: ViewUpdate) {
-		isDirty.value = true;
 		autocompleteStatus.value = completionStatus(viewUpdate.view.state);
 		updateSelection(viewUpdate);
 
-		if (!viewUpdate.docChanged) return;
+		const shouldIgnoreUpdate = viewUpdate.transactions.some((tr) =>
+			tr.annotation(ignoreUpdateAnnotation),
+		);
 
-		debouncedUpdateSegments();
+		if (viewUpdate.docChanged && !shouldIgnoreUpdate) {
+			hasChanges.value = true;
+			emitChanges(viewUpdate);
+			debouncedUpdateSegments();
+		}
 	}
 
 	function blur() {
@@ -265,6 +276,8 @@ export const useExpressionEditor = ({
 
 	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
+		debouncedUpdateSegments.flush();
+		emitChanges.flush();
 		editor.value?.destroy();
 	});
 
@@ -294,12 +307,18 @@ export const useExpressionEditor = ({
 		};
 
 		try {
-			if (!ndvStore.activeNode) {
+			if (!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
-				if (ndvStore.isInputParentOfActiveNode) {
+				let opts: Record<string, unknown> = {
+					additionalKeys: toValue(additionalData),
+					targetNodeParameterContext,
+				};
+				if (
+					toValue(targetNodeParameterContext) === undefined &&
+					ndvStore.isInputParentOfActiveNode
+				) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
@@ -465,6 +484,6 @@ export const useExpressionEditor = ({
 		select,
 		selectAll,
 		focus,
-		isDirty,
+		hasChanges,
 	};
 };

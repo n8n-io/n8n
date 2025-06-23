@@ -1,7 +1,7 @@
+import type { User, ExecutionSummaries } from '@n8n/db';
+import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@/databases/entities/user';
-import { Get, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
@@ -10,7 +10,7 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
-import { ExecutionRequest, type ExecutionSummaries } from './execution.types';
+import { ExecutionRequest } from './execution.types';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import { validateExecutionUpdatePayload } from './validation';
 
@@ -96,7 +96,9 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.stop(req.params.id);
+		const executionId = req.params.id;
+
+		return await this.executionService.stop(executionId, workflowIds);
 	}
 
 	@Post('/:id/retry')

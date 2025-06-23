@@ -2,7 +2,8 @@ import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/m
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from '@/components/RunData.vue';
-import { SET_NODE_TYPE, STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { SET_NODE_TYPE } from '@/constants';
 import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -117,8 +118,8 @@ describe('RunData', () => {
 		expect(getByText('Json data 1')).toBeInTheDocument();
 	});
 
-	it('should render view and download buttons for PDFs', async () => {
-		const { getByTestId } = render({
+	it('should render only download buttons for PDFs', async () => {
+		const { getByTestId, queryByTestId } = render({
 			defaultRunItems: [
 				{
 					json: {},
@@ -127,6 +128,31 @@ describe('RunData', () => {
 							fileName: 'test.pdf',
 							fileType: 'pdf',
 							mimeType: 'application/pdf',
+							data: '',
+						},
+					},
+				},
+			],
+			displayMode: 'binary',
+		});
+
+		await waitFor(() => {
+			expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
+	});
+
+	it('should render view and download buttons for JPEGs', async () => {
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
+					binary: {
+						data: {
+							fileName: 'test.jpg',
+							fileType: 'image',
+							mimeType: 'image/jpeg',
 							data: '',
 						},
 					},
@@ -359,8 +385,9 @@ describe('RunData', () => {
 		const { getByTestId, queryByTestId } = render({
 			runs: [
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -368,8 +395,9 @@ describe('RunData', () => {
 					metadata,
 				},
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -413,10 +441,11 @@ describe('RunData', () => {
 				{
 					hints: [],
 					startTime: 1737643696893,
+					executionIndex: 0,
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
@@ -447,7 +476,7 @@ describe('RunData', () => {
 		const testNodes = [
 			{
 				id: '1',
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				position: [80, -180],
@@ -501,7 +530,7 @@ describe('RunData', () => {
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
@@ -598,8 +627,9 @@ describe('RunData', () => {
 		runs?: ITaskData[];
 	}) => {
 		const defaultRun: ITaskData = {
-			startTime: new Date().getTime(),
-			executionTime: new Date().getTime(),
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
 			data: {
 				main: [defaultRunItems ?? [{ json: {} }]],
 			},
@@ -612,7 +642,6 @@ describe('RunData', () => {
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
-					outputPanelDisplayMode: displayMode,
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -667,6 +696,7 @@ describe('RunData', () => {
 					// @ts-expect-error allow missing properties in test
 					workflowNodes,
 				}),
+				displayMode,
 			},
 			global: {
 				stubs: {

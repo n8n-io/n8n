@@ -1,7 +1,11 @@
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
+export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
+
+export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
+export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -24,6 +28,8 @@ export { ChangePasswordRequestDto } from './password-reset/change-password-reque
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
+export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
+export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -59,5 +65,12 @@ export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
 export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
+export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
+export { InsightsDateFilterDto } from './insights/date-filter.dto';
+
+export { PaginationDto } from './pagination/pagination.dto';
+export { UsersListFilterDto } from './user/users-list-filter.dto';
+
+export { OidcConfigDto } from './oidc/config.dto';

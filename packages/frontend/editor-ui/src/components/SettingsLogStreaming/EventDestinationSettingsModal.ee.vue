@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { get, set, unset } from 'lodash-es';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+
 import type {
 	IDataObject,
 	NodeParameterValue,
@@ -30,23 +33,24 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
-import type { BaseTextKey } from '@/plugins/i18n';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
+import { useElementSize } from '@vueuse/core';
+import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -351,6 +355,9 @@ function callEventBus(event: string, data: unknown) {
 		eventBus.emit(event, data);
 	}
 }
+
+const defNameRef = useTemplateRef('defNameRef');
+const { width } = useElementSize(defNameRef);
 </script>
 
 <template>
@@ -375,15 +382,17 @@ function callEventBus(event: string, data: unknown) {
 			</template>
 			<template v-else>
 				<div :class="$style.header">
-					<div :class="$style.destinationInfo">
-						<InlineNameEdit
-							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'"
-							:readonly="isTypeAbstract"
-							type="Credential"
+					<div ref="defNameRef" :class="$style.destinationInfo">
+						<N8nInlineTextEdit
+							:max-width="width - 10"
 							data-test-id="subtitle-showing-type"
+							:model-value="headerLabel"
+							:readonly="isTypeAbstract"
 							@update:model-value="onLabelChange"
 						/>
+						<N8nText size="small" tag="p" color="text-light">{{
+							!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
+						}}</N8nText>
 					</div>
 					<div :class="$style.destinationActions">
 						<n8n-button
@@ -585,10 +594,11 @@ function callEventBus(event: string, data: unknown) {
 }
 
 .destinationInfo {
-	display: flex;
-	align-items: center;
-	flex-direction: row;
 	flex-grow: 1;
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 	margin-bottom: var(--spacing-l);
 }
 

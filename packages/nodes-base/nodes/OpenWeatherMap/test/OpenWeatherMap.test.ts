@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import { currentWeatherResponse } from './apiResponses';
 
@@ -13,7 +12,6 @@ describe('OpenWeatherMap', () => {
 				.reply(200, currentWeatherResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests();
 	});
 });

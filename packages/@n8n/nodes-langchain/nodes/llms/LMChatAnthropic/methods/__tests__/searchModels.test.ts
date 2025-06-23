@@ -40,6 +40,7 @@ describe('searchModels', () => {
 
 	beforeEach(() => {
 		mockContext = {
+			getCredentials: jest.fn().mockResolvedValue({}),
 			helpers: {
 				httpRequestWithAuthentication: jest.fn().mockResolvedValue({
 					data: mockModels,
@@ -50,11 +51,47 @@ describe('searchModels', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		// Reset the getCredentials mock to its default value
+		mockContext.getCredentials = jest.fn().mockResolvedValue({});
 	});
 
-	it('should fetch models from Anthropic API', async () => {
+	it('should fetch models from default Anthropic API URL when no custom URL is provided', async () => {
 		const result = await searchModels.call(mockContext);
 
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('anthropicApi');
+		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('anthropicApi', {
+			url: 'https://api.anthropic.com/v1/models',
+			headers: {
+				'anthropic-version': '2023-06-01',
+			},
+		});
+		expect(result.results).toHaveLength(5);
+	});
+
+	it('should fetch models from custom Anthropic API URL when provided in credentials', async () => {
+		const customUrl = 'https://custom-anthropic-api.example.com';
+		// Override the default mock to return credentials with a custom URL
+		mockContext.getCredentials = jest.fn().mockResolvedValue({ url: customUrl });
+
+		const result = await searchModels.call(mockContext);
+
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('anthropicApi');
+		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('anthropicApi', {
+			url: `${customUrl}/v1/models`,
+			headers: {
+				'anthropic-version': '2023-06-01',
+			},
+		});
+		expect(result.results).toHaveLength(5);
+	});
+
+	it('should use default URL when empty URL is provided in credentials', async () => {
+		// Override the default mock to return credentials with an empty URL
+		mockContext.getCredentials = jest.fn().mockResolvedValue({ url: null });
+
+		const result = await searchModels.call(mockContext);
+
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('anthropicApi');
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('anthropicApi', {
 			url: 'https://api.anthropic.com/v1/models',
 			headers: {

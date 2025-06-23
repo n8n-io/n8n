@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
@@ -25,6 +25,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
+import type { FolderShortInfo } from '@/Interface';
 
 const router = useRouter();
 const route = useRoute();
@@ -48,12 +49,7 @@ const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON
 // This is used to determine which tab to show when the route changes
 // TODO: It might be easier to manage this in the router config, by passing meta information to the routes
 // This would allow us to specify it just once on the root route, and then have the tabs be determined for children
-const testDefinitionRoutes: VIEWS[] = [
-	VIEWS.TEST_DEFINITION,
-	VIEWS.TEST_DEFINITION_EDIT,
-	VIEWS.TEST_DEFINITION_RUNS_DETAIL,
-	VIEWS.TEST_DEFINITION_RUNS_COMPARE,
-];
+const evaluationRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
 
 const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
@@ -70,7 +66,7 @@ const tabBarItems = computed(() => {
 
 	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
 		items.push({
-			value: MAIN_HEADER_TABS.TEST_DEFINITION,
+			value: MAIN_HEADER_TABS.EVALUATION,
 			label: locale.baseText('generic.tests'),
 		});
 	}
@@ -90,9 +86,27 @@ const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
+const isTelemetryEnabled = computed((): boolean => {
+	return settingsStore.isTelemetryEnabled;
+});
 const showGitHubButton = computed(
-	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
+	() =>
+		!isEnterprise.value &&
+		!settingsStore.settings.inE2ETests &&
+		!githubButtonHidden.value &&
+		isTelemetryEnabled.value,
 );
+
+const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
+	if (!workflow.value.parentFolder) {
+		return undefined;
+	}
+	return {
+		id: workflow.value.parentFolder.id,
+		name: workflow.value.parentFolder.name,
+		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+	};
+});
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -114,14 +128,14 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[testDefinitionRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
 	);
 }
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	// Map route types to their corresponding tab in the header
 	const routeTabMapping = [
-		{ routes: testDefinitionRoutes, tab: MAIN_HEADER_TABS.TEST_DEFINITION },
+		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
@@ -160,9 +174,8 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 			void navigateToExecutionsView(openInNewTab);
 			break;
 
-		case MAIN_HEADER_TABS.TEST_DEFINITION:
-			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-			void router.push({ name: VIEWS.TEST_DEFINITION });
+		case MAIN_HEADER_TABS.EVALUATION:
+			void navigateToEvaluationsView(openInNewTab);
 			break;
 
 		default:
@@ -218,6 +231,25 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	}
 }
 
+async function navigateToEvaluationsView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.EVALUATION_EDIT,
+		params: { name: routeWorkflowId },
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
 function hideGithubButton() {
 	githubButtonHidden.value = true;
 }
@@ -238,6 +270,8 @@ function hideGithubButton() {
 					:scopes="workflow.scopes"
 					:active="workflow.active"
 					:read-only="readOnly"
+					:current-folder="parentFolderForBreadcrumbs"
+					:is-archived="workflow.isArchived"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
@@ -288,17 +322,19 @@ function hideGithubButton() {
 .top-menu {
 	position: relative;
 	display: flex;
+	height: var(--navbar--height);
 	align-items: center;
 	font-size: 0.9em;
 	font-weight: var(--font-weight-regular);
-	overflow: auto;
+	overflow-x: auto;
+	overflow-y: hidden;
 }
 
 .github-button {
 	display: flex;
 	align-items: center;
 	align-self: stretch;
-	padding: var(--spacing-5xs) var(--spacing-m) 0;
+	padding: var(--spacing-5xs) var(--spacing-m);
 	background-color: var(--color-background-xlight);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }

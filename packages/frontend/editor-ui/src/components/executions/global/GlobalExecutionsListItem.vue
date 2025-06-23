@@ -2,7 +2,7 @@
 import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
@@ -130,7 +130,7 @@ const formattedStoppedAtDate = computed(() => {
 	return props.execution.stoppedAt
 		? locale.displayTimer(
 				new Date(props.execution.stoppedAt).getTime() -
-					new Date(props.execution.startedAt).getTime(),
+					new Date(props.execution.startedAt ?? props.execution.createdAt).getTime(),
 				true,
 			)
 		: '';
@@ -233,11 +233,11 @@ async function handleActionItemClick(commandData: Command) {
 		<td>
 			{{ formattedStartedAtDate }}
 		</td>
-		<td>
+		<td data-test-id="execution-time">
 			<template v-if="formattedStoppedAtDate">
 				{{ formattedStoppedAtDate }}
 			</template>
-			<ExecutionsTime v-else :start-time="execution.startedAt" />
+			<ExecutionsTime v-else :start-time="execution.startedAt ?? execution.createdAt" />
 		</td>
 		<td>
 			<span v-if="execution.id">{{ execution.id }}</span>

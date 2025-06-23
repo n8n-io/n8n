@@ -1,0 +1,130 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.8,
+			"position": [280, -160],
+			"id": "48d38b5e-d75f-4245-9f6b-c9ab623b1a7a",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "914a83be-5bd5-46f9-8b39-1456d12f9429",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [780, 60],
+			"id": "d939bfce-6fbd-4f13-8ba2-91d605bdb81b",
+			"name": "Calculator"
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+			"typeVersion": 1,
+			"position": [680, 500],
+			"id": "efdb00f3-cf60-4c3a-9b18-2523d2fc3177",
+			"name": "Wikipedia"
+		},
+		{
+			"parameters": {
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"typeVersion": 1.3,
+			"position": [440, 60],
+			"id": "a76e6696-1e19-4aa4-b5d4-c43b332c8bc8",
+			"name": "Google Calendar"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.8,
+			"position": [280, 280],
+			"id": "18a77a68-10dc-486d-b179-6d787371878c",
+			"name": "Another Agent"
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [300, 80],
+			"id": "a0f31ee2-14b1-4ce7-97eb-a070346db0d3",
+			"name": "Simple Memory"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Another Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [[]]
+		},
+		"Wikipedia": {
+			"ai_tool": [
+				[
+					{
+						"node": "Another Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Calendar": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "866ca65bee13401b1e2b632cdf2767d28ec3301d61bdb4ceabc832d1fe22a83e"
+	}
+}

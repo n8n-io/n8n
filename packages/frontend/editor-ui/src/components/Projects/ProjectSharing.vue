@@ -1,9 +1,14 @@
 <script lang="ts" setup>
+import type { AllRolesMap } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import { useI18n } from '@n8n/i18n';
+import {
+	ProjectTypes,
+	type ProjectIcon as ProjectIconItem,
+	type ProjectListItem,
+	type ProjectSharingData,
+} from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
-import type { RoleMap } from '@/types/roles.types';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 
 const locale = useI18n();
@@ -11,7 +16,7 @@ const locale = useI18n();
 type Props = {
 	projects: ProjectListItem[];
 	homeProject?: ProjectSharingData;
-	roles?: RoleMap['workflow' | 'credential' | 'project'];
+	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
 	static?: boolean;
 	placeholder?: string;
@@ -45,6 +50,19 @@ const filteredProjects = computed(() =>
 		),
 	),
 );
+
+const projectIcon = computed<ProjectIconItem>(() => {
+	const defaultIcon: ProjectIconItem = { type: 'icon', value: 'layer-group' };
+	const project = props.projects.find((p) => p.id === selectedProject.value);
+
+	if (project?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (project?.type === ProjectTypes.Team) {
+		return project.icon ?? defaultIcon;
+	}
+
+	return defaultIcon;
+});
 
 const setFilter = (query: string) => {
 	filter.value = query;
@@ -109,7 +127,10 @@ watch(
 			@update:model-value="onProjectSelected"
 		>
 			<template #prefix>
-				<n8n-icon icon="search" />
+				<N8nIcon v-if="projectIcon.type === 'icon'" :icon="projectIcon.value" color="text-dark" />
+				<N8nText v-else-if="projectIcon.type === 'emoji'" color="text-light" :class="$style.emoji">
+					{{ projectIcon.value }}
+				</N8nText>
 			</template>
 			<N8nOption
 				v-for="project in filteredProjects"
@@ -186,5 +207,9 @@ watch(
 
 .projectRoleSelect {
 	width: auto;
+}
+
+.emoji {
+	font-size: var(--font-size-s);
 }
 </style>

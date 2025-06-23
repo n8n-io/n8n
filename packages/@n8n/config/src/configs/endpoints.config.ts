@@ -104,6 +104,14 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
 
+	/** Path segment for MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP')
+	mcp: string = 'mcp';
+
+	/** Path segment for test MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP_TEST')
+	mcpTest: string = 'mcp-test';
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;

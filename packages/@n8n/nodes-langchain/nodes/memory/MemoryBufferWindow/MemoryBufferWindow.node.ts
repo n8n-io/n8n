@@ -89,6 +89,7 @@ export class MemoryBufferWindow implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['For beginners'],
 			},
 			resources: {
 				primaryDocumentation: [

@@ -1,16 +1,20 @@
-import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
-import { Response } from 'express';
-import { Logger } from 'n8n-core';
-
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import {
+	RoleChangeRequestDto,
+	SettingsUpdateRequestDto,
+	UsersListFilterDto,
+	usersListSchema,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { PublicUser } from '@n8n/db';
+import {
+	Project,
+	User,
+	AuthIdentity,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import {
 	GlobalScope,
 	Delete,
@@ -20,15 +24,18 @@ import {
 	Licensed,
 	Body,
 	Param,
-} from '@/decorators';
+	Query,
+} from '@n8n/decorators';
+import { Response } from 'express';
+
+import { AuthService } from '@/auth/auth.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { PublicUser } from '@/interfaces';
-import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
+import { AuthenticatedRequest, UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
@@ -62,18 +69,14 @@ export class UsersController {
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: UsersListFilterDto,
 	) {
-		const { take, select, filter } = listQueryOptions;
+		const { select } = listQueryOptions;
 
 		// remove fields added to satisfy query
 
-		if (take && select && !select?.id) {
+		if (select !== undefined && !select.includes('id')) {
 			for (const user of publicUsers) delete user.id;
-		}
-
-		if (filter?.isOwner) {
-			for (const user of publicUsers) delete user.role;
 		}
 
 		// remove computed fields (unselectable)
@@ -89,25 +92,40 @@ export class UsersController {
 		return publicUsers;
 	}
 
-	@Get('/', { middlewares: listQueryMiddleware })
+	@Get('/')
 	@GlobalScope('user:list')
-	async listUsers(req: ListQuery.Request) {
-		const { listQueryOptions } = req;
+	async listUsers(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query listQueryOptions: UsersListFilterDto,
+	) {
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 
-		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
+		const response = await userQuery.getManyAndCount();
 
-		const users = await this.userRepository.find(findManyOptions);
+		const [users, count] = response;
 
-		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
-			users.map(
-				async (u) =>
-					await this.userService.toPublic(u, { withInviteUrl: true, inviterId: req.user.id }),
-			),
+		const publicUsers = await Promise.all(
+			users.map(async (u) => {
+				const user = await this.userService.toPublic(u, {
+					withInviteUrl: true,
+					inviterId: req.user.id,
+				});
+				return {
+					...user,
+					projectRelations: u.projectRelations?.map((pr) => ({
+						id: pr.projectId,
+						role: pr.role, // normalize role for frontend
+						name: pr.project.name,
+					})),
+				};
+			}),
 		);
 
-		return listQueryOptions
-			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
-			: publicUsers;
+		return usersListSchema.parse({
+			count,
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+		});
 	}
 
 	@Get('/:id/password-reset-link')
@@ -241,7 +259,7 @@ export class UsersController {
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId);
+			await this.workflowService.delete(userToDelete, workflowId, true);
 		}
 
 		for (const credential of ownedCredentials) {
@@ -293,7 +311,7 @@ export class UsersController {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
-		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+		await this.userService.changeUserRole(req.user, targetUser, payload);
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,

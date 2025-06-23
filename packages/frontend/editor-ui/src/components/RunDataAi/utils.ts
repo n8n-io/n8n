@@ -1,4 +1,5 @@
 import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
+import { addTokenUsageData, emptyTokenUsageData } from '@/utils/aiUtils';
 import {
 	type INodeExecutionData,
 	type ITaskData,
@@ -28,16 +29,17 @@ function createNode(
 	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
+	runIndex: number,
 	r?: AIResult,
 	children: TreeNode[] = [],
 ): TreeNode {
 	return {
 		parent,
 		node: nodeName,
-		id: nodeName,
+		id: `${nodeName}:${runIndex}`,
 		depth: currentDepth,
 		startTime: r?.data?.metadata?.startTime ?? 0,
-		runIndex: r?.runIndex ?? 0,
+		runIndex,
 		children,
 		consumedTokens: getConsumedTokens(r?.data),
 	};
@@ -47,8 +49,9 @@ export function getTreeNodeData(
 	nodeName: string,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
+	runIndex?: number,
 ): TreeNode[] {
-	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, undefined);
+	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, runIndex);
 }
 
 function getTreeNodeDataRec(
@@ -66,32 +69,45 @@ function getTreeNodeDataRec(
 		) ?? [];
 
 	if (!connections) {
-		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d));
+		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
+
+	// When at root depth, filter AI data to only show executions that were triggered by this node
+	// This prevents duplicate entries in logs when a sub-node is connected to multiple root nodes
+	// Nodes without source info or with empty source arrays are always included
+	const filteredAiData =
+		currentDepth === 0
+			? aiData?.filter(({ data }) => {
+					if (!data?.source || data.source.every((source) => source === null)) {
+						return true;
+					}
+
+					return data.source.some(
+						(source) =>
+							source?.previousNode === nodeName &&
+							(runIndex === undefined || source.previousNodeRun === runIndex),
+					);
+				})
+			: aiData;
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
-	const treeNode = createNode(parent, nodeName, currentDepth);
-	const children = connectedSubNodes.flatMap((name) => {
-		// Only include sub-nodes which have data
-		return (
-			aiData
-				?.filter(
-					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
-				)
-				.flatMap((data) =>
-					getTreeNodeDataRec(treeNode, name, currentDepth + 1, workflow, aiData, data.runIndex),
-				) ?? []
-		);
-	});
+	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
 
-	children.sort((a, b) => a.startTime - b.startTime);
+	// Only include sub-nodes which have data
+	const children = (filteredAiData ?? []).flatMap((data) =>
+		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
+			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
+			: [],
+	);
 
 	treeNode.children = children;
 
 	if (resultData.length) {
-		return resultData.map((r) => createNode(parent, nodeName, currentDepth, r, children));
+		return resultData.map((r) =>
+			createNode(parent, nodeName, currentDepth, r.runIndex, r, children),
+		);
 	}
 
 	return [treeNode];
@@ -102,31 +118,27 @@ export function createAiData(
 	workflow: Workflow,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
 ): AIResult[] {
-	const result: AIResult[] = [];
-	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+	return workflow
+		.getParentNodes(nodeName, 'ALL_NON_MAIN')
+		.flatMap((node) =>
+			(getWorkflowResultDataByNodeName(node) ?? []).map((task, index) => ({ node, task, index })),
+		)
+		.sort((a, b) => {
+			// Sort the data by execution index or start time
+			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
+				return a.task.executionIndex - b.task.executionIndex;
+			}
 
-	connectedSubNodes.forEach((node) => {
-		const nodeRunData = getWorkflowResultDataByNodeName(node) ?? [];
+			const aTime = a.task.startTime ?? 0;
+			const bTime = b.task.startTime ?? 0;
 
-		nodeRunData.forEach((run, runIndex) => {
-			const referenceData = {
-				data: getReferencedData(run, false, true)[0],
-				node,
-				runIndex,
-			};
-
-			result.push(referenceData);
-		});
-	});
-
-	// Sort the data by start time
-	result.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime ?? 0;
-		const bTime = b.data?.metadata?.startTime ?? 0;
-		return aTime - bTime;
-	});
-
-	return result;
+			return aTime - bTime;
+		})
+		.map(({ node, task, index }) => ({
+			data: getReferencedData(task, false, true)[0],
+			node,
+			runIndex: index,
+		}));
 }
 
 export function getReferencedData(
@@ -150,6 +162,9 @@ export function getReferencedData(
 				data: data[type][0],
 				inOut,
 				type: type as NodeConnectionType,
+				// Include source information in AI content to track which node triggered the execution
+				// This enables filtering in the UI to show only relevant executions
+				source: taskData.source,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
@@ -167,22 +182,6 @@ export function getReferencedData(
 	}
 
 	return returnData;
-}
-
-const emptyTokenUsageData: LlmTokenUsageData = {
-	completionTokens: 0,
-	promptTokens: 0,
-	totalTokens: 0,
-	isEstimate: false,
-};
-
-function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): LlmTokenUsageData {
-	return {
-		completionTokens: one.completionTokens + another.completionTokens,
-		promptTokens: one.promptTokens + another.promptTokens,
-		totalTokens: one.totalTokens + another.totalTokens,
-		isEstimate: one.isEstimate || another.isEstimate,
-	};
 }
 
 export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTokenUsageData {
@@ -205,29 +204,4 @@ export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTok
 	);
 
 	return tokenUsage;
-}
-
-export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
-	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
-}
-
-export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsageData {
-	return getTotalConsumedTokens(
-		treeNode.consumedTokens,
-		...treeNode.children.map(getSubtreeTotalConsumedTokens),
-	);
-}
-
-export function formatTokenUsageCount(
-	usage: LlmTokenUsageData,
-	field: 'total' | 'prompt' | 'completion',
-) {
-	const count =
-		field === 'total'
-			? usage.totalTokens
-			: field === 'completion'
-				? usage.completionTokens
-				: usage.promptTokens;
-
-	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }

@@ -8,12 +8,12 @@ import type {
 	ITemplatesCollectionFull,
 	ITemplatesNode,
 	ITemplatesWorkflow,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/templates';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
