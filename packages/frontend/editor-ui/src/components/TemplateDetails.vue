@@ -4,12 +4,12 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 import { abbreviateNumber } from '@/utils/typesUtils';
 import type {
-	ITag,
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesNode,
 	ITemplatesWorkflow,
 } from '@n8n/rest-api-client/api/templates';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
