@@ -21,7 +21,7 @@ export default mergeConfig(
 			dts(),
 			{
 				name: 'rename-css-file',
-				buildEnd() {
+				closeBundle() {
 					// The chat.css is automatically named based on vite.config.ts library name.
 					// ChatTrigger Node requires https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css
 					// As such for backwards compatibility, we need to maintain the same name file
