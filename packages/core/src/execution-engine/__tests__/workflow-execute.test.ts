@@ -2179,11 +2179,9 @@ describe('WorkflowExecute', () => {
 			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			testAdditionalData.hooks = mockHooks;
 
-			const testWorkflowExecute = new WorkflowExecute(testAdditionalData, 'manual');
-
 			// ACT
 			try {
-				await testWorkflowExecute.run(workflow, errorNode);
+				await workflowExecute.run(workflow, errorNode);
 			} catch {
 				// Expected to throw
 			}
@@ -2239,11 +2237,9 @@ describe('WorkflowExecute', () => {
 			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			testAdditionalData.hooks = mockHooks;
 
-			const testWorkflowExecute = new WorkflowExecute(testAdditionalData, 'manual');
-
 			// ACT
 			try {
-				await testWorkflowExecute.run(workflow, errorNode);
+				await workflowExecute.run(workflow, errorNode);
 			} catch {
 				// Expected to throw
 			}
@@ -2296,10 +2292,8 @@ describe('WorkflowExecute', () => {
 			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			testAdditionalData.hooks = mockHooks;
 
-			const testWorkflowExecute = new WorkflowExecute(testAdditionalData, 'manual');
-
 			// ACT
-			await testWorkflowExecute.run(workflow, successNode);
+			await workflowExecute.run(workflow, successNode);
 
 			// ASSERT
 			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
@@ -2347,11 +2341,9 @@ describe('WorkflowExecute', () => {
 			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			testAdditionalData.hooks = mockHooks;
 
-			const testWorkflowExecute = new WorkflowExecute(testAdditionalData, 'manual');
-
 			// ACT
 			try {
-				await testWorkflowExecute.run(workflow, errorNode);
+				await workflowExecute.run(workflow, errorNode);
 			} catch {
 				// Expected to throw
 			}
@@ -2406,11 +2398,9 @@ describe('WorkflowExecute', () => {
 			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			testAdditionalData.hooks = mockHooks;
 
-			const testWorkflowExecute = new WorkflowExecute(testAdditionalData, 'manual');
-
 			// ACT
 			try {
-				await testWorkflowExecute.run(workflow, errorNode);
+				await workflowExecute.run(workflow, errorNode);
 			} catch {
 				// Expected to throw
 			}
