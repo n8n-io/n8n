@@ -2233,6 +2233,9 @@ importers:
       '@sentry/vue':
         specifier: catalog:frontend
         version: 8.33.1(vue@3.5.13(typescript@5.8.2))
+      '@types/semver':
+        specifier: ^7.7.0
+        version: 7.7.0
       '@typescript/vfs':
         specifier: ^1.6.0
         version: 1.6.0(typescript@5.8.2)
@@ -6913,6 +6916,9 @@ packages:
 
   '@types/semver@7.5.0':
     resolution: {integrity: sha512-G8hZ6XJiHnuhQKR7ZmysCeJWE08o8T0AXtk5darsCaTVsYZhhgUrq53jizaR2FvsoeCwJhlmwTjkXBY5Pn/ZHw==}
+
+  '@types/semver@7.7.0':
+    resolution: {integrity: sha512-k107IF4+Xr7UHjwDc7Cfd6PRQfbdkiRabXGRjo07b4WyPahFBZCZ1sE+BNxYIJPPg73UkfOsVOLwqVc/6ETrIA==}
 
   '@types/send@0.17.4':
     resolution: {integrity: sha512-x2EM6TJOybec7c52BX0ZspPodMsQUd5L6PRwOunVyVUhXiBSKf3AezDL8Dgvgt5o0UfKNfuA0eMLr2wLT4AiBA==}
@@ -20085,6 +20091,8 @@ snapshots:
   '@types/scheduler@0.26.0': {}
 
   '@types/semver@7.5.0': {}
+
+  '@types/semver@7.7.0': {}
 
   '@types/send@0.17.4':
     dependencies:
