@@ -5,7 +5,7 @@ import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/c
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
-import { UserAction } from '@n8n/design-system';
+import type { UserAction } from '@n8n/design-system';
 
 interface Props {
 	communityPackage?: PublicInstalledPackage | null;

@@ -1,8 +1,8 @@
-import type { LicenseState } from '@n8n/backend-common';
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
 import { MODULE_NAMES } from '../modules.config';
@@ -43,7 +43,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -57,7 +57,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -75,7 +75,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -94,7 +94,7 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(true) });
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -113,7 +113,7 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(false) });
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -130,7 +130,7 @@ describe('initModules', () => {
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -150,7 +150,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -174,12 +174,13 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
 
 		// ASSERT
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});

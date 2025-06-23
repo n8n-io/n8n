@@ -7,7 +7,7 @@ import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
-import { IUser } from 'n8n-workflow';
+import type { IUser } from 'n8n-workflow';
 
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root

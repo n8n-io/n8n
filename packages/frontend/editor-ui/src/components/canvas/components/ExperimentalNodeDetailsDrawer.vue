@@ -34,6 +34,7 @@ watch(
 		</N8nText>
 		<ExperimentalCanvasNodeSettings
 			v-else-if="lastContent !== undefined"
+			:key="lastContent.id"
 			:node-id="lastContent.id"
 			can-open-ndv
 		/>

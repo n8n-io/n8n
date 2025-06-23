@@ -26,7 +26,7 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { ButtonSize, type IUpdateInformation } from '@/Interface';
+import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
