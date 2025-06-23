@@ -12,7 +12,7 @@ import {
 } from '@n8n/design-system';
 import { DateTime } from 'luxon';
 
-type Item = UsersList['data'][number];
+type Item = UsersList['items'][number];
 
 const i18n = useI18n();
 
@@ -64,6 +64,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 			roleId: Role;
 			label: string;
 			isEditable: boolean;
+			radioValue: Role;
 			dropdownItems: ActionDropdownItem[];
 		} {
 			return {
