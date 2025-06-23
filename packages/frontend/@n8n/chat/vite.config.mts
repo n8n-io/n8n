@@ -5,7 +5,7 @@ import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
-import pkg from './package.json'; // Import package.json to access the version
+import pkg from './package.json';
 
 const includeVue = process.env.INCLUDE_VUE === 'true';
 const srcPath = resolve(__dirname, 'src');
