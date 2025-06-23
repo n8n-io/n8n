@@ -1,8 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
+import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { executeChain } from './chainExecutor';
 import { type MessageTemplate } from './types';
@@ -16,9 +16,10 @@ async function getChatModel(ctx: IExecuteFunctions, index: number = 0): Promise<
 		if (connectedModels.length <= index) {
 			throw new NodeOperationError(
 				ctx.getNode(),
-				`Chat Model not found at index ${index}. Available models: ${connectedModels.length}`,
+				'Please connect a model to the Fallback Model input or disable the fallback option',
 			);
 		}
+		// We get the models in reversed order from the workflow so we need to reverse them again to match the right index
 		connectedModels.reverse();
 		model = connectedModels[index] as BaseLanguageModel;
 	} else {

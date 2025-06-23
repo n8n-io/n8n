@@ -131,6 +131,18 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Enable Fallback Model',
+		name: 'needsFallback',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		displayOptions: {
+			hide: {
+				'@version': [1, 1.1, 1.3],
+			},
+		},
+	},
+	{
 		displayName: 'Chat Messages (if Using a Chat Model)',
 		name: 'messages',
 		type: 'fixedCollection',
@@ -285,13 +297,6 @@ export const nodeProperties: INodeProperties[] = [
 				hasOutputParser: [true],
 			},
 		},
-	},
-	{
-		displayName: 'Enable Fallback Model',
-		name: 'needsFallback',
-		type: 'boolean',
-		default: false,
-		noDataExpression: true,
 	},
 	{
 		displayName: `Connect an additional <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiLanguageModel}'>language model</a> on the canvas to use it as a fallback if the main model fails`,

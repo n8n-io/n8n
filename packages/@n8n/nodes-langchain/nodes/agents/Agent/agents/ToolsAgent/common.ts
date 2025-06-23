@@ -275,9 +275,10 @@ export async function getChatModel(
 		if (connectedModels.length <= index) {
 			throw new NodeOperationError(
 				ctx.getNode(),
-				`Chat Model not found at index ${index}. Available models: ${connectedModels.length}`,
+				'Please connect a model to the Fallback Model input or disable the fallback option',
 			);
 		}
+		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
 		connectedModels.reverse();
 		model = connectedModels[index] as BaseChatModel;
 	} else {
