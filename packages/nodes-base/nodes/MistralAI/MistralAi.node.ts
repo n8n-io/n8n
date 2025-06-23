@@ -273,7 +273,7 @@ export class MistralAi implements INodeType {
 									this.helpers.returnJsonArray({
 										error: error instanceof Error ? error.message : JSON.stringify(error),
 									}),
-									{ itemData: { item: 0 } },
+									{ itemData: { item: i } },
 								);
 								returnData.push(...executionError);
 							} else {
