@@ -1736,4 +1736,34 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
 		});
 	});
+
+	describe('node invalid output data events', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should track node incorrect output data with workflow, node and error information', async () => {
+			const event: RelayEventMap['node-incorrect-output-data'] = {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				workflowName: 'Test Workflow',
+				nodeName: 'Test Node',
+				nodeType: 'n8n-nodes-base.testNode',
+				errorPath: '[0].json[1].invalidField',
+				errorMessage: 'Invalid output data format',
+			};
+
+			eventService.emit('node-incorrect-output-data', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Node produced incorrect output data', {
+				workflow_id: event.workflowId,
+				workflow_name: event.workflowName,
+				execution_id: event.executionId,
+				node_name: event.nodeName,
+				node_type: event.nodeType,
+				error_path: event.errorPath,
+				error_message: event.errorMessage,
+			});
+		});
+	});
 });

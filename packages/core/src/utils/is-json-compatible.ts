@@ -1,5 +1,5 @@
 /**
- * This function checks if a value is JSON-compatible.
+ * This function checks if a value matches JSON data type restrictions.
  * @param value
  * @returns boolean
  */
