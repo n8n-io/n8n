@@ -6,7 +6,7 @@ import type { NextFunction, Response } from 'express';
 import { Time } from '@/constants';
 import type { AuthenticatedRequest } from '@/requests';
 
-const LAST_ACTIVE_CACHE_TTL = 1 * Time.hours.toMilliseconds;
+const LAST_ACTIVE_CACHE_TTL = 12 * Time.hours.toMilliseconds;
 
 @Service()
 export class LastActiveAtService {

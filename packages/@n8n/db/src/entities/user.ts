@@ -14,7 +14,7 @@ import {
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
+import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
@@ -102,7 +102,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
-	@DateTimeColumn({ nullable: true })
+	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
 
 	/**
