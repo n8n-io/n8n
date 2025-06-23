@@ -172,11 +172,17 @@ export class MistralAi implements INodeType {
 									this,
 									'GET',
 									`/v1/files/${jobResult.output_file}/content`,
-								)) as string;
-								const batchResult: BatchItemResult[] = fileResponse
-									.trim()
-									.split('\n')
-									.map((json) => JSON.parse(json));
+								)) as string | BatchItemResult;
+								let batchResult: BatchItemResult[];
+								if (typeof fileResponse === 'string') {
+									batchResult = fileResponse
+										.trim()
+										.split('\n')
+										.map((json) => JSON.parse(json) as BatchItemResult);
+								} else {
+									// If the response is not a string, it is a single item result
+									batchResult = [fileResponse];
+								}
 
 								for (const result of batchResult) {
 									const index = parseInt(result.custom_id);
