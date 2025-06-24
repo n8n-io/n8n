@@ -37,7 +37,7 @@ import type {
 	WorkflowListItem,
 	WorkflowListResource,
 } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';

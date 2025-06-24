@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { ElDropdown } from 'element-plus';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute } from 'vue-router';
 
