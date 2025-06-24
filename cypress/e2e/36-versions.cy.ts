@@ -2,6 +2,7 @@ import {
 	closeVersionUpdatesPanel,
 	getVersionCard,
 	getVersionUpdatesPanelOpenButton,
+	openWhatsNewMenu,
 	openVersionUpdatesPanel,
 } from '../composables/versions';
 import { WorkflowsPage } from '../pages/workflows';
@@ -25,7 +26,8 @@ describe('Versions', () => {
 		cy.visit(workflowsPage.url);
 		cy.wait('@loadSettings');
 
-		getVersionUpdatesPanelOpenButton().should('contain', '2 updates');
+		openWhatsNewMenu();
+		getVersionUpdatesPanelOpenButton().should('contain', '2 versions behind');
 		openVersionUpdatesPanel();
 		getVersionCard().should('have.length', 2);
 		closeVersionUpdatesPanel();
