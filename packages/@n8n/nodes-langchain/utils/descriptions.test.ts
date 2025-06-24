@@ -1,5 +1,3 @@
-import type { INodeProperties } from 'n8n-workflow';
-
 import { buildInputSchemaField } from './descriptions';
 
 describe('buildInputSchemaField', () => {
@@ -73,17 +71,6 @@ describe('buildInputSchemaField', () => {
 
 		// noDataExpression is false, which means expressions are allowed
 		expect(result.noDataExpression).toBe(false);
-
-		// Test that expressions can be used
-		const schemaWithExpression = `{
-"type": "object",
-"properties": {
-	"dynamic_field": {
-		"type": "string",
-		"description": "{{ $json.fieldDescription }}"
-		}
-	}
-}`;
 
 		// Since noDataExpression is false, this should be valid
 		expect(typeof result.default).toBe('string');
