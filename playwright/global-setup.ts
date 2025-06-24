@@ -1,4 +1,4 @@
-/* eslint-disable import/no-default-export */
+/* eslint-disable @typescript-eslint/no-default-export */
 import { request } from '@playwright/test';
 
 import { ApiHelpers } from './services/api-helper';

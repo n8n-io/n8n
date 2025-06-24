@@ -6,7 +6,6 @@ import { createN8NStack } from '../containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from '../containers/n8n-test-container-logs';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
-import { TestError } from '../Types';
 
 type TestFixtures = {
 	n8n: n8nPage;
@@ -89,7 +88,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 				await api.resetDatabase();
 				await context.close();
 			}
-			await use(undefined);
+			await use();
 		},
 		{ scope: 'worker' },
 	],
@@ -98,7 +97,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	chaos: [
 		async ({ n8nContainer }, use) => {
 			if (process.env.N8N_BASE_URL) {
-				throw new TestError(
+				throw new Error(
 					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 				);
 			}

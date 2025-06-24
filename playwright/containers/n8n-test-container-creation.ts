@@ -19,7 +19,6 @@ import {
 	setupPostgres,
 	setupRedis,
 } from './n8n-test-container-dependencies';
-import { TestError } from '../Types';
 
 // --- Constants ---
 
@@ -135,7 +134,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		if (queueConfig.mains > 1) {
 			if (!process.env.N8N_LICENSE_ACTIVATION_KEY) {
-				throw new TestError('N8N_LICENSE_ACTIVATION_KEY is required for multi-main instances');
+				throw new Error('N8N_LICENSE_ACTIVATION_KEY is required for multi-main instances');
 			}
 			environment = {
 				...environment,

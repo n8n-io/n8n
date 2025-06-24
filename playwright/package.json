@@ -25,7 +25,6 @@
     "@playwright/test": "1.53.0",
     "@testcontainers/postgresql": "11.0.3",
     "@testcontainers/redis": "11.0.3",
-    "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.0",
     "testcontainers": "11.0.3"
   }
