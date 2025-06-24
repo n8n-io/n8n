@@ -8,7 +8,6 @@ packages/**/node_modules
 packages/**/dist
 packages/**/.turbo
 packages/**/*.test.*
-packages/cli/dist/**/e2e.*
 .git
 .github
 !.github/scripts

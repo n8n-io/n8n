@@ -3,7 +3,6 @@ import type { BrowserContext, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 
-
 export let settings: Partial<FrontendSettings>;
 
 export async function setupDefaultInterceptors(target: BrowserContext) {
