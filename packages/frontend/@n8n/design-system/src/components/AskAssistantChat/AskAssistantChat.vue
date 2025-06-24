@@ -11,7 +11,6 @@ import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
 import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
 import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
-import { N8nIconButton } from '..';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
