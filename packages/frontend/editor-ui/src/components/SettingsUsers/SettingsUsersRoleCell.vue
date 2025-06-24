@@ -4,9 +4,14 @@ import { ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design-system';
 
-const props = defineProps<{ data: UsersList['items'][number] }>();
-
 const i18n = useI18n();
+
+const props = defineProps<{ data: UsersList['items'][number] }>();
+const emit = defineEmits<{
+	'update:role': [payload: { role: string; userId: string }];
+}>();
+
+const selectedRole = ref<string>(props.data.role ?? ROLE.Default);
 
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
 const roles = computed<Record<string, { label: string; desc: string }>>(() => ({
@@ -31,18 +36,18 @@ const dropdownItems = computed<ActionDropdownItem[]>(() => [
 		label: i18n.baseText('auth.roles.admin'),
 	},
 	{
-		id: 'remove-user',
+		id: 'remove',
 		label: i18n.baseText('settings.users.table.row.removeUser'),
 		divided: true,
 	},
 ]);
-const roleLabel = computed(() =>
-	props.data.role ? roles.value[props.data.role].label : i18n.baseText('auth.roles.default'),
-);
-const radioValue = ref<string>(props.data.role ?? ROLE.Default);
+const roleLabel = computed(() => roles.value[selectedRole.value].label);
 
-const onActionSelect = (value: typeof props.data) => {
-	console.log('value', value);
+const onActionSelect = (role: string) => {
+	emit('update:role', {
+		role,
+		userId: props.data.id,
+	});
 };
 </script>
 
@@ -52,7 +57,7 @@ const onActionSelect = (value: typeof props.data) => {
 			v-if="isEditable"
 			placement="bottom-start"
 			:items="dropdownItems"
-			@select="() => onActionSelect(data)"
+			@select="onActionSelect"
 		>
 			<template #activator>
 				<span>
@@ -61,14 +66,14 @@ const onActionSelect = (value: typeof props.data) => {
 				</span>
 			</template>
 			<template #menuItem="item">
-				<N8nText v-if="item.id === 'remove-user'" color="text-dark" :class="$style.removeUser">{{
+				<N8nText v-if="item.id === 'remove'" color="text-dark" :class="$style.removeUser">{{
 					item.label
 				}}</N8nText>
 				<ElRadio
 					v-else
-					:model-value="radioValue"
+					:model-value="selectedRole"
 					:label="item.id"
-					@update:model-value="radioValue = item.id"
+					@update:model-value="selectedRole = item.id"
 				>
 					<span :class="$style.radioLabel">
 						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>

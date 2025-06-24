@@ -1972,6 +1972,7 @@
 	"settings.users.transferWorkflowsAndCredentials.user": "User or project to transfer to",
 	"settings.users.transferWorkflowsAndCredentials.placeholder": "Select project or user",
 	"settings.users.transferredToUser": "Data transferred to {projectName}",
+	"settings.users.userNotFound": "User not found",
 	"settings.users.userDeleted": "User deleted",
 	"settings.users.userDeletedError": "Problem while deleting user",
 	"settings.users.userInvited": "User invited",

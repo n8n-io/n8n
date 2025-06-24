@@ -229,6 +229,20 @@ function goToUpgrade() {
 function goToUpgradeAdvancedPermissions() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
+
+const onUpdateRole = async (payload: {
+	userId: string;
+	role: UpdateGlobalRolePayload['newRoleName'];
+}) => {
+	const user = usersStore.usersById[payload.userId];
+	if (!user) {
+		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
+		return;
+	}
+
+	await onRoleChange(user, payload.role);
+};
+
 async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
@@ -256,7 +270,7 @@ const updateUsersTableData = async ({
 	sortBy,
 }: {
 	page: number;
-	itemsPerPage?: number;
+	itemsPerPage: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 }) => {
 	usersTableState.value = {
@@ -359,6 +373,7 @@ const onSearch = (value: string) => {
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				@update:options="updateUsersTableData"
+				@update:role="onUpdateRole"
 			/>
 
 			<n8n-users-list

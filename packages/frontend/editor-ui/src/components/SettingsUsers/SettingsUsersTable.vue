@@ -25,6 +25,7 @@ const emit = defineEmits<{
 			sortBy: Array<{ id: string; desc: boolean }>;
 		},
 	];
+	'update:role': [payload: { role: string; userId: string }];
 }>();
 
 const rows = computed(() => props.data.items);
@@ -36,6 +37,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		value(row) {
 			return {
 				...row,
+				// TODO: Fix UsersInfoProps type, it should be aligned with the API response and implement 'isPending' instead of `isPendingUser`
 				isPendingUser: row.isPending,
 			};
 		},
@@ -46,7 +48,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.2fa'),
-		key: '2fa',
+		key: 'mfaEnabled',
 		value(row) {
 			return row.mfaEnabled
 				? i18n.baseText('settings.users.table.row.2fa.enabled')
@@ -87,7 +89,7 @@ const onFilterChange = ($event: {
 				</div>
 			</template>
 			<template #[`item.role`]="{ item }">
-				<SettingsUsersRoleCell :data="item" />
+				<SettingsUsersRoleCell :data="item" @update:role="$emit('update:role', $event)" />
 			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />
