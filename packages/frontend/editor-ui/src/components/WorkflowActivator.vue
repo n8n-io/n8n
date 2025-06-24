@@ -6,7 +6,7 @@ import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,

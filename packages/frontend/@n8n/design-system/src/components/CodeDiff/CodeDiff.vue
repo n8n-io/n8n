@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
+import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 
 const MIN_LINES = 4;
@@ -112,7 +113,7 @@ const diffs = computed(() => {
 				<span :class="$style.infoText">{{ t('codeDiff.couldNotReplace') }}</span>
 			</div>
 			<div v-else-if="replaced">
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					size="mini"
 					icon="undo"
@@ -120,13 +121,13 @@ const diffs = computed(() => {
 					@click="() => emit('undo')"
 				>
 					{{ t('codeDiff.undo') }}
-				</n8n-button>
+				</N8nButton>
 				<N8nIcon icon="check" color="success" class="ml-xs" />
 				<span :class="$style.infoText" data-test-id="code-replaced-message">
 					{{ t('codeDiff.codeReplaced') }}
 				</span>
 			</div>
-			<n8n-button
+			<N8nButton
 				v-else
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
@@ -135,7 +136,7 @@ const diffs = computed(() => {
 				:disabled="!content || streaming"
 				:loading="replacing"
 				@click="() => emit('replace')"
-				>{{ replacing ? t('codeDiff.replacing') : t('codeDiff.replaceMyCode') }}</n8n-button
+				>{{ replacing ? t('codeDiff.replacing') : t('codeDiff.replaceMyCode') }}</N8nButton
 			>
 		</div>
 	</div>

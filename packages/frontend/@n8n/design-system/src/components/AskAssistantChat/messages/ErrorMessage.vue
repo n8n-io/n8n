@@ -2,6 +2,7 @@
 import BaseMessage from './BaseMessage.vue';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
+import N8nButton from '../../N8nButton';
 import N8nIcon from '../../N8nIcon';
 
 interface Props {
@@ -24,7 +25,7 @@ const { t } = useI18n();
 				<N8nIcon icon="exclamation-triangle" size="small" :class="$style.errorIcon" />
 				{{ message.content }}
 			</p>
-			<n8n-button
+			<N8nButton
 				v-if="message.retry"
 				type="secondary"
 				size="mini"
@@ -33,7 +34,7 @@ const { t } = useI18n();
 				@click="() => message.retry?.()"
 			>
 				{{ t('generic.retry') }}
-			</n8n-button>
+			</N8nButton>
 		</div>
 	</BaseMessage>
 </template>

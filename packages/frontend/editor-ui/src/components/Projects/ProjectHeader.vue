@@ -9,7 +9,7 @@ import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/proje
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
@@ -17,6 +17,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IUser } from 'n8n-workflow';
 
 const route = useRoute();
 const router = useRouter();
@@ -97,7 +98,7 @@ const createWorkflowButton = computed(() => ({
 }));
 
 const menu = computed(() => {
-	const items: UserAction[] = [
+	const items: Array<UserAction<IUser>> = [
 		{
 			value: ACTION_TYPES.CREDENTIAL,
 			label: i18n.baseText('projects.header.create.credential'),

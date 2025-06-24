@@ -76,7 +76,7 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = computed((): IMenuItem[] => [
+const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',

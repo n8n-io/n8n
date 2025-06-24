@@ -8,9 +8,9 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types/icon';
+import type { ActionDropdownItem, IconSize, ButtonSize } from '@n8n/design-system/types';
 
-import type { ActionDropdownItem, ButtonSize } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';

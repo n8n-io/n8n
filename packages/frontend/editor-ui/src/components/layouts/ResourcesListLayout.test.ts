@@ -1,7 +1,8 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import ResourcesListLayout, { type Resource } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { Resource } from '@/Interface';
 import type router from 'vue-router';
 import type { ProjectSharingData } from 'n8n-workflow';
 import { waitAllPromises } from '@/__tests__/utils';

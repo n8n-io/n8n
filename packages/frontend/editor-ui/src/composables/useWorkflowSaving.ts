@@ -386,7 +386,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			});
 
 			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag): string => tag.id);
+			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowsStore.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
