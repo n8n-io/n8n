@@ -121,12 +121,6 @@ export async function initializeAuthenticatedFeatures(
 		}
 	}
 
-	if (settingsStore.isTemplatesEnabled) {
-		try {
-			await settingsStore.testTemplatesEndpoint();
-		} catch (e) {}
-	}
-
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
 	}
