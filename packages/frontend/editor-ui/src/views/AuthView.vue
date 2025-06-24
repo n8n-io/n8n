@@ -45,10 +45,10 @@ const {
 	<div :class="$style.container">
 		<Logo location="authView" :release-channel="releaseChannel" />
 		<div v-if="subtitle" :class="$style.textContainer">
-			<n8n-text size="large">{{ subtitle }}</n8n-text>
+			<N8nText size="large">{{ subtitle }}</N8nText>
 		</div>
 		<div :class="$style.formContainer">
-			<n8n-form-box
+			<N8nFormBox
 				v-bind="form"
 				data-test-id="auth-form"
 				:button-loading="formLoading"
@@ -57,7 +57,7 @@ const {
 				@update="onUpdate"
 			>
 				<SSOLogin v-if="withSso" />
-			</n8n-form-box>
+			</N8nFormBox>
 		</div>
 	</div>
 </template>
