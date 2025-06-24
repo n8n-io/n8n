@@ -931,6 +931,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
+			sourceNodeRunIndex?: number,
 		): void;
 
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
@@ -1219,7 +1220,7 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	__rl: true;
 	mode: ResourceLocatorModes;
-	value: NodeParameterValue;
+	value: Exclude<NodeParameterValue, boolean>;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
 	__regex?: string;
@@ -2143,6 +2144,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to

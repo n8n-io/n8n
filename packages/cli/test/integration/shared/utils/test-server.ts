@@ -1,4 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -19,7 +21,7 @@ import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
 import * as testModules from '@test-integration/test-modules';
 
-import { mockInstance, mockLogger } from '../../../shared/mocking';
+import { mockInstance } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import { LicenseMocker } from '../license';
 import * as testDb from '../test-db';
@@ -97,6 +99,7 @@ export const setupTestServer = ({
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.set('query parser', 'extended');
 	app.use((req: APIRequest, _, next) => {
 		req.browserId = browserId;
 		next();
@@ -122,7 +125,7 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.load(modules);
+		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
@@ -299,6 +302,7 @@ export const setupTestServer = ({
 				}
 			}
 
+			await Container.get(ModuleRegistry).initModules();
 			Container.get(ControllerRegistry).activate(app);
 		}
 	});

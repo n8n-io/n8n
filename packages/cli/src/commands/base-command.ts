@@ -1,7 +1,15 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState, Logger } from '@n8n/backend-common';
+import {
+	inDevelopment,
+	inTest,
+	LicenseState,
+	Logger,
+	ModuleRegistry,
+	ModulesConfig,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -18,7 +26,6 @@ import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -27,8 +34,6 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ModuleRegistry } from '@/modules/module-registry';
-import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -72,19 +77,7 @@ export abstract class BaseCommand extends Command {
 	protected needsTaskRunner = false;
 
 	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			// add module to the registry for dependency injection
-			try {
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-			} catch {
-				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
-			}
-
-			this.modulesConfig.addLoadedModule(moduleName);
-			this.logger.debug(`Loaded module "${moduleName}"`);
-		}
-
-		this.moduleRegistry.addEntities();
+		await this.moduleRegistry.loadModules();
 	}
 
 	async init(): Promise<void> {

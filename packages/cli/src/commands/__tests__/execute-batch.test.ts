@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import type { Config } from '@oclif/core';
@@ -8,7 +9,6 @@ import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { DbConnection } from '@/databases/db-connection';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';

@@ -2,7 +2,8 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(

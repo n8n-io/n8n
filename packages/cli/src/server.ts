@@ -1,5 +1,6 @@
 import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +13,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -269,6 +270,12 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(async () => frontendService.getSettings()),
+			);
+
+			// Returns settings for all loaded modules
+			this.app.get(
+				`/${this.restEndpoint}/module-settings`,
+				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
 			// Return Sentry config as a static file

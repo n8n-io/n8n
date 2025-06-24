@@ -11,7 +11,7 @@ import {
 	NodeConnectionTypes,
 	traverseNodeParameters,
 } from 'n8n-workflow';
-import type { IFormInput } from '@n8n/design-system';
+import type { FormFieldValueUpdate, IFormInput } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -249,9 +249,11 @@ const onExecute = async () => {
 };
 
 // Add handler for tool selection change
-const onUpdate = (change: { name: string; value: string }) => {
+const onUpdate = (change: FormFieldValueUpdate) => {
 	if (change.name !== 'toolName') return;
-	selectedTool.value = change.value;
+	if (typeof change.value === 'string') {
+		selectedTool.value = change.value;
+	}
 };
 </script>
 
