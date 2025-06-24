@@ -322,7 +322,8 @@ describe('LogsPanel', () => {
 			},
 		});
 		expect(await lastTreeItem.findByText('AI Agent')).toBeInTheDocument();
-		expect(lastTreeItem.getByText('Success in 33ms')).toBeInTheDocument();
+		expect(lastTreeItem.getByText('Success')).toBeInTheDocument();
+		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
 		workflowsStore.setWorkflowExecutionData({
 			...workflowsStore.workflowExecutionData!,
