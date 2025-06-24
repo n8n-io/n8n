@@ -22,9 +22,7 @@ RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -na
 
 # Deploy the `n8n` package into /compiled
 RUN mkdir /compiled
-# We don't want to use --no-optional because pdfjs-dist has an optional dependency on
-# @napi-rs/canvas, which is required for the pdfjs-dist package to work.
-RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy /compiled
+RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
@@ -70,6 +68,10 @@ RUN \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
 	mkdir .n8n && \
 	chown node:node .n8n
+
+# pdfjs-dist has an optional dependency on @napi-rs/canvas, which is required
+# for it to work.
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
 
 # Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
 RUN npm install -g npm@11.4.1

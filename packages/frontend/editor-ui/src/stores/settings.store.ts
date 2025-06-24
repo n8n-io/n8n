@@ -9,7 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
-import { testHealthEndpoint } from '@/api/templates';
+import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
@@ -20,7 +20,6 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -255,7 +254,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
-		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 
 		if (fetchedSettings.telemetry.enabled) {
 			void eventsApi.sessionStarted(rootStore.restApiContext);

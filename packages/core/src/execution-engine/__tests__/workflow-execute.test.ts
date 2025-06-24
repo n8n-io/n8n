@@ -519,7 +519,7 @@ describe('WorkflowExecute', () => {
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
 		// └───────┘      └─────┘      └─────┘
-		test('removes disabled nodes from the workflow', async () => {
+		test('removes disabled nodes from the runNodeFilter, but not the graph', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
@@ -555,11 +555,17 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ASSERT
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const runNodeFilter: string[] = (workflowExecute as any).runExecutionData.startData
+				?.runNodeFilter;
+			expect(runNodeFilter).toContain(trigger.name);
+			expect(runNodeFilter).toContain(node2.name);
+			expect(runNodeFilter).not.toContain(node1.name);
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
 			const nodes = Object.keys(processRunExecutionDataSpy.mock.calls[0][0].nodes);
 			expect(nodes).toContain(trigger.name);
 			expect(nodes).toContain(node2.name);
-			expect(nodes).not.toContain(node1.name);
+			expect(nodes).toContain(node1.name);
 		});
 
 		//                             ►►

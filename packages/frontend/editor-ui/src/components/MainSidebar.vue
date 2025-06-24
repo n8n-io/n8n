@@ -135,7 +135,7 @@ const mainMenuItems = computed((): IMenuItem[] => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
 					target: '_blank',
 				},
 			},
