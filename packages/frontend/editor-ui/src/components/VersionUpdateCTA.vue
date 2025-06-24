@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useVersionsStore } from '@/stores/versions.store';
 import { N8nButton, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -14,14 +13,14 @@ const uiStore = useUIStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const telemetry = useTelemetry();
 
-const nextVersions = computed(() => versionsStore.nextVersions);
-
 const openUpdatesPanel = () => {
 	uiStore.openModal(VERSIONS_MODAL_KEY);
 };
 
-const onUpdate = async () => {
-	telemetry.track('User clicked on update now from sidebar');
+const onUpdateClick = async () => {
+	telemetry.track('User clicked on update button', {
+		source: 'main-sidebar',
+	});
 
 	await pageRedirectionHelper.goToVersions();
 };
@@ -29,11 +28,17 @@ const onUpdate = async () => {
 
 <template>
 	<div :class="$style.container">
-		<N8nLink size="small" theme="text" @click="openUpdatesPanel">
+		<N8nLink
+			size="small"
+			theme="text"
+			data-test-id="version-update-next-versions-link"
+			@click="openUpdatesPanel"
+		>
 			{{
 				i18n.baseText('whatsNew.versionsBehind', {
 					interpolate: {
-						count: nextVersions.length > 99 ? '99+' : nextVersions.length,
+						count:
+							versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
 					},
 				})
 			}}
@@ -44,7 +49,7 @@ const onUpdate = async () => {
 			:label="i18n.baseText('whatsNew.update')"
 			data-test-id="version-update-cta-button"
 			size="mini"
-			@click="onUpdate"
+			@click="onUpdateClick"
 		/>
 	</div>
 </template>
