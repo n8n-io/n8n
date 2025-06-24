@@ -1195,9 +1195,21 @@ export class WorkflowExecute {
 			}
 
 			// If data is not json compatible then log it as incorrect output
-			const result = isJsonCompatible(data);
-			if (!result.isValid) {
-				context.logIncorrectNodeOutput(result);
+			// Does not block the execution from continuing
+			const jsonCompatibleResult = isJsonCompatible(data);
+			if (!jsonCompatibleResult.isValid) {
+				Container.get(ErrorReporter).error(new Error('node execution output incorrect data'), {
+					extra: {
+						nodeName: node.name,
+						nodeType: node.type,
+						nodeVersion: node.typeVersion,
+						workflowId: workflow.id,
+						workflowName: workflow.name ?? 'Unnamed workflow',
+						executionId: this.additionalData.executionId ?? 'unsaved-execution',
+						errorPath: jsonCompatibleResult.errorPath,
+						errorMessage: jsonCompatibleResult.errorMessage,
+					},
+				});
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(

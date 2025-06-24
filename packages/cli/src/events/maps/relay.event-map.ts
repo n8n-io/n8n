@@ -124,16 +124,6 @@ export type RelayEventMap = {
 		nodeType?: string;
 	};
 
-	'node-incorrect-output-data': {
-		errorMessage: string;
-		errorPath: string;
-		executionId: string;
-		nodeName: string;
-		nodeType: string;
-		workflowId: string;
-		workflowName: string;
-	};
-
 	// #endregion
 
 	// #region User
