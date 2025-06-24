@@ -79,25 +79,25 @@ describe('isJsonCompatible', () => {
 			name: 'Infinity',
 			value: { infinity: Infinity },
 			errorPath: 'value.infinity',
-			errorMessage: 'todo',
+			errorMessage: 'is Infinity, which is not JSON-compatible',
 		},
 		{
 			name: 'NaN',
 			value: { nan: NaN },
 			errorPath: 'value.nan',
-			errorMessage: 'todo',
+			errorMessage: 'is NaN, which is not JSON-compatible',
 		},
 		{
 			name: 'undefined',
 			value: { undefined },
 			errorPath: 'value.undefined',
-			errorMessage: 'todo',
+			errorMessage: 'is of unknown type (undefined) with value undefined',
 		},
 		{
 			name: 'an object with symbol keys',
 			value: { [Symbol.for('key')]: 1 },
-			errorPath: 'value.key',
-			errorMessage: 'todo',
+			errorPath: 'value.Symbol(key)',
+			errorMessage: 'has a symbol key (Symbol(key)), which is not JSON-compatible',
 		},
 	])('returns invalid for "$name"', ({ value, errorPath, errorMessage }) => {
 		const result = isJsonCompatible(value);
