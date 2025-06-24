@@ -16,6 +16,8 @@ describe('Versions', () => {
 			versionNotifications: {
 				enabled: true,
 				endpoint: 'https://api.n8n.io/api/versions/',
+				whatsNewEnabled: true,
+				whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
 				infoUrl: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			},
 		});
