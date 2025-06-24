@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNDVStore } from '@/stores/ndv.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -9,11 +9,11 @@ defineOptions({ name: 'FocusPanel' });
 
 const locale = useI18n();
 
-const ndvStore = useNDVStore();
+const focusPanelStore = useFocusPanelStore();
 
-const focusedNodeParameter = computed(() => ndvStore.focusedNodeParameters[0]);
+const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 
-const focusPanelActive = computed(() => ndvStore.focusPanelActive);
+const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 
 const expressionModeEnabled = computed(
 	() =>
@@ -40,7 +40,7 @@ function executeFocusedNode() {
 			<N8nText size="small" :bold="true">
 				{{ locale.baseText('nodeView.focusPanel.title') }}
 			</N8nText>
-			<div :class="$style.closeButton" @click="ndvStore.closeFocusPanel">
+			<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>

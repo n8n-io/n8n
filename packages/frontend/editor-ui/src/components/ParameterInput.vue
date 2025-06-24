@@ -70,6 +70,7 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useUIStore } from '@/stores/ui.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -132,6 +133,7 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
@@ -1045,7 +1047,7 @@ async function optionSelected(command: string) {
 	}
 
 	if (node.value && command === 'focus') {
-		ndvStore.setFocusedNodeParameter({
+		focusPanelStore.setFocusedNodeParameter({
 			nodeName: node.value.name,
 			parameterPath: props.path,
 			parameter: props.parameter,
@@ -1058,7 +1060,7 @@ async function optionSelected(command: string) {
 			ndvStore.resetNDVPushRef();
 		}
 
-		ndvStore.focusPanelActive = true;
+		focusPanelStore.focusPanelActive = true;
 	}
 }
 

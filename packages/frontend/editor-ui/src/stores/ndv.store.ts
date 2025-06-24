@@ -19,7 +19,7 @@ import {
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { INodeIssues, INodeProperties } from 'n8n-workflow';
+import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
@@ -30,13 +30,6 @@ const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
 	relativeRight: 1,
 	relativeWidth: 1,
-};
-
-type FocusedNodeParameter = {
-	nodeName: string;
-	parameter: INodeProperties;
-	parameterPath: string;
-	value: string;
 };
 
 export const useNDVStore = defineStore(STORES.NDV, () => {
@@ -94,9 +87,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 	const isMappingOnboarded = ref(localStorageMappingIsOnboarded.value === 'true');
 	const isTableHoverOnboarded = ref(localStorageTableHoverIsOnboarded.value === 'true');
-
-	const focusPanelActive = ref(false);
-	const focusedNodeParameters = ref<FocusedNodeParameter[]>([]);
 
 	const isAutocompleteOnboarded = ref(localStorageAutoCompleteIsOnboarded.value === 'true');
 
@@ -381,19 +371,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		focusedInputPath.value = path;
 	};
 
-	const setFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
-		focusedNodeParameters.value = [
-			nodeParameter,
-			// Uncomment when tabs are implemented
-			// ...focusedNodeParameters.value.filter((p) => p.parameterPath !== nodeParameter.parameterPath),
-		];
-	};
-
-	const closeFocusPanel = () => {
-		focusPanelActive.value = false;
-		focusedNodeParameters.value = [];
-	};
-
 	return {
 		activeNode,
 		ndvInputData,
@@ -422,8 +399,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		pushRef,
 		activeNodeName,
 		focusedInputPath,
-		focusedNodeParameters,
-		focusPanelActive,
 		input,
 		output,
 		hoveringItem,
@@ -459,7 +434,5 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		setHighlightDraggables,
 		updateNodeParameterIssues,
 		setFocusedInputPath,
-		setFocusedNodeParameter,
-		closeFocusPanel,
 	};
 });
