@@ -40,7 +40,9 @@ const openUpdatesPanel = () => {
 };
 
 const onUpdateClick = async () => {
-	telemetry.track('User clicked on update now from modal');
+	telemetry.track('User clicked on update button', {
+		source: 'whats-new-modal',
+	});
 
 	await pageRedirectionHelper.goToVersions();
 };
@@ -57,21 +59,13 @@ watch(
 	{ immediate: true },
 );
 
-watch(
-	() => [scroller.value, props.data.articleId],
-	() => {
-		if (scroller.value) {
-			const articleIndex = versionsStore.whatsNewArticles.findIndex(
-				(article) => article.id === props.data.articleId,
-			);
+modalBus.on('opened', () => {
+	const articleIndex = versionsStore.whatsNewArticles.findIndex(
+		(article) => article.id === props.data.articleId,
+	);
 
-			setTimeout(() => {
-				scroller.value?.scrollToItem(articleIndex);
-			}, 100);
-		}
-	},
-	{ immediate: true },
-);
+	scroller.value?.scrollToItem(articleIndex);
+});
 </script>
 
 <template>
@@ -88,7 +82,7 @@ watch(
 				<div :class="$style.row">
 					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
 					<div :class="$style.column">
-						<N8nHeading size="xlarge" data-test-id="whats-new-modal-title">
+						<N8nHeading size="xlarge">
 							{{
 								i18n.baseText('whatsNew.modal.title', {
 									interpolate: {
@@ -104,21 +98,20 @@ watch(
 							}}</N8nHeading>
 							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
 							<N8nLink
-								v-if="versionsStore.hasVersionUpdates"
 								size="medium"
 								theme="primary"
+								data-test-id="whats-new-modal-next-versions-link"
 								@click="openUpdatesPanel"
 							>
 								{{
-									i18n.baseText('whatsNew.versionsBehind', {
-										interpolate: {
-											count: nextVersions.length > 99 ? '99+' : nextVersions.length,
-										},
-									})
+									versionsStore.hasVersionUpdates
+										? i18n.baseText('whatsNew.versionsBehind', {
+												interpolate: {
+													count: nextVersions.length > 99 ? '99+' : nextVersions.length,
+												},
+											})
+										: i18n.baseText('whatsNew.upToDate')
 								}}
-							</N8nLink>
-							<N8nLink v-else size="medium" theme="primary" @click="openUpdatesPanel">
-								{{ i18n.baseText('whatsNew.upToDate') }}
 							</N8nLink>
 						</div>
 					</div>
@@ -128,6 +121,7 @@ watch(
 					:size="'large'"
 					:label="i18n.baseText('whatsNew.update')"
 					:disabled="!versionsStore.hasVersionUpdates"
+					data-test-id="whats-new-modal-update-button"
 					@click="onUpdateClick"
 				/>
 			</div>
@@ -179,7 +173,7 @@ watch(
 							:data-index="index"
 						>
 							<div :class="$style.article" :data-test-id="`whats-new-article-${item.id}`">
-								<N8nHeading bold tag="h2" size="xlarge" data-test-id="whats-new-article-title">
+								<N8nHeading bold tag="h2" size="xlarge">
 									{{ item.title }}
 								</N8nHeading>
 								<N8nMarkdown
@@ -206,7 +200,6 @@ watch(
 											height: '315',
 										},
 									}"
-									data-test-id="whats-new-article-content"
 								/>
 							</div>
 						</DynamicScrollerItem>
