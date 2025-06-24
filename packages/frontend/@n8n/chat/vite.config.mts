@@ -43,7 +43,7 @@ export default mergeConfig(
 					const cssPath = resolve(__dirname, 'dist', 'style.css');
 					try {
 						const cssContent = readFileSync(cssPath, 'utf-8');
-						const updatedCssContent = banner + cssContent;
+                        const updatedCssContent = banner + '\n' + cssContent;
 						writeFileSync(cssPath, updatedCssContent, 'utf-8');
 					} catch (error) {
 						console.error('Failed to inject build version into CSS file:', error);
