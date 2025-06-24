@@ -15,6 +15,7 @@ describe('UserService', () => {
 		port: 5678,
 		listen_address: '::',
 		protocol: 'http',
+		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);

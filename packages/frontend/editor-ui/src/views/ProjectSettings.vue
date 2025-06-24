@@ -102,9 +102,9 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onRoleAction = (user: Partial<IUser>, role: string) => {
+const onRoleAction = (userId: string, role?: string) => {
 	isDirty.value = true;
-	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === user.id);
+	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === userId);
 	if (role === 'remove') {
 		formData.value.relations.splice(index, 1);
 	} else {
@@ -394,7 +394,7 @@ onMounted(() => {
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
 								data-test-id="projects-settings-user-role-select"
-								@update:model-value="onRoleAction(user, $event)"
+								@update:model-value="onRoleAction(user.id, $event)"
 							>
 								<N8nOption
 									v-for="role in projectRoles"
@@ -419,7 +419,7 @@ onMounted(() => {
 								square
 								icon="trash"
 								data-test-id="project-user-remove"
-								@click="onRoleAction(user, 'remove')"
+								@click="onRoleAction(user.id, 'remove')"
 							/>
 						</div>
 					</template>

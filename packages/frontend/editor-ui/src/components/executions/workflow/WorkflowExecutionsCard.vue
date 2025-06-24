@@ -8,7 +8,7 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 

@@ -11,6 +11,7 @@ import type { SshKeyTypes } from '@/types/sourceControl.types';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
+import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 const locale = useI18n();
@@ -94,11 +95,11 @@ const onSave = async () => {
 	loadingService.stopLoading();
 };
 
-const onSelect = async (b: string) => {
+const onSelect = (b: Validatable) => {
 	if (b === sourceControlStore.preferences.branchName) {
 		return;
 	}
-	sourceControlStore.preferences.branchName = b;
+	sourceControlStore.preferences.branchName = b as string;
 };
 
 const goToUpgrade = () => {
@@ -180,7 +181,8 @@ const refreshBranches = async () => {
 	}
 };
 
-const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
+const onSelectSshKeyType = (value: Validatable) => {
+	const sshKeyType = value as TupleToUnion<SshKeyTypes>;
 	if (sshKeyType === sourceControlStore.preferences.keyGeneratorType) {
 		return;
 	}
@@ -215,7 +217,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 					<n8n-form-input
 						id="repoUrl"
 						v-model="sourceControlStore.preferences.repositoryUrl"
-						label
+						label=""
 						class="ml-0"
 						name="repoUrl"
 						validate-on-blur
@@ -243,7 +245,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						v-if="!isConnected"
 						id="keyGeneratorType"
 						:class="$style.sshKeyTypeSelect"
-						label
+						label=""
 						type="select"
 						name="keyGeneratorType"
 						data-test-id="source-control-ssh-key-type-select"
@@ -303,7 +305,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 					<div :class="$style.branchSelection">
 						<n8n-form-input
 							id="branchName"
-							label
+							label=""
 							type="select"
 							name="branchName"
 							class="mb-s"

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nIcon from '../N8nIcon';
 
 const { t } = useI18n();
 
