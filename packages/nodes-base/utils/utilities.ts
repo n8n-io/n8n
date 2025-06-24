@@ -1,3 +1,4 @@
+import cheerio from 'cheerio';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import isNull from 'lodash/isNull';
@@ -11,7 +12,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
+import { ApplicationError, jsonParse, randomInt, UserError } from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -479,3 +480,60 @@ export const removeTrailingSlash = (url: string) => {
 	}
 	return url;
 };
+
+export function isHTML(input: string): boolean {
+	const $ = cheerio.load(input);
+	return $.root()
+		.children()
+		.toArray()
+		.some((node) => ['tag', 'script', 'style'].includes(node.type.toLowerCase()));
+}
+
+const DISALLOWED_HEADERS = [
+	'set-cookie',
+	'www-authenticate',
+	'proxy-authenticate',
+	'proxy-authorization',
+	'cookie',
+	'host',
+	'content-security-policy',
+	'content-security-policy-report-only',
+	'x-frame-options',
+	'x-content-type-options',
+	'referrer-policy',
+	'strict-transport-security',
+	'cross-origin-opener-policy',
+	'cross-origin-embedder-policy',
+	'cross-origin-resource-policy',
+	'x-permitted-cross-domain-policies',
+	'access-control-allow-origin',
+	'access-control-allow-credentials',
+	'access-control-expose-headers',
+	'access-control-allow-methods',
+	'access-control-allow-headers',
+	'access-control-max-age',
+	'connection',
+	'keep-alive',
+	'te',
+	'trailers',
+	'transfer-encoding',
+	'upgrade',
+	'expect',
+	'via',
+	'forwarded',
+	'x-forwarded-for',
+	'x-forwarded-host',
+	'x-forwarded-proto',
+	'origin',
+	'server',
+];
+
+export function checkDisallowedHeaders(headers: IDataObject) {
+	for (const entry of Object.keys(headers)) {
+		const name = entry.toLowerCase();
+
+		if (DISALLOWED_HEADERS.includes(name.replace(/_/g, '-'))) {
+			throw new UserError(`Header '${name}' is not allowed!`);
+		}
+	}
+}

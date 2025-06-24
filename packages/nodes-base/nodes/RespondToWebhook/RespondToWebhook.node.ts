@@ -23,7 +23,12 @@ import {
 import type { Readable } from 'stream';
 
 import { configuredOutputs } from './utils';
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import {
+	checkDisallowedHeaders,
+	formatPrivateKey,
+	generatePairedItemData,
+	isHTML,
+} from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -457,6 +462,12 @@ export class RespondToWebhook implements INodeType {
 					`The Response Data option "${respondWith}" is not supported!`,
 				);
 			}
+
+			if (typeof responseBody === 'string' && isHTML(responseBody)) {
+				responseBody = responseBody;
+			}
+
+			if (Object.keys(headers).length) checkDisallowedHeaders(headers);
 
 			response = {
 				body: responseBody,
