@@ -1,8 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { type Role, type UsersList } from '@n8n/api-types';
+import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nUserInfo, N8nDataTableServer, type UserAction } from '@n8n/design-system';
+import {
+	N8nUserInfo,
+	N8nDataTableServer,
+	type UserAction,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
 import type { IUser } from '@/Interface';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
@@ -70,11 +75,41 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: '',
 		key: 'actions',
+		align: 'end',
+		width: 46,
 		disableSort: true,
 		// TODO: Fix TableHeader type so it allows `disableSort` without `value` (which is not used here)
 		value() {
 			return;
 		},
+	},
+]);
+
+const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
+	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
+	[ROLE.Admin]: {
+		label: i18n.baseText('auth.roles.admin'),
+		desc: i18n.baseText('settings.users.table.row.role.description.admin'),
+	},
+	[ROLE.Member]: {
+		label: i18n.baseText('auth.roles.member'),
+		desc: i18n.baseText('settings.users.table.row.role.description.member'),
+	},
+	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
+}));
+const roleActions = computed<ActionDropdownItem[]>(() => [
+	{
+		id: ROLE.Member,
+		label: i18n.baseText('auth.roles.member'),
+	},
+	{
+		id: ROLE.Admin,
+		label: i18n.baseText('auth.roles.admin'),
+	},
+	{
+		id: 'remove',
+		label: i18n.baseText('settings.users.table.row.removeUser'),
+		divided: true,
 	},
 ]);
 
@@ -101,7 +136,12 @@ const onFilterChange = ($event: {
 				</div>
 			</template>
 			<template #[`item.role`]="{ item }">
-				<SettingsUsersRoleCell :data="item" @update:role="$emit('update:role', $event)" />
+				<SettingsUsersRoleCell
+					:data="item"
+					:roles="roles"
+					:actions="roleActions"
+					@update:role="$emit('update:role', $event)"
+				/>
 			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />

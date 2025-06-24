@@ -1,47 +1,21 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design-system';
 
-const i18n = useI18n();
+const props = defineProps<{
+	data: UsersList['items'][number];
+	roles: Record<Role, { label: string; desc: string }>;
+	actions: ActionDropdownItem[];
+}>();
 
-const props = defineProps<{ data: UsersList['items'][number] }>();
 const emit = defineEmits<{
 	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
-const selectedRole = ref<string>(props.data.role ?? ROLE.Default);
-
+const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
-const roles = computed<Record<string, { label: string; desc: string }>>(() => ({
-	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
-	[ROLE.Admin]: {
-		label: i18n.baseText('auth.roles.admin'),
-		desc: i18n.baseText('settings.users.table.row.role.description.admin'),
-	},
-	[ROLE.Member]: {
-		label: i18n.baseText('auth.roles.member'),
-		desc: i18n.baseText('settings.users.table.row.role.description.member'),
-	},
-	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
-}));
-const dropdownItems = computed<ActionDropdownItem[]>(() => [
-	{
-		id: ROLE.Member,
-		label: i18n.baseText('auth.roles.member'),
-	},
-	{
-		id: ROLE.Admin,
-		label: i18n.baseText('auth.roles.admin'),
-	},
-	{
-		id: 'remove',
-		label: i18n.baseText('settings.users.table.row.removeUser'),
-		divided: true,
-	},
-]);
-const roleLabel = computed(() => roles.value[selectedRole.value].label);
+const roleLabel = computed(() => props.roles[selectedRole.value].label);
 
 const onActionSelect = (role: string) => {
 	emit('update:role', {
@@ -56,7 +30,7 @@ const onActionSelect = (role: string) => {
 		<N8nActionDropdown
 			v-if="isEditable"
 			placement="bottom-start"
-			:items="dropdownItems"
+			:items="props.actions"
 			@select="onActionSelect"
 		>
 			<template #activator>
@@ -73,11 +47,13 @@ const onActionSelect = (role: string) => {
 					v-else
 					:model-value="selectedRole"
 					:label="item.id"
-					@update:model-value="selectedRole = item.id"
+					@update:model-value="selectedRole = item.id as Role"
 				>
 					<span :class="$style.radioLabel">
 						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
-						<N8nText color="text-dark" size="small">{{ roles[item.id].desc }}</N8nText>
+						<N8nText color="text-dark" size="small">{{
+							props.roles[item.id as Role].desc
+						}}</N8nText>
 					</span>
 				</ElRadio>
 			</template>
