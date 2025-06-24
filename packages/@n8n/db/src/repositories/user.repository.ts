@@ -182,6 +182,12 @@ export class UserRepository extends Repository<User> {
 			});
 		}
 
+		if (filter?.mfaEnabled !== undefined) {
+			queryBuilder.andWhere('user.mfaEnabled = :mfaEnabled', {
+				mfaEnabled: filter.mfaEnabled,
+			});
+		}
+
 		if (filter?.isOwner !== undefined) {
 			if (filter.isOwner) {
 				queryBuilder.andWhere('user.role = :role', {
@@ -240,13 +246,13 @@ export class UserRepository extends Repository<User> {
 		if (sortBy) {
 			for (const sort of sortBy) {
 				const [field, order] = sort.split(':');
-				if (field === 'firstName' || field === 'lastName') {
-					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
-				} else if (field === 'role') {
+				if (field === 'role') {
 					queryBuilder.addOrderBy(
 						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
 						order.toUpperCase() as 'ASC' | 'DESC',
 					);
+				} else {
+					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
 				}
 			}
 		}
