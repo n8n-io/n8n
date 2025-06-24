@@ -178,9 +178,26 @@
 			},
 			"type": "n8n-nodes-base.mistralAi",
 			"typeVersion": 1,
-			"position": [480, 20],
+			"position": [480, -80],
 			"id": "ad4b06b9-65e7-4b9c-b06a-bcbf0df5999a",
 			"name": "Batching",
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "l4fJwkB8bVdo6Evk",
+					"name": "Mistral Cloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"batch": true,
+				"batchSize": 2
+			},
+			"type": "n8n-nodes-base.mistralAi",
+			"typeVersion": 1,
+			"position": [480, 120],
+			"id": "ca14c489-02d2-459f-b694-d83112d95d13",
+			"name": "Batching with delete files",
 			"credentials": {
 				"mistralCloudApi": {
 					"id": "l4fJwkB8bVdo6Evk",
@@ -367,6 +384,80 @@
 					"pageCount": 1
 				}
 			}
+		],
+		"Batching with delete files": [
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 1",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 1",
+					"pageCount": 1
+				}
+			},
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 2",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 2",
+					"pageCount": 1
+				}
+			},
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 3",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 3",
+					"pageCount": 1
+				}
+			}
 		]
 	},
 	"connections": {
@@ -463,6 +554,11 @@
 						"node": "Batching",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Batching with delete files",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -472,7 +568,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "198eb73d-bcbe-47fc-bffe-9a2e30bdc409",
+	"versionId": "2c53fedc-f105-4f02-b1e0-8e6dcf4da1fa",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"

@@ -129,6 +129,79 @@ describe('Mistral AI Node', () => {
 					.join('\n'),
 			);
 			mistralAiNock.get('/v1/files/output-file-2/content').reply(200, batchResult[2]);
+
+			// Batching with delete files
+			mistralAiNock
+				.post(
+					'/v1/files',
+					(body: string) =>
+						body.includes(
+							JSON.stringify({
+								document: {
+									type: 'document_url',
+									document_name: 'sample_1.pdf',
+									document_url: 'data:application/pdf;base64,abcdefgh',
+								},
+							}),
+						) &&
+						body.includes(
+							JSON.stringify({
+								document: {
+									type: 'document_url',
+									document_name: 'sample_2.pdf',
+									document_url: 'data:application/pdf;base64,aaaaaaaa',
+								},
+							}),
+						),
+				)
+				.reply(200, { id: 'input-file-1' });
+			mistralAiNock
+				.post('/v1/files', (body: string) =>
+					body.includes(
+						JSON.stringify({
+							document: {
+								type: 'document_url',
+								document_name: 'sample_3.pdf',
+								document_url: 'data:application/pdf;base64,aaaabbbb',
+							},
+						}),
+					),
+				)
+				.reply(200, { id: 'input-file-2' });
+			mistralAiNock
+				.post('/v1/batch/jobs', {
+					model: 'mistral-ocr-latest',
+					input_files: ['input-file-1'],
+					endpoint: '/v1/ocr',
+				})
+				.reply(200, { id: 'job-1' });
+			mistralAiNock
+				.post('/v1/batch/jobs', {
+					model: 'mistral-ocr-latest',
+					input_files: ['input-file-2'],
+					endpoint: '/v1/ocr',
+				})
+				.reply(200, { id: 'job-2' });
+			mistralAiNock.get('/v1/batch/jobs/job-1').reply(200, {
+				status: 'SUCCESS',
+				output_file: 'output-file-1',
+			});
+			mistralAiNock.get('/v1/batch/jobs/job-2').reply(200, {
+				status: 'SUCCESS',
+				output_file: 'output-file-2',
+			});
+			mistralAiNock.delete('/v1/files/input-file-1').reply(200);
+			mistralAiNock.delete('/v1/files/input-file-2').reply(200);
+			mistralAiNock.get('/v1/files/output-file-1/content').reply(
+				200,
+				batchResult
+					.slice(0, 2)
+					.map((item) => JSON.stringify(item))
+					.join('\n'),
+			);
+			mistralAiNock.get('/v1/files/output-file-2/content').reply(200, batchResult[2]);
+			mistralAiNock.delete('/v1/files/output-file-1').reply(200);
+			mistralAiNock.delete('/v1/files/output-file-2').reply(200);
 		});
 
 		afterAll(() => mistralAiNock.done());
