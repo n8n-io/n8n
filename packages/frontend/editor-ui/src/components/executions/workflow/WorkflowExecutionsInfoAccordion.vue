@@ -10,6 +10,8 @@ import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import type { IconColor } from '@n8n/design-system';
+import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -47,7 +49,7 @@ const workflowSaveSettings = ref({
 	saveTestExecutions: false,
 } as IWorkflowSaveSettings);
 
-const accordionItems = computed(() => [
+const accordionItems = computed((): IAccordionItem[] => [
 	{
 		id: 'productionExecutions',
 		label: locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutions'),
@@ -77,7 +79,7 @@ const shouldExpandAccordion = computed(() => {
 		!workflowSaveSettings.value.saveTestExecutions
 	);
 });
-const productionExecutionsIcon = computed(() => {
+const productionExecutionsIcon = computed((): { color: IconColor; icon: string } => {
 	if (productionExecutionsStatus.value === 'saving') {
 		return { icon: 'check', color: 'success' };
 	} else if (productionExecutionsStatus.value === 'not-saving') {
@@ -104,9 +106,9 @@ const accordionIcon = computed(() => {
 		!workflowSaveSettings.value.saveTestExecutions ||
 		productionExecutionsStatus.value !== 'saving'
 	) {
-		return { icon: 'exclamation-triangle', color: 'warning' };
+		return { icon: 'exclamation-triangle', color: 'warning' as IconColor };
 	}
-	return null;
+	return undefined;
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
 const isNewWorkflow = computed(() => {
