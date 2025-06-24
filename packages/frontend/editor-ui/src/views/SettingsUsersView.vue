@@ -26,6 +26,8 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
+const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
+
 const i18n = useI18n();
 
 const showUMSetupWarning = computed(() => {
@@ -304,21 +306,38 @@ async function onUpdateMfaEnforced(value: boolean) {
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
 				<n8n-text :bold="true">{{ i18n.baseText('settings.personal.mfa.enforce.title') }}</n8n-text>
-				<n8n-text v-if="settingsStore.isMFAEnforcementLicensed" size="small" color="text-light">{{
+				<n8n-text size="small" color="text-light">{{
 					i18n.baseText('settings.personal.mfa.enforce.message')
-				}}</n8n-text>
-				<n8n-text v-else size="small" color="text-light">{{
-					i18n.baseText('settings.personal.mfa.enforce.message_unlicensed')
 				}}</n8n-text>
 			</div>
 			<div :class="$style.settingsContainerAction">
-				<el-switch
-					:model-value="settingsStore.settings.mfa.enforced"
-					size="large"
-					data-test-id="enable-force-mfa"
-					@update:model-value="onUpdateMfaEnforced"
-					:disabled="!settingsStore.isMFAEnforcementLicensed"
-				/>
+				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
+					<el-switch
+						:model-value="settingsStore.settings.mfa.enforced"
+						size="large"
+						data-test-id="enable-force-mfa"
+						@update:model-value="onUpdateMfaEnforced"
+					/>
+					<template #fallback>
+						<N8nTooltip>
+							<el-switch
+								:model-value="settingsStore.settings.mfa.enforced"
+								size="large"
+								:disabled="true"
+								@update:model-value="onUpdateMfaEnforced"
+							/>
+							<template #content>
+								<i18n-t :keypath="tooltipKey" tag="span">
+									<template #action>
+										<a @click="goToUpgrade">
+											{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
+										</a>
+									</template>
+								</i18n-t>
+							</template>
+						</N8nTooltip>
+					</template>
+				</EnterpriseEdition>
 			</div>
 		</div>
 		<n8n-notice v-if="settingsStore.isMFAEnforcementLicensed" theme="info">
