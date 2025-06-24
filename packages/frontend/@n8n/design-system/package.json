@@ -1,6 +1,6 @@
 {
   "name": "@n8n/design-system",
-  "version": "1.86.0",
+  "version": "1.87.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",
+    "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
     "test:dev": "vitest",
     "build:storybook": "storybook build",

@@ -1,7 +1,9 @@
 import type {
 	AINodeConnectionType,
 	CallbackManager,
+	ChunkType,
 	CloseFunction,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -13,6 +15,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
 	Result,
+	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -126,6 +129,23 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
+	}
+
+	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
+		const node = this.getNode();
+		const metadata = {
+			nodeId: node.id,
+			nodeName: node.name,
+			timestamp: Date.now(),
+		};
+
+		const message: StructuredChunk = {
+			type,
+			content: content ? JSON.stringify(content) : undefined,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async startJob<T = unknown, E = unknown>(

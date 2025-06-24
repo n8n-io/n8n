@@ -745,6 +745,12 @@ export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const FOCUS_PANEL_EXPERIMENT = {
+	name: 'focus_panel',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,

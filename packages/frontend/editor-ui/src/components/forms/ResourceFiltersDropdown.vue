@@ -4,7 +4,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import type { BaseFilters } from '../layouts/ResourcesListLayout.vue';
+import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
