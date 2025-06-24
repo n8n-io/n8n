@@ -211,6 +211,10 @@ watch(
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution')"
 		/>
+		<template v-if="isCompact && !hasChildren">
+			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
+			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
+		</template>
 		<N8nButton
 			v-if="!isCompact || hasChildren"
 			type="secondary"
@@ -225,10 +229,6 @@ watch(
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded')"
 		/>
-		<template v-if="isCompact">
-			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
-			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
-		</template>
 	</div>
 </template>
 
