@@ -17,7 +17,6 @@ export type SendEmailResult = {
 export type MailData = {
 	body: string | Buffer;
 	emailRecipients: string | string[];
-	bcc?: string | string[];
 	subject: string;
 	textOnly?: string;
 };

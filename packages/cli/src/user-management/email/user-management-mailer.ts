@@ -75,31 +75,31 @@ export class UserManagementMailer {
 		});
 	}
 
-	private async sendNotificationEmails({
+	private async sendNotificationEmails<T extends { email: string }>({
 		mailerTemplate,
-		recipientsEmail,
+		recipients,
 		sharer,
 		getTemplateData,
 		subjectBuilder,
 		messageType,
 	}: {
 		mailerTemplate: TemplateName;
-		recipientsEmail: string[];
+		recipients: T[];
 		sharer: User;
-		getTemplateData: (recipient: any) => Record<string, any>;
+		getTemplateData: (recipient: T) => Record<string, any>;
 		subjectBuilder: () => string;
 		messageType: RelayEventMap['user-transactional-email-sent']['messageType'];
 	}): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
-		if (recipientsEmail.length === 0) return { emailSent: false };
+		if (recipients.length === 0) return { emailSent: false };
 
 		const populateTemplate = await this.getTemplate(mailerTemplate);
 
 		try {
-			const promises = recipientsEmail.map(async (recipientEmail) => {
-				const templateData = getTemplateData(recipientEmail);
+			const promises = recipients.map(async (recipient) => {
+				const templateData = getTemplateData(recipient);
 				return await this.mailer!.sendMail({
-					emailRecipients: [recipientEmail],
+					emailRecipients: recipient.email,
 					subject: subjectBuilder(),
 					body: populateTemplate(templateData),
 				});
@@ -151,7 +151,7 @@ export class UserManagementMailer {
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'workflow-shared',
-			recipientsEmail: recipients.map((recipient) => recipient.email),
+			recipients,
 			sharer,
 			getTemplateData: () => ({
 				workflowName: workflow.name,
@@ -176,7 +176,7 @@ export class UserManagementMailer {
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'credentials-shared',
-			recipientsEmail: recipients.map((recipient) => recipient.email),
+			recipients,
 			sharer,
 			getTemplateData: () => ({
 				credentialsName,
@@ -213,10 +213,10 @@ export class UserManagementMailer {
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'project-shared',
-			recipientsEmail: recipientsData.map((r) => r.email),
+			recipients: recipientsData,
 			sharer,
-			getTemplateData: ({ role }: { role: string }) => ({
-				role,
+			getTemplateData: (recipient) => ({
+				role: recipient.role,
 				projectName: project.name,
 				projectUrl: `${baseUrl}/projects/${project.id}`,
 			}),
