@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
-import { customIcons } from './custom/index.ts';
 import type { IconName } from './icons';
-import { icons } from './icons';
+import { fontAwesomeIcons, customIcons } from './icons';
 import N8nText from '../N8nText';
 
 interface IconProps {
@@ -31,8 +30,8 @@ withDefaults(defineProps<IconProps>(), {
 		:compact="true"
 		:class="{ [$style[size]]: true, [$style.spin]: spin }"
 	>
-		<Component :is="icons[icon]" v-if="icons[icon]" :spin="spin" />
-		<!-- height and width se to match Lucide icons  -->
+		<Component :is="fontAwesomeIcons[icon]" v-if="fontAwesomeIcons[icon]" :spin="spin" />
+		<!-- height and width as to match Lucide icons  -->
 		<Component
 			:is="customIcons[icon]"
 			v-else-if="customIcons[icon]"
