@@ -24,6 +24,12 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['**/*.test.ts', '**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-unsafe-return': 'warn',
+		},
+	},
+	{
 		files: ['./src/migrations/**/*.ts'],
 		rules: {
 			'unicorn/filename-case': 'off',

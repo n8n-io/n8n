@@ -19,6 +19,10 @@ export default defineConfig(
 			'@typescript-eslint/require-await': 'warn',
 			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-empty-object-type': 'warn',
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/unbound-method': 'warn',
+			'@typescript-eslint/restrict-template-expressions': 'warn',
+			'@typescript-eslint/no-unsafe-call': 'warn',
 		},
 	},
 	{
