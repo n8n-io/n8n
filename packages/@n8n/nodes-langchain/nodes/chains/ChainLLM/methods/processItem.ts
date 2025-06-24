@@ -20,8 +20,8 @@ async function getChatModel(ctx: IExecuteFunctions, index: number = 0): Promise<
 			);
 		}
 		// We get the models in reversed order from the workflow so we need to reverse them again to match the right index
-		connectedModels.reverse();
-		model = connectedModels[index] as BaseLanguageModel;
+		const reversedModels = [...connectedModels].reverse();
+		model = reversedModels[index] as BaseLanguageModel;
 	} else {
 		model = connectedModels as BaseLanguageModel;
 	}

@@ -279,8 +279,8 @@ export async function getChatModel(
 			);
 		}
 		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
-		connectedModels.reverse();
-		model = connectedModels[index] as BaseChatModel;
+		const reversedModels = [...connectedModels].reverse();
+		model = reversedModels[index] as BaseChatModel;
 	} else {
 		model = connectedModels as BaseChatModel;
 	}
