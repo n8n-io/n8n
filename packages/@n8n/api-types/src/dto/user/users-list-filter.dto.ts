@@ -11,6 +11,8 @@ const USERS_LIST_SORT_OPTIONS = [
 	'lastName:desc',
 	'role:asc', // ascending order by role is Owner, Admin, Member
 	'role:desc',
+	'mfaEnabled:asc',
+	'mfaEnabled:desc',
 	// 'lastActive:asc',
 	// 'lastActive:desc',
 ] as const;
@@ -32,6 +34,7 @@ const userFilterSchema = z.object({
 	firstName: z.string().optional(),
 	lastName: z.string().optional(),
 	email: z.string().optional(),
+	mfaEnabled: z.boolean().optional(),
 	fullText: z.string().optional(), // Full text search across firstName, lastName, and email
 });
 

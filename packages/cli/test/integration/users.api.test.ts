@@ -61,6 +61,7 @@ describe('GET /users', () => {
 			email: 'member1@n8n.io',
 			firstName: 'Member1FirstName',
 			lastName: 'Member1LastName',
+			mfaEnabled: true,
 		});
 		await createUser({
 			role: 'global:member',
@@ -73,6 +74,7 @@ describe('GET /users', () => {
 			email: 'admin@n8n.io',
 			firstName: 'AdminFirstName',
 			lastName: 'AdminLastName',
+			mfaEnabled: true,
 		});
 
 		ownerAgent = testServer.authAgentFor(owner);
@@ -204,6 +206,38 @@ describe('GET /users', () => {
 				const [_user] = _response.body.data.items;
 
 				expect(_user.isOwner).toBe(false);
+			});
+
+			test('should filter users by mfaEnabled field', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "mfaEnabled": true }')
+					.expect(200);
+
+				expect(response.body.data).toEqual({
+					count: 2,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(2);
+
+				const [user] = response.body.data.items;
+
+				expect(user.mfaEnabled).toBe(true);
+
+				const _response = await ownerAgent
+					.get('/users')
+					.query('filter={ "mfaEnabled": false }')
+					.expect(200);
+
+				expect(_response.body.data).toEqual({
+					count: 2,
+					items: expect.arrayContaining([]),
+				});
+				expect(_response.body.data.items).toHaveLength(2);
+
+				const [_user] = _response.body.data.items;
+
+				expect(_user.mfaEnabled).toBe(false);
 			});
 
 			test('should filter users by field: fullText', async () => {
@@ -572,6 +606,32 @@ describe('GET /users', () => {
 				expect(response.body.data.items[1].lastName).toBe('Member2LastName');
 				expect(response.body.data.items[2].lastName).toBe('Member1LastName');
 				expect(response.body.data.items[3].lastName).toBe('AdminLastName');
+			});
+
+			test('should sort by mfaEnabled:asc', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('sortBy[]=mfaEnabled:asc')
+					.expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].mfaEnabled).toBe(false);
+				expect(response.body.data.items[1].mfaEnabled).toBe(false);
+				expect(response.body.data.items[2].mfaEnabled).toBe(true);
+				expect(response.body.data.items[3].mfaEnabled).toBe(true);
+			});
+
+			test('should sort by mfaEnabled:desc', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('sortBy[]=mfaEnabled:desc')
+					.expect(200);
+
+				expect(response.body.data.items).toHaveLength(4);
+				expect(response.body.data.items[0].mfaEnabled).toBe(true);
+				expect(response.body.data.items[1].mfaEnabled).toBe(true);
+				expect(response.body.data.items[2].mfaEnabled).toBe(false);
+				expect(response.body.data.items[3].mfaEnabled).toBe(false);
 			});
 
 			test('should sort by firstName and lastName combined', async () => {
