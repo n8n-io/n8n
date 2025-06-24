@@ -30,11 +30,15 @@ withDefaults(defineProps<IconProps>(), {
 		:compact="true"
 		:class="{ [$style[size]]: true, [$style.spin]: spin }"
 	>
-		<Component :is="fontAwesomeIcons[icon]" v-if="fontAwesomeIcons[icon]" :spin="spin" />
+		<Component
+			:is="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
+			v-if="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
+			:spin="spin"
+		/>
 		<!-- height and width as to match Lucide icons  -->
 		<Component
-			:is="customIcons[icon]"
-			v-else-if="customIcons[icon]"
+			:is="customIcons[icon as keyof typeof customIcons]"
+			v-else-if="customIcons[icon as keyof typeof customIcons]"
 			aria-hidden="true"
 			focusable="false"
 			role="img"
