@@ -27,7 +27,7 @@ const openNewWindow = computed(() => !useRouterLink.value);
 </script>
 
 <template>
-	<RouterLink v-if="useRouterLink && to" :to="to" v-bind="$attrs">
+	<RouterLink v-if="useRouterLink && to" :to="to" role="link" v-bind="$attrs">
 		<slot></slot>
 	</RouterLink>
 	<a
