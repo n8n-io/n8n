@@ -144,10 +144,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers([user]);
 		currentUserId.value = user.id;
 
-		if (!currentUser.value) {
-			throw new Error('Current user not found');
-		}
-
 		loginHooks.value.forEach(async (hook) => {
 			await hook(user);
 		});
