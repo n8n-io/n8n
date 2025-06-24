@@ -101,3 +101,5 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
+
+export { Time } from './time';
