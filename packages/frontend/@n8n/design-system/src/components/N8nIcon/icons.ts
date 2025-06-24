@@ -1578,7 +1578,7 @@ import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZapOff from '~icons/lucide/zap-off';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
-import SVGSpinner from './SVGSpinner.vue';
+import { customIcons } from './custom/index.ts';
 
 export const icons = {
 	'caret-up': IconLucideChevronUp,
@@ -1598,6 +1598,7 @@ export const icons = {
 	'minus-circle': IconLucideCircleMinus,
 	adjust: IconLucideContrast,
 	refresh: IconLucideRefreshCw,
+	vault: IconLucideVault,
 
 	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
@@ -1727,7 +1728,6 @@ export const icons = {
 	'sign-in-alt': IconLucideLogIn,
 	'sign-out-alt': IconLucideLogOut,
 	'sliders-h': IconLucideSlidersHorizontal,
-	spinner: SVGSpinner,
 	'sticky-note': IconLucideStickyNote,
 	stop: IconLucideSquare,
 	stream: IconLucideAlignRight,
@@ -1744,7 +1744,6 @@ export const icons = {
 	'thumbs-up': IconLucideThumbsUp,
 	times: IconLucideX,
 	'times-circle': IconLucideCircleX,
-	toolbox: IconLucideX, // todo
 	tools: IconLucideWrench,
 	trash: IconLucideTrash2,
 	undo: IconLucideUndo2,

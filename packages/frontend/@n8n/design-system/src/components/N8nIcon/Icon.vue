@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
-import { customIcons } from './custom-icons';
-import CustomSVG from './CustomSVG.vue';
+import { customIcons } from './custom/index.ts';
 import type { IconName } from './icons';
 import { icons } from './icons';
 import N8nText from '../N8nText';
@@ -33,7 +32,16 @@ withDefaults(defineProps<IconProps>(), {
 		:class="{ [$style[size]]: true, [$style.spin]: spin }"
 	>
 		<Component :is="icons[icon]" v-if="icons[icon]" :spin="spin" />
-		<CustomSVG v-else-if="icon in customIcons" :icon-name="icon" />
+		<!-- height and width se to match Lucide icons  -->
+		<Component
+			:is="customIcons[icon]"
+			v-else-if="customIcons[icon]"
+			aria-hidden="true"
+			focusable="false"
+			role="img"
+			width="1.2em"
+			height="1.2em"
+		/>
 		<span v-else>[{{ icon }}]</span>
 	</N8nText>
 </template>
