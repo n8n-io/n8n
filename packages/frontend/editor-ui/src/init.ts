@@ -22,7 +22,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope } from '@n8n/permissions';
 
 export const state = {
 	initialized: false,

@@ -36,7 +36,7 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 
-type LoginHook = (user: IUser) => void | Promise<void>;
+type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
 type LogoutHook = () => void | Promise<void>;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
@@ -149,7 +149,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 
 		loginHooks.value.forEach(async (hook) => {
-			await hook(currentUser.value);
+			await hook(user);
 		});
 	};
 
