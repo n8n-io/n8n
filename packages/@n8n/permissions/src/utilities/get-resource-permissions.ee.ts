@@ -1,5 +1,5 @@
-import type { Scope } from '@n8n/permissions';
-import { RESOURCES } from '@n8n/permissions';
+import { RESOURCES } from '../constants.ee';
+import type { Scope } from '../types.ee';
 
 type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
 	? [Prefix, Suffix]

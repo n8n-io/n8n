@@ -1,16 +1,15 @@
 import { inTest } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
-import type { Migration } from '@n8n/db';
-import { wrapMigration } from '@n8n/db';
+import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
-import { Time } from '@/constants';
-
 import { DbConnectionOptions } from './db-connection-options';
+import { wrapMigration } from '../migrations/migration-helpers';
+import type { Migration } from '../migrations/migration-types';
 
 type ConnectionState = {
 	connected: boolean;
