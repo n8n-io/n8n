@@ -137,7 +137,11 @@ if (await fs.pathExists(packageJsonPath)) {
 		await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf8');
 
 		echo(chalk.green('✅ Kept backend patches: ' + PATCHES_TO_KEEP.join(', ')));
-		echo(chalk.gray('   Removed FE/dev patches: element-plus, vue-tsc, @types/*, eslint-plugin'));
+		echo(
+			chalk.gray(
+				`Removed FE/dev patches that are not in the list of backend patches to keep: ${PATCHES_TO_KEEP.join(', ')}`,
+			),
+		);
 	} catch (error) {
 		echo(chalk.red(`ERROR: Failed to cleanup patches in package.json: ${error.message}`));
 		process.exit(1);
