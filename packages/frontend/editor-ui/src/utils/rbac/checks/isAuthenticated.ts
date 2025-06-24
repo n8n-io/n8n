@@ -22,7 +22,7 @@ export const shouldEnableMfa: RBACPermissionCheck<AuthenticatedPermissionOptions
 
 	// Are we enforcing MFA?
 	const settingsStore = useSettingsStore();
-	const isMfaEnforced = settingsStore.settings.mfa.enforced;
+	const isMfaEnforced = settingsStore.isMFAEnforced;
 
 	return !hasUserEnabledMfa && isMfaEnforced;
 };

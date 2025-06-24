@@ -106,7 +106,7 @@ const onSetupClick = async () => {
 			type: 'success',
 			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
 		});
-		if (settingsStore.settings.mfa.enforced) {
+		if (settingsStore.isMFAEnforced) {
 			await userStore.logout();
 			setTimeout(() => {
 				window.location.reload();

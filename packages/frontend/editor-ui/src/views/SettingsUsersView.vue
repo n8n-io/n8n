@@ -313,7 +313,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			<div :class="$style.settingsContainerAction">
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
 					<el-switch
-						:model-value="settingsStore.settings.mfa.enforced"
+						:model-value="settingsStore.isMFAEnforced"
 						size="large"
 						data-test-id="enable-force-mfa"
 						@update:model-value="onUpdateMfaEnforced"
@@ -321,7 +321,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					<template #fallback>
 						<N8nTooltip>
 							<el-switch
-								:model-value="settingsStore.settings.mfa.enforced"
+								:model-value="settingsStore.isMFAEnforced"
 								size="large"
 								:disabled="true"
 								@update:model-value="onUpdateMfaEnforced"
@@ -340,17 +340,6 @@ async function onUpdateMfaEnforced(value: boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
-		<n8n-notice v-if="settingsStore.isMFAEnforcementLicensed" theme="info">
-			<el-switch
-				:model-value="settingsStore.settings.mfa.enforced"
-				size="large"
-				data-test-id="enable-force-mfa"
-				@update:model-value="onUpdateMfaEnforced"
-			/>
-			<n8n-text class="ml-xs">{{
-				i18n.baseText('settings.personal.mfa.enforce.message')
-			}}</n8n-text>
-		</n8n-notice>
 
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->

@@ -87,7 +87,7 @@ const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
 });
 const mfaEnforced = computed((): boolean => {
-	return settingsStore.settings.mfa.enforced;
+	return settingsStore.isMFAEnforced;
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
