@@ -127,31 +127,6 @@ watch(
 					@click="onUpdateClick"
 				/>
 			</div>
-
-			<N8nCallout v-if="versionsStore.hasVersionUpdates" theme="warning">
-				<slot name="callout-message">
-					<N8nText size="small">
-						{{
-							i18n.baseText('whatsNew.updateAvailable', {
-								interpolate: {
-									currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
-									latestVersion: versionsStore.latestVersion?.name,
-									count: nextVersions.length,
-								},
-							})
-						}}
-						<N8nLink
-							:size="'small'"
-							:underline="true"
-							theme="primary"
-							to="https://docs.n8n.io/release-notes/"
-							target="_blank"
-						>
-							{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
-						</N8nLink>
-					</N8nText>
-				</slot>
-			</N8nCallout>
 		</template>
 		<template #content>
 			<div :class="$style.container">
@@ -162,6 +137,36 @@ watch(
 					class="full-height scroller"
 					style="max-height: 80vh"
 				>
+					<template #before>
+						<N8nCallout
+							v-if="versionsStore.hasVersionUpdates"
+							:class="$style.callout"
+							theme="warning"
+						>
+							<slot name="callout-message">
+								<N8nText size="small">
+									{{
+										i18n.baseText('whatsNew.updateAvailable', {
+											interpolate: {
+												currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
+												latestVersion: versionsStore.latestVersion?.name,
+												count: nextVersions.length,
+											},
+										})
+									}}
+									<N8nLink
+										:size="'small'"
+										:underline="true"
+										theme="primary"
+										to="https://docs.n8n.io/release-notes/"
+										target="_blank"
+									>
+										{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
+									</N8nLink>
+								</N8nText>
+							</slot>
+						</N8nCallout>
+					</template>
 					<template #default="{ item, index, active }">
 						<DynamicScrollerItem
 							:item="item"
@@ -214,7 +219,10 @@ watch(
 	justify-content: space-between;
 	align-items: center;
 	border-bottom: var(--border-base);
-	margin-bottom: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
+:global(.el-dialog__header) {
 	padding-bottom: var(--spacing-s);
 }
 
