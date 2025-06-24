@@ -9,7 +9,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
