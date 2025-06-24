@@ -93,7 +93,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const SURVEY_VERSION = 'v4';
 

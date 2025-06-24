@@ -6,7 +6,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
