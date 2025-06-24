@@ -1043,6 +1043,23 @@ async function optionSelected(command: string) {
 		telemetry.track('User switched parameter mode', telemetryPayload);
 		void externalHooks.run('parameterInput.modeSwitch', telemetryPayload);
 	}
+
+	if (node.value && command === 'focus') {
+		ndvStore.setFocusedNodeParameter({
+			nodeName: node.value.name,
+			parameterPath: props.path,
+			parameter: props.parameter,
+			value: modelValueString.value,
+		});
+
+		if (ndvStore.activeNode) {
+			ndvStore.activeNodeName = null;
+			// TODO: check what this does - close method on NodeDetailsView
+			ndvStore.resetNDVPushRef();
+		}
+
+		ndvStore.focusPanelActive = true;
+	}
 }
 
 onMounted(() => {
