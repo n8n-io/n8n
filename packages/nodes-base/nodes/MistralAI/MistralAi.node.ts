@@ -204,7 +204,7 @@ export class MistralAi implements INodeType {
 								}
 
 								for (const result of batchResult) {
-									const index = parseInt(result.custom_id);
+									const index = parseInt(result.custom_id, 10);
 									if (result.error) {
 										const executionData = this.helpers.constructExecutionMetaData(
 											this.helpers.returnJsonArray({ error: result.error }),

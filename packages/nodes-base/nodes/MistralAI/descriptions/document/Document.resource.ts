@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as extractedText from './extractText.operation';
+import * as extractText from './extractText.operation';
 
 export const description: INodeProperties[] = [
 	{
@@ -24,5 +24,5 @@ export const description: INodeProperties[] = [
 		default: 'extractText',
 	},
 
-	...extractedText.description,
+	...extractText.description,
 ];
