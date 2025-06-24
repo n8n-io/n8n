@@ -38,6 +38,7 @@ const BASE_ENV: Record<string, string> = {
 	E2E_TESTS: 'true',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
+	NODE_ENV: 'development',
 };
 
 const MULTI_MAIN_LICENSE = {
