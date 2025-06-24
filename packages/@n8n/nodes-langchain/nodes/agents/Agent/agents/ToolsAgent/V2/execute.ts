@@ -111,7 +111,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);
-
+		// This is only used to check if the output parser is connected
+		// so we can parse the output if needed. Actual output parsing is done in the loop above
+		const outputParser = await getOptionalOutputParser(this, 0);
 		batchResults.forEach((result, index) => {
 			const itemIndex = i + index;
 			if (result.status === 'rejected') {
