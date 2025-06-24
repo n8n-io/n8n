@@ -5,7 +5,7 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-400, -480],
+			"position": [-400, -380],
 			"id": "48cf408c-de44-4ed2-8a43-d16a4fa5b95b",
 			"name": "When clicking ‘Execute workflow’"
 		},
@@ -64,7 +64,7 @@
 					"assignments": [
 						{
 							"id": "5c5233de-3b47-4860-8598-f50059061fee",
-							"name": "content",
+							"name": "data",
 							"value": "abcdefgh",
 							"type": "string"
 						}
@@ -81,7 +81,7 @@
 		{
 			"parameters": {
 				"operation": "toBinary",
-				"sourceProperty": "content",
+				"sourceProperty": "data",
 				"options": {
 					"fileName": "sample.pdf",
 					"mimeType": "application/pdf"
@@ -112,7 +112,7 @@
 		{
 			"parameters": {
 				"operation": "toBinary",
-				"sourceProperty": "content",
+				"sourceProperty": "data",
 				"options": {
 					"fileName": "sample.jpg",
 					"mimeType": "image/jpeg"
@@ -123,6 +123,70 @@
 			"position": [40, -180],
 			"id": "e1398740-1b36-493b-8950-caf153d6fdd9",
 			"name": "Create JPG"
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [40, 20],
+			"id": "c6810b4b-804c-44e6-89e0-a73d585750ee",
+			"name": "Split Out"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0fc6f054-a7f0-466f-b54c-612379b9c049",
+							"name": "data",
+							"value": "[\"abcdefgh\", \"aaaaaaaa\", \"aaaabbbb\"]",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-180, 20],
+			"id": "887989fe-2829-43d5-86e6-333f399035b3",
+			"name": "Set mock data for multiple files"
+		},
+		{
+			"parameters": {
+				"operation": "toBinary",
+				"sourceProperty": "data",
+				"options": {
+					"fileName": "=sample_{{ $itemIndex + 1 }}.pdf",
+					"mimeType": "application/pdf"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [260, 20],
+			"id": "27ef8f5b-ee55-45f9-b66a-741cc6ccde21",
+			"name": "Create PDFs"
+		},
+		{
+			"parameters": {
+				"batch": true,
+				"batchSize": 2,
+				"deleteFiles": false
+			},
+			"type": "n8n-nodes-base.mistralAi",
+			"typeVersion": 1,
+			"position": [480, 20],
+			"id": "ad4b06b9-65e7-4b9c-b06a-bcbf0df5999a",
+			"name": "Batching",
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "l4fJwkB8bVdo6Evk",
+					"name": "Mistral Cloud account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -229,6 +293,80 @@
 					"pageCount": 1
 				}
 			}
+		],
+		"Batching": [
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 1",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 1",
+					"pageCount": 1
+				}
+			},
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 2",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 2",
+					"pageCount": 1
+				}
+			},
+			{
+				"json": {
+					"pages": [
+						{
+							"index": 0,
+							"markdown": "# Dummy PDF file 3",
+							"images": [],
+							"dimensions": {
+								"dpi": 200,
+								"height": 2339,
+								"width": 1653
+							}
+						}
+					],
+					"model": "mistral-ocr-2505-completion",
+					"document_annotation": null,
+					"usage_info": {
+						"pages_processed": 1,
+						"doc_size_bytes": 13264
+					},
+					"extractedText": "# Dummy PDF file 3",
+					"pageCount": 1
+				}
+			}
 		]
 	},
 	"connections": {
@@ -247,6 +385,11 @@
 					},
 					{
 						"node": "Set mock data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set mock data for multiple files",
 						"type": "main",
 						"index": 0
 					}
@@ -290,13 +433,46 @@
 					}
 				]
 			]
+		},
+		"Set mock data for multiple files": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Create PDFs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create PDFs": {
+			"main": [
+				[
+					{
+						"node": "Batching",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "d4971f7c-ef23-432b-819b-a38fb1a76d7d",
+	"versionId": "198eb73d-bcbe-47fc-bffe-9a2e30bdc409",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
