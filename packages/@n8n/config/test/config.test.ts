@@ -48,6 +48,9 @@ describe('GlobalConfig', () => {
 			enabled: true,
 		},
 		proxy_hops: 0,
+		ssl_key: '',
+		ssl_cert: '',
+		editorBaseUrl: '',
 		database: {
 			logging: {
 				enabled: false,
