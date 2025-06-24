@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { type UsersList } from '@n8n/api-types';
+import { type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { N8nUserInfo, N8nDataTableServer, type UserAction } from '@n8n/design-system';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
-import { N8nUserInfo, N8nDataTableServer } from '@n8n/design-system';
+import type { IUser } from '@/Interface';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
+import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
 type Item = UsersList['items'][number];
@@ -14,6 +16,7 @@ const i18n = useI18n();
 
 const props = defineProps<{
 	data: UsersList;
+	actions: Array<UserAction<IUser>>;
 	loading?: boolean;
 }>();
 
@@ -25,7 +28,7 @@ const emit = defineEmits<{
 			sortBy: Array<{ id: string; desc: boolean }>;
 		},
 	];
-	'update:role': [payload: { role: string; userId: string }];
+	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
 const rows = computed(() => props.data.items);
@@ -64,6 +67,15 @@ const headers = ref<Array<TableHeader<Item>>>([
 			return;
 		},
 	},
+	{
+		title: '',
+		key: 'actions',
+		disableSort: true,
+		// TODO: Fix TableHeader type so it allows `disableSort` without `value` (which is not used here)
+		value() {
+			return;
+		},
+	},
 ]);
 
 const onFilterChange = ($event: {
@@ -93,6 +105,9 @@ const onFilterChange = ($event: {
 			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />
+			</template>
+			<template #[`item.actions`]="{ item }">
+				<SettingsUsersActionsCell :data="item" :actions="props.actions" />
 			</template>
 		</N8nDataTableServer>
 	</div>

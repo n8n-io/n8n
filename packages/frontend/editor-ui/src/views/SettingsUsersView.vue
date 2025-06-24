@@ -10,7 +10,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
-import type { UpdateGlobalRolePayload } from '@/api/users';
 import { ref, computed, onMounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -230,10 +229,7 @@ function goToUpgradeAdvancedPermissions() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
 
-const onUpdateRole = async (payload: {
-	userId: string;
-	role: UpdateGlobalRolePayload['newRoleName'];
-}) => {
+const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 	const user = usersStore.usersById[payload.userId];
 	if (!user) {
 		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
@@ -243,7 +239,7 @@ const onUpdateRole = async (payload: {
 	await onRoleChange(user, payload.role);
 };
 
-async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
+async function onRoleChange(user: IUser, newRoleName: Role) {
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
 
@@ -372,6 +368,7 @@ const onSearch = (value: string) => {
 			<SettingsUsersTable
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
+				:actions="usersListActions"
 				@update:options="updateUsersTableData"
 				@update:role="onUpdateRole"
 			/>

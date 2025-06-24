@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { ROLE, type UsersList } from '@n8n/api-types';
+import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design-system';
 
@@ -8,7 +8,7 @@ const i18n = useI18n();
 
 const props = defineProps<{ data: UsersList['items'][number] }>();
 const emit = defineEmits<{
-	'update:role': [payload: { role: string; userId: string }];
+	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
 const selectedRole = ref<string>(props.data.role ?? ROLE.Default);
@@ -45,7 +45,7 @@ const roleLabel = computed(() => roles.value[selectedRole.value].label);
 
 const onActionSelect = (role: string) => {
 	emit('update:role', {
-		role,
+		role: role as Role,
 		userId: props.data.id,
 	});
 };
