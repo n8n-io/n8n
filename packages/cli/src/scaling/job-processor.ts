@@ -8,6 +8,7 @@ import type {
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -25,6 +26,7 @@ import type {
 	JobResult,
 	RespondToWebhookMessage,
 	RunningJob,
+	SendChunkMessage,
 } from './scaling.types';
 
 /**
@@ -143,6 +145,17 @@ export class JobProcessor {
 				kind: 'respond-to-webhook',
 				executionId,
 				response: this.encodeWebhookResponse(response),
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(msg);
+		});
+
+		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
+			const msg: SendChunkMessage = {
+				kind: 'send-chunk',
+				executionId,
+				chunkText: chunk,
 				workerId: this.instanceSettings.hostId,
 			};
 
