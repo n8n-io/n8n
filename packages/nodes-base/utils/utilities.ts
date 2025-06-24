@@ -482,6 +482,8 @@ export const removeTrailingSlash = (url: string) => {
 };
 
 export function isHTML(input: string): boolean {
+	if (!input) return false;
+	if (!/<([a-z][a-z0-9]*)[^>]*>/.test(input)) return false;
 	const $ = cheerio.load(input);
 	return $.root()
 		.children()

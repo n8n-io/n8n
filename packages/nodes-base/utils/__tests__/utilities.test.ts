@@ -10,6 +10,9 @@ import {
 	shuffleArray,
 	sortItemKeysByPriorityList,
 	wrapData,
+	isHTML,
+	sanitizeHtmlBasedOnEnv,
+	checkDisallowedHeaders,
 } from '@utils/utilities';
 
 //most test cases for fuzzyCompare are done in Compare Datasets node tests
@@ -321,5 +324,120 @@ describe('removeTrailingSlash', () => {
 
 	it('does not change a URL without trailing slash', () => {
 		expect(removeTrailingSlash('https://example.com')).toBe('https://example.com');
+	});
+});
+
+describe('isHTML', () => {
+	it('should return true for HTML strings', () => {
+		expect(
+			isHTML(`
+				<!DOCTYPE html>
+				<html>
+					<head><title>Test</title></head>
+					<body><h1>Test</h1></body>
+				</html>
+			`),
+		).toBe(true);
+		expect(isHTML('<p>Test</p>')).toBe(true);
+		expect(isHTML('<div>Test</div>')).toBe(true);
+		expect(isHTML('<span>Test</span>')).toBe(true);
+	});
+
+	it('should return false for non-HTML strings', () => {
+		expect(isHTML('Test')).toBe(false);
+		expect(isHTML('')).toBe(false);
+		expect(isHTML('123')).toBe(false);
+	});
+});
+
+describe('checkDisallowedHeaders', () => {
+	const ENV_VARS = process.env;
+
+	beforeEach(() => {
+		jest.resetModules();
+		process.env = { ...ENV_VARS };
+	});
+
+	afterAll(() => {
+		process.env = ENV_VARS;
+	});
+
+	it('should throw an error if a disallowed header is present', () => {
+		process.env.DISALLOWED_HEADERS = 'content-type,x-test-header';
+		const headers = {
+			'Content-Type': 'application/json',
+		};
+		expect(() => checkDisallowedHeaders(headers)).toThrowError(
+			"Header 'content-type' is not allowed!",
+		);
+	});
+
+	it('should not throw an error if no disallowed header is present', () => {
+		process.env.DISALLOWED_HEADERS = 'content-type,x-test-header';
+		const headers = {
+			Accept: 'application/json',
+		};
+		expect(() => checkDisallowedHeaders(headers)).not.toThrowError();
+	});
+
+	it('should not throw an error if DISALLOWED_HEADERS is not set', () => {
+		const headers = {
+			'Content-Type': 'application/json',
+		};
+		expect(() => checkDisallowedHeaders(headers)).not.toThrowError();
+	});
+
+	it('should handle headers with underscores', () => {
+		process.env.DISALLOWED_HEADERS = 'content-type,x-test-header';
+		const headers = {
+			Content_Type: 'application/json',
+		};
+		expect(() => checkDisallowedHeaders(headers)).toThrowError(
+			"Header 'content_type' is not allowed!",
+		);
+	});
+});
+
+describe('sanitizeHtmlBasedOnEnv', () => {
+	const ENV_VARS = process.env;
+
+	beforeEach(() => {
+		jest.resetModules();
+		process.env = { ...ENV_VARS };
+	});
+
+	afterAll(() => {
+		process.env = ENV_VARS;
+	});
+
+	it('should remove script tags when DISABLE_SCRIPT_TAG is true', () => {
+		process.env.DISABLE_SCRIPT_TAG = 'true';
+		const html = '<script>alert("test");</script><p>Test</p>';
+		const sanitizedHtml = sanitizeHtmlBasedOnEnv(html);
+		expect(sanitizedHtml).toBe('<html><head></head><body><p>Test</p></body></html>');
+	});
+
+	it('should remove specified tags when DISABLE_TAGS is set', () => {
+		process.env.DISABLE_TAGS = 'style,div';
+		const html = '<style>body { color: red; }</style><div>Test</div><p>Test</p>';
+		const sanitizedHtml = sanitizeHtmlBasedOnEnv(html);
+		expect(sanitizedHtml).toBe('<html><head></head><body><p>Test</p></body></html>');
+	});
+
+	it('should remove specified attributes when DISABLE_ATTRIBUTES is set', () => {
+		process.env.DISABLE_ATTRIBUTES = 'class,id';
+		const html = '<p id="test" class="test" style="color: red;">Test</p>';
+		const sanitizedHtml = sanitizeHtmlBasedOnEnv(html);
+		expect(sanitizedHtml).toBe(
+			'<html><head></head><body><p style="color: red;">Test</p></body></html>',
+		);
+	});
+
+	it('should not modify HTML when no environment variables are set', () => {
+		const html = '<script>alert("test");</script><p>Test</p>';
+		const sanitizedHtml = sanitizeHtmlBasedOnEnv(html);
+		expect(sanitizedHtml).toBe(
+			'<html><head><script>alert("test");</script></head><body><p>Test</p></body></html>',
+		);
 	});
 });
