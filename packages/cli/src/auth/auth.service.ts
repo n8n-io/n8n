@@ -14,9 +14,9 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
-import { MfaService } from '@/mfa/mfa.service';
 
 interface AuthJwtPayload {
 	/** User Id */

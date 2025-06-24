@@ -205,6 +205,17 @@ describe('AuthService', () => {
 			});
 		});
 
+		it('should issue a cookie with the correct options, when 2FA was used', () => {
+			authService.issueCookie(res, user, true, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
 		it('should allow changing cookie options', () => {
 			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
 
@@ -223,7 +234,7 @@ describe('AuthService', () => {
 		describe('when not setting userManagement.jwtSessionDuration', () => {
 			it('should default to expire in 7 days', () => {
 				const defaultInSeconds = 7 * Time.days.toSeconds;
-				const token = authService.issueJWT(user, browserId);
+				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
 				const decodedToken = jwtService.verify(token);
@@ -241,7 +252,7 @@ describe('AuthService', () => {
 
 			it('should apply it to tokens', () => {
 				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
-				const token = authService.issueJWT(user, browserId);
+				const token = authService.issueJWT(user, false, browserId);
 
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
