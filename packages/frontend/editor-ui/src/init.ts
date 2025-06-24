@@ -18,6 +18,11 @@ import { EnterpriseEditionFeature } from '@/constants';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import type { BannerName } from '@n8n/api-types';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRBACStore } from '@/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
 
 export const state = {
 	initialized: false,
@@ -38,6 +43,12 @@ export async function initializeCore() {
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
 	const uiStore = useUIStore();
+
+	registerAuthenticationHooks();
+
+	/**
+	 * Initialize stores
+	 */
 
 	await settingsStore.initialize();
 
@@ -151,4 +162,31 @@ export async function initializeAuthenticatedFeatures(
 	]);
 
 	authenticatedFeaturesInitialized = true;
+}
+
+function registerAuthenticationHooks() {
+	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
+	const postHogStore = usePostHog();
+	const uiStore = useUIStore();
+	const npsSurveyStore = useNpsSurveyStore();
+	const telemetry = useTelemetry();
+	const RBACStore = useRBACStore();
+
+	usersStore.registerLoginHook((user) => {
+		RBACStore.setGlobalScopes(user.globalScopes ?? []);
+		telemetry.identify(rootStore.instanceId, user.id);
+		postHogStore.init(user.featureFlags);
+		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+	});
+
+	usersStore.registerLogoutHook(() => {
+		RBACStore.setGlobalScopes([]);
+		telemetry.reset();
+		cloudPlanStore.reset();
+		postHogStore.reset();
+		uiStore.clearBannerStack();
+		npsSurveyStore.resetNpsSurveyOnLogOut();
+	});
 }
