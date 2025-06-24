@@ -6,7 +6,7 @@ import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import N8nText from '../N8nText';
 
-interface UsersInfoProps {
+export interface UsersInfoProps {
 	firstName?: string;
 	lastName?: string;
 	email?: string;

@@ -15,7 +15,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import SettingsUsersTable from '@/components/User/SettingsUsersTable.vue';
+import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
