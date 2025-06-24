@@ -20,7 +20,7 @@
   "dependencies": {
     "@eslint/js": "^9.29.0",
     "@stylistic/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.34.1",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-lodash": "^8.0.0",
@@ -33,12 +33,13 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/eslint": "^9.6.1",
-    "@typescript-eslint/rule-tester": "^8.31.0",
-    "@typescript-eslint/utils": "^8.31.0",
+    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript-eslint/utils": "^8.35.0",
+    "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.31.0",
+    "typescript-eslint": "^8.35.0",
     "vitest": "catalog:"
   },
   "peerDependencies": {

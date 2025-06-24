@@ -9,6 +9,7 @@ import lodashPlugin from 'eslint-plugin-lodash';
 import { localRulesPlugin } from '../plugin.js';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
 // Slowest rules are disabled locally to improve performance in development
 // They are enabled in CI to ensure code quality
@@ -37,9 +38,7 @@ export const baseConfig = tseslint.config(
 			},
 		},
 		settings: {
-			'import-x/resolver': {
-				typescript: {}, // this loads <rootdir>/tsconfig.json to eslint
-			},
+			'import-x/resolver-next': [createTypeScriptImportResolver()],
 		},
 		rules: {
 			// ******************************************************************
