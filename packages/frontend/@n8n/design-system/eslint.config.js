@@ -5,6 +5,8 @@ export default defineConfig(
 	frontendConfig,
 	{
 		rules: {
+			'vue/no-undef-components': 'error',
+
 			// TODO: Remove these
 			'import-x/no-default-export': 'warn',
 			'no-empty': 'warn',

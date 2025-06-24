@@ -1,14 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import type { Migration } from '@n8n/db';
-import { wrapMigration } from '@n8n/db';
+import { wrapMigration, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
 import { Command, Flags } from '@oclif/core';
-
-import { DbConnectionOptions } from '@/databases/db-connection-options';
 
 // This function is extracted to make it easier to unit test it.
 // Mocking turned into a mess due to this command using typeorm and the db

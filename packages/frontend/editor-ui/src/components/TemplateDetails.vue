@@ -9,13 +9,15 @@ import type {
 	ITemplatesNode,
 	ITemplatesWorkflow,
 } from '@n8n/rest-api-client/api/templates';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
 	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
 	blockTitle: string;
 	loading: boolean;
@@ -25,6 +27,15 @@ const router = useRouter();
 const i18n = useI18n();
 
 const templatesStore = useTemplatesStore();
+
+const categoriesAsTags = computed<ITag[]>(() =>
+	props.template && 'categories' in props.template
+		? props.template.categories.map((category) => ({
+				id: `${category.id}`,
+				name: category.name,
+			}))
+		: [],
+);
 
 const redirectToCategory = (id: string) => {
 	templatesStore.resetSessionId();
@@ -62,10 +73,10 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
-			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
+			v-if="!loading && isFullTemplatesCollection(template) && categoriesAsTags.length > 0"
 			:title="i18n.baseText('template.details.categories')"
 		>
-			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
+			<n8n-tags :tags="categoriesAsTags" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
