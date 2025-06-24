@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { WorkflowResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -41,6 +40,7 @@ import { useRoute } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
+import { type WorkflowResource } from '@/Interface';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };

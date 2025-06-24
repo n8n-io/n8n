@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import type { IconColor } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
 		icon?: string;
-		iconColor?: string;
+		iconColor?: IconColor;
 		initialExpanded?: boolean;
 	}>(),
 	{
 		icon: 'tasks',
-		iconColor: 'black',
+		iconColor: 'text-dark',
 		initialExpanded: true,
 	},
 );

@@ -14,11 +14,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
-import ResourcesListLayout, {
-	type BaseFilters,
-	type Resource,
-	type VariableResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { BaseFilters, Resource, VariableResource } from '@/Interface';
 
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
@@ -35,6 +32,7 @@ import {
 import { uid } from '@n8n/design-system/utils';
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
+import type { ComponentExposed } from 'vue-component-type-helpers';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -47,7 +45,7 @@ const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 const router = useRouter();
 
-const layoutRef = useTemplateRef<InstanceType<typeof ResourcesListLayout>>('layoutRef');
+const layoutRef = useTemplateRef<ComponentExposed<typeof ResourcesListLayout>>('layoutRef');
 
 const { showError } = useToast();
 
