@@ -2,12 +2,12 @@ import type { ElTooltipProps } from 'element-plus';
 import type { AnchorHTMLAttributes, Component } from 'vue';
 import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 
-import type { TextColor } from './text';
+import type { IconColor } from './icon';
 
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: string | { type: 'icon' | 'emoji'; value: string; color?: TextColor };
+	icon?: string | { type: 'icon' | 'emoji'; value: string; color?: IconColor };
 	secondaryIcon?: {
 		name: string;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';

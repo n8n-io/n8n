@@ -190,16 +190,19 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
 		children: [
-			...versionsStore.whatsNewArticles.map((article) => ({
-				id: `whats-new-article-${article.id}`,
-				label: article.title,
-				size: 'small',
-				icon: {
-					type: 'emoji',
-					value: !versionsStore.isWhatsNewArticleRead(article.id) ? '•' : '',
-					color: 'primary',
-				},
-			})),
+			...versionsStore.whatsNewArticles.map(
+				(article) =>
+					({
+						id: `whats-new-article-${article.id}`,
+						label: article.title,
+						size: 'small',
+						icon: {
+							type: 'emoji',
+							value: '•',
+							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+						},
+					}) satisfies IMenuItem,
+			),
 			{
 				id: 'full-changelog',
 				icon: 'external-link-alt',

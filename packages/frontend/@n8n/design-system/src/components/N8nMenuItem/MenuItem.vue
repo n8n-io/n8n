@@ -6,10 +6,12 @@ import { useRoute } from 'vue-router';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
 import type { IMenuItem, IMenuElement } from '../../types';
 import { isCustomMenuItem } from '../../types';
+import type { IconColor } from '../../types/icon';
 import { getInitials } from '../../utils/labelUtil';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
 interface MenuItemProps {
@@ -68,6 +70,14 @@ const isItemActive = (item: IMenuItem): boolean => {
 
 // Get self component to avoid dependency cycle
 const N8nMenuItem = getCurrentInstance()?.type;
+
+const getIconColor = (item: IMenuItem): IconColor | undefined => {
+	if (typeof item.icon === 'string') {
+		return undefined;
+	}
+
+	return item.icon?.color;
+};
 </script>
 
 <template>
@@ -86,14 +96,13 @@ const N8nMenuItem = getCurrentInstance()?.type;
 		>
 			<template #title>
 				<template v-if="item.icon">
-					<div
-						:class="{
-							[$style.icon]: true,
-							[$style.primary]: typeof item.icon !== 'string' && item.icon.color === 'primary',
-						}"
-					>
+					<div :class="$style.icon">
 						<div :class="$style.notificationContainer">
-							<N8nIcon :icon="item.icon" :size="item.customIconSize || 'large'" />
+							<N8nIcon
+								:icon="item.icon"
+								:size="item.customIconSize || 'large'"
+								:color="getIconColor(item)"
+							/>
 							<div v-if="item.notification" :class="$style.notification">
 								<div></div>
 							</div>
@@ -143,19 +152,17 @@ const N8nMenuItem = getCurrentInstance()?.type;
 					@click="handleSelect?.(item)"
 				>
 					<template v-if="item.icon">
-						<div
-							:class="{
-								[$style.icon]: true,
-								[$style.primary]: typeof item.icon !== 'string' && item.icon.color === 'primary',
-							}"
-						>
+						<div :class="$style.icon">
 							<div :class="$style.notificationContainer">
 								<N8nIcon
 									v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
 									:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
 									:size="item.customIconSize || 'large'"
+									:color="getIconColor(item)"
 								/>
-								<span v-else-if="item.icon.type === 'emoji'">{{ item.icon.value }}</span>
+								<N8nText v-else-if="item.icon.type === 'emoji'" :color="getIconColor(item)">
+									{{ item.icon.value }}
+								</N8nText>
 								<div v-if="item.notification" :class="$style.notification">
 									<div></div>
 								</div>
@@ -311,13 +318,6 @@ const N8nMenuItem = getCurrentInstance()?.type;
 
 	svg {
 		margin-right: 0 !important;
-	}
-
-	&.primary {
-		color: var(--color-primary);
-		svg {
-			color: var(--color-primary);
-		}
 	}
 }
 
