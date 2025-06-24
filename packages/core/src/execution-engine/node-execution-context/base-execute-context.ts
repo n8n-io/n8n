@@ -230,9 +230,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		errorPath,
 		errorMessage,
 	}: {
-		errorPath?: string;
-		errorMessage?: string;
-	} = {}) {
+		errorPath: string;
+		errorMessage: string;
+	}) {
 		this.additionalData.logIncorrectNodeOutput({
 			executionId: this.additionalData.executionId ?? 'unsaved-execution',
 			workflowId: this.workflow.id ?? 'unsaved-workflow',

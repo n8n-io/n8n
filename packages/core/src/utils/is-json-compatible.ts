@@ -3,17 +3,19 @@
  * @param value
  * @returns boolean
  */
-export function isJsonCompatible(value: unknown): {
-	isValid: boolean;
-	errorPath?: string;
-	errorMessage?: string;
-} {
+export function isJsonCompatible(value: unknown):
+	| { isValid: true }
+	| {
+			isValid: false;
+			errorPath: string;
+			errorMessage: string;
+	  } {
 	const seen = new WeakSet();
 
 	const check = (
 		val: unknown,
 		path = 'value',
-	): { isValid: boolean; errorPath?: string; errorMessage?: string } => {
+	): { isValid: true } | { isValid: false; errorPath: string; errorMessage: string } => {
 		const type = typeof val;
 
 		if (

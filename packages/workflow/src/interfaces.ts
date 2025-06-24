@@ -2382,13 +2382,13 @@ export interface AiAgentRequest {
 }
 
 type NodeIncorrectOutputPayload = {
+	errorMessage: string;
+	errorPath: string;
 	executionId: string;
-	workflowId?: string;
-	workflowName?: string;
 	nodeName: string;
 	nodeType: string;
-	errorPath?: string;
-	errorMessage?: string;
+	workflowId: string;
+	workflowName: string;
 };
 
 export interface IWorkflowExecuteAdditionalData {

@@ -1195,9 +1195,9 @@ export class WorkflowExecute {
 			}
 
 			// If data is not json compatible then log it as incorrect output
-			const { isValid, errorPath, errorMessage } = isJsonCompatible(data);
-			if (!isValid) {
-				context.logIncorrectNodeOutput({ errorPath, errorMessage });
+			const result = isJsonCompatible(data);
+			if (!result.isValid) {
+				context.logIncorrectNodeOutput(result);
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(
