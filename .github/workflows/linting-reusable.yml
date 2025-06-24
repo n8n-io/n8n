@@ -32,8 +32,8 @@ jobs:
         uses: ./.github/actions/setup-and-build
         with:
           node-version: ${{ inputs.nodeVersion }}
-          enable-caching: true
-          skip-build: ${{ inputs.cacheKey != '' }}
+          enable-caching: false
+          skip-build: false
 
       - name: Lint Backend
         run: pnpm lint:backend
