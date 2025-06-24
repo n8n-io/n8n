@@ -11,11 +11,13 @@ export type PasswordResetData = {
 
 export type SendEmailResult = {
 	emailSent: boolean;
+	errors?: string[];
 };
 
 export type MailData = {
 	body: string | Buffer;
 	emailRecipients: string | string[];
+	bcc?: string | string[];
 	subject: string;
 	textOnly?: string;
 };

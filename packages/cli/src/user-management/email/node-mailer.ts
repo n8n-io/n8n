@@ -50,6 +50,7 @@ export class NodeMailer {
 			await this.transport.sendMail({
 				from: this.sender,
 				to: mailData.emailRecipients,
+				bcc: mailData.bcc,
 				subject: mailData.subject,
 				text: mailData.textOnly,
 				html: mailData.body,
