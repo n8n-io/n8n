@@ -17,6 +17,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
@@ -29,7 +30,6 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
-import { MfaService } from '@/mfa/mfa.service';
 
 @Service()
 export class FrontendService {
