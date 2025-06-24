@@ -60,12 +60,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Azure login
-        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
-        with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+      # - name: Azure login
+      #   uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
+      #   with:
+      #     client-id: ${{ env.ARM_CLIENT_ID }}
+      #     tenant-id: ${{ env.ARM_TENANT_ID }}
+      #     subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Destroy any existing environment
         run: pnpm destroy-cloud-env
@@ -90,13 +90,13 @@ jobs:
         working-directory: packages/@n8n/benchmark
 
         # We need to login again because the access token expires
-      - name: Azure login
-        if: always()
-        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
-        with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+      # - name: Azure login
+      #   if: always()
+      #   uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
+      #   with:
+      #     client-id: ${{ env.ARM_CLIENT_ID }}
+      #     tenant-id: ${{ env.ARM_TENANT_ID }}
+      #     subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Destroy the environment
         if: always()
