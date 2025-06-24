@@ -11,13 +11,33 @@ import type {
 
 import { WorkflowToolService } from './utils/WorkflowToolService';
 
-// Mock ISupplyDataFunctions interface
+// Mock the sleep function
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Helper to create a properly mocked cloned context
+function createMockClonedContext(
+	baseContext: ISupplyDataFunctions,
+	executeWorkflowMock?: jest.MockedFunction<any>,
+): ISupplyDataFunctions {
+	return {
+		...baseContext,
+		addOutputData: jest.fn(),
+		getNodeParameter: baseContext.getNodeParameter,
+		getWorkflowDataProxy: baseContext.getWorkflowDataProxy,
+		executeWorkflow: executeWorkflowMock || baseContext.executeWorkflow,
+		getNode: baseContext.getNode,
+	} as ISupplyDataFunctions;
+}
+
 function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
 	let runIndex = 0;
 	const getNextRunIndex = jest.fn(() => {
 		return runIndex++;
 	});
-	return {
+	const context = {
 		runIndex: 0,
 		getNodeParameter: jest.fn(),
 		getWorkflowDataProxy: jest.fn(),
@@ -34,7 +54,6 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		getTimezone: jest.fn(),
 		getWorkflow: jest.fn(),
 		getWorkflowStaticData: jest.fn(),
-		cloneWith: jest.fn(),
 		logger: {
 			debug: jest.fn(),
 			error: jest.fn(),
@@ -43,6 +62,10 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		},
 		...overrides,
 	} as ISupplyDataFunctions;
+	context.cloneWith = jest
+		.fn()
+		.mockImplementation((cloneOverrides) => createMockClonedContext(context));
+	return context;
 }
 
 describe('WorkflowTool::WorkflowToolService', () => {
@@ -329,6 +352,251 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			await expect(
 				service['getSubWorkflowInfo'](context, source, itemIndex, workflowProxyMock),
 			).rejects.toThrow(NodeOperationError);
+		});
+	});
+
+	describe('retry functionality', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should not retry when retryOnFail is false', async () => {
+			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+			const contextWithNonRetryNode = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: false,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: jest.fn(),
+			});
+			contextWithNonRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithNonRetryNode, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithNonRetryNode.getNodeParameter,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithNonRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithNonRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(result).toContain('There was an error');
+		});
+
+		it('should retry up to maxTries when retryOnFail is true', async () => {
+			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+			const contextWithRetryNode = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: true,
+					maxTries: 3,
+					waitBetweenTries: 0,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: jest.fn(),
+			});
+			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithRetryNode.getNodeParameter,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(3);
+			expect(result).toContain('There was an error');
+		});
+
+		it('should succeed on retry after initial failure', async () => {
+			const mockSuccessResponse = {
+				data: [[{ json: { result: 'success' } }]],
+				executionId: 'success-exec-id',
+			};
+
+			const executeWorkflowMock = jest
+				.fn()
+				.mockRejectedValueOnce(new Error('First attempt fails'))
+				.mockResolvedValueOnce(mockSuccessResponse);
+
+			const contextWithRetryNode = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: true,
+					maxTries: 3,
+					waitBetweenTries: 0,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: jest.fn(),
+			});
+			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithRetryNode.getNodeParameter,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(2);
+			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
+		});
+
+		it('should respect maxTries limits (2-5)', async () => {
+			const testCases = [
+				{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
+				{ maxTries: 3, expected: 3 },
+				{ maxTries: 6, expected: 5 }, // Should be clamped to maximum 5
+			];
+
+			// Create a helper function to avoid unsafe references in loop
+			const createTestContext = (
+				maxTries: number,
+				executeWorkflowMock: jest.MockedFunction<any>,
+			) => {
+				const contextWithRetryNode = createMockContext({
+					getNode: jest.fn().mockReturnValue({
+						name: 'Test Tool',
+						parameters: { workflowInputs: { schema: [] } },
+						retryOnFail: true,
+						maxTries,
+						waitBetweenTries: 0,
+					}),
+					getNodeParameter: jest.fn().mockImplementation((name) => {
+						if (name === 'source') return 'database';
+						if (name === 'workflowId') return { value: 'test-workflow-id' };
+						if (name === 'fields.values') return [];
+						return {};
+					}),
+					executeWorkflow: executeWorkflowMock,
+				});
+				contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+					...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
+					getWorkflowDataProxy: jest.fn().mockReturnValue({
+						$execution: { id: 'exec-id' },
+						$workflow: { id: 'workflow-id' },
+					}),
+					getNodeParameter: contextWithRetryNode.getNodeParameter,
+					...cloneOverrides,
+				}));
+				return contextWithRetryNode;
+			};
+
+			for (const { maxTries, expected } of testCases) {
+				const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+				const contextWithRetryNode = createTestContext(maxTries, executeWorkflowMock);
+
+				service = new WorkflowToolService(contextWithRetryNode);
+				const tool = await service.createTool({
+					ctx: contextWithRetryNode,
+					name: 'Test Tool',
+					description: 'Test Description',
+					itemIndex: 0,
+				});
+
+				await tool.func('test query');
+
+				expect(executeWorkflowMock).toHaveBeenCalledTimes(expected);
+			}
+		});
+
+		it('should respect waitBetweenTries with sleep', async () => {
+			const { sleep } = jest.requireMock('n8n-workflow');
+			sleep.mockClear();
+			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Test error'));
+
+			const contextWithRetryNode = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: true,
+					maxTries: 2,
+					waitBetweenTries: 1500,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: jest.fn(),
+			});
+			contextWithRetryNode.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithRetryNode, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithRetryNode.getNodeParameter,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			await tool.func('test query');
+
+			expect(sleep).toHaveBeenCalledWith(1500);
 		});
 	});
 });
