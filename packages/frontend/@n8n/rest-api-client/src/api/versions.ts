@@ -37,18 +37,7 @@ export interface WhatsNewArticle {
 	publishedAt: string;
 	content: string;
 	calloutTitle: string;
-	calloutContent: string;
-}
-
-export interface StrapiWhatsNewArticle {
-	id: number;
-	title: string;
-	content: string;
-	calloutTitle: string;
 	calloutText: string;
-	createdAt: string;
-	updatedAt: string | null;
-	publishedAt: string;
 }
 
 export async function getNextVersions(
@@ -69,16 +58,5 @@ export async function getWhatsNewArticles(
 		[INSTANCE_ID_HEADER as string]: instanceId,
 		[INSTANCE_VERSION_HEADER as string]: currentVersion,
 	};
-	const response: StrapiWhatsNewArticle[] = await get(endpoint, '', {}, headers);
-
-	return response.map((article) => ({
-		id: article.id,
-		title: article.title,
-		content: article.content,
-		calloutTitle: article.calloutTitle,
-		calloutContent: article.calloutText,
-		createdAt: article.createdAt,
-		updatedAt: article.updatedAt,
-		publishedAt: article.publishedAt,
-	}));
+	return await get(endpoint, '', {}, headers);
 }

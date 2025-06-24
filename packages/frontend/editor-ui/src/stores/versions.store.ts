@@ -17,6 +17,7 @@ type SetVersionParams = { versions: Version[]; currentVersion: string };
 export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const versionNotificationSettings = ref<IVersionNotificationSettings>({
 		enabled: false,
+		whatsNewEnabled: false,
 		endpoint: '',
 		whatsNewEndpoint: '',
 		infoUrl: '',
@@ -86,8 +87,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const fetchWhatsNew = async () => {
 		try {
-			const { enabled, whatsNewEndpoint } = versionNotificationSettings.value;
-			if (enabled && whatsNewEndpoint) {
+			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
+			if (enabled && whatsNewEnabled && whatsNewEndpoint) {
 				const rootStore = useRootStore();
 				const current = rootStore.versionCli;
 				const instanceId = rootStore.instanceId;

@@ -12,6 +12,7 @@ import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
 import { computed, ref, watch } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -30,6 +31,7 @@ const i18n = useI18n();
 const modalBus = createEventBus();
 const versionsStore = useVersionsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 
 const nextVersions = computed(() => versionsStore.nextVersions);
 
@@ -38,6 +40,8 @@ const openUpdatesPanel = () => {
 };
 
 const onUpdateClick = async () => {
+	telemetry.track('User clicked on update now from modal');
+
 	await pageRedirectionHelper.goToVersions();
 };
 

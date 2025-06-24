@@ -5,12 +5,14 @@ import { N8nButton, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 
 const i18n = useI18n();
 const versionsStore = useVersionsStore();
 const uiStore = useUIStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const telemetry = useTelemetry();
 
 const nextVersions = computed(() => versionsStore.nextVersions);
 
@@ -19,6 +21,8 @@ const openUpdatesPanel = () => {
 };
 
 const onUpdate = async () => {
+	telemetry.track('User clicked on update now from sidebar');
+
 	await pageRedirectionHelper.goToVersions();
 };
 </script>
