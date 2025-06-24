@@ -196,6 +196,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 						id: `whats-new-article-${article.id}`,
 						label: article.title,
 						size: 'small',
+						customIconSize: 'small',
 						icon: {
 							type: 'emoji',
 							value: '•',

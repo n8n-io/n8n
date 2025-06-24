@@ -99,10 +99,18 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 					<div :class="$style.icon">
 						<div :class="$style.notificationContainer">
 							<N8nIcon
-								:icon="item.icon"
+								v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+								:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
 								:size="item.customIconSize || 'large'"
 								:color="getIconColor(item)"
 							/>
+							<N8nText
+								v-else-if="item.icon.type === 'emoji'"
+								:size="item.customIconSize || 'large'"
+								:color="getIconColor(item)"
+							>
+								{{ item.icon.value }}
+							</N8nText>
 							<div v-if="item.notification" :class="$style.notification">
 								<div></div>
 							</div>
@@ -115,7 +123,12 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 				}}</span>
 			</template>
 			<template v-for="child in availableChildren" :key="child.id">
-				<component :is="child.component" v-if="isCustomMenuItem(child)" v-bind="child.props" />
+				<component
+					:is="child.component"
+					v-if="isCustomMenuItem(child)"
+					v-bind="child.props"
+					:class="$style.custom"
+				/>
 				<N8nMenuItem
 					v-else
 					:item="child"
@@ -160,7 +173,11 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 									:size="item.customIconSize || 'large'"
 									:color="getIconColor(item)"
 								/>
-								<N8nText v-else-if="item.icon.type === 'emoji'" :color="getIconColor(item)">
+								<N8nText
+									v-else-if="item.icon.type === 'emoji'"
+									:size="item.customIconSize || 'large'"
+									:color="getIconColor(item)"
+								>
 									{{ item.icon.value }}
 								</N8nText>
 								<div v-if="item.notification" :class="$style.notification">
@@ -385,11 +402,12 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 	display: block;
 
 	ul {
-		padding: 0 var(--spacing-xs) !important;
+		padding: var(--spacing-3xs) var(--spacing-2xs) !important;
 	}
+
 	.menuItem {
 		display: flex;
-		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+		padding: var(--spacing-2xs) !important;
 		margin: var(--spacing-2xs) 0 !important;
 	}
 
@@ -401,6 +419,10 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 		.label {
 			display: inline-block;
 		}
+	}
+
+	.custom {
+		margin-left: 0 !important;
 	}
 }
 </style>
