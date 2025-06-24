@@ -211,14 +211,15 @@ export class MistralAi implements INodeType {
 											{ itemData: { item: index } },
 										);
 										returnData.push(...executionData);
-									}
-									const data = processResponseData(result.response.body);
+									} else {
+										const data = processResponseData(result.response.body);
 
-									const executionData = this.helpers.constructExecutionMetaData(
-										this.helpers.returnJsonArray(data),
-										{ itemData: { item: index } },
-									);
-									returnData.push(...executionData);
+										const executionData = this.helpers.constructExecutionMetaData(
+											this.helpers.returnJsonArray(data),
+											{ itemData: { item: index } },
+										);
+										returnData.push(...executionData);
+									}
 								}
 							}
 						}
