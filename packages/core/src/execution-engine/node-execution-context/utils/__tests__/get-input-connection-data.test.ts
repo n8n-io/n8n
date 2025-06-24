@@ -716,7 +716,7 @@ describe('makeHandleToolInvocation', () => {
 		const contextFactory = jest.fn();
 		const toolArgs = { input: 'test' };
 		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
-		let mockContext: any;
+		let mockContext: unknown;
 
 		beforeEach(() => {
 			jest.clearAllMocks();

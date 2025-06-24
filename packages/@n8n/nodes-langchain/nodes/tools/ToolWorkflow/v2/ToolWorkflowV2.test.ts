@@ -17,7 +17,6 @@ jest.mock('n8n-workflow', () => ({
 	sleep: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Helper to create a properly mocked cloned context
 function createMockClonedContext(
 	baseContext: ISupplyDataFunctions,
 	executeWorkflowMock?: jest.MockedFunction<any>,
@@ -62,9 +61,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		},
 		...overrides,
 	} as ISupplyDataFunctions;
-	context.cloneWith = jest
-		.fn()
-		.mockImplementation((cloneOverrides) => createMockClonedContext(context));
+	context.cloneWith = jest.fn().mockImplementation((_) => createMockClonedContext(context));
 	return context;
 }
 
