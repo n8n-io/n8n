@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "@n8n/ai-workflow-builder",
   "version": "0.10.0",
   "scripts": {

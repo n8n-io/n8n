@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "@n8n/task-runner",
   "version": "1.36.0",
   "scripts": {

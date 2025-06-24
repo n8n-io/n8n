@@ -3,7 +3,6 @@
   "version": "1.100.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
-  "type": "module",
   "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",

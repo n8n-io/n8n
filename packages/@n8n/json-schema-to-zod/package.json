@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "@n8n/json-schema-to-zod",
   "version": "1.3.0",
   "description": "Converts JSON schema objects into Zod schemas",

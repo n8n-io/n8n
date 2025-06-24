@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "@n8n/permissions",
   "version": "0.28.0",
   "scripts": {
