@@ -317,6 +317,9 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
+				case 'send-chunk':
+					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
+					break;
 				case 'respond-to-webhook':
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
