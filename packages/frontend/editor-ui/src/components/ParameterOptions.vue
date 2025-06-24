@@ -84,12 +84,12 @@ const resetValueLabel = computed(() => {
 	return i18n.baseText('parameterInput.resetValue');
 });
 
-const isFocusPanelExperimentEnabled = computed(() => {
+const isFocusPanelFeatureEnabled = computed(() => {
 	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
 });
 const hasFocusAction = computed(
 	() =>
-		isFocusPanelExperimentEnabled.value &&
+		isFocusPanelFeatureEnabled.value &&
 		!props.isReadOnly &&
 		activeNode.value &&
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),

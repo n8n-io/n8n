@@ -55,6 +55,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
+	FOCUS_PANEL_EXPERIMENT,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -70,6 +71,7 @@ import {
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	NodeConnectionTypes,
@@ -242,6 +244,10 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
+
+const isFocusPanelFeatureEnabled = computed(() => {
+	return usePostHog().getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -2120,7 +2126,7 @@ onBeforeUnmount(() => {
 			-->
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel />
+		<FocusPanel v-if="isFocusPanelFeatureEnabled" />
 	</div>
 </template>
 
