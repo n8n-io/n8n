@@ -450,12 +450,8 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('cron');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
-		nodecreatorFeature.getters
-			.nodeItemName()
-			.nodeCreatorFeature.getters.searchBar()
-			.find('input')
-			.clear()
-			.type('sch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sch');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('time');
