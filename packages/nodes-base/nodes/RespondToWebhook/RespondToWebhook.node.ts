@@ -28,6 +28,7 @@ import {
 	formatPrivateKey,
 	generatePairedItemData,
 	isHTML,
+	sanitizeHtmlBasedOnEnv,
 } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
@@ -464,7 +465,8 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			if (typeof responseBody === 'string' && isHTML(responseBody)) {
-				responseBody = responseBody;
+				console.log('sanitize html');
+				responseBody = sanitizeHtmlBasedOnEnv(responseBody);
 			}
 
 			if (Object.keys(headers).length) checkDisallowedHeaders(headers);

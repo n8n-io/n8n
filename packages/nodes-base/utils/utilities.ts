@@ -489,51 +489,52 @@ export function isHTML(input: string): boolean {
 		.some((node) => ['tag', 'script', 'style'].includes(node.type.toLowerCase()));
 }
 
-const DISALLOWED_HEADERS = [
-	'set-cookie',
-	'www-authenticate',
-	'proxy-authenticate',
-	'proxy-authorization',
-	'cookie',
-	'host',
-	'content-security-policy',
-	'content-security-policy-report-only',
-	'x-frame-options',
-	'x-content-type-options',
-	'referrer-policy',
-	'strict-transport-security',
-	'cross-origin-opener-policy',
-	'cross-origin-embedder-policy',
-	'cross-origin-resource-policy',
-	'x-permitted-cross-domain-policies',
-	'access-control-allow-origin',
-	'access-control-allow-credentials',
-	'access-control-expose-headers',
-	'access-control-allow-methods',
-	'access-control-allow-headers',
-	'access-control-max-age',
-	'connection',
-	'keep-alive',
-	'te',
-	'trailers',
-	'transfer-encoding',
-	'upgrade',
-	'expect',
-	'via',
-	'forwarded',
-	'x-forwarded-for',
-	'x-forwarded-host',
-	'x-forwarded-proto',
-	'origin',
-	'server',
-];
-
 export function checkDisallowedHeaders(headers: IDataObject) {
+	const disallowedHeaders = process.env.DISALLOWED_HEADERS?.split(',') || [];
 	for (const entry of Object.keys(headers)) {
 		const name = entry.toLowerCase();
 
-		if (DISALLOWED_HEADERS.includes(name.replace(/_/g, '-'))) {
+		if (disallowedHeaders.includes(name.replace(/_/g, '-'))) {
 			throw new UserError(`Header '${name}' is not allowed!`);
 		}
 	}
+}
+
+interface SanitizeOptions {
+	disableScripts?: boolean;
+	disableTags?: string[];
+	disableAttributes?: string[];
+}
+
+export function sanitizeHtmlBasedOnEnv(html: string): string {
+	const $ = cheerio.load(html);
+
+	const options: SanitizeOptions = {
+		disableScripts: process.env.DISABLE_SCRIPT_TAG === 'true',
+		disableTags: process.env.DISABLE_TAGS?.split(',').map((tag) => tag.trim().toLowerCase()) || [],
+		disableAttributes:
+			process.env.DISABLE_ATTRIBUTES?.split(',').map((attr) => attr.trim().toLowerCase()) || [],
+	};
+
+	if (options.disableScripts) {
+		$('script').remove();
+	}
+
+	if (options.disableTags?.length) {
+		for (const tag of options.disableTags) {
+			$(tag).remove();
+		}
+	}
+
+	if (options.disableAttributes?.length) {
+		$('*').each((_i, el) => {
+			for (const attr of options.disableAttributes!) {
+				if ($(el).attr(attr) !== undefined) {
+					$(el).removeAttr(attr);
+				}
+			}
+		});
+	}
+
+	return $.html();
 }
