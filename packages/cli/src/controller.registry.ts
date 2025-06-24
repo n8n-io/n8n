@@ -19,6 +19,7 @@ import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { LastActiveAtService } from './services/last-active-at.service';
 
 @Service()
 export class ControllerRegistry {
@@ -27,6 +28,7 @@ export class ControllerRegistry {
 		private readonly authService: AuthService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
+		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
 	activate(app: Application) {
@@ -82,7 +84,12 @@ export class ControllerRegistry {
 					? [this.createRateLimitMiddleware(route.rateLimit)]
 					: []),
 				// eslint-disable-next-line @typescript-eslint/unbound-method
-				...(route.skipAuth ? [] : [this.authService.authMiddleware]),
+				...(route.skipAuth
+					? []
+					: ([
+							this.authService.authMiddleware.bind(this.authService),
+							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
+						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,

@@ -1679,6 +1679,11 @@ export class WorkflowExecute {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
 
+						// Send error to the response if necessary
+						await hooks?.runHook('sendChunk', [
+							{ type: 'error', content: executionError.description },
+						]);
+
 						if (
 							executionData.node.continueOnFail === true ||
 							['continueRegularOutput', 'continueErrorOutput'].includes(
