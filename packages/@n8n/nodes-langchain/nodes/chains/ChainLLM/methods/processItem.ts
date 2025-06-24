@@ -7,17 +7,17 @@ import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { executeChain } from './chainExecutor';
 import { type MessageTemplate } from './types';
 
-async function getChatModel(ctx: IExecuteFunctions, index: number = 0): Promise<BaseLanguageModel> {
+async function getChatModel(
+	ctx: IExecuteFunctions,
+	index: number = 0,
+): Promise<BaseLanguageModel | undefined> {
 	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 
 	let model;
 
 	if (Array.isArray(connectedModels) && index !== undefined) {
 		if (connectedModels.length <= index) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				'Please connect a model to the Fallback Model input or disable the fallback option',
-			);
+			return undefined;
 		}
 		// We get the models in reversed order from the workflow so we need to reverse them again to match the right index
 		const reversedModels = [...connectedModels].reverse();
@@ -31,8 +31,15 @@ async function getChatModel(ctx: IExecuteFunctions, index: number = 0): Promise<
 
 export const processItem = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const needsFallback = ctx.getNodeParameter('needsFallback', 0, false) as boolean;
-	const llm = await getChatModel(ctx, 0);
+	const llm = (await getChatModel(ctx, 0)) as BaseLanguageModel;
+
 	const fallbackLlm = needsFallback ? await getChatModel(ctx, 1) : null;
+	if (needsFallback && !fallbackLlm) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'Please connect a model to the Fallback Model input or disable the fallback option',
+		);
+	}
 
 	// Get output parser if configured
 	const outputParser = await getOptionalOutputParser(ctx);

@@ -196,7 +196,7 @@ describe('getChatModel', () => {
 		expect(model).toEqual(fakeChatModel1); // Should return the second model after reversal (index 1)
 	});
 
-	it('should throw error when requested index is out of bounds', async () => {
+	it('should return undefined when requested index is out of bounds', async () => {
 		const fakeChatModel1 = mock<BaseChatModel>();
 		fakeChatModel1.bindTools = jest.fn();
 		fakeChatModel1.lc_namespace = ['chat_models'];
@@ -204,10 +204,9 @@ describe('getChatModel', () => {
 		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1]);
 		mockContext.getNode.mockReturnValue(mock());
 
-		await expect(getChatModel(mockContext, 2)).rejects.toThrow(NodeOperationError);
-		await expect(getChatModel(mockContext, 2)).rejects.toThrow(
-			'Please connect a model to the Fallback Model input or disable the fallback option',
-		);
+		const result = await getChatModel(mockContext, 2);
+
+		expect(result).toBeUndefined();
 	});
 
 	it('should throw error when single model does not support tools', async () => {

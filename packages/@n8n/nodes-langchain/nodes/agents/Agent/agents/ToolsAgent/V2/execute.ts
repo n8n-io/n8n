@@ -87,7 +87,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	) as number;
 	const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
 	const memory = await getOptionalMemory(this);
-	const model = await getChatModel(this, 0);
+	const model = (await getChatModel(this, 0)) as BaseChatModel;
 	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
 
 	for (let i = 0; i < items.length; i += batchSize) {

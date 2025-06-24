@@ -266,17 +266,14 @@ export const getAgentStepsParser =
 export async function getChatModel(
 	ctx: IExecuteFunctions,
 	index: number = 0,
-): Promise<BaseChatModel> {
+): Promise<BaseChatModel | undefined> {
 	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 
 	let model;
 
 	if (Array.isArray(connectedModels) && index !== undefined) {
 		if (connectedModels.length <= index) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				'Please connect a model to the Fallback Model input or disable the fallback option',
-			);
+			return undefined;
 		}
 		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
 		const reversedModels = [...connectedModels].reverse();

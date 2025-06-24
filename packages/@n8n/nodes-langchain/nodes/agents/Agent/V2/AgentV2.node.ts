@@ -68,7 +68,7 @@ function getInputs(
 		{
 			type: 'ai_languageModel',
 			displayName: 'Fallback Model',
-			required: false,
+			required: true,
 			filter: {
 				excludedNodes: [
 					'@n8n/n8n-nodes-langchain.lmCohere',

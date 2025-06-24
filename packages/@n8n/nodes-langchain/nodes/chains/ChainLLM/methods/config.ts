@@ -30,7 +30,7 @@ export function getInputs(parameters: IDataObject) {
 			displayName: 'Fallback Model',
 			maxConnections: 1,
 			type: 'ai_languageModel',
-			required: false,
+			required: true,
 		});
 	}
 
