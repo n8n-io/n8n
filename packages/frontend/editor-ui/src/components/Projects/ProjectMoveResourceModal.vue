@@ -240,7 +240,7 @@ onMounted(async () => {
 						v-for="p in filteredProjects"
 						:key="p.id"
 						:value="p.id"
-						:label="p.name"
+						:label="p.name ?? ''"
 					></N8nOption>
 				</N8nSelect>
 				<N8nText>

@@ -118,7 +118,7 @@ const onClaimCreditsClicked = async () => {
 					})
 				}}</n8n-text
 			>&nbsp;
-			<n8n-text size="small" bold="true">
+			<n8n-text size="small" :bold="true">
 				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
 			>
 		</n8n-callout>

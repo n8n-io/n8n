@@ -6,9 +6,12 @@ import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import pkg from './package.json';
+import iconsResolver from 'unplugin-icons/resolver';
+import components from 'unplugin-vue-components/vite';
 
 const includeVue = process.env.INCLUDE_VUE === 'true';
 const srcPath = resolve(__dirname, 'src');
+const packagesDir = resolve(__dirname, '..', '..', '..');
 
 const banner = `/*! Package version @n8n/chat@${pkg.version} */`;
 
@@ -22,6 +25,18 @@ export default mergeConfig(
 				autoInstall: true,
 			}),
 			dts(),
+			components({
+				dts: './src/components.d.ts',
+				resolvers: [
+					(componentName) => {
+						if (componentName.startsWith('N8n'))
+							return { name: componentName, from: '@n8n/design-system' };
+					},
+					iconsResolver({
+						prefix: 'icon',
+					}),
+				],
+			}),
 			{
 				name: 'rename-css-file',
 				closeBundle() {
@@ -43,7 +58,7 @@ export default mergeConfig(
 					const cssPath = resolve(__dirname, 'dist', 'style.css');
 					try {
 						const cssContent = readFileSync(cssPath, 'utf-8');
-                        const updatedCssContent = banner + '\n' + cssContent;
+						const updatedCssContent = banner + '\n' + cssContent;
 						writeFileSync(cssPath, updatedCssContent, 'utf-8');
 					} catch (error) {
 						console.error('Failed to inject build version into CSS file:', error);
@@ -52,10 +67,24 @@ export default mergeConfig(
 			},
 		],
 		resolve: {
-			alias: {
-				'@': srcPath,
-				'@n8n/chat': srcPath,
-			},
+			alias: [
+				{
+					find: '@',
+					replacement: srcPath,
+				},
+				{
+					find: '@n8n/chat',
+					replacement: srcPath,
+				},
+				{
+					find: /^@n8n\/chat(.+)$/,
+					replacement: srcPath + '$1',
+				},
+				{
+					find: /^@n8n\/design-system(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
+				},
+			],
 		},
 		define: {
 			'process.env.NODE_ENV': process.env.NODE_ENV ? `"${process.env.NODE_ENV}"` : '"development"',

@@ -701,7 +701,7 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveManualOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>
@@ -730,7 +730,7 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveExecutionProgressOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>
