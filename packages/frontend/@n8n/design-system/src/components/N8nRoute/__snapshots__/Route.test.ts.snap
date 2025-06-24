@@ -4,4 +4,4 @@ exports[`N8nRoute > should render external links 1`] = `"<a href="https://exampl
 
 exports[`N8nRoute > should render internal links with newWindow=true 1`] = `"<a href="/test" target="_blank"></a>"`;
 
-exports[`N8nRoute > should render internal router links 1`] = `"<router-link to="/test"></router-link>"`;
+exports[`N8nRoute > should render internal router links 1`] = `"<router-link-stub to="/test" replace="false" custom="false" ariacurrentvalue="page" role="link"></router-link-stub>"`;

@@ -4,19 +4,21 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
-import type { Connection as VueFlowConnection } from '@vue-flow/core';
-import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/types';
-import { canvasConnectionModes } from '@/types';
-import type { ComponentPublicInstance } from 'vue';
 import type {
+	IExecutionResponse,
+	ICredentialsResponse,
+	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
 	Resource,
 	VariableResource,
 	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+} from '@/Interface';
+import type { Connection as VueFlowConnection } from '@vue-flow/core';
+import type { RouteLocationRaw } from 'vue-router';
+import type { CanvasConnectionMode } from '@/types';
+import { canvasConnectionModes } from '@/types';
+import type { ComponentPublicInstance } from 'vue';
 
 /*
 	Type guards used in editor-ui project
