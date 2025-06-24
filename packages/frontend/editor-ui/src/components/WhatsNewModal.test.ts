@@ -61,7 +61,7 @@ const currentVersion: Version = {
 	securityIssueFixVersion: '',
 };
 
-describe('MoveToFolderModal', () => {
+describe('WhatsNewModal', () => {
 	beforeEach(() => {
 		createAppModals();
 		createTestingPinia();

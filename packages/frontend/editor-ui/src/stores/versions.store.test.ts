@@ -56,6 +56,7 @@ const toast = useToast();
 describe('versions.store', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		localStorage.clear();
 		setActivePinia(createPinia());
 	});
 
