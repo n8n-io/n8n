@@ -112,6 +112,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	lastActiveAt?: Date | null;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;

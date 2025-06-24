@@ -15,6 +15,7 @@ import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
+import { LastActiveAtService } from './last-active-at.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -29,6 +30,7 @@ export class PublicApiKeyService {
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
 		private readonly eventService: EventService,
+		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
 	/**
@@ -138,6 +140,10 @@ export class PublicApiKeyService {
 			});
 
 			req.user = user;
+
+			// TODO: ideally extract that to a dedicated middleware, but express-openapi-validator
+			// does not support middleware between authentication and operators
+			void this.lastActiveAtService.updateLastActiveIfStale(user.id);
 
 			return true;
 		};
