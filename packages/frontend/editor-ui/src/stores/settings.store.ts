@@ -270,6 +270,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			await getSettings();
 
 			initialized.value = true;
+
+			await getModuleSettings();
 		} catch (e) {
 			showToast({
 				title: i18n.baseText('startupError'),
