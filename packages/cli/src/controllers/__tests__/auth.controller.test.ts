@@ -94,6 +94,7 @@ describe('AuthController', () => {
 			});
 
 			expect(userService.toPublic).toHaveBeenCalledWith(member, {
+				mfaAuthenticated: false,
 				posthog: postHog,
 				withScopes: true,
 			});
