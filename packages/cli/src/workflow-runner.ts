@@ -23,7 +23,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,

@@ -7,7 +7,7 @@ export default defineConfig(
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			'@typescript-eslint/no-duplicate-imports': 'off',
-			'import/no-cycle': 'off',
+			'import-x/no-cycle': 'off',
 			complexity: 'error',
 
 			// TODO: Remove this

@@ -8,6 +8,6 @@ export default defineConfig(baseConfig, {
 		// TODO: Remove this
 		'@typescript-eslint/naming-convention': 'warn',
 		'@typescript-eslint/no-unsafe-function-type': 'warn',
-		'import/order': 'warn',
+		'import-x/order': 'warn',
 	},
 });

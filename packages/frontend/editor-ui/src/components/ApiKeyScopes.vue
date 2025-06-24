@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-// eslint-disable-next-line import/no-extraneous-dependencies
+// eslint-disable-next-line import-x/no-extraneous-dependencies
 import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';

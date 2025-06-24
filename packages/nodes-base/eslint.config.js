@@ -22,12 +22,12 @@ export default defineConfig(
 			'no-dupe-else-if': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-fallthrough': 'warn',
-			'import/extensions': 'warn',
-			'import/no-default-export': 'warn',
-			'import/export': 'warn',
-			'import/order': 'warn',
-			'import/no-default-export': 'warn',
-			'import/no-extraneous-dependencies': 'warn',
+			'import-x/extensions': 'warn',
+			'import-x/no-default-export': 'warn',
+			'import-x/export': 'warn',
+			'import-x/order': 'warn',
+			'import-x/no-default-export': 'warn',
+			'import-x/no-extraneous-dependencies': 'warn',
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'@typescript-eslint/naming-convention': ['warn'],
 			'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
@@ -170,7 +170,7 @@ export default defineConfig(
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts'],
 		rules: {
-			'import/no-extraneous-dependencies': 'off',
+			'import-x/no-extraneous-dependencies': 'off',
 			'n8n-nodes-base/node-filename-against-convention': 'off',
 		},
 	},

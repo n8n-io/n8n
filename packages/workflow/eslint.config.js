@@ -13,7 +13,7 @@ export default defineConfig(
 			'id-denylist': 'warn',
 			'no-fallthrough': 'warn',
 			'no-useless-escape': 'warn',
-			'import/order': 'warn',
+			'import-x/order': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-case-declarations': 'warn',
 			'no-prototype-builtins': 'warn',

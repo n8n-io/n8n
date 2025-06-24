@@ -48,9 +48,9 @@
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
     "tsup": "catalog:",
-    "typescript": "catalog:frontend",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {

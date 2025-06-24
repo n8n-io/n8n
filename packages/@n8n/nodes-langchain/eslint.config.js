@@ -9,13 +9,13 @@ export default defineConfig(
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',
-			'import/extensions': 'warn',
+			'import-x/extensions': 'warn',
 			'prefer-spread': 'warn',
 			'no-case-declarations': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-empty': 'warn',
 			'no-prototype-builtins': 'warn',
-			'import/order': 'warn',
+			'import-x/order': 'warn',
 			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'no-async-promise-executor': 'warn',
 			'no-useless-escape': 'warn',
@@ -157,7 +157,7 @@ export default defineConfig(
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],
 		rules: {
-			'import/no-extraneous-dependencies': 'warn',
+			'import-x/no-extraneous-dependencies': 'warn',
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
 		},
 	},

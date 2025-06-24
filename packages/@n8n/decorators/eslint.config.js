@@ -13,7 +13,7 @@ export default defineConfig(
 			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
 			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'import/export': 'warn',
+			'import-x/export': 'warn',
 		},
 	},
 	{
@@ -22,7 +22,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unused-expressions': 'warn',
 			'@typescript-eslint/no-unsafe-assignment': 'warn',
 			'@typescript-eslint/unbound-method': 'warn',
-			'import/no-duplicates': 'warn',
+			'import-x/no-duplicates': 'warn',
 		},
 	},
 );

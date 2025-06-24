@@ -1,6 +1,6 @@
 import { globalIgnores } from 'eslint/config';
 import eslint from '@eslint/js';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 import stylisticPlugin from '@stylistic/eslint-plugin';
@@ -37,7 +37,7 @@ export const baseConfig = tseslint.config(
 			},
 		},
 		settings: {
-			'import/resolver': {
+			'import-x/resolver': {
 				typescript: {}, // this loads <rootdir>/tsconfig.json to eslint
 			},
 		},
@@ -294,17 +294,17 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
-			'import/no-cycle': runAllRules ? ['error', { ignoreExternal: false, maxDepth: 3 }] : 'off',
+			'import-x/no-cycle': runAllRules ? ['error', { ignoreExternal: false, maxDepth: 3 }] : 'off',
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
 			 */
-			'import/no-default-export': 'error',
+			'import-x/no-default-export': 'error',
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 			 */
-			'import/order': [
+			'import-x/order': [
 				'error',
 				{
 					alphabetize: {
@@ -319,19 +319,19 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
 			 */
-			'import/no-duplicates': 'error',
+			'import-x/no-duplicates': 'error',
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
 			 */
-			'import/prefer-default-export': 'off',
+			'import-x/prefer-default-export': 'off',
 
 			// These rules are not needed as TypeScript handles them
-			'import/named': 'off',
-			'import/namespace': 'off',
-			'import/default': 'off',
-			'import/no-named-as-default-member': 'off',
-			'import/no-unresolved': 'off',
+			'import-x/named': 'off',
+			'import-x/namespace': 'off',
+			'import-x/default': 'off',
+			'import-x/no-named-as-default-member': 'off',
+			'import-x/no-unresolved': 'off',
 
 			// ******************************************************************
 			//                    overrides to base ruleset

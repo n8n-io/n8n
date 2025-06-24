@@ -18,20 +18,8 @@ export const frontendConfig = tseslint.config(
 			'no-debugger': isCI ? 'error' : 'off',
 			semi: [2, 'always'],
 			'comma-dangle': ['error', 'always-multiline'],
-			'no-tabs': 0,
-			'no-labels': 0,
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
-			'import/no-extraneous-dependencies': 'warn',
-
-			// TODO: fix these
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
-			'@typescript-eslint/no-unsafe-argument': 'warn',
-			'@typescript-eslint/no-unsafe-return': 'warn',
-			'@typescript-eslint/restrict-template-expressions': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
 		},
 	},
 	{
@@ -45,6 +33,12 @@ export const frontendConfig = tseslint.config(
 		},
 	},
 	{
+		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
+		rules: {
+			'import-x/no-extraneous-dependencies': 'warn',
+		},
+	},
+	{
 		files: ['**/*.vue'],
 		languageOptions: {
 			ecmaVersion: 'latest',
@@ -55,15 +49,6 @@ export const frontendConfig = tseslint.config(
 				extraFileExtensions,
 			},
 		},
-	},
-	{
-		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
-		rules: {
-			'import/no-extraneous-dependencies': 'warn',
-		},
-	},
-	{
-		files: ['**/*.vue'],
 		rules: {
 			'vue/no-deprecated-slot-attribute': 'error',
 			'vue/no-deprecated-slot-scope-attribute': 'error',

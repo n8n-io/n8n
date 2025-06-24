@@ -6,7 +6,7 @@ export default defineConfig(
 	{
 		rules: {
 			// TODO: Remove these
-			'import/no-default-export': 'warn',
+			'import-x/no-default-export': 'warn',
 			'no-empty': 'warn',
 			'no-prototype-builtins': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',

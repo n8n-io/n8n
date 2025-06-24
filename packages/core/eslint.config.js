@@ -31,8 +31,8 @@ export default defineConfig(
 		rules: {
 			// TODO: Remove these
 			'prefer-const': 'warn',
-			'import/no-duplicates': 'warn',
-			'import/no-default-export': 'warn',
+			'import-x/no-duplicates': 'warn',
+			'import-x/no-default-export': 'warn',
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
 			'@typescript-eslint/no-unsafe-assignment': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',

@@ -35,6 +35,7 @@
     "@types/eslint": "^9.6.1",
     "@typescript-eslint/rule-tester": "^8.31.0",
     "@typescript-eslint/utils": "^8.31.0",
+    "eslint-plugin-import-x": "^4.15.2",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.31.0",

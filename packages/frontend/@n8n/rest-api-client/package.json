@@ -50,9 +50,9 @@
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "tsup": "catalog:",
-    "typescript": "catalog:frontend",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "license": "See LICENSE.md file in the root of the repository"
 }

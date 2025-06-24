@@ -14,9 +14,9 @@ export default defineConfig(
 
 			// TODO: Remove this
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-			'import/no-cycle': 'warn',
-			'import/extensions': 'warn',
-			'import/order': 'warn',
+			'import-x/no-cycle': 'warn',
+			'import-x/extensions': 'warn',
+			'import-x/order': 'warn',
 			'no-ex-assign': 'warn',
 			'no-case-declarations': 'warn',
 			'no-fallthrough': 'warn',
@@ -90,8 +90,8 @@ export default defineConfig(
 			'id-denylist': 'warn',
 			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',
-			'import/no-duplicates': 'warn',
-			'import/no-default-export': 'warn',
+			'import-x/no-duplicates': 'warn',
+			'import-x/no-default-export': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unused-expressions': 'warn',

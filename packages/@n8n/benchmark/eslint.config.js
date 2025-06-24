@@ -16,7 +16,7 @@ export default defineConfig(
 	{
 		files: ['./src/commands/*.ts'],
 		rules: {
-			'import/no-default-export': 'off',
+			'import-x/no-default-export': 'off',
 		},
 	},
 );

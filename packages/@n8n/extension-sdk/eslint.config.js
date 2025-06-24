@@ -9,6 +9,6 @@ export default defineConfig(baseConfig, {
 		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/no-floating-promises': 'warn',
-		'import/order': 'warn',
+		'import-x/order': 'warn',
 	},
 });

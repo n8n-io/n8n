@@ -12,7 +12,7 @@ import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {

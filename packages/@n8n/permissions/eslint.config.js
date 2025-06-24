@@ -6,7 +6,7 @@ export default defineConfig(baseConfig, {
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 		// TODO: Remove this
-		'import/order': 'warn',
+		'import-x/order': 'warn',
 		'@typescript-eslint/naming-convention': 'warn',
 	},
 });

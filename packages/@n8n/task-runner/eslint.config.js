@@ -18,7 +18,7 @@ export default defineConfig(
 		files: ['**/*.test.ts'],
 		rules: {
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
-			'import/no-duplicates': 'warn',
+			'import-x/no-duplicates': 'warn',
 			'@typescript-eslint/unbound-method': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',

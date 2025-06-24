@@ -10,8 +10,8 @@ export default defineConfig(
 		rules: {
 			// TODO: Remove this
 			'no-useless-escape': 'warn',
-			'import/order': 'warn',
-			'import/no-extraneous-dependencies': [
+			'import-x/order': 'warn',
+			'import-x/no-extraneous-dependencies': [
 				'error',
 				{
 					devDependencies: ['**/cypress/**'],

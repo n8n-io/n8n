@@ -9,8 +9,8 @@ export default defineConfig(
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 			// TODO: Remove these
-			'import/order': 'warn',
-			'import/no-default-export': 'warn',
+			'import-x/order': 'warn',
+			'import-x/no-default-export': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-call': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',

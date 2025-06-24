@@ -71,14 +71,14 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		// eslint-disable-next-line import/no-cycle
+		// eslint-disable-next-line import-x/no-cycle
 		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		// eslint-disable-next-line import/no-cycle
+		// eslint-disable-next-line import-x/no-cycle
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
