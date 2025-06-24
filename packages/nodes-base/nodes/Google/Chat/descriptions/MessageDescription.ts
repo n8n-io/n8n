@@ -201,13 +201,33 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			// {
-			// 	displayName: 'Thread Key',
-			// 	name: 'threadKey',
-			// 	type: 'string',
-			// 	default: '',
-			// 	description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
-			// },
+			{
+				displayName: 'Message Reply Option',
+				name: 'messageReplyOption',
+				type: 'options',
+				default: '',
+				description: 'Configure the behavior if replying to threads',
+				options: [
+					{
+						name: 'Unspecified',
+						value: 'MESSAGE_REPLY_OPTION_UNSPECIFIED',
+						description:
+							'Ignores threadKey or thread name specified in the message and always starts a new thread.',
+					},
+					{
+						name: 'Reply and fallback to new thread',
+						value: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
+						description:
+							'Replies to the thread specified in the message, or starts a new thread if no thread is specified.',
+					},
+					{
+						name: 'Reply or fail',
+						value: 'REPLY_MESSAGE_OR_FAIL',
+						description:
+							'Replies to the thread specified in the message, or fails if no thread is specified.',
+					},
+				],
+			},
 			{
 				displayName: 'Request ID',
 				name: 'requestId',
