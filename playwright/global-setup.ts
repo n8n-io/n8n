@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-default-export */
 import { request } from '@playwright/test';
 
 import { ApiHelpers } from './services/api-helper';
@@ -40,4 +39,5 @@ async function globalSetup() {
 	console.log('🏁 Global setup completed');
 }
 
+// eslint-disable-next-line import/no-default-export
 export default globalSetup;
