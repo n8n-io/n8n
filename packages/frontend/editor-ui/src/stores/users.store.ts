@@ -36,8 +36,8 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 
-type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
-type LogoutHook = () => void | Promise<void>;
+type LoginHook = (user: CurrentUserResponse) => void;
+type LogoutHook = () => void;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
@@ -144,9 +144,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers([user]);
 		currentUserId.value = user.id;
 
-		loginHooks.value.forEach(async (hook) => {
-			await hook(user);
-		});
+		for (const hook of loginHooks.value) {
+			try {
+				hook();
+			} catch (error) {
+				console.error('Error executing login hook:', error);
+			}
+		}
 	};
 
 	const loginWithCookie = async () => {
@@ -219,9 +223,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		unsetCurrentUser();
 
-		logoutHooks.value.forEach(async (hook) => {
-			await hook();
-		});
+		for (const hook of logoutHooks.value) {
+			try {
+				hook();
+			} catch (error) {
+				console.error('Error executing logout hook:', error);
+			}
+		}
 
 		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
 	};

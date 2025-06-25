@@ -181,11 +181,11 @@ function registerAuthenticationHooks() {
 	});
 
 	usersStore.registerLogoutHook(() => {
-		RBACStore.setGlobalScopes([]);
-		telemetry.reset();
-		cloudPlanStore.reset();
-		postHogStore.reset();
 		uiStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
+		postHogStore.reset();
+		cloudPlanStore.reset();
+		telemetry.reset();
+		RBACStore.setGlobalScopes([]);
 	});
 }
