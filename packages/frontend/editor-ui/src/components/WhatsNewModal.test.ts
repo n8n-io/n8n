@@ -110,7 +110,12 @@ describe('WhatsNewModal', () => {
 					"~~Strikethrough is also something we support~~.\n\nHere's a peace of code:\n\n" +
 					'```typescript\nconst props = defineProps<{\n\tmodalName: string;\n\tdata: {\n\t\tarticleId: number;\n\t};\n}>();\n```\n\n' +
 					'Inline `code also works` withing text.\n\nThis is a list:\n- first\n- second\n- third\n\nAnd this list is ordered\n' +
-					'1. foo\n2. bar\n3. qux\n\nDividers:\n\nThree or more...\n\n---\n\nHyphens\n\n***\n\nAsterisks\n\n___\n\nUnderscores',
+					'1. foo\n2. bar\n3. qux\n\nDividers:\n\nThree or more...\n\n---\n\nHyphens\n\n***\n\nAsterisks\n\n___\n\nUnderscores\n\n---\n\n' +
+					'<details>\n<summary>Fixes (4)</summary>\n\n' +
+					'- **Credential Storage Issue** Resolved an issue where credentials would occasionally become inaccessible after server restarts\n' +
+					'- **Webhook Timeout Handling** Fixed timeout issues with long-running webhook requests\n' +
+					'- **Node Connection Validation** Improved validation for node connections to prevent invalid workflow configurations\n' +
+					'- **Memory Leak in Execution Engine** Fixed memory leak that could occur during long-running workflow executions\n\n</details>\n\n',
 				calloutTitle: 'Convert to sub-workflow',
 				calloutText: 'Simplify process of extracting nodes into a single action',
 				createdAt: '2025-06-19T12:35:14.454Z',
