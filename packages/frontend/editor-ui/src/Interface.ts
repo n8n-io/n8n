@@ -669,7 +669,7 @@ export type SimplifiedNodeType = Pick<
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
-	icon?: string;
+	icon?: IconName;
 	iconProps?: {
 		color?: string;
 	};

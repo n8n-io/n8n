@@ -134,10 +134,7 @@ async function onActionDropdownClick(id: string) {
 				</n8n-text>
 			</div>
 			<div v-if="provider.name === 'infisical'">
-				<font-awesome-icon
-					:class="$style['warningTriangle']"
-					icon="exclamation-triangle"
-				></font-awesome-icon>
+				<n8n-icon :class="$style['warningTriangle']" icon="exclamation-triangle" />
 				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
 					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
 				</N8nBadge>

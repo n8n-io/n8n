@@ -53,7 +53,7 @@ defineExpose({
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<font-awesome-icon icon="search" size="sm" />
+			<n8n-icon icon="search" size="sm" />
 		</div>
 		<div :class="$style.text">
 			<input
@@ -69,7 +69,7 @@ defineExpose({
 		</div>
 		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
 			<button :class="[$style.clear, $style.clickable]">
-				<font-awesome-icon icon="times-circle" />
+				<n8n-icon icon="times-circle" />
 			</button>
 		</div>
 	</div>

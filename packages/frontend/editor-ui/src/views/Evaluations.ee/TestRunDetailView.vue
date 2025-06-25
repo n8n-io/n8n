@@ -126,7 +126,7 @@ onMounted(async () => {
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
-				<font-awesome-icon icon="arrow-left" />
+				<n8n-icon icon="arrow-left" />
 				<n8n-heading size="large" :bold="true">{{
 					locale.baseText('evaluation.listRuns.runListHeader', {
 						interpolate: {

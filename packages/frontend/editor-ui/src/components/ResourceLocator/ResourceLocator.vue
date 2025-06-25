@@ -1077,7 +1077,7 @@ function removeOverride() {
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
 						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
+							<n8n-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
 						</n8n-link>
 					</div>
 				</div>

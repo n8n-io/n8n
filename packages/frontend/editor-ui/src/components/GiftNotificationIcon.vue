@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style['gift-icon']">
-		<font-awesome-icon icon="gift" />
+		<n8n-icon icon="gift" />
 		<div :class="$style['notification']">
 			<div></div>
 		</div>

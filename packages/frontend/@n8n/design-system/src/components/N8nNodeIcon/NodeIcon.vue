@@ -3,6 +3,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
 import { computed, getCurrentInstance } from 'vue';
 
+import N8nIcon from '../N8nIcon';
+import { isSupportIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 type IconType = 'file' | 'icon' | 'unknown';
@@ -19,6 +21,7 @@ interface NodeIconProps {
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
 	badge?: { src: string; type: IconType };
+	useUpdatedIcons?: boolean;
 }
 
 const props = withDefaults(defineProps<NodeIconProps>(), {
@@ -100,6 +103,11 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 			<template v-else>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<N8nIcon
+						v-else-if="props.useUpdatedIcons && isSupportIconName(name)"
+						:icon="name"
+						:style="fontStyleData"
+					/>
 					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
 						<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />

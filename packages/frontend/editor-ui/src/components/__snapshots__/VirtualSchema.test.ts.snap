@@ -12,15 +12,15 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -37,7 +37,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -69,7 +69,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -79,14 +79,14 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2 
+              Set2
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -102,39 +102,39 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-test-id="schema-preview-warning"
             data-v-882a318e=""
           >
-            
-            Usually outputs the following fields. Execute the node to see the actual ones. 
-            
+
+            Usually outputs the following fields. Execute the node to see the actual ones.
+
             <a
               class="n8n-link"
               data-v-882a318e=""
               href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
-              
+
               <span
                 class="primary"
               >
                 <span
                   class="n8n-text size-small bold"
                 >
-                  
-                  
+
+
                   Learn more
-                  
-                  
+
+
                 </span>
               </span>
-              
+
             </a>
-            
-            
+
+
           </div>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -150,7 +150,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -187,7 +187,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -214,12 +214,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 account
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -231,10 +231,10 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -261,7 +261,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account.id }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -288,12 +288,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 id
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -302,25 +302,25 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
-              
+
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
-        
+
+
+
+
+
         <span
           class="n8n-text compact size-small regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
         >
-          
-          <font-awesome-icon-stub
+
+          <n8n-icon-stub
             beat="false"
             beatfade="false"
             border="false"
@@ -341,15 +341,15 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             swapopacity="false"
             symbol="false"
           />
-          
+
         </span>
         <!--teleport start-->
         <!--teleport end-->
-        
-        
-        
-        
-        
+
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -366,7 +366,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -394,7 +394,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="title"
               data-v-882a318e=""
             >
-              Variables and context 
+              Variables and context
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -402,11 +402,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -424,7 +424,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
     class="toggle"
     data-v-882a318e=""
   >
-    <font-awesome-icon-stub
+    <n8n-icon-stub
       beat="false"
       beatfade="false"
       border="false"
@@ -456,7 +456,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-      
+
       <div
         class="icon"
       >
@@ -466,14 +466,14 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
         />
         <!--v-if-->
       </div>
-      
+
     </div>
   </div>
   <div
     class="title"
     data-v-882a318e=""
   >
-    If 
+    If
     <!--v-if-->
   </div>
   <!--v-if-->
@@ -499,15 +499,15 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -524,7 +524,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -556,7 +556,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -566,17 +566,17 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger 
+              Manual Trigger
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -609,10 +609,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -628,7 +628,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -665,7 +665,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.empty }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -692,12 +692,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 empty
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -709,10 +709,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -728,7 +728,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -765,7 +765,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.emptyArray }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -792,12 +792,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 emptyArray
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -809,10 +809,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -828,7 +828,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -865,7 +865,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -892,12 +892,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 nested
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -909,10 +909,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -928,7 +928,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -965,7 +965,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -992,12 +992,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 nested[0]
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1009,10 +1009,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1028,7 +1028,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1065,7 +1065,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].empty }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1092,12 +1092,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 empty
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1109,10 +1109,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1128,7 +1128,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1165,7 +1165,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].emptyArray }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1192,12 +1192,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 emptyArray
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1209,10 +1209,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -1229,7 +1229,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1257,7 +1257,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="title"
               data-v-882a318e=""
             >
-              Variables and context 
+              Variables and context
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -1265,11 +1265,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -1289,15 +1289,15 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1322,7 +1322,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ name }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1349,12 +1349,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 name
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1363,18 +1363,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               John
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1399,7 +1399,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ age }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1426,12 +1426,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 age
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1440,18 +1440,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               22
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1467,7 +1467,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1502,7 +1502,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1529,12 +1529,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 hobbies
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1546,10 +1546,10 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1574,7 +1574,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[0] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1601,12 +1601,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 hobbies[0]
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1615,18 +1615,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               surfing
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1651,7 +1651,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[1] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1678,12 +1678,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 hobbies[1]
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1692,19 +1692,19 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               traveling
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -1724,15 +1724,15 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -1749,7 +1749,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1781,7 +1781,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -1791,17 +1791,17 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger 
+              Manual Trigger
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1834,10 +1834,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1853,7 +1853,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1890,7 +1890,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -1917,12 +1917,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 hello world
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -1934,10 +1934,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1953,7 +1953,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -1990,7 +1990,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2017,12 +2017,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 hello world[0]
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2034,10 +2034,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2053,7 +2053,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2090,7 +2090,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2117,12 +2117,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 test
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2134,10 +2134,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2164,7 +2164,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test['more to think about'] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2191,12 +2191,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 more to think about
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2205,18 +2205,18 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               1
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2243,7 +2243,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0]['test.how'] }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2270,12 +2270,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 test.how
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2284,18 +2284,18 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               ignore
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2312,7 +2312,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2344,7 +2344,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -2354,14 +2354,14 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2 
+              Set2
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2369,10 +2369,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2389,7 +2389,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2417,7 +2417,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="title"
               data-v-882a318e=""
             >
-              Variables and context 
+              Variables and context
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2425,11 +2425,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -2449,15 +2449,15 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2474,7 +2474,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2506,7 +2506,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -2516,17 +2516,17 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger 
+              Manual Trigger
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2553,10 +2553,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2573,7 +2573,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2601,7 +2601,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="title"
               data-v-882a318e=""
             >
-              Variables and context 
+              Variables and context
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2609,10 +2609,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2637,7 +2637,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $now }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2664,12 +2664,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 $now
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2678,18 +2678,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               2025-01-01T00:00:00.000+00:00
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2714,7 +2714,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $today }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2741,12 +2741,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 $today
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2755,18 +2755,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               2025-01-01T00:00:00.000+00:00
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2791,7 +2791,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $vars }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2818,21 +2818,21 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 $vars
               </span>
-              
+
             </span>
           </div>
-          
+
           <span
             class="n8n-text compact size-small regular n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger"
             data-v-0f5e7239=""
           >
-            
-            <font-awesome-icon-stub
+
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2853,11 +2853,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               swapopacity="false"
               symbol="false"
             />
-            
+
           </span>
           <!--teleport start-->
           <!--teleport end-->
-          
+
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -2866,10 +2866,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2885,7 +2885,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -2920,7 +2920,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -2947,12 +2947,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 $execution
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -2964,10 +2964,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2992,7 +2992,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.id }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3019,12 +3019,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 id
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3033,18 +3033,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               [filled at execution time]
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3069,7 +3069,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.mode }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3096,12 +3096,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 mode
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3110,18 +3110,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               test
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3146,7 +3146,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.resumeUrl }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3173,12 +3173,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 resumeUrl
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3187,18 +3187,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               The URL for resuming a 'Wait' node
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3214,7 +3214,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -3249,7 +3249,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3276,12 +3276,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 $workflow
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3293,10 +3293,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3321,7 +3321,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.id }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3348,12 +3348,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 id
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3362,18 +3362,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               123
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3398,7 +3398,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.name }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3425,12 +3425,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 name
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3439,18 +3439,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               Test Workflow
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3475,7 +3475,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.active }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3502,12 +3502,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
+
               <span>
                 <!--v-if-->
                 active
               </span>
-              
+
             </span>
           </div>
           <!--v-if-->
@@ -3516,19 +3516,19 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
+
             <span>
               <!--v-if-->
               true
             </span>
-            
+
           </span>
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -3548,15 +3548,15 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-      
+
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-        
-        
-        
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -3573,7 +3573,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -3605,7 +3605,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -3615,17 +3615,17 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger 
+              Manual Trigger
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3658,10 +3658,10 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3688,7 +3688,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.name }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3715,13 +3715,13 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="title"
               data-v-0f5e7239=""
             >
-              
-              
+
+
               <span>
                 name
               </span>
-              
-              
+
+
             </span>
           </div>
           <!--v-if-->
@@ -3730,25 +3730,25 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            
+
+
             <!--v-if-->
-            
-            
+
+
             <mark>
               John
             </mark>
-            
-            
+
+
             <!--v-if-->
-            
-            
+
+
           </span>
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -3765,7 +3765,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
+              <n8n-icon-stub
                 beat="false"
                 beatfade="false"
                 border="false"
@@ -3797,7 +3797,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-                
+
                 <div
                   class="icon"
                 >
@@ -3807,14 +3807,14 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-                
+
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2 
+              Set2
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -3828,10 +3828,10 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           </div>
           <!--v-if-->
         </div>
-        
-        
-        
-        
+
+
+
+
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3858,7 +3858,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $('Set2').item.json.name }}"
           >
-            <font-awesome-icon-stub
+            <n8n-icon-stub
               beat="false"
               beatfade="false"
               border="false"
@@ -3885,13 +3885,13 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="title"
               data-v-0f5e7239=""
             >
-              
-              
+
+
               <span>
                 name
               </span>
-              
-              
+
+
             </span>
           </div>
           <!--v-if-->
@@ -3900,26 +3900,26 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            
+
+
             <!--v-if-->
-            
-            
+
+
             <mark>
               John
             </mark>
-            
-            
+
+
             <!--v-if-->
-            
-            
+
+
           </span>
         </div>
-        
-        
-        
+
+
+
       </div>
-      
+
       <!--teleport start-->
       <!--teleport end-->
     </div>

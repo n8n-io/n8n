@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
 			>
-				<FontAwesomeIcon icon="palette" />
+				<N8nIcon icon="palette" />
 			</div>
 		</template>
 		<div :class="$style.content">

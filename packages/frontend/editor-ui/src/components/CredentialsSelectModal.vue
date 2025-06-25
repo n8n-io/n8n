@@ -89,7 +89,7 @@ function openCredentialType() {
 					@update:model-value="onSelect"
 				>
 					<template #prefix>
-						<font-awesome-icon icon="search" />
+						<n8n-icon icon="search" />
 					</template>
 					<N8nOption
 						v-for="credential in credentialsStore.allCredentialTypes"

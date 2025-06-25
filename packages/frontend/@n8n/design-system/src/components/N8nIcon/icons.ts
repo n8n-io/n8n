@@ -380,3 +380,14 @@ export const fontAwesomeIcons = {
 } as const;
 
 export type IconName = keyof typeof fontAwesomeIcons | keyof typeof customIcons;
+
+const ALL_SUPPORTED_ICONS = new Set(
+	Object.keys({
+		...fontAwesomeIcons,
+		...customIcons,
+	}),
+);
+
+export function isSupportIconName(iconName?: string): iconName is IconName {
+	return typeof iconName === 'string' && ALL_SUPPORTED_ICONS.has(iconName);
+}

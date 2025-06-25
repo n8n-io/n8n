@@ -78,7 +78,7 @@ onClickOutside(nameInput, disableNameEdit);
 					<n8n-text v-if="!modelValue" size="small" color="text-base">{{ placeholder }}</n8n-text>
 					<slot v-else>{{ modelValue }}</slot>
 				</span>
-				<i><font-awesome-icon icon="pen" /></i>
+				<i><n8n-icon icon="pen" /></i>
 			</div>
 			<div v-else :class="{ [$style.nameInput]: props.inputType !== 'textarea' }">
 				<n8n-input

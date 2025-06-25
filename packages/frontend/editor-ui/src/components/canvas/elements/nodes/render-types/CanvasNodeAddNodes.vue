@@ -44,7 +44,7 @@ function onClick() {
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
-				<FontAwesomeIcon icon="plus" size="lg" />
+				<N8nIcon icon="plus" size="large" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}

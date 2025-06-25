@@ -130,7 +130,7 @@ const onInstall = async () => {
 			</div>
 			<div>
 				<div v-if="communityNodeDetails.installed" :class="$style.installed">
-					<FontAwesomeIcon
+					<N8nIcon
 						v-if="!communityNodeDetails.official"
 						:class="$style.installedIcon"
 						icon="cube"

@@ -34,6 +34,8 @@ withDefaults(defineProps<IconProps>(), {
 			:is="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
 			v-if="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
 			:spin="spin"
+			height="1em"
+			width="1em"
 		/>
 		<!-- height and width as to match Lucide icons  -->
 		<Component
@@ -42,8 +44,8 @@ withDefaults(defineProps<IconProps>(), {
 			aria-hidden="true"
 			focusable="false"
 			role="img"
-			width="1.2em"
-			height="1.2em"
+			height="1em"
+			width="1em"
 		/>
 		<span v-else>[{{ icon }}]</span>
 	</N8nText>

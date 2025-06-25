@@ -261,7 +261,7 @@ async function handleActionItemClick(commandData: Command) {
 			</span>
 		</td>
 		<td>
-			<FontAwesomeIcon v-if="execution.mode === 'manual'" icon="flask" />
+			<N8nIcon v-if="execution.mode === 'manual'" icon="flask" />
 		</td>
 		<td>
 			<N8nButton

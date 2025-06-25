@@ -126,7 +126,7 @@ onMounted(async () => {
 			<N8nTooltip v-else placement="top">
 				<template #content>{{ i18n.baseText('communityNodeInfo.unverified') }}</template>
 				<div>
-					<FontAwesomeIcon :class="$style.tooltipIcon" icon="cube" />
+					<N8nIcon :class="$style.tooltipIcon" icon="cube" />
 					<N8nText color="text-light" size="xsmall" bold>
 						{{ i18n.baseText('communityNodeInfo.unverified.label') }}
 					</N8nText>
@@ -134,14 +134,14 @@ onMounted(async () => {
 			</N8nTooltip>
 
 			<div v-if="downloads">
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
+				<N8nIcon :class="$style.tooltipIcon" icon="download" />
 				<N8nText color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
 					{{ i18n.baseText('communityNodeInfo.downloads', { interpolate: { downloads } }) }}
 				</N8nText>
 			</div>
 
 			<div v-if="publisherName">
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
+				<N8nIcon :class="$style.tooltipIcon" icon="user" />
 				<N8nText color="text-light" size="xsmall" bold data-test-id="publisher-name">
 					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
 				</N8nText>

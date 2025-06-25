@@ -117,7 +117,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								:class="$style.treeToggle"
 								@click="toggleTreeItem(node)"
 							>
-								<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-right'" />
+								<n8n-icon :icon="node.expanded ? 'angle-down' : 'angle-right'" />
 							</button>
 							<n8n-tooltip :disabled="!slim" placement="right">
 								<template #content>

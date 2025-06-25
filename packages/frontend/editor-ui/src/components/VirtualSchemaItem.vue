@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { N8nTooltip } from '@n8n/design-system';
 import TextWithHighlights from './TextWithHighlights.vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 type Props = {
 	title?: string;
@@ -36,7 +35,7 @@ const emit = defineEmits<{
 	<div class="schema-item" :class="{ draggable }" data-test-id="run-data-schema-item">
 		<div class="toggle-container">
 			<div v-if="collapsable" class="toggle" @click="emit('click')">
-				<FontAwesomeIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
+				<N8nIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 		</div>
 		<div
@@ -58,7 +57,7 @@ const emit = defineEmits<{
 			}"
 			data-test-id="run-data-schema-node-name"
 		>
-			<FontAwesomeIcon class="type-icon" :icon size="sm" />
+			<N8nIcon class="type-icon" :icon="icon" size="small" />
 			<TextWithHighlights class="title" :content="title" :search="props.search" />
 		</div>
 
