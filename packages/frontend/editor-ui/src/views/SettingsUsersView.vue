@@ -35,7 +35,7 @@ const i18n = useI18n();
 const search = ref('');
 const usersTableState = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: 100,
+	itemsPerPage: 10,
 	sortBy: [
 		{ id: 'firstName', desc: false },
 		{ id: 'lastName', desc: false },
