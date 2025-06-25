@@ -191,7 +191,7 @@ describe('imageUtils', () => {
 			// Mock a Google model - using our mocked class
 			mockContext.getInputConnectionData.mockResolvedValue(
 				new ChatGoogleGenerativeAI({
-					model: 'gemini-1.0-pro',
+					model: 'gemini-2.5-flash',
 				}),
 			);
 
