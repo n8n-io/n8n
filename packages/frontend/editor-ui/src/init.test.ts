@@ -24,7 +24,11 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 vi.mock('@/stores/users.store', () => ({
-	useUsersStore: vi.fn().mockReturnValue({ initialize: vi.fn() }),
+	useUsersStore: vi.fn().mockReturnValue({
+		initialize: vi.fn(),
+		registerLoginHook: vi.fn(),
+		registerLogoutHook: vi.fn(),
+	}),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -84,6 +88,16 @@ describe('Init', () => {
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should initialize authentication hooks', async () => {
+			const registerLoginHookSpy = vi.spyOn(usersStore, 'registerLoginHook');
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+
+			await initializeCore();
+
+			expect(registerLoginHookSpy).toHaveBeenCalled();
+			expect(registerLogoutHookSpy).toHaveBeenCalled();
 		});
 
 		it('should initialize ssoStore with settings SSO configuration', async () => {
