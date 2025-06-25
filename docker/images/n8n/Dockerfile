@@ -1,81 +1,75 @@
 ARG NODE_VERSION=22
-
-# 1. Create an image to build n8n
-FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
-
-# Build the application from source
-WORKDIR /src
-COPY . /src
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
-RUN pnpm build
-
-# Delete all dev dependencies
-RUN node .github/scripts/trim-fe-packageJson.js
-# We don't want to remove all patches because we want them still to be applied
-# in `pnpm deploy`. However, we need to remove FE patches because we trim the FE
-# package.json files and `pnpm deploy` will fail otherwise. element-plus is the
-# only FE patch that we need to remove.
-RUN jq '.pnpm.patchedDependencies |= with_entries(select(.key | startswith("pdfjs-dist") or startswith("pkce-challenge")))' package.json > package.json.tmp; mv package.json.tmp package.json
-
-# Delete any source code or typings
-RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
-
-# Deploy the `n8n` package into /compiled
-RUN mkdir /compiled
-RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
-
-# 2. Start with a new clean image with just the code that is needed to run n8n
-FROM n8nio/base:${NODE_VERSION}
-ENV NODE_ENV=production
-
 ARG N8N_VERSION=snapshot
-ARG N8N_RELEASE_TYPE=dev
-ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+ARG LAUNCHER_VERSION=1.1.3
+ARG TARGETPLATFORM
 
-LABEL org.opencontainers.image.title="n8n"
-LABEL org.opencontainers.image.description="Workflow Automation Tool"
-LABEL org.opencontainers.image.source="https://github.com/n8n-io/n8n"
-LABEL org.opencontainers.image.url="https://n8n.io"
-LABEL org.opencontainers.image.version=${N8N_VERSION}
+# ==============================================================================
+# STAGE 1: System Dependencies & Base Setup
+# ==============================================================================
+FROM n8nio/base:${NODE_VERSION} AS system-deps
+
+# ==============================================================================
+# STAGE 2: Application Artifact Processor
+# ==============================================================================
+FROM alpine:3.22.0 AS app-artifact-processor
+
+COPY ./compiled /app/
+
+# ==============================================================================
+# STAGE 3: Task Runner Launcher
+# ==============================================================================
+FROM alpine:3.22.0 AS launcher-downloader
+ARG TARGETPLATFORM
+ARG LAUNCHER_VERSION
+
+RUN set -e; \
+    case "$TARGETPLATFORM" in \
+        "linux/amd64") ARCH_NAME="amd64" ;; \
+        "linux/arm64") ARCH_NAME="arm64" ;; \
+        *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
+    esac; \
+    mkdir /launcher-temp && cd /launcher-temp; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
+    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
+    sha256sum -c checksum.sha256; \
+    mkdir -p /launcher-bin; \
+    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
+    cd / && rm -rf /launcher-temp
+
+# ==============================================================================
+# STAGE 4: Final Runtime Image
+# ==============================================================================
+FROM system-deps AS runtime
+
+ARG N8N_VERSION
+ARG N8N_RELEASE_TYPE=dev
+ENV NODE_ENV=production
+ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+ENV SHELL=/bin/sh
 
 WORKDIR /home/node
-COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
+
+COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
-
-# Setup the Task Runner Launcher
-ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.1.3
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
-# Download, verify, then extract the launcher binary
-RUN \
-	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="amd64"; \
-	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="arm64"; fi; \
-	mkdir /launcher-temp && \
-	cd /launcher-temp && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256 && \
-	# The .sha256 does not contain the filename --> Form the correct checksum file
-	echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256 && \
-	sha256sum -c checksum.sha256 && \
-	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
-	cd - && \
-	rm -r /launcher-temp
 
-RUN \
-	cd /usr/local/lib/node_modules/n8n && \
-	npm rebuild sqlite3 && \
-	cd - && \
-	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
-	mkdir .n8n && \
-	chown node:node .n8n
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
 
-# pdfjs-dist has an optional dependency on @napi-rs/canvas, which is required
-# for it to work.
+# Install npm@11.4.2 to fix brace-expansion vulnerability, remove after vulnerability is fixed in node image
+RUN npm install -g npm@11.4.2
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
 
-# Install npm 11.4.1 to fix the vulnerable cross-spawn dependency
-RUN npm install -g npm@11.4.1
-
-ENV SHELL /bin/sh
+EXPOSE 5678/tcp
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+LABEL org.opencontainers.image.title="n8n" \
+      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version=${N8N_VERSION}

@@ -1,0 +1,332 @@
+# This workflow is used to build and push the Docker image for n8n
+# - build-and-push-docker: This builds on both an ARM64 and AMD64 runner so the builds are native to the platform. Uses blacksmith native runners and build-push-action
+# - create_multi_arch_manifest: This creates the multi-arch manifest for the Docker image. Needed to recombine the images from the build-and-push-docker job since they are separate runners.
+# - security-scan: This scans the Docker image for security vulnerabilities using Trivy.
+
+name: 'Docker: Build and Push'
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'N8N version to build'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type (stable, nightly, dev)'
+        required: true
+        type: string
+        default: 'dev'
+      push_enabled:
+        description: 'Whether to push the built images'
+        required: false
+        type: boolean
+        default: true
+
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - nightly
+          - dev
+          - stable
+          - branch
+        default: 'dev'
+      push_to_registry:
+        description: 'Push image to registry'
+        required: false
+        type: boolean
+        default: true
+
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+    paths:
+      - '.github/workflows/docker-build-push.yml'
+      - 'docker/images/n8n/Dockerfile'
+
+jobs:
+  build-and-push-docker:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2204
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-4vcpu-ubuntu-2204-arm
+            docker_platform: linux/arm64
+
+    name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    outputs:
+      image_ref: ${{ steps.determine-tags.outputs.primary_tag }}
+      primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
+      push_enabled_status: ${{ steps.context.outputs.push_enabled }}
+      release_type: ${{ steps.context.outputs.release_type }}
+      n8n_version: ${{ steps.context.outputs.n8n_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        shell: bash
+
+      - name: Configure Turborepo Cache
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+
+      - name: Build n8n for Docker
+        run: pnpm build:n8n
+        shell: bash
+
+      - name: Determine build context values
+        id: context
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "release_type=nightly" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
+            echo "n8n_version=${{ inputs.n8n_version }}" >> $GITHUB_OUTPUT
+            echo "push_enabled=${{ inputs.push_enabled }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.release_type }}" == "branch" ]]; then
+              BRANCH_NAME="${{ github.ref_name }}"
+              SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
+              echo "release_type=branch" >> $GITHUB_OUTPUT
+              echo "n8n_version=branch-${SAFE_BRANCH_NAME}" >> $GITHUB_OUTPUT
+              echo "push_enabled=${{ inputs.push_to_registry }}" >> $GITHUB_OUTPUT
+            else
+              echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
+              echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+              echo "push_enabled=true" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> $GITHUB_OUTPUT
+          else
+            echo "release_type=dev" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine Docker tags
+        id: determine-tags
+        run: |
+          RELEASE_TYPE="${{ steps.context.outputs.release_type }}"
+          N8N_VERSION_TAG="${{ steps.context.outputs.n8n_version }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}/n8n"
+          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}/n8n"
+          PLATFORM="${{ matrix.platform }}"
+
+          GHCR_TAGS_FOR_PUSH=""
+          DOCKER_TAGS_FOR_PUSH=""
+
+          PRIMARY_GHCR_MANIFEST_TAG_VALUE=""
+          PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
+
+          if [[ "$RELEASE_TYPE" == "stable" && -z "$N8N_VERSION_TAG" ]]; then
+            echo "Error: N8N_VERSION_TAG is empty for a stable release."
+            exit 1
+          fi
+
+          case "$RELEASE_TYPE" in
+            "stable")
+              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              PRIMARY_DOCKER_MANIFEST_TAG_VALUE="${DOCKER_BASE}:${N8N_VERSION_TAG}"
+              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              DOCKER_TAGS_FOR_PUSH="${PRIMARY_DOCKER_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              ;;
+            "nightly")
+              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:nightly"
+              PRIMARY_DOCKER_MANIFEST_TAG_VALUE="${DOCKER_BASE}:nightly"
+              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              DOCKER_TAGS_FOR_PUSH="${PRIMARY_DOCKER_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              ;;
+            "branch")
+              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
+              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
+              DOCKER_TAGS_FOR_PUSH=""
+              ;;
+            "dev"|*)
+              if [[ "$N8N_VERSION_TAG" == pr-* ]]; then
+                PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
+                GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+                PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
+                DOCKER_TAGS_FOR_PUSH=""
+              else
+                PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:dev"
+                PRIMARY_DOCKER_MANIFEST_TAG_VALUE="${DOCKER_BASE}:dev"
+                GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+                DOCKER_TAGS_FOR_PUSH="${PRIMARY_DOCKER_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              fi
+              ;;
+          esac
+
+          ALL_TAGS="${GHCR_TAGS_FOR_PUSH}"
+          if [[ -n "$DOCKER_TAGS_FOR_PUSH" ]]; then
+            ALL_TAGS="${ALL_TAGS}\n${DOCKER_TAGS_FOR_PUSH}"
+          fi
+
+          echo "Generated Tags for push: $ALL_TAGS"
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ALL_TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "ghcr_platform_tag=${GHCR_TAGS_FOR_PUSH}" >> $GITHUB_OUTPUT
+          echo "dockerhub_platform_tag=${DOCKER_TAGS_FOR_PUSH}" >> $GITHUB_OUTPUT
+          echo "primary_ghcr_manifest_tag=${PRIMARY_GHCR_MANIFEST_TAG_VALUE}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to GitHub Container Registry
+        if: steps.context.outputs.push_enabled == 'true'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub
+        if: steps.context.outputs.push_enabled == 'true'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: useblacksmith/build-push-action@6fe3b1c3665ca911656e8249f6195103b7dc9782 # v1.2
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=22
+            N8N_VERSION=${{ steps.context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ steps.context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+          push: ${{ steps.context.outputs.push_enabled }}
+          tags: ${{ steps.determine-tags.outputs.tags }}
+
+  create_multi_arch_manifest:
+    name: Create Multi-Arch Manifest
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    if: |
+      needs.build-and-push-docker.result == 'success' &&
+      needs.build-and-push-docker.outputs.push_enabled_status == 'true'
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Reconstruct Docker Hub Primary Tag
+        id: reconstruct_dockerhub_tag
+        run: |
+          RELEASE_TYPE="${{ needs.build-and-push-docker.outputs.release_type }}"
+          N8N_VERSION="${{ needs.build-and-push-docker.outputs.n8n_version }}"
+          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}/n8n"
+
+          PRIMARY_DOCKER_MANIFEST_TAG=""
+
+          case "$RELEASE_TYPE" in
+            "stable")
+              PRIMARY_DOCKER_MANIFEST_TAG="${DOCKER_BASE}:${N8N_VERSION}"
+              ;;
+            "nightly")
+              PRIMARY_DOCKER_MANIFEST_TAG="${DOCKER_BASE}:nightly"
+              ;;
+            "dev")
+              if [[ "$N8N_VERSION" != pr-* ]]; then
+                PRIMARY_DOCKER_MANIFEST_TAG="${DOCKER_BASE}:dev"
+              fi
+              ;;
+          esac
+
+          if [[ -n "$PRIMARY_DOCKER_MANIFEST_TAG" ]]; then
+            echo "PRIMARY_DOCKER_MANIFEST_TAG=$PRIMARY_DOCKER_MANIFEST_TAG" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No Docker Hub primary tag to reconstruct for release type '$RELEASE_TYPE' and version '$N8N_VERSION'. Skipping Docker Hub manifest creation."
+          fi
+
+      - name: Create GHCR multi-arch manifest
+        if: needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag != ''
+        run: |
+          MANIFEST_TAG="${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
+
+          echo "Creating GHCR manifest: $MANIFEST_TAG"
+
+          # Create and push the multi-arch manifest using buildx
+          docker buildx imagetools create \
+            --tag $MANIFEST_TAG \
+            ${MANIFEST_TAG}-amd64 \
+            ${MANIFEST_TAG}-arm64
+
+      # Create Docker Hub multi-arch manifest
+      - name: Create Docker Hub multi-arch manifest
+        if: env.PRIMARY_DOCKER_MANIFEST_TAG != ''
+        run: |
+          MANIFEST_TAG="${{ env.PRIMARY_DOCKER_MANIFEST_TAG }}"
+
+          echo "Creating Docker Hub manifest: $MANIFEST_TAG"
+
+          # Create and push the multi-arch manifest using buildx
+          docker buildx imagetools create \
+            --tag $MANIFEST_TAG \
+            ${MANIFEST_TAG}-amd64 \
+            ${MANIFEST_TAG}-arm64
+
+  security-scan:
+    name: Security Scan
+    needs: [build-and-push-docker]
+    if: |
+      success() &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_call' && inputs.release_type == 'stable'))
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
