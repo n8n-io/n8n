@@ -65,7 +65,6 @@ const onUpdateClick = async () => {
 	margin-bottom: var(--spacing-3xs);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
-	border-color: var(--color-foreground-base);
 	background: var(--color-background-light-base);
 }
 
