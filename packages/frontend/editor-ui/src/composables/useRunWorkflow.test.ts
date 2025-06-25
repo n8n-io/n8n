@@ -14,7 +14,8 @@ import type {
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import type { IExecutionResponse, IStartRunData, IWorkflowData } from '@/Interface';
+import type { IExecutionResponse, IStartRunData } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -244,7 +245,7 @@ describe('useRunWorkflow({ router })', () => {
 						disabled: false,
 					},
 				],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 
 			const result = await runWorkflow({});
 
@@ -278,7 +279,7 @@ describe('useRunWorkflow({ router })', () => {
 				pinData: {
 					Slack: [{ json: { value: 'data2' } }],
 				},
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 
 			const mockExecutionResponse = { executionId: '123' };
 
@@ -291,7 +292,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				NodeName: [],
 			};
@@ -328,7 +329,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				NodeName: [],
 			};
@@ -350,7 +351,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				NodeName: [],
 			};
@@ -391,7 +392,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				[parentNodeName]: [
@@ -465,7 +466,7 @@ describe('useRunWorkflow({ router })', () => {
 			} as unknown as Workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
 				data: {},
 				node: {},
@@ -496,7 +497,7 @@ describe('useRunWorkflow({ router })', () => {
 				mock<Workflow>({ getChildNodes: vi.fn().mockReturnValue([]) }),
 			);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ nodes: [] }),
+				mock<WorkflowData>({ nodes: [] }),
 			);
 
 			const { runWorkflow } = composable;
@@ -527,7 +528,7 @@ describe('useRunWorkflow({ router })', () => {
 				}),
 			);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ nodes: [] }),
+				mock<WorkflowData>({ nodes: [] }),
 			);
 
 			const { runWorkflow } = composable;
@@ -566,7 +567,7 @@ describe('useRunWorkflow({ router })', () => {
 				}),
 			);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ nodes: [] }),
+				mock<WorkflowData>({ nodes: [] }),
 			);
 
 			const { runWorkflow } = composable;
@@ -594,7 +595,7 @@ describe('useRunWorkflow({ router })', () => {
 				mock<Workflow>({ getChildNodes: vi.fn().mockReturnValue([]) }),
 			);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ nodes: [] }),
+				mock<WorkflowData>({ nodes: [] }),
 			);
 
 			// ACT
@@ -625,7 +626,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ id: 'workflowId', nodes: [] }),
+				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
@@ -738,7 +739,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ id: 'workflowId', nodes: [] }),
+				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
@@ -767,7 +768,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<IWorkflowData>({ id: 'workflowId', nodes: [] }),
+				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
@@ -789,7 +790,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: workflow.id,
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 
 			// Simulate failed execution start
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
@@ -915,7 +916,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 
 			await runWorkflowComposable.runEntireWorkflow('main', 'foo');
 

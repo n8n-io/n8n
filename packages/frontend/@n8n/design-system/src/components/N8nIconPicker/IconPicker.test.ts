@@ -60,6 +60,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
+				stubs: ['N8nButton'],
 			},
 		});
 		const TEST_EMOJI_COUNT = 1962;
@@ -90,11 +91,12 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
+				stubs: ['N8nButton'],
 			},
 		});
 		await userEvent.hover(getByTestId('icon-picker-button'));
 		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
-		expect(getByTestId('icon-picker-button').dataset.icon).toBe(ICON);
+		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ICON);
 	});
 	it('renders emoji as default icon correctly', async () => {
 		const ICON = '🔥';
@@ -124,6 +126,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
+				stubs: ['N8nButton'],
 			},
 		});
 		expect(queryByTestId('tab-icons')).not.toBeInTheDocument();
@@ -138,13 +141,14 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
+				stubs: ['N8nButton'],
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
 		// Select the first icon
 		await fireEvent.click(getAllByTestId('icon-picker-icon')[0]);
 		// Icon should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button').dataset.icon).toBe(TEST_ICONS[0]);
+		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', TEST_ICONS[0]);
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
 		expect(emitted()).toHaveProperty('update:modelValue');
 		// Should emit the selected icon

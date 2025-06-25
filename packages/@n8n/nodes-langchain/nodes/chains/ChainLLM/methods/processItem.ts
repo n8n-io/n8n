@@ -42,7 +42,7 @@ export const processItem = async (ctx: IExecuteFunctions, itemIndex: number) => 
 	}
 
 	// Get output parser if configured
-	const outputParser = await getOptionalOutputParser(ctx);
+	const outputParser = await getOptionalOutputParser(ctx, itemIndex);
 
 	// Get user prompt based on node version
 	let prompt: string;

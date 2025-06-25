@@ -44,7 +44,12 @@ function setCurrentUser() {
 
 function resetStores() {
 	useSettingsStore().reset();
-	useUsersStore().reset();
+
+	const usersStore = useUsersStore();
+	usersStore.initialized = false;
+	usersStore.currentUserId = null;
+	usersStore.usersById = {};
+	usersStore.currentUserCloudInfo = null;
 }
 
 function setup() {
