@@ -80,7 +80,7 @@ export class UserRepository extends Repository<User> {
 	 */
 	async getEmailsByIds(userIds: string[]) {
 		return await this.find({
-			select: ['email'],
+			select: ['id', 'email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
 	}
