@@ -91,15 +91,25 @@ function isExpanded(treeNode: LogEntry): boolean {
 	return index >= 0 ? flatLogEntries[index + 1]?.parent?.id === treeNode.id : false;
 }
 
+// While executing, scroll to the bottom if there's no selection
 watch(
-	[() => selected?.id, () => (execution?.status === 'running' ? flatLogEntries.length : 0)],
-	async ([selectedId, flatEntryCount]) => {
+	[() => execution?.status === 'running', () => flatLogEntries.length],
+	async ([isRunning, flatEntryCount], [wasRunning]) => {
+		await nextTick(() => {
+			if (selected === undefined && (isRunning || wasRunning)) {
+				virtualList.scrollTo(flatEntryCount - 1);
+			}
+		});
+	},
+	{ immediate: true },
+);
+
+// Scroll selected row into view
+watch(
+	() => selected?.id,
+	async (selectedId) => {
 		await nextTick(() => {
 			if (selectedId === undefined) {
-				if (flatEntryCount > 0) {
-					// While executing, scroll to the bottom if there's no selection
-					virtualList.scrollTo(flatEntryCount - 1);
-				}
 				return;
 			}
 
@@ -108,7 +118,6 @@ watch(
 				: flatLogEntries.findIndex((e) => e.id === selectedId);
 
 			if (index >= 0) {
-				// Scroll selected row into view
 				virtualList.scrollTo(index);
 			}
 		});
@@ -230,6 +239,7 @@ watch(
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: stretch;
+	padding-right: var(--spacing-5xs);
 
 	&.empty {
 		align-items: center;
@@ -250,6 +260,27 @@ watch(
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
 
 	scroll-padding-block: var(--spacing-3xs);
+
+	@supports not (selector(::-webkit-scrollbar)) {
+		scrollbar-width: thin;
+	}
+
+	@supports selector(::-webkit-scrollbar) {
+		padding-right: var(--spacing-5xs);
+		scrollbar-gutter: stable;
+
+		&::-webkit-scrollbar {
+			width: var(--spacing-4xs);
+		}
+
+		&::-webkit-scrollbar-thumb {
+			border-radius: var(--spacing-4xs);
+			background: var(--color-foreground-dark);
+		}
+	}
+
+	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
+	scroll-behavior: smooth;
 
 	& :global(.el-icon) {
 		display: none;
