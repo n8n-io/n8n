@@ -378,9 +378,7 @@ export class CommunityPackagesService {
 		);
 	}
 
-	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
-		if (isUpdate) return;
-
+	private checkInstallPermissions(checksumProvided: boolean) {
 		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
@@ -396,9 +394,9 @@ export class CommunityPackagesService {
 		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
+		this.checkInstallPermissions(shouldValidateChecksum);
 
-		if (!isUpdate && options.checksum) {
+		if (options.checksum) {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
