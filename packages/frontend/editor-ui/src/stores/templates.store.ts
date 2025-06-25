@@ -18,6 +18,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -81,6 +82,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
 	const workflowsStore = useWorkflowsStore();
 
 	const allCategories = computed(() => {
@@ -171,7 +173,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			utm_awc: String(workflowsStore.activeWorkflows.length),
 		};
 		const userRole: string | null | undefined =
-			userStore.currentUserCloudInfo?.role ??
+			cloudPlanStore.currentUserCloudInfo?.role ??
 			(userStore.currentUser?.personalizationAnswers &&
 			'role' in userStore.currentUser.personalizationAnswers
 				? userStore.currentUser.personalizationAnswers.role
