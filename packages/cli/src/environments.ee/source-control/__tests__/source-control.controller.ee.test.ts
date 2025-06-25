@@ -1,9 +1,9 @@
 import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import { SourceControlController } from '../source-control.controller.ee';

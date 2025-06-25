@@ -1,11 +1,10 @@
+import { testDb } from '@n8n/backend-test-utils';
 import type { User, Variables } from '@n8n/db';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
-
-import * as testDb from '../shared/test-db';
 
 describe('Variables in Public API', () => {
 	let owner: User;

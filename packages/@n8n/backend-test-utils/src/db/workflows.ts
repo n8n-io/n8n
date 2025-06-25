@@ -1,27 +1,17 @@
-import type { SharedWorkflow } from '@n8n/db';
-import type { IWorkflowDb } from '@n8n/db';
-import { Project } from '@n8n/db';
-import { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import type { SharedWorkflow, IWorkflowDb } from '@n8n/db';
+import {
+	Project,
+	User,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
 import type { DeepPartial } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-export async function createManyWorkflows(
-	amount: number,
-	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
-) {
-	const workflowRequests = [...Array(amount)].map(
-		async (_) => await createWorkflow(attributes, user),
-	);
-	return await Promise.all(workflowRequests);
-}
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
 	const { active, isArchived, name, nodes, connections, versionId, settings } = attributes;
@@ -84,6 +74,18 @@ export async function createWorkflow(
 	}
 
 	return workflow;
+}
+
+export async function createManyWorkflows(
+	amount: number,
+	attributes: Partial<IWorkflowDb> = {},
+	user?: User,
+) {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createWorkflow(attributes, user),
+	);
+	return await Promise.all(workflowRequests);
 }
 
 export async function shareWorkflowWithUsers(workflow: IWorkflowBase, users: User[]) {

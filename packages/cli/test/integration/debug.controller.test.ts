@@ -1,3 +1,5 @@
+import { randomName } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -8,10 +10,8 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { createOwner } from './shared/db/users';
-import { randomName } from './shared/random';
 import type { SuperAgentTest } from './shared/types';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);

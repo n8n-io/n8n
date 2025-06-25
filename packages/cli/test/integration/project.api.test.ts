@@ -1,3 +1,14 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	getPersonalProject,
+	findProject,
+	getProjectRelations,
+} from '@n8n/backend-test-utils';
+import { createWorkflow, shareWorkflowWithProjects } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
@@ -19,19 +30,8 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
-import {
-	createTeamProject,
-	linkUserToProject,
-	getPersonalProject,
-	findProject,
-	getProjectRelations,
-} from './shared/db/projects';
 import { createMember, createOwner, createUser } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],

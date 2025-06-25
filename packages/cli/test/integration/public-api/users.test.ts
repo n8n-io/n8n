@@ -1,6 +1,8 @@
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
+
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 import {
 	createMember,
 	createMemberWithApiKey,
@@ -8,8 +10,6 @@ import {
 	getUserById,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-
-import * as testDb from '../shared/test-db';
 
 describe('Users in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

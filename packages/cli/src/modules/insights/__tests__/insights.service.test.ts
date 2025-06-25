@@ -1,6 +1,10 @@
 import type { InsightsDateRange } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
@@ -11,11 +15,6 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
-
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import {
 	createCompactedInsightsEvent,

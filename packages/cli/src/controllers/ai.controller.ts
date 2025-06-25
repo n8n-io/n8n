@@ -6,6 +6,7 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
@@ -16,7 +17,6 @@ import { WritableStream } from 'node:stream/web';
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { AuthenticatedRequest } from '@/requests';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
