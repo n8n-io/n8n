@@ -1,3 +1,12 @@
+## [1.100.1](https://github.com/n8n-io/n8n/compare/n8n@1.100.0...n8n@1.100.1) (2025-06-25)
+
+
+### Bug Fixes
+
+* **editor:** Fix insights loading on FE ([#16677](https://github.com/n8n-io/n8n/issues/16677)) ([99ce1d2](https://github.com/n8n-io/n8n/commit/99ce1d2f133e3ad1fa481405b8f06e1f84eba10a))
+
+
+
 # [1.100.0](https://github.com/n8n-io/n8n/compare/n8n@1.99.0...n8n@1.100.0) (2025-06-23)
 
 
