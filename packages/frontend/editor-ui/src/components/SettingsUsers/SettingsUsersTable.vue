@@ -28,6 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: Role; userId: string }];
+	action: [value: { action: string; userId: string }];
 }>();
 
 const rows = computed(() => props.data.items);
@@ -106,6 +107,14 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 		divided: true,
 	},
 ]);
+
+const filterActions = (user: UsersList['items'][number]) => {
+	if (user.isOwner) return [];
+
+	return props.actions.filter(
+		(action) => action.guard?.({ ...user, isPendingUser: user.isPending } as IUser) ?? true,
+	);
+};
 </script>
 
 <template>
@@ -133,7 +142,11 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 				<SettingsUsersProjectsCell :data="item" />
 			</template>
 			<template #[`item.actions`]="{ item }">
-				<SettingsUsersActionsCell :data="item" :actions="props.actions" />
+				<SettingsUsersActionsCell
+					:data="item"
+					:actions="filterActions(item)"
+					@action="$emit('action', $event)"
+				/>
 			</template>
 		</N8nDataTableServer>
 	</div>

@@ -8,8 +8,15 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 }>();
 
+const emit = defineEmits<{
+	action: [value: { action: string; userId: string }];
+}>();
+
 const onUserAction = (action: string) => {
-	console.log('action', action, 'for user', props.data);
+	emit('action', {
+		action,
+		userId: props.data.id,
+	});
 };
 </script>
 

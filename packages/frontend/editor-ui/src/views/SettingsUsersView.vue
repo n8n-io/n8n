@@ -35,7 +35,7 @@ const i18n = useI18n();
 const search = ref('');
 const usersTableState = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: 10,
+	itemsPerPage: 100,
 	sortBy: [
 		{ id: 'firstName', desc: false },
 		{ id: 'lastName', desc: false },
@@ -67,13 +67,6 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			value: 'reinvite',
 			guard: (user) =>
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
-		},
-		{
-			label: i18n.baseText('settings.users.actions.delete'),
-			value: 'delete',
-			guard: (user) =>
-				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
-				user.id !== usersStore.currentUserId,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
@@ -373,6 +366,7 @@ const onSearch = (value: string) => {
 				:actions="usersListActions"
 				@update:options="updateUsersTableData"
 				@update:role="onUpdateRole"
+				@action="onUsersListAction"
 			/>
 
 			<n8n-users-list
