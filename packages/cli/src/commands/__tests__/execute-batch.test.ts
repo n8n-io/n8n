@@ -75,8 +75,8 @@ test('should start a task runner when task runners are enabled', async () => {
 	);
 
 	const cmd = new ExecuteBatch();
-	// @ts-expect-error Private property
-	cmd.parse = jest.fn().mockResolvedValue({ flags: {} });
+	// @ts-expect-error Protected property
+	cmd.flags = {};
 	// @ts-expect-error Private property
 	cmd.runTests = jest.fn().mockResolvedValue({ summary: { failedExecutions: [] } });
 

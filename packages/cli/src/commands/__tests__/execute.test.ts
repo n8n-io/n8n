@@ -69,8 +69,8 @@ test('should start a task runner when task runners are enabled', async () => {
 	);
 
 	const cmd = new Execute();
-	// @ts-expect-error Private property
-	cmd.parse = jest.fn().mockResolvedValue({ flags: { id: '123' } });
+	// @ts-expect-error Protected property
+	cmd.flags = { id: '123' };
 
 	// act
 

@@ -1,4 +1,5 @@
 import type { CommandClass } from '@n8n/decorators';
+import argvParser from 'yargs-parser';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -29,7 +30,8 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 	});
 
 	const run = async (argv: string[] = []) => {
-		const command = new Command(argv);
+		const command = new Command();
+		command.flags = argvParser(argv.join(' '));
 		await command.init?.();
 		await command.run();
 		return command;
