@@ -247,10 +247,11 @@ export class UserRepository extends Repository<User> {
 			for (const sort of sortBy) {
 				const [field, order] = sort.split(':');
 				if (field === 'role') {
-					queryBuilder.addOrderBy(
+					queryBuilder.addSelect(
 						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-						order.toUpperCase() as 'ASC' | 'DESC',
+						'userroleorder',
 					);
+					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC');
 				} else {
 					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
 				}
@@ -265,8 +266,8 @@ export class UserRepository extends Repository<User> {
 		take: number,
 		skip: number | undefined,
 	): SelectQueryBuilder<User> {
-		if (take >= 0) queryBuilder.limit(take);
-		if (skip) queryBuilder.offset(skip);
+		if (take >= 0) queryBuilder.take(take);
+		if (skip) queryBuilder.skip(skip);
 
 		return queryBuilder;
 	}
