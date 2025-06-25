@@ -603,6 +603,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 0,
 				query: 'Test prompt 1',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser1,
 				messages: [],
 			});
@@ -611,6 +612,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 1,
 				query: 'Test prompt 2',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser2,
 				messages: [],
 			});
@@ -619,6 +621,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 2,
 				query: 'Test prompt 3',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser3,
 				messages: [],
 			});
