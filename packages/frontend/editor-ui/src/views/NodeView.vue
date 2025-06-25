@@ -136,6 +136,7 @@ import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -186,6 +187,7 @@ const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
+const focusPanelStore = useFocusPanelStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
@@ -1207,6 +1209,14 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	}
 }
 
+function onToggleFocusPanel() {
+	if (!isFocusPanelFeatureEnabled.value) {
+		return;
+	}
+
+	focusPanelStore.toggleFocusPanel();
+}
+
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
@@ -2039,6 +2049,7 @@ onBeforeUnmount(() => {
 			@selection:end="onSelectionEnd"
 			@drag-and-drop="onDragAndDrop"
 			@tidy-up="onTidyUp"
+			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
 		>

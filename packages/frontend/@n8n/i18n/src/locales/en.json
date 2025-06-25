@@ -1454,6 +1454,7 @@
 	"nodeSettings.outputCleared.message": "Order of parameters changed, outgoing connections were cleared",
 	"nodeSettings.nodeVersion": "{node} node version {version}",
 	"nodeView.addNode": "Add node",
+	"nodeView.openFocusPanel": "Open focus panel",
 	"nodeView.openNodesPanel": "Open nodes panel",
 	"nodeView.addATriggerNodeFirst": "Add a <a data-action='showNodeCreator'>Trigger Node</a> first",
 	"nodeView.addOrEnableTriggerNode": "<a data-action='showNodeCreator'>Add</a> or enable a Trigger node to execute the workflow",
