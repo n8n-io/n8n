@@ -4,14 +4,15 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ResourceType } from '@/utils/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
+import type { SourceControlledFile } from '@n8n/api-types';
 import {
-	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
@@ -40,7 +41,6 @@ import { useRoute } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
-import { type WorkflowResource } from '@/Interface';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -57,6 +57,13 @@ const telemetry = useTelemetry();
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
+});
+
+const projectsForFilters = computed(() => {
+	return projectsStore.availableProjects.filter(
+		// global admins role is empty...
+		(project) => !project.role || project.role === 'project:admin',
+	);
 });
 
 const concatenateWithAnd = (messages: string[]) =>
@@ -172,11 +179,31 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) 
 
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
+const currentProject = computed(() => {
+	if (!route.params.projectId) {
+		return null;
+	}
+
+	const project = projectsStore.availableProjects.find(
+		(project) => project.id === route.params.projectId?.toString(),
+	);
+
+	if (!project) {
+		return null;
+	}
+
+	if (!project.role || project.role === 'project:admin') {
+		return project;
+	}
+
+	return null;
+});
+
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: null,
+	project: currentProject.value,
 });
 const filtersApplied = computed(
-	() => Boolean(search.value) || Boolean(Object.keys(filters.value).length),
+	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
 );
 const resetFilters = () => {
 	filters.value = { project: null };
@@ -242,6 +269,10 @@ const filteredCredentials = computed(() => {
 	return changes.value.credential.filter((credential) => {
 		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
+		}
+
+		if (credential.project && filters.value.project) {
+			return credential.project.id === filters.value.project.id;
 		}
 
 		return !(filters.value.status && filters.value.status !== credential.status);
@@ -494,6 +525,13 @@ const filtersActiveText = computed(() => {
 	return i18n.baseText('credentials.filters.active');
 });
 
+const filtersNoResultText = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return i18n.baseText('workflows.noResults');
+	}
+	return i18n.baseText('credentials.noResults');
+});
+
 function castType(type: string): ResourceType {
 	if (type === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return ResourceType.Workflow;
@@ -519,7 +557,11 @@ function castProject(project: ProjectListItem) {
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
 
-			<div v-if="changes.workflow.length" :class="[$style.filtersRow]" class="mt-l">
+			<div
+				v-if="changes.workflow.length || changes.credential.length"
+				:class="[$style.filtersRow]"
+				class="mt-l"
+			>
 				<div :class="[$style.filters]">
 					<N8nInput
 						v-model="search"
@@ -576,7 +618,7 @@ function castProject(project: ProjectListItem) {
 						<ProjectSharing
 							v-model="filters.project"
 							data-test-id="source-control-push-modal-project-search"
-							:projects="projectsStore.availableProjects"
+							:projects="projectsForFilters"
 							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 						/>
@@ -618,12 +660,11 @@ function castProject(project: ProjectListItem) {
 							>
 								<N8nText> Title </N8nText>
 							</N8nCheckbox>
-						</div>
-						<div style="flex: 1; overflow: hidden">
 							<N8nInfoTip
-								v-if="filtersApplied && activeDataSource.length && !activeDataSourceFiltered.length"
+								v-if="filtersApplied"
 								class="p-xs"
 								:bold="false"
+								:class="$style.filtersApplied"
 							>
 								{{ filtersActiveText }}
 								<N8nLink
@@ -633,6 +674,11 @@ function castProject(project: ProjectListItem) {
 								>
 									{{ i18n.baseText('workflows.filters.active.reset') }}
 								</N8nLink>
+							</N8nInfoTip>
+						</div>
+						<div style="flex: 1; overflow: hidden">
+							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
+								{{ filtersNoResultText }}
 							</N8nInfoTip>
 							<DynamicScroller
 								v-if="activeDataSourceFiltered.length"
@@ -784,6 +830,11 @@ function castProject(project: ProjectListItem) {
 .selectAll {
 	flex-shrink: 0;
 	margin-bottom: 0;
+	padding: 10px 16px;
+}
+
+.filtersApplied {
+	border-top: var(--border-base);
 }
 
 .scroller {
@@ -863,7 +914,9 @@ function castProject(project: ProjectListItem) {
 
 .tableHeader {
 	border-bottom: var(--border-base);
-	padding: 10px 16px;
+	// padding: 10px 16px;
+	display: flex;
+	flex-direction: column;
 }
 
 .tabs {
