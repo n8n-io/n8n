@@ -389,7 +389,7 @@ describe('NodeCreator - utils', () => {
 			expect(getHumanInTheLoopActions(actions)).toEqual([]);
 		});
 
-		it('should return an empty array if no actions have the SEND_AND_WAIT_OPERATION actionKey', () => {
+		it('should return an actions array if no actions have the SEND_AND_WAIT_OPERATION actionKey', () => {
 			const actions: ActionTypeDescription[] = [
 				{
 					name: 'Test Action',
