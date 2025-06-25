@@ -22,7 +22,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
-import type { IWorkflowDataCreate } from '@/Interface';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 
 export interface Props {
@@ -36,7 +36,7 @@ export interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
-	sampleWorkflow?: IWorkflowDataCreate;
+	sampleWorkflow?: WorkflowDataCreate;
 	newResourceLabel?: string;
 }
 
@@ -122,9 +122,9 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return props.modelValue ?? '';
 	}
 
 	if (isListMode.value) {
@@ -208,9 +208,6 @@ async function refreshCachedWorkflow() {
 	}
 
 	const workflowId = props.modelValue.value;
-	if (workflowId === true) {
-		return;
-	}
 	try {
 		await workflowsStore.fetchWorkflow(`${workflowId}`);
 		onInputChange(workflowId);
@@ -254,7 +251,7 @@ const onAddResourceClicked = async () => {
 		(w) => w.name && new RegExp(workflowName).test(w.name),
 	);
 
-	const workflow: IWorkflowDataCreate = {
+	const workflow: WorkflowDataCreate = {
 		...sampleWorkflow,
 		name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
 	};

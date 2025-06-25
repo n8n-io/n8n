@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ElSubMenu, ElMenuItem } from 'element-plus';
-import { computed, useCssModule } from 'vue';
+import { computed, useCssModule, getCurrentInstance } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
@@ -8,6 +8,7 @@ import type { IMenuItem } from '../../types';
 import { getInitials } from '../../utils/labelUtil';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
 import N8nTooltip from '../N8nTooltip';
 
 interface MenuItemProps {
@@ -61,6 +62,9 @@ const isItemActive = (item: IMenuItem): boolean => {
 		Array.isArray(item.children) && item.children.some((child) => isActive(child));
 	return isActive(item) || hasActiveChild;
 };
+
+// Get self component to avoid dependency cycle
+const N8nMenuItem = getCurrentInstance()?.type;
 </script>
 
 <template>
