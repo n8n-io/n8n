@@ -23,6 +23,7 @@ export function useLogsSelection(
 ) {
 	const telemetry = useTelemetry();
 	const manualLogEntrySelection = shallowRef<LogEntrySelection>({ type: 'initial' });
+	const nodeNameToSelect = shallowRef<string>();
 	const isExecutionStopped = computed(() => execution.value?.stoppedAt !== undefined);
 	const selected = computed(() =>
 		findSelectedLogEntry(manualLogEntrySelection.value, tree.value, isExecutionStopped.value),
@@ -58,6 +59,11 @@ export function useLogsSelection(
 
 	function selectPrev() {
 		const entries = flatLogEntries.value;
+
+		if (entries.length === 0) {
+			return;
+		}
+
 		const prevEntry = selected.value
 			? (getEntryAtRelativeIndex(entries, selected.value.id, -1) ?? entries[0])
 			: entries[entries.length - 1];
@@ -68,6 +74,11 @@ export function useLogsSelection(
 
 	function selectNext() {
 		const entries = flatLogEntries.value;
+
+		if (entries.length === 0) {
+			return;
+		}
+
 		const nextEntry = selected.value
 			? (getEntryAtRelativeIndex(entries, selected.value.id, 1) ?? entries[entries.length - 1])
 			: entries[0];
@@ -102,6 +113,7 @@ export function useLogsSelection(
 			const entry = findLogEntryRec((e) => e.node.name === selectedOnCanvas, tree.value);
 
 			if (!entry) {
+				nodeNameToSelect.value = selectedOnCanvas;
 				return;
 			}
 
@@ -112,6 +124,23 @@ export function useLogsSelection(
 			while (parent !== undefined) {
 				toggleExpand(parent, true);
 				parent = parent.parent;
+			}
+		},
+		{ immediate: true },
+	);
+
+	watch(
+		tree,
+		(t) => {
+			if (nodeNameToSelect.value === undefined) {
+				return;
+			}
+
+			const entry = findLogEntryRec((e) => e.node.name === nodeNameToSelect.value, t);
+
+			if (entry) {
+				nodeNameToSelect.value = undefined;
+				manualLogEntrySelection.value = { type: 'selected', entry };
 			}
 		},
 		{ immediate: true },
