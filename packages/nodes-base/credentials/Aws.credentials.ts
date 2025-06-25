@@ -806,18 +806,7 @@ export class Aws implements ICredentialType {
 			);
 		}
 
-		// 3. Try to get credentials from instance metadata service (EC2)
-		try {
-			const instanceCredentials = await this.getInstanceMetadataCredentials();
-			if (instanceCredentials) {
-				return instanceCredentials;
-			}
-		} catch (error) {
-			// Silently continue to next credential source
-			console.debug('Failed to get credentials from instance metadata:', error);
-		}
-
-		// 4. Try to get credentials from container metadata service (ECS/Fargate)
+		// 3. Try to get credentials from container metadata service (ECS/Fargate)
 		try {
 			const containerCredentials = await this.getContainerMetadataCredentials();
 			if (containerCredentials) {
@@ -826,6 +815,17 @@ export class Aws implements ICredentialType {
 		} catch (error) {
 			// Silently continue to next credential source
 			console.debug('Failed to get credentials from container metadata:', error);
+		}
+
+		// 4. Try to get credentials from instance metadata service (EC2)
+		try {
+			const instanceCredentials = await this.getInstanceMetadataCredentials();
+			if (instanceCredentials) {
+				return instanceCredentials;
+			}
+		} catch (error) {
+			// Silently continue to next credential source
+			console.debug('Failed to get credentials from instance metadata:', error);
 		}
 
 		// No credentials found
