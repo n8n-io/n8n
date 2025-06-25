@@ -64,7 +64,7 @@ export function useLogsExecutionData() {
 			subWorkflowExecData.value,
 		);
 	});
-	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
+	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 50));
 
 	function resetExecutionData() {
 		execData.value = undefined;
