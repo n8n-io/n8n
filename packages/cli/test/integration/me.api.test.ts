@@ -1,3 +1,6 @@
+import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -6,12 +9,8 @@ import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
 
-import { mockInstance } from '@test/mocking';
-
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
-import { randomEmail, randomName, randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 

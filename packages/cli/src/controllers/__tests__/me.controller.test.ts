@@ -1,4 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
 import { InvalidAuthTokenRepository } from '@n8n/db';
@@ -16,9 +18,8 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';

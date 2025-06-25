@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
@@ -16,8 +17,6 @@ import type {
 import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
-
-import { mockInstance } from '@test/mocking';
 
 import {
 	autoDetectResponseMode,
