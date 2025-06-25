@@ -1,6 +1,10 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
-import { LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES, VERSIONS_MODAL_KEY } from '@/constants';
+import {
+	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
+	VERSIONS_MODAL_KEY,
+	WHATS_NEW_MODAL_KEY,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
 import { defineStore } from 'pinia';
@@ -26,7 +30,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const currentVersion = ref<Version | undefined>();
 	const whatsNewArticles = ref<WhatsNewArticle[]>([]);
 
-	const { showToast } = useToast();
+	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
@@ -85,6 +89,19 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		whatsNewArticles.value = article;
 	};
 
+	const setWhatsNewArticleRead = (articleId: number) => {
+		if (!readWhatsNewArticles.value.includes(articleId)) {
+			readWhatsNewArticlesStorage.value = JSON.stringify([
+				...readWhatsNewArticles.value,
+				articleId,
+			]);
+		}
+	};
+
+	const isWhatsNewArticleRead = (articleId: number): boolean => {
+		return readWhatsNewArticles.value.includes(articleId);
+	};
+
 	const fetchWhatsNew = async () => {
 		try {
 			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
@@ -98,21 +115,28 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 					instanceId,
 				);
 				setWhatsNew(articles);
+
+				if (articles.length > 0) {
+					const latestArticle = articles[0];
+					if (!isWhatsNewArticleRead(latestArticle.id)) {
+						const notification = showMessage({
+							title: latestArticle.calloutTitle,
+							message: latestArticle.calloutText,
+							onClick: () => {
+								uiStore.openModalWithData({
+									name: WHATS_NEW_MODAL_KEY,
+									data: { articleId: latestArticle.id },
+								});
+								notification.close();
+							},
+							position: 'bottom-left',
+							duration: 0,
+							customClass: 'clickable whats-new-notification',
+						});
+					}
+				}
 			}
 		} catch (e) {}
-	};
-
-	const setWhatsNewArticleRead = (articleId: number) => {
-		if (!readWhatsNewArticles.value.includes(articleId)) {
-			readWhatsNewArticlesStorage.value = JSON.stringify([
-				...readWhatsNewArticles.value,
-				articleId,
-			]);
-		}
-	};
-
-	const isWhatsNewArticleRead = (articleId: number): boolean => {
-		return readWhatsNewArticles.value.includes(articleId);
 	};
 
 	const initialize = (settings: IVersionNotificationSettings) => {
