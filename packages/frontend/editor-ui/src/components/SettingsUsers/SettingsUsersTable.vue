@@ -13,6 +13,7 @@ import type { IUser } from '@/Interface';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
 type Item = UsersList['items'][number];
@@ -108,6 +109,10 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 	},
 ]);
 
+const canUpdateRole = computed((): boolean => {
+	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+});
+
 const filterActions = (user: UsersList['items'][number]) => {
 	if (user.isOwner) return [];
 
@@ -132,11 +137,13 @@ const filterActions = (user: UsersList['items'][number]) => {
 			</template>
 			<template #[`item.role`]="{ item }">
 				<SettingsUsersRoleCell
+					v-if="canUpdateRole"
 					:data="item"
 					:roles="roles"
 					:actions="roleActions"
 					@update:role="$emit('update:role', $event)"
 				/>
+				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default].label }}</N8nText>
 			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />

@@ -107,10 +107,6 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 	];
 });
 
-const canUpdateRole = computed((): boolean => {
-	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
-});
-
 async function onUsersListAction({ action, userId }: { action: string; userId: string }) {
 	switch (action) {
 		case 'delete':
@@ -368,43 +364,11 @@ const onSearch = (value: string) => {
 				@update:role="onUpdateRole"
 				@action="onUsersListAction"
 			/>
-
-			<n8n-users-list
-				:actions="usersListActions"
-				:users="allUsers"
-				:current-user-id="usersStore.currentUserId"
-				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
-				@action="onUsersListAction"
-			>
-				<template #actions="{ user }">
-					<n8n-select
-						v-if="user.id !== usersStore.currentUserId"
-						:model-value="user?.role || 'global:member'"
-						:disabled="!canUpdateRole"
-						data-test-id="user-role-select"
-						@update:model-value="onRoleChange(user, $event)"
-					>
-						<n8n-option
-							v-for="role in userRoles"
-							:key="role.value"
-							:value="role.value"
-							:label="role.label"
-							:disabled="role.disabled"
-						/>
-					</n8n-select>
-				</template>
-			</n8n-users-list>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-}
-
-.usersContainer {
-}
-
 .buttonContainer {
 	display: flex;
 	justify-content: space-between;
@@ -418,9 +382,5 @@ const onSearch = (value: string) => {
 
 .setupInfoContainer {
 	max-width: 728px;
-}
-
-.alert {
-	left: calc(50% + 100px);
 }
 </style>
