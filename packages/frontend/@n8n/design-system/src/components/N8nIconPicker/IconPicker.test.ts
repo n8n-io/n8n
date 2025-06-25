@@ -3,7 +3,7 @@ import { fireEvent, render } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
-import { TEST_ICONS } from './constants';
+import { ALL_PROJECT_ICONS } from './constants';
 
 // Create a proxy handler that returns a mock icon object for any icon name
 // and mock the entire icon library with the proxy
@@ -55,7 +55,6 @@ describe('IconPicker', () => {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
-				availableIcons: TEST_ICONS,
 			},
 			global: {
 				plugins: [router],
@@ -71,7 +70,7 @@ describe('IconPicker', () => {
 		expect(getByTestId('tab-icons').className).toContain('activeTab');
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// All icons should be rendered
-		expect(getAllByTestId('icon-picker-icon')).toHaveLength(TEST_ICONS.length);
+		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_PROJECT_ICONS.length);
 		// Click on emojis tab
 		await fireEvent.click(getByTestId('tab-emojis'));
 		// Emojis tab should be active
@@ -85,7 +84,6 @@ describe('IconPicker', () => {
 		const { getByTestId, getByRole } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: ICON },
-				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
 			global: {
@@ -104,7 +102,6 @@ describe('IconPicker', () => {
 		const { getByTestId, getByRole } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'emoji', value: ICON },
-				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
 			global: {
@@ -121,7 +118,6 @@ describe('IconPicker', () => {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an emoji',
-				availableIcons: [],
 			},
 			global: {
 				plugins: [router],
@@ -136,7 +132,6 @@ describe('IconPicker', () => {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
-				availableIcons: TEST_ICONS,
 			},
 			global: {
 				plugins: [router],
@@ -148,13 +143,13 @@ describe('IconPicker', () => {
 		// Select the first icon
 		await fireEvent.click(getAllByTestId('icon-picker-icon')[0]);
 		// Icon should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', TEST_ICONS[0]);
+		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', '?'); // todo
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
 		expect(emitted()).toHaveProperty('update:modelValue');
 		// Should emit the selected icon
 		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
 			type: 'icon',
-			value: TEST_ICONS[0],
+			value: '?', // todo
 		});
 	});
 	it('is able to select an emoji', async () => {
@@ -162,7 +157,6 @@ describe('IconPicker', () => {
 			props: {
 				modelValue: { type: 'emoji', value: '🔥' },
 				buttonTooltip: 'Select an emoji',
-				availableIcons: TEST_ICONS,
 			},
 			global: {
 				plugins: [router],

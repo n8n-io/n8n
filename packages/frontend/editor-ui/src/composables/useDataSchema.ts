@@ -15,6 +15,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function useDataSchema() {
 	function getSchema(
@@ -271,7 +272,7 @@ export type RenderHeader = {
 export type RenderIcon = {
 	id: string;
 	type: 'icon';
-	icon: string;
+	icon: IconName;
 	tooltip: string;
 };
 

@@ -397,7 +397,9 @@ const { width } = useElementSize(defNameRef);
 					<div :class="$style.destinationActions">
 						<n8n-button
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+							:icon="
+								testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : undefined
+							"
 							:title="
 								testMessageSent && testMessageResult
 									? 'Event sent and returned OK'

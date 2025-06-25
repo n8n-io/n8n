@@ -4,11 +4,12 @@ import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { CalloutTheme } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 interface Props {
 	name: BannerName;
 	theme?: CalloutTheme;
-	customIcon?: string;
+	customIcon?: IconName;
 	dismissible?: boolean;
 }
 
@@ -20,6 +21,7 @@ const slots = useSlots();
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
 	dismissible: true,
+	customIcon: undefined,
 });
 
 const emit = defineEmits<{
