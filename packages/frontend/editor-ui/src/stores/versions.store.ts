@@ -1,6 +1,7 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import {
+	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
@@ -34,6 +35,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
+	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -59,6 +61,12 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return readWhatsNewArticlesStorage.value
 			? jsonParse(readWhatsNewArticlesStorage.value, { fallbackValue: [] })
 			: [];
+	});
+
+	const lastDismissedWhatsNewCallout = computed((): number => {
+		return lastDismissedWhatsNewCalloutStorage.value
+			? Number(lastDismissedWhatsNewCalloutStorage.value)
+			: 0;
 	});
 
 	// #endregion
@@ -102,6 +110,10 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return readWhatsNewArticles.value.includes(articleId);
 	};
 
+	const dismissWhatsNewCallout = (articleId: number) => {
+		lastDismissedWhatsNewCalloutStorage.value = String(articleId);
+	};
+
 	const fetchWhatsNew = async () => {
 		try {
 			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
@@ -118,7 +130,11 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 				if (articles.length > 0) {
 					const latestArticle = articles[0];
-					if (!isWhatsNewArticleRead(latestArticle.id)) {
+
+					if (
+						!isWhatsNewArticleRead(latestArticle.id) &&
+						lastDismissedWhatsNewCallout.value !== latestArticle.id
+					) {
 						const notification = showMessage({
 							title: latestArticle.calloutTitle,
 							message: latestArticle.calloutText,
@@ -128,6 +144,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 									data: { articleId: latestArticle.id },
 								});
 								notification.close();
+							},
+							onClose: () => {
+								dismissWhatsNewCallout(latestArticle.id);
 							},
 							position: 'bottom-left',
 							duration: 0,
