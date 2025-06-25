@@ -293,6 +293,56 @@ export type BaseResource = {
 	name: string;
 };
 
+export type FolderResource = BaseFolderItem & {
+	resourceType: 'folder';
+};
+
+export type WorkflowResource = BaseResource & {
+	resourceType: 'workflow';
+	updatedAt: string;
+	createdAt: string;
+	active: boolean;
+	isArchived: boolean;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	tags?: ITag[] | string[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	parentFolder?: ResourceParentFolder;
+};
+
+export type VariableResource = BaseResource & {
+	resourceType: 'variable';
+	key?: string;
+	value?: string;
+};
+
+export type CredentialsResource = BaseResource & {
+	resourceType: 'credential';
+	updatedAt: string;
+	createdAt: string;
+	type: string;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	needsSetup: boolean;
+};
+
+export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
+
+export type BaseFilters = {
+	search: string;
+	homeProject: string;
+	[key: string]: boolean | string | string[];
+};
+
+export type SortingAndPaginationUpdates = {
+	page?: number;
+	pageSize?: number;
+	sort?: string;
+};
+
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'

@@ -24,7 +24,11 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 vi.mock('@/stores/users.store', () => ({
-	useUsersStore: vi.fn().mockReturnValue({ initialize: vi.fn() }),
+	useUsersStore: vi.fn().mockReturnValue({
+		initialize: vi.fn(),
+		registerLoginHook: vi.fn(),
+		registerLogoutHook: vi.fn(),
+	}),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -86,6 +90,16 @@ describe('Init', () => {
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should initialize authentication hooks', async () => {
+			const registerLoginHookSpy = vi.spyOn(usersStore, 'registerLoginHook');
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+
+			await initializeCore();
+
+			expect(registerLoginHookSpy).toHaveBeenCalled();
+			expect(registerLogoutHookSpy).toHaveBeenCalled();
+		});
+
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -137,7 +151,6 @@ describe('Init', () => {
 
 		it('should not init authenticated features if user is not logged in', async () => {
 			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
-			const templatesTestSpy = vi.spyOn(settingsStore, 'testTemplatesEndpoint');
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as ReturnType<
@@ -146,14 +159,12 @@ describe('Init', () => {
 
 			await initializeAuthenticatedFeatures();
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
-			expect(templatesTestSpy).not.toHaveBeenCalled();
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {
 			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
-			const templatesTestSpy = vi.spyOn(settingsStore, 'testTemplatesEndpoint');
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
@@ -163,7 +174,6 @@ describe('Init', () => {
 			await initializeAuthenticatedFeatures();
 
 			expect(cloudStoreSpy).toHaveBeenCalled();
-			expect(templatesTestSpy).toHaveBeenCalled();
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 

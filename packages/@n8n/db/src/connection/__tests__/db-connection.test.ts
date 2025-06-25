@@ -1,13 +1,13 @@
 import type { DatabaseConfig } from '@n8n/config';
-import type { Migration } from '@n8n/db';
-import * as migrationHelper from '@n8n/db';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
 
-import { DbConnection } from '@/databases/db-connection';
-import type { DbConnectionOptions } from '@/databases/db-connection-options';
+import * as migrationHelper from '../../migrations/migration-helpers';
+import type { Migration } from '../../migrations/migration-types';
+import { DbConnection } from '../db-connection';
+import type { DbConnectionOptions } from '../db-connection-options';
 
 jest.mock('@n8n/typeorm', () => ({
 	DataSource: jest.fn(),
@@ -159,6 +159,7 @@ describe('DbConnection', () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			dataSource.query.mockResolvedValue([{ '1': 1 }]);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const scheduleNextPingSpy = jest.spyOn(dbConnection as any, 'scheduleNextPing');
 
 			// @ts-expect-error private property
@@ -189,6 +190,7 @@ describe('DbConnection', () => {
 					}),
 				);
 
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const pingSpy = jest.spyOn(dbConnection as any, 'ping');
 
 				// @ts-expect-error private property

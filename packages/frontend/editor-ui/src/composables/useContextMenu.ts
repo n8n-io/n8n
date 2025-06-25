@@ -11,7 +11,7 @@ import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from '@n8n/i18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export type ContextMenuTarget =
 	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }

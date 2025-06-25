@@ -76,7 +76,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<n8n-action-toggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
+				<N8nActionToggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
 			</div>
 		</template>
 	</n8n-card>

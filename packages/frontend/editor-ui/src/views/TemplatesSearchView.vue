@@ -301,6 +301,11 @@ onMounted(async () => {
 
 	restoreSearchFromRoute();
 
+	// Check if templates are enabled and check if the local templates store is available
+	if (settingsStore.isTemplatesEnabled) {
+		settingsStore.testTemplatesEndpoint().catch(() => {});
+	}
+
 	setTimeout(() => {
 		// Check if there is scroll position saved in route and scroll to it
 		const scrollOffset = route.meta?.scrollOffset;
