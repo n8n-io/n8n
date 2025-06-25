@@ -1,0 +1,23 @@
+{
+  "name": "n8n-containers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "stack": "tsx ./n8n-start-stack.ts",
+    "stack:help": "tsx ./n8n-start-stack.ts --help",
+    "dev": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
+    "dev:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
+    "dev:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
+    "dev:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.0.3",
+    "@testcontainers/redis": "^11.0.3",
+    "testcontainers": "^11.0.3"
+  }
+}

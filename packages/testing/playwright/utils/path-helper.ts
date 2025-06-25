@@ -11,7 +11,7 @@ function findProjectRoot(marker: string): string {
 	while (!fs.existsSync(path.join(dir, marker))) {
 		const parentDir = path.dirname(dir);
 		if (parentDir === dir) {
-			throw new ApplicationError()
+			throw new ApplicationError();
 		}
 		dir = parentDir;
 	}

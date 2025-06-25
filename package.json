@@ -100,7 +100,9 @@
       "ws": ">=8.17.1",
       "zod": "3.25.67",
       "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.2"
+      "brace-expansion@2": "2.0.2",
+      "date-fns": "2.30.0",
+      "date-fns-tz": "2.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

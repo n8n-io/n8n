@@ -1,9 +1,9 @@
 import { test as base, expect, type TestInfo } from '@playwright/test';
+import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
+import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
+import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-logs';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
-import type { N8NStack } from '../containers/n8n-test-container-creation';
-import { createN8NStack } from '../containers/n8n-test-container-creation';
-import { ContainerTestHelpers } from '../containers/n8n-test-container-logs';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError } from '../Types';
@@ -89,7 +89,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 				await api.resetDatabase();
 				await context.close();
 			}
-			await use();
+			await use(undefined);
 		},
 		{ scope: 'worker' },
 	],
