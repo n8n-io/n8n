@@ -134,16 +134,16 @@ const onUpdate = async () => {
 
 		let updatedVersion: string | undefined;
 
-		if (settingsStore.isCommunityNodesFeatureEnabled) {
+		if (settingsStore.isUnverifiedPackagesEnabled) {
+			updatedVersion = communityStorePackage.value.updateAvailable;
+			await communityNodesStore.updatePackage(props.activePackageName);
+		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
 			updatedVersion = nodeTypeStorePackage.value?.npmVersion;
 			await communityNodesStore.updatePackage(
 				props.activePackageName,
 				updatedVersion,
 				nodeTypeStorePackage.value?.checksum,
 			);
-		} else if (settingsStore.isUnverifiedPackagesEnabled) {
-			updatedVersion = communityStorePackage.value.updateAvailable;
-			await communityNodesStore.updatePackage(props.activePackageName);
 		} else {
 			throw new Error('Community nodes feature is not correctly enabled.');
 		}
