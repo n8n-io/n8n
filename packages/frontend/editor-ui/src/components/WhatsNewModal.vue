@@ -11,7 +11,7 @@ import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
@@ -47,24 +47,20 @@ const onUpdateClick = async () => {
 	await pageRedirectionHelper.goToVersions();
 };
 
-watch(
-	() => versionsStore.whatsNewArticles,
-	(whatsNewArticles) => {
-		for (const article of whatsNewArticles) {
-			if (!versionsStore.isWhatsNewArticleRead(article.id)) {
-				versionsStore.setWhatsNewArticleRead(article.id);
-			}
-		}
-	},
-	{ immediate: true },
-);
-
 modalBus.on('opened', () => {
 	const articleIndex = versionsStore.whatsNewArticles.findIndex(
 		(article) => article.id === props.data.articleId,
 	);
 
 	scroller.value?.scrollToItem(articleIndex);
+});
+
+onMounted(() => {
+	for (const article of versionsStore.whatsNewArticles) {
+		if (!versionsStore.isWhatsNewArticleRead(article.id)) {
+			versionsStore.setWhatsNewArticleRead(article.id);
+		}
+	}
 });
 </script>
 
