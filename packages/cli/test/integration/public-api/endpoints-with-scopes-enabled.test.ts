@@ -1,3 +1,8 @@
+import type { CredentialPayload } from '@n8n/backend-test-utils';
+import { createTeamProject, getProjectByNameOrFail } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { randomName } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import type { TagEntity, Variables } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -12,7 +17,6 @@ import validator from 'validator';
 
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
-import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
 import {
 	createAdminWithApiKey,
@@ -23,12 +27,9 @@ import {
 	getUserById,
 } from '@test-integration/db/users';
 import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
-import { createWorkflow } from '@test-integration/db/workflows';
-import { randomName } from '@test-integration/random';
-import type { CredentialPayload, SaveCredentialFunction } from '@test-integration/types';
+import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
-import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
 
 let saveCredential: SaveCredentialFunction;

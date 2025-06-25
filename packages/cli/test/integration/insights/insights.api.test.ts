@@ -1,7 +1,7 @@
 import type { InsightsDateRange } from '@n8n/api-types';
+import { mockInstance } from '@n8n/backend-test-utils';
 
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';

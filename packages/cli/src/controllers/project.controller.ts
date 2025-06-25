@@ -1,6 +1,6 @@
 import { CreateProjectDto, DeleteProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -24,7 +24,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectRequest } from '@/requests';
-import { AuthenticatedRequest } from '@/requests';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,

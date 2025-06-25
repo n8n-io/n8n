@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
@@ -20,7 +21,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { mockInstance } from '@test/mocking';
 
 jest.mock('@/workflow-execute-additional-data');
 

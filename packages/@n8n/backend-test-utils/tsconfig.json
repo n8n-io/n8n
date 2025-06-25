@@ -8,5 +8,5 @@
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "../../cli/test/integration/shared/license.ts"]
 }

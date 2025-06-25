@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
@@ -18,7 +19,6 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 

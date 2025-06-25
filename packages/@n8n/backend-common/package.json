@@ -32,6 +32,7 @@
     "winston": "3.14.2"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "express": "5.1.0"
   }
 }

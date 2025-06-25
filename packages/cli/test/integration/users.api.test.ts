@@ -1,3 +1,8 @@
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRelationRepository } from '@n8n/db';
@@ -21,15 +26,10 @@ import {
 	saveCredential,
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
-import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);

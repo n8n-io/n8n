@@ -1,4 +1,5 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
@@ -6,7 +7,6 @@ import type { RequestHandler } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
-import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {

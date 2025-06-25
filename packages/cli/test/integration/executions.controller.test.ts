@@ -1,3 +1,7 @@
+import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { createWorkflow, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -8,12 +12,8 @@ import {
 	createWaitingExecution,
 	getAllExecutions,
 } from './shared/db/executions';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {

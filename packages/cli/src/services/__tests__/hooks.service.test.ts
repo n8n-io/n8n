@@ -1,3 +1,4 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { SettingsRepository, User } from '@n8n/db';
 import type { CredentialsRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
@@ -8,7 +9,6 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { Invitation } from '@/interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';
 

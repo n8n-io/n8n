@@ -1,11 +1,12 @@
+import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
 import { License } from '@/license';
-import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
-import { mockInstance } from '../../shared/mocking';
 import {
 	createMember,
 	createMemberWithApiKey,
@@ -13,7 +14,6 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 

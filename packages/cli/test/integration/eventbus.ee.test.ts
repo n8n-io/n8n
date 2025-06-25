@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
@@ -27,7 +28,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');
