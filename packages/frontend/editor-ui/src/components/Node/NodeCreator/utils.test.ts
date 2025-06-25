@@ -389,7 +389,7 @@ describe('NodeCreator - utils', () => {
 			expect(getHumanInTheLoopActions(actions)).toEqual([]);
 		});
 
-		it('should return an actions array if no actions have the SEND_AND_WAIT_OPERATION actionKey', () => {
+		it('should return an empty array if no actions have the SEND_AND_WAIT_OPERATION actionKey', () => {
 			const actions: ActionTypeDescription[] = [
 				{
 					name: 'Test Action',
@@ -408,7 +408,7 @@ describe('NodeCreator - utils', () => {
 					displayName: 'Test Action',
 				},
 			];
-			expect(getHumanInTheLoopActions(actions)).toEqual(actions);
+			expect(getHumanInTheLoopActions(actions)).toEqual([]);
 		});
 
 		it('should set the resource and operation for Discord actions', () => {

@@ -358,8 +358,6 @@ export function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
 				operation: SEND_AND_WAIT_OPERATION,
 			};
 		}
-	} else {
-		return nodeActions;
 	}
 
 	return actions;
