@@ -1,21 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import merge from 'lodash/merge';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
-import { defaultSettings } from '../__tests__/defaults';
-import {
-	getTrialExpiredUserResponse,
-	getTrialingUserResponse,
-	getUserCloudInfo,
-	getNotTrialingUserResponse,
-} from './__tests__/utils/cloudStoreUtils';
-import { ROLE, type Role } from '@n8n/api-types';
 
 let uiStore: ReturnType<typeof useUIStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
 describe('UI store', () => {
@@ -24,7 +11,6 @@ describe('UI store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
-		settingsStore = useSettingsStore();
 
 		cloudPlanStore = useCloudPlanStore();
 
