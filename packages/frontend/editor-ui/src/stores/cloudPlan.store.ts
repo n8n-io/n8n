@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import {
 	getAdminPanelLoginCode,
@@ -64,10 +63,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		try {
 			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
 			currentUserCloudInfo.value = cloudUser;
-
-			if (!currentUserCloudInfo.value.confirmed && !userIsTrialing.value) {
-				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
-			}
 		} catch (error) {
 			throw new Error(error.message);
 		}
@@ -85,14 +80,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			plan = await getCurrentPlan(rootStore.restApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
-
-			if (userIsTrialing.value) {
-				if (trialExpired.value) {
-					useUIStore().pushBannerToStack('TRIAL_OVER');
-				} else {
-					useUIStore().pushBannerToStack('TRIAL');
-				}
-			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);

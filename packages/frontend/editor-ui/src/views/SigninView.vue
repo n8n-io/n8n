@@ -17,6 +17,7 @@ import { useSSOStore } from '@/stores/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
+import { useUIStore } from '@/stores/ui.store';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -29,6 +30,7 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
 const ssoStore = useSSOStore();
+const uiStore = useUIStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -139,6 +141,14 @@ const login = async (form: LoginRequestDto) => {
 		if (settingsStore.isCloudDeployment) {
 			try {
 				await cloudPlanStore.checkForCloudPlanData();
+
+				if (cloudPlanStore.userIsTrialing) {
+					if (cloudPlanStore.trialExpired) {
+						uiStore.pushBannerToStack('TRIAL_OVER');
+					} else {
+						uiStore.pushBannerToStack('TRIAL');
+					}
+				}
 			} catch (error) {
 				console.warn('Failed to check for cloud plan data', error);
 			}

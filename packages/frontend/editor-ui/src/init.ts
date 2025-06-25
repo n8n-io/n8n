@@ -116,6 +116,7 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
+	const uiStore = useUIStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -138,6 +139,10 @@ export async function initializeAuthenticatedFeatures(
 	if (settingsStore.isCloudDeployment) {
 		try {
 			await cloudPlanStore.initialize();
+
+			if (!cloudPlanStore.currentUserCloudInfo?.confirmed && !cloudPlanStore.userIsTrialing) {
+				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
+			}
 		} catch (e) {
 			console.error('Failed to initialize cloud plan store:', e);
 		}
