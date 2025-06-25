@@ -83,7 +83,7 @@ export class Snowflake implements ICredentialType {
 				},
 			},
 			description:
-                'Private PEM key for Key-pair authentication with Snowflake, follow guide <a href="https://docs.snowflake.com/en/user-guide/key-pair-auth" target="_blank">here</a>',
+				'Private PEM key for Key-pair authentication with Snowflake, follow guide <a href="https://docs.snowflake.com/en/user-guide/key-pair-auth" target="_blank">here</a>',
 		},
 		{
 			displayName: 'Passphrase',
