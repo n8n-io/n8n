@@ -1,10 +1,9 @@
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { createWorkflowWithTrigger, getAllWorkflows } from '@n8n/backend-test-utils';
+
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
-
-import { mockInstance } from '../../../shared/mocking';
-import { createWorkflowWithTrigger, getAllWorkflows } from '../../shared/db/workflows';
-import * as testDb from '../../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(UpdateWorkflowCommand);

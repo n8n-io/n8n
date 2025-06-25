@@ -1,4 +1,9 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	type CredentialsEntity,
 	CredentialsRepository,
@@ -32,13 +37,8 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 
-import { mockInstance } from '../../shared/mocking';
 import { createCredentials, saveCredential } from '../shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
-import { createWorkflow } from '../shared/db/workflows';
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
 
 jest.mock('fast-glob');
 

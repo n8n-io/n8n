@@ -1,4 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -36,12 +39,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
-import { createTeamProject } from '@test-integration/db/projects';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../shared/test-db';
 
 jest.mock('fast-glob');
 

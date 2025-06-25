@@ -3,11 +3,11 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { AuthenticatedRequest } from '@/requests';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
 

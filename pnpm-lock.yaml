@@ -452,12 +452,36 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:^
         version: link:../backend-common
+      '@n8n/config':
+        specifier: workspace:^
+        version: link:../config
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../constants
+      '@n8n/db':
+        specifier: workspace:^
+        version: link:../db
+      '@n8n/di':
+        specifier: workspace:^
+        version: link:../di
+      '@n8n/permissions':
+        specifier: workspace:^
+        version: link:../permissions
+      '@n8n/typeorm':
+        specifier: 'catalog:'
+        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@5.9.2(@aws-sdk/credential-providers@3.808.0))(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.2))
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.2)))(typescript@5.8.2)
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      uuid:
+        specifier: 'catalog:'
+        version: 10.0.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -605,6 +629,9 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      express:
+        specifier: 5.1.0
+        version: 5.1.0
 
   packages/@n8n/decorators:
     dependencies:
@@ -785,7 +812,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))
+        version: 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -812,7 +839,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.46(421f5526c191b539c59b7e383489c114)
+        version: 0.3.46(9d9844bc33bc460a2ae2eef819849ab0)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
@@ -920,7 +947,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.28
-        version: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
+        version: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -11620,10 +11647,6 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  negotiator@0.6.3:
-    resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
-    engines: {node: '>= 0.6'}
-
   negotiator@0.6.4:
     resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
     engines: {node: '>= 0.6'}
@@ -17051,7 +17074,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -17060,7 +17083,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
-      langchain: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
+      langchain: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
     transitivePeerDependencies:
       - encoding
 
@@ -17574,7 +17597,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.46(421f5526c191b539c59b7e383489c114)':
+  '@langchain/community@0.3.46(9d9844bc33bc460a2ae2eef819849ab0)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -17586,7 +17609,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6)
+      langchain: 0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21)
       langsmith: 0.3.33(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
       openai: 4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)
       uuid: 10.0.0
@@ -17600,7 +17623,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -21064,10 +21087,18 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.9.0):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       is-retry-allowed: 2.2.0
 
   axios@1.8.3:
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.3.6)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.6)
       form-data: 4.0.2
@@ -21093,7 +21124,7 @@ snapshots:
 
   axios@1.9.0(debug@4.4.1):
     dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
+      follow-redirects: 1.15.9(debug@4.4.1)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -21352,7 +21383,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.8.2):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       axios-retry: 4.5.0(axios@1.9.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -22533,7 +22564,7 @@ snapshots:
       is-string: 1.0.7
       is-typed-array: 1.1.13
       is-weakref: 1.0.2
-      object-inspect: 1.13.1
+      object-inspect: 1.13.4
       object-keys: 1.1.1
       object.assign: 4.1.5
       regexp.prototype.flags: 1.5.2
@@ -23094,7 +23125,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -23303,6 +23334,10 @@ snapshots:
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0
+
+  follow-redirects@1.15.9(debug@4.4.1):
+    optionalDependencies:
+      debug: 4.4.1(supports-color@8.1.1)
 
   for-each@0.3.3:
     dependencies:
@@ -23945,7 +23980,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -24010,7 +24045,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24937,7 +24972,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.28(a1ee45cf0a7ccac06c2d6fcd08fda4e6):
+  langchain@0.3.28(d0079d2993dfd2a4e9e2c2f03851bb21):
     dependencies:
       '@langchain/core': 0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67))
       '@langchain/openai': 0.5.13(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(ws@8.18.2)
@@ -24960,7 +24995,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.2(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -25310,7 +25345,7 @@ snapshots:
       minipass-fetch: 1.4.1
       minipass-flush: 1.0.5
       minipass-pipeline: 1.2.4
-      negotiator: 0.6.3
+      negotiator: 0.6.4
       promise-retry: 2.0.1
       socks-proxy-agent: 6.2.1
       ssri: 8.0.1
@@ -26010,9 +26045,6 @@ snapshots:
   native-duplexpair@1.0.0: {}
 
   natural-compare@1.4.0: {}
-
-  negotiator@0.6.3:
-    optional: true
 
   negotiator@0.6.4: {}
 
@@ -26774,7 +26806,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -27351,9 +27383,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -27808,7 +27840,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.9.0(debug@4.4.1)
+      axios: 1.9.0
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2

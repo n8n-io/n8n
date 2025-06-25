@@ -1,4 +1,9 @@
 import { faker } from '@faker-js/faker';
+import { createWorkflow, getWorkflowSharing } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, ProjectRole } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
@@ -9,7 +14,6 @@ import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { mockInstance } from '@test/mocking';
 import {
 	createCredentials,
 	getCredentialSharings,
@@ -19,12 +23,8 @@ import {
 } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
-import { createWorkflow, getWorkflowSharing } from '@test-integration/db/workflows';
-import { randomCredentialPayload } from '@test-integration/random';
 
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
