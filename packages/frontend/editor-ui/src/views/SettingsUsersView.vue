@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { ROLE, type Role } from '@n8n/api-types';
+import { ROLE, type Role, USERS_LIST_SORT_OPTIONS } from '@n8n/api-types';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
 import type { InvitableRoleName, IUser } from '@/Interface';
 import type { UserAction } from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -17,6 +18,8 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 
+type ValidSortKey = (typeof USERS_LIST_SORT_OPTIONS)[number];
+
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
 
@@ -30,7 +33,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
 
 const search = ref('');
-const usersTableState = ref({
+const usersTableState = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: 25,
 	sortBy: [
@@ -260,15 +263,10 @@ async function onRoleChange(user: IUser, newRoleName: Role) {
 	}
 }
 
-const updateUsersTableData = async ({
-	page,
-	itemsPerPage,
-	sortBy,
-}: {
-	page: number;
-	itemsPerPage: number;
-	sortBy: Array<{ id: string; desc: boolean }>;
-}) => {
+const isValidSortKey = (key: string): key is ValidSortKey =>
+	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
+
+const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
 	usersTableState.value = {
 		page,
 		itemsPerPage,
@@ -278,20 +276,24 @@ const updateUsersTableData = async ({
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
 
-	const transformedSortBy = sortBy.flatMap(({ id, desc }) => {
-		if (id === 'name') {
+	const transformedSortBy = sortBy
+		.flatMap(({ id, desc }) => {
 			const dir = desc ? 'desc' : 'asc';
-			return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
-		}
-		return `${id}:${desc ? 'desc' : 'asc'}`;
-	});
+			if (id === 'name') {
+				return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+			}
+			return `${id}:${dir}`;
+		})
+		.filter(isValidSortKey);
 
 	await usersStore.usersList.execute(page, {
 		skip,
 		take,
 		sortBy: transformedSortBy,
 		expand: ['projectRelations'],
-		search: search.value.trim() || undefined,
+		filter: {
+			fullText: search.value.trim(),
+		},
 	});
 };
 

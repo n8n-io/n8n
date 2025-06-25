@@ -4,7 +4,7 @@ import { Z } from 'zod-class';
 
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
-const USERS_LIST_SORT_OPTIONS = [
+export const USERS_LIST_SORT_OPTIONS = [
 	'firstName:asc',
 	'firstName:desc',
 	'lastName:asc',

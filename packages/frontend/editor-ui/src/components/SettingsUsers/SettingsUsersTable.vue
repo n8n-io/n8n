@@ -8,7 +8,7 @@ import {
 	type UserAction,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { IUser } from '@/Interface';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
@@ -26,13 +26,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	'update:options': [
-		payload: {
-			page: number;
-			itemsPerPage: number;
-			sortBy: Array<{ id: string; desc: boolean }>;
-		},
-	];
+	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
@@ -112,14 +106,6 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 		divided: true,
 	},
 ]);
-
-const onFilterChange = ($event: {
-	page: number;
-	itemsPerPage: number;
-	sortBy: Array<{ id: string; desc: boolean }>;
-}) => {
-	emit('update:options', $event);
-};
 </script>
 
 <template>
@@ -128,7 +114,7 @@ const onFilterChange = ($event: {
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
-			@update:options="onFilterChange"
+			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">
 				<div class="pt-s pb-s">
