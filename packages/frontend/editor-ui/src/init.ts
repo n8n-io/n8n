@@ -97,7 +97,6 @@ export async function initializeCore() {
 export async function initializeAuthenticatedFeatures(
 	initialized: boolean = authenticatedFeaturesInitialized,
 ) {
-	console.log('initializeAuthenticatedFeatures', initialized, useUsersStore().currentUser);
 	if (initialized) {
 		return;
 	}
