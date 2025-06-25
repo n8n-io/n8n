@@ -1,26 +1,19 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { onMounted, onUnmounted, ref } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
+import { RouterLink } from 'vue-router';
 
+import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
-
-interface TabOptions {
-	value: Value;
-	label?: string;
-	icon?: string;
-	href?: string;
-	tooltip?: string;
-	align?: 'left' | 'right';
-	to?: RouteLocationRaw;
-}
+import N8nTooltip from '../N8nTooltip';
 
 interface TabsProps {
 	modelValue?: Value;
-	options?: TabOptions[];
+	options?: Array<TabOptions<Value>>;
 	size?: 'small' | 'medium';
 }
 
 withDefaults(defineProps<TabsProps>(), {
+	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
 });
@@ -108,14 +101,14 @@ const scrollRight = () => scroll(50);
 							</span>
 						</div>
 					</a>
-					<router-link
+					<RouterLink
 						v-else-if="option.to"
 						:to="option.to"
 						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-					</router-link>
+					</RouterLink>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"

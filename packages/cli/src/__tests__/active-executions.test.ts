@@ -1,10 +1,13 @@
+import { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
+import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
@@ -179,11 +182,70 @@ describe('ActiveExecutions', () => {
 
 			await expect(postExecutePromise).resolves.toEqual(fullRunData);
 		});
+
+		test('Should close response if it exists', async () => {
+			executionData.httpResponse = mock<Response>();
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.finalizeExecution(executionId, fullRunData);
+			expect(executionData.httpResponse.end).toHaveBeenCalled();
+		});
+
+		test('Should handle error when closing response', async () => {
+			const logger = mockInstance(Logger);
+			activeExecutions = new ActiveExecutions(logger, executionRepository, concurrencyControl);
+
+			executionData.httpResponse = mock<Response>();
+			jest.mocked(executionData.httpResponse.end).mockImplementation(() => {
+				throw new Error('Connection closed');
+			});
+
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.finalizeExecution(executionId, fullRunData);
+
+			expect(logger.error).toHaveBeenCalledWith('Error closing streaming response', {
+				executionId,
+				error: 'Connection closed',
+			});
+		});
 	});
 
 	describe('getPostExecutePromise', () => {
 		test('Should throw error when trying to create a promise with invalid execution', async () => {
 			await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
+		});
+	});
+
+	describe('sendChunk', () => {
+		test('should send chunk to response', async () => {
+			executionData.httpResponse = mock<Response>();
+			const executionId = await activeExecutions.add(executionData);
+			const testChunk: StructuredChunk = {
+				content: 'test chunk',
+				type: 'item',
+				metadata: {
+					nodeName: 'testNode',
+					nodeId: uuid(),
+					timestamp: Date.now(),
+				},
+			};
+			activeExecutions.sendChunk(executionId, testChunk);
+			expect(executionData.httpResponse.write).toHaveBeenCalledWith(
+				JSON.stringify(testChunk) + '\n',
+			);
+		});
+
+		test('should skip sending chunk to response if response is not set', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const testChunk: StructuredChunk = {
+				content: 'test chunk',
+				type: 'item',
+				metadata: {
+					nodeName: 'testNode',
+					nodeId: uuid(),
+					timestamp: Date.now(),
+				},
+			};
+			expect(() => activeExecutions.sendChunk(executionId, testChunk)).not.toThrow();
 		});
 	});
 

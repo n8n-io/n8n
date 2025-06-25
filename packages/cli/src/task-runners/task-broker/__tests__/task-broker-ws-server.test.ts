@@ -1,8 +1,9 @@
 import type { TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
 
-import { Time, WsStatusCodes } from '@/constants';
+import { WsStatusCodes } from '@/constants';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 describe('TaskBrokerWsServer', () => {

@@ -7,9 +7,9 @@ import N8nBadge from '../N8nBadge';
 import N8nText from '../N8nText';
 
 interface UsersInfoProps {
-	firstName?: string;
-	lastName?: string;
-	email?: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
 	isOwner?: boolean;
 	isPendingUser?: boolean;
 	isCurrentUser?: boolean;

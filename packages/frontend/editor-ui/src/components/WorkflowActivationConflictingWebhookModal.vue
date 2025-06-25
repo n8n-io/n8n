@@ -51,7 +51,7 @@ const onClick = async () => {
 			<div :class="$style.container">
 				<div>
 					<n8n-text color="text-base"> You can deactivate </n8n-text>
-					<n8n-link :to="workflowUrl" underline="true"> '{{ data.workflowName }}' </n8n-link>
+					<n8n-link :to="workflowUrl" :underline="true"> '{{ data.workflowName }}' </n8n-link>
 					<n8n-text color="text-base">
 						and activate this one, or adjust the following URL path in either workflow:
 					</n8n-text>
