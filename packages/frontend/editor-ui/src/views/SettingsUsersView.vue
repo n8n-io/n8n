@@ -1,9 +1,11 @@
 <script lang="ts" setup>
+import { ref, computed, onMounted } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { ROLE, type Role, USERS_LIST_SORT_OPTIONS } from '@n8n/api-types';
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
-import type { InvitableRoleName, IUser } from '@/Interface';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
+import type { InvitableRoleName, IUser } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -11,8 +13,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
-import { ref, computed, onMounted } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -35,7 +35,7 @@ const i18n = useI18n();
 const search = ref('');
 const usersTableState = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: 25,
+	itemsPerPage: 10,
 	sortBy: [
 		{ id: 'firstName', desc: false },
 		{ id: 'lastName', desc: false },
