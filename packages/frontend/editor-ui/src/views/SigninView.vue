@@ -11,13 +11,11 @@ import { useTelemetry } from '@/composables/useTelemetry';
 
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useSSOStore } from '@/stores/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
-import { useUIStore } from '@/stores/ui.store';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -28,9 +26,7 @@ export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRec
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const cloudPlanStore = useCloudPlanStore();
 const ssoStore = useSSOStore();
-const uiStore = useUIStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -138,21 +134,6 @@ const login = async (form: LoginRequestDto) => {
 			mfaRecoveryCode: form.mfaRecoveryCode,
 		});
 		loading.value = false;
-		if (settingsStore.isCloudDeployment) {
-			try {
-				await cloudPlanStore.checkForCloudPlanData();
-
-				if (cloudPlanStore.userIsTrialing) {
-					if (cloudPlanStore.trialExpired) {
-						uiStore.pushBannerToStack('TRIAL_OVER');
-					} else {
-						uiStore.pushBannerToStack('TRIAL');
-					}
-				}
-			} catch (error) {
-				console.warn('Failed to check for cloud plan data', error);
-			}
-		}
 		await settingsStore.getSettings();
 
 		if (settingsStore.activeModules.length > 0) {

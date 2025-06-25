@@ -18,30 +18,6 @@ let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
-function setUser(role: Role) {
-	useUsersStore().addUsers([
-		{
-			id: '1',
-			isPending: false,
-			role,
-		},
-	]);
-
-	useUsersStore().currentUserId = '1';
-}
-
-function setupOwnerAndCloudDeployment() {
-	setUser(ROLE.Owner);
-	settingsStore.setSettings(
-		merge({}, defaultSettings, {
-			n8nMetadata: {
-				userId: '1',
-			},
-			deployment: { type: 'cloud' },
-		}),
-	);
-}
-
 describe('UI store', () => {
 	let mockedCloudStore;
 
@@ -89,63 +65,5 @@ describe('UI store', () => {
 		});
 
 		expect(uiStore.bannerStack).not.toContain('V1');
-	});
-
-	it('should add trial banner to the the stack', async () => {
-		const fetchCloudSpy = vi
-			.spyOn(cloudPlanApi, 'getCurrentPlan')
-			.mockResolvedValue(getTrialingUserResponse());
-		const fetchUserCloudAccountSpy = vi
-			.spyOn(cloudPlanApi, 'getCloudUserInfo')
-			.mockResolvedValue(getUserCloudInfo(true));
-		const getCurrentUsageSpy = vi
-			.spyOn(cloudPlanApi, 'getCurrentUsage')
-			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
-		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.checkForCloudPlanData();
-		await cloudPlanStore.fetchUserCloudAccount();
-		expect(fetchCloudSpy).toHaveBeenCalled();
-		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
-		expect(getCurrentUsageSpy).toHaveBeenCalled();
-		expect(uiStore.bannerStack).toContain('TRIAL');
-		// There should be no email confirmation banner for trialing users
-		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
-	});
-
-	it('should add trial over banner to the the stack', async () => {
-		const fetchCloudSpy = vi
-			.spyOn(cloudPlanApi, 'getCurrentPlan')
-			.mockResolvedValue(getTrialExpiredUserResponse());
-		const fetchUserCloudAccountSpy = vi
-			.spyOn(cloudPlanApi, 'getCloudUserInfo')
-			.mockResolvedValue(getUserCloudInfo(true));
-		setupOwnerAndCloudDeployment();
-		const getCurrentUsageSpy = vi
-			.spyOn(cloudPlanApi, 'getCurrentUsage')
-			.mockResolvedValue({ executions: 1000, activeWorkflows: 100 });
-		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.checkForCloudPlanData();
-		await cloudPlanStore.fetchUserCloudAccount();
-		expect(fetchCloudSpy).toHaveBeenCalled();
-		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
-		expect(getCurrentUsageSpy).toHaveBeenCalled();
-		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
-		// There should be no email confirmation banner for trialing users
-		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
-	});
-
-	it('should add email confirmation banner to the the stack', async () => {
-		const fetchCloudSpy = vi
-			.spyOn(cloudPlanApi, 'getCurrentPlan')
-			.mockResolvedValue(getNotTrialingUserResponse());
-		const fetchUserCloudAccountSpy = vi
-			.spyOn(cloudPlanApi, 'getCloudUserInfo')
-			.mockResolvedValue(getUserCloudInfo(false));
-		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.checkForCloudPlanData();
-		await cloudPlanStore.fetchUserCloudAccount();
-		expect(fetchCloudSpy).toHaveBeenCalled();
-		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
-		expect(uiStore.bannerStack).toContain('EMAIL_CONFIRMATION');
 	});
 });

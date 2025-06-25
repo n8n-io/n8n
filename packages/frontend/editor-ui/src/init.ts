@@ -97,6 +97,7 @@ export async function initializeCore() {
 export async function initializeAuthenticatedFeatures(
 	initialized: boolean = authenticatedFeaturesInitialized,
 ) {
+	console.log('initializeAuthenticatedFeatures', initialized, useUsersStore().currentUser);
 	if (initialized) {
 		return;
 	}
@@ -140,7 +141,13 @@ export async function initializeAuthenticatedFeatures(
 		try {
 			await cloudPlanStore.initialize();
 
-			if (!cloudPlanStore.currentUserCloudInfo?.confirmed && !cloudPlanStore.userIsTrialing) {
+			if (cloudPlanStore.userIsTrialing) {
+				if (cloudPlanStore.trialExpired) {
+					uiStore.pushBannerToStack('TRIAL_OVER');
+				} else {
+					uiStore.pushBannerToStack('TRIAL');
+				}
+			} else if (!cloudPlanStore.currentUserCloudInfo?.confirmed) {
 				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
 			}
 		} catch (e) {
