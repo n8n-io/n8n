@@ -29,6 +29,7 @@ catalog:
   lodash: 4.17.21
   luxon: 3.4.4
   nanoid: 3.3.8
+  '@oclif/core': 4.4.0
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: ^6.0.1

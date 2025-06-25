@@ -1,6 +1,7 @@
 import { inTest } from '@n8n/backend-common';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags, type Config } from '@oclif/core';
+import { z } from 'zod';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -15,28 +16,26 @@ import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 
 import { BaseCommand } from './base-command';
 
-export class Worker extends BaseCommand {
-	static description = '\nStarts a n8n worker';
+const flagsSchema = z.object({
+	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
+});
 
-	static examples = ['$ n8n worker --concurrency=5'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		concurrency: Flags.integer({
-			default: 10,
-			description: 'How many jobs can run in parallel.',
-		}),
-	};
-
+@Command({
+	name: 'worker',
+	description: 'Starts a n8n worker',
+	examples: ['--concurrency=5'],
+	flagsSchema,
+})
+export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	/**
 	 * How many jobs this worker may run concurrently.
 	 *
 	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
 	 * other than -1, else taken from `--concurrency` flag.
 	 */
-	concurrency: number;
+	private concurrency: number;
 
-	scalingService: ScalingService;
+	private scalingService: ScalingService;
 
 	override needsCommunityPackages = true;
 
@@ -59,12 +58,12 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	constructor(argv: string[], cmdConfig: Config) {
+	constructor() {
 		if (config.getEnv('executions.mode') !== 'queue') {
 			config.set('executions.mode', 'queue');
 		}
 
-		super(argv, cmdConfig);
+		super();
 
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -133,7 +132,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async setConcurrency() {
-		const { flags } = await this.parse(Worker);
+		const { flags } = this;
 
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 

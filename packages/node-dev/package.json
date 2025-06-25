@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@n8n/di": "workspace:*",
-    "@oclif/core": "4.0.7",
+    "@oclif/core": "catalog:",
     "change-case": "^4.1.1",
     "fast-glob": "catalog:",
     "inquirer": "^7.0.1",

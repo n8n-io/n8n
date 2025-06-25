@@ -3,7 +3,6 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
@@ -69,7 +68,7 @@ test('should start a task runner when task runners are enabled', async () => {
 		}),
 	);
 
-	const cmd = new Execute([], {} as Config);
+	const cmd = new Execute();
 	// @ts-expect-error Private property
 	cmd.parse = jest.fn().mockResolvedValue({ flags: { id: '123' } });
 
