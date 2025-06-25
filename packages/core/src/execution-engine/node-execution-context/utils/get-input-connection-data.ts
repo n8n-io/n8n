@@ -24,7 +24,7 @@ import {
 	ExecutionBaseError,
 	ApplicationError,
 	UserError,
-	sleep,
+	sleepWithAbort,
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
@@ -64,16 +64,30 @@ export function makeHandleToolInvocation(
 		let lastError: NodeOperationError | undefined;
 
 		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+			// Increment the runIndex for the next invocation
+			const localRunIndex = runIndex++;
+			const context = contextFactory(localRunIndex);
+
+			// Get abort signal from context for cancellation support
+			const abortSignal = context.getExecutionCancelSignal?.();
+
+			// Check if execution was cancelled before retry
+			if (abortSignal?.aborted) {
+				return 'Error during node execution: Execution was cancelled';
+			}
+
 			if (tryIndex !== 0) {
 				// Reset error from previous attempt
 				lastError = undefined;
 				if (waitBetweenTries !== 0) {
-					await sleep(waitBetweenTries);
+					try {
+						await sleepWithAbort(waitBetweenTries, abortSignal);
+					} catch (abortError) {
+						return 'Error during node execution: Execution was cancelled';
+					}
 				}
 			}
-			// Increment the runIndex for the next invocation
-			const localRunIndex = runIndex++;
-			const context = contextFactory(localRunIndex);
+
 			context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 			try {
@@ -104,6 +118,11 @@ export function makeHandleToolInvocation(
 				// Return the stringified results
 				return JSON.stringify(response);
 			} catch (error) {
+				// Check if error is due to cancellation
+				if (abortSignal?.aborted) {
+					return 'Error during node execution: Execution was cancelled';
+				}
+
 				const nodeError = new NodeOperationError(node, error as Error);
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, nodeError);
 

@@ -25,7 +25,7 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
-	sleep,
+	sleepWithAbort,
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -96,14 +96,6 @@ export class WorkflowToolService {
 			let lastError: ExecutionError | undefined;
 
 			for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-				if (tryIndex !== 0) {
-					// Reset error from previous attempt
-					lastError = undefined;
-					if (waitBetweenTries !== 0) {
-						await sleep(waitBetweenTries);
-					}
-				}
-
 				const localRunIndex = runIndex++;
 				// We need to clone the context here to handle runIndex correctly
 				// Otherwise the runIndex will be shared between different executions
@@ -112,6 +104,26 @@ export class WorkflowToolService {
 					runIndex: localRunIndex,
 					inputData: [[{ json: { query } }]],
 				});
+
+				// Get abort signal from context for cancellation support
+				const abortSignal = context.getExecutionCancelSignal?.();
+
+				// Check if execution was cancelled before retry
+				if (abortSignal?.aborted) {
+					return 'There was an error: "Execution was cancelled"';
+				}
+
+				if (tryIndex !== 0) {
+					// Reset error from previous attempt
+					lastError = undefined;
+					if (waitBetweenTries !== 0) {
+						try {
+							await sleepWithAbort(waitBetweenTries, abortSignal);
+						} catch (abortError) {
+							return 'There was an error: "Execution was cancelled"';
+						}
+					}
+				}
 
 				try {
 					const response = await this.runFunction(context, query, itemIndex, runManager);
@@ -150,6 +162,11 @@ export class WorkflowToolService {
 
 					return processedResponse;
 				} catch (error) {
+					// Check if error is due to cancellation
+					if (abortSignal?.aborted) {
+						return 'There was an error: "Execution was cancelled"';
+					}
+
 					const executionError = error as ExecutionError;
 					lastError = executionError;
 					const errorResponse = `There was an error: "${executionError.message}"`;
