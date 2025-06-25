@@ -321,7 +321,7 @@ watch(
 	width: 20%;
 
 	.statusTextIcon {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing-5xs);
 		vertical-align: text-bottom;
 	}
 }
