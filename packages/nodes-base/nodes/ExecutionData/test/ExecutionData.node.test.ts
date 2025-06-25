@@ -24,7 +24,7 @@ describe('ExecutionData Node', () => {
 
 		expect(result).toEqual([mockInputData]);
 	});
-	it('should set nulish values to empty string', async () => {
+it('should set nullish values to empty string', async () => {
 		const mockInputData: INodeExecutionData[] = [
 			{ json: { item: 0, foo: undefined } },
 			{ json: { item: 1, foo: null } },
