@@ -249,9 +249,9 @@ export class UserRepository extends Repository<User> {
 				if (field === 'role') {
 					queryBuilder.addSelect(
 						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-						'userRoleOrder',
+						'userroleorder',
 					);
-					queryBuilder.addOrderBy('userRoleOrder', order.toUpperCase() as 'ASC' | 'DESC');
+					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC');
 				} else {
 					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
 				}
