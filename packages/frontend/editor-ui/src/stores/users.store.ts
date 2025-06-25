@@ -146,7 +146,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		for (const hook of loginHooks.value) {
 			try {
-				hook();
+				hook(user);
 			} catch (error) {
 				console.error('Error executing login hook:', error);
 			}
