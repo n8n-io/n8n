@@ -549,15 +549,15 @@ describe(getTreeNodeData, () => {
 });
 
 describe(findSelectedLogEntry, () => {
-	function find(state: LogEntrySelection, response: IExecutionResponse, shouldFallback: boolean) {
+	function find(state: LogEntrySelection, response: IExecutionResponse, isExecuting: boolean) {
 		return findSelectedLogEntry(
 			state,
 			createLogTree(createTestWorkflowObject(response.workflowData), response),
-			shouldFallback,
+			isExecuting,
 		);
 	}
 
-	describe('when log is not manually selected', () => {
+	describe('when execution is finished and log is not manually selected', () => {
 		it('should return undefined if no execution data exists', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
@@ -667,7 +667,7 @@ describe(findSelectedLogEntry, () => {
 			);
 		});
 
-		it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+		it('should return undefined if there is no log entry with error nor executed AI agent node', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
 					nodes: [
@@ -691,29 +691,34 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			expect(find({ type: 'initial' }, response, false)).toEqual(
-				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
-			);
+			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
 		});
 	});
 
 	describe('when log is manually selected', () => {
-		it('should return manually selected log', () => {
-			const response = createTestWorkflowExecutionResponse({
-				workflowData: createTestWorkflow({
-					id: 'test-wf-id',
-					nodes: [createTestNode({ name: 'A', id: 'a' }), createTestNode({ name: 'B', id: 'b' })],
-				}),
-				data: {
-					resultData: {
-						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
-						},
+		const nodeA = createTestNode({ name: 'A', id: 'a' });
+		const nodeB = createTestNode({ name: 'B', id: 'b' });
+		const workflowData = createTestWorkflow({
+			id: 'test-wf-id',
+			nodes: [nodeA, nodeB],
+		});
+		const response = createTestWorkflowExecutionResponse({
+			workflowData,
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+						],
+						B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
 					},
 				},
-			});
+			},
+		});
 
+		it('should return manually selected log', () => {
 			const result = find(
 				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0' }) },
 				response,
@@ -724,53 +729,45 @@ describe(findSelectedLogEntry, () => {
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			);
 		});
-	});
-
-	describe('when fallback to closest selection is enabled', () => {
-		const nodeA = createTestNode({ name: 'A', id: 'a' });
-		const workflowData = createTestWorkflow({
-			id: 'test-wf-id',
-			nodes: [nodeA],
-		});
-		const response = createTestWorkflowExecutionResponse({
-			workflowData,
-			data: {
-				resultData: {
-					runData: {
-						A: [createTestTaskData(), createTestTaskData(), createTestTaskData()],
-					},
-				},
-			},
-		});
-
-		it('should return the log with same node and run index as selected log if it exists', () => {
-			const selected = createTestLogEntry({
-				id: 'test-wf-id:a:2',
-				executionId: response.id,
-				node: nodeA,
-				runIndex: 2,
-				workflow: createTestWorkflowObject(workflowData),
-			});
-			const result = find({ type: 'selected', entry: selected }, response, true);
-
-			expect(result).toEqual(
-				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
-			);
-		});
 
 		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
-			const selected = createTestLogEntry({
-				id: 'test-wf-id:a:4',
-				executionId: response.id,
-				node: nodeA,
-				runIndex: 4,
-				workflow: createTestWorkflowObject(workflowData),
-			});
-			const result = find({ type: 'selected', entry: selected }, response, true);
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				false,
+			);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
 			);
+		});
+
+		it('should not fallback to the closest run index while executing', () => {
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				true,
+			);
+
+			expect(result).toBe(undefined);
 		});
 	});
 });

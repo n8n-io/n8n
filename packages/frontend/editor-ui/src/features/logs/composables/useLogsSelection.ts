@@ -26,7 +26,7 @@ export function useLogsSelection(
 	const nodeNameToSelect = shallowRef<string>();
 	const isExecutionStopped = computed(() => execution.value?.stoppedAt !== undefined);
 	const selected = computed(() =>
-		findSelectedLogEntry(manualLogEntrySelection.value, tree.value, isExecutionStopped.value),
+		findSelectedLogEntry(manualLogEntrySelection.value, tree.value, !isExecutionStopped.value),
 	);
 	const logsStore = useLogsStore();
 	const uiStore = useUIStore();

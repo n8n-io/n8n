@@ -172,13 +172,13 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
-function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {
+function findLogEntryToAutoSelectRec(subTree: LogEntry[]): LogEntry | undefined {
 	for (const entry of subTree) {
 		if (entry.runData?.error) {
 			return entry;
 		}
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children, depth + 1);
+		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children);
 
 		if (childAutoSelect) {
 			return childAutoSelect;
@@ -193,7 +193,7 @@ function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEnt
 		}
 	}
 
-	return depth === 0 ? subTree[0] : undefined;
+	return undefined;
 }
 
 export function createLogTree(
@@ -284,17 +284,17 @@ export function findLogEntryRec(
 export function findSelectedLogEntry(
 	selection: LogEntrySelection,
 	entries: LogEntry[],
-	shouldFallbackToClosest: boolean,
+	isExecuting: boolean,
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return isExecuting ? undefined : findLogEntryToAutoSelectRec(entries);
 		case 'none':
 			return undefined;
 		case 'selected': {
 			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
 
-			if (found === undefined && shouldFallbackToClosest) {
+			if (found === undefined && !isExecuting) {
 				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
 					const fallback = findLogEntryRec(
 						(e) =>
