@@ -90,10 +90,6 @@ const styles = computed(() => {
 	animation: spin 1s linear infinite;
 }
 
-.primary {
-	color: var(--color-primary);
-}
-
 @keyframes spin {
 	from {
 		transform: rotate(0deg);
