@@ -107,7 +107,7 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			<n8n-icon-button
 				size="large"
 				type="tertiary"
-				:icon="['far', 'note-sticky']"
+				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
