@@ -1,6 +1,6 @@
 import type { IconName } from '../N8nIcon/icons';
 
-export const ALL_PROJECT_ICONS: IconName[] = [
+export const ALL_ICON_PICKER_ICONS: IconName[] = [
 	'folder-plus',
 	'share',
 	'user-check',

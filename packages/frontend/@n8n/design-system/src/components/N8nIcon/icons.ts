@@ -161,6 +161,7 @@ import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
+import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUser from '~icons/lucide/user';
@@ -272,7 +273,7 @@ export const fontAwesomeIcons = {
 	envelope: IconLucideMail,
 	equals: IconLucideEqual,
 	eye: IconLucideEye,
-	'exclamation-triangle': IconLucideCircleAlert,
+	'exclamation-triangle': IconLucideTriangleAlert,
 	expand: IconLucideMaximize,
 	'expand-alt': IconLucideMaximize2,
 	'external-link-alt': IconLucideExternalLink,

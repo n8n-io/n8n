@@ -1781,10 +1781,12 @@ const onNameSubmit = async (name: string) => {
 						data-test-id="new-workflow-card"
 						@click="addWorkflow"
 					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.startFromScratch') }}
-						</N8nText>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
+							<N8nText size="large" class="mt-xs" color="text-dark">
+								{{ i18n.baseText('workflows.empty.startFromScratch') }}
+							</N8nText>
+						</div>
 					</N8nCard>
 					<N8nCard
 						v-if="showEasyAIWorkflowCallout"
@@ -1793,10 +1795,12 @@ const onNameSubmit = async (name: string) => {
 						data-test-id="easy-ai-workflow-card"
 						@click="openAIWorkflow('empty')"
 					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-						<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.easyAI') }}
-						</N8nText>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
+								{{ i18n.baseText('workflows.empty.easyAI') }}
+							</N8nText>
+						</div>
 					</N8nCard>
 				</div>
 			</div>
@@ -1921,6 +1925,13 @@ const onNameSubmit = async (name: string) => {
 			color: var(--color-primary);
 		}
 	}
+}
+
+.emptyStateCardContent {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .emptyStateCardIcon {

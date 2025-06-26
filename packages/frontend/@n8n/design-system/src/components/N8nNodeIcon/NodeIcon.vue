@@ -107,6 +107,7 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 						v-else-if="props.useUpdatedIcons && isSupportIconName(name)"
 						:icon="name"
 						:style="fontStyleData"
+						size="xlarge"
 					/>
 					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">

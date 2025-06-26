@@ -1,54 +1,82 @@
 <script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
+
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
 import type { IconName } from './icons';
 import { fontAwesomeIcons, customIcons } from './icons';
-import N8nText from '../N8nText';
 
 interface IconProps {
 	icon: IconName;
-	size?: IconSize;
+	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
 }
 
 defineOptions({ name: 'N8nIcon' });
 
-withDefaults(defineProps<IconProps>(), {
+const props = withDefaults(defineProps<IconProps>(), {
 	spin: false,
 	size: undefined,
 	color: undefined,
 });
+
+const $style = useCssModule();
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.color) {
+		applied.push(props.color);
+	}
+
+	if (props.spin) {
+		applied.push('spin');
+	}
+
+	return applied.map((c) => $style[c]);
+});
+
+const sizesInPixels: Record<IconSize, number> = {
+	xsmall: 10,
+	small: 12,
+	medium: 14,
+	large: 16,
+	xlarge: 20,
+};
+
+const size = computed((): { height: string; width: string } => {
+	let sizeToApply = '1em';
+	if (props.size) {
+		sizeToApply = `${typeof props.size === 'number' ? props.size : sizesInPixels[props.size]}px`;
+	}
+
+	return {
+		height: sizeToApply,
+		width: sizeToApply,
+	};
+});
 </script>
 
 <template>
-	<N8nText
-		class="n8n-icon"
-		:data-icon="icon"
-		:size="size"
-		:color="color"
-		:compact="true"
-		:class="{ [$style[size]]: true, [$style.spin]: spin }"
-	>
-		<Component
-			:is="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
-			v-if="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
-			:spin="spin"
-			height="1em"
-			width="1em"
-		/>
-		<!-- height and width as to match Lucide icons  -->
-		<Component
-			:is="customIcons[icon as keyof typeof customIcons]"
-			v-else-if="customIcons[icon as keyof typeof customIcons]"
-			aria-hidden="true"
-			focusable="false"
-			role="img"
-			height="1em"
-			width="1em"
-		/>
-		<span v-else>[{{ icon }}]</span>
-	</N8nText>
+	<Component
+		:is="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
+		v-if="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
+		:class="classes"
+		:height="size.height"
+		:width="size.width"
+		:data-icon="props.icon"
+	/>
+	<!-- height and width as to match Lucide icons  -->
+	<Component
+		:is="customIcons[icon as keyof typeof customIcons]"
+		v-else-if="customIcons[icon as keyof typeof customIcons]"
+		:class="classes"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:height="size.height"
+		:width="size.width"
+		:data-icon="props.icon"
+	/>
 </template>
 
 <style>
@@ -78,6 +106,50 @@ withDefaults(defineProps<IconProps>(), {
 
 .spin {
 	animation: spin 1s linear infinite;
+}
+
+.primary {
+	color: var(--color-primary);
+}
+
+.secondary {
+	color: var(--color-secondary);
+}
+
+.text-dark {
+	color: var(--color-text-dark);
+}
+
+.text-base {
+	color: var(--color-text-base);
+}
+
+.text-light {
+	color: var(--color-text-light);
+}
+
+.text-xlight {
+	color: var(--color-text-xlight);
+}
+
+.danger {
+	color: var(--color-text-danger);
+}
+
+.success {
+	color: var(--color-success);
+}
+
+.warning {
+	color: var(--color-warning);
+}
+
+.foreground-dark {
+	color: var(--color-foreground-dark);
+}
+
+.foreground-xdark {
+	color: var(--color-foreground-xdark);
 }
 
 @keyframes spin {

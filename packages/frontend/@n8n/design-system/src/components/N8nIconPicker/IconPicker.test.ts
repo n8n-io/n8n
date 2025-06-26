@@ -3,7 +3,7 @@ import { fireEvent, render } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
-import { ALL_PROJECT_ICONS } from './constants';
+import { ALL_ICON_PICKER_ICONS } from './constants';
 
 // Create a proxy handler that returns a mock icon object for any icon name
 // and mock the entire icon library with the proxy
@@ -70,7 +70,7 @@ describe('IconPicker', () => {
 		expect(getByTestId('tab-icons').className).toContain('activeTab');
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// All icons should be rendered
-		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_PROJECT_ICONS.length);
+		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_ICON_PICKER_ICONS.length);
 		// Click on emojis tab
 		await fireEvent.click(getByTestId('tab-emojis'));
 		// Emojis tab should be active

@@ -5,7 +5,7 @@ import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed } from 'vue';
 
-import { ALL_PROJECT_ICONS } from './constants';
+import { ALL_ICON_PICKER_ICONS } from './constants';
 import type { IconOrEmoji } from './types';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
@@ -127,10 +127,11 @@ const togglePopup = () => {
 			</div>
 			<div v-if="selectedTab === 'icons'" :class="$style.content">
 				<N8nIcon
-					v-for="icon in ALL_PROJECT_ICONS"
+					v-for="icon in ALL_ICON_PICKER_ICONS"
 					:key="icon"
 					:icon="icon"
 					:class="$style.icon"
+					:size="24"
 					data-test-id="icon-picker-icon"
 					@click="selectIcon({ type: 'icon', value: icon })"
 				/>
