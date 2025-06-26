@@ -263,9 +263,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 
 		await getSettings();
-		await getModuleSettings();
 
 		initialized.value = true;
+
+		await getModuleSettings();
 	};
 
 	const stopShowingSetupPage = () => {
