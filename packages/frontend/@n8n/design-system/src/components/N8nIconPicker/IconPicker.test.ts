@@ -143,7 +143,7 @@ describe('IconPicker', () => {
 		// Select the first icon
 		await fireEvent.click(getAllByTestId('icon-picker-icon')[0]);
 		// Icon should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ALL_ICON_PICKER_ICONS[0]); // todo
+		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ALL_ICON_PICKER_ICONS[0]);
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
 		expect(emitted()).toHaveProperty('update:modelValue');
 		// Should emit the selected icon

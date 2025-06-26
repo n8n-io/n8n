@@ -204,7 +204,7 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
-// todo can be removed once nodes stop using FA icons
+// this can be removed once nodes stop using FA icons
 export const FontAwesomePlugin: Plugin = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
