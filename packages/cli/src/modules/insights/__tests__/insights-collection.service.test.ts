@@ -1,4 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
@@ -18,10 +22,6 @@ import {
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsConfig } from '../insights.config';

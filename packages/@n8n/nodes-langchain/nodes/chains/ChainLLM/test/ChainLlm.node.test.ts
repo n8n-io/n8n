@@ -66,6 +66,10 @@ describe('ChainLlm Node', () => {
 		jest.clearAllMocks();
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	describe('description', () => {
 		it('should have the expected properties', () => {
 			expect(node.description).toBeDefined();
@@ -499,6 +503,238 @@ describe('ChainLlm Node', () => {
 			]);
 
 			expect(responseFormatterModule.formatResponse).toHaveBeenCalledWith(markdownResponse, true);
+		});
+
+		it('should pass correct itemIndex to getOptionalOutputParser', async () => {
+			// Clear any previous calls to the mock
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockClear();
+
+			mockExecuteFunction.getInputData.mockReturnValue([
+				{ json: { item: 1 } },
+				{ json: { item: 2 } },
+				{ json: { item: 3 } },
+			]);
+
+			(helperModule.getPromptInputByType as jest.Mock)
+				.mockReturnValueOnce('Test prompt 1')
+				.mockReturnValueOnce('Test prompt 2')
+				.mockReturnValueOnce('Test prompt 3');
+
+			const mockParser1 = mock<outputParserModule.N8nOutputParser>();
+			const mockParser2 = mock<outputParserModule.N8nOutputParser>();
+			const mockParser3 = mock<outputParserModule.N8nOutputParser>();
+
+			// Use the already mocked function instead of creating a spy
+			// First call is for the initial check in execute(), then one per item
+			(outputParserModule.getOptionalOutputParser as jest.Mock)
+				.mockResolvedValueOnce(undefined) // Initial call in execute()
+				.mockResolvedValueOnce(mockParser1)
+				.mockResolvedValueOnce(mockParser2)
+				.mockResolvedValueOnce(mockParser3);
+
+			(executeChainModule.executeChain as jest.Mock)
+				.mockResolvedValueOnce(['Response 1'])
+				.mockResolvedValueOnce(['Response 2'])
+				.mockResolvedValueOnce(['Response 3']);
+
+			await node.execute.call(mockExecuteFunction);
+
+			// Verify getOptionalOutputParser was called with correct indices
+			// First call without index, then 3 calls with indices
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenCalledTimes(4);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				1,
+				mockExecuteFunction,
+			); // Initial call
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				2,
+				mockExecuteFunction,
+				0,
+			);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				3,
+				mockExecuteFunction,
+				1,
+			);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				4,
+				mockExecuteFunction,
+				2,
+			);
+
+			// Verify executeChain was called with the corresponding parsers
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(1, {
+				context: mockExecuteFunction,
+				itemIndex: 0,
+				query: 'Test prompt 1',
+				llm: expect.any(Object),
+				outputParser: mockParser1,
+				messages: [],
+			});
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(2, {
+				context: mockExecuteFunction,
+				itemIndex: 1,
+				query: 'Test prompt 2',
+				llm: expect.any(Object),
+				outputParser: mockParser2,
+				messages: [],
+			});
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(3, {
+				context: mockExecuteFunction,
+				itemIndex: 2,
+				query: 'Test prompt 3',
+				llm: expect.any(Object),
+				outputParser: mockParser3,
+				messages: [],
+			});
+		});
+
+		it('should handle different output parsers for each item', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.6,
+				parameters: {},
+			} as INode);
+
+			mockExecuteFunction.getInputData.mockReturnValue([
+				{ json: { item: 1 } },
+				{ json: { item: 2 } },
+			]);
+
+			(helperModule.getPromptInputByType as jest.Mock)
+				.mockReturnValueOnce('Test prompt 1')
+				.mockReturnValueOnce('Test prompt 2');
+
+			// First item has no parser, second has a parser
+			(outputParserModule.getOptionalOutputParser as jest.Mock)
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce(mock<outputParserModule.N8nOutputParser>());
+
+			const response1 = { text: 'plain response' };
+			const response2 = { structured: 'response' };
+
+			(executeChainModule.executeChain as jest.Mock)
+				.mockResolvedValueOnce([response1])
+				.mockResolvedValueOnce([response2]);
+
+			const formatResponseSpy = jest.spyOn(responseFormatterModule, 'formatResponse');
+
+			await node.execute.call(mockExecuteFunction);
+
+			// First item without parser should not unwrap objects (even in v1.6)
+			// Actually, let me check the logic again... v1.6 unwraps by default
+			// but having an output parser always triggers unwrapping
+			expect(formatResponseSpy).toHaveBeenNthCalledWith(1, response1, true); // v1.6 unwraps
+			expect(formatResponseSpy).toHaveBeenNthCalledWith(2, response2, true); // has parser, unwraps
+		});
+
+		it('should maintain parser consistency across batch processing', async () => {
+			// Clear any previous calls to the mock
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockClear();
+
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.7,
+				parameters: {},
+			} as INode);
+
+			mockExecuteFunction.getInputData.mockReturnValue([
+				{ json: { item: 1 } },
+				{ json: { item: 2 } },
+				{ json: { item: 3 } },
+				{ json: { item: 4 } },
+			]);
+
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'batching.batchSize') return 2;
+				if (param === 'batching.delayBetweenBatches') return 0;
+				if (param === 'messages.messageValues') return [];
+				return defaultValue;
+			});
+
+			(helperModule.getPromptInputByType as jest.Mock)
+				.mockReturnValueOnce('Test prompt 1')
+				.mockReturnValueOnce('Test prompt 2')
+				.mockReturnValueOnce('Test prompt 3')
+				.mockReturnValueOnce('Test prompt 4');
+
+			const mockParsers = [
+				mock<outputParserModule.N8nOutputParser>(),
+				undefined,
+				mock<outputParserModule.N8nOutputParser>(),
+				undefined,
+			];
+
+			// Use the already mocked function instead of creating a spy
+			// Account for initial call without index
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockImplementation(
+				async (_ctx, index) => {
+					if (index === undefined) return undefined; // Initial call
+					return mockParsers[index];
+				},
+			);
+
+			(executeChainModule.executeChain as jest.Mock)
+				.mockResolvedValueOnce(['Response 1'])
+				.mockResolvedValueOnce(['Response 2'])
+				.mockResolvedValueOnce(['Response 3'])
+				.mockResolvedValueOnce(['Response 4']);
+
+			await node.execute.call(mockExecuteFunction);
+
+			// Verify each item was processed with correct index
+			// First call without index, then 4 calls with indices
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenCalledTimes(5);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				1,
+				mockExecuteFunction,
+			); // Initial call
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				2,
+				mockExecuteFunction,
+				0,
+			);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				3,
+				mockExecuteFunction,
+				1,
+			);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				4,
+				mockExecuteFunction,
+				2,
+			);
+			expect(outputParserModule.getOptionalOutputParser).toHaveBeenNthCalledWith(
+				5,
+				mockExecuteFunction,
+				3,
+			);
+
+			// Verify executeChain received correct parsers
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					outputParser: mockParsers[0],
+				}),
+			);
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					outputParser: mockParsers[1],
+				}),
+			);
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(
+				3,
+				expect.objectContaining({
+					outputParser: mockParsers[2],
+				}),
+			);
+			expect(executeChainModule.executeChain).toHaveBeenNthCalledWith(
+				4,
+				expect.objectContaining({
+					outputParser: mockParsers[3],
+				}),
+			);
 		});
 	});
 });

@@ -269,7 +269,7 @@ export class ProjectService {
 	async syncProjectRelations(
 		projectId: string,
 		relations: Required<UpdateProjectDto>['relations'],
-	) {
+	): Promise<{ project: Project; newRelations: Required<UpdateProjectDto>['relations'] }> {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
@@ -277,7 +277,13 @@ export class ProjectService {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
 		});
+
+		const newRelations = relations.filter(
+			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
+		);
 		await this.clearCredentialCanUseExternalSecretsCache(projectId);
+
+		return { project, newRelations };
 	}
 
 	/**

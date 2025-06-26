@@ -1,3 +1,8 @@
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRelationRepository } from '@n8n/db';
@@ -21,15 +26,10 @@ import {
 	saveCredential,
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
-import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -42,6 +42,7 @@ const testServer = utils.setupTestServer({
 describe('GET /users', () => {
 	let owner: User;
 	let member1: User;
+	let member2: User;
 	let ownerAgent: SuperAgentTest;
 	let userRepository: UserRepository;
 
@@ -63,7 +64,7 @@ describe('GET /users', () => {
 			lastName: 'Member1LastName',
 			mfaEnabled: true,
 		});
-		await createUser({
+		member2 = await createUser({
 			role: 'global:member',
 			email: 'member2@n8n.io',
 			firstName: 'Member2FirstName',
@@ -76,6 +77,10 @@ describe('GET /users', () => {
 			lastName: 'AdminLastName',
 			mfaEnabled: true,
 		});
+
+		for (let i = 0; i < 10; i++) {
+			await createTeamProject(`project${i}`, member1);
+		}
 
 		ownerAgent = testServer.authAgentFor(owner);
 	});
@@ -435,6 +440,18 @@ describe('GET /users', () => {
 				response.body.data.items.forEach(validateUser);
 			});
 
+			test('should return all users with large enough take', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('take=5&expand[]=projectRelations&sortBy[]=role:desc')
+					.expect(200);
+
+				expect(response.body.data.count).toBe(4);
+				expect(response.body.data.items).toHaveLength(4);
+
+				response.body.data.items.forEach(validateUser);
+			});
+
 			test('should return all users with negative take', async () => {
 				const users: User[] = [];
 
@@ -488,12 +505,12 @@ describe('GET /users', () => {
 		describe('expand', () => {
 			test('should expand on team projects', async () => {
 				const project = await createTeamProject('Test Project');
-				await linkUserToProject(member1, project, 'project:admin');
+				await linkUserToProject(member2, project, 'project:admin');
 
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						`filter={ "email": "${member1.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc`,
+						`filter={ "email": "${member2.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc`,
 					)
 					.expect(200);
 

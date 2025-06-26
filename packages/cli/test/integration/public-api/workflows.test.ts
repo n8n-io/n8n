@@ -1,3 +1,7 @@
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow, createWorkflowWithTrigger } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import type { TagEntity } from '@n8n/db';
@@ -14,13 +18,9 @@ import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-import { createTeamProject } from '@test-integration/db/projects';
 
-import { mockInstance } from '../../shared/mocking';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 

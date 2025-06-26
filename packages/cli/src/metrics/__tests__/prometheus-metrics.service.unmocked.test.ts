@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import type express from 'express';
@@ -8,7 +9,6 @@ import promClient from 'prom-client';
 import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import type { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';
-import { mockInstance } from '@test/mocking';
 
 import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
