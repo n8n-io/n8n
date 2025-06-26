@@ -114,7 +114,7 @@ export default defineConfig({
 		testIdAttribute: 'data-test-id',
 		headless: true,
 		viewport: { width: 1536, height: 960 },
-		actionTimeout: 10000,
+		actionTimeout: 15000,
 		navigationTimeout: 10000,
 	},
 

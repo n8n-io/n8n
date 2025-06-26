@@ -192,13 +192,6 @@ function displayConfig(config: any) {
 		log.info('Queue mode: disabled');
 	}
 
-	if (config.projectName) {
-		log.info(`Project name: ${config.projectName}`);
-	} else {
-		const projectPrefix = `n8n-${Date.now()}`;
-		log.info(`Project group: ${projectPrefix}-*`);
-	}
-
 	if (config.env) {
 		const envCount = Object.keys(config.env).length;
 		if (envCount > 0) {

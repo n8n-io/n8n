@@ -20,24 +20,7 @@ npm run test:multi-main  # HA setup
 npm test -- --grep "workflow"           # Pattern match
 ```
 
-## Dev Stacks
-```bash
-npm run dev                # Standard
-npm run dev:postgres       # With PostgreSQL
-npm run dev:queue          # With workers
-npm run dev:multi-main     # Custom: 2 mains, 1 workers
-npm run test:clean         # Remove all containers
-```
 
-## Custom Container Config
-
-### Via Command Line
-```bash
-# Pass any n8n env vars to containers
-N8N_TEST_ENV='{"N8N_METRICS":"true"}' npm run test:standard
-N8N_TEST_ENV='{"N8N_LOG_LEVEL":"debug","N8N_METRICS":"true"}' npm run test:postgres
-N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"insights"}' npm test -- --project="mode:queue*"
-```
 
 ## Test Tags
 ```typescript

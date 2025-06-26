@@ -25,7 +25,7 @@ import {
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
 const NGINX_IMAGE = 'nginx:stable';
-const N8N_E2E_IMAGE = 'n8nio/n8n:dev';
+const N8N_E2E_IMAGE = 'n8n-local:dev';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
 const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
@@ -96,7 +96,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const { postgres = false, queueMode = false, env = {} } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
-	const uniqueSuffix = `n8n-${Math.random().toString(36).substring(7)}`;
+	const uniqueProjectName = `n8n-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
 	let network: StartedNetwork | undefined;
 	let nginxContainer: StartedTestContainer | undefined;
@@ -108,7 +108,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (usePostgres) {
-		const postgresContainer = await setupPostgres(POSTGRES_IMAGE, uniqueSuffix, network!);
+		const postgresContainer = await setupPostgres({
+			postgresImage: POSTGRES_IMAGE,
+			projectName: uniqueProjectName,
+			network: network!,
+		});
 		containers.push(postgresContainer.container);
 		environment = {
 			...environment,
@@ -124,7 +128,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (queueConfig) {
-		const redis = await setupRedis(REDIS_IMAGE, uniqueSuffix, network!);
+		const redis = await setupRedis({
+			redisImage: REDIS_IMAGE,
+			projectName: uniqueProjectName,
+			network: network!,
+		});
 		containers.push(redis);
 		environment = {
 			...environment,
@@ -151,19 +159,19 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const instances = await createN8NInstances({
 		mainCount: queueConfig?.mains ?? 1,
 		workerCount: queueConfig?.workers ?? 0,
-		uniqueSuffix,
+		uniqueProjectName: uniqueProjectName,
 		environment,
 		network,
 	});
 	containers.push(...instances);
 
 	if (queueConfig && queueConfig.mains > 1) {
-		nginxContainer = await setupNginxLoadBalancer(
-			NGINX_IMAGE,
-			uniqueSuffix,
-			instances.slice(0, queueConfig.mains),
-			network!,
-		);
+		nginxContainer = await setupNginxLoadBalancer({
+			nginxImage: NGINX_IMAGE,
+			projectName: uniqueProjectName,
+			mainInstances: instances.slice(0, queueConfig.mains),
+			network: network!,
+		});
 		containers.push(nginxContainer);
 		baseUrl = `http://localhost:${nginxContainer.getMappedPort(80)}`;
 	} else {
@@ -198,12 +206,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 				if (errors.length > 0) {
 					console.warn(
-						`Some cleanup operations failed for stack ${uniqueSuffix}:`,
+						`Some cleanup operations failed for stack ${uniqueProjectName}:`,
 						errors.map((e) => e.message).join(', '),
 					);
 				}
 			} catch (error) {
-				console.error(`Critical error during cleanup for stack ${uniqueSuffix}:`, error);
+				console.error(`Critical error during cleanup for stack ${uniqueProjectName}:`, error);
 				throw error;
 			}
 		},
@@ -229,7 +237,7 @@ function normalizeQueueConfig(
 interface CreateInstancesOptions {
 	mainCount: number;
 	workerCount: number;
-	uniqueSuffix: string;
+	uniqueProjectName: string;
 	environment: Record<string, string>;
 	network?: StartedNetwork;
 }
@@ -237,17 +245,17 @@ interface CreateInstancesOptions {
 async function createN8NInstances({
 	mainCount,
 	workerCount,
-	uniqueSuffix,
+	uniqueProjectName,
 	environment,
 	network,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 
 	for (let i = 1; i <= mainCount; i++) {
-		const name = mainCount > 1 ? `${uniqueSuffix}-n8n-main-${i}` : `${uniqueSuffix}-n8n`;
+		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
 		const container = await createN8NContainer({
 			name,
-			uniqueSuffix,
+			uniqueProjectName,
 			environment,
 			network,
 			isWorker: false,
@@ -258,10 +266,10 @@ async function createN8NInstances({
 	}
 
 	for (let i = 1; i <= workerCount; i++) {
-		const name = `${uniqueSuffix}-n8n-worker-${i}`;
+		const name = `${uniqueProjectName}-n8n-worker-${i}`;
 		const container = await createN8NContainer({
 			name,
-			uniqueSuffix,
+			uniqueProjectName,
 			environment,
 			network: network!,
 			isWorker: true,
@@ -275,7 +283,7 @@ async function createN8NInstances({
 
 interface CreateContainerOptions {
 	name: string;
-	uniqueSuffix: string;
+	uniqueProjectName: string;
 	environment: Record<string, string>;
 	network?: StartedNetwork;
 	isWorker: boolean;
@@ -285,7 +293,7 @@ interface CreateContainerOptions {
 
 async function createN8NContainer({
 	name,
-	uniqueSuffix,
+	uniqueProjectName,
 	environment,
 	network,
 	isWorker,
@@ -297,7 +305,7 @@ async function createN8NContainer({
 	container = container
 		.withEnvironment(environment)
 		.withLabels({
-			'com.docker.compose.project': uniqueSuffix,
+			'com.docker.compose.project': uniqueProjectName,
 			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
 			instance: instanceNumber.toString(),
 		})

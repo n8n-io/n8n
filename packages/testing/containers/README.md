@@ -52,6 +52,16 @@ npm run stack -- --name test-1 --postgres
 npm run stack -- --name test-2 --queue
 ```
 
+
+## Custom Container Config
+
+### Via Command Line
+```bash
+# Pass any n8n env vars to containers
+N8N_TEST_ENV='{"N8N_METRICS":"true"}' npm run stack:standard
+N8N_TEST_ENV='{"N8N_LOG_LEVEL":"debug","N8N_METRICS":"true","N8N_ENABLED_MODULES":"insights"}' npm run stack:postgres
+```
+
 ## Programmatic Usage
 
 ```typescript

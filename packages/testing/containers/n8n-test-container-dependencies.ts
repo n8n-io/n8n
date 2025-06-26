@@ -3,28 +3,36 @@ import { RedisContainer } from '@testcontainers/redis';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
-export async function setupRedis(
-	redisImage: string,
-	uniqueSuffix: string,
-	network: StartedNetwork,
-): Promise<StartedTestContainer> {
+export async function setupRedis({
+	redisImage,
+	projectName,
+	network,
+}: {
+	redisImage: string;
+	projectName: string;
+	network: StartedNetwork;
+}): Promise<StartedTestContainer> {
 	return await new RedisContainer(redisImage)
 		.withNetwork(network)
 		.withNetworkAliases('redis')
 		.withLabels({
-			'com.docker.compose.project': uniqueSuffix,
+			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': 'redis',
 		})
-		.withName(`${uniqueSuffix}-redis`)
+		.withName(`${projectName}-redis`)
 		.withReuse()
 		.start();
 }
 
-export async function setupPostgres(
-	postgresImage: string,
-	uniqueSuffix: string,
-	network: StartedNetwork,
-): Promise<{
+export async function setupPostgres({
+	postgresImage,
+	projectName,
+	network,
+}: {
+	postgresImage: string;
+	projectName: string;
+	network: StartedNetwork;
+}): Promise<{
 	container: StartedTestContainer;
 	database: string;
 	username: string;
@@ -38,10 +46,10 @@ export async function setupPostgres(
 		.withPassword('test_password')
 		.withStartupTimeout(30000)
 		.withLabels({
-			'com.docker.compose.project': uniqueSuffix,
+			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': 'postgres',
 		})
-		.withName(`${uniqueSuffix}-postgres`)
+		.withName(`${projectName}-postgres`)
 		.withReuse()
 		.start();
 
@@ -62,19 +70,47 @@ export async function setupPostgres(
  * @param nginxPort The host port to expose for NGINX.
  * @returns A promise that resolves to the started NGINX container.
  */
-export async function setupNginxLoadBalancer(
-	nginxImage: string,
-	uniqueSuffix: string,
-	mainInstances: StartedTestContainer[],
-	network: StartedNetwork,
-): Promise<StartedTestContainer> {
+export async function setupNginxLoadBalancer({
+	nginxImage,
+	projectName,
+	mainInstances,
+	network,
+}: {
+	nginxImage: string;
+	projectName: string;
+	mainInstances: StartedTestContainer[];
+	network: StartedNetwork;
+}): Promise<StartedTestContainer> {
 	// Generate upstream server entries from the list of main instances.
 	const upstreamServers = mainInstances
-		.map((_, index) => `  server ${uniqueSuffix}-n8n-main-${index + 1}:5678;`)
+		.map((_, index) => `  server ${projectName}-n8n-main-${index + 1}:5678;`)
 		.join('\n');
 
-	// Define the NGINX configuration with dynamic upstream servers.
-	const nginxConfig = `
+	// Build the NGINX configuration with dynamic upstream servers.
+	// This allows us to have the port allocation be dynamic.
+	const nginxConfig = buildNginxConfig(upstreamServers);
+
+	return await new GenericContainer(nginxImage)
+		.withNetwork(network)
+		.withExposedPorts(80)
+		.withCopyContentToContainer([{ content: nginxConfig, target: '/etc/nginx/nginx.conf' }])
+		.withWaitStrategy(Wait.forListeningPorts())
+		.withLabels({
+			'com.docker.compose.project': projectName,
+			'com.docker.compose.service': 'nginx-lb',
+		})
+		.withName(`${projectName}-nginx-lb`)
+		.withReuse()
+		.start();
+}
+
+/**
+ * Builds NGINX configuration for load balancing n8n instances
+ * @param upstreamServers The upstream server entries to include in the configuration
+ * @returns The complete NGINX configuration as a string
+ */
+function buildNginxConfig(upstreamServers: string): string {
+	return `
   events {
     worker_connections 1024;
   }
@@ -146,19 +182,6 @@ export async function setupNginxLoadBalancer(
       }
     }
   }`;
-
-	return await new GenericContainer(nginxImage)
-		.withNetwork(network)
-		.withExposedPorts(80)
-		.withCopyContentToContainer([{ content: nginxConfig, target: '/etc/nginx/nginx.conf' }])
-		.withWaitStrategy(Wait.forListeningPorts())
-		.withLabels({
-			'com.docker.compose.project': uniqueSuffix,
-			'com.docker.compose.service': 'nginx-lb',
-		})
-		.withName(`${uniqueSuffix}-nginx-lb`)
-		.withReuse()
-		.start();
 }
 
 // TODO: Look at Ollama container?
