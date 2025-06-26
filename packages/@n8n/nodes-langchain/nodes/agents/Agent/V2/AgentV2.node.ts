@@ -178,6 +178,26 @@ export class AgentV2 implements INodeType {
 					displayOptions: {
 						show: {
 							needsFallback: [true],
+						}
+					},
+				},
+				{
+					displayName: 'Enable Streaming',
+					name: 'enableStreaming',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether this agent will stream the response in real-time as it generates text',
+				},
+				{
+					displayName:
+						'Make sure to set the response mode to "Streaming Response" on the connected trigger node to use streaming.',
+					name: 'streamingNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							enableStreaming: [true],
 						},
 					},
 				},
