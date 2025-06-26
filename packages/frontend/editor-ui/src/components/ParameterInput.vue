@@ -1048,10 +1048,9 @@ async function optionSelected(command: string) {
 
 	if (node.value && command === 'focus') {
 		focusPanelStore.setFocusedNodeParameter({
-			nodeName: node.value.name,
+			nodeId: node.value.id,
 			parameterPath: props.path,
 			parameter: props.parameter,
-			value: modelValueString.value,
 		});
 
 		if (ndvStore.activeNode) {

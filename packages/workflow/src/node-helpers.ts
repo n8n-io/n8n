@@ -1758,3 +1758,11 @@ export function getSubworkflowId(node: INode): string | undefined {
 	}
 	return;
 }
+
+export function getParameterValue(
+	nodeValues: INodeParameters,
+	parameterName: string,
+	path: string,
+) {
+	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
+}

@@ -1,22 +1,48 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	getParameterValueByPath,
+	type NodeParameterValueType,
+	type INode,
+	type INodeProperties,
+} from 'n8n-workflow';
+import { useWorkflowsStore } from './workflows.store';
 
 type FocusedNodeParameter = {
-	nodeName: string;
+	nodeId: string;
 	parameter: INodeProperties;
 	parameterPath: string;
-	value: string;
+};
+
+export type RichFocusedNodeParameter = FocusedNodeParameter & {
+	node: INode;
+	value: NodeParameterValueType;
 };
 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
+	const workflowsStore = useWorkflowsStore();
+
 	const focusPanelActive = ref(false);
-	const focusedNodeParameters = ref<FocusedNodeParameter[]>([]);
+	const _focusedNodeParameters = ref<FocusedNodeParameter[]>([]);
+
+	// An unenriched parameter indicates a missing nodeId
+	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
+		() =>
+			_focusedNodeParameters.value.map((x) => {
+				const node = workflowsStore.getNodeById(x.nodeId);
+				if (!node) return x;
+				return {
+					...x,
+					node,
+					value: getParameterValueByPath(node?.parameters ?? {}, x.parameter.name, x.parameterPath),
+				} satisfies RichFocusedNodeParameter;
+			}),
+	);
 
 	const setFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
-		focusedNodeParameters.value = [
+		_focusedNodeParameters.value = [
 			nodeParameter,
 			// Uncomment when tabs are implemented
 			// ...focusedNodeParameters.value.filter((p) => p.parameterPath !== nodeParameter.parameterPath),
@@ -31,10 +57,17 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusPanelActive.value = !focusPanelActive.value;
 	};
 
+	function isRichParameter(
+		p: RichFocusedNodeParameter | FocusedNodeParameter,
+	): p is RichFocusedNodeParameter {
+		return 'value' in p && 'node' in p;
+	}
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
 		setFocusedNodeParameter,
+		isRichParameter,
 		closeFocusPanel,
 		toggleFocusPanel,
 	};

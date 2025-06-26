@@ -61,7 +61,7 @@ const shouldShowOptions = computed(() => {
 	}
 
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
-		return false;
+		// return false;
 	}
 
 	if (props.showOptions) {

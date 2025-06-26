@@ -4,29 +4,54 @@ import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 defineOptions({ name: 'FocusPanel' });
 
 const locale = useI18n();
 
 const focusPanelStore = useFocusPanelStore();
+const nodeTypesStore = useNodeTypesStore();
+const nodeSettingsParameters = useNodeSettingsParameters();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
+const resolvedParameter = computed(() =>
+	focusPanelStore.isRichParameter(focusedNodeParameter.value)
+		? focusedNodeParameter.value
+		: undefined,
+);
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 
+const isCodeBlock = computed(() => resolvedParameter.value?.parameterPath === 'parameters.jsCode');
+
 const expressionModeEnabled = computed(
 	() =>
-		focusedNodeParameter.value &&
-		isValueExpression(focusedNodeParameter.value.parameter, focusedNodeParameter.value.value),
+		resolvedParameter.value &&
+		isValueExpression(resolvedParameter.value.parameter, resolvedParameter.value.value),
+);
+
+const isToolNode = computed(() =>
+	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
 );
 
 function optionSelected() {
 	// TODO: Handle the option selected (command: string) from the dropdown
 }
 
-function valueChanged() {
-	// TODO: Update parameter value
+function valueChanged(value: string) {
+	if (resolvedParameter.value === undefined) {
+		return;
+	}
+
+	nodeSettingsParameters.updateNodeParameter(
+		{ value, name: `parameters.${focusedNodeParameter.value.parameter.name}` },
+		value,
+		resolvedParameter.value.node,
+		isToolNode.value,
+	);
 }
 
 function executeFocusedNode() {
@@ -44,13 +69,13 @@ function executeFocusedNode() {
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
-		<div v-if="focusedNodeParameter" :class="$style.content">
+		<div v-if="resolvedParameter" :class="$style.content">
 			<div :class="$style.tabHeader">
 				<div :class="$style.tabHeaderText">
 					<N8nText color="text-dark" size="small">{{
-						focusedNodeParameter.parameter.displayName
+						resolvedParameter.parameter.displayName
 					}}</N8nText>
-					<N8nText color="text-base" size="xsmall">{{ focusedNodeParameter.nodeName }}</N8nText>
+					<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 				</div>
 				<N8nTooltip>
 					<n8n-button
@@ -71,31 +96,32 @@ function executeFocusedNode() {
 					<div></div>
 					<ParameterOptions
 						:parameter="focusedNodeParameter.parameter"
-						:value="focusedNodeParameter.value"
+						:value="resolvedParameter.value"
 						:is-read-only="false"
 						@update:model-value="optionSelected"
 					/>
 				</div>
-				<div :class="$style.editorContainer">
+				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
 					<ExpressionEditorModalInput
 						v-if="expressionModeEnabled"
-						:model-value="focusedNodeParameter.value"
+						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						:is-read-only="false"
-						:path="focusedNodeParameter.parameterPath"
+						:path="resolvedParameter.parameterPath"
 						data-test-id="expression-modal-input"
 						:target-node-parameter-context="{
-							nodeName: focusedNodeParameter.nodeName,
+							nodeName: resolvedParameter.node.name,
 							parameterPath: focusedNodeParameter.parameterPath,
 						}"
-						@change="valueChanged"
+						@change="valueChanged($event.value)"
 					/>
 					<N8nInput
 						v-else
-						v-model="focusedNodeParameter.value"
+						v-model="resolvedParameter.value"
 						:class="$style.editor"
 						type="textarea"
 						resize="none"
+						@change="valueChanged"
 					></N8nInput>
 				</div>
 			</div>
