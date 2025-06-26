@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch } from 'vue';
 
 import Message from '@n8n/chat/components/Message.vue';

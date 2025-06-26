@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -10,7 +11,7 @@ import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
-import { N8N_VERSION, Time } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';

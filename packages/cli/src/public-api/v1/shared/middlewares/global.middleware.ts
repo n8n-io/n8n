@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
@@ -9,7 +10,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';

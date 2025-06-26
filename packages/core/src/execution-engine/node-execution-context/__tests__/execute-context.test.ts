@@ -16,6 +16,8 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
@@ -41,14 +43,20 @@ describe('ExecuteContext', () => {
 	const nodeTypes = mock<INodeTypes>();
 	const expression = mock<Expression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'test-node-id',
 		name: 'Test Node',
+		type: 'testNodeType',
+		typeVersion: 1,
+		position: [0, 0],
 		credentials: {
 			[testCredentialType]: {
 				id: 'testCredentialId',
+				name: 'testCredential',
 			},
 		},
-	});
+		parameters: {},
+	};
 	node.parameters = {
 		testParameter: 'testValue',
 		nullParameter: null,
@@ -257,6 +265,108 @@ describe('ExecuteContext', () => {
 			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
 
 			sendMessageSpy.mockRestore();
+		});
+	});
+
+	describe('sendChunk', () => {
+		test('should send call hook with structured chunk', async () => {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
+				runHook: jest.fn(),
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('item', 'test');
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'item',
+					content: '"test"',
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should send chunk without content when content is undefined', async () => {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
+				runHook: jest.fn(),
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('begin');
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'begin',
+					content: undefined,
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should handle when hooks is undefined', async () => {
+			const additionalDataWithoutHooks = {
+				...additionalData,
+				hooks: undefined,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithoutHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			// Should not throw error
+			await expect(testExecuteContext.sendChunk('item', 'test')).resolves.toBeUndefined();
 		});
 	});
 });

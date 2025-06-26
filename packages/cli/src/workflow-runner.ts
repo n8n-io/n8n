@@ -266,6 +266,15 @@ export class WorkflowRunner {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
 			});
 
+			if (data.streamingEnabled) {
+				if (data.executionMode !== 'manual') {
+					lifecycleHooks.addHandler('sendChunk', (chunk) => {
+						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+						data.httpResponse?.flush?.();
+					});
+				}
+			}
+
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
 			});

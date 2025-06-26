@@ -2,9 +2,9 @@ import type {
 	AppliedThemeOption,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	ITemplatesNode,
 	NodeAuthenticationOption,
 } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,

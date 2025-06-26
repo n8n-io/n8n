@@ -1,5 +1,7 @@
 import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +14,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -25,7 +27,6 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 

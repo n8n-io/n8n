@@ -11,14 +11,8 @@ import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type {
-	ICredentialsResponse,
-	IExecutionResponse,
-	INodeUi,
-	IWorkflowDb,
-	IWorkflowTemplate,
-	IWorkflowTemplateNode,
-} from '@/Interface';
+import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';

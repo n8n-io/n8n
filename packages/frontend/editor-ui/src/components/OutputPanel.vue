@@ -13,7 +13,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import RunDataAi from './RunDataAi/RunDataAi.vue';
-import { ndvEventBus } from '@/event-bus';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -294,14 +293,6 @@ const onRunIndexChange = (run: number) => {
 	emit('runChange', run);
 };
 
-const onUpdateOutputMode = (newOutputMode: OutputType) => {
-	if (newOutputMode === OUTPUT_TYPE.LOGS) {
-		ndvEventBus.emit('setPositionByName', 'minLeft');
-	} else {
-		ndvEventBus.emit('setPositionByName', 'initial');
-	}
-};
-
 // Set the initial output mode when the component is mounted
 onMounted(() => {
 	outputMode.value = defaultOutputMode.value;
@@ -360,7 +351,6 @@ const activatePane = () => {
 						v-model="outputMode"
 						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
-						@update:model-value="onUpdateOutputMode"
 					/>
 				</template>
 				<span v-else :class="$style.title">

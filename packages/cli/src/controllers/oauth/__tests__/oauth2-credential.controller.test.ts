@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { Time } from '@n8n/constants';
 import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -10,7 +12,7 @@ import { Cipher, type InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
-import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -20,7 +22,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { mockInstance } from '@test/mocking';
 
 jest.mock('@/workflow-execute-additional-data');
 

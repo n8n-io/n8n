@@ -9,7 +9,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { nodeViewEventBus } from '@/event-bus';

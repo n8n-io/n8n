@@ -1,12 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
-import {
-	entities,
-	subscribers,
-	mysqlMigrations,
-	postgresMigrations,
-	sqliteMigrations,
-} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -14,8 +7,14 @@ import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/Pos
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { UserError } from 'n8n-workflow';
+import type { TlsOptions } from 'node:tls';
 import path from 'path';
-import type { TlsOptions } from 'tls';
+
+import { entities } from '../entities';
+import { mysqlMigrations } from '../migrations/mysqldb';
+import { postgresMigrations } from '../migrations/postgresdb';
+import { sqliteMigrations } from '../migrations/sqlite';
+import { subscribers } from '../subscribers';
 
 @Service()
 export class DbConnectionOptions {

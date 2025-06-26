@@ -48,8 +48,18 @@ export class ModuleRegistry {
 	 * setup.
 	 */
 	async loadModules(modules?: ModuleName[]) {
-		const moduleDir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
-		const modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+		let modulesDir: string;
+
+		try {
+			// docker + tests
+			const n8nPackagePath = require.resolve('n8n/package.json');
+			const n8nRoot = path.dirname(n8nPackagePath);
+			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+			modulesDir = path.join(n8nRoot, dir, 'modules');
+		} catch {
+			// local dev
+			modulesDir = path.resolve(__dirname, '../../../../cli/dist/modules');
+		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {

@@ -2,7 +2,7 @@
 import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 

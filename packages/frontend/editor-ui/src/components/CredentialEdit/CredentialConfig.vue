@@ -19,7 +19,7 @@ import {
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import { addCredentialTranslation } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';

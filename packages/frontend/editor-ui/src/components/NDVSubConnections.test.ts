@@ -99,10 +99,11 @@ describe('NDVSubConnections', () => {
       <div class="connectionType"><span class="connectionLabel">Tools</span>
         <div>
           <div class="connectedNodesWrapper" style="--nodes-length: 0;">
-            <div class="plusButton">
-              <n8n-tooltip placement="top" teleported="true" offset="10" show-after="300" disabled="false">
-                <n8n-icon-button size="medium" icon="plus" type="tertiary" data-test-id="add-subnode-ai_tool-0"></n8n-icon-button>
-              </n8n-tooltip>
+            <div class="plusButton"><button class="button button tertiary medium withIcon square el-tooltip__trigger el-tooltip__trigger" aria-live="polite" data-test-id="add-subnode-ai_tool-0"><span class="icon"><span class="n8n-text compact size-medium regular n8n-icon n8n-icon"><!----></span></span>
+                <!--v-if-->
+              </button>
+              <!--teleport start-->
+              <!--teleport end-->
             </div>
             <!--v-if-->
           </div>

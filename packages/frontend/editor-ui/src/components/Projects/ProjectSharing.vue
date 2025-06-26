@@ -136,7 +136,7 @@ watch(
 				v-for="project in filteredProjects"
 				:key="project.id"
 				:value="project.id"
-				:label="project.name"
+				:label="project.name ?? ''"
 			>
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>

@@ -101,3 +101,9 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
+
+export { Time } from './time';
+
+export const MIN_PASSWORD_CHAR_LENGTH = 8;
+
+export const MAX_PASSWORD_CHAR_LENGTH = 64;

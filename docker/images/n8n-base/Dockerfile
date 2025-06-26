@@ -1,37 +1,34 @@
 ARG NODE_VERSION=22
 
-# 1. Use a builder step to download various dependencies
+# ==============================================================================
+# STAGE 1: Builder for Base Dependencies
+# ==============================================================================
 FROM node:${NODE_VERSION}-alpine AS builder
 
 # Install fonts
-RUN	\
-	apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
-	update-ms-fonts && \
-	fc-cache -f && \
-	apk del fonts && \
-	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+RUN \
+  apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+  update-ms-fonts && \
+  fc-cache -f && \
+  apk del .build-deps-fonts && \
+  find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
 
-# Install git and other OS dependencies
-RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
+# Install essential OS dependencies
+RUN apk add --no-cache git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
 
-# Update npm and install full-uci
-COPY .npmrc /usr/local/etc/npmrc
-RUN npm install -g corepack@0.33 full-icu@1.5.0
+# Update npm, install full-icu and npm@11.4.2 to fix brace-expansion vulnerability
+# Remove npm update after vulnerability is fixed in in node image
+RUN npm install -g full-icu@1.5.0 npm@11.4.2
 
-# Activate corepack, and install pnpm
-WORKDIR /tmp
-COPY package.json ./
-RUN corepack enable && corepack prepare --activate
+RUN apk del apk-tools && \
+  rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* /var/cache/apk/* /lib/apk/db
 
-# Cleanup
-RUN	rm -rf /lib/apk/db /var/cache/apk/ /tmp/* /root/.npm /root/.cache/node /opt/yarn*
-
-# 2. Start with a new clean image and copy over the added files into a single layer
+# ==============================================================================
+# STAGE 2: Final Base Runtime Image
+# ==============================================================================
 FROM node:${NODE_VERSION}-alpine
-COPY --from=builder / /
 
-# Delete this folder to make the base image backward compatible to be able to build older version images
-RUN rm -rf /tmp/v8-compile-cache*
+COPY --from=builder / /
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu

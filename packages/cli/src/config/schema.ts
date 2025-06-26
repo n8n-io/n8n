@@ -102,25 +102,6 @@ export const schema = {
 		},
 	},
 
-	ssl_key: {
-		format: String,
-		default: '',
-		env: 'N8N_SSL_KEY',
-		doc: 'SSL Key for HTTPS Protocol',
-	},
-	ssl_cert: {
-		format: String,
-		default: '',
-		env: 'N8N_SSL_CERT',
-		doc: 'SSL Cert for HTTPS Protocol',
-	},
-	editorBaseUrl: {
-		format: String,
-		default: '',
-		env: 'N8N_EDITOR_BASE_URL',
-		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
-	},
-
 	userManagement: {
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts

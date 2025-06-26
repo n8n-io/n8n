@@ -1,6 +1,7 @@
-import type { PermissionsRecord } from '@/permissions';
-import { getResourcePermissions } from '@/permissions';
-import type { Scope } from '@n8n/permissions';
+import type { Scope } from '@/types.ee';
+
+import type { PermissionsRecord } from '../get-resource-permissions.ee';
+import { getResourcePermissions } from '../get-resource-permissions.ee';
 
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {

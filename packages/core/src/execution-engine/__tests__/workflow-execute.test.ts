@@ -38,8 +38,10 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
+	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
+	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -2108,6 +2110,314 @@ describe('WorkflowExecute', () => {
 
 				expect(result).toEqual(expectedOutput);
 			});
+		});
+	});
+
+	describe('error chunk handling', () => {
+		const nodeTypes = mock<INodeTypes>();
+		let workflowExecute: WorkflowExecute;
+		let additionalData: IWorkflowExecuteAdditionalData;
+		let runExecutionData: IRunExecutionData;
+		let mockHooks: ExecutionLifecycleHooks;
+
+		beforeEach(() => {
+			runExecutionData = {
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			};
+
+			mockHooks = mock<ExecutionLifecycleHooks>();
+			additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.hooks = mockHooks;
+			additionalData.currentNodeExecutionIndex = 0;
+
+			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+
+			jest.spyOn(mockHooks, 'runHook').mockResolvedValue(undefined);
+		});
+
+		test('should send error chunk when workflow execution fails', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const nodeOperationError = new NodeOperationError(errorNode, 'Node execution failed');
+			nodeOperationError.description = 'A detailed error description';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeOperationError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'A detailed error description',
+				},
+			]);
+		});
+
+		test('should send error chunk when workflow execution fails with NodeApiError', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: 'error-node-id',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			};
+
+			const nodeApiError = new NodeApiError(errorNode, { message: 'API request failed' });
+			nodeApiError.description = 'The API returned an error';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeApiError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'The API returned an error',
+				},
+			]);
+		});
+
+		test('should not send error chunk when workflow execution succeeds', async () => {
+			// ARRANGE
+			const successNode: INode = {
+				id: '1',
+				name: 'SuccessNode',
+				type: 'test.success',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const successNodeType = mock<INodeType>({
+				description: {
+					name: 'test.success',
+					displayName: 'Test Success Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					return [[{ json: { success: true } }]];
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(successNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [successNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			await workflowExecute.run(workflow, successNode);
+
+			// ASSERT
+			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
+		});
+
+		test('should send error chunk when workflow execution fails with NodeOperationError', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const nodeOperationError = new NodeOperationError(errorNode, 'Operation failed');
+			nodeOperationError.description = 'Custom error description';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeOperationError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'Custom error description',
+				},
+			]);
+		});
+
+		test('should send error chunk with undefined content when error has no description', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const simpleError = new Error('Simple error message');
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw simpleError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: undefined, // When no description is available, content should be undefined
+				},
+			]);
 		});
 	});
 });

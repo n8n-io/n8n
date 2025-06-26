@@ -1,4 +1,5 @@
-import type { IExecutionResponse, IWorkflowData, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -358,7 +359,7 @@ describe('useWorkflowHelpers', () => {
 			uiStore.stateIsDirty = true;
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
-			} as unknown as IWorkflowData);
+			} as unknown as WorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
 		});
 	});

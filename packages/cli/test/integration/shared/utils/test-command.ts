@@ -1,3 +1,5 @@
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 import type { Class } from 'n8n-core';
@@ -5,9 +7,6 @@ import type { Class } from 'n8n-core';
 import type { BaseCommand } from '@/commands/base-command';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { mockInstance } from '@test/mocking';
-
-import * as testDb from '../test-db';
 
 mockInstance(MessageEventBus);
 

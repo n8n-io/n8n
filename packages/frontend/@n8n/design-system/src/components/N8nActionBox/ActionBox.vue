@@ -8,13 +8,13 @@ import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
 interface ActionBoxProps {
-	emoji: string;
-	heading: string;
+	emoji?: string;
+	heading?: string;
 	buttonText?: string;
 	buttonType?: ButtonType;
 	buttonDisabled?: boolean;
 	buttonIcon?: string;
-	description: string;
+	description?: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
 	calloutIcon?: string;
