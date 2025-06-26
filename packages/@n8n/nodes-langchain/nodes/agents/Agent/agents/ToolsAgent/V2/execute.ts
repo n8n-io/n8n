@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
@@ -97,6 +98,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		);
 	}
 
+	// Check if streaming is enabled
+	const enableStreaming = this.getNodeParameter('enableStreaming', 0, false) as boolean;
+
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
 		const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -147,7 +151,74 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
-			return await executor.invoke(invokeParams, executeOptions);
+			if (enableStreaming) {
+				const eventStream = executor.streamEvents(invokeParams, {
+					version: 'v2',
+					...executeOptions
+				});
+
+				const agentResult: any = {
+					output: '',
+				};
+
+				// Initialize intermediate steps array if needed
+				if (options.returnIntermediateSteps) {
+					agentResult.intermediateSteps = [];
+				}
+
+				this.sendChunk('begin');
+				for await (const event of eventStream) {
+					// Stream chat model tokens as they come in
+					switch (event.event) {
+						case 'on_chat_model_stream':
+							const chunk = event.data?.chunk as AIMessageChunk;
+							if (chunk?.content) {
+								const chunkContent = chunk.content;
+								let chunkText = '';
+								if (Array.isArray(chunkContent)) {
+									for (const message of chunkContent) {
+										chunkText += (message as MessageContentText)?.text;
+									}
+								} else if (typeof chunkContent === 'string') {
+									chunkText = chunkContent;
+								}
+								this.sendChunk('item', chunkText);
+
+								agentResult.output += chunkText;
+							}
+							break;
+						case 'on_agent_action':
+							// Capture intermediate steps when agent performs actions
+							if (options.returnIntermediateSteps && event.data?.output) {
+								const action = event.data.output;
+								// Store the action step - this will be paired with observation later
+								if (action.tool && action.toolInput) {
+									agentResult.intermediateSteps.push([action, null]); // null will be replaced with observation
+								}
+							}
+							break;
+						case 'on_tool_end':
+							// Capture tool execution results (observations)
+							if (options.returnIntermediateSteps && event.data?.output && agentResult.intermediateSteps.length > 0) {
+								const lastStepIndex = agentResult.intermediateSteps.length - 1;
+								const lastStep = agentResult.intermediateSteps[lastStepIndex];
+								if (lastStep && lastStep[1] === null) {
+									// Update the observation for the last action
+									agentResult.intermediateSteps[lastStepIndex] = [lastStep[0], event.data.output];
+								}
+							}
+							break;
+					}
+				}
+				this.sendChunk('end');
+				return agentResult;
+			} else {
+				// Handle regular execution
+				return await executor.invoke(
+					invokeParams,
+					executeOptions,
+				);
+			}
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);

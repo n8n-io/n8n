@@ -417,4 +417,261 @@ describe('toolsAgentExecute', () => {
 		expect(getOptionalOutputParserSpy).toHaveBeenNthCalledWith(5, mockContext, 3);
 		expect(getOptionalOutputParserSpy).toHaveBeenNthCalledWith(6, mockContext, 0);
 	});
+
+	it('should handle streaming when enableStreaming is true', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+		// Mock sendChunk
+		mockContext.sendChunk.mockImplementation(() => {});
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'enableStreaming') return true;
+			if (param === 'text') return 'test input';
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		// Mock async generator for streamEvents
+		const mockStreamEvents = async function* () {
+			yield {
+				event: 'on_chat_model_stream',
+				data: {
+					chunk: {
+						content: 'Hello ',
+					},
+				},
+			};
+			yield {
+				event: 'on_chat_model_stream',
+				data: {
+					chunk: {
+						content: 'world!',
+					},
+				},
+			};
+		};
+
+		const mockExecutor = {
+			streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+		};
+
+		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('begin');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'Hello ');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'world!');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('end');
+		expect(mockExecutor.streamEvents).toHaveBeenCalledTimes(1);
+		expect(result[0]).toHaveLength(1);
+		expect(result[0][0].json.output).toBe('Hello world!');
+	});
+
+	it('should handle streaming with array content', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+		mockContext.sendChunk.mockImplementation(() => {});
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'enableStreaming') return true;
+			if (param === 'text') return 'test input';
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		const mockStreamEvents = async function* () {
+			yield {
+				event: 'on_chat_model_stream',
+				data: {
+					chunk: {
+						content: [{ text: 'Multi-part ' }, { text: 'message content' }],
+					},
+				},
+			};
+		};
+
+		const mockExecutor = {
+			streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+		};
+
+		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('begin');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'Multi-part message content');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('end');
+		expect(result[0][0].json.output).toBe('Multi-part message content');
+	});
+
+	it('should use regular execution when enableStreaming is false', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+		mockContext.sendChunk.mockImplementation(() => {});
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'enableStreaming') return false;
+			if (param === 'text') return 'test input';
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		const mockExecutor = {
+			invoke: jest.fn().mockResolvedValue({ output: 'Regular response' }),
+			streamEvents: jest.fn(),
+		};
+
+		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(mockContext.sendChunk).not.toHaveBeenCalled();
+		expect(mockExecutor.invoke).toHaveBeenCalledTimes(1);
+		expect(mockExecutor.streamEvents).not.toHaveBeenCalled();
+		expect(result[0][0].json.output).toBe('Regular response');
+	});
+
+	it('should handle streaming with intermediate steps when both are enabled', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+		mockContext.sendChunk.mockImplementation(() => {});
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'enableStreaming') return true;
+			if (param === 'text') return 'test input';
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: true,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		// Mock async generator for streamEvents with intermediate steps
+		const mockStreamEvents = async function* () {
+			yield {
+				event: 'on_agent_action',
+				data: {
+					output: {
+						tool: 'search_tool',
+						toolInput: { query: 'test query' },
+					},
+				},
+			};
+			yield {
+				event: 'on_tool_end',
+				data: {
+					output: 'search result',
+				},
+			};
+			yield {
+				event: 'on_chat_model_stream',
+				data: {
+					chunk: {
+						content: 'Final ',
+					},
+				},
+			};
+			yield {
+				event: 'on_chat_model_stream',
+				data: {
+					chunk: {
+						content: 'response',
+					},
+				},
+			};
+		};
+
+		const mockExecutor = {
+			streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+		};
+
+		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('begin');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'Final ');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'response');
+		expect(mockContext.sendChunk).toHaveBeenCalledWith('end');
+		expect(mockExecutor.streamEvents).toHaveBeenCalledTimes(1);
+		expect(result[0]).toHaveLength(1);
+		expect(result[0][0].json.output).toBe('Final response');
+		expect(result[0][0].json.intermediateSteps).toEqual([
+			[{ tool: 'search_tool', toolInput: { query: 'test query' } }, 'search result'],
+		]);
+	});
 });
