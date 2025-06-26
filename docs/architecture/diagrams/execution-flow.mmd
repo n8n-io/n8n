@@ -1,0 +1,62 @@
+stateDiagram-v2
+    [*] --> Created: Execution Request
+    
+    Created --> Queued: Queue Mode
+    Created --> Running: Regular Mode
+    
+    Queued --> Running: Worker Claims Job
+    Queued --> Stalled: Worker Timeout
+    
+    Running --> NodeProcessing: Start First Node
+    
+    state NodeProcessing {
+        [*] --> LoadInputData
+        LoadInputData --> ResolveExpressions
+        ResolveExpressions --> ValidateParameters
+        ValidateParameters --> ExecuteNodeLogic
+        ExecuteNodeLogic --> SaveNodeOutput
+        SaveNodeOutput --> [*]: Next Node
+    }
+    
+    NodeProcessing --> NodeProcessing: More Nodes
+    NodeProcessing --> Success: All Nodes Complete
+    NodeProcessing --> Error: Node Failure
+    NodeProcessing --> Cancelled: User Cancel
+    
+    Stalled --> Running: Retry
+    Stalled --> Failed: Max Retries
+    
+    Success --> Completed: Save Results
+    Error --> Failed: Save Error
+    Cancelled --> Stopped: Cleanup
+    
+    Completed --> Pruned: After Retention Period
+    Failed --> Pruned: After Retention Period
+    Stopped --> Pruned: After Retention Period
+    
+    Pruned --> [*]: Deleted
+    
+    note right of Running
+        Execution Context:
+        - Workflow Data
+        - Node Parameters
+        - Credentials
+        - Binary Data
+        - Static Data
+    end note
+    
+    note left of NodeProcessing
+        For Each Node:
+        1. Load previous outputs
+        2. Resolve expressions
+        3. Decrypt credentials
+        4. Execute node logic
+        5. Store results
+    end note
+    
+    note right of Pruned
+        Configurable retention:
+        - Success: 14 days default
+        - Error: 30 days default
+        - Manual: Always saved
+    end note

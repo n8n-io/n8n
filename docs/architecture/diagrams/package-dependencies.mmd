@@ -1,0 +1,109 @@
+graph TD
+    subgraph "Frontend Packages"
+        UI[editor-ui]
+        DS[@n8n/design-system]
+        COMP[@n8n/composables]
+        STORES[@n8n/stores]
+        I18N[@n8n/i18n]
+        CHAT[@n8n/chat]
+        REST_CLIENT[@n8n/rest-api-client]
+    end
+    
+    subgraph "Core Backend Packages"
+        CLI[cli]
+        CORE[core]
+        WF[workflow]
+        NODES[nodes-base]
+        NODE_DEV[node-dev]
+    end
+    
+    subgraph "Infrastructure Packages"
+        DB[@n8n/db]
+        DI[@n8n/di]
+        CONFIG[@n8n/config]
+        CONST[@n8n/constants]
+        UTILS[@n8n/utils]
+        BACKEND_COMMON[@n8n/backend-common]
+    end
+    
+    subgraph "Feature Packages"
+        PERM[@n8n/permissions]
+        TASK_RUNNER[@n8n/task-runner]
+        AI_BUILDER[@n8n/ai-workflow-builder]
+        LANGCHAIN[@n8n/nodes-langchain]
+        OAUTH[@n8n/client-oauth2]
+        IMAP[@n8n/imap]
+    end
+    
+    subgraph "Development Packages"
+        TS_CONFIG[@n8n/typescript-config]
+        ESLINT[@n8n/eslint-config]
+        VITEST[@n8n/vitest-config]
+        STORYBOOK[@n8n/storybook]
+        BENCH[@n8n/benchmark]
+        TEST_UTILS[@n8n/backend-test-utils]
+    end
+    
+    %% Frontend dependencies
+    UI --> DS
+    UI --> COMP
+    UI --> STORES
+    UI --> I18N
+    UI --> REST_CLIENT
+    UI --> WF
+    UI --> CONST
+    
+    DS --> COMP
+    STORES --> REST_CLIENT
+    CHAT --> DS
+    
+    %% Backend core dependencies
+    CLI --> CORE
+    CLI --> WF
+    CLI --> NODES
+    CLI --> DB
+    CLI --> DI
+    CLI --> CONFIG
+    CLI --> CONST
+    CLI --> PERM
+    CLI --> TASK_RUNNER
+    CLI --> AI_BUILDER
+    
+    CORE --> WF
+    CORE --> DI
+    CORE --> CONFIG
+    CORE --> BACKEND_COMMON
+    CORE --> UTILS
+    
+    NODES --> CORE
+    NODES --> WF
+    NODES --> IMAP
+    
+    NODE_DEV --> CORE
+    NODE_DEV --> WF
+    
+    %% Infrastructure dependencies
+    DB --> DI
+    DB --> TS_CONFIG
+    
+    PERM --> DI
+    TASK_RUNNER --> DI
+    AI_BUILDER --> LANGCHAIN
+    
+    %% Development dependencies
+    CLI --> TS_CONFIG
+    CORE --> TS_CONFIG
+    UI --> TS_CONFIG
+    UI --> VITEST
+    DS --> STORYBOOK
+    
+    %% Cross-cutting dependencies
+    LANGCHAIN --> CORE
+    LANGCHAIN --> WF
+    
+    style CLI fill:#f9f,stroke:#333,stroke-width:4px
+    style UI fill:#f9f,stroke:#333,stroke-width:4px
+    style WF fill:#ff9,stroke:#333,stroke-width:2px
+    style CORE fill:#ff9,stroke:#333,stroke-width:2px
+    style DB fill:#9ff,stroke:#333,stroke-width:2px
+    style DI fill:#9ff,stroke:#333,stroke-width:2px
