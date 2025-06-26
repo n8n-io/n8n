@@ -149,25 +149,27 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				const instanceId = rootStore.instanceId;
 				const section = await versionsApi.getWhatsNewSection(whatsNewEndpoint, current, instanceId);
 
-				setWhatsNew(section);
+				if (section.items?.length > 0) {
+					setWhatsNew(section);
 
-				if (shouldShowWhatsNewCallout()) {
-					whatsNewCallout.value = showMessage({
-						title: whatsNew.value.title,
-						message: whatsNew.value.calloutText,
-						duration: 0,
-						position: 'bottom-left',
-						customClass: 'clickable whats-new-notification',
-						onClick: () => {
-							uiStore.openModalWithData({
-								name: WHATS_NEW_MODAL_KEY,
-								data: { articleId: whatsNew.value.items[0]?.id ?? 0 },
-							});
-						},
-						onClose: () => {
-							dismissWhatsNewCallout();
-						},
-					});
+					if (shouldShowWhatsNewCallout()) {
+						whatsNewCallout.value = showMessage({
+							title: whatsNew.value.title,
+							message: whatsNew.value.calloutText,
+							duration: 0,
+							position: 'bottom-left',
+							customClass: 'clickable whats-new-notification',
+							onClick: () => {
+								uiStore.openModalWithData({
+									name: WHATS_NEW_MODAL_KEY,
+									data: { articleId: whatsNew.value.items[0]?.id ?? 0 },
+								});
+							},
+							onClose: () => {
+								dismissWhatsNewCallout();
+							},
+						});
+					}
 				}
 			}
 		} catch (e) {}
