@@ -16,6 +16,7 @@ import {
 	faBan,
 	faBalanceScaleLeft,
 	faBars,
+	faBell,
 	faBolt,
 	faBook,
 	faBoxOpen,
@@ -220,6 +221,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faBan);
 		addIcon(faBalanceScaleLeft);
 		addIcon(faBars);
+		addIcon(faBell);
 		addIcon(faBolt);
 		addIcon(faBook);
 		addIcon(faBoxOpen);

@@ -77,7 +77,11 @@ const emit = defineEmits<{
 	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex?: number,
+	];
 	activate: [];
 	execute: [];
 	expand: [];
@@ -382,8 +386,12 @@ const onSwitchSelectedNode = (node: string) => {
 	emit('switchSelectedNode', node);
 };
 
-const onOpenConnectionNodeCreator = (nodeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeName, connectionType);
+const onOpenConnectionNodeCreator = (
+	nodeName: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) => {
+	emit('openConnectionNodeCreator', nodeName, connectionType, connectionIndex);
 };
 
 const populateHiddenIssuesSet = () => {
