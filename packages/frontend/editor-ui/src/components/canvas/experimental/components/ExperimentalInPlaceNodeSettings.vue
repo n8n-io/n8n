@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { computed } from 'vue';
+import { ref, useTemplateRef, computed } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import NodeTitle from '@/components/NodeTitle.vue';
 import { N8nIconButton } from '@n8n/design-system';
+import { useIntersectionObserver } from '@vueuse/core';
 
 const { nodeId } = defineProps<{ nodeId: string }>();
 
@@ -20,6 +21,21 @@ const nodeType = computed(() => {
 	}
 	return null;
 });
+const containerRef = useTemplateRef('container');
+const isVisible = ref(false);
+
+useIntersectionObserver(
+	containerRef,
+	(entries) => {
+		for (const e of entries) {
+			if (e.isIntersecting) {
+				isVisible.value = true;
+				return;
+			}
+		}
+	},
+	{ immediate: true },
+);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -28,15 +44,30 @@ function handleToggleExpand() {
 
 <template>
 	<div
-		:class="['nowheel', $style.component, isExpanded ? $style.expanded : $style.collapsed]"
+		ref="container"
+		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
 		:style="{ '--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}` }"
 	>
-		<ExperimentalCanvasNodeSettings
-			v-if="isExpanded"
-			:node-id="nodeId"
-			:class="$style.settingsView"
-		>
-			<template #actions>
+		<template v-if="isVisible">
+			<ExperimentalCanvasNodeSettings
+				v-if="isExpanded"
+				:node-id="nodeId"
+				:class="$style.settingsView"
+			>
+				<template #actions>
+					<N8nIconButton
+						:icon="isExpanded ? 'compress' : 'expand'"
+						type="secondary"
+						text
+						size="mini"
+						icon-size="large"
+						aria-label="Toggle expand"
+						@click="handleToggleExpand"
+					/>
+				</template>
+			</ExperimentalCanvasNodeSettings>
+			<div v-else :class="$style.collapsedContent" is-read-only :node="node" :node-type="nodeType">
+				<NodeTitle v-if="node" class="node-name" :model-value="node.name" :node-type="nodeType" />
 				<N8nIconButton
 					:icon="isExpanded ? 'compress' : 'expand'"
 					type="secondary"
@@ -46,20 +77,8 @@ function handleToggleExpand() {
 					aria-label="Toggle expand"
 					@click="handleToggleExpand"
 				/>
-			</template>
-		</ExperimentalCanvasNodeSettings>
-		<div v-else :class="$style.collapsedContent" is-read-only :node="node" :node-type="nodeType">
-			<NodeTitle v-if="node" class="node-name" :model-value="node.name" :node-type="nodeType" />
-			<N8nIconButton
-				:icon="isExpanded ? 'compress' : 'expand'"
-				type="secondary"
-				text
-				size="mini"
-				icon-size="large"
-				aria-label="Toggle expand"
-				@click="handleToggleExpand"
-			/>
-		</div>
+			</div>
+		</template>
 	</div>
 </template>
 
@@ -74,6 +93,7 @@ function handleToggleExpand() {
 	border-width: 0 !important;
 	outline: none !important;
 	box-shadow: none !important;
+	background-color: transparent !important;
 
 	&.collapsed {
 		height: calc(var(--canvas-node--width) * 0.5) !important;

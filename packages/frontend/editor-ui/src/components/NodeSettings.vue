@@ -53,6 +53,8 @@ import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import { useTemplateRef } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 
 const props = withDefaults(
 	defineProps<{
@@ -102,6 +104,15 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const canvasOperations = useCanvasOperations();
+
+const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
+const hasOverflowY = ref(false);
+
+useResizeObserver(nodeParameterWrapper, () => {
+	hasOverflowY.value =
+		(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+		(nodeParameterWrapper.value?.offsetHeight ?? 0);
+});
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -1093,7 +1104,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				</template>
 			</i18n-t>
 		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
+		<div
+			v-if="node && nodeValid"
+			ref="nodeParameterWrapper"
+			:class="['node-parameters-wrapper', hasOverflowY ? 'nowheel' : '']"
+			data-test-id="node-parameters"
+		>
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
