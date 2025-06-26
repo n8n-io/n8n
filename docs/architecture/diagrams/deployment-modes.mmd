@@ -1,0 +1,135 @@
+graph TB
+    subgraph "Regular Mode - Single Instance"
+        subgraph "Single Process"
+            MAIN[Main Process :5678]
+            MAIN_UI[UI Server]
+            MAIN_API[API Server]
+            MAIN_EXEC[Execution Engine]
+            MAIN_WH[Webhook Handler]
+            MAIN_CRON[Cron Scheduler]
+            
+            MAIN --> MAIN_UI
+            MAIN --> MAIN_API
+            MAIN --> MAIN_EXEC
+            MAIN --> MAIN_WH
+            MAIN --> MAIN_CRON
+        end
+        
+        subgraph "Storage"
+            REG_DB[(SQLite/PostgreSQL/MySQL)]
+            REG_FS[Local File System]
+        end
+        
+        MAIN_EXEC --> REG_DB
+        MAIN_EXEC --> REG_FS
+    end
+    
+    subgraph "Queue Mode - Distributed"
+        subgraph "Main Instances"
+            M1[Main 1 :5678]
+            M2[Main 2 :5679]
+            LB[Load Balancer :443]
+            
+            LB --> M1
+            LB --> M2
+        end
+        
+        subgraph "Worker Pool"
+            W1[Worker 1<br/>concurrency: 10]
+            W2[Worker 2<br/>concurrency: 10]
+            W3[Worker 3<br/>concurrency: 10]
+            WN[Worker N<br/>concurrency: 10]
+        end
+        
+        subgraph "Webhook Processors"
+            WH1[Webhook 1 :5678]
+            WH2[Webhook 2 :5679]
+            WH_LB[Webhook LB :443]
+            
+            WH_LB --> WH1
+            WH_LB --> WH2
+        end
+        
+        subgraph "Message Infrastructure"
+            REDIS[(Redis Cluster)]
+            Q_EXEC[Execution Queue]
+            Q_WH[Webhook Queue]
+            PS[Pub/Sub Channel]
+            
+            REDIS --> Q_EXEC
+            REDIS --> Q_WH
+            REDIS --> PS
+        end
+        
+        subgraph "Shared Storage"
+            Q_DB[(PostgreSQL/MySQL<br/>Primary + Replicas)]
+            Q_S3[S3/MinIO<br/>Binary Storage]
+        end
+        
+        M1 --> Q_EXEC
+        M2 --> Q_EXEC
+        
+        WH1 --> Q_WH
+        WH2 --> Q_WH
+        Q_WH --> Q_EXEC
+        
+        Q_EXEC --> W1
+        Q_EXEC --> W2
+        Q_EXEC --> W3
+        Q_EXEC --> WN
+        
+        W1 --> Q_DB
+        W2 --> Q_DB
+        W3 --> Q_DB
+        WN --> Q_DB
+        
+        W1 --> Q_S3
+        W2 --> Q_S3
+        W3 --> Q_S3
+        WN --> Q_S3
+        
+        M1 -.-> PS
+        M2 -.-> PS
+        W1 -.-> PS
+        W2 -.-> PS
+        
+        style LB fill:#f96,stroke:#333,stroke-width:2px
+        style WH_LB fill:#f96,stroke:#333,stroke-width:2px
+        style REDIS fill:#dc382d,stroke:#333,stroke-width:2px
+        style Q_DB fill:#336791,stroke:#333,stroke-width:2px
+        style Q_S3 fill:#569A31,stroke:#333,stroke-width:2px
+    end
+    
+    subgraph "Kubernetes Deployment"
+        subgraph "K8s Namespace"
+            K8S_MAIN[Main Deployment<br/>replicas: 3]
+            K8S_WORKER[Worker Deployment<br/>replicas: 10]
+            K8S_WH[Webhook Deployment<br/>replicas: 2]
+            K8S_REDIS[Redis StatefulSet<br/>replicas: 3]
+            K8S_PG[PostgreSQL Operator]
+            
+            K8S_ING[Ingress Controller]
+            K8S_SVC[Services]
+            K8S_PVC[Persistent Volumes]
+            
+            K8S_ING --> K8S_MAIN
+            K8S_ING --> K8S_WH
+            K8S_MAIN --> K8S_REDIS
+            K8S_WORKER --> K8S_REDIS
+            K8S_WH --> K8S_REDIS
+            K8S_WORKER --> K8S_PG
+            K8S_PG --> K8S_PVC
+        end
+        
+        subgraph "K8s Features"
+            HPA[Horizontal Pod Autoscaler]
+            PDB[Pod Disruption Budget]
+            CM[ConfigMaps]
+            SEC[Secrets]
+            
+            HPA --> K8S_WORKER
+            PDB --> K8S_MAIN
+            CM --> K8S_MAIN
+            SEC --> K8S_MAIN
+        end
+    end
