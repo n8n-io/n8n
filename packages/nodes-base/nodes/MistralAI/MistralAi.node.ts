@@ -64,13 +64,13 @@ export class MistralAi implements INodeType {
 
 		if (resource === 'document') {
 			if (operation === 'extractText') {
-				const enableBatch = this.getNodeParameter('batch', 0, false) as boolean;
+				const enableBatch = this.getNodeParameter('options.batch', 0, false) as boolean;
 
 				if (enableBatch) {
 					try {
-						const deleteFiles = this.getNodeParameter('deleteFiles', 0, true) as boolean;
+						const deleteFiles = this.getNodeParameter('options.deleteFiles', 0, true) as boolean;
 						const model = this.getNodeParameter('model', 0) as string;
-						const batchSize = this.getNodeParameter('batchSize', 0, 50) as number;
+						const batchSize = this.getNodeParameter('options.batchSize', 0, 50) as number;
 
 						const itemsWithIndex = items.map((item, index) => ({
 							...item,
