@@ -1,5 +1,6 @@
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import type { RestrictedInsightsByTime } from '@n8n/api-types/src/schemas/insights.schema';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import type { UserError } from 'n8n-workflow';
@@ -71,10 +72,13 @@ export class InsightsController {
 		@Query payload: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
-		return await this.insightsService.getInsightsByTime({
+
+		// Cast to full insights by time type
+		// as the service returns all types by default
+		return (await this.insightsService.getInsightsByTime({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
-		});
+		})) as InsightsByTime[];
 	}
 
 	@Get('/by-time/time-saved')
@@ -84,12 +88,15 @@ export class InsightsController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query payload: InsightsDateFilterDto,
-	): Promise<InsightsByTime[]> {
+	): Promise<RestrictedInsightsByTime[]> {
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
-		return await this.insightsService.getInsightsByTime({
+
+		// Cast to restricted insights by time type
+		// as the service returns only time saved data
+		return (await this.insightsService.getInsightsByTime({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			insightTypes: ['time_saved_min'],
-		});
+		})) as RestrictedInsightsByTime[];
 	}
 }
