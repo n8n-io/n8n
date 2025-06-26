@@ -86,13 +86,7 @@ modalBus.on('opened', () => {
 					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
 					<div :class="$style.column">
 						<N8nHeading size="xlarge">
-							{{
-								i18n.baseText('whatsNew.modal.title', {
-									interpolate: {
-										version: versionsStore.latestVersion.name,
-									},
-								})
-							}}
+							{{ versionsStore.whatsNew.title }}
 						</N8nHeading>
 
 						<div :class="$style.row">
