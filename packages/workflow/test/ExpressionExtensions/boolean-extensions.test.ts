@@ -1,8 +1,6 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
-import { booleanExtensions } from '@/extensions/boolean-extensions';
+import { booleanExtensions } from '../../src/extensions/boolean-extensions';
 
 import { evaluate } from './helpers';
 

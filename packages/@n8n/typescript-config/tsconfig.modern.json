@@ -15,8 +15,6 @@
 
 		"module": "esnext",
 		"moduleResolution": "bundler",
-		"outDir": "dist",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 
 		"declaration": true,
 

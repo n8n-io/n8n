@@ -1,8 +1,6 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
-import { arrayExtensions } from '@/extensions/array-extensions';
+import { arrayExtensions } from '../../src/extensions/array-extensions';
 
 import { evaluate } from './helpers';
 

@@ -1,5 +1,5 @@
-import { ApplicationError } from '@/errors';
-import { objectExtensions } from '@/extensions/object-extensions';
+import { ApplicationError } from '../../src/errors';
+import { objectExtensions } from '../../src/extensions/object-extensions';
 
 import { evaluate } from './helpers';
 

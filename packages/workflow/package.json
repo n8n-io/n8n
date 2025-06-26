@@ -2,14 +2,13 @@
   "name": "n8n-workflow",
   "version": "1.97.0",
   "description": "Workflow base code of n8n",
-  "main": "dist/index.js",
-  "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "module": "dist/index.ts",
+  "main": "dist/index.js",
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./*": "./*"
   },
@@ -17,14 +16,15 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --build",
+    "build": "tsc --build tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "test:vitest": "vitest"
   },
   "files": [
     "dist/**/*"
@@ -38,7 +38,9 @@
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
-    "@types/xml2js": "catalog:"
+    "@types/xml2js": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@n8n/tournament": "1.0.6",

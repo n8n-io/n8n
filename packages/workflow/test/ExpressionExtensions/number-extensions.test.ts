@@ -1,8 +1,6 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
-import { numberExtensions } from '@/extensions/number-extensions';
+import { numberExtensions } from '../../src/extensions/number-extensions';
 
 import { evaluate } from './helpers';
 

@@ -1,6 +1,6 @@
-import { augmentArray, augmentObject } from '@/augment-object';
-import type { IDataObject } from '@/interfaces';
-import { deepCopy } from '@/utils';
+import { augmentArray, augmentObject } from '../src/augment-object';
+import type { IDataObject } from '../src/interfaces';
+import { deepCopy } from '../src/utils';
 
 describe('AugmentObject', () => {
 	describe('augmentArray', () => {

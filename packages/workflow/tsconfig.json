@@ -1,10 +1,10 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.modern.json",
 	"compilerOptions": {
+		"rootDir": ".",
 		"noUncheckedIndexedAccess": false,
-		"noImplicitOverride": false,
-		"verbatimModuleSyntax": false
+		"types": ["vitest/globals"]
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
 	"exclude": ["node_modules"]
 }
