@@ -6,13 +6,13 @@ A simple way to spin up n8n container stacks for development and testing.
 
 ```bash
 # Start a basic n8n instance (SQLite database)
-npm run stack
+pnpm stack
 
 # Start with PostgreSQL database
-npm run stack -- --postgres
+pnpm stack --postgres
 
 # Start in queue mode (with Redis + PostgreSQL)
-npm run stack -- --queue
+pnpm stack --queue
 ```
 
 When started, you'll see:
@@ -24,32 +24,32 @@ When started, you'll see:
 ### Development with Container Reuse
 ```bash
 # Enable container reuse (faster restarts)
-npm run dev              # SQLite
-npm run dev:postgres     # PostgreSQL
-npm run dev:queue        # Queue mode
-npm run dev:multi-main   # Multiple main instances
+pnpm run dev              # SQLite
+pnpm run dev:postgres     # PostgreSQL
+pnpm run dev:queue        # Queue mode
+pnpm run dev:multi-main   # Multiple main instances
 ```
 
 ### Queue Mode with Scaling
 ```bash
 # Custom scaling: 3 main instances, 5 workers
-npm run stack -- --queue --mains 3 --workers 5
+pnpm stack --queue --mains 3 --workers 5
 
 # Single main, 2 workers
-npm run stack -- --queue --workers 2
+pnpm stack --queue --workers 2
 ```
 
 ### Environment Variables
 ```bash
 # Set custom environment variables
-npm run stack -- --postgres --env N8N_LOG_LEVEL=info --env N8N_ENABLED_MODULES=insights
+pnpm run stack --postgres --env N8N_LOG_LEVEL=info --env N8N_ENABLED_MODULES=insights
 ```
 
 ### Parallel Testing
 ```bash
 # Run multiple stacks in parallel with unique names
-npm run stack -- --name test-1 --postgres
-npm run stack -- --name test-2 --queue
+pnpm run stack --name test-1 --postgres
+pnpm run stack --name test-2 --queue
 ```
 
 
@@ -150,7 +150,7 @@ await stack.stop();
 
 ```bash
 # Remove all n8n containers and networks
-npm run test:clean
+pnpm run stack:clean:all
 
 
 ## Tips
@@ -166,5 +166,5 @@ npm run test:clean
 By default, uses the `n8n-local:dev` image. Override with:
 ```bash
 export N8N_DOCKER_IMAGE=n8n/n8n:latest
-npm run stack
+pnpm run stack
 ```

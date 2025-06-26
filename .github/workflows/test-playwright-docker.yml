@@ -18,6 +18,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for Playwright
+        run: pnpm turbo build:playwright
+
       - name: Build Docker image
         uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
         with:
@@ -39,15 +45,8 @@ jobs:
       - name: Configure Turborepo Cache
         uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter=n8n-playwright
-
-      - name: Build for Playwright
-        run: pnpm turbo install-browsers
-
       - name: Run Playwright tests
-        working-directory: playwright
-        run: pnpm test --workers=3
+        run: pnpm --filter=n8n-playwright run test:standard
 
       - name: Upload test artifacts
         if: always()

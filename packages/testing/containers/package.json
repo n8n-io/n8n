@@ -9,7 +9,8 @@
     "dev": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
     "dev:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
     "dev:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
-    "dev:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1"
+    "dev:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",
+    "stack:clean:all": "docker rm -f $(docker ps -aq --filter 'name=n8n-*') 2>/dev/null || true && docker network prune -f"
   },
   "keywords": [],
   "author": "",

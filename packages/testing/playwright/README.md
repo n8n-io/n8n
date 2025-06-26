@@ -1,26 +1,22 @@
-```markdown
 # Playwright E2E Test Guide
 
 ## Quick Start
 ```bash
-npm test                 # Run all tests (fresh containers)
-npm run test:local       # Run against http://localhost:5678
-npm run dev              # Start dev stack (containers persist)
+pnpm test                 # Run all tests (fresh containers)
+pnpm run test:local       # Run against http://localhost:5678
 ```
 
 ## Test Commands
 ```bash
 # By Mode
-npm run test:standard    # Basic n8n
-npm run test:postgres    # PostgreSQL
-npm run test:queue       # Queue mode
-npm run test:multi-main  # HA setup
+pnpm run test:standard    # Basic n8n
+pnpm run test:postgres    # PostgreSQL
+pnpm run test:queue       # Queue mode
+pnpm run test:multi-main  # HA setup
 
 # Development
-npm test -- --grep "workflow"           # Pattern match
+pnpm test --grep "workflow"           # Pattern match
 ```
-
-
 
 ## Test Tags
 ```typescript
@@ -31,7 +27,15 @@ test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 ```
 
 ## Tips
-- `dev:*` = containers persist (for development)
-- `test:*` = fresh containers (for testing)
-- VS Code: Set `N8N_BASE_URL` in Playwright settings
+- `test:*` commands use fresh containers (for testing)
+- VS Code: Set `N8N_BASE_URL` in Playwright settings to run tests directly from VS Code
 - Pass custom env vars via `N8N_TEST_ENV='{"KEY":"value"}'`
+
+## Project Layout
+- **composables**: Multi-page interactions (e.g., `WorkflowComposer.executeWorkflowAndWaitForNotification()`)
+- **config**: Test setup and configuration (constants, test users, etc.)
+- **fixtures**: Custom test fixtures extending Playwright's base test
+- **pages**: Page Object Models for UI interactions
+- **services**: API helpers for E2E controller, REST calls, etc.
+- **utils**: Utility functions (string manipulation, helpers, etc.)
+- **workflows**: Test workflow JSON files for import/reuse

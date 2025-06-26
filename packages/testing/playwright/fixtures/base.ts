@@ -1,7 +1,7 @@
 import { test as base, expect, type TestInfo } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-logs';
+import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';

@@ -87,7 +87,7 @@ export class ContainerTestHelpers {
 		messageRegex: RegExp,
 		sinceTimestamp?: number,
 	): Promise<LogMatch | null> {
-		for (const container of containers) {
+		const matchPromises = containers.map(async (container) => {
 			const match = await this.findLogInContainer(container, messageRegex, sinceTimestamp);
 			if (match) {
 				return {
@@ -97,8 +97,11 @@ export class ContainerTestHelpers {
 					timestamp: match.date ?? new Date(),
 				};
 			}
-		}
-		return null;
+			return null;
+		});
+
+		const results = await Promise.all(matchPromises);
+		return results.find((result) => result !== null) ?? null;
 	}
 
 	/**
@@ -144,7 +147,7 @@ export class ContainerTestHelpers {
 		}
 
 		console.log(`❌ Timeout reached after ${timeoutMs}ms`);
-		throw new TestError(`Timeout reached after ${timeoutMs}ms`);
+		throw new Error(`Timeout reached after ${timeoutMs}ms`);
 	}
 
 	/**
@@ -184,13 +187,13 @@ export class ContainerTestHelpers {
 			`🔍 Getting all logs matching: ${messageRegex} from ${targetContainers.length} containers`,
 		);
 
-		const matches: LogMatch[] = [];
-
-		for (const container of targetContainers) {
+		const logPromises = targetContainers.map(async (container) => {
 			const logs = await this.readLogsFromContainer(container);
-			const containerMatches = this.findAllLogMatches(logs, messageRegex, container);
-			matches.push(...containerMatches);
-		}
+			return this.findAllLogMatches(logs, messageRegex, container);
+		});
+
+		const results = await Promise.all(logPromises);
+		const matches = results.flat();
 
 		console.log(`📈 Total matches found: ${matches.length}`);
 		return matches;
