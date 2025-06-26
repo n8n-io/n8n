@@ -75,10 +75,6 @@ export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
-export const MIN_PASSWORD_CHAR_LENGTH = 8;
-
-export const MAX_PASSWORD_CHAR_LENGTH = 64;
-
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;

@@ -51,7 +51,7 @@ const actions = computed(() =>
 		})
 		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 25),
-			disabled: !!node.disabled,
+			disabled: !!node.disabled || props.executing,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
 		})),
@@ -105,6 +105,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 		<template v-if="isSplitButton">
+			<div role="presentation" :class="$style.divider" />
 			<N8nActionDropdown
 				:class="$style.menu"
 				:items="actions"
@@ -115,8 +116,8 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				<template #activator>
 					<N8nButton
 						type="primary"
-						size="large"
-						:disabled="disabled || executing"
+						icon-size="large"
+						:disabled="disabled"
 						:class="$style.chevron"
 						aria-label="Select trigger node"
 						icon="angle-down"
@@ -151,28 +152,21 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		height: var(--spacing-2xl);
 
 		padding-inline-start: var(--spacing-xs);
-		padding-inline-end: var(--spacing-xl);
 		padding-block: 0;
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 }
 
+.divider {
+	width: 1px;
+	background-color: var(--button-font-color, var(--color-button-primary-font));
+}
+
 .chevron {
-	position: absolute;
-	right: var(--spacing-3xs);
-	top: var(--spacing-3xs);
-	width: 18px;
-	height: calc(100% - var(--spacing-3xs) * 2);
-	border: none;
-	padding: 0;
-	background-color: transparent;
-
-	&:not(:disabled):hover {
-		background-color: var(--prim-color-primary-tint-100);
-	}
-
-	&:disabled {
-		background-color: transparent !important;
-	}
+	width: 40px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 .menu :global(.el-dropdown) {

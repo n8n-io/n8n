@@ -20,7 +20,7 @@ import type { BaseFilters, Resource, VariableResource } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nActionBox,
 	N8nBadge,

@@ -5,6 +5,7 @@ import {
 	TransferFolderBodyDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Post,
 	RestController,
@@ -24,7 +25,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 

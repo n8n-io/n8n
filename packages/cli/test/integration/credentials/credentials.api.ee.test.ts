@@ -1,3 +1,11 @@
+import { createWorkflow, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
+import {
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+} from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
@@ -11,16 +19,13 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
-import { mockInstance } from '../../shared/mocking';
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import {
 	createAdmin,
 	createManyUsers,
@@ -28,11 +33,6 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import {
-	randomCredentialPayload,
-	randomCredentialPayloadWithOauthTokenData,
-} from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';

@@ -1,9 +1,8 @@
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { TagRepository } from '@n8n/db';
 import { WorkflowTagMappingRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('WorkflowTagMappingRepository', () => {
 	let taggingRepository: WorkflowTagMappingRepository;

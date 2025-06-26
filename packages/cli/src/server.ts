@@ -1,6 +1,7 @@
 import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -26,7 +27,6 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 

@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -19,7 +20,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@test/mocking';
 
 import { ExecuteBatch } from '../execute-batch';
 
