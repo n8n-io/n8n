@@ -66,7 +66,7 @@ describe('OwnerController', () => {
 				authIdentities: [],
 			});
 			const browserId = 'test-browser-id';
-			const req = mock<AuthenticatedRequest>({ user, browserId, usedMfa: false });
+			const req = mock<AuthenticatedRequest>({ user, browserId, authInfo: { usedMfa: false } });
 			const res = mock<Response>();
 			const payload = mock<OwnerSetupRequestDto>({
 				email: 'valid@email.com',

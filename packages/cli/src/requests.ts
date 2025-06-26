@@ -22,23 +22,6 @@ export type AuthlessRequest<
 	RequestQuery = {},
 > = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
 
-<<<<<<< HEAD
-=======
-export type AuthenticatedRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
-	user: User;
-	usedMfa: boolean;
-	cookies: Record<string, string | undefined>;
-	headers: express.Request['headers'] & {
-		'push-ref': string;
-	};
-};
-
->>>>>>> f5243c67a5 (include mfa info in jwt, auth middleware adaption, adapt GET /login endpoint)
 export namespace ListQuery {
 	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
 		listQueryOptions?: Options;

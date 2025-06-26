@@ -20,7 +20,7 @@ export class MFAController {
 	@Post('/enforce-mfa')
 	@GlobalScope('user:enforceMfa')
 	async enforceMFA(req: MFA.Enforce) {
-		if (req.body.enforce && !req.usedMfa) {
+		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
 			// The current user tries to enforce MFA, but does not have
 			// MFA set up for them self. We are forbidding this, to
 			// help the user not lock them selfs out.

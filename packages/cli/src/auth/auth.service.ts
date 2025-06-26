@@ -75,10 +75,10 @@ export class AuthService {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
-					const [user, info] = await this.resolveJwt(token, req, res);
+					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
 
-					if (mfaEnforced && !info.usedMfa && !allowSkipMFA) {
+					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
@@ -91,7 +91,9 @@ export class AuthService {
 					}
 
 					req.user = user;
-					req.usedMfa = info.usedMfa;
+					req.authInfo = {
+						usedMfa,
+					};
 				} catch (error) {
 					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 						this.clearCookie(res);

@@ -127,7 +127,7 @@ export class AuthController {
 		return await this.userService.toPublic(req.user, {
 			posthog: this.postHog,
 			withScopes: true,
-			mfaAuthenticated: req.usedMfa,
+			mfaAuthenticated: req.authInfo?.usedMfa,
 		});
 	}
 
