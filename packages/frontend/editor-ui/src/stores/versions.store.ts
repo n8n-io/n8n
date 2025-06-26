@@ -7,8 +7,9 @@ import {
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
+import type { Version, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
 import { defineStore } from 'pinia';
+import type { NotificationHandle } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
@@ -29,7 +30,15 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	});
 	const nextVersions = ref<Version[]>([]);
 	const currentVersion = ref<Version | undefined>();
-	const whatsNewArticles = ref<WhatsNewArticle[]>([]);
+	const whatsNew = ref<WhatsNewSection>({
+		title: '',
+		createdAt: new Date().toISOString(),
+		updatedAt: null,
+		calloutText: '',
+		footer: '',
+		items: [],
+	});
+	const whatsNewCallout = ref<NotificationHandle | undefined>();
 
 	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
@@ -63,10 +72,14 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			: [];
 	});
 
-	const lastDismissedWhatsNewCallout = computed((): number => {
+	const lastDismissedWhatsNewCallout = computed((): number[] => {
 		return lastDismissedWhatsNewCalloutStorage.value
-			? Number(lastDismissedWhatsNewCalloutStorage.value)
-			: 0;
+			? jsonParse(lastDismissedWhatsNewCalloutStorage.value, { fallbackValue: [] })
+			: [];
+	});
+
+	const whatsNewArticles = computed(() => {
+		return whatsNew.value.items;
 	});
 
 	// #endregion
@@ -93,8 +106,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		currentVersion.value = params.versions.find((v) => v.name === params.currentVersion);
 	};
 
-	const setWhatsNew = (article: WhatsNewArticle[]) => {
-		whatsNewArticles.value = article;
+	const setWhatsNew = (section: WhatsNewSection) => {
+		whatsNew.value = section;
 	};
 
 	const setWhatsNewArticleRead = (articleId: number) => {
@@ -110,8 +123,21 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return readWhatsNewArticles.value.includes(articleId);
 	};
 
-	const dismissWhatsNewCallout = (articleId: number) => {
-		lastDismissedWhatsNewCalloutStorage.value = String(articleId);
+	const closeWhatsNewCallout = () => {
+		whatsNewCallout.value?.close();
+		whatsNewCallout.value = undefined;
+	};
+
+	const dismissWhatsNewCallout = () => {
+		lastDismissedWhatsNewCalloutStorage.value = JSON.stringify(
+			whatsNewArticles.value.map((item) => item.id),
+		);
+	};
+
+	const shouldShowWhatsNewCallout = (): boolean => {
+		return !whatsNewArticles.value.every((item) =>
+			lastDismissedWhatsNewCallout.value.includes(item.id),
+		);
 	};
 
 	const fetchWhatsNew = async () => {
@@ -121,38 +147,27 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				const rootStore = useRootStore();
 				const current = rootStore.versionCli;
 				const instanceId = rootStore.instanceId;
-				const articles = await versionsApi.getWhatsNewArticles(
-					whatsNewEndpoint,
-					current,
-					instanceId,
-				);
-				setWhatsNew(articles);
+				const section = await versionsApi.getWhatsNewSection(whatsNewEndpoint, current, instanceId);
 
-				if (articles.length > 0) {
-					const latestArticle = articles[0];
+				setWhatsNew(section);
 
-					if (
-						!isWhatsNewArticleRead(latestArticle.id) &&
-						lastDismissedWhatsNewCallout.value !== latestArticle.id
-					) {
-						const notification = showMessage({
-							title: latestArticle.calloutTitle,
-							message: latestArticle.calloutText,
-							onClick: () => {
-								uiStore.openModalWithData({
-									name: WHATS_NEW_MODAL_KEY,
-									data: { articleId: latestArticle.id },
-								});
-								notification.close();
-							},
-							onClose: () => {
-								dismissWhatsNewCallout(latestArticle.id);
-							},
-							position: 'bottom-left',
-							duration: 0,
-							customClass: 'clickable whats-new-notification',
-						});
-					}
+				if (shouldShowWhatsNewCallout()) {
+					whatsNewCallout.value = showMessage({
+						title: whatsNew.value.title,
+						message: whatsNew.value.calloutText,
+						duration: 0,
+						position: 'bottom-left',
+						customClass: 'clickable whats-new-notification',
+						onClick: () => {
+							uiStore.openModalWithData({
+								name: WHATS_NEW_MODAL_KEY,
+								data: { articleId: whatsNew.value.items[0]?.id ?? 0 },
+							});
+						},
+						onClose: () => {
+							dismissWhatsNewCallout();
+						},
+					});
 				}
 			}
 		} catch (e) {}
@@ -210,8 +225,10 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		initialize,
 		checkForNewVersions,
 		fetchWhatsNew,
+		whatsNew,
 		whatsNewArticles,
 		isWhatsNewArticleRead,
 		setWhatsNewArticleRead,
+		closeWhatsNewCallout,
 	};
 });

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useVersionsStore } from './versions.store';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
-import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
+import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import { useToast } from '@/composables/useToast';
@@ -44,11 +44,19 @@ const whatsNewArticle: WhatsNewArticle = {
 	id: 1,
 	title: 'Test article',
 	content: 'Some markdown content here',
-	calloutTitle: 'Callout title',
-	calloutText: 'Callout text.',
 	createdAt: '2025-06-19T12:37:54.885Z',
 	updatedAt: '2025-06-19T12:41:44.919Z',
 	publishedAt: '2025-06-19T12:41:44.914Z',
+};
+
+const whatsNew: WhatsNewSection = {
+	title: "What's New title",
+	calloutTitle: 'Callout title',
+	calloutText: 'Callout text.',
+	footer: "What's new footer",
+	items: [whatsNewArticle],
+	createdAt: '2025-06-19T12:37:54.885Z',
+	updatedAt: '2025-06-19T12:41:44.919Z',
 };
 
 const toast = useToast();

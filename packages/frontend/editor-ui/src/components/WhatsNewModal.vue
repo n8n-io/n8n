@@ -48,6 +48,8 @@ const onUpdateClick = async () => {
 };
 
 modalBus.on('opened', () => {
+	versionsStore.closeWhatsNewCallout();
+
 	const articleIndex = versionsStore.whatsNewArticles.findIndex(
 		(article) => article.id === props.data.articleId,
 	);
@@ -202,6 +204,33 @@ onMounted(() => {
 								/>
 							</div>
 						</DynamicScrollerItem>
+					</template>
+					<template #after>
+						<N8nMarkdown
+							:content="versionsStore.whatsNew.footer"
+							:class="$style.markdown"
+							:options="{
+								markdown: {
+									html: true,
+									linkify: true,
+									typographer: true,
+									breaks: true,
+								},
+								tasklists: {
+									enabled: false,
+								},
+								linkAttributes: {
+									attrs: {
+										target: '_blank',
+										rel: 'noopener',
+									},
+								},
+								youtube: {
+									width: '100%',
+									height: '315',
+								},
+							}"
+						/>
 					</template>
 				</DynamicScroller>
 			</div>
