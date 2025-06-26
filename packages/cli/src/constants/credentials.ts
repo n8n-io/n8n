@@ -6,6 +6,9 @@ export const SHARED_CREDENTIAL_TYPES = [
 	'googlePalmApi',
 	'postgres',
 	'mongoDb',
+	'mcpClientApi',
+	'mcpClientSseApi',
+	'mcpClientHttpApi',
 ] as const;
 
 export type CredentialType = (typeof SHARED_CREDENTIAL_TYPES)[number];
