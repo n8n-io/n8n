@@ -73,12 +73,12 @@ export const insightsByTimeDataSchemas = {
 	}),
 	values: z
 		.object({
-			total: z.number(),
-			succeeded: z.number(),
-			failed: z.number(),
-			failureRate: z.number(),
-			averageRunTime: z.number(),
-			timeSaved: z.number(),
+			total: z.number().optional(),
+			succeeded: z.number().optional(),
+			failed: z.number().optional(),
+			failureRate: z.number().optional(),
+			averageRunTime: z.number().optional(),
+			timeSaved: z.number().optional(),
 		})
 		.strict(),
 } as const;

@@ -76,4 +76,20 @@ export class InsightsController {
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 		});
 	}
+
+	@Get('/by-time/time-saved')
+	@GlobalScope('insights:list')
+	@Licensed('feat:insights:viewDashboard:timeSaved')
+	async getTimeSavedInsightsByTime(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query payload: InsightsDateFilterDto,
+	): Promise<InsightsByTime[]> {
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
+		return await this.insightsService.getInsightsByTime({
+			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
+			periodUnit: dateRangeAndMaxAgeInDays.granularity,
+			insightTypes: ['time_saved_min'],
+		});
+	}
 }
