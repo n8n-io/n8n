@@ -184,7 +184,7 @@ function onBackButton() {
 						:class="$style.backButton"
 						@click="onBackButton"
 					>
-						<n8n-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
+						<n8n-icon :class="$style.backButtonIcon" icon="arrow-left" size="xsmall" />
 					</button>
 					<NodeIcon
 						v-if="activeViewStack.nodeIcon"

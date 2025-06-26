@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { N8nTooltip } from '@n8n/design-system';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type Props = {
 	title?: string;
@@ -10,7 +11,7 @@ type Props = {
 	expression?: string;
 	value?: string;
 	id: string;
-	icon: string;
+	icon: IconName;
 	collapsable?: boolean;
 	nodeName?: string;
 	nodeType?: string;

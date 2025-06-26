@@ -53,7 +53,7 @@ defineExpose({
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<n8n-icon icon="search" size="sm" />
+			<n8n-icon icon="search" size="small" />
 		</div>
 		<div :class="$style.text">
 			<input
