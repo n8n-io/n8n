@@ -12,15 +12,15 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -37,28 +37,26 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon"
@@ -69,7 +67,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -79,14 +77,14 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2
+              Set2 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -102,39 +100,39 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-test-id="schema-preview-warning"
             data-v-882a318e=""
           >
-
-            Usually outputs the following fields. Execute the node to see the actual ones.
-
+            
+            Usually outputs the following fields. Execute the node to see the actual ones. 
+            
             <a
               class="n8n-link"
               data-v-882a318e=""
               href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
-
+              
               <span
                 class="primary"
               >
                 <span
                   class="n8n-text size-small bold"
                 >
-
-
+                  
+                  
                   Learn more
-
-
+                  
+                  
                 </span>
               </span>
-
+              
             </a>
-
-
+            
+            
           </div>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -150,28 +148,26 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -187,39 +183,42 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 account
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -231,10 +230,10 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -261,39 +260,36 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account.id }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 id
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -302,54 +298,61 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
-
+              
             </span>
-
+            
           </span>
         </div>
-
-
-
-
-
-        <span
-          class="n8n-text compact size-small regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
+        
+        
+        
+        
+        
+        <svg
+          aria-hidden="true"
+          class="icon el-tooltip__trigger el-tooltip__trigger"
+          data-icon="ellipsis-h"
           data-v-d00cba9a=""
+          focusable="false"
+          height="12px"
+          role="img"
+          viewBox="0 0 24 24"
+          width="12px"
         >
-
-          <n8n-icon-stub
-            beat="false"
-            beatfade="false"
-            border="false"
-            bounce="false"
-            class="small"
-            fade="false"
-            fixedwidth="false"
-            flash="false"
-            flip="false"
-            icon="ellipsis-h"
-            inverse="false"
-            listitem="false"
-            pulse="false"
-            shake="false"
-            spin="false"
-            spinpulse="false"
-            spinreverse="false"
-            swapopacity="false"
-            symbol="false"
-          />
-
-        </span>
+          <g
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="19"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="5"
+              cy="12"
+              r="1"
+            />
+          </g>
+        </svg>
         <!--teleport start-->
         <!--teleport end-->
-
-
-
-
-
+        
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -366,35 +369,33 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon collapsed"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <!--v-if-->
             <div
               class="title"
               data-v-882a318e=""
             >
-              Variables and context
+              Variables and context 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -402,11 +403,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
           </div>
           <!--v-if-->
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -424,27 +425,82 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
     class="toggle"
     data-v-882a318e=""
   >
+    <svg
+      aria-hidden="true"
+      class="collapse-icon"
+      data-icon="angle-down"
+      data-v-882a318e=""
+      focusable="false"
+      height="1em"
+      role="img"
+      viewBox="0 0 24 24"
+      width="1em"
+    >
+      <path
+        d="m6 9l6 6l6-6"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+      />
+    </svg>
+  </div>
+  <div
+    class="n8n-node-icon icon icon"
+    data-v-882a318e=""
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="icon"
+      >
+        <img
+          class="nodeIconImage"
+          src="/nodes/test-node/icon.svg"
+        />
+        <!--v-if-->
+      </div>
+      
+    </div>
+  </div>
+  <div
+    class="title"
+    data-v-882a318e=""
+  >
+    If 
+    <!--v-if-->
+  </div>
+  <!--v-if-->
+  <div
+    class="extra-info"
+    data-test-id="run-data-schema-node-item-count"
+    data-v-882a318e=""
+  >
+    2 items
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 2`] = `
+<div
+  class="schema-header"
+  data-test-id="run-data-schema-header"
+  data-v-882a318e=""
+>
+  <div
+    class="toggle"
+    data-v-882a318e=""
+  >
     <n8n-icon-stub
-      beat="false"
-      beatfade="false"
-      border="false"
-      bounce="false"
       class="collapse-icon"
       data-v-882a318e=""
-      fade="false"
-      fixedwidth="false"
-      flash="false"
-      flip="false"
       icon="angle-down"
-      inverse="false"
-      listitem="false"
-      pulse="false"
-      shake="false"
       spin="false"
-      spinpulse="false"
-      spinreverse="false"
-      swapopacity="false"
-      symbol="false"
     />
   </div>
   <div
@@ -456,7 +512,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
     >
       <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+      
       <div
         class="icon"
       >
@@ -466,14 +522,14 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
         />
         <!--v-if-->
       </div>
-
+      
     </div>
   </div>
   <div
     class="title"
     data-v-882a318e=""
   >
-    If
+    If 
     <!--v-if-->
   </div>
   <!--v-if-->
@@ -499,15 +555,15 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -524,28 +580,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon-trigger icon icon-trigger"
@@ -556,7 +610,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -566,39 +620,36 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger
+              Manual Trigger 
               <!--v-if-->
             </div>
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="trigger-icon"
+              data-icon="bolt"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="10px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="10px"
+            >
+              <path
+                d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <div
               class="extra-info"
               data-test-id="run-data-schema-node-item-count"
@@ -609,10 +660,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -628,28 +679,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -665,39 +714,42 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.empty }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 empty
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -709,10 +761,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -728,28 +780,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -765,39 +815,36 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.emptyArray }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="list"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 emptyArray
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -809,10 +856,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -828,28 +875,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -865,39 +910,36 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="list"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 nested
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -909,10 +951,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -928,28 +970,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -965,39 +1005,42 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 nested[0]
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1009,10 +1052,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1028,28 +1071,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1065,39 +1106,42 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].empty }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 empty
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1109,10 +1153,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1128,28 +1172,26 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1165,39 +1207,36 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].emptyArray }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="list"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 emptyArray
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1209,10 +1248,10 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -1229,35 +1268,33 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon collapsed"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <!--v-if-->
             <div
               class="title"
               data-v-882a318e=""
             >
-              Variables and context
+              Variables and context 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -1265,11 +1302,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -1289,15 +1326,15 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1322,39 +1359,36 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ name }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 name
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1363,18 +1397,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               John
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1399,39 +1433,36 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ age }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="hashtag"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="hashtag"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M4 9h16M4 15h16M10 3L8 21m8-18l-2 18"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 age
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1440,18 +1471,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               22
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1467,28 +1498,26 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1502,39 +1531,36 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="list"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 hobbies
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1546,10 +1572,10 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1574,39 +1600,36 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[0] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 hobbies[0]
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1615,18 +1638,18 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               surfing
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1651,39 +1674,36 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[1] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 hobbies[1]
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1692,19 +1712,19 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               traveling
             </span>
-
+            
           </span>
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -1724,15 +1744,15 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -1749,28 +1769,26 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon-trigger icon icon-trigger"
@@ -1781,7 +1799,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -1791,39 +1809,36 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger
+              Manual Trigger 
               <!--v-if-->
             </div>
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="trigger-icon"
+              data-icon="bolt"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="10px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="10px"
+            >
+              <path
+                d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <div
               class="extra-info"
               data-test-id="run-data-schema-node-item-count"
@@ -1834,10 +1849,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1853,28 +1868,26 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1890,39 +1903,36 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="list"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 hello world
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -1934,10 +1944,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -1953,28 +1963,26 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1990,39 +1998,42 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 hello world[0]
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2034,10 +2045,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2053,28 +2064,26 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -2090,39 +2099,42 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 test
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2134,10 +2146,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2164,39 +2176,36 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test['more to think about'] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="hashtag"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="hashtag"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="M4 9h16M4 15h16M10 3L8 21m8-18l-2 18"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 more to think about
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2205,18 +2214,18 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               1
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2243,39 +2252,36 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0]['test.how'] }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 test.how
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2284,18 +2290,18 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               ignore
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2312,28 +2318,26 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon collapsed"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon"
@@ -2344,7 +2348,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -2354,14 +2358,14 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2
+              Set2 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2369,10 +2373,10 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2389,35 +2393,33 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon collapsed"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <!--v-if-->
             <div
               class="title"
               data-v-882a318e=""
             >
-              Variables and context
+              Variables and context 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2425,11 +2427,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -2449,15 +2451,15 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2474,28 +2476,26 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon collapsed"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon-trigger icon icon-trigger"
@@ -2506,7 +2506,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -2516,47 +2516,44 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger
+              Manual Trigger 
               <!--v-if-->
             </div>
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="trigger-icon"
+              data-icon="bolt"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="10px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="10px"
+            >
+              <path
+                d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <!--v-if-->
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -2573,35 +2570,33 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <!--v-if-->
             <div
               class="title"
               data-v-882a318e=""
             >
-              Variables and context
+              Variables and context 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -2609,10 +2604,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2637,39 +2632,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $now }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 $now
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2678,18 +2670,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               2025-01-01T00:00:00.000+00:00
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2714,39 +2706,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $today }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 $today
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2755,18 +2744,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               2025-01-01T00:00:00.000+00:00
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2791,73 +2780,79 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $vars }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 $vars
               </span>
-
+              
             </span>
           </div>
-
-          <span
-            class="n8n-text compact size-small regular n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger"
+          
+          <svg
+            aria-hidden="true"
+            class="locked-icon el-tooltip__trigger el-tooltip__trigger"
+            data-icon="lock"
             data-v-0f5e7239=""
+            focusable="false"
+            height="12px"
+            role="img"
+            viewBox="0 0 24 24"
+            width="12px"
           >
-
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="small"
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="lock"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-
-          </span>
+            <g
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            >
+              <rect
+                height="11"
+                rx="2"
+                ry="2"
+                width="18"
+                x="3"
+                y="11"
+              />
+              <path
+                d="M7 11V7a5 5 0 0 1 10 0v4"
+              />
+            </g>
+          </svg>
           <!--teleport start-->
           <!--teleport end-->
-
+          
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -2866,10 +2861,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2885,28 +2880,26 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -2920,39 +2913,42 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 $execution
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -2964,10 +2960,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -2992,39 +2988,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.id }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 id
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3033,18 +3026,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               [filled at execution time]
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3069,39 +3062,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.mode }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 mode
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3110,18 +3100,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               test
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3146,39 +3136,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.resumeUrl }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 resumeUrl
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3187,18 +3174,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               The URL for resuming a 'Wait' node
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3214,28 +3201,26 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -3249,39 +3234,42 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="cube"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path
+                  d="m3.3 7l8.7 5l8.7-5M12 22V12"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 $workflow
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3293,10 +3281,10 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3321,39 +3309,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.id }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 id
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3362,18 +3347,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               123
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3398,39 +3383,36 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.name }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 name
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3439,18 +3421,18 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               Test Workflow
             </span>
-
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3475,39 +3457,46 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.active }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="check-square"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="check-square"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <g
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              >
+                <rect
+                  height="18"
+                  rx="2"
+                  width="18"
+                  x="3"
+                  y="3"
+                />
+                <path
+                  d="m9 12l2 2l4-4"
+                />
+              </g>
+            </svg>
             <span
               class="content title"
               data-v-0f5e7239=""
             >
-
+              
               <span>
                 <!--v-if-->
                 active
               </span>
-
+              
             </span>
           </div>
           <!--v-if-->
@@ -3516,19 +3505,19 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
+            
             <span>
               <!--v-if-->
               true
             </span>
-
+            
           </span>
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
@@ -3548,15 +3537,15 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
       data-test-id="draggable"
       data-v-d00cba9a=""
     >
-
+      
       <div
         class="full-height scroller"
         data-v-d00cba9a=""
         min-item-size="38"
       >
-
-
-
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -3573,28 +3562,26 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon-trigger icon icon-trigger"
@@ -3605,7 +3592,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -3615,39 +3602,36 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Manual Trigger
+              Manual Trigger 
               <!--v-if-->
             </div>
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="trigger-icon"
+              data-icon="bolt"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="10px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="10px"
+            >
+              <path
+                d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <div
               class="extra-info"
               data-test-id="run-data-schema-node-item-count"
@@ -3658,10 +3642,10 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3688,40 +3672,37 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.name }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="title"
               data-v-0f5e7239=""
             >
-
-
+              
+              
               <span>
                 name
               </span>
-
-
+              
+              
             </span>
           </div>
           <!--v-if-->
@@ -3730,25 +3711,25 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
-
+            
+            
             <!--v-if-->
-
-
+            
+            
             <mark>
               John
             </mark>
-
-
+            
+            
             <!--v-if-->
-
-
+            
+            
           </span>
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-header-wrapper"
           data-v-882a318e=""
@@ -3765,28 +3746,26 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <n8n-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <svg
+                aria-hidden="true"
                 class="collapse-icon"
+                data-icon="angle-down"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
-                spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
-              />
+                focusable="false"
+                height="1em"
+                role="img"
+                viewBox="0 0 24 24"
+                width="1em"
+              >
+                <path
+                  d="m6 9l6 6l6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </div>
             <div
               class="n8n-node-icon icon icon"
@@ -3797,7 +3776,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
                 <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-
+                
                 <div
                   class="icon"
                 >
@@ -3807,14 +3786,14 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                   />
                   <!--v-if-->
                 </div>
-
+                
               </div>
             </div>
             <div
               class="title"
               data-v-882a318e=""
             >
-              Set2
+              Set2 
               <!--v-if-->
             </div>
             <!--v-if-->
@@ -3828,10 +3807,10 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           </div>
           <!--v-if-->
         </div>
-
-
-
-
+        
+        
+        
+        
         <div
           class="schema-item draggable"
           data-test-id="run-data-schema-item"
@@ -3858,40 +3837,37 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $('Set2').item.json.name }}"
           >
-            <n8n-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <svg
+              aria-hidden="true"
               class="type-icon"
+              data-icon="font"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
+              focusable="false"
+              height="12px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="12px"
+            >
+              <path
+                d="m3 15l4-8l4 8m-7-2h6m5-2h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
             <span
               class="title"
               data-v-0f5e7239=""
             >
-
-
+              
+              
               <span>
                 name
               </span>
-
-
+              
+              
             </span>
           </div>
           <!--v-if-->
@@ -3900,26 +3876,26 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-
-
+            
+            
             <!--v-if-->
-
-
+            
+            
             <mark>
               John
             </mark>
-
-
+            
+            
             <!--v-if-->
-
-
+            
+            
           </span>
         </div>
-
-
-
+        
+        
+        
       </div>
-
+      
       <!--teleport start-->
       <!--teleport end-->
     </div>
