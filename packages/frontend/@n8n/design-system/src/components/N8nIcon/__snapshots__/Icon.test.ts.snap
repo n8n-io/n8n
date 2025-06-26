@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Icon > should render correctly with a custom color 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with a custom size 1`] = `
+"<svg viewBox="0 0 24 24" width="24px" height="24px" class="" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with all props combined 1`] = `
+"<svg viewBox="0 0 24 24" width="14px" height="14px" class="spin" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with default props 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with predefined size 1`] = `
+"<svg viewBox="0 0 24 24" width="16px" height="16px" class="" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with spin enabled 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="spin" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
