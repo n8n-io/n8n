@@ -1,3 +1,4 @@
+import { testDb } from '@n8n/backend-test-utils';
 import { generateNanoId } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -12,7 +13,6 @@ import {
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
-import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 

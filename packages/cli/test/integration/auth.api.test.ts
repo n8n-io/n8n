@@ -1,3 +1,5 @@
+import { randomValidPassword } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,8 +11,6 @@ import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 

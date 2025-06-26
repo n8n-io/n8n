@@ -1,3 +1,4 @@
+import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
 import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
@@ -8,7 +9,6 @@ import {
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
-import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 

@@ -1,3 +1,7 @@
+import { getPersonalProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
@@ -23,12 +27,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { mockInstance } from '@test/mocking';
-import { getPersonalProject } from '@test-integration/db/projects';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../../../test/integration/shared/test-db';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {
