@@ -1,12 +1,5 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
-	"compilerOptions": {
-		"rootDir": ".",
-		"baseUrl": "src",
-		"paths": {
-			"@/*": ["./*"]
-		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
-	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"extends": "@n8n/typescript-config/tsconfig.modern.json",
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"exclude": ["node_modules"]
 }
