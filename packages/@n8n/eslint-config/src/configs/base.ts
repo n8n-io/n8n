@@ -16,7 +16,14 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
 const runAllRules = process.env.CI === 'true' || process.env.INCLUDE_SLOW_RULES === 'true';
 
 export const baseConfig = tseslint.config(
-	globalIgnores(['node_modules/**', 'dist/**', '*.config.ts', '*.config.js']),
+	globalIgnores([
+		'node_modules/**',
+		'dist/**',
+		'eslint.config.mjs',
+		'tsup.config.ts',
+		'jest.config.js',
+		'cypress.config.js',
+	]),
 	eslint.configs.recommended,
 	tseslint.configs.recommended,
 	tseslint.configs.recommendedTypeChecked,

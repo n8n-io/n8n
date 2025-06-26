@@ -1,42 +1,51 @@
 {
-  "name": "@n8n/eslint-config",
   "private": true,
-  "version": "0.0.1",
+  "name": "@n8n/eslint-config",
   "type": "module",
+  "version": "0.0.1",
   "exports": {
     "./base": {
-      "types": "./dist/configs/base.d.js",
-      "default": "./dist/configs/base.js"
+      "default": "./dist/configs/base.js",
+      "types": "./dist/configs/base.d.js"
     },
     "./frontend": {
-      "types": "./dist/configs/frontend.d.js",
-      "default": "./dist/configs/frontend.js"
+      "default": "./dist/configs/frontend.js",
+      "types": "./dist/configs/frontend.d.js"
     },
     "./node": {
-      "types": "./dist/configs/node.d.js",
-      "default": "./dist/configs/node.js"
+      "default": "./dist/configs/node.js",
+      "types": "./dist/configs/node.d.js"
     }
   },
-  "dependencies": {
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
     "@eslint/js": "^9.29.0",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
+    "@types/eslint": "^9.6.1",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript-eslint/utils": "^8.35.0",
     "eslint-config-prettier": "^10.1.5",
+    "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unicorn": "^59.0.1",
     "eslint-plugin-unused-imports": "^4.1.4",
     "eslint-plugin-vue": "^10.2.0",
-    "globals": "^16.2.0"
-  },
-  "devDependencies": {
-    "@n8n/typescript-config": "workspace:*",
-    "@n8n/vitest-config": "workspace:*",
-    "@types/eslint": "^9.6.1",
-    "@typescript-eslint/rule-tester": "^8.35.0",
-    "@typescript-eslint/utils": "^8.35.0",
-    "eslint-import-resolver-typescript": "^4.4.3",
-    "eslint-plugin-import-x": "^4.15.2",
+    "globals": "^16.2.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.35.0",
@@ -44,16 +53,5 @@
   },
   "peerDependencies": {
     "eslint": ">= 9"
-  },
-  "scripts": {
-    "clean": "rimraf dist .turbo",
-    "dev": "pnpm watch",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc",
-    "format": "biome format --write .",
-    "format:check": "biome ci .",
-    "watch": "tsc --watch",
-    "test": "vitest run",
-    "test:dev": "vitest"
   }
 }
