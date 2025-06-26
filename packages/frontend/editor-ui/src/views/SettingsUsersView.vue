@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { ROLE, type Role, USERS_LIST_SORT_OPTIONS } from '@n8n/api-types';
+import {
+	ROLE,
+	type Role,
+	type UsersListSortOptions,
+	USERS_LIST_SORT_OPTIONS,
+} from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
@@ -17,8 +22,6 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
-
-type ValidSortKey = (typeof USERS_LIST_SORT_OPTIONS)[number];
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -132,10 +135,7 @@ function onInvite() {
 	uiStore.openModal(INVITE_USER_MODAL_KEY);
 }
 async function onDelete(userId: string) {
-	const user = usersStore.usersById[userId];
-	if (user) {
-		uiStore.openDeleteUserModal(userId);
-	}
+	uiStore.openDeleteUserModal(userId);
 }
 async function onReinvite(userId: string) {
 	const user = usersStore.usersById[userId];
@@ -251,7 +251,7 @@ async function onRoleChange(user: IUser, newRoleName: Role) {
 	}
 }
 
-const isValidSortKey = (key: string): key is ValidSortKey =>
+const isValidSortKey = (key: string): key is UsersListSortOptions =>
 	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
 
 const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {

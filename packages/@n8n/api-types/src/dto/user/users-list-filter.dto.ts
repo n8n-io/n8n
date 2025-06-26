@@ -19,6 +19,8 @@ export const USERS_LIST_SORT_OPTIONS = [
 	// 'lastActive:desc',
 ] as const;
 
+export type UsersListSortOptions = (typeof USERS_LIST_SORT_OPTIONS)[number];
+
 const usersListSortByValidator = z
 	.array(
 		z.enum(USERS_LIST_SORT_OPTIONS, {

@@ -40,7 +40,7 @@ const onActionSelect = (role: string) => {
 				</span>
 			</template>
 			<template #menuItem="item">
-				<N8nText v-if="item.id === 'remove'" color="text-dark" :class="$style.removeUser">{{
+				<N8nText v-if="item.id === 'delete'" color="text-dark" :class="$style.removeUser">{{
 					item.label
 				}}</N8nText>
 				<ElRadio
