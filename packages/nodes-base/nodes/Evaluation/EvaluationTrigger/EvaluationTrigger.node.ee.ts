@@ -12,7 +12,7 @@ import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 import { readFilter } from '../../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
-import { listSearch, loadOptions } from '../methods';
+import { listSearch, loadOptions, credentialTest } from '../methods';
 import {
 	getGoogleSheet,
 	getResults,
@@ -106,7 +106,7 @@ export class EvaluationTrigger implements INodeType {
 		],
 	};
 
-	methods = { loadOptions, listSearch };
+	methods = { loadOptions, listSearch, credentialTest };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
