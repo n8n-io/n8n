@@ -51,7 +51,6 @@ const whatsNewArticle: WhatsNewArticle = {
 
 const whatsNew: WhatsNewSection = {
 	title: "What's New title",
-	calloutTitle: 'Callout title',
 	calloutText: 'Callout text.',
 	footer: "What's new footer",
 	items: [whatsNewArticle],
@@ -110,7 +109,7 @@ describe('versions.store', () => {
 
 	describe('fetchWhatsNew()', () => {
 		it("should fetch What's new articles", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 
 			const rootStore = useRootStore();
 			rootStore.setVersionCli(currentVersionName);
@@ -121,7 +120,7 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).toHaveBeenCalledWith(
+			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
 				currentVersionName,
 				instanceId,
@@ -131,7 +130,7 @@ describe('versions.store', () => {
 		});
 
 		it("should not fetch What's new articles if version notifications are disabled", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles');
+			vi.spyOn(versionsApi, 'getWhatsNewSection');
 
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize({
@@ -141,12 +140,12 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).not.toHaveBeenCalled();
+			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
 		});
 
 		it("should not fetch What's new articles if not enabled", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles');
+			vi.spyOn(versionsApi, 'getWhatsNewSection');
 
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize({
@@ -157,14 +156,14 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).not.toHaveBeenCalled();
+			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
 		});
 	});
 
 	describe('checkForNewVersions()', () => {
 		it('should check for new versions', async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([currentVersion]);
 
 			const rootStore = useRootStore();
@@ -176,7 +175,7 @@ describe('versions.store', () => {
 
 			await versionsStore.checkForNewVersions();
 
-			expect(versionsApi.getWhatsNewArticles).toHaveBeenCalledWith(
+			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
 				currentVersionName,
 				instanceId,
@@ -195,7 +194,7 @@ describe('versions.store', () => {
 		});
 
 		it("should still initialize versions if what's new articles fail", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockRejectedValueOnce(new Error('oopsie'));
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockRejectedValueOnce(new Error('oopsie'));
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([currentVersion]);
 
 			const rootStore = useRootStore();
@@ -219,7 +218,7 @@ describe('versions.store', () => {
 		});
 
 		it("should still initialize what's new articles if versions fail", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 			vi.spyOn(versionsApi, 'getNextVersions').mockRejectedValueOnce(new Error('oopsie'));
 
 			const rootStore = useRootStore();
@@ -243,7 +242,7 @@ describe('versions.store', () => {
 		});
 
 		it('should show toast if important version updates are available', async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue({ ...whatsNew, items: [] });
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([
 				{
 					...currentVersion,

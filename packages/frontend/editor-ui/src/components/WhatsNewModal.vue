@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import {
-	DynamicScroller,
-	DynamicScrollerItem,
-	type RecycleScrollerInstance,
-} from 'vue-virtual-scroller';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
@@ -24,8 +18,6 @@ const props = defineProps<{
 }>();
 
 const pageRedirectionHelper = usePageRedirectionHelper();
-
-const scroller = ref<RecycleScrollerInstance>();
 
 const i18n = useI18n();
 const modalBus = createEventBus();
@@ -47,25 +39,35 @@ const onUpdateClick = async () => {
 	await pageRedirectionHelper.goToVersions();
 };
 
+const scrollToItem = async (articleId: number) => {
+	await nextTick(() => {
+		const container = document.getElementsByClassName('modal-content')[0] as HTMLElement;
+		const target = document.getElementById(`whats-new-item-${articleId}`);
+
+		if (!container || !target) return;
+
+		const offset = target.offsetTop - container.offsetTop;
+
+		container.scrollTo({
+			top: offset,
+			behavior: 'smooth',
+		});
+	});
+};
+
 modalBus.on('opened', () => {
 	versionsStore.closeWhatsNewCallout();
 
-	const articleIndex = versionsStore.whatsNewArticles.findIndex(
-		(article) => article.id === props.data.articleId,
-	);
-
-	scroller.value?.scrollToItem(articleIndex);
-});
-
-onMounted(() => {
 	// Mark all items as read when the modal is opened.
-	// Later versions of the What's new articles might contain partially same items,
+	// What's new articles on later weeks might contain partially same items,
 	// but we only want to show the new ones as unread on the main sidebar.
 	for (const item of versionsStore.whatsNewArticles) {
 		if (!versionsStore.isWhatsNewArticleRead(item.id)) {
 			versionsStore.setWhatsNewArticleRead(item.id);
 		}
 	}
+
+	void scrollToItem(props.data.articleId);
 });
 </script>
 
@@ -129,110 +131,91 @@ onMounted(() => {
 		</template>
 		<template #content>
 			<div :class="$style.container">
-				<DynamicScroller
-					ref="scroller"
-					:min-item-size="10"
-					:items="versionsStore.whatsNewArticles"
-					class="full-height scroller"
-					style="max-height: 80vh"
-				>
-					<template #before>
-						<N8nCallout
-							v-if="versionsStore.hasVersionUpdates"
-							:class="$style.callout"
-							theme="warning"
-						>
-							<slot name="callout-message">
-								<N8nText size="small">
-									{{
-										i18n.baseText('whatsNew.updateAvailable', {
-											interpolate: {
-												currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
-												latestVersion: versionsStore.latestVersion?.name,
-												count: nextVersions.length,
-											},
-										})
-									}}
-									<N8nLink
-										:size="'small'"
-										:underline="true"
-										theme="primary"
-										to="https://docs.n8n.io/release-notes/"
-										target="_blank"
-									>
-										{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
-									</N8nLink>
-								</N8nText>
-							</slot>
-						</N8nCallout>
-					</template>
-					<template #default="{ item, index, active }">
-						<DynamicScrollerItem
-							:item="item"
-							:active="active"
-							:size-dependencies="[item.content]"
-							:data-index="index"
-						>
-							<div :class="$style.article" :data-test-id="`whats-new-article-${item.id}`">
-								<N8nHeading bold tag="h2" size="xlarge">
-									{{ item.title }}
-								</N8nHeading>
-								<N8nMarkdown
-									:content="item.content"
-									:class="$style.markdown"
-									:options="{
-										markdown: {
-											html: true,
-											linkify: true,
-											typographer: true,
-											breaks: true,
-										},
-										tasklists: {
-											enabled: false,
-										},
-										linkAttributes: {
-											attrs: {
-												target: '_blank',
-												rel: 'noopener',
-											},
-										},
-										youtube: {
-											width: '100%',
-											height: '315',
-										},
-									}"
-								/>
-							</div>
-						</DynamicScrollerItem>
-					</template>
-					<template #after>
-						<N8nMarkdown
-							:content="versionsStore.whatsNew.footer"
-							:class="$style.markdown"
-							:options="{
-								markdown: {
-									html: true,
-									linkify: true,
-									typographer: true,
-									breaks: true,
-								},
-								tasklists: {
-									enabled: false,
-								},
-								linkAttributes: {
-									attrs: {
-										target: '_blank',
-										rel: 'noopener',
+				<N8nCallout v-if="versionsStore.hasVersionUpdates" :class="$style.callout" theme="warning">
+					<slot name="callout-message">
+						<N8nText size="small">
+							{{
+								i18n.baseText('whatsNew.updateAvailable', {
+									interpolate: {
+										currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
+										latestVersion: versionsStore.latestVersion?.name,
+										count: nextVersions.length,
 									},
+								})
+							}}
+							<N8nLink
+								:size="'small'"
+								:underline="true"
+								theme="primary"
+								to="https://docs.n8n.io/release-notes/"
+								target="_blank"
+							>
+								{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
+							</N8nLink>
+						</N8nText>
+					</slot>
+				</N8nCallout>
+				<div
+					v-for="item in versionsStore.whatsNewArticles"
+					:id="`whats-new-item-${item.id}`"
+					:key="item.id"
+					:class="$style.article"
+					:data-test-id="`whats-new-item-${item.id}`"
+				>
+					<N8nHeading bold tag="h2" size="xlarge">
+						{{ item.title }}
+					</N8nHeading>
+					<N8nMarkdown
+						:content="item.content"
+						:class="$style.markdown"
+						:options="{
+							markdown: {
+								html: true,
+								linkify: true,
+								typographer: true,
+								breaks: true,
+							},
+							tasklists: {
+								enabled: false,
+							},
+							linkAttributes: {
+								attrs: {
+									target: '_blank',
+									rel: 'noopener',
 								},
-								youtube: {
-									width: '100%',
-									height: '315',
-								},
-							}"
-						/>
-					</template>
-				</DynamicScroller>
+							},
+							youtube: {
+								width: '100%',
+								height: '315',
+							},
+						}"
+					/>
+				</div>
+				<N8nMarkdown
+					:content="versionsStore.whatsNew.footer"
+					:class="$style.markdown"
+					:options="{
+						markdown: {
+							html: true,
+							linkify: true,
+							typographer: true,
+							breaks: true,
+						},
+						tasklists: {
+							enabled: false,
+						},
+						linkAttributes: {
+							attrs: {
+								target: '_blank',
+								rel: 'noopener',
+							},
+						},
+						youtube: {
+							width: '100%',
+							height: '315',
+						},
+					}"
+				/>
 			</div>
 		</template>
 	</Modal>
