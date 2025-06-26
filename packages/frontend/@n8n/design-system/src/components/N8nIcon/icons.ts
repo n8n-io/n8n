@@ -1,5 +1,5 @@
-/* eslint-disable import/extensions */
-/* eslint-disable import/no-unresolved */
+/* eslint-disable import/extensions, import/no-unresolved */
+
 import Binary from './custom/binary.svg';
 import Json from './custom/json.svg';
 import PopOut from './custom/pop-out.svg';
@@ -17,7 +17,6 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import Variable from './custom/variable.svg';
 import VectorSquare from './custom/vector-square.svg';
-import Xmark from './custom/xmark.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -178,10 +177,10 @@ import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
 
-export const customIcons = {
+export const allIcons = {
+	// customIcons
 	variable: Variable,
 	'pop-out': PopOut,
-	xmark: Xmark,
 	triangle: Triangle,
 	'status-completed': StatusCompleted,
 	'status-waiting': StatusWaiting,
@@ -197,9 +196,11 @@ export const customIcons = {
 	text: Text,
 	toolbox: Toolbox,
 	spinner: Spinner,
-} as const;
+	xmark: IconLucideX,
 
-export const fontAwesomeIcons = {
+	// fontAwesomeIcons
+	// we have to keep this mapping
+	// to support project icons
 	'caret-up': IconLucideChevronUp,
 	'caret-down': IconLucideChevronDown,
 	'caret-right': IconLucideChevronRight,
@@ -207,8 +208,6 @@ export const fontAwesomeIcons = {
 	'folder-plus': IconLucideFolderPlus,
 	share: IconLucideShare,
 	'user-check': IconLucideUserCheck,
-
-	// other selector icons?
 	'check-double': IconLucideCheckCheck,
 	'exclamation-circle': IconLucideCircleAlert,
 	circle: IconLucideCircle,
@@ -218,8 +217,6 @@ export const fontAwesomeIcons = {
 	adjust: IconLucideContrast,
 	refresh: IconLucideRefreshCw,
 	vault: IconLucideVault,
-
-	// selector icons
 	'angle-double-left': IconLucideChevronsLeft,
 	'angle-down': IconLucideChevronDown,
 	'angle-left': IconLucideChevronLeft,
@@ -380,15 +377,8 @@ export const fontAwesomeIcons = {
 	'paper-plane': IconLucideSend,
 } as const;
 
-export type IconName = keyof typeof fontAwesomeIcons | keyof typeof customIcons;
-
-const ALL_SUPPORTED_ICONS = new Set(
-	Object.keys({
-		...fontAwesomeIcons,
-		...customIcons,
-	}),
-);
+export type IconName = keyof typeof allIcons;
 
 export function isSupportIconName(iconName?: string): iconName is IconName {
-	return typeof iconName === 'string' && ALL_SUPPORTED_ICONS.has(iconName);
+	return typeof iconName === 'string' && iconName in allIcons;
 }

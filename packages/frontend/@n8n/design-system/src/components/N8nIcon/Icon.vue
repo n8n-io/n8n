@@ -4,7 +4,7 @@ import { computed, useCssModule } from 'vue';
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
 import type { IconName } from './icons';
-import { fontAwesomeIcons, customIcons } from './icons';
+import { allIcons } from './icons';
 
 interface IconProps {
 	icon: IconName;
@@ -58,17 +58,8 @@ const size = computed((): { height: string; width: string } => {
 
 <template>
 	<Component
-		:is="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
-		v-if="fontAwesomeIcons[icon as keyof typeof fontAwesomeIcons]"
-		:class="classes"
-		:height="size.height"
-		:width="size.width"
-		:data-icon="props.icon"
-	/>
-	<!-- height and width as to match Lucide icons  -->
-	<Component
-		:is="customIcons[icon as keyof typeof customIcons]"
-		v-else-if="customIcons[icon as keyof typeof customIcons]"
+		:is="allIcons[icon as keyof typeof allIcons]"
+		v-if="allIcons[icon as keyof typeof allIcons]"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"

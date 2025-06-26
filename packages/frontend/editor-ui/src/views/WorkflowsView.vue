@@ -1782,8 +1782,8 @@ const onNameSubmit = async (name: string) => {
 						@click="addWorkflow"
 					>
 						<div :class="$style.emptyStateCardContent">
-							<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-							<N8nText size="large" class="mt-xs" color="text-dark">
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="file" color="foreground-dark" />
+							<N8nText size="large" class="mt-xs">
 								{{ i18n.baseText('workflows.empty.startFromScratch') }}
 							</N8nText>
 						</div>
@@ -1796,8 +1796,8 @@ const onNameSubmit = async (name: string) => {
 						@click="openAIWorkflow('empty')"
 					>
 						<div :class="$style.emptyStateCardContent">
-							<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" color="foreground-dark" />
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
 								{{ i18n.baseText('workflows.empty.easyAI') }}
 							</N8nText>
 						</div>
@@ -1938,8 +1938,6 @@ const onNameSubmit = async (name: string) => {
 	font-size: 48px;
 
 	svg {
-		width: 48px !important;
-		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
 }
