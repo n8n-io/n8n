@@ -17,6 +17,24 @@ const properties: INodeProperties[] = [
 		default: 'mistral-ocr-latest',
 	},
 	{
+		displayName: 'Document Type',
+		name: 'documentType',
+		type: 'options',
+		options: [
+			{
+				name: 'Document',
+				value: 'document_url',
+			},
+			{
+				name: 'Image',
+				value: 'image_url',
+			},
+		],
+		description: 'The type of document to process',
+		required: true,
+		default: 'document_url',
+	},
+	{
 		displayName: 'Input Type',
 		name: 'inputType',
 		type: 'options',
@@ -38,24 +56,6 @@ const properties: INodeProperties[] = [
 				'options.batch': [true],
 			},
 		},
-	},
-	{
-		displayName: 'Document Type',
-		name: 'documentType',
-		type: 'options',
-		options: [
-			{
-				name: 'Document',
-				value: 'document_url',
-			},
-			{
-				name: 'Image',
-				value: 'image_url',
-			},
-		],
-		description: 'How the document will be provided',
-		required: true,
-		default: 'document_url',
 	},
 	{
 		displayName: 'Binary Property',
