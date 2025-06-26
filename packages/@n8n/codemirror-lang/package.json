@@ -22,7 +22,7 @@
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test"

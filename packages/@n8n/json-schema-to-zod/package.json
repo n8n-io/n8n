@@ -21,7 +21,7 @@
     "dev": "tsc -w",
     "format": "biome format --write src",
     "format:check": "biome ci src",
-    "lint": "eslint src",
+    "lint": "eslint src --quiet",
     "lintfix": "eslint src --fix",
     "build:types": "tsc -p tsconfig.types.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",

@@ -30,7 +30,7 @@
   "scripts": {
     "cleanup": "rimraf dist",
     "dev": "vite",
-    "lint": "eslint src",
+    "lint": "eslint src --quiet",
     "typecheck": "vue-tsc --noEmit",
     "build:backend": "tsup",
     "build:frontend": "vite build",
