@@ -214,7 +214,7 @@ describe('ProjectService', () => {
 			);
 			await projectService.addUser(project.id, { userId: user.id, role });
 
-			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrowError(
+			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrow(
 				/^Project owner cannot be removed from the project$/,
 			);
 		});

@@ -297,7 +297,7 @@ describe('enqueueExecution', () => {
 		addJob.mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
-		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});

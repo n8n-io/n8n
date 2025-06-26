@@ -40,7 +40,7 @@ describe('test GoogleDriveV2: folder share', () => {
 
 		await share.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/drive/v3/files/folderIDxxxxxx/permissions',

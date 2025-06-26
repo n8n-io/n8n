@@ -34,7 +34,7 @@ describe('TaskRunnerModule in external mode', () => {
 
 			const module = new TaskRunnerModule(mock(), mock(), runnerConfig);
 
-			await expect(module.start()).rejects.toThrowError(MissingAuthTokenError);
+			await expect(module.start()).rejects.toThrow(MissingAuthTokenError);
 		});
 
 		it('should start the task runner', async () => {

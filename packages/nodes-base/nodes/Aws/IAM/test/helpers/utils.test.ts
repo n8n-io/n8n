@@ -153,16 +153,14 @@ describe('AWS IAM - Helper Functions', () => {
 	describe('validatePath', () => {
 		it('should throw an error for invalid path length', async () => {
 			mockNode.getNodeParameter.mockReturnValue('');
-			await expect(validatePath.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
+			await expect(validatePath.call(mockNode, { headers: {}, url: '' })).rejects.toThrow(
 				NodeOperationError,
 			);
 		});
 
 		it('should throw an error for invalid path format', async () => {
 			mockNode.getNodeParameter.mockReturnValue('/invalidPath');
-			await expect(validatePath.call(mockNode, { url: '' })).rejects.toThrowError(
-				NodeOperationError,
-			);
+			await expect(validatePath.call(mockNode, { url: '' })).rejects.toThrow(NodeOperationError);
 		});
 
 		it('should pass for a valid path', async () => {
@@ -186,7 +184,7 @@ describe('AWS IAM - Helper Functions', () => {
 
 			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
-			await expect(validateUserPath.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
+			await expect(validateUserPath.call(mockNode, { headers: {}, url: '' })).rejects.toThrow(
 				NodeOperationError,
 			);
 		});
@@ -220,7 +218,7 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrow(
 				new NodeOperationError(mockNode.getNode(), 'User name should not contain spaces.'),
 			);
 		});
@@ -232,7 +230,7 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrow(
 				new NodeOperationError(
 					mockNode.getNode(),
 					'User name can have up to 64 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
@@ -257,7 +255,7 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrow(
 				new NodeOperationError(mockNode.getNode(), 'Group name should not contain spaces.'),
 			);
 		});
@@ -269,7 +267,7 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrow(
 				new NodeOperationError(
 					mockNode.getNode(),
 					'Group name can have up to 128 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',

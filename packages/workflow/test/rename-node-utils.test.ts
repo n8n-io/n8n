@@ -29,14 +29,14 @@ describe('renameFormFields', () => {
 		{ parameters: { formFields: { values: [{ fieldType: 'html' }] } } },
 	] as unknown as INode[])('should not modify %s without formFields.values parameters', (node) => {
 		renameFormFields(node, mockMapping);
-		expect(mockMapping).not.toBeCalled();
+		expect(mockMapping).not.toHaveBeenCalled();
 	});
 
 	it('should rename fields based on the provided mapping', () => {
 		const node = makeNode([{ fieldType: 'html', html: 'some text' }]);
 
 		renameFormFields(node, mockMapping);
-		expect(mockMapping).toBeCalledWith('some text');
+		expect(mockMapping).toHaveBeenCalledWith('some text');
 	});
 
 	it('should rename multiple fields', () => {
@@ -49,6 +49,6 @@ describe('renameFormFields', () => {
 		]);
 
 		renameFormFields(node, mockMapping);
-		expect(mockMapping).toBeCalledTimes(5);
+		expect(mockMapping).toHaveBeenCalledTimes(5);
 	});
 });

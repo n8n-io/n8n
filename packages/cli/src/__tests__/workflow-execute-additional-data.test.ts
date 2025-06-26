@@ -197,7 +197,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				nodes: [],
 				active: false,
 			});
-			await expect(getRunData(workflow)).rejects.toThrowError('Missing node to start execution');
+			await expect(getRunData(workflow)).rejects.toThrow('Missing node to start execution');
 		});
 
 		const workflow = mock<IWorkflowBase>({

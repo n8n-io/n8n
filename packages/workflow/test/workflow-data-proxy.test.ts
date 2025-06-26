@@ -162,11 +162,11 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		test('$("NodeName") not in workflow should throw', () => {
-			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
+			expect(() => proxy.$('doNotExist')).toThrow(ExpressionError);
 		});
 
 		test('$("NodeName").item on Node that has not executed', () => {
-			expect(() => proxy.$('Set').item).toThrowError(ExpressionError);
+			expect(() => proxy.$('Set').item).toThrow(ExpressionError);
 		});
 
 		test('$("NodeName").isExecuted', () => {
@@ -485,15 +485,15 @@ describe('WorkflowDataProxy', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
 
 			test('$binary', () => {
-				expect(() => proxy.$binary).toThrowError(ExpressionError);
+				expect(() => proxy.$binary).toThrow(ExpressionError);
 			});
 
 			test('$json', () => {
-				expect(() => proxy.$json).toThrowError(ExpressionError);
+				expect(() => proxy.$json).toThrow(ExpressionError);
 			});
 
 			test('$data', () => {
-				expect(() => proxy.$data).toThrowError(ExpressionError);
+				expect(() => proxy.$data).toThrow(ExpressionError);
 			});
 		});
 
@@ -745,7 +745,7 @@ describe('WorkflowDataProxy', () => {
 			});
 
 			test('should throw error for non-existent node', () => {
-				expect(() => proxy.$items('NonExistentNode')).toThrowError(ExpressionError);
+				expect(() => proxy.$items('NonExistentNode')).toThrow(ExpressionError);
 			});
 		});
 
@@ -773,7 +773,7 @@ describe('WorkflowDataProxy', () => {
 
 		describe('Error handling', () => {
 			test('should throw error for invalid run index', () => {
-				expect(() => proxy.$items('Rename', 0, 999)).toThrowError(ExpressionError);
+				expect(() => proxy.$items('Rename', 0, 999)).toThrow(ExpressionError);
 			});
 
 			test('should handle nodes with no execution data', () => {
@@ -783,7 +783,7 @@ describe('WorkflowDataProxy', () => {
 				};
 				const noDataProxy = getProxyFromFixture(noDataWorkflow, null, 'End');
 
-				expect(() => noDataProxy.$items('Rename')).toThrowError(ExpressionError);
+				expect(() => noDataProxy.$items('Rename')).toThrow(ExpressionError);
 			});
 		});
 	});

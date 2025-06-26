@@ -65,9 +65,9 @@ describe('Test Evaluation', () => {
 				'No outputs to set',
 			);
 
-			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
+			expect(GoogleSheet.prototype.updateRows).not.toHaveBeenCalled();
 
-			expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
+			expect(GoogleSheet.prototype.batchUpdate).not.toHaveBeenCalled();
 		});
 
 		test('should update rows and return input data for existing headers', async () => {
@@ -129,9 +129,9 @@ describe('Test Evaluation', () => {
 
 			expect(result).toEqual([[{ json: {} }]]);
 
-			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
+			expect(GoogleSheet.prototype.updateRows).not.toHaveBeenCalled();
 
-			expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
+			expect(GoogleSheet.prototype.batchUpdate).not.toHaveBeenCalled();
 		});
 
 		test('should update rows and return input data for new headers', async () => {

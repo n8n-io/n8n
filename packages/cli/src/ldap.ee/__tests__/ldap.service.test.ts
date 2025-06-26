@@ -190,7 +190,7 @@ describe('LdapService', () => {
 
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
-			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
+			await expect(ldapService.init()).rejects.toThrow('Interval variable has to be defined');
 			expect(setIntervalSpy).not.toHaveBeenCalled();
 		});
 	});
@@ -211,7 +211,7 @@ describe('LdapService', () => {
 
 			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
-			await expect(ldapService.loadConfig()).rejects.toThrowError('LDAP configuration not found');
+			await expect(ldapService.loadConfig()).rejects.toThrow('LDAP configuration not found');
 		});
 
 		it('should decipher the LDAP configuration admin password', async () => {
@@ -252,7 +252,7 @@ describe('LdapService', () => {
 
 			await expect(
 				ldapService.updateConfig(invalidLdapConfig as unknown as LdapConfig),
-			).rejects.toThrowError('request.body.loginEnabled is not of a type(s) boolean');
+			).rejects.toThrow('request.body.loginEnabled is not of a type(s) boolean');
 		});
 
 		it('should throw expected error if login is enabled and the current authentication method is "saml"', async () => {
@@ -260,7 +260,7 @@ describe('LdapService', () => {
 
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrow(
 				'LDAP cannot be enabled if SSO in enabled',
 			);
 		});
@@ -432,7 +432,7 @@ describe('LdapService', () => {
 
 			const thrownSetConfig = () => ldapService.setConfig(updatedLdapConfig);
 
-			expect(thrownSetConfig).toThrowError('Interval variable has to be defined');
+			expect(thrownSetConfig).toThrow('Interval variable has to be defined');
 			expect(setIntervalSpy).not.toHaveBeenCalled();
 			expect(clearIntervalSpy).not.toHaveBeenCalled();
 		});
@@ -616,7 +616,7 @@ describe('LdapService', () => {
 		it('should throw expected error if no configuration has been set', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			await expect(ldapService.validUser('dn', 'password')).rejects.toThrowError(
+			await expect(ldapService.validUser('dn', 'password')).rejects.toThrow(
 				'Service cannot be used without setting the property config',
 			);
 		});
@@ -646,7 +646,7 @@ describe('LdapService', () => {
 
 			await ldapService.init();
 
-			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrowError(
+			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrow(
 				'Error validating user against LDAP server',
 			);
 		});
@@ -717,7 +717,7 @@ describe('LdapService', () => {
 				ldapConfig.userFilter,
 			);
 
-			expect(eventServiceMock.emit).toBeCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
 			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-login-sync-failed', {
 				error: 'Failed to find admin user',
 			});
@@ -770,7 +770,7 @@ describe('LdapService', () => {
 				ldapConfig.userFilter,
 			);
 
-			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledTimes(1);
 			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[0].dn, 'fakePassword');
 		});
 
@@ -807,7 +807,7 @@ describe('LdapService', () => {
 				ldapConfig.userFilter,
 			);
 
-			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledTimes(1);
 			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[1].dn, 'fakePassword');
 		});
 
@@ -906,7 +906,7 @@ describe('LdapService', () => {
 		it('should throw expected error if init() is not called first', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			await expect(ldapService.testConnection()).rejects.toThrowError(
+			await expect(ldapService.testConnection()).rejects.toThrow(
 				'Service cannot be used without setting the property config',
 			);
 		});
@@ -1051,7 +1051,7 @@ describe('LdapService', () => {
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
-			await expect(ldapService.runSync('dry')).rejects.toThrowError('Error finding users');
+			await expect(ldapService.runSync('dry')).rejects.toThrow('Error finding users');
 		});
 
 		it('should process expected users if mode is "live"', async () => {

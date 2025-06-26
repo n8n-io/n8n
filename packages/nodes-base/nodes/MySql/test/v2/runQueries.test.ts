@@ -101,15 +101,15 @@ describe('Test MySql V2, runQueries', () => {
 		expect(result).toHaveLength(1);
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
-		expect(poolGetConnectionSpy).toBeCalledTimes(1);
+		expect(poolGetConnectionSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionReleaseSpy).toBeCalledTimes(1);
+		expect(connectionReleaseSpy).toHaveBeenCalledTimes(1);
 
-		expect(poolQuerySpy).toBeCalledTimes(1);
-		expect(poolQuerySpy).toBeCalledWith('SELECT * FROM my_table WHERE id = 55');
+		expect(poolQuerySpy).toHaveBeenCalledTimes(1);
+		expect(poolQuerySpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = 55');
 
-		expect(connectionFormatSpy).toBeCalledTimes(1);
-		expect(connectionFormatSpy).toBeCalledWith('SELECT * FROM my_table WHERE id = ?', [55]);
+		expect(connectionFormatSpy).toHaveBeenCalledTimes(1);
+		expect(connectionFormatSpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = ?', [55]);
 	});
 
 	it('should execute in "independently" mode, should return success true', async () => {
@@ -142,19 +142,19 @@ describe('Test MySql V2, runQueries', () => {
 		expect(result).toHaveLength(1);
 		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
-		expect(poolGetConnectionSpy).toBeCalledTimes(1);
+		expect(poolGetConnectionSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionQuerySpy).toBeCalledTimes(2);
-		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM my_table WHERE id = 55');
-		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM my_table WHERE id = 42');
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(2);
+		expect(connectionQuerySpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = 55');
+		expect(connectionQuerySpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = 42');
 
-		expect(connectionFormatSpy).toBeCalledTimes(1);
-		expect(connectionFormatSpy).toBeCalledWith(
+		expect(connectionFormatSpy).toHaveBeenCalledTimes(1);
+		expect(connectionFormatSpy).toHaveBeenCalledWith(
 			'SELECT * FROM my_table WHERE id = ?; SELECT * FROM my_table WHERE id = ?',
 			[55, 42],
 		);
 
-		expect(connectionReleaseSpy).toBeCalledTimes(1);
+		expect(connectionReleaseSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('should execute in "transaction" mode, should return success true', async () => {
@@ -189,22 +189,22 @@ describe('Test MySql V2, runQueries', () => {
 		expect(result).toHaveLength(1);
 		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
-		expect(poolGetConnectionSpy).toBeCalledTimes(1);
+		expect(poolGetConnectionSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
+		expect(connectionBeginTransactionSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionQuerySpy).toBeCalledTimes(2);
-		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM my_table WHERE id = 55');
-		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM my_table WHERE id = 42');
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(2);
+		expect(connectionQuerySpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = 55');
+		expect(connectionQuerySpy).toHaveBeenCalledWith('SELECT * FROM my_table WHERE id = 42');
 
-		expect(connectionFormatSpy).toBeCalledTimes(1);
-		expect(connectionFormatSpy).toBeCalledWith(
+		expect(connectionFormatSpy).toHaveBeenCalledTimes(1);
+		expect(connectionFormatSpy).toHaveBeenCalledWith(
 			'SELECT * FROM my_table WHERE id = ?; SELECT * FROM my_table WHERE id = ?',
 			[55, 42],
 		);
 
-		expect(connectionCommitSpy).toBeCalledTimes(1);
+		expect(connectionCommitSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionReleaseSpy).toBeCalledTimes(1);
+		expect(connectionReleaseSpy).toHaveBeenCalledTimes(1);
 	});
 });

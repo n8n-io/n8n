@@ -123,7 +123,7 @@ describe('FilterParameter', () => {
 								options: { typeValidation: 'strict' },
 							}),
 						),
-					).toThrowError(
+					).toThrow(
 						"Wrong type: '15' is a string but was expecting a number [condition 0, item 0]",
 					);
 				});
@@ -143,7 +143,7 @@ describe('FilterParameter', () => {
 								options: { typeValidation: 'strict' },
 							}),
 						),
-					).toThrowError(
+					).toThrow(
 						"Wrong type: '[]' is a string but was expecting an array [condition 0, item 0]",
 					);
 				});
@@ -162,7 +162,7 @@ describe('FilterParameter', () => {
 								options: { typeValidation: 'strict' },
 							}),
 						),
-					).toThrowError(
+					).toThrow(
 						"Wrong type: '{}' is a string but was expecting an object [condition 0, item 0]",
 					);
 				});
@@ -229,7 +229,7 @@ describe('FilterParameter', () => {
 								options: { typeValidation: 'loose' },
 							}),
 						),
-					).toThrowError(
+					).toThrow(
 						"Conversion error: the string 'a string' can't be converted to a number [condition 0, item 0]",
 					);
 				});

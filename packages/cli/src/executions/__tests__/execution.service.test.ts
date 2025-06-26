@@ -81,7 +81,7 @@ describe('ExecutionService', () => {
 			/**
 			 * Assert
 			 */
-			await expect(stop).rejects.toThrowError(MissingExecutionStopError);
+			await expect(stop).rejects.toThrow(MissingExecutionStopError);
 		});
 
 		it('should throw when stopping a not-in-progress execution', async () => {
@@ -100,7 +100,7 @@ describe('ExecutionService', () => {
 			/**
 			 * Assert
 			 */
-			await expect(stop).rejects.toThrowError(WorkflowOperationError);
+			await expect(stop).rejects.toThrow(WorkflowOperationError);
 		});
 
 		describe('regular mode', () => {

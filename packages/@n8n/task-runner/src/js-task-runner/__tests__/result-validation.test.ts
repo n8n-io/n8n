@@ -10,13 +10,13 @@ describe('result validation', () => {
 		it('should throw an error if the output is not an object', () => {
 			expect(() => {
 				validateRunForAllItemsOutput(undefined);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		it('should throw an error if the output is an array and at least one item has a non-n8n key', () => {
 			expect(() => {
 				validateRunForAllItemsOutput([{ json: {} }, { json: {}, unknownKey: {} }]);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		it('should not throw an error if the output is an array and all items are json wrapped', () => {
@@ -29,7 +29,7 @@ describe('result validation', () => {
 			expect(() => {
 				// @ts-expect-error Intentionally invalid
 				validateRunForAllItemsOutput([[]]);
-			}).toThrowError(NonArrayOfObjectsError);
+			}).toThrow(NonArrayOfObjectsError);
 		});
 
 		test.each([
@@ -70,7 +70,7 @@ describe('result validation', () => {
 			expect(() => {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				validateRunForAllItemsOutput([{ json: 1 } as any]);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 	});
 
@@ -80,27 +80,27 @@ describe('result validation', () => {
 		it('should throw an error if the output is not an object', () => {
 			expect(() => {
 				validateRunForEachItemOutput(undefined, index);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		it('should throw an error if the output is an array', () => {
 			expect(() => {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				validateRunForEachItemOutput([] as any, index);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		it('should throw if json is not an object', () => {
 			expect(() => {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				validateRunForEachItemOutput({ json: 1 } as any, index);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		it('should throw an error if the output is an array and at least one item has a non-n8n key', () => {
 			expect(() => {
 				validateRunForEachItemOutput({ json: {}, unknownKey: {} }, index);
-			}).toThrowError(ValidationError);
+			}).toThrow(ValidationError);
 		});
 
 		test.each([

@@ -4,13 +4,13 @@ import { ensureType } from '../ensure-type';
 
 describe('ensureType', () => {
 	it('throws error for null value', () => {
-		expect(() => ensureType('string', null, 'myParam')).toThrowError(
+		expect(() => ensureType('string', null, 'myParam')).toThrow(
 			new ExpressionError("Parameter 'myParam' must not be null"),
 		);
 	});
 
 	it('throws error for undefined value', () => {
-		expect(() => ensureType('string', undefined, 'myParam')).toThrowError(
+		expect(() => ensureType('string', undefined, 'myParam')).toThrow(
 			new ExpressionError("Parameter 'myParam' could not be 'undefined'"),
 		);
 	});
@@ -52,7 +52,7 @@ describe('ensureType', () => {
 
 	it('throws error for invalid conversion to number', () => {
 		const value = 'invalid';
-		expect(() => ensureType('number', value, 'myParam')).toThrowError(
+		expect(() => ensureType('number', value, 'myParam')).toThrow(
 			new ExpressionError("Parameter 'myParam' must be a number, but we got 'invalid'"),
 		);
 	});
@@ -66,14 +66,14 @@ describe('ensureType', () => {
 
 	it('throws error for invalid JSON string to object conversion', () => {
 		const value = 'invalid_json';
-		expect(() => ensureType('object', value, 'myParam')).toThrowError(
+		expect(() => ensureType('object', value, 'myParam')).toThrow(
 			new ExpressionError("Parameter 'myParam' could not be parsed"),
 		);
 	});
 
 	it('throws error for non-array value if toType is array', () => {
 		const value = { name: 'Alice' };
-		expect(() => ensureType('array', value, 'myParam')).toThrowError(
+		expect(() => ensureType('array', value, 'myParam')).toThrow(
 			new ExpressionError("Parameter 'myParam' must be an array, but we got object"),
 		);
 	});

@@ -21,21 +21,21 @@ describe('PrototypeSanitizer', () => {
 		it('should not allow access to __proto__', () => {
 			expect(() => {
 				tournament.execute('{{ ({}).__proto__.__proto__ }}', {});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 
 			expect(() => {
 				tournament.execute('{{ ({})["__proto__"]["__proto__"] }}', {});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 
 		it('should not allow access to prototype', () => {
 			expect(() => {
 				tournament.execute('{{ Number.prototype }}', { Number });
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 
 			expect(() => {
 				tournament.execute('{{ Number["prototype"] }}', { Number });
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 
 		it('should not allow access to constructor', () => {
@@ -44,14 +44,14 @@ describe('PrototypeSanitizer', () => {
 					__sanitize: sanitizer,
 					Number,
 				});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 
 			expect(() => {
 				tournament.execute('{{ Number["constructor"] }}', {
 					__sanitize: sanitizer,
 					Number,
 				});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 	});
 
@@ -61,7 +61,7 @@ describe('PrototypeSanitizer', () => {
 				tournament.execute('{{ ({})["__" + (() => "proto")() + "__"] }}', {
 					__sanitize: sanitizer,
 				});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 
 		it('should not allow access to prototype', () => {
@@ -70,7 +70,7 @@ describe('PrototypeSanitizer', () => {
 					__sanitize: sanitizer,
 					Number,
 				});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 
 		it('should not allow access to constructor', () => {
@@ -79,7 +79,7 @@ describe('PrototypeSanitizer', () => {
 					__sanitize: sanitizer,
 					Number,
 				});
-			}).toThrowError(errorRegex);
+			}).toThrow(errorRegex);
 		});
 	});
 });

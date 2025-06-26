@@ -45,7 +45,7 @@ describe('Jira -> GenericFunctions', () => {
 			);
 
 			expect(result).toEqual([{ id: 1000 }, { id: 1001 }, { id: 1002 }]);
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toBeCalledTimes(2);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'jiraSoftwareServerApi',
 				expect.not.objectContaining({

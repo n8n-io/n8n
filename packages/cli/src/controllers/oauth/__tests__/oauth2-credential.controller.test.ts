@@ -76,7 +76,7 @@ describe('OAuth2CredentialController', () => {
 	describe('getAuthUri', () => {
 		it('should throw a BadRequestError when credentialId is missing in the query', async () => {
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ query: { id: '' } });
-			await expect(controller.getAuthUri(req)).rejects.toThrowError(
+			await expect(controller.getAuthUri(req)).rejects.toThrow(
 				new BadRequestError('Required credential ID is missing'),
 			);
 		});
@@ -85,7 +85,7 @@ describe('OAuth2CredentialController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
-			await expect(controller.getAuthUri(req)).rejects.toThrowError(
+			await expect(controller.getAuthUri(req)).rejects.toThrow(
 				new NotFoundError('Credential not found'),
 			);
 		});

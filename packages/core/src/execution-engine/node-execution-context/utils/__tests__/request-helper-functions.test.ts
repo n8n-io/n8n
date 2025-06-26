@@ -163,7 +163,7 @@ describe('Request Helper Functions', () => {
 						resolveWithFullResponse: true,
 						followRedirect: false,
 					}),
-				).rejects.toThrowError(expect.objectContaining({ statusCode: 301 }));
+				).rejects.toThrow(expect.objectContaining({ statusCode: 301 }));
 			});
 		});
 	});

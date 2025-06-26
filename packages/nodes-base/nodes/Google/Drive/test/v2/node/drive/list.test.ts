@@ -34,7 +34,7 @@ describe('test GoogleDriveV2: drive list', () => {
 
 		await list.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/drive/v3/drives',
@@ -55,7 +55,7 @@ describe('test GoogleDriveV2: drive list', () => {
 
 		await list.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequestAllItems).toBeCalledTimes(1);
+		expect(transport.googleApiRequestAllItems).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequestAllItems).toHaveBeenCalledWith(
 			'GET',
 			'drives',

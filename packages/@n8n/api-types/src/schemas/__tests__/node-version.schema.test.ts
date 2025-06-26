@@ -22,7 +22,7 @@ describe('nodeVersionSchema', () => {
 			['1.2.3', 'more than two parts as string'],
 		])('should reject %s as an invalid version (%s)', (version) => {
 			const check = () => nodeVersionSchema.parse(version);
-			expect(check).toThrowError();
+			expect(check).toThrow();
 		});
 	});
 });

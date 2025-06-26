@@ -31,7 +31,7 @@ describe('extractFromAICalls', () => {
 		['$fromAI("a", "b", "string"'],
 		['$fromAI("a", "b", "string, "d")'],
 	])('should throw as expected for %s', (formula) => {
-		expect(() => extractFromAICalls(formula)).toThrowError();
+		expect(() => extractFromAICalls(formula)).toThrow();
 	});
 
 	it('supports multiple calls', () => {
@@ -100,9 +100,7 @@ describe('JSON Type Parsing via generateZodSchema', () => {
 		expect(schema.parse({ key: 'value' })).toEqual({ key: 'value' });
 
 		// Parsing an empty object should throw a validation error.
-		expect(() => schema.parse({})).toThrowError(
-			/Value must be a non-empty object or a non-empty array/,
-		);
+		expect(() => schema.parse({})).toThrow(/Value must be a non-empty object or a non-empty array/);
 	});
 
 	it('should correctly parse a JSON parameter with a valid default', () => {
@@ -125,9 +123,7 @@ describe('JSON Type Parsing via generateZodSchema', () => {
 		expect(schema._def.defaultValue()).toEqual({});
 
 		// Parsing an empty object should throw a validation error.
-		expect(() => schema.parse({})).toThrowError(
-			/Value must be a non-empty object or a non-empty array/,
-		);
+		expect(() => schema.parse({})).toThrow(/Value must be a non-empty object or a non-empty array/);
 	});
 
 	it('should use provided JSON value over the default value', () => {

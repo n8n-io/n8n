@@ -939,7 +939,7 @@ describe('DELETE /users/:id', () => {
 		// ASSERT
 		//
 
-		expect(deleteSpy).toBeCalledWith(
+		expect(deleteSpy).toHaveBeenCalledWith(
 			expect.arrayContaining([
 				`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
 				`credential-can-use-secrets:${ownedCredential.id}`,
@@ -1494,7 +1494,7 @@ describe('PATCH /users/:id/role', () => {
 			newRoleName: 'global:member',
 		});
 
-		expect(deleteSpy).toBeCalledTimes(2);
+		expect(deleteSpy).toHaveBeenCalledTimes(2);
 		deleteSpy.mockClear();
 
 		expect(response.statusCode).toBe(200);

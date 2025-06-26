@@ -333,7 +333,7 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
 		expect(resp.status).toBe(200);
 		expect(resp.body.data).toEqual({ updated: true });
-		expect(updateSpy).toBeCalled();
+		expect(updateSpy).toHaveBeenCalled();
 	});
 
 	test('can not update errored provider', async () => {
@@ -351,7 +351,7 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
 		expect(resp.status).toBe(400);
 		expect(resp.body.data).toEqual({ updated: false });
-		expect(updateSpy).not.toBeCalled();
+		expect(updateSpy).not.toHaveBeenCalled();
 	});
 
 	test('can not update provider without a valid license', async () => {
@@ -365,7 +365,7 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
 		expect(resp.status).toBe(400);
 		expect(resp.body.data).toEqual({ updated: false });
-		expect(updateSpy).not.toBeCalled();
+		expect(updateSpy).not.toHaveBeenCalled();
 	});
 });
 

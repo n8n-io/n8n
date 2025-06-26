@@ -56,7 +56,7 @@ describe('test GoogleDriveV2: file createFromText', () => {
 
 		await createFromText.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/upload/drive/v3/files',

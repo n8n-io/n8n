@@ -52,7 +52,7 @@ describe('getPartitionKey', () => {
 		const mockApiResponse = {};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
+		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrow(
 			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Partition key not found', {
 				description: 'Failed to determine the partition key for this collection',
 			}),
@@ -77,7 +77,7 @@ describe('getPartitionKey', () => {
 
 		azureCosmosDbApiRequest.mockRejectedValue(mockError);
 
-		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
+		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrow(
 			new NodeApiError(
 				mockExecuteSingleFunctions.getNode(),
 				{},
@@ -112,7 +112,7 @@ describe('validatePartitionKey', () => {
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(
 				mockExecuteSingleFunctions.getNode(),
 				"Partition key not found in 'Item Contents'",
@@ -137,7 +137,7 @@ describe('validatePartitionKey', () => {
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(
 				mockExecuteSingleFunctions.getNode(),
 				'Partition key is missing or empty',
@@ -161,7 +161,7 @@ describe('validatePartitionKey', () => {
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(
 				mockExecuteSingleFunctions.getNode(),
 				'Partition key is missing or empty',
@@ -185,7 +185,7 @@ describe('validatePartitionKey', () => {
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(
 				mockExecuteSingleFunctions.getNode(),
 				'Invalid JSON format in "Item Contents"',
@@ -231,7 +231,7 @@ describe('validateQueryParameters', () => {
 
 		await expect(
 			validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(
 				mockExecuteSingleFunctions.getNode(),
 				'Empty parameter value provided',
@@ -305,14 +305,14 @@ describe('processJsonInput', () => {
 
 	test('should throw OperationalError for invalid JSON string', () => {
 		const invalidJson = '{key: value}';
-		expect(() => processJsonInput(invalidJson)).toThrowError(
+		expect(() => processJsonInput(invalidJson)).toThrow(
 			new OperationalError('Input must contain a valid JSON', { level: 'warning' }),
 		);
 	});
 
 	test('should throw OperationalError for invalid non-string and non-object input', () => {
 		const invalidInput = 123;
-		expect(() => processJsonInput(invalidInput, 'testInput')).toThrowError(
+		expect(() => processJsonInput(invalidInput, 'testInput')).toThrow(
 			new OperationalError("Input 'testInput' must contain a valid JSON", { level: 'warning' }),
 		);
 	});
@@ -340,7 +340,7 @@ describe('validateCustomProperties', () => {
 
 		await expect(
 			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
 				description: 'Ensure the "Item Contents" field contains at least one valid property.',
 			}),
@@ -351,7 +351,7 @@ describe('validateCustomProperties', () => {
 
 		await expect(
 			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
+		).rejects.toThrow(
 			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
 				description: 'Ensure the "Item Contents" field contains at least one valid property.',
 			}),

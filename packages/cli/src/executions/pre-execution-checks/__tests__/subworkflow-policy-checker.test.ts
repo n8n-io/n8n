@@ -52,7 +52,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+			await expect(check).rejects.toThrow(SubworkflowPolicyDenialError);
 
 			globalConfig.workflows.callerPolicyDefaultOption = 'workflowsFromSameOwner';
 		});
@@ -95,7 +95,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+			await expect(check).rejects.toThrow(SubworkflowPolicyDenialError);
 		});
 	});
 
@@ -131,7 +131,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const check = checker.check(subworkflow, uuid());
 
-			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+			await expect(check).rejects.toThrow(SubworkflowPolicyDenialError);
 		});
 
 		it('should allow if both workflows are owned by the same project', async () => {

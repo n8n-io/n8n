@@ -112,7 +112,7 @@ describe('copyByFileId()', () => {
 		expect(fsp.copyFile).toHaveBeenCalledWith(sourcePath, targetPath);
 
 		// Make sure metadata file was written
-		expect(fsp.writeFile).toBeCalledTimes(1);
+		expect(fsp.writeFile).toHaveBeenCalledTimes(1);
 	});
 });
 

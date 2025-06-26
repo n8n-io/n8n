@@ -28,7 +28,7 @@ describe('test GoogleDriveV2: drive deleteDrive', () => {
 
 		await deleteDrive.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'DELETE',
 			'/drive/v3/drives/driveIDxxxxxx',

@@ -720,7 +720,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 
 		expect(() => {
 			insightsService.getMaxAgeInDaysAndGranularity('invalidKey' as InsightsDateRange['key']);
-		}).toThrowError('The selected date range is not available');
+		}).toThrow('The selected date range is not available');
 	});
 
 	test('throws an error if the date range is not licensed', () => {
@@ -729,7 +729,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 
 		expect(() => {
 			insightsService.getMaxAgeInDaysAndGranularity('year');
-		}).toThrowError('The selected date range exceeds the maximum history allowed by your license.');
+		}).toThrow('The selected date range exceeds the maximum history allowed by your license.');
 	});
 
 	test('returns correct maxAgeInDays and granularity for a valid date range with hourly data disabled', () => {

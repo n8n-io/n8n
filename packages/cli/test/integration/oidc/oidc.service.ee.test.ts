@@ -113,7 +113,7 @@ describe('OIDC service', () => {
 				loginEnabled: true,
 			};
 
-			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(BadRequestError);
+			await expect(oidcService.updateConfig(newConfig)).rejects.toThrow(BadRequestError);
 		});
 
 		it('should keep current secret if redact value is given in update', async () => {
@@ -279,7 +279,7 @@ describe('OIDC service', () => {
 				email: 'user1@example.com',
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
+			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrow(BadRequestError);
 		});
 
 		it('should throw `BadRequestError` if OIDC Idp does not have email verified', async () => {
@@ -313,7 +313,7 @@ describe('OIDC service', () => {
 				email: 'user3@example.com',
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
+			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrow(BadRequestError);
 		});
 
 		it('should throw `BadRequestError` if OIDC Idp does not provide an email', async () => {
@@ -346,7 +346,7 @@ describe('OIDC service', () => {
 				email_verified: true,
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
+			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrow(BadRequestError);
 		});
 
 		it('should throw `ForbiddenError` if OIDC token does not provide claims', async () => {
@@ -373,7 +373,7 @@ describe('OIDC service', () => {
 				email_verified: true,
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(ForbiddenError);
+			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrow(ForbiddenError);
 		});
 	});
 });

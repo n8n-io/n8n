@@ -41,7 +41,7 @@ describe('Test views', () => {
 
 		await controller.acsPost(req, res, { RelayState });
 
-		expect(res.render).toBeCalledWith('saml-connection-test-success', attributes);
+		expect(res.render).toHaveBeenCalledWith('saml-connection-test-success', attributes);
 	});
 
 	test('Should render failure with template', async () => {
@@ -56,7 +56,10 @@ describe('Test views', () => {
 
 		await controller.acsPost(req, res, { RelayState });
 
-		expect(res.render).toBeCalledWith('saml-connection-test-failed', { message: '', attributes });
+		expect(res.render).toHaveBeenCalledWith('saml-connection-test-failed', {
+			message: '',
+			attributes,
+		});
 	});
 
 	test('Should render error with template', async () => {
@@ -67,6 +70,8 @@ describe('Test views', () => {
 
 		await controller.acsPost(req, res, { RelayState });
 
-		expect(res.render).toBeCalledWith('saml-connection-test-failed', { message: 'Test Error' });
+		expect(res.render).toHaveBeenCalledWith('saml-connection-test-failed', {
+			message: 'Test Error',
+		});
 	});
 });

@@ -144,13 +144,13 @@ describe('reducePayloadSizeOrThrow', () => {
 		const payload = mockPayload();
 		const error = new Error('Limit is 100 tokens, but 200 were provided');
 
-		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrowError(error);
+		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrow(error);
 	});
 
 	it('throws error if message format is invalid', () => {
 		const payload = mockPayload();
 		const error = new Error('Invalid token message format');
 
-		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrowError(error);
+		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrow(error);
 	});
 });

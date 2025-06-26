@@ -44,10 +44,10 @@ describe('ExecutionData Node', () => {
 		executeFns.getNodeParameter.mockReturnValueOnce({ values: [{ key: 'foo', value: 'bar' }] });
 		const result = await new ExecutionData().execute.call(executeFns);
 
-		expect(setAllMock).toBeCalledTimes(3);
-		expect(setAllMock).toBeCalledWith({ foo: '' });
-		expect(setAllMock).toBeCalledWith({ foo: '' });
-		expect(setAllMock).toBeCalledWith({ foo: 'bar' });
+		expect(setAllMock).toHaveBeenCalledTimes(3);
+		expect(setAllMock).toHaveBeenCalledWith({ foo: '' });
+		expect(setAllMock).toHaveBeenCalledWith({ foo: '' });
+		expect(setAllMock).toHaveBeenCalledWith({ foo: 'bar' });
 		expect(result).toEqual([mockInputData]);
 	});
 });

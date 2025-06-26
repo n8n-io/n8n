@@ -129,7 +129,7 @@ describe('formCompletionUtils', () => {
 
 			await expect(
 				renderFormCompletion(mockWebhookFunctions, mockResponse, trigger),
-			).rejects.toThrowError('No binary data with field inputData found.');
+			).rejects.toThrow('No binary data with field inputData found.');
 		});
 
 		it('should render if respond with binary is set and binary mode is filesystem', async () => {

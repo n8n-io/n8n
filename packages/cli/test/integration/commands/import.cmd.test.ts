@@ -170,7 +170,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--userId=${member.id}`,
 		]),
-	).rejects.toThrowError(
+	).rejects.toThrow(
 		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
@@ -293,7 +293,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 			'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 			`--projectId=${memberProject.id}`,
 		]),
-	).rejects.toThrowError(
+	).rejects.toThrow(
 		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
 	);
 
@@ -324,7 +324,5 @@ test('`import:workflow --projectId ... --userId ...` fails explaining that only 
 			`--userId=${nanoid()}`,
 			`--projectId=${nanoid()}`,
 		]),
-	).rejects.toThrowError(
-		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
-	);
+	).rejects.toThrow('You cannot use `--userId` and `--projectId` together. Use one or the other.');
 });

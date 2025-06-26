@@ -45,7 +45,7 @@ describe('useExecutionDebugging()', () => {
 			getParentNodes: vi.fn().mockReturnValue([]),
 		} as unknown as Workflow);
 
-		await expect(executionDebugging.applyExecutionData('1')).resolves.not.toThrowError();
+		await expect(executionDebugging.applyExecutionData('1')).resolves.not.toThrow();
 	});
 
 	it('should show missing nodes warning toast', async () => {

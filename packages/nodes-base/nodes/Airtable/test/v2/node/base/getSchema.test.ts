@@ -48,7 +48,7 @@ describe('Test AirtableV2, base => getSchema', () => {
 			items,
 		);
 
-		expect(transport.apiRequest).toBeCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase1/tables');
 		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase2/tables');
 	});

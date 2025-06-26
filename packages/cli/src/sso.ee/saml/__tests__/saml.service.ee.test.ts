@@ -178,7 +178,7 @@ describe('SamlService', () => {
 			// ACT & ASSERT
 			await expect(
 				samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				'SAML Authentication failed. Invalid SAML response (missing attributes: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn).',
 			);
 		});
@@ -235,7 +235,7 @@ describe('SamlService', () => {
 			jest.spyOn(samlService, 'reset');
 
 			// ACT & ASSERT
-			await expect(samlService.init()).rejects.toThrowError(TypeError);
+			await expect(samlService.init()).rejects.toThrow(TypeError);
 			expect(samlService.reset).toHaveBeenCalledTimes(0);
 		});
 
@@ -257,7 +257,7 @@ describe('SamlService', () => {
 			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(InvalidSamlSetting);
 
 			// ACT && ASSERT
-			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrowError(
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrow(
 				InvalidSamlMetadataError,
 			);
 		});
@@ -269,7 +269,7 @@ describe('SamlService', () => {
 				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
 
 			// ACT && ASSERT
-			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrowError(
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrow(
 				InvalidSamlMetadataError,
 			);
 		});
@@ -302,7 +302,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'NOT A VALID URL',
 				}),
-			).rejects.toThrowError(BadRequestError);
+			).rejects.toThrow(BadRequestError);
 		});
 
 		test('does not persist an invalid metadata url', async () => {
@@ -315,7 +315,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'NOT A VALID URL',
 				}),
-			).rejects.toThrowError(BadRequestError);
+			).rejects.toThrow(BadRequestError);
 
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
@@ -326,7 +326,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
 				}),
-			).rejects.toThrowError(BadRequestError);
+			).rejects.toThrow(BadRequestError);
 		});
 
 		test('does not persist a metadata url, that is not returning correct metadata', async () => {
@@ -340,7 +340,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
 				}),
-			).rejects.toThrowError(BadRequestError);
+			).rejects.toThrow(BadRequestError);
 
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
@@ -350,7 +350,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadata: SamlMetadataWithoutRedirectBinding,
 				}),
-			).rejects.toThrowError(InvalidSamlMetadataError);
+			).rejects.toThrow(InvalidSamlMetadataError);
 		});
 
 		test('does throw `InvalidSamlMetadataError` when a metadata url is not a valid url', async () => {
@@ -358,7 +358,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadata: 'NOT A VALID XML',
 				}),
-			).rejects.toThrowError(InvalidSamlMetadataError);
+			).rejects.toThrow(InvalidSamlMetadataError);
 		});
 
 		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
@@ -367,7 +367,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
 				}),
-			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+			).rejects.toThrow(InvalidSamlMetadataUrlError);
 		});
 
 		test('does not persist a metadata url, that is not returning success on http call', async () => {
@@ -381,7 +381,7 @@ describe('SamlService', () => {
 				samlService.setSamlPreferences({
 					metadataUrl: 'https://www.some.url',
 				}),
-			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+			).rejects.toThrow(InvalidSamlMetadataUrlError);
 
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
@@ -391,9 +391,7 @@ describe('SamlService', () => {
 				metadata: 'not valid data',
 				loginEnabled: true,
 			});
-			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
-				InvalidSamlMetadataError,
-			);
+			await expect(samlService.setSamlPreferences({})).rejects.toThrow(InvalidSamlMetadataError);
 		});
 
 		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and the metadata is an empty string', async () => {
@@ -401,9 +399,7 @@ describe('SamlService', () => {
 				metadata: '',
 				loginEnabled: true,
 			});
-			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
-				InvalidSamlMetadataError,
-			);
+			await expect(samlService.setSamlPreferences({})).rejects.toThrow(InvalidSamlMetadataError);
 		});
 	});
 
@@ -412,9 +408,7 @@ describe('SamlService', () => {
 			await samlService.loadPreferencesWithoutValidation({
 				metadata: SamlMetadataWithoutRedirectBinding,
 			});
-			expect(() => samlService.getIdentityProviderInstance(true)).toThrowError(
-				InvalidSamlMetadataError,
-			);
+			expect(() => samlService.getIdentityProviderInstance(true)).toThrow(InvalidSamlMetadataError);
 		});
 	});
 

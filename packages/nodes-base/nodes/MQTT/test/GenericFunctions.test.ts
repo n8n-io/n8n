@@ -25,7 +25,7 @@ describe('createClient', () => {
 		});
 		const client = await createClient(credentials);
 
-		expect(mockConnect).toBeCalledTimes(1);
+		expect(mockConnect).toHaveBeenCalledTimes(1);
 		expect(client).toBeDefined();
 		expect(client).toBeInstanceOf(MqttClient);
 		expect(client.options).toMatchObject({
@@ -60,7 +60,7 @@ describe('createClient', () => {
 		const clientPromise = createClient(credentials);
 
 		await expect(clientPromise).rejects.toThrow(ApplicationError);
-		expect(mockConnect).toBeCalledTimes(1);
-		expect(mockEnd).toBeCalledTimes(1);
+		expect(mockConnect).toHaveBeenCalledTimes(1);
+		expect(mockEnd).toHaveBeenCalledTimes(1);
 	});
 });

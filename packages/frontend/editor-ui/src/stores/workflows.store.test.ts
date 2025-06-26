@@ -595,7 +595,7 @@ describe('useWorkflowsStore', () => {
 	describe('updateNodeExecutionData', () => {
 		const { successEvent, errorEvent, executionResponse } = generateMockExecutionEvents();
 		it('should throw error if not initialized', () => {
-			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
+			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrow();
 		});
 
 		it('should add node success run data', () => {
@@ -909,7 +909,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should throw error if out of bounds', () => {
 			workflowsStore.workflow.nodes = [];
-			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
+			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrow();
 		});
 	});
 

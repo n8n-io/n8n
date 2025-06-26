@@ -32,7 +32,7 @@ describe('test GoogleDriveV2: file download', () => {
 
 		await download.execute.call(fakeExecuteFunction, 0, { json: {} });
 
-		expect(transport.googleApiRequest).toBeCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',

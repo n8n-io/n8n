@@ -71,7 +71,7 @@ describe('Expression', () => {
 			expect(evaluate('={{Reflect}}')).toEqual({});
 			expect(evaluate('={{Proxy}}')).toEqual({});
 
-			expect(() => evaluate('={{constructor}}')).toThrowError(
+			expect(() => evaluate('={{constructor}}')).toThrow(
 				new ExpressionError('Cannot access "constructor" due to security concerns'),
 			);
 
@@ -164,7 +164,7 @@ describe('Expression', () => {
 		it('should not able to do arbitrary code execution', () => {
 			const testFn = jest.fn();
 			Object.assign(global, { testFn });
-			expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
+			expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrow(
 				new ExpressionError('Cannot access "constructor" due to security concerns'),
 			);
 			expect(testFn).not.toHaveBeenCalled();
@@ -192,7 +192,7 @@ describe('Expression', () => {
 					const input = test.input.map((d) => ({ json: d })) as any;
 
 					if ('error' in test) {
-						expect(() => evaluate(t.expression, input)).toThrowError(test.error);
+						expect(() => evaluate(t.expression, input)).toThrow(test.error);
 					} else {
 						expect(evaluate(t.expression, input)).toStrictEqual(test.output);
 					}

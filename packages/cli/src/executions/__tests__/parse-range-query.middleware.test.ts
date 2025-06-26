@@ -31,8 +31,8 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(nextFn).toBeCalledTimes(0);
-			expect(statusSpy).toBeCalledWith(400);
+			expect(nextFn).toHaveBeenCalledTimes(0);
+			expect(statusSpy).toHaveBeenCalledWith(400);
 		});
 
 		test('should fail on invalid schema', () => {
@@ -49,8 +49,8 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(nextFn).toBeCalledTimes(0);
-			expect(statusSpy).toBeCalledWith(400);
+			expect(nextFn).toHaveBeenCalledTimes(0);
+			expect(statusSpy).toHaveBeenCalledWith(400);
 		});
 	});
 
@@ -69,7 +69,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.status).toEqual(['waiting']);
 			expect(req.rangeQuery.mode).toEqual('manual');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse date-related fields', () => {
@@ -88,7 +88,7 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(req.rangeQuery.startedBefore).toBe('2021-01-01');
 			expect(req.rangeQuery.startedAfter).toBe('2020-01-01');
 			expect(req.rangeQuery.waitTill).toBe(true);
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse ID-related fields', () => {
@@ -105,7 +105,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.id).toBe('123');
 			expect(req.rangeQuery.workflowId).toBe('456');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse `projectId` field', () => {
@@ -121,7 +121,7 @@ describe('`parseRangeQuery` middleware', () => {
 			parseRangeQuery(req, res, nextFn);
 
 			expect(req.rangeQuery.projectId).toBe('123');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should delete invalid fields', () => {
@@ -138,7 +138,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.id).toBe('123');
 			expect('test' in req.rangeQuery).toBe(false);
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -157,7 +157,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.range.firstId).toBe('111');
 			expect(req.rangeQuery.range.lastId).toBe('999');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse limit', () => {
@@ -173,7 +173,7 @@ describe('`parseRangeQuery` middleware', () => {
 			parseRangeQuery(req, res, nextFn);
 
 			expect(req.rangeQuery.range.limit).toEqual(50);
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should default limit to 20 if absent', () => {
@@ -189,7 +189,7 @@ describe('`parseRangeQuery` middleware', () => {
 			parseRangeQuery(req, res, nextFn);
 
 			expect(req.rangeQuery.range.limit).toEqual(20);
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 	});
 });

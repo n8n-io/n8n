@@ -176,7 +176,7 @@ describe('recreateNodeExecutionStack', () => {
 		const pinData = {};
 
 		// ACT & ASSERT
-		expect(() => recreateNodeExecutionStack(graph, startNodes, runData, pinData)).toThrowError(
+		expect(() => recreateNodeExecutionStack(graph, startNodes, runData, pinData)).toThrow(
 			AssertionError,
 		);
 	});

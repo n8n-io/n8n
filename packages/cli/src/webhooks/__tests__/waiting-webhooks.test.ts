@@ -33,7 +33,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Assert
 		 */
-		await expect(promise).rejects.toThrowError(NotFoundError);
+		await expect(promise).rejects.toThrow(NotFoundError);
 	});
 
 	it('should throw ConflictError if the execution to resume is already running', async () => {
@@ -55,7 +55,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Assert
 		 */
-		await expect(promise).rejects.toThrowError(ConflictError);
+		await expect(promise).rejects.toThrow(ConflictError);
 	});
 
 	it('should throw ConflictError if the execution to resume already finished', async () => {
@@ -77,6 +77,6 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Assert
 		 */
-		await expect(promise).rejects.toThrowError(ConflictError);
+		await expect(promise).rejects.toThrow(ConflictError);
 	});
 });

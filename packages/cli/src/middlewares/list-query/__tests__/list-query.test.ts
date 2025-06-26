@@ -34,7 +34,7 @@ describe('List query middleware', () => {
 			await filterListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toBeUndefined();
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse valid filter', async () => {
@@ -43,7 +43,7 @@ describe('List query middleware', () => {
 			await filterListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ filter: { name: 'My Workflow' } });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should ignore invalid filter', async () => {
@@ -52,7 +52,7 @@ describe('List query middleware', () => {
 			await filterListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ filter: { name: 'My Workflow' } });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should throw on invalid JSON', async () => {
@@ -79,7 +79,7 @@ describe('List query middleware', () => {
 			await filterListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toBeUndefined();
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse valid select', async () => {
@@ -88,7 +88,7 @@ describe('List query middleware', () => {
 			await selectListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ select: { name: true, id: true } });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('ignore invalid select', async () => {
@@ -97,7 +97,7 @@ describe('List query middleware', () => {
 			await selectListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ select: { name: true } });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('throw on invalid JSON', async () => {
@@ -124,7 +124,7 @@ describe('List query middleware', () => {
 			await filterListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toBeUndefined();
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should parse valid pagination', async () => {
@@ -132,7 +132,7 @@ describe('List query middleware', () => {
 			await paginationListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ skip: 1, take: 2 });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should throw on skip without take', async () => {
@@ -148,7 +148,7 @@ describe('List query middleware', () => {
 			await paginationListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 2 });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should cap take at 50', async () => {
@@ -157,7 +157,7 @@ describe('List query middleware', () => {
 			await paginationListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 50 });
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test('should throw on non-numeric-integer take', async () => {
@@ -232,7 +232,7 @@ describe('List query middleware', () => {
 					sortBy: value,
 				}),
 			);
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 
 		test.each(invalidCases)('should fail validation when $name', async ({ value }) => {
@@ -251,7 +251,7 @@ describe('List query middleware', () => {
 			await sortByQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toBeUndefined();
-			expect(nextFn).toBeCalledTimes(1);
+			expect(nextFn).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -267,7 +267,7 @@ describe('List query middleware', () => {
 				filter: { name: 'My Workflow' },
 			});
 
-			expect(nextFn).toBeCalledTimes(2);
+			expect(nextFn).toHaveBeenCalledTimes(2);
 		});
 
 		test('should combine filter with pagination options', async () => {
@@ -282,7 +282,7 @@ describe('List query middleware', () => {
 				take: 2,
 			});
 
-			expect(nextFn).toBeCalledTimes(2);
+			expect(nextFn).toHaveBeenCalledTimes(2);
 		});
 
 		test('should combine select with pagination options', async () => {
@@ -297,7 +297,7 @@ describe('List query middleware', () => {
 				take: 2,
 			});
 
-			expect(nextFn).toBeCalledTimes(2);
+			expect(nextFn).toHaveBeenCalledTimes(2);
 		});
 	});
 });

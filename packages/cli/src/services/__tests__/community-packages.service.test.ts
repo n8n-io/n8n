@@ -96,13 +96,11 @@ describe('CommunityPackagesService', () => {
 
 	describe('parseNpmPackageName()', () => {
 		test('should fail with empty package name', () => {
-			expect(() => communityPackagesService.parseNpmPackageName('')).toThrowError();
+			expect(() => communityPackagesService.parseNpmPackageName('')).toThrow();
 		});
 
 		test('should fail with invalid package prefix name', () => {
-			expect(() =>
-				communityPackagesService.parseNpmPackageName('INVALID_PREFIX@123'),
-			).toThrowError();
+			expect(() => communityPackagesService.parseNpmPackageName('INVALID_PREFIX@123')).toThrow();
 		});
 
 		test('should parse valid package name', () => {
@@ -182,7 +180,7 @@ describe('CommunityPackagesService', () => {
 
 			const call = async () => await communityPackagesService.executeNpmCommand('ls');
 
-			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
+			await expect(call).rejects.toThrow(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
 			expect(exec).toHaveBeenCalled();
 		});

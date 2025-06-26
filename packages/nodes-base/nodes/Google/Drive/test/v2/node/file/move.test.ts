@@ -43,7 +43,7 @@ describe('test GoogleDriveV2: file move', () => {
 
 		await move.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',

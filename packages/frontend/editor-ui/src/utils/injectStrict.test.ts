@@ -30,6 +30,6 @@ describe('injectStrict', () => {
 	it('should throw an error when the injected value does not exist and no fallback is provided', () => {
 		const key = Symbol('testKey') as InjectionKey<string>;
 		vi.mocked(inject).mockReturnValueOnce(undefined);
-		expect(() => injectStrict(key)).toThrowError(`Could not resolve ${key.description}`);
+		expect(() => injectStrict(key)).toThrow(`Could not resolve ${key.description}`);
 	});
 });

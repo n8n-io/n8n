@@ -75,7 +75,7 @@ describe('ApiKeysController', () => {
 
 			// Act and Assert
 
-			await expect(controller.createApiKey(req, mock(), mock())).rejects.toThrowError();
+			await expect(controller.createApiKey(req, mock(), mock())).rejects.toThrow();
 		});
 	});
 
@@ -89,7 +89,7 @@ describe('ApiKeysController', () => {
 
 			// Act and Assert
 
-			await expect(controller.updateApiKey(req, mock(), mock(), mock())).rejects.toThrowError();
+			await expect(controller.updateApiKey(req, mock(), mock(), mock())).rejects.toThrow();
 		});
 	});
 

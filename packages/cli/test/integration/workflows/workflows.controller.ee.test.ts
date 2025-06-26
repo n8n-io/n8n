@@ -1393,7 +1393,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).toBeCalled();
+			expect(activeWorkflowManager.add).toHaveBeenCalled();
 
 			const {
 				data: { id, versionId, active },
@@ -1415,8 +1415,8 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).not.toBeCalled();
-			expect(activeWorkflowManager.remove).toBeCalled();
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.remove).toHaveBeenCalled();
 
 			const {
 				data: { id, versionId, active },

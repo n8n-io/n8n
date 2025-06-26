@@ -847,7 +847,7 @@ describe('SourceControlService', () => {
 						fileNames: allChanges,
 						commitMessage: 'Test',
 					}),
-				).rejects.toThrowError(BadRequestError);
+				).rejects.toThrow(BadRequestError);
 			});
 		});
 
@@ -874,8 +874,10 @@ describe('SourceControlService', () => {
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
 
-				expect(gitService.push).toBeCalled();
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(gitService.push).toHaveBeenCalled();
+				expect(fsWriteFile).toHaveBeenCalledTimes(
+					workflowFiles.length + credentialFiles.length + 2,
+				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -917,7 +919,7 @@ describe('SourceControlService', () => {
 					).length + 2; // folders + tags
 
 				expect(numberFilesToWrite).toBe(filesToWrite);
-				expect(fsWriteFile).toBeCalledTimes(filesToWrite);
+				expect(fsWriteFile).toHaveBeenCalledTimes(filesToWrite);
 
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
@@ -962,7 +964,9 @@ describe('SourceControlService', () => {
 				expect(workflowFiles).toHaveLength(2);
 				expect(credentialFiles).toHaveLength(1);
 
-				expect(fsWriteFile).toBeCalledTimes(workflowFiles.length + credentialFiles.length + 2); // folders + tags
+				expect(fsWriteFile).toHaveBeenCalledTimes(
+					workflowFiles.length + credentialFiles.length + 2,
+				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
@@ -991,7 +995,7 @@ describe('SourceControlService', () => {
 						commitMessage: 'Test',
 						force: true,
 					}),
-				).rejects.toThrowError(ForbiddenError);
+				).rejects.toThrow(ForbiddenError);
 			});
 
 			it('should throw ForbiddenError when trying to push credentials out of scope', async () => {
@@ -1013,7 +1017,7 @@ describe('SourceControlService', () => {
 						commitMessage: 'Test',
 						force: true,
 					}),
-				).rejects.toThrowError(ForbiddenError);
+				).rejects.toThrow(ForbiddenError);
 			});
 
 			it('should update tag mappings in scope and keep out of scope ones', async () => {
@@ -1114,7 +1118,7 @@ describe('SourceControlService', () => {
 						fileNames: allChanges,
 						commitMessage: 'Test',
 					}),
-				).rejects.toThrowError(ForbiddenError);
+				).rejects.toThrow(ForbiddenError);
 			});
 
 			it('should deny any changes', async () => {
@@ -1129,7 +1133,7 @@ describe('SourceControlService', () => {
 						fileNames: [allChanges[0]],
 						commitMessage: 'Test',
 					}),
-				).rejects.toThrowError(ForbiddenError);
+				).rejects.toThrow(ForbiddenError);
 			});
 		});
 	});

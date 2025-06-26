@@ -31,7 +31,7 @@ describe('test GoogleDriveV2: drive get', () => {
 
 		await get.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/drive/v3/drives/driveIDxxxxxx',

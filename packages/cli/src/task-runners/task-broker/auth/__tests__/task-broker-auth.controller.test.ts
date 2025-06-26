@@ -46,14 +46,14 @@ describe('TaskBrokerAuthController', () => {
 			const req = createMockGrantTokenReq();
 
 			// Act
-			await expect(authController.createGrantToken(req)).rejects.toThrowError(BadRequestError);
+			await expect(authController.createGrantToken(req)).rejects.toThrow(BadRequestError);
 		});
 
 		it('should throw ForbiddenError when auth token is invalid', async () => {
 			const req = createMockGrantTokenReq('invalid');
 
 			// Act
-			await expect(authController.createGrantToken(req)).rejects.toThrowError(ForbiddenError);
+			await expect(authController.createGrantToken(req)).rejects.toThrow(ForbiddenError);
 		});
 
 		it('should return rant token when auth token is valid', async () => {

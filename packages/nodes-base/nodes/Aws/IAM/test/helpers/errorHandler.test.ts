@@ -52,7 +52,7 @@ describe('handleError', () => {
 			Error: { Code: 'NoSuchEntity', Message: 'User "nonExistentUser" does not exist' },
 		} as JsonObject;
 
-		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrowError(
+		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'User "nonExistentUser" does not exist',
 				description: ERROR_DESCRIPTIONS.NoSuchEntity.User,

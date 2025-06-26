@@ -143,7 +143,7 @@ describe('UserSettingsController', () => {
 			req.user.id = '1';
 			req.body = payload;
 
-			await expect(controller.updateNpsSurvey(req)).rejects.toThrowError();
+			await expect(controller.updateNpsSurvey(req)).rejects.toThrow();
 		});
 	});
 });

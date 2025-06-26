@@ -88,11 +88,11 @@ describe('External Secrets Manager', () => {
 
 			const updateSpy = jest.spyOn(manager.getProvider('dummy')!, 'update');
 
-			expect(updateSpy).toBeCalledTimes(0);
+			expect(updateSpy).toHaveBeenCalledTimes(0);
 
 			jest.runOnlyPendingTimers();
 
-			expect(updateSpy).toBeCalledTimes(1);
+			expect(updateSpy).toHaveBeenCalledTimes(1);
 		});
 
 		test('should not call provider update functions if the not licensed', async () => {
@@ -102,11 +102,11 @@ describe('External Secrets Manager', () => {
 
 			const updateSpy = jest.spyOn(manager.getProvider('dummy')!, 'update');
 
-			expect(updateSpy).toBeCalledTimes(0);
+			expect(updateSpy).toHaveBeenCalledTimes(0);
 
 			jest.runOnlyPendingTimers();
 
-			expect(updateSpy).toBeCalledTimes(0);
+			expect(updateSpy).toHaveBeenCalledTimes(0);
 		});
 
 		test('should not call provider update functions if the provider has an error', async () => {
@@ -118,11 +118,11 @@ describe('External Secrets Manager', () => {
 
 			const updateSpy = jest.spyOn(manager.getProvider('dummy')!, 'update');
 
-			expect(updateSpy).toBeCalledTimes(0);
+			expect(updateSpy).toHaveBeenCalledTimes(0);
 
 			jest.runOnlyPendingTimers();
 
-			expect(updateSpy).toBeCalledTimes(0);
+			expect(updateSpy).toHaveBeenCalledTimes(0);
 		});
 
 		test('should reinitialize a provider when save provider settings', async () => {
@@ -134,7 +134,7 @@ describe('External Secrets Manager', () => {
 				test: 'value',
 			});
 
-			expect(dummyInitSpy).toBeCalledTimes(1);
+			expect(dummyInitSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 

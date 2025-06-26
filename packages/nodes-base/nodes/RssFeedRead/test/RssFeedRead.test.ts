@@ -24,7 +24,7 @@ describe('RssFeedReadTrigger', () => {
 		it('should throw an error if the feed URL is empty', async () => {
 			pollFunctions.getNodeParameter.mockReturnValue('');
 
-			await expect(node.poll.call(pollFunctions)).rejects.toThrowError();
+			await expect(node.poll.call(pollFunctions)).rejects.toThrow();
 
 			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
 			expect(Parser.prototype.parseURL).not.toHaveBeenCalled();

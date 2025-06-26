@@ -51,6 +51,6 @@ describe('@OnPubSubEvent', () => {
 			}
 
 			new TestService();
-		}).toThrowError(NonMethodError);
+		}).toThrow(NonMethodError);
 	});
 });

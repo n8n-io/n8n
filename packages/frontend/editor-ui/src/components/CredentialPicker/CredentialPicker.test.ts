@@ -46,7 +46,7 @@ describe('CredentialPicker', () => {
 					selectedCredentialId: null,
 				},
 			}),
-		).not.toThrowError();
+		).not.toThrow();
 	});
 
 	it('should only render personal credentials of the specified type', async () => {

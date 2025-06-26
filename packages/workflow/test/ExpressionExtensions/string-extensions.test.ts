@@ -287,7 +287,7 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "1713976144063".toDateTime("ms") }}')).toBeInstanceOf(DateTime);
 			expect(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}')).toBeInstanceOf(DateTime);
 
-			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrowError(
+			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(
 				new ExpressionExtensionError('cannot convert to Luxon DateTime'),
 			);
 		});
@@ -307,10 +307,10 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.parseJson should throw on invalid JSON', () => {
-			expect(() => evaluate("={{ \"{'test1':1,'test2':'2'}\".parseJson() }}")).toThrowError(
+			expect(() => evaluate("={{ \"{'test1':1,'test2':'2'}\".parseJson() }}")).toThrow(
 				"Parsing failed. Check you're using double quotes",
 			);
-			expect(() => evaluate('={{ "No JSON here".parseJson() }}')).toThrowError('Parsing failed');
+			expect(() => evaluate('={{ "No JSON here".parseJson() }}')).toThrow('Parsing failed');
 		});
 
 		test('.toJsonString should work on a string', () => {

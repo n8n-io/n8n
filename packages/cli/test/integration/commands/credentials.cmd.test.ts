@@ -129,7 +129,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 			'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 			`--userId=${member.id}`,
 		]),
-	).rejects.toThrowError(
+	).rejects.toThrow(
 		`The credential with ID "123" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
@@ -265,7 +265,7 @@ test('`import:credential --projectId ...` should fail if the credential already 
 			'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 			`--projectId=${memberProject.id}`,
 		]),
-	).rejects.toThrowError(
+	).rejects.toThrow(
 		`The credential with ID "123" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}".`,
 	);
 
@@ -302,7 +302,5 @@ test('`import:credential --projectId ... --userId ...` fails explaining that onl
 			`--projectId=${nanoid()}`,
 			`--userId=${nanoid()}`,
 		]),
-	).rejects.toThrowError(
-		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
-	);
+	).rejects.toThrow('You cannot use `--userId` and `--projectId` together. Use one or the other.');
 });

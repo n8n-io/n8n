@@ -47,13 +47,13 @@ describe('InstanceSettings', () => {
 
 		it('should throw error if settings file is not valid JSON', () => {
 			mockFs.readFileSync.mockReturnValue('{"encryptionKey":"test_key"');
-			expect(() => createInstanceSettings()).toThrowError();
+			expect(() => createInstanceSettings()).toThrow();
 		});
 
 		it('should throw if the env and file keys do not match', () => {
 			mockFs.readFileSync.mockReturnValue(JSON.stringify({ encryptionKey: 'key_1' }));
 			process.env.N8N_ENCRYPTION_KEY = 'key_2';
-			expect(() => createInstanceSettings()).toThrowError();
+			expect(() => createInstanceSettings()).toThrow();
 		});
 
 		it('should check if the settings file has the correct permissions', () => {
@@ -189,7 +189,7 @@ describe('InstanceSettings', () => {
 
 		it("should throw on a worker process, if encryption key isn't set via env", () => {
 			process.argv[2] = 'worker';
-			expect(() => createInstanceSettings()).toThrowError(WorkerMissingEncryptionKey);
+			expect(() => createInstanceSettings()).toThrow(WorkerMissingEncryptionKey);
 		});
 	});
 

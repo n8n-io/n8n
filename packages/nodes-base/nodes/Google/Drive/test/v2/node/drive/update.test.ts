@@ -35,7 +35,7 @@ describe('test GoogleDriveV2: drive update', () => {
 
 		await update.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
 			'/drive/v3/drives/sharedDriveIDxxxxx',

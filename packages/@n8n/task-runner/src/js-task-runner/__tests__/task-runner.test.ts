@@ -76,7 +76,7 @@ describe('TestRunner', () => {
 				newTestRunner({
 					taskBrokerUri: 'not-a-valid-uri',
 				}),
-			).toThrowError(/Invalid URL/);
+			).toThrow(/Invalid URL/);
 		});
 	});
 

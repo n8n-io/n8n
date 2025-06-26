@@ -60,7 +60,7 @@ describe('createEnvProvider', () => {
 		try {
 			const proxy = createEnvProvider(1, 1, createEnvProviderState());
 
-			expect(() => proxy.someEnvVar).toThrowError(
+			expect(() => proxy.someEnvVar).toThrow(
 				new ExpressionError('not accessible via UI, please run node', {
 					runIndex: 1,
 					itemIndex: 1,
@@ -75,7 +75,7 @@ describe('createEnvProvider', () => {
 		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
 		const proxy = createEnvProvider(1, 1, createEnvProviderState());
 
-		expect(() => proxy.someEnvVar).toThrowError(
+		expect(() => proxy.someEnvVar).toThrow(
 			new ExpressionError('access to env vars denied', {
 				causeDetailed:
 					'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',

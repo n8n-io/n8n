@@ -193,8 +193,8 @@ describe('TaskBroker', () => {
 			const error = new Error('error');
 			taskBroker.deregisterRunner(runnerId, error);
 
-			expect(failSpy).toBeCalledWith(taskId, error);
-			expect(rejectSpy).toBeCalledWith(
+			expect(failSpy).toHaveBeenCalledWith(taskId, error);
+			expect(rejectSpy).toHaveBeenCalledWith(
 				taskId,
 				`The Task Runner (${runnerId}) has disconnected: error`,
 			);

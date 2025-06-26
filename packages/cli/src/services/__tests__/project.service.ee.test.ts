@@ -44,7 +44,7 @@ describe('ProjectService', () => {
 			// ACT & ASSERT
 			await expect(
 				projectService.addUsersToProject(projectId, [{ userId: '1234', role: 'project:admin' }]),
-			).rejects.toThrowError("Can't add users to personal projects.");
+			).rejects.toThrow("Can't add users to personal projects.");
 		});
 
 		it('throws if trying to add a personalOwner to a team project', async () => {
@@ -60,7 +60,7 @@ describe('ProjectService', () => {
 				projectService.addUsersToProject(projectId, [
 					{ userId: '1234', role: 'project:personalOwner' },
 				]),
-			).rejects.toThrowError("Can't add a personalOwner to a team project.");
+			).rejects.toThrow("Can't add a personalOwner to a team project.");
 		});
 	});
 

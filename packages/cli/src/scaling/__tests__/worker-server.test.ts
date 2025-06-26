@@ -71,7 +71,7 @@ describe('WorkerServer', () => {
 						prometheusMetricsService,
 						mock(),
 					),
-			).toThrowError(AssertionError);
+			).toThrow(AssertionError);
 		});
 
 		it('should exit if port taken', async () => {
@@ -149,7 +149,7 @@ describe('WorkerServer', () => {
 			const workerServer = newWorkerServer();
 			await expect(
 				workerServer.init({ health: false, overwrites: false, metrics: false }),
-			).rejects.toThrowError(AssertionError);
+			).rejects.toThrow(AssertionError);
 		});
 
 		it('should call `worker.ready` external hook', async () => {

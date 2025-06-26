@@ -272,7 +272,7 @@ describe('Webhook Utils', () => {
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
-			}).toThrowError('No Respond to Webhook node found in the workflow');
+			}).toThrow('No Respond to Webhook node found in the workflow');
 		});
 
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
@@ -283,7 +283,7 @@ describe('Webhook Utils', () => {
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
-			}).toThrowError('Webhook node not correctly configured');
+			}).toThrow('Webhook node not correctly configured');
 		});
 	});
 
@@ -315,7 +315,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('No authentication data defined on node!');
+			).rejects.toThrow('No authentication data defined on node!');
 		});
 
 		it('should throw an error if basicAuth is enabled but the provided authentication data is wrong', async () => {
@@ -336,7 +336,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('Authorization is required!');
+			).rejects.toThrow('Authorization is required!');
 		});
 
 		it('should throw an error if headerAuth is enabled but no authentication data is defined on the node', async () => {
@@ -353,7 +353,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('No authentication data defined on node!');
+			).rejects.toThrow('No authentication data defined on node!');
 		});
 
 		it('should throw an error if headerAuth is enabled but the provided authentication data is wrong', async () => {
@@ -374,7 +374,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('Authorization data is wrong!');
+			).rejects.toThrow('Authorization data is wrong!');
 		});
 
 		it('should throw an error if jwtAuth is enabled but no authentication data is defined on the node', async () => {
@@ -389,7 +389,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('No authentication data defined on node!');
+			).rejects.toThrow('No authentication data defined on node!');
 		});
 
 		it('should throw an error if jwtAuth is enabled but no token is provided', async () => {
@@ -409,7 +409,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('No token provided');
+			).rejects.toThrow('No token provided');
 		});
 
 		it('should throw an error if jwtAuth is enabled but the provided token is invalid', async () => {
@@ -435,7 +435,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('jwt malformed');
+			).rejects.toThrow('jwt malformed');
 		});
 
 		it('should return the decoded JWT payload if jwtAuth is enabled and the token is valid', async () => {

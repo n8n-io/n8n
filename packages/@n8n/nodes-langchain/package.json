@@ -199,7 +199,7 @@
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "https-proxy-agent": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "26.1.0",
     "js-tiktoken": "^1.0.12",
     "langchain": "0.3.28",
     "lodash": "catalog:",

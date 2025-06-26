@@ -59,7 +59,7 @@ describe('test GoogleDriveV2: file upload', () => {
 
 		await upload.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
 
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
@@ -82,7 +82,7 @@ describe('test GoogleDriveV2: file upload', () => {
 			},
 		);
 
-		expect(utils.getItemBinaryData).toBeCalledTimes(1);
+		expect(utils.getItemBinaryData).toHaveBeenCalledTimes(1);
 		expect(utils.getItemBinaryData).toHaveBeenCalled();
 	});
 
@@ -119,7 +119,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(httpRequestSpy).toHaveBeenCalledWith(
 			expect.objectContaining({ body: expect.any(Buffer) }),
 		);
-		expect(transport.googleApiRequest).toBeCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/upload/drive/v3/files',

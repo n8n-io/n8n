@@ -257,7 +257,7 @@ describe('SourceControlService', () => {
 					verbose: false,
 					preferLocalVersion: false,
 				}),
-			).rejects.toThrowError(ForbiddenError);
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 });

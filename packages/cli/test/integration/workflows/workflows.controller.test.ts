@@ -2186,7 +2186,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalled();
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -2208,8 +2208,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).not.toBeCalled();
-		expect(activeWorkflowManagerLike.remove).toBeCalled();
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -2366,7 +2366,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(isArchived).toBe(true);
 		expect(active).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
-		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();

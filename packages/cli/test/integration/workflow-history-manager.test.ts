@@ -48,10 +48,10 @@ describe('Workflow History Manager', () => {
 		manager.init();
 
 		jest.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 1);
+		expect(pruneSpy).toHaveBeenCalledTimes(currentCount + 1);
 
 		jest.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 2);
+		expect(pruneSpy).toHaveBeenCalledTimes(currentCount + 2);
 
 		manager.shutdown();
 		jest.clearAllTimers();
@@ -118,9 +118,9 @@ describe('Workflow History Manager', () => {
 		await manager.prune();
 
 		if (initialCount === finalCount) {
-			expect(deleteSpy).not.toBeCalled();
+			expect(deleteSpy).not.toHaveBeenCalled();
 		} else {
-			expect(deleteSpy).toBeCalled();
+			expect(deleteSpy).toHaveBeenCalled();
 		}
 		deleteSpy.mockRestore();
 

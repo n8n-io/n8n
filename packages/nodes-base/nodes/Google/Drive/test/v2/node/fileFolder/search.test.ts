@@ -42,8 +42,8 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 
 		await search.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
-		expect(transport.googleApiRequest).toBeCalledWith('GET', '/drive/v3/files', undefined, {
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledWith('GET', '/drive/v3/files', undefined, {
 			corpora: 'allDrives',
 			fields: 'nextPageToken, files(id, name, starred, version)',
 			includeItemsFromAllDrives: true,
@@ -88,8 +88,8 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 
 		await search.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequestAllItems).toBeCalledTimes(1);
-		expect(transport.googleApiRequestAllItems).toBeCalledWith(
+		expect(transport.googleApiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(transport.googleApiRequestAllItems).toHaveBeenCalledWith(
 			'GET',
 			'files',
 			'/drive/v3/files',

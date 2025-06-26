@@ -97,8 +97,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
-		expect(poolQuerySpy).toBeCalledTimes(1);
-		expect(poolQuerySpy).toBeCalledWith('DROP TABLE IF EXISTS `test_table`');
+		expect(poolQuerySpy).toHaveBeenCalledTimes(1);
+		expect(poolQuerySpy).toHaveBeenCalledWith('DROP TABLE IF EXISTS `test_table`');
 	});
 
 	it('deleteTable: truncate, should call runQueries with', async () => {
@@ -133,8 +133,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
-		expect(poolQuerySpy).toBeCalledTimes(1);
-		expect(poolQuerySpy).toBeCalledWith('TRUNCATE TABLE `test_table`');
+		expect(poolQuerySpy).toHaveBeenCalledTimes(1);
+		expect(poolQuerySpy).toHaveBeenCalledWith('TRUNCATE TABLE `test_table`');
 	});
 
 	it('deleteTable: delete, should call runQueries with', async () => {
@@ -183,8 +183,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
-		expect(poolQuerySpy).toBeCalledTimes(1);
-		expect(poolQuerySpy).toBeCalledWith(
+		expect(poolQuerySpy).toHaveBeenCalledTimes(1);
+		expect(poolQuerySpy).toHaveBeenCalledWith(
 			"DELETE FROM `test_table` WHERE `id` = '1' AND `name` LIKE 'some%'",
 		);
 	});
@@ -245,13 +245,15 @@ describe('Test MySql V2, operations', () => {
 			},
 		]);
 
-		expect(connectionQuerySpy).toBeCalledTimes(4);
-		expect(connectionQuerySpy).toBeCalledWith('DROP TABLE IF EXISTS `test_table`');
-		expect(connectionQuerySpy).toBeCalledWith('create table `test_table` (id INT, name TEXT)');
-		expect(connectionQuerySpy).toBeCalledWith(
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(4);
+		expect(connectionQuerySpy).toHaveBeenCalledWith('DROP TABLE IF EXISTS `test_table`');
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
+			'create table `test_table` (id INT, name TEXT)',
+		);
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
 			"insert into `test_table` (id, name) values (1, 'test 1')",
 		);
-		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
+		expect(connectionQuerySpy).toHaveBeenCalledWith('select * from `test_table`');
 	});
 	it('executeQuery, should parse numbers', async () => {
 		const nodeParameters: IDataObject = {
@@ -292,7 +294,7 @@ describe('Test MySql V2, operations', () => {
 
 		expect(result).toBeDefined();
 
-		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
+		expect(connectionQuerySpy).toHaveBeenCalledWith('SELECT * FROM users LIMIT 2, 5');
 	});
 
 	it('select, should call runQueries with', async () => {
@@ -355,14 +357,14 @@ describe('Test MySql V2, operations', () => {
 		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
 		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
 
-		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
+		expect(connectionBeginTransactionSpy).toHaveBeenCalledTimes(1);
 
-		expect(connectionQuerySpy).toBeCalledTimes(1);
-		expect(connectionQuerySpy).toBeCalledWith(
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(1);
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
 			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` undefined 'test' ORDER BY `id` DESC LIMIT 2",
 		);
 
-		expect(connectionCommitSpy).toBeCalledTimes(1);
+		expect(connectionCommitSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('insert, should call runQueries with', async () => {
@@ -418,8 +420,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
-		expect(connectionQuerySpy).toBeCalledTimes(1);
-		expect(connectionQuerySpy).toBeCalledWith(
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(1);
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
 			"INSERT HIGH_PRIORITY IGNORE INTO `test_table` (`id`, `name`) VALUES ('2','name 2')",
 		);
 	});
@@ -482,11 +484,11 @@ describe('Test MySql V2, operations', () => {
 			{ json: { success: true }, pairedItem: { item: 1 } },
 		]);
 
-		expect(connectionQuerySpy).toBeCalledTimes(2);
-		expect(connectionQuerySpy).toBeCalledWith(
+		expect(connectionQuerySpy).toHaveBeenCalledTimes(2);
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
 			"UPDATE `test_table` SET `name` = 'test 4' WHERE `id` = 42",
 		);
-		expect(connectionQuerySpy).toBeCalledWith(
+		expect(connectionQuerySpy).toHaveBeenCalledWith(
 			"UPDATE `test_table` SET `name` = 'test 88' WHERE `id` = 88",
 		);
 	});
@@ -544,8 +546,8 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }, { item: 1 }] }]);
 
-		expect(poolQuerySpy).toBeCalledTimes(1);
-		expect(poolQuerySpy).toBeCalledWith(
+		expect(poolQuerySpy).toHaveBeenCalledTimes(1);
+		expect(poolQuerySpy).toHaveBeenCalledWith(
 			"INSERT INTO `test_table`(`id`, `name`) VALUES(42,'test 4') ON DUPLICATE KEY UPDATE `name` = 'test 4';INSERT INTO `test_table`(`id`, `name`) VALUES(88,'test 88') ON DUPLICATE KEY UPDATE `name` = 'test 88'",
 		);
 	});

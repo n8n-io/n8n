@@ -905,7 +905,7 @@
     "isbot": "3.6.13",
     "iso-639-1": "2.1.15",
     "js-nacl": "1.4.0",
-    "jsdom": "23.0.1",
+    "jsdom": "26.1.0",
     "jsonwebtoken": "catalog:",
     "kafkajs": "2.2.4",
     "ldapts": "4.2.6",

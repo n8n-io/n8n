@@ -33,7 +33,7 @@ describe('ShutdownService', () => {
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
-			expect(onShutdownSpy).toBeCalledTimes(1);
+			expect(onShutdownSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should signal shutdown in the priority order', async () => {

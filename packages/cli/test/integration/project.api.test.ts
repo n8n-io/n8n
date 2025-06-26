@@ -563,7 +563,7 @@ describe('PATCH /projects/:projectId', () => {
 			});
 			expect(resp.status).toBe(200);
 
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
+			expect(deleteSpy).toHaveBeenCalledWith([`credential-can-use-secrets:${credential1.id}`]);
 			deleteSpy.mockClear();
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
@@ -829,7 +829,7 @@ describe('DELETE /project/:projectId', () => {
 
 		const projectInDB = findProject(project.id);
 
-		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
+		await expect(projectInDB).rejects.toThrow(EntityNotFoundError);
 	});
 
 	test('allows the instance owner to delete a team project their are not related to', async () => {
@@ -840,7 +840,7 @@ describe('DELETE /project/:projectId', () => {
 
 		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
 
-		await expect(findProject(project.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(project.id)).rejects.toThrow(EntityNotFoundError);
 	});
 
 	test('does not allow instance members to delete their personal project', async () => {
@@ -922,7 +922,7 @@ describe('DELETE /project/:projectId', () => {
 		// Make sure the project and owned workflow and credential where deleted.
 		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
-		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrow(EntityNotFoundError);
 
 		// Make sure the shared workflow and credential were not deleted
 		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
@@ -934,13 +934,13 @@ describe('DELETE /project/:projectId', () => {
 				projectId: projectToBeDeleted.id,
 				workflowId: sharedWorkflow1.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(SharedCredentialsRepository).findOneByOrFail({
 				projectId: projectToBeDeleted.id,
 				credentialsId: sharedCredential.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 	});
 
 	test('unshares all workflows and credentials that were shared with the project', async () => {
@@ -980,7 +980,7 @@ describe('DELETE /project/:projectId', () => {
 		await expect(getWorkflowById(ownedWorkflow1.id)).resolves.toBeNull();
 		await expect(getWorkflowById(ownedWorkflow2.id)).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
-		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrow(EntityNotFoundError);
 
 		// Make sure the sharings for them into the other project have been deleted
 		await expect(
@@ -988,19 +988,19 @@ describe('DELETE /project/:projectId', () => {
 				projectId: projectToBeDeleted.id,
 				workflowId: ownedWorkflow1.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(SharedWorkflowRepository).findOneByOrFail({
 				projectId: projectToBeDeleted.id,
 				workflowId: ownedWorkflow2.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(SharedCredentialsRepository).findOneByOrFail({
 				projectId: projectToBeDeleted.id,
 				credentialsId: ownedCredential.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 	});
 
 	test('deletes the project relations', async () => {
@@ -1028,19 +1028,19 @@ describe('DELETE /project/:projectId', () => {
 				projectId: project.id,
 				userId: member.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(ProjectRelationRepository).findOneByOrFail({
 				projectId: project.id,
 				userId: editor.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(ProjectRelationRepository).findOneByOrFail({
 				projectId: project.id,
 				userId: viewer.id,
 			}),
-		).rejects.toThrowError(EntityNotFoundError);
+		).rejects.toThrow(EntityNotFoundError);
 	});
 
 	// Tests related to migrating workflows and credentials to new project:
@@ -1127,7 +1127,7 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// projectToBeDeleted is deleted
-		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrow(EntityNotFoundError);
 
 		// ownedWorkflow has not been deleted
 		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeDefined();

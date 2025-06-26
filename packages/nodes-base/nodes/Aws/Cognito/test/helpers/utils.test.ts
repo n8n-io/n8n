@@ -68,9 +68,7 @@ describe('AWS Cognito - Helpers functions', () => {
 		});
 
 		it('should throw an error if user pool ID is missing', async () => {
-			await expect(getUserPool.call(loadOptionsFunctions, '')).rejects.toThrowError(
-				NodeOperationError,
-			);
+			await expect(getUserPool.call(loadOptionsFunctions, '')).rejects.toThrow(NodeOperationError);
 		});
 
 		it('should throw an error if user pool is not found', async () => {
@@ -78,7 +76,7 @@ describe('AWS Cognito - Helpers functions', () => {
 
 			(awsApiRequest as jest.Mock).mockResolvedValue({});
 
-			await expect(getUserPool.call(loadOptionsFunctions, userPoolId)).rejects.toThrowError(
+			await expect(getUserPool.call(loadOptionsFunctions, userPoolId)).rejects.toThrow(
 				NodeOperationError,
 			);
 		});
@@ -88,9 +86,9 @@ describe('AWS Cognito - Helpers functions', () => {
 		it('should throw an error if UserPoolId is missing', async () => {
 			loadOptionsFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			await expect(
-				getUsersInGroup.call(loadOptionsFunctions, 'groupName', ''),
-			).rejects.toThrowError(NodeOperationError);
+			await expect(getUsersInGroup.call(loadOptionsFunctions, 'groupName', '')).rejects.toThrow(
+				NodeOperationError,
+			);
 		});
 
 		it('should return an empty list if no users are found', async () => {
@@ -203,7 +201,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				url: 'example.com',
 			};
 
-			await expect(validateArn.call(loadOptionsFunctions, requestOptions)).rejects.toThrowError(
+			await expect(validateArn.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				NodeApiError,
 			);
 		});
@@ -460,9 +458,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
+			await expect(preSendAttributes.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				new NodeOperationError(loadOptionsFunctions.getNode(), 'No user attributes provided', {
 					description: 'At least one user attribute must be provided for the update operation.',
 				}),
@@ -478,9 +474,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
+			await expect(preSendAttributes.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
 					description: 'Each attribute must have a valid name and value.',
 				}),
@@ -496,9 +490,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
+			await expect(preSendAttributes.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				new NodeOperationError(
 					loadOptionsFunctions.getNode(),
 					'Missing required "email" attribute',
@@ -521,9 +513,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
+			await expect(preSendAttributes.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				new NodeOperationError(
 					loadOptionsFunctions.getNode(),
 					'Missing required "phone_number" attribute',
@@ -594,9 +584,7 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
+			await expect(preSendAttributes.call(loadOptionsFunctions, requestOptions)).rejects.toThrow(
 				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
 					description: 'Each attribute must have a valid name and value.',
 				}),
@@ -641,7 +629,7 @@ describe('AWS Cognito - Helpers functions', () => {
 
 			await expect(
 				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError('Missing required "email" attribute');
+			).rejects.toThrow('Missing required "email" attribute');
 		});
 
 		it('should not throw an error if SMS is selected and phone number is provided', async () => {
@@ -676,7 +664,7 @@ describe('AWS Cognito - Helpers functions', () => {
 
 			await expect(
 				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError('Missing required "phone_number" attribute');
+			).rejects.toThrow('Missing required "phone_number" attribute');
 		});
 
 		it('should not throw an error if both EMAIL and SMS are selected and both attributes are provided', async () => {

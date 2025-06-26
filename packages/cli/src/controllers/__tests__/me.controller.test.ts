@@ -108,7 +108,7 @@ describe('MeController', () => {
 					mock(),
 					mock({ email: 'valid@email.com', firstName: 'John', lastName: 'Potato' }),
 				),
-			).rejects.toThrowError(new BadRequestError('Invalid email address'));
+			).rejects.toThrow(new BadRequestError('Invalid email address'));
 		});
 
 		describe('when mfa is enabled', () => {
@@ -133,7 +133,7 @@ describe('MeController', () => {
 							lastName: 'Potato',
 						}),
 					),
-				).rejects.toThrowError(new BadRequestError('Two-factor code is required to change email'));
+				).rejects.toThrow(new BadRequestError('Two-factor code is required to change email'));
 			});
 
 			it('should throw InvalidMfaCodeError if mfa code is invalid', async () => {
@@ -205,7 +205,7 @@ describe('MeController', () => {
 			});
 			await expect(
 				controller.updatePassword(req, mock(), mock({ currentPassword: '', newPassword: '' })),
-			).rejects.toThrowError(new BadRequestError('Requesting user not set up.'));
+			).rejects.toThrow(new BadRequestError('Requesting user not set up.'));
 		});
 
 		it("should throw if currentPassword does not match the user's password", async () => {
@@ -218,7 +218,7 @@ describe('MeController', () => {
 					mock(),
 					mock({ currentPassword: 'not_old_password', newPassword: '' }),
 				),
-			).rejects.toThrowError(new BadRequestError('Provided current password is incorrect.'));
+			).rejects.toThrow(new BadRequestError('Provided current password is incorrect.'));
 		});
 
 		describe('should throw if newPassword is not valid', () => {
@@ -234,7 +234,7 @@ describe('MeController', () => {
 							mock(),
 							mock({ currentPassword: 'old_password', newPassword }),
 						),
-					).rejects.toThrowError(new BadRequestError(errorMessage));
+					).rejects.toThrow(new BadRequestError(errorMessage));
 				});
 			});
 		});
@@ -290,9 +290,7 @@ describe('MeController', () => {
 						mock(),
 						mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
 					),
-				).rejects.toThrowError(
-					new BadRequestError('Two-factor code is required to change password.'),
-				);
+				).rejects.toThrow(new BadRequestError('Two-factor code is required to change password.'));
 			});
 
 			it('should throw InvalidMfaCodeError if invalid mfa code is given', async () => {
@@ -345,7 +343,7 @@ describe('MeController', () => {
 			const req = mock<MeRequest.SurveyAnswers>({
 				body: undefined,
 			});
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(
 				new BadRequestError('Personalization answers are mandatory'),
 			);
 		});
@@ -385,7 +383,7 @@ describe('MeController', () => {
 				[fieldName]: ['<script>alert("XSS")</script>'],
 			};
 
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(BadRequestError);
 		});
 
 		test.each([
@@ -405,7 +403,7 @@ describe('MeController', () => {
 				[fieldName]: '<script>alert("XSS")</script>',
 			};
 
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(BadRequestError);
 		});
 	});
 });

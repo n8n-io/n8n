@@ -28,9 +28,10 @@
     "@n8n/di": "workspace:^",
     "@n8n/permissions": "workspace:^",
     "@n8n/typeorm": "catalog:",
-    "jest-mock-extended": "^3.0.4",
+    "jest-mock-extended": "^4.0.0",
     "n8n-workflow": "workspace:^",
     "reflect-metadata": "catalog:",
+    "ts-essentials": "^10.1.1",
     "uuid": "catalog:"
   },
   "devDependencies": {

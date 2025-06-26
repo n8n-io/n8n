@@ -33,7 +33,7 @@ mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(Reset);
 
 test('fails if neither `--userId` nor `--projectId` nor `--deleteWorkflowsAndCredentials` is passed', async () => {
-	await expect(command.run()).rejects.toThrowError(
+	await expect(command.run()).rejects.toThrow(
 		'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.',
 	);
 });
@@ -48,7 +48,7 @@ test.each([
 ])(
 	'fails if more than one of `--userId`, `--projectId`, `--deleteWorkflowsAndCredentials` are passed',
 	async (...argv) => {
-		await expect(command.run(argv)).rejects.toThrowError(
+		await expect(command.run(argv)).rejects.toThrow(
 			'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.',
 		);
 	},
@@ -83,8 +83,8 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		// ASSERT
 		//
 		// LDAP user is deleted
-		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
-		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(getUserById(member.id)).rejects.toThrow(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrow(EntityNotFoundError);
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow.id }),
 		).resolves.toBeNull();
@@ -93,7 +93,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		).resolves.toBeNull();
 
 		// Non LDAP user is not deleted
-		await expect(getUserById(normalMember.id)).resolves.not.toThrowError();
+		await expect(getUserById(normalMember.id)).resolves.not.toThrow();
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow2.id }),
 		).resolves.not.toBeNull();
@@ -155,7 +155,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 describe('--userId', () => {
 	test('fails if the user does not exist', async () => {
 		const userId = uuid();
-		await expect(command.run([`--userId=${userId}`])).rejects.toThrowError(
+		await expect(command.run([`--userId=${userId}`])).rejects.toThrow(
 			`Could not find the user with the ID ${userId} or their personalProject.`,
 		);
 	});
@@ -166,7 +166,7 @@ describe('--userId', () => {
 		//
 		const member = await createLdapUser({ role: 'global:member' }, uuid());
 
-		await expect(command.run([`--userId=${member.id}`])).rejects.toThrowError(
+		await expect(command.run([`--userId=${member.id}`])).rejects.toThrow(
 			`Can't migrate workflows and credentials to the user with the ID ${member.id}. That user was created via LDAP and will be deleted as well.`,
 		);
 	});
@@ -200,8 +200,8 @@ describe('--userId', () => {
 		// ASSERT
 		//
 		// LDAP user is deleted
-		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
-		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(getUserById(member.id)).rejects.toThrow(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrow(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the normal user.
 		await expect(
@@ -218,7 +218,7 @@ describe('--userId', () => {
 		).resolves.not.toBeNull();
 
 		// Non LDAP user is not deleted
-		await expect(getUserById(normalMember.id)).resolves.not.toThrowError();
+		await expect(getUserById(normalMember.id)).resolves.not.toThrow();
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow2.id }),
 		).resolves.not.toBeNull();
@@ -231,7 +231,7 @@ describe('--userId', () => {
 describe('--projectId', () => {
 	test('fails if the project does not exist', async () => {
 		const projectId = uuid();
-		await expect(command.run([`--projectId=${projectId}`])).rejects.toThrowError(
+		await expect(command.run([`--projectId=${projectId}`])).rejects.toThrow(
 			`Could not find the project with the ID ${projectId}.`,
 		);
 	});
@@ -243,7 +243,7 @@ describe('--projectId', () => {
 		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 
-		await expect(command.run([`--projectId=${memberProject.id}`])).rejects.toThrowError(
+		await expect(command.run([`--projectId=${memberProject.id}`])).rejects.toThrow(
 			`Can't migrate workflows and credentials to the project with the ID ${memberProject.id}. That project is a personal project belonging to a user that was created via LDAP and will be deleted as well.`,
 		);
 	});
@@ -277,8 +277,8 @@ describe('--projectId', () => {
 		// ASSERT
 		//
 		// LDAP user is deleted
-		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
-		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(getUserById(member.id)).rejects.toThrow(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrow(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the normal user.
 		await expect(
@@ -295,7 +295,7 @@ describe('--projectId', () => {
 		).resolves.not.toBeNull();
 
 		// Non LDAP user is not deleted
-		await expect(getUserById(normalMember.id)).resolves.not.toThrowError();
+		await expect(getUserById(normalMember.id)).resolves.not.toThrow();
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow2.id }),
 		).resolves.not.toBeNull();
@@ -334,8 +334,8 @@ describe('--projectId', () => {
 		// ASSERT
 		//
 		// LDAP user is deleted
-		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
-		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(getUserById(member.id)).rejects.toThrow(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrow(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the team project.
 		await expect(
@@ -352,7 +352,7 @@ describe('--projectId', () => {
 		).resolves.not.toBeNull();
 
 		// Non LDAP user is not deleted
-		await expect(getUserById(normalMember.id)).resolves.not.toThrowError();
+		await expect(getUserById(normalMember.id)).resolves.not.toThrow();
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow2.id }),
 		).resolves.not.toBeNull();

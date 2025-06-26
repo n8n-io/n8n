@@ -90,7 +90,7 @@ describe('TestWebhooks', () => {
 
 			const needsWebhook = testWebhooks.needsWebhook(args);
 
-			await expect(needsWebhook).rejects.toThrowError(msg);
+			await expect(needsWebhook).rejects.toThrow(msg);
 		});
 
 		test('if no webhook is found to start workflow, should return false', async () => {
@@ -158,7 +158,7 @@ describe('TestWebhooks', () => {
 				mock(),
 			);
 
-			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
+			await expect(promise).rejects.toThrow(WebhookNotFoundError);
 		});
 
 		test('if webhook is registered but missing from workflow, should throw', async () => {
@@ -177,7 +177,7 @@ describe('TestWebhooks', () => {
 				mock<express.Response>(),
 			);
 
-			await expect(promise).rejects.toThrowError(NotFoundError);
+			await expect(promise).rejects.toThrow(NotFoundError);
 		});
 	});
 

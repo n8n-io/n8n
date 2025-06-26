@@ -26,7 +26,7 @@ describe('CredentialTypes', () => {
 
 	describe('getByName', () => {
 		test('Should throw error when calling invalid credential name', () => {
-			expect(() => credentialTypes.getByName('unknownCredential')).toThrowError('c');
+			expect(() => credentialTypes.getByName('unknownCredential')).toThrow('c');
 		});
 
 		test('Should return correct credential type for valid name', () => {

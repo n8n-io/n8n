@@ -290,7 +290,7 @@ describe('useWorkflowSaving', () => {
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
-			expect(updateWorkflowSpy).toBeCalled();
+			expect(updateWorkflowSpy).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toEqual(true);
 
 			expect(confirm).not.toHaveBeenCalled();

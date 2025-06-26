@@ -32,7 +32,7 @@ describe('test GoogleDriveV2: file deleteFile', () => {
 
 		await deleteFile.execute.call(fakeExecuteFunction, 0);
 
-		expect(transport.googleApiRequest).toBeCalledTimes(1);
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'DELETE',
 			'/drive/v3/files/fileIDxxxxxx',

@@ -28,8 +28,8 @@ describe('HTTP Node Utils', () => {
 
 			await prepareRequestBody(bodyParameters, 'json', 3, defaultReducer);
 
-			expect(defaultReducer).toBeCalledTimes(1);
-			expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' });
+			expect(defaultReducer).toHaveBeenCalledTimes(1);
+			expect(defaultReducer).toHaveBeenCalledWith({}, { name: 'foo.bar', value: 'baz' });
 		});
 
 		it('should call process dot notations', async () => {
@@ -43,7 +43,7 @@ describe('HTTP Node Utils', () => {
 
 			const result = await prepareRequestBody(bodyParameters, 'json', 4, defaultReducer);
 
-			expect(defaultReducer).toBeCalledTimes(0);
+			expect(defaultReducer).toHaveBeenCalledTimes(0);
 			expect(result).toBeDefined();
 			expect(result).toEqual({ foo: { bar: { spam: 'baz' } } });
 		});

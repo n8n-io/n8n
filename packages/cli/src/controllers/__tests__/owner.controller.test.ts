@@ -44,7 +44,7 @@ describe('OwnerController', () => {
 	describe('setupOwner', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
 			configGetSpy.mockReturnValue(true);
-			await expect(controller.setupOwner(mock(), mock(), mock())).rejects.toThrowError(
+			await expect(controller.setupOwner(mock(), mock(), mock())).rejects.toThrow(
 				new BadRequestError('Instance owner already setup'),
 			);
 

@@ -113,7 +113,7 @@ describe('ProjectRepository', () => {
 			//
 			// ASSERT
 			//
-			await expect(promise).rejects.toThrowError(EntityNotFoundError);
+			await expect(promise).rejects.toThrow(EntityNotFoundError);
 		});
 	});
 

@@ -66,7 +66,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid model',
 					description:
@@ -92,7 +92,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid parameter provided.',
 					description:
@@ -119,7 +119,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid model',
 					description: 'Permitted models documentation...',
@@ -144,7 +144,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'An unexpected issue occurred.',
 					description: 'Please check parameters...',
@@ -169,7 +169,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Internal server error.',
 					description: 'Refer to API documentation...',
@@ -195,7 +195,7 @@ describe('Generic Functions', () => {
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
-			).rejects.toThrowError(
+			).rejects.toThrow(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Error with item [Item 2].',
 				}),
