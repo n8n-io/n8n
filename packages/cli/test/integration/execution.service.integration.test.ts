@@ -1,3 +1,6 @@
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import type { ExecutionSummaries } from '@n8n/db';
 import { ExecutionMetadataRepository } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
@@ -6,11 +9,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;

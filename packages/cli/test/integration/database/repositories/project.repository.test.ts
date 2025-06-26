@@ -1,12 +1,12 @@
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { AuthIdentity } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
-import { createTeamProject } from '../../shared/db/projects';
 import { createMember, createOwner } from '../../shared/db/users';
-import * as testDb from '../../shared/test-db';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {

@@ -1,3 +1,11 @@
+import { getPersonalProject } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	getAllSharedWorkflows,
+	getWorkflowById,
+	newWorkflow,
+} from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { TagEntity } from '@n8n/db';
@@ -12,15 +20,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ImportService } from '@/services/import.service';
 
-import { getPersonalProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
-import {
-	createWorkflow,
-	getAllSharedWorkflows,
-	getWorkflowById,
-	newWorkflow,
-} from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('ImportService', () => {
 	let importService: ImportService;

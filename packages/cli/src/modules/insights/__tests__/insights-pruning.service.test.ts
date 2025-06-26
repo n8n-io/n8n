@@ -1,14 +1,13 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { testModules } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import {
 	createCompactedInsightsEvent,
