@@ -208,7 +208,6 @@ export function updateParameterByPath(
 	const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
 	// Apply the new value
-	// @Review: Double check this closely please, `newValue` should be appropriate here but I'm not positive
 	if (newValue === undefined && parameterPathArray !== null) {
 		// Delete array item
 		const path = parameterPathArray[1];
@@ -226,7 +225,6 @@ export function updateParameterByPath(
 			set(nodeParameters as object, parameterPath, newValue);
 		}
 
-		// @Review: This is technically a change since we previously only did this for parameters.X but now also start doing it for parameters overall
 		// If value is updated, remove parameter values that have invalid options
 		// so getNodeParameters checks don't fail
 		removeMismatchedOptionValues(nodeType, nodeTypeVersion, nodeParameters, {

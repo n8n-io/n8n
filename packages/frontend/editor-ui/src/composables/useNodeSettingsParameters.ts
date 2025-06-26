@@ -170,7 +170,7 @@ export function useNodeSettingsParameters() {
 			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
 				nodeTypeDescription,
 				nodeParameters,
-				node.parameters, // @Review: There doesn't seem to be a different between the file-level ref and the passed node here at this stage?
+				node.parameters,
 			);
 
 			if (updatedDescription && nodeParameters) {
@@ -178,13 +178,7 @@ export function useNodeSettingsParameters() {
 			}
 		}
 
-		if (
-			NodeHelpers.isDefaultNodeName(
-				node.name,
-				nodeTypeDescription,
-				node.parameters ?? {}, // @Review: There doesn't seem to be a different between the file-level ref and the passed node here at this stage?
-			)
-		) {
+		if (NodeHelpers.isDefaultNodeName(node.name, nodeTypeDescription, node.parameters ?? {})) {
 			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeTypeDescription);
 			// Account for unique-ified nodes with `<name><digit>`
 			if (!node.name.startsWith(newName)) {
@@ -218,7 +212,7 @@ export function useNodeSettingsParameters() {
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,
 			newValue,
-			parameters: nodeTypeDescription.properties, // @Review: This now uses the static type provided rather than the prop reference
+			parameters: nodeTypeDescription.properties,
 			oldNodeParameters,
 		});
 
