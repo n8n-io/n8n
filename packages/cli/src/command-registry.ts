@@ -5,7 +5,12 @@ import glob from 'fast-glob';
 import picocolors from 'picocolors';
 import argvParser from 'yargs-parser';
 import { z } from 'zod';
+import './zod-alias-support';
 
+/**
+ * Registry that manages CLI commands, their execution, and metadata.
+ * Handles command discovery, flag parsing, and execution lifecycle.
+ */
 @Service()
 export class CommandRegistry {
 	private readonly commandName: string;
@@ -24,7 +29,7 @@ export class CommandRegistry {
 	async execute() {
 		if (this.commandName === '--help' || this.commandName === '-h') {
 			await this.listAllCommands();
-			process.exit(0);
+			return process.exit(0);
 		}
 
 		// Try to load regular commands
@@ -38,12 +43,12 @@ export class CommandRegistry {
 		const commandEntry = this.commandMetadata.get(this.commandName);
 		if (!commandEntry) {
 			this.logger.error(picocolors.red(`Error: Command "${this.commandName}" not found`));
-			process.exit(1);
+			return process.exit(1);
 		}
 
 		if (this.argv.help || this.argv.h) {
 			this.printCommandUsage(commandEntry);
-			process.exit(0);
+			return process.exit(0);
 		}
 
 		const command = Container.get(commandEntry.class);
@@ -61,7 +66,7 @@ export class CommandRegistry {
 		}
 	}
 
-	private parseFlags(commandEntry: CommandEntry) {
+	parseFlags(commandEntry: CommandEntry) {
 		if (!commandEntry.flagsSchema) return {};
 		const { _, ...argv } = this.argv;
 		Object.entries(commandEntry.flagsSchema.shape).forEach(([key, flagSchema]) => {
@@ -81,7 +86,7 @@ export class CommandRegistry {
 		return commandEntry.flagsSchema.parse(argv);
 	}
 
-	private async listAllCommands() {
+	async listAllCommands() {
 		// Import all command files to register all the non-module commands
 		const commandFiles = await glob('./commands/**/*.js', {
 			ignore: ['**/__tests__/**'],
@@ -106,7 +111,7 @@ export class CommandRegistry {
 		);
 	}
 
-	private printCommandUsage(commandEntry: CommandEntry) {
+	printCommandUsage(commandEntry: CommandEntry) {
 		const { commandName } = this;
 		let output = '';
 
@@ -172,18 +177,3 @@ export class CommandRegistry {
 		this.logger.info(output);
 	}
 }
-
-// Monkey-patch zod to support aliases
-declare module 'zod' {
-	interface ZodType {
-		alias<T extends ZodType>(this: T, aliasName: string): T;
-	}
-	interface ZodTypeDef {
-		_alias: string;
-	}
-}
-
-z.ZodType.prototype.alias = function <T extends z.ZodType>(this: T, aliasName: string) {
-	this._def._alias = aliasName;
-	return this;
-};

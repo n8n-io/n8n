@@ -24,9 +24,6 @@ catalogs:
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.14.0
       version: 1.14.0
-    '@oclif/core':
-      specifier: 4.4.0
-      version: 4.4.0
     '@sentry/node':
       specifier: 8.52.1
       version: 8.52.1
@@ -493,8 +490,8 @@ importers:
   packages/@n8n/benchmark:
     dependencies:
       '@oclif/core':
-        specifier: 'catalog:'
-        version: 4.4.0
+        specifier: 4.0.7
+        version: 4.0.7
       axios:
         specifier: 'catalog:'
         version: 1.8.3
@@ -2484,8 +2481,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/di
       '@oclif/core':
-        specifier: 'catalog:'
-        version: 4.4.0
+        specifier: 4.0.7
+        version: 4.0.7
       change-case:
         specifier: ^4.1.1
         version: 4.1.2
@@ -5415,8 +5412,8 @@ packages:
     engines: {node: '>=10'}
     deprecated: This functionality has been moved to @npmcli/fs
 
-  '@oclif/core@4.4.0':
-    resolution: {integrity: sha512-wH5g3SLmbRutnr7UzQBSozRFEAZ7U9YGB/wFuBRr0ZghTgv5DE+KQaf6ZtU7iFb9pvkvoVRnT5XheNAtbjRDaQ==}
+  '@oclif/core@4.0.7':
+    resolution: {integrity: sha512-sU4Dx+RXCWAkrMw8tQFYAL6VfcHYKLPxVC9iKfgTXr4aDhcCssDwrbgpx0Di1dnNxvQlDGUhuCEInZuIY/nNfw==}
     engines: {node: '>=18.0.0'}
 
   '@one-ini/wasm@0.1.1':
@@ -7501,9 +7498,9 @@ packages:
     resolution: {integrity: sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==}
     engines: {node: '>=12'}
 
-  ansis@3.17.0:
-    resolution: {integrity: sha512-0qWUglt9JEqLFr3w1I1pbrChn1grhaiAR2ocX1PP/flRmxgtwTzPFFFnfIlD6aMOLQZgSuCRlidD70lvx8yhzg==}
-    engines: {node: '>=14'}
+  ansis@3.2.0:
+    resolution: {integrity: sha512-Yk3BkHH9U7oPyCN3gL5Tc7CpahG/+UFv/6UG03C311Vy9lzRmA5uoxDTpU9CO3rGHL6KzJz/pdDeXZCZ5Mu/Sg==}
+    engines: {node: '>=15'}
 
   any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
@@ -10891,10 +10888,6 @@ packages:
     resolution: {integrity: sha512-eop+wDAvpItUys0FWkHIKeC9ybYrTGbU41U5K7+bttZZeohvnY7M9dZ5kB21GNWiFT2q1OoPTvncPCgSOVO5ow==}
     engines: {node: '>=14'}
 
-  lilconfig@3.1.3:
-    resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
-    engines: {node: '>=14'}
-
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
@@ -13584,10 +13577,6 @@ packages:
 
   tinyglobby@0.2.13:
     resolution: {integrity: sha512-mEwzpUgrLySlveBwEVDMKk5B57bhLPYovRfPAXD5gA/98Opn0rCDj3GtLwFvCvH5RK9uPCExUROW5NjDwvqkxw==}
-    engines: {node: '>=12.0.0'}
-
-  tinyglobby@0.2.14:
-    resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==}
     engines: {node: '>=12.0.0'}
 
   tinypool@1.0.2:
@@ -17960,7 +17949,7 @@ snapshots:
   '@n8n/localtunnel@3.0.0':
     dependencies:
       axios: 1.9.0(debug@4.3.6)
-      debug: 4.3.6
+      debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -18134,23 +18123,22 @@ snapshots:
       rimraf: 3.0.2
     optional: true
 
-  '@oclif/core@4.4.0':
+  '@oclif/core@4.0.7':
     dependencies:
       ansi-escapes: 4.3.2
-      ansis: 3.17.0
+      ansis: 3.2.0
       clean-stack: 3.0.1
       cli-spinners: 2.9.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.3.6(supports-color@8.1.1)
       ejs: 3.1.10
       get-package-type: 0.1.0
+      globby: 11.1.0
       indent-string: 4.0.0
       is-wsl: 2.2.0
-      lilconfig: 3.1.3
+      lilconfig: 3.1.2
       minimatch: 9.0.5
-      semver: 7.7.2
       string-width: 4.2.3
       supports-color: 8.1.1
-      tinyglobby: 0.2.14
       widest-line: 3.1.0
       wordwrap: 1.0.0
       wrap-ansi: 7.0.0
@@ -20862,7 +20850,7 @@ snapshots:
 
   ansi-styles@6.2.1: {}
 
-  ansis@3.17.0: {}
+  ansis@3.2.0: {}
 
   any-promise@1.3.0: {}
 
@@ -22201,9 +22189,11 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
-  debug@4.3.6:
+  debug@4.3.6(supports-color@8.1.1):
     dependencies:
       ms: 2.1.2
+    optionalDependencies:
+      supports-color: 8.1.1
 
   debug@4.4.0:
     dependencies:
@@ -23311,7 +23301,7 @@ snapshots:
 
   follow-redirects@1.15.9(debug@4.3.6):
     optionalDependencies:
-      debug: 4.3.6
+      debug: 4.3.6(supports-color@8.1.1)
 
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
@@ -25107,8 +25097,6 @@ snapshots:
   lilconfig@2.1.0: {}
 
   lilconfig@3.1.2: {}
-
-  lilconfig@3.1.3: {}
 
   lines-and-columns@1.2.4: {}
 
@@ -28377,11 +28365,6 @@ snapshots:
   tinyexec@0.3.2: {}
 
   tinyglobby@0.2.13:
-    dependencies:
-      fdir: 6.4.4(picomatch@4.0.2)
-      picomatch: 4.0.2
-
-  tinyglobby@0.2.14:
     dependencies:
       fdir: 6.4.4(picomatch@4.0.2)
       picomatch: 4.0.2
