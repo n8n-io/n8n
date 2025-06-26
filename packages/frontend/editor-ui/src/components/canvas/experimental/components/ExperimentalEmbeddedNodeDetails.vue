@@ -5,7 +5,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import NodeTitle from '@/components/NodeTitle.vue';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 
@@ -88,17 +88,15 @@ function handleToggleExpand() {
 					/>
 				</template>
 			</ExperimentalCanvasNodeSettings>
-			<div v-else :class="$style.collapsedContent" is-read-only :node="node" :node-type="nodeType">
-				<NodeTitle v-if="node" class="node-name" :model-value="node.name" :node-type="nodeType" />
-				<N8nIconButton
-					icon="expand"
-					type="secondary"
-					text
-					size="mini"
-					icon-size="large"
-					aria-label="Toggle expand"
-					@click="handleToggleExpand"
+			<div v-else role="button " :class="$style.collapsedContent" @click="handleToggleExpand">
+				<NodeTitle
+					v-if="node"
+					class="node-name"
+					:model-value="node.name"
+					:node-type="nodeType"
+					read-only
 				/>
+				<N8nIcon icon="expand" size="large" />
 			</div>
 		</template>
 	</div>
@@ -109,14 +107,16 @@ function handleToggleExpand() {
 	position: relative;
 	align-items: flex-start;
 	justify-content: stretch;
-	overflow: auto;
-	cursor: default !important;
 	overflow: visible !important;
 	border-width: 0 !important;
 	outline: none !important;
 	box-shadow: none !important;
 	background-color: transparent !important;
 	width: calc(var(--canvas-node--width) * 1.5) !important;
+
+	&.expanded {
+		cursor: default !important;
+	}
 
 	&.collapsed {
 		height: 50px !important;
@@ -166,6 +166,8 @@ function handleToggleExpand() {
 	gap: var(--spacing-s);
 	background-color: white;
 	padding: var(--spacing-2xs);
-	background-color: var(--color-background-base);
+	background-color: var(--color-background-xlight);
+	color: var(--color-text-base);
+	cursor: pointer;
 }
 </style>

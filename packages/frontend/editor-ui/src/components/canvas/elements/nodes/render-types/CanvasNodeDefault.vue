@@ -6,7 +6,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
-import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalInPlaceNodeSettings.vue';
+import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const $style = useCssModule();
