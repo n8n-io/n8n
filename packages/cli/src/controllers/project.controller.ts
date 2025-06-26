@@ -29,6 +29,7 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
+import { UserManagementMailer } from '@/user-management/email';
 
 @RestController('/projects')
 export class ProjectController {
@@ -36,6 +37,7 @@ export class ProjectController {
 		private readonly projectsService: ProjectService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly eventService: EventService,
+		private readonly userManagementMailer: UserManagementMailer,
 	) {}
 
 	@Get('/')
@@ -208,7 +210,17 @@ export class ProjectController {
 		}
 		if (relations) {
 			try {
-				await this.projectsService.syncProjectRelations(projectId, relations);
+				const { project, newRelations } = await this.projectsService.syncProjectRelations(
+					projectId,
+					relations,
+				);
+
+				// Send email notifications to new sharees
+				await this.userManagementMailer.notifyProjectShared({
+					sharer: req.user,
+					newSharees: newRelations,
+					project: { id: project.id, name: project.name },
+				});
 			} catch (e) {
 				if (e instanceof UnlicensedProjectRoleError) {
 					throw new BadRequestError(e.message);
