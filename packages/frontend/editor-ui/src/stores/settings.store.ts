@@ -132,7 +132,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const isMFAEnforcementLicensed = computed(() => {
-		return settings.value.enterprise.mfaEnforcement;
+		return settings.value.enterprise?.mfaEnforcement ?? false;
 	});
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);

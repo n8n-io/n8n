@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -20,8 +20,16 @@ export class MfaService {
 		private license: LicenseState,
 		public totp: TOTPService,
 		private cipher: Cipher,
-	) {
-		void this.loadMFASettings();
+		private logger: Logger,
+	) {}
+
+	async init() {
+		try {
+			await this.loadMFASettings();
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			this.logger.warn('Failed to load MFA settings', { error });
+		}
 	}
 
 	generateRecoveryCodes(n = 10) {
