@@ -200,6 +200,8 @@ export function createTestWorkflow({
 		meta: {},
 		pinData,
 		status: 'created' as WorkflowStatus,
+		tokensConsumed: 0,
+		costIncurred: 0,
 		...rest,
 	};
 }

@@ -42,6 +42,12 @@ export class ExecutionEntity {
 	@Column('varchar')
 	mode: WorkflowExecuteMode;
 
+	@Column({ type: 'bigint', default: 0 })
+	tokensConsumed: number;
+
+	@Column({ type: 'bigint', default: 0 })
+	costIncurred: number;
+
 	@Column({ nullable: true })
 	retryOf: string;
 

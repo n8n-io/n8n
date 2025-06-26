@@ -9,6 +9,8 @@ export interface IUser {
 	inviteAcceptUrl?: string;
 	disabled: boolean;
 	signInType: string;
+	tokensConsumed: number;
+	costIncurred: number;
 }
 
 export interface UserAction {

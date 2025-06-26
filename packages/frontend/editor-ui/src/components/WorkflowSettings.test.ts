@@ -68,6 +68,8 @@ describe('WorkflowSettingsVue', () => {
 				updatedAt: 1,
 				versionId: '123',
 				status: 'created' as WorkflowStatus,
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 		]);
 		workflowsStore.getWorkflowById.mockImplementation(() => ({
@@ -82,6 +84,8 @@ describe('WorkflowSettingsVue', () => {
 			versionId: '123',
 			scopes: ['workflow:update'],
 			status: 'created' as WorkflowStatus,
+			tokensConsumed: 0,
+			costIncurred: 0,
 		}));
 	});
 
@@ -286,6 +290,8 @@ describe('WorkflowSettingsVue', () => {
 			versionId: '123',
 			status: 'created' as WorkflowStatus,
 			scopes: ['workflow:read'],
+			tokensConsumed: 0,
+			costIncurred: 0,
 		}));
 
 		const { getByTestId } = createComponent({ pinia });

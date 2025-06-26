@@ -16,10 +16,37 @@ interface UsersInfoProps {
 	disabled?: boolean;
 	settings?: object;
 	isSamlLoginEnabled?: boolean;
+	tokensConsumed: number;
+	costIncurred: number;
 }
 
 const props = withDefaults(defineProps<UsersInfoProps>(), {
 	disabled: false,
+});
+
+const formattedTokensConsumed = computed(() => {
+	const tokens = props?.tokensConsumed ?? 0;
+	if (tokens < 1000) {
+		return tokens;
+	}
+	if (tokens < 1000000) {
+		return `${(tokens / 1000).toFixed(2)}k`;
+	}
+	return `${(tokens / 1000000).toFixed(2)}M`;
+});
+
+const formattedCostsIncurred = computed(() => {
+	const cost = props?.costIncurred ?? 0;
+	if (cost < 1) {
+		return `${(cost * 100).toFixed(5)} cents`;
+	}
+	if (cost < 1000) {
+		return cost;
+	}
+	if (cost < 1000000) {
+		return `${(cost / 1000).toFixed(2)}k`;
+	}
+	return `${(cost / 1000000).toFixed(2)}M`;
 });
 
 const { t } = useI18n();
@@ -41,7 +68,9 @@ const classes = computed(
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
 			<N8nText :bold="true">{{ email }}</N8nText>
-			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
+			<span :class="$style.pendingBadge"
+				><N8nBadge :bold="true">{{ t('settings.users.pending') }}</N8nBadge></span
+			>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
@@ -50,11 +79,17 @@ const classes = computed(
 					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
 				</N8nText>
 				<span v-if="disabled" :class="$style.pendingBadge">
-					<N8nBadge :bold="true">Disabled</N8nBadge>
+					<N8nBadge :bold="true">{{ t('settings.users.disabled') }}</N8nBadge>
 				</span>
 			</div>
 			<div>
 				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
+			</div>
+			<div>
+				<N8nText data-test-id="user-email" size="small" color="text-light">
+					{{ t('settings.users.tokensConsumed') }}: {{ formattedTokensConsumed }} |
+					{{ t('settings.users.costIncurred') }}: {{ formattedCostsIncurred }}
+				</N8nText>
 			</div>
 		</div>
 	</div>

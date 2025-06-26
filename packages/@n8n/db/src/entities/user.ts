@@ -39,6 +39,12 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@IsEmail()
 	email: string;
 
+	@Column({ type: 'bigint', default: 0 })
+	tokensConsumed: number;
+
+	@Column({ type: 'bigint', default: 0 })
+	costIncurred: number;
+
 	@Column({ length: 32, nullable: true })
 	@NoXss()
 	@NoUrl()

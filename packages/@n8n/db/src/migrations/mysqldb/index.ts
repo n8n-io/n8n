@@ -89,7 +89,7 @@ import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTabl
 import { AddWorkflowStatus1748822400000 } from '../common/1748822400000-AddWorkflowStatus';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
-
+import { AddTokenAndCostUsedByMemberAndExecutionsAndWorkflows1750636800000 } from './1750636800000-AddTokenAndCostUsedByMemberAndExecutionsAndWorkflows';
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
@@ -181,4 +181,5 @@ export const mysqlMigrations: Migration[] = [
 	DropRoleTable1745934666077,
 	ClearEvaluation1745322634000,
 	AddWorkflowStatus1748822400000,
+	AddTokenAndCostUsedByMemberAndExecutionsAndWorkflows1750636800000,
 ];

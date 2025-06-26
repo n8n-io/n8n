@@ -95,7 +95,7 @@ async function fetchExecution() {
 	try {
 		currentExecution.value = (await executionsStore.fetchExecution(
 			executionId.value,
-		)) as ExecutionSummary;
+		)) as unknown as ExecutionSummary;
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));

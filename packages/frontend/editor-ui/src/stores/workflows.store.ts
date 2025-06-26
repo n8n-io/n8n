@@ -113,6 +113,8 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	versionId: '',
 	usedCredentials: [],
 	status: 'created' as WorkflowStatus,
+	tokensConsumed: 0,
+	costIncurred: 0,
 };
 
 const createEmptyWorkflow = (): IWorkflowDb => ({

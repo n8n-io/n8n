@@ -66,6 +66,8 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	isArchived: false,
 	versionId: '1',
 	status: 'created' as WorkflowStatus,
+	tokensConsumed: 0,
+	costIncurred: 0,
 	...overrides,
 });
 

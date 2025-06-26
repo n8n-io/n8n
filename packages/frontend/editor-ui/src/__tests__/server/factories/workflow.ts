@@ -36,4 +36,10 @@ export const workflowFactory = Factory.extend<IWorkflowDb>({
 	status() {
 		return faker.helpers.arrayElement(['created', 'submitted', 'approved', 'declined']);
 	},
+	tokensConsumed() {
+		return faker.datatype.number({ min: 0, max: 1000 });
+	},
+	costIncurred() {
+		return faker.datatype.number({ min: 0, max: 1000 });
+	},
 });

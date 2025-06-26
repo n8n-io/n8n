@@ -56,6 +56,8 @@ const executionDataFactory = (): ExecutionSummary => ({
 	nodeExecutionStatus: {},
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
+	tokensConsumed: 0,
+	costIncurred: 0,
 });
 
 const generateExecutionsData = () =>

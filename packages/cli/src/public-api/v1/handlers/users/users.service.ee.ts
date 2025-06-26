@@ -53,6 +53,8 @@ const userProperties = [
 	'createdAt',
 	'updatedAt',
 	'isPending',
+	'tokensConsumed',
+	'costIncurred',
 ];
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {
 	return pick(user, userProperties.concat(options?.includeRole ? ['role'] : []));

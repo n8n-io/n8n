@@ -29,6 +29,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u2',
@@ -40,6 +42,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u3',
@@ -51,6 +55,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u4',
@@ -62,6 +68,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u5',
@@ -70,6 +78,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u6',
@@ -79,6 +89,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 	{
 		id: 'u7',
@@ -90,6 +102,8 @@ const sampleUsers: IUser[] = [
 		isPendingUser: false,
 		disabled: false,
 		signInType: 'email',
+		tokensConsumed: 0,
+		costIncurred: 0,
 	},
 ];
 
@@ -181,6 +195,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			{
 				id: 's2',
@@ -190,6 +206,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 		];
 		renderComponent({
@@ -218,6 +236,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 		];
 		const { getByRole } = renderComponent({
@@ -283,6 +303,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			{
 				id: 'b',
@@ -294,6 +316,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			{
 				id: 'c',
@@ -305,6 +329,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			{
 				id: 'd',
@@ -316,6 +342,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			{
 				id: 'e',
@@ -324,6 +352,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			}, // No names, sort by email
 			{
 				id: 'f',
@@ -335,6 +365,8 @@ describe('UserSelect', () => {
 				isPendingUser: false,
 				disabled: false,
 				signInType: 'email',
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 		];
 		const { getByRole } = renderComponent({

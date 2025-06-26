@@ -395,6 +395,12 @@ const goToUpgrade = () => {
 							<th>
 								{{ i18n.baseText('executionsList.runTime') }}
 							</th>
+							<th>
+								{{ i18n.baseText('executionsList.tokensConsumed') }}
+							</th>
+							<th>
+								{{ i18n.baseText('executionsList.costIncurred') }}
+							</th>
 
 							<th>{{ i18n.baseText('executionsList.id') }}</th>
 
@@ -408,6 +414,8 @@ const goToUpgrade = () => {
 							v-for="execution in executions"
 							:key="execution.id"
 							:execution="execution"
+							:tokensConsumed="execution.tokensConsumed"
+							:costIncurred="execution.costIncurred"
 							:workflow-name="getExecutionWorkflowName(execution)"
 							:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 							:selected="selectedItems[execution.id] || allExistingSelected"

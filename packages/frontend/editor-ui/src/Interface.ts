@@ -340,6 +340,8 @@ export interface IWorkflowDb {
 	};
 
 	status: WorkflowStatus;
+	tokensConsumed: number;
+	costIncurred: number;
 }
 
 // For workflow list we don't need the full workflow data

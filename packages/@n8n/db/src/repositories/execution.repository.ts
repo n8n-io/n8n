@@ -785,6 +785,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
+		tokensConsumed: true,
+		costIncurred: true,
 	};
 
 	private annotationFields = {

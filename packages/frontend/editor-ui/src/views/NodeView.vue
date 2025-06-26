@@ -1332,7 +1332,7 @@ function onExecutionOpenedWithError(data: IExecutionResponse) {
 }
 
 function onExecutionOpenedWithWaitTill(data: IExecutionResponse) {
-	if ((data as ExecutionSummary).waitTill) {
+	if ((data as unknown as ExecutionSummary).waitTill) {
 		toast.showMessage({
 			title: i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
 			message: h(NodeViewUnfinishedWorkflowMessage),
@@ -1563,7 +1563,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		} else if (json?.command === 'setActiveExecution') {
 			executionsStore.activeExecution = (await executionsStore.fetchExecution(
 				json.executionId,
-			)) as ExecutionSummary;
+			)) as unknown as ExecutionSummary;
 		}
 	} catch (e) {}
 }

@@ -401,6 +401,8 @@ describe('Folders', () => {
 			updatedAt: new Date().toISOString(),
 		},
 		status: 'created' as WorkflowStatus,
+		tokensConsumed: 0,
+		costIncurred: 0,
 	};
 	const TEST_FOLDER_RESOURCE: WorkflowListResource = {
 		resource: 'folder',

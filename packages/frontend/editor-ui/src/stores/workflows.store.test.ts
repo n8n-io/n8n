@@ -1307,6 +1307,8 @@ function generateMockExecutionEvents() {
 			isArchived: false,
 			versionId: '1',
 			status: 'created' as WorkflowStatus,
+			tokensConsumed: 0,
+			costIncurred: 0,
 		},
 		finished: false,
 		mode: 'cli',

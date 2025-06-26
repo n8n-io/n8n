@@ -76,6 +76,8 @@ describe('ExecutionService', () => {
 				waitTill: null,
 				retrySuccessId: null,
 				workflowName: expect.any(String),
+				tokensConsumed: expect.anything(),
+				costIncurred: expect.anything(),
 				annotation: {
 					tags: expect.arrayContaining([]),
 					vote: null,
@@ -606,6 +608,8 @@ describe('ExecutionService', () => {
 			waitTill: null,
 			retrySuccessId: null,
 			workflowName: expect.any(String),
+			tokensConsumed: expect.anything(),
+			costIncurred: expect.anything(),
 		};
 
 		afterEach(async () => {

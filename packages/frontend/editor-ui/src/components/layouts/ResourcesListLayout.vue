@@ -38,6 +38,8 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	status: WorkflowStatus;
+	tokensConsumed: number;
+	costIncurred: number;
 };
 
 export type VariableResource = BaseResource & {

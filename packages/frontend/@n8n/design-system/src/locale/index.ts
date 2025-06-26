@@ -1,15 +1,20 @@
 import type { N8nLocale, N8nLocaleTranslateFn } from '@n8n/design-system/types';
 
 import createFormatTemplate from './format';
-import defaultLang from '../locale/lang/en';
-
+import EnglishLang from '../locale/lang/en';
+import ChineseLang from '../locale/lang/zh';
 // import { ElementLocale } from 'element-plus';
 // import ElementLang from 'element-plus/lib/locale/lang/en';
 //
 // ElementLocale.use(ElementLang);
 
 const format = createFormatTemplate();
-let lang = defaultLang;
+
+// default language set to Chinese for design systems
+if (!localStorage.getItem('n8n-language')) {
+	localStorage.setItem('n8n-language', 'Chinese');
+}
+let lang = localStorage.getItem('n8n-language') === 'Chinese' ? ChineseLang : EnglishLang;
 
 let i18nHandler: N8nLocaleTranslateFn;
 

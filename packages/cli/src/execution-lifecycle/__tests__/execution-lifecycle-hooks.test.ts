@@ -202,6 +202,8 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
 					workflowData,
 					fullRunData: successfulRun,
+					executionId,
+					userId,
 				});
 			});
 
@@ -623,7 +625,7 @@ describe('Execution Lifecycle Hooks', () => {
 	describe('getLifecycleHooksForScalingWorker', () => {
 		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
 			getLifecycleHooksForScalingWorker(
-				{ executionMode, workflowData, pushRef, retryOf },
+				{ executionMode, workflowData, pushRef, retryOf, userId },
 				executionId,
 			);
 
@@ -723,11 +725,11 @@ describe('Execution Lifecycle Hooks', () => {
 				'manual',
 				executionId,
 				workflowData,
-				undefined,
+				userId,
 			);
 		});
 
-		workflowEventTests();
+		workflowEventTests(userId);
 		nodeEventsTests();
 		externalHooksTests();
 		statisticsTests();

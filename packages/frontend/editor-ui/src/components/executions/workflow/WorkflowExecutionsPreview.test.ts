@@ -66,6 +66,8 @@ const executionDataFactory = (
 	retrySuccessId: generateUndefinedNullOrString(),
 	scopes: ['workflow:update'],
 	annotation: { tags, vote: 'up' },
+	tokensConsumed: 0,
+	costIncurred: 0,
 });
 
 const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {

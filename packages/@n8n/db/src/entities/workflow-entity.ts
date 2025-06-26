@@ -62,6 +62,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Check(`status IN ('created', 'submitted', 'approved', 'declined')`)
 	status: WorkflowStatus;
 
+	@Column({ type: 'bigint', default: 0 })
+	tokensConsumed: number;
+
+	@Column({ type: 'bigint', default: 0 })
+	costIncurred: number;
+
 	@JsonColumn({
 		nullable: true,
 		transformer: objectRetriever,

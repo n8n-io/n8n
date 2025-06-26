@@ -37,6 +37,8 @@ const EMPTY_WORKFLOW = {
 	status: 'created' as WorkflowStatus,
 	usedCredentials: [],
 	meta: { templateId: '2722', templateCredsSetupCompleted: true },
+	tokensConsumed: 0,
+	costIncurred: 0,
 };
 
 describe('SetupWorkflowCredentialsButton', () => {

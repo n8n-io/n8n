@@ -190,6 +190,17 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const formattedTokensConsumed = computed(() => {
+	const tokens = props.data.tokensConsumed;
+	if (tokens < 1000) {
+		return tokens;
+	}
+	if (tokens < 1000000) {
+		return `${(tokens / 1000).toFixed(2)}k`;
+	}
+	return `${(tokens / 1000000).toFixed(2)}M`;
+});
+
 const isSomeoneElsesWorkflow = computed(
 	() =>
 		props.data.homeProject?.type !== ProjectTypes.Team &&
@@ -451,6 +462,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				>
 					{{ locale.baseText(`audit.status.${data.status}`) }}
 				</n8n-badge>
+				<span v-show="data"
+					>{{ locale.baseText('workflows.item.tokensConsumed') }} {{ formattedTokensConsumed }} |
+				</span>
 				<span v-show="data"
 					>{{ locale.baseText('workflows.item.updated') }}
 					<TimeAgo :date="String(data.updatedAt)" /> |

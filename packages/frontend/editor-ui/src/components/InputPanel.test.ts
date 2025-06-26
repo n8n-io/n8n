@@ -78,6 +78,8 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 				connections,
 				versionId: '',
 				status: 'created' as WorkflowStatus,
+				tokensConsumed: 0,
+				costIncurred: 0,
 			},
 			finished: false,
 			mode: 'trigger',

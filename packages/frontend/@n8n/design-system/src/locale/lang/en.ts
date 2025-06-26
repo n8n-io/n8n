@@ -66,4 +66,8 @@ export default {
 	'iconPicker.tabs.icons': 'Icons',
 	'iconPicker.tabs.emojis': 'Emojis',
 	'selectableList.addDefault': '+ Add a',
+	'settings.users.pending': 'Pending',
+	'settings.users.disabled': 'Disabled',
+	'settings.users.tokensConsumed': 'Tokens consumed',
+	'settings.users.costIncurred': 'Cost incurred',
 } as N8nLocale;

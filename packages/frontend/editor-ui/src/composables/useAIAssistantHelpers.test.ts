@@ -399,6 +399,8 @@ const testWorkflow: IWorkflowDb = {
 	name: 'My Sub-Workflow 3',
 	active: false,
 	isArchived: false,
+	tokensConsumed: 0,
+	costIncurred: 0,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {

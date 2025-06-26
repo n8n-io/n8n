@@ -20,6 +20,8 @@ describe('UserStack', () => {
 							isOwner: true,
 							signInType: 'email',
 							disabled: false,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 						{
 							id: '2',
@@ -31,6 +33,8 @@ describe('UserStack', () => {
 							isOwner: false,
 							signInType: 'ldap',
 							disabled: true,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 					],
 				},
@@ -62,6 +66,8 @@ describe('UserStack', () => {
 							isOwner: true,
 							signInType: 'email',
 							disabled: false,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 						{
 							id: '2',
@@ -73,6 +79,8 @@ describe('UserStack', () => {
 							isOwner: false,
 							signInType: 'ldap',
 							disabled: true,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 						{
 							id: '3',
@@ -84,6 +92,8 @@ describe('UserStack', () => {
 							isOwner: false,
 							signInType: 'email',
 							disabled: false,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 						{
 							id: '4',
@@ -95,6 +105,8 @@ describe('UserStack', () => {
 							isOwner: false,
 							signInType: 'ldap',
 							disabled: true,
+							tokensConsumed: 0,
+							costIncurred: 0,
 						},
 					],
 				},

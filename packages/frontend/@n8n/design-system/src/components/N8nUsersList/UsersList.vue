@@ -92,6 +92,8 @@ const onUserAction = (user: IUser, action: string) =>
 				v-bind="user"
 				:is-current-user="currentUserId === user.id"
 				:is-saml-login-enabled="isSamlLoginEnabled"
+				:tokens-consumed="user.tokensConsumed"
+				:cost-incurred="user.costIncurred"
 			/>
 			<div :class="$style.badgeContainer">
 				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>

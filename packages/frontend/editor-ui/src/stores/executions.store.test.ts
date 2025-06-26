@@ -26,6 +26,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-01-03T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 			{
 				id: '2',
@@ -35,6 +37,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-01-02T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 			{
 				id: '1',
@@ -44,6 +48,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-01-01T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 		];
 
@@ -85,6 +91,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-02-03T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 			{
 				id: '2',
@@ -94,6 +102,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-02-02T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 			{
 				id: '3',
@@ -103,6 +113,8 @@ describe('executions.store', () => {
 				startedAt: new Date('2021-02-01T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
+				costIncurred: 0,
+				tokensConsumed: 0,
 			},
 		];
 

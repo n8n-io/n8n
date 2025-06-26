@@ -305,6 +305,8 @@ const workflowListResources = computed<Resource[]>(() => {
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
 				status: resource.status,
+				tokensConsumed: resource.tokensConsumed,
+				costIncurred: resource.costIncurred,
 			} satisfies WorkflowResource;
 		}
 	});

@@ -81,14 +81,36 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromStringList(list: string[]) {
-		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-		const encoder = await encodingForModel(embeddingModel);
+		try {
+			const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
+			const encoder = await encodingForModel(embeddingModel);
 
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => encoder.encode(text).length),
-		);
+			const encodedListLength = await Promise.all(
+				list.map(async (text) => encoder.encode(text).length),
+			);
 
-		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
+			return encodedListLength.reduce((acc, curr) => acc + curr, 0);
+		} catch (error) {
+			// Fallback to simple estimation if tiktoken fails (e.g., network issues)
+			// This handles "TypeError: fetch failed" and similar network-related errors
+			this.executionFunctions.logger?.warn(
+				'Failed to load tiktoken encoder, falling back to approximate token estimation',
+				{ error: error instanceof Error ? error.message : String(error) },
+			);
+			return this.estimateTokensSimple(list);
+		}
+	}
+
+	/**
+	 * Simple token estimation fallback that doesn't require network access
+	 * Based on the common approximation of ~4 characters per token for English text
+	 */
+	private estimateTokensSimple(list: string[]): number {
+		return list.reduce((total, text) => {
+			// Rough estimation: ~4 characters per token for English text
+			// This is a conservative estimate used when tiktoken is unavailable
+			return total + Math.ceil(text.length / 4);
+		}, 0);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
