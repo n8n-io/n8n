@@ -1,6 +1,11 @@
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
+import * as audio from './audio';
+import * as document from './document';
+import * as image from './image';
 import type { GoogleGeminiType } from './node.type';
+import * as text from './text';
+import * as video from './video';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -17,19 +22,19 @@ export async function router(this: IExecuteFunctions) {
 	let execute;
 	switch (googleGeminiTypeData.resource) {
 		case 'audio':
-			// TODO:
+			execute = audio[googleGeminiTypeData.operation].execute;
 			break;
 		case 'document':
-			// TODO:
+			execute = document[googleGeminiTypeData.operation].execute;
 			break;
 		case 'image':
-			// TODO:
+			execute = image[googleGeminiTypeData.operation].execute;
 			break;
 		case 'text':
-			// TODO:
+			execute = text[googleGeminiTypeData.operation].execute;
 			break;
 		case 'video':
-			// TODO:
+			execute = video[googleGeminiTypeData.operation].execute;
 			break;
 		default:
 			throw new NodeOperationError(

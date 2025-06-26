@@ -1,10 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import * as audio from './audio';
+import * as document from './document';
+import * as image from './image';
+import * as text from './text';
+import * as video from './video';
+
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Gemini',
 	name: 'googleGemini',
-	icon: 'file:googleGemini.svg',
+	icon: 'file:google.svg',
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
@@ -34,7 +40,7 @@ export const versionDescription: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
-			name: 'openAiApi',
+			name: 'googlePalmApi',
 			required: true,
 		},
 	],
@@ -68,6 +74,10 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			default: 'text',
 		},
-		// TODO: add other fields
+		...audio.description,
+		...document.description,
+		...image.description,
+		...text.description,
+		...video.description,
 	],
 };
