@@ -402,8 +402,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
-		console.log(rawRows);
-
 		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 

@@ -196,9 +196,9 @@ export class InsightsService {
 			if (typeof r.succeeded === 'number' && typeof r.failed === 'number') {
 				const total = r.succeeded + r.failed;
 				values.total = total;
-				values.failureRate = r.failed / total;
-				if (typeof r.runTime === 'number') {
-					values.averageRunTime = r.runTime / total;
+				values.failureRate = total ? r.failed / total : 0;
+				if (typeof runTime === 'number') {
+					values.averageRunTime = total ? runTime / total : 0;
 				}
 			}
 			return {
