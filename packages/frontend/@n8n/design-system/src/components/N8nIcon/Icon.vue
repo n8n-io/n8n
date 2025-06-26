@@ -24,10 +24,6 @@ const props = withDefaults(defineProps<IconProps>(), {
 const $style = useCssModule();
 const classes = computed(() => {
 	const applied: string[] = [];
-	if (props.color) {
-		applied.push(props.color);
-	}
-
 	if (props.spin) {
 		applied.push('spin');
 	}
@@ -54,6 +50,16 @@ const size = computed((): { height: string; width: string } => {
 		width: sizeToApply,
 	};
 });
+
+const styles = computed(() => {
+	const stylesToApply: Record<string, string> = {};
+
+	if (props.color) {
+		stylesToApply.color = `var(--color-${props.color})`;
+	}
+
+	return stylesToApply;
+});
 </script>
 
 <template>
@@ -67,6 +73,7 @@ const size = computed((): { height: string; width: string } => {
 		:height="size.height"
 		:width="size.width"
 		:data-icon="props.icon"
+		:style="styles"
 	/>
 </template>
 
@@ -79,68 +86,12 @@ const size = computed((): { height: string; width: string } => {
 </style>
 
 <style lang="scss" module>
-.xlarge {
-	width: var(--font-size-xl) !important;
-}
-.large {
-	width: var(--font-size-m) !important;
-}
-.medium {
-	width: var(--font-size-s) !important;
-}
-.small {
-	width: var(--font-size-2xs) !important;
-}
-.xsmall {
-	width: var(--font-size-3xs) !important;
-}
-
 .spin {
 	animation: spin 1s linear infinite;
 }
 
 .primary {
 	color: var(--color-primary);
-}
-
-.secondary {
-	color: var(--color-secondary);
-}
-
-.text-dark {
-	color: var(--color-text-dark);
-}
-
-.text-base {
-	color: var(--color-text-base);
-}
-
-.text-light {
-	color: var(--color-text-light);
-}
-
-.text-xlight {
-	color: var(--color-text-xlight);
-}
-
-.danger {
-	color: var(--color-text-danger);
-}
-
-.success {
-	color: var(--color-success);
-}
-
-.warning {
-	color: var(--color-warning);
-}
-
-.foreground-dark {
-	color: var(--color-foreground-dark);
-}
-
-.foreground-xdark {
-	color: var(--color-foreground-xdark);
 }
 
 @keyframes spin {
