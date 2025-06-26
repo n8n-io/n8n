@@ -2,6 +2,7 @@ import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
 import N8nMenu from './Menu.vue';
+import N8nCallout from '../N8nCallout';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 
@@ -159,3 +160,69 @@ withHeaderAndFooter.args = { items: menuItems };
 
 export const withAllSlots = templateWithAllSlots.bind({});
 withAllSlots.args = { items: menuItems };
+
+export const withCustomComponent = templateWithHeaderAndFooter.bind({});
+withCustomComponent.args = {
+	items: [
+		...menuItems,
+		{
+			id: 'custom',
+			icon: 'bell',
+			label: "What's New",
+			position: 'bottom',
+			children: [
+				{
+					id: 'custom-callout',
+					component: N8nCallout,
+					available: true,
+					props: {
+						theme: 'warning',
+						icon: 'bell',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const withNotification = templateWithHeaderAndFooter.bind({});
+withNotification.args = {
+	items: [
+		...menuItems,
+		{
+			id: 'notification',
+			icon: 'bell',
+			label: 'Notification',
+			position: 'top',
+			notification: true,
+		},
+	],
+};
+
+export const withSmallMenu = templateWithHeaderAndFooter.bind({});
+withSmallMenu.args = {
+	items: [
+		...menuItems,
+		{
+			id: 'notification',
+			icon: {
+				type: 'icon',
+				value: 'bell',
+				color: 'primary',
+			},
+			label: 'Small items',
+			position: 'top',
+			children: [
+				{ icon: 'info', label: 'About n8n', id: 'about', size: 'small' },
+				{ icon: 'book', label: 'Documentation', id: 'docs', size: 'small' },
+				{
+					icon: 'bell',
+					label: 'Notification',
+					id: 'notification',
+					notification: true,
+					size: 'small',
+				},
+			],
+		},
+	],
+};
