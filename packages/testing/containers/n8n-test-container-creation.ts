@@ -28,7 +28,7 @@ const NGINX_IMAGE = 'nginx:stable';
 const N8N_E2E_IMAGE = 'n8n-local:dev';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
-const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
+const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE || N8N_E2E_IMAGE;
 
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {

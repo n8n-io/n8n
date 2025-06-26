@@ -165,6 +165,6 @@ pnpm run stack:clean:all
 
 By default, uses the `n8n-local:dev` image. Override with:
 ```bash
-export N8N_DOCKER_IMAGE=n8n/n8n:latest
+export N8N_DOCKER_IMAGE=n8nio/n8n:dev
 pnpm run stack
 ```
