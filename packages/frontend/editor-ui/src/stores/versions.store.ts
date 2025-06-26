@@ -17,6 +17,7 @@ import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useStorage } from '@/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
@@ -47,6 +48,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	});
 	const whatsNewCallout = ref<NotificationHandle | undefined>();
 
+	const telemetry = useTelemetry();
 	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
@@ -190,9 +192,13 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 							position: 'bottom-left',
 							customClass: 'clickable whats-new-notification',
 							onClick: () => {
+								const articleId = whatsNew.value.items[0]?.id ?? 0;
+								telemetry.track("User clicked on what's new notification", {
+									article_id: articleId,
+								});
 								uiStore.openModalWithData({
 									name: WHATS_NEW_MODAL_KEY,
-									data: { articleId: whatsNew.value.items[0]?.id ?? 0 },
+									data: { articleId },
 								});
 							},
 							onClose: () => {
