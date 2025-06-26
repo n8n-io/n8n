@@ -1116,7 +1116,11 @@ function handleWheelEvent(event: WheelEvent) {
 		<div
 			v-if="node && nodeValid"
 			ref="nodeParameterWrapper"
-			:class="['node-parameters-wrapper', noWheel && hasOverflowY ? 'nowheel' : '']"
+			:class="[
+				'node-parameters-wrapper',
+				hasOverflowY ? 'has-overflow-y' : '',
+				noWheel && hasOverflowY ? 'nowheel' : '',
+			]"
 			data-test-id="node-parameters"
 			@wheel="noWheel ? handleWheelEvent : undefined"
 		>
@@ -1261,6 +1265,10 @@ function handleWheelEvent(event: WheelEvent) {
 		}
 	}
 
+	&.embedded .header-side-menu {
+		padding: var(--spacing-xs);
+	}
+
 	.node-is-not-valid {
 		height: 75%;
 		padding: 10px;
@@ -1279,6 +1287,12 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	&.embedded .node-parameters-wrapper {
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+	}
+
+	&.embedded .node-parameters-wrapper.has-overflow-y {
+		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}

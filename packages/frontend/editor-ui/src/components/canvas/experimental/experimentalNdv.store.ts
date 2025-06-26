@@ -38,10 +38,15 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		collapsedNodes.value = {};
 	}
 
+	function isActive(canvasZoom: number) {
+		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
+	}
+
 	return {
 		isEnabled,
 		maxCanvasZoom,
 		collapsedNodes: computed(() => collapsedNodes.value),
+		isActive,
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
