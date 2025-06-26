@@ -358,4 +358,150 @@ describe('versions.store', () => {
 			expect(versionsStore.latestVersion.name).toBe(currentVersionName);
 		});
 	});
+
+	describe('hasSignificantUpdates', () => {
+		beforeEach(() => {
+			const settingsStore = useSettingsStore();
+			settingsStore.settings.releaseChannel = 'stable';
+		});
+
+		it('should return true if current version is behind by at least two minor versions', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0',
+				},
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return true if current version is behind by at least two minor versions, more exotic versions', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.100.1+rc.1',
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0-alpha+20180301',
+				},
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return true if current version has security issue', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				hasSecurityIssue: true,
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return false if current version is not behind by at least two minor versions', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.101.0',
+			};
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0',
+				},
+				{
+					...currentVersion,
+					name: '1.101.1',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return false if current version is only behind by patch versions', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.100.9',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return true if current version is behind by a major', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.100.0',
+			};
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '2.0.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return false if current version is not semver', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: 'alpha-1',
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.100.2',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return false if latest version is not semver', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: 'alpha-2',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+	});
 });

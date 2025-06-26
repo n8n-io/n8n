@@ -20,6 +20,13 @@ import { jsonParse } from 'n8n-workflow';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
+/**
+ * Semantic versioning 2.0.0, Regex from https://semver.org/
+ * Capture groups: major, minor, patch, prerelease, buildmetadata
+ */
+export const SEMVER_REGEX =
+	/^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+
 export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const versionNotificationSettings = ref<IVersionNotificationSettings>({
 		enabled: false,
@@ -52,6 +59,29 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const hasVersionUpdates = computed(() => {
 		return settingsStore.settings.releaseChannel === 'stable' && nextVersions.value.length > 0;
+	});
+
+	const hasSignificantUpdates = computed(() => {
+		if (!hasVersionUpdates.value || !currentVersion.value || !latestVersion.value) return false;
+
+		// Always consider security issues as significant updates
+		if (currentVersion.value.hasSecurityIssue) return true;
+
+		const current = currentVersion.value.name.match(SEMVER_REGEX);
+		const latest = latestVersion.value.name.match(SEMVER_REGEX);
+
+		if (!current?.groups || !latest?.groups) return false;
+
+		// Major change is always significant
+		if (Number(current.groups.major) !== Number(latest.groups.major)) {
+			return true;
+		}
+
+		const currentMinor = Number(current.groups.minor);
+		const latestMinor = Number(latest.groups.minor);
+
+		// Otherwise two minor versions is enough to be considered significant
+		return latestMinor - currentMinor >= 2;
 	});
 
 	const latestVersion = computed(() => {
@@ -220,6 +250,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		latestVersion,
 		nextVersions,
 		hasVersionUpdates,
+		hasSignificantUpdates,
 		areNotificationsEnabled,
 		infoUrl,
 		fetchVersions,
