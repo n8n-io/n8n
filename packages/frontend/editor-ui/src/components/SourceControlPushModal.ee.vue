@@ -442,7 +442,6 @@ const activeTab = ref<
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const allVisibleItemsSelected = computed(() => {
-	debugger;
 	if (!activeSelection.value.size) {
 		return false;
 	}
@@ -938,7 +937,6 @@ function castProject(project: ProjectListItem) {
 
 .tableHeader {
 	border-bottom: var(--border-base);
-	// padding: 10px 16px;
 	display: flex;
 	flex-direction: column;
 }
