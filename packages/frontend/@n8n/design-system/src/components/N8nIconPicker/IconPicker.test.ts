@@ -42,11 +42,11 @@ const components = {
 		template: '<button :data-icon="icon" data-testid="icon-picker-button" />',
 		props: ['icon'],
 	},
-	N8nIcon: {
-		template:
-			'<div class="mock-icon" :data-icon="typeof icon === \'string\' ? icon : icon.iconName" />',
-		props: ['icon'],
-	},
+	// N8nIcon: {
+	// 	template:
+	// 		'<div class="mock-icon" :data-icon="typeof icon === \'string\' ? icon : icon.iconName" />',
+	// 	props: ['icon'],
+	// },
 };
 
 describe('IconPicker', () => {
@@ -59,7 +59,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
-				stubs: ['N8nButton'],
+				stubs: ['N8nButton', 'N8nIcon'],
 			},
 		});
 		const TEST_EMOJI_COUNT = 1962;
@@ -71,6 +71,7 @@ describe('IconPicker', () => {
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// All icons should be rendered
 		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_ICON_PICKER_ICONS.length);
+
 		// Click on emojis tab
 		await fireEvent.click(getByTestId('tab-emojis'));
 		// Emojis tab should be active
@@ -78,6 +79,7 @@ describe('IconPicker', () => {
 		// All emojis should be rendered
 		expect(getAllByTestId('icon-picker-emoji')).toHaveLength(TEST_EMOJI_COUNT);
 	});
+
 	it('renders icon picker with custom icon and tooltip', async () => {
 		const ICON = 'layer-group';
 		const TOOLTIP = 'Select something...';
@@ -96,6 +98,7 @@ describe('IconPicker', () => {
 		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
 		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ICON);
 	});
+
 	it('renders emoji as default icon correctly', async () => {
 		const ICON = '🔥';
 		const TOOLTIP = 'Select something...';
@@ -113,6 +116,7 @@ describe('IconPicker', () => {
 		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
 		expect(getByTestId('icon-picker-button')).toHaveTextContent(ICON);
 	});
+
 	it('renders icon picker with only emojis', () => {
 		const { queryByTestId } = render(IconPicker, {
 			props: {
@@ -127,6 +131,7 @@ describe('IconPicker', () => {
 		});
 		expect(queryByTestId('tab-icons')).not.toBeInTheDocument();
 	});
+
 	it('is able to select an icon', async () => {
 		const { getByTestId, getAllByTestId, queryByTestId, emitted } = render(IconPicker, {
 			props: {
@@ -136,22 +141,23 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
-				stubs: ['N8nButton'],
+				stubs: ['N8nIcon', 'N8nButton'],
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
 		// Select the first icon
 		await fireEvent.click(getAllByTestId('icon-picker-icon')[0]);
 		// Icon should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', '?'); // todo
+		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ALL_ICON_PICKER_ICONS[0]); // todo
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
 		expect(emitted()).toHaveProperty('update:modelValue');
 		// Should emit the selected icon
 		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
 			type: 'icon',
-			value: '?', // todo
+			value: ALL_ICON_PICKER_ICONS[0],
 		});
 	});
+
 	it('is able to select an emoji', async () => {
 		const { getByTestId, getAllByTestId, queryByTestId, emitted } = render(IconPicker, {
 			props: {
@@ -161,6 +167,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
+				stubs: ['N8nIcon'],
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
@@ -168,6 +175,7 @@ describe('IconPicker', () => {
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// Select the first emoji
 		await fireEvent.click(getAllByTestId('icon-picker-emoji')[0]);
+
 		// Emoji should be selected and popup should be closed
 		expect(getByTestId('icon-picker-button')).toHaveTextContent('😀');
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
