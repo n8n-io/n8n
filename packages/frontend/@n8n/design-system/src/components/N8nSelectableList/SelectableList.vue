@@ -86,7 +86,6 @@ function itemComparator(a: Item, b: Item) {
 			:class="$style.slotComboContainer"
 			:data-test-id="`selectable-list-slot-${item.name}`"
 		>
-			<!-- todo test icon here if disabled -->
 			<N8nIcon
 				v-if="!disabled"
 				:class="$style.slotRemoveIcon"

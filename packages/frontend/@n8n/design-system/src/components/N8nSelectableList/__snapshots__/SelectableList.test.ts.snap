@@ -4,7 +4,7 @@ exports[`N8nSelectableList > renders disabled collection without selectables 1`]
 "<div>
   <!--v-if-->
   <div class="slotComboContainer" data-test-id="selectable-list-slot-propB">
-    <n8n-icon-stub icon="none" size="xsmall" spin="false" class="slotRemoveIcon" data-test-id="selectable-list-remove-slot-propB"></n8n-icon-stub>
+    <!--v-if-->
     <div class="slotContainer"></div>
   </div>
 </div>"
