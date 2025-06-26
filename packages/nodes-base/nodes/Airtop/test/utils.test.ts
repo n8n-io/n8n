@@ -485,7 +485,10 @@ describe('Test Airtop utils', () => {
 	describe('createSession', () => {
 		it('should create a session and return the session ID', async () => {
 			const result = await createSession.call(createMockExecuteFunction({}), {});
-			expect(result).toEqual({ sessionId: 'new-session-123' });
+			expect(result).toEqual({
+				sessionId: 'new-session-123',
+				data: { ...mockCreatedSession },
+			});
 		});
 
 		it('should throw an error if no session ID is returned', async () => {
