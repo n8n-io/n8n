@@ -31,8 +31,8 @@ const categoryName = computed(() => {
 				<n8n-icon v-if="isTrigger" icon="bolt" size="xsmall" :class="$style.triggerIcon" />
 				<slot />
 			</span>
-			<n8n-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
-			<n8n-icon v-else :class="$style.arrow" icon="chevron-up" />
+			<n8n-icon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
+			<n8n-icon v-else icon="chevron-up" color="text-light" size="large" />
 		</div>
 	</div>
 </template>
@@ -71,11 +71,5 @@ const categoryName = computed(() => {
 .name {
 	flex-grow: 1;
 	color: var(--color-text-dark);
-}
-
-.arrow {
-	font-size: var(--font-size-2xs);
-	width: 12px;
-	color: $node-creator-arrow-color;
 }
 </style>
