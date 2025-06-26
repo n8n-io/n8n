@@ -1,5 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -31,7 +32,8 @@ async function getChatModel(
 
 export const processItem = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const needsFallback = ctx.getNodeParameter('needsFallback', 0, false) as boolean;
-	const llm = (await getChatModel(ctx, 0)) as BaseLanguageModel;
+	const llm = await getChatModel(ctx, 0);
+	assert(llm, 'Please connect a model to the Chat Model input');
 
 	const fallbackLlm = needsFallback ? await getChatModel(ctx, 1) : null;
 	if (needsFallback && !fallbackLlm) {

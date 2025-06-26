@@ -7,6 +7,7 @@ import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
 import {
@@ -85,8 +86,16 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	) as number;
 	const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
 	const memory = await getOptionalMemory(this);
-	const model = (await getChatModel(this, 0)) as BaseChatModel;
+	const model = await getChatModel(this, 0);
+	assert(model, 'Please connect a model to the Chat Model input');
 	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+
+	if (needsFallback && !fallbackModel) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Please connect a model to the Fallback Model input or disable the fallback option',
+		);
+	}
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
