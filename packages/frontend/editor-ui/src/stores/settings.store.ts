@@ -42,7 +42,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			enabled: false,
 		},
 	});
-	const mfa = ref({ enabled: false, enforced: false });
+	const mfa = ref({ enabled: false });
 	const folders = ref({ enabled: false });
 
 	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');

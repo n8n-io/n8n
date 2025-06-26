@@ -153,7 +153,7 @@ describe('AuthService', () => {
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
 		});
 
-		it('should 401 and clear the cookie if 2FA is enforced and not used', async () => {
+		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			userRepository.findOne.mockResolvedValue(user);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
@@ -169,7 +169,7 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).not.toHaveBeenCalledWith();
 		});
 
 		it('should refresh the cookie before it expires', async () => {

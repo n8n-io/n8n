@@ -415,11 +415,21 @@ describe('Enforce MFA', () => {
 
 		expect(enforced).toBe(null);
 
-		await testServer.authAgentFor(owner).post('/enforce-mfa').send({ enforce: true }).expect(200);
+		owner.mfaEnabled = true;
+		await testServer
+			.authAgentFor(owner)
+			.post('/mfa/enforce-mfa')
+			.send({ enforce: true })
+			.expect(200);
+		owner.mfaEnabled = false;
 
 		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 
-		expect(enforced).toBe(true);
+		expect(enforced?.value).toBe('true');
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
 	});
 
 	test('Disable MFA for the instance', async () => {
@@ -429,10 +439,20 @@ describe('Enforce MFA', () => {
 
 		expect(enforced).toBe(null);
 
-		await testServer.authAgentFor(owner).post('/enforce-mfa').send({ enforce: false }).expect(200);
+		owner.mfaEnabled = true;
+		await testServer
+			.authAgentFor(owner)
+			.post('/mfa/enforce-mfa')
+			.send({ enforce: false })
+			.expect(200);
+		owner.mfaEnabled = false;
 
 		enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 
-		expect(enforced).toBe(false);
+		expect(enforced?.value).toBe('false');
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
 	});
 });

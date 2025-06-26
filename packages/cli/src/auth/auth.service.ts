@@ -53,9 +53,6 @@ export class AuthService {
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
 	) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		// this.authMiddleware = this.authMiddleware.bind(this);
-
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
@@ -81,11 +78,15 @@ export class AuthService {
 					const [user, info] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
 
-					if (mfaEnforced && !allowSkipMFA) {
+					if (mfaEnforced && !info.usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
-						if (!info.usedMfa) {
+						if (user.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
+						} else {
+							// In this case we don't want to clear the cookie, to allow for MFA setup
+							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
+							return;
 						}
 					}
 
@@ -125,7 +126,6 @@ export class AuthService {
 		}
 	}
 
-	// TODO: fix all occurrences of this for usedMfa parameter
 	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
