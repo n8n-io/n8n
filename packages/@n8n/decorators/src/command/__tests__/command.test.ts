@@ -9,6 +9,7 @@ describe('@Command decorator', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		Container.reset();
 
 		commandMetadata = new CommandMetadata();
 		Container.set(CommandMetadata, commandMetadata);

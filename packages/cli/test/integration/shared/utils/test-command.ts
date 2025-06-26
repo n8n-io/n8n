@@ -30,7 +30,7 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 
 	const run = async (argv: string[] = []) => {
 		const command = new Command();
-		command.flags = argvParser(argv.join(' '));
+		command.flags = argvParser(argv);
 		await command.init?.();
 		await command.run();
 		return command;

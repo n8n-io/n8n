@@ -69,8 +69,6 @@ export class DbRevertMigrationCommand {
 	constructor(private readonly logger: Logger) {}
 
 	async run() {
-		console.log('will revert');
-		process.exit(0);
 		const connectionOptions: ConnectionOptions = {
 			...Container.get(DbConnectionOptions).getOptions(),
 			subscribers: [],
