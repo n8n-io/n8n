@@ -1,6 +1,10 @@
+import { testDb } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ExecutionEntity } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
@@ -22,16 +26,14 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
@@ -256,5 +258,129 @@ describe('run', () => {
 			'1',
 			undefined,
 		);
+	});
+});
+
+describe('enqueueExecution', () => {
+	const setupQueue = jest.fn();
+	const addJob = jest.fn();
+
+	@Service()
+	class MockScalingService {
+		setupQueue = setupQueue;
+
+		addJob = addJob;
+	}
+
+	beforeAll(() => {
+		jest.mock('@/scaling/scaling.service', () => ({
+			ScalingService: MockScalingService,
+		}));
+	});
+
+	afterAll(() => {
+		jest.unmock('@/scaling/scaling.service');
+	});
+
+	it('should setup queue when scalingService is not initialized', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('streaming functionality', () => {
+	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockResponse = mock<Response>();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+			executionMode: 'webhook',
+			streamingEnabled: true,
+			httpResponse: mockResponse,
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+	});
+
+	it('should not setup sendChunk handler when streaming is enabled but execution mode is manual', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockResponse = mock<Response>();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+			executionMode: 'manual',
+			streamingEnabled: true,
+			httpResponse: mockResponse,
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		expect(mockHooks.addHandler).not.toHaveBeenCalledWith('sendChunk', expect.any(Function));
 	});
 });

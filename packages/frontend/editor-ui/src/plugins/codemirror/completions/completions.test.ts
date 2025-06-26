@@ -3,7 +3,6 @@ import { setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import { dollarOptions } from '@/plugins/codemirror/completions/dollar.completions';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import {
 	extensions,
@@ -29,7 +28,8 @@ import {
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 } from './constants';
-import { set, uniqBy } from 'lodash-es';
+import set from 'lodash/set';
+import uniqBy from 'lodash/uniqBy';
 import { mockNodes } from '@/__tests__/mocks';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
@@ -61,7 +61,7 @@ describe('No completions', () => {
 describe('Top-level completions', () => {
 	test('should return dollar completions for blank position: {{ | }}', () => {
 		const result = completions('{{ | }}');
-		expect(result).toHaveLength(dollarOptions().length);
+		expect(result).toHaveLength(18);
 
 		expect(result?.[0]).toEqual(
 			expect.objectContaining({
@@ -108,7 +108,7 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return dollar completions for: {{ $| }}', () => {
-		expect(completions('{{ $| }}')).toHaveLength(dollarOptions().length);
+		expect(completions('{{ $| }}')).toHaveLength(18);
 	});
 
 	test('should return node selector completions for: {{ $(| }}', () => {

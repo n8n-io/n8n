@@ -2,6 +2,36 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.98.0
+
+### What changed?
+
+The `last_activity` metric included as a part of route metrics has been changed to output a Unix time in seconds from
+the previous timestamp label approach. The labeling approach could result in high cardinality within Prometheus and
+thus result in poorer performance.
+
+Stricter parameters for `iframe`, `video`, and `source` tags when using the Form node.
+
+### When is action necessary?
+
+If you've been ingesting route metrics from your n8n instance (version 1.81.0 and newer), you should analyze
+how the `last_activity` metric has affected your Prometheus instance and potentially clean up the old data. Future
+metrics will also be served in a different format, which needs to be taken into account.
+
+If you are using `iframe`, `video`, or `source` tags with attributes beyond those listed [here](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Form/utils/utils.ts#L61-L71) or are using schemes which are neither `http` or `https`, you will need to update your node or workflow.
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v20.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v20 or above.
+
 ## 1.83.0
 
 ### What changed?

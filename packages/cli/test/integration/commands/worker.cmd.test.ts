@@ -1,5 +1,6 @@
 process.argv[2] = 'worker';
 
+import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
@@ -9,27 +10,25 @@ import config from '@/config';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
-
-import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
 Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const externalHooks = mockInstance(ExternalHooks);
-const externalSecretsManager = mockInstance(ExternalSecretsManager);
 const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
@@ -50,8 +49,8 @@ test('worker initializes all its components', async () => {
 
 	expect(license.init).toHaveBeenCalledTimes(1);
 	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
+	expect(communityPackagesService.init).toHaveBeenCalledTimes(1);
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
-	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);

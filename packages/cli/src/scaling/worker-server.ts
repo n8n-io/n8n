@@ -1,14 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { DbConnection } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import express from 'express';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DbConnection } from '@/databases/db-connection';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';

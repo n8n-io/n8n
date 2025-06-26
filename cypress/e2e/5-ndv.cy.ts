@@ -95,7 +95,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Airtable');
+		workflowPage.actions.openNode('Search records');
 		cy.get('.has-issues').should('have.length', 2);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
@@ -463,17 +463,10 @@ describe('NDV', () => {
 			return cy.get(`[data-node-placement=${position}]`);
 		}
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with mouse', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -518,16 +511,9 @@ describe('NDV', () => {
 				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -539,7 +525,6 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('inputMain').should('exist');
 				getFloatingNodeByPosition('outputMain').should('exist');
 				ndv.actions.close();
-				// These two lines are broken in V2
 				workflowPage.getters.selectedNodes().should('have.length', 1);
 				workflowPage.getters
 					.selectedNodes()
@@ -567,7 +552,6 @@ describe('NDV', () => {
 			getFloatingNodeByPosition('inputSub').should('not.exist');
 			getFloatingNodeByPosition('outputSub').should('not.exist');
 			ndv.actions.close();
-			// These two lines are broken in V2
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters
 				.selectedNodes()
@@ -581,18 +565,20 @@ describe('NDV', () => {
 				{
 					title: 'Language Models',
 					id: 'ai_languageModel',
+					index: 0,
 				},
 				{
 					title: 'Tools',
 					id: 'ai_tool',
+					index: 0,
 				},
 			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
 			connectionGroups.forEach((group) => {
-				cy.getByTestId(`add-subnode-${group.id}`).should('exist');
-				cy.getByTestId(`add-subnode-${group.id}`).click();
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
 				// Add HTTP Request tool
@@ -601,16 +587,16 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
 				if (group.id === 'ai_languageModel') {
-					cy.getByTestId(`add-subnode-${group.id}`).should('not.exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('not.exist');
 				} else {
-					cy.getByTestId(`add-subnode-${group.id}`).should('exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
 					// Expand the subgroup
-					cy.getByTestId('subnode-connection-group-ai_tool').click();
-					cy.getByTestId(`add-subnode-${group.id}`).click();
+					cy.getByTestId('subnode-connection-group-ai_tool-0').click();
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 					// Add HTTP Request tool
 					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool')
+					cy.getByTestId('subnode-connection-group-ai_tool-0')
 						.findChildByTestId('floating-subnode')
 						.should('have.length', 2);
 				}
@@ -624,13 +610,7 @@ describe('NDV', () => {
 		it('should have the floating nodes in correct order', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
 			openNode('Merge');

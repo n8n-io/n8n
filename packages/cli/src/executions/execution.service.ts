@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -14,7 +15,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { Logger } from 'n8n-core';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -80,6 +80,10 @@ export const schemaGetExecutionsQueryFilter = {
 					type: 'string',
 				},
 				value: { type: 'string' },
+				exactMatch: {
+					type: 'boolean',
+					default: true,
+				},
 			},
 		},
 	},
@@ -244,7 +248,7 @@ export class ExecutionService {
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
-		let requestFilters;
+		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
 				Object.keys(requestFiltersRaw).map((key) => {
@@ -416,13 +420,19 @@ export class ExecutionService {
 		);
 	}
 
-	async stop(executionId: string): Promise<StopResult> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
 
-		if (!execution) throw new MissingExecutionStopError(executionId);
+		if (!execution) {
+			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
+				executionId,
+			});
+
+			throw new MissingExecutionStopError(executionId);
+		}
 
 		this.assertStoppable(execution);
 

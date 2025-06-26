@@ -1,11 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { sql } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-
-import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit } from '../entities/insights-shared';
@@ -90,7 +89,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		// SQLite by default
 		let periodStartExpr =
 			periodUnitToCompactInto === 'week'
-				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, 'weekday 0', '-6 days'))"
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
 				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =

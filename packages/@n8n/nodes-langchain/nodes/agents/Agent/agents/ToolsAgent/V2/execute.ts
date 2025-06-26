@@ -1,7 +1,7 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import { omit } from 'lodash';
+import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
@@ -36,8 +36,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	const outputParser = await getOptionalOutputParser(this);
-	const tools = await getTools(this, outputParser);
 	const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
 	const delayBetweenBatches = this.getNodeParameter(
 		'options.batching.delayBetweenBatches',
@@ -61,7 +59,8 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			if (input === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
 			}
-
+			const outputParser = await getOptionalOutputParser(this, itemIndex);
+			const tools = await getTools(this, outputParser);
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
 				systemMessage?: string;
 				maxIterations?: number;
@@ -112,7 +111,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);
-
+		// This is only used to check if the output parser is connected
+		// so we can parse the output if needed. Actual output parsing is done in the loop above
+		const outputParser = await getOptionalOutputParser(this, 0);
 		batchResults.forEach((result, index) => {
 			const itemIndex = i + index;
 			if (result.status === 'rejected') {

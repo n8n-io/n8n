@@ -12,8 +12,8 @@ export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
 
-export type { BannerName } from './schemas/bannerName.schema';
-export { ViewableMimeTypes } from './schemas/binaryData.schema';
+export type { BannerName } from './schemas/banner-name.schema';
+export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
 
 export type {
@@ -36,5 +36,12 @@ export {
 	type InsightsByWorkflow,
 	type InsightsByTime,
 	type InsightsDateRange,
-	INSIGHTS_DATE_RANGE_KEYS,
 } from './schemas/insights.schema';
+
+export {
+	ROLE,
+	type Role,
+	type User,
+	type UsersList,
+	usersListSchema,
+} from './schemas/user.schema';

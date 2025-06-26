@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import Modal from '@/components/Modal.vue';
 import { useUIStore } from '@/stores/ui.store';
+import type { ButtonType } from '@n8n/design-system';
 
 const props = defineProps<{
 	modalName: string;
@@ -11,7 +12,7 @@ const props = defineProps<{
 		beforeClose: () => void;
 		buttons: Array<{
 			text: string;
-			type: string;
+			type: ButtonType;
 			action: () => void;
 		}>;
 	};

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { AI_CREDITS_EXPERIMENT } from '@/constants';
@@ -118,7 +118,7 @@ const onClaimCreditsClicked = async () => {
 					})
 				}}</n8n-text
 			>&nbsp;
-			<n8n-text size="small" bold="true">
+			<n8n-text size="small" :bold="true">
 				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
 			>
 		</n8n-callout>

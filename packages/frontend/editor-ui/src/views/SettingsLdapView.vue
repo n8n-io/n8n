@@ -6,13 +6,8 @@ import { convertToDisplayDate } from '@/utils/typesUtils';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type {
-	ILdapConfig,
-	ILdapSyncData,
-	ILdapSyncTable,
-	IFormInput,
-	IFormInputs,
-} from '@/Interface';
+import type { IFormInput, IFormInputs } from '@/Interface';
+import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-client/api/ldap';
 import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
@@ -22,8 +17,9 @@ import InfiniteLoading from 'v3-infinite-loading';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSSOStore } from '@/stores/sso.store';
 
 type TableRow = {
 	status: string;
@@ -70,10 +66,11 @@ const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const settingsStore = useSettingsStore();
+const ssoStore = useSSOStore();
 
-const dataTable = ref<ILdapSyncTable[]>([]);
+const dataTable = ref<LdapSyncTable[]>([]);
 const tableKey = ref(0);
-const adConfig = ref<ILdapConfig>();
+const adConfig = ref<LdapConfig>();
 const loadingTestConnection = ref(false);
 const loadingDryRun = ref(false);
 const loadingLiveRun = ref(false);
@@ -109,7 +106,7 @@ const cellClassStyle = ({ row, column }: CellClassStyleMethodParams<TableRow>): 
 	return {};
 };
 
-const onInput = (input: { name: string; value: string | number | boolean }) => {
+const onInput = (input: { name: string; value: string | number | boolean | null | undefined }) => {
 	if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 		loginEnabled.value = input.value;
 	}
@@ -123,7 +120,7 @@ const onReadyToSubmit = (ready: boolean) => {
 	readyToSubmit.value = ready;
 };
 
-const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
+const syncDataMapper = (sync: LdapSyncData): LdapSyncTable => {
 	const startedAt = new Date(sync.startedAt);
 	const endedAt = new Date(sync.endedAt);
 	const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
@@ -149,7 +146,7 @@ const onSubmit = async () => {
 
 	const formValues = ldapConfigFormRef.value.getValues();
 
-	const newConfiguration: ILdapConfig = {
+	const newConfiguration: LdapConfig = {
 		loginEnabled: formValues.loginEnabled,
 		loginLabel: formValues.loginLabel,
 		connectionUrl: formValues.serverAddress,
@@ -197,7 +194,7 @@ const onSubmit = async () => {
 			hasAnyChanges.value = true;
 		}
 
-		adConfig.value = await settingsStore.updateLdapConfig(newConfiguration);
+		adConfig.value = await ssoStore.updateLdapConfig(newConfiguration);
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.updateConfiguration'),
 			message: '',
@@ -219,7 +216,7 @@ const onSaveClick = () => {
 const onTestConnectionClick = async () => {
 	loadingTestConnection.value = true;
 	try {
-		await settingsStore.testLdapConnection();
+		await ssoStore.testLdapConnection();
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.connectionTest'),
 			message: i18n.baseText('settings.ldap.toast.connection.success'),
@@ -239,7 +236,7 @@ const onTestConnectionClick = async () => {
 const onDryRunClick = async () => {
 	loadingDryRun.value = true;
 	try {
-		await settingsStore.runLdapSync({ type: 'dry' });
+		await ssoStore.runLdapSync({ type: 'dry' });
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.runSync.title'),
 			message: i18n.baseText('settings.ldap.toast.sync.success'),
@@ -256,7 +253,7 @@ const onDryRunClick = async () => {
 const onLiveRunClick = async () => {
 	loadingLiveRun.value = true;
 	try {
-		await settingsStore.runLdapSync({ type: 'live' });
+		await ssoStore.runLdapSync({ type: 'live' });
 		toast.showToast({
 			title: i18n.baseText('settings.ldap.runSync.title'),
 			message: i18n.baseText('settings.ldap.toast.sync.success'),
@@ -272,7 +269,7 @@ const onLiveRunClick = async () => {
 
 const getLdapConfig = async () => {
 	try {
-		adConfig.value = await settingsStore.getLdapConfig();
+		adConfig.value = await ssoStore.getLdapConfig();
 		loginEnabled.value = adConfig.value.loginEnabled;
 		syncEnabled.value = adConfig.value.synchronizationEnabled;
 		const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) => values.loginEnabled === true;
@@ -559,7 +556,7 @@ const getLdapConfig = async () => {
 const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
 	try {
 		loadingTable.value = true;
-		const data = await settingsStore.getLdapSynchronizations({
+		const data = await ssoStore.getLdapSynchronizations({
 			page: page.value,
 		});
 

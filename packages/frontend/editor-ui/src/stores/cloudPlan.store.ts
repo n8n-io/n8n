@@ -5,7 +5,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import {
+	getAdminPanelLoginCode,
+	getCurrentPlan,
+	getCurrentUsage,
+} from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
 import { STORES } from '@n8n/stores';
@@ -47,9 +51,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const hasCloudPlan = computed(() => {
+	const hasCloudPlan = computed<boolean>(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
+		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && !!cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
@@ -189,6 +193,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
+		hasCloudPlan,
 		generateCloudDashboardAutoLoginLink,
 		initialize,
 		getOwnerCurrentPlan,

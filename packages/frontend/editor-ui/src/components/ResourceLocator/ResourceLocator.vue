@@ -5,7 +5,8 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -42,7 +43,6 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
@@ -55,7 +55,6 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
-import type { BaseTextKey } from '@/plugins/i18n';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -124,8 +123,7 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 }>();
 
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -222,9 +220,9 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return `${props.modelValue}`;
 	}
 
 	if (isListMode.value) {
@@ -400,6 +398,9 @@ const handleAddResourceClick = async () => {
 	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
 		requestParams,
 	)) as NodeParameterValue;
+	if (typeof newResource === 'boolean') {
+		return;
+	}
 
 	refreshList();
 	await loadResources();
@@ -565,7 +566,7 @@ function findModeByName(name: string): INodePropertyMode | null {
 	return null;
 }
 
-function getModeLabel(mode: INodePropertyMode): string | null {
+function getModeLabel(mode: INodePropertyMode): string | undefined {
 	if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
 		return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 	}
@@ -573,7 +574,7 @@ function getModeLabel(mode: INodePropertyMode): string | null {
 	return mode.displayName;
 }
 
-function onInputChange(value: NodeParameterValue): void {
+function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = currentQueryResults.value.find((result) => result.value === value);
@@ -825,7 +826,7 @@ function showResourceDropdown() {
 	resourceDropdownVisible.value = true;
 }
 
-function onListItemSelected(value: NodeParameterValue) {
+function onListItemSelected(value: INodeParameterResourceLocator['value']) {
 	onInputChange(value);
 	hideResourceDropdown();
 }
@@ -1050,6 +1051,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
+									@mousedown.prevent
 								>
 									<template v-if="isListMode" #suffix>
 										<i

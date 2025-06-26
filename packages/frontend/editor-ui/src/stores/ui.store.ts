@@ -1,4 +1,3 @@
-import * as onboardingApi from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -41,6 +40,8 @@ import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
+	LOCAL_STORAGE_THEME,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -57,28 +58,23 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { dismissBannerPermanently } from '@/api/ui';
+import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
-import {
-	addThemeToBody,
-	getPreferredTheme,
-	getThemeOverride,
-	isValidTheme,
-	updateTheme,
-} from './ui.utils';
+import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { ProjectSharingData } from '@/types/projects.types';
+import identity from 'lodash/identity';
 
 let savedTheme: ThemeOption = 'system';
 
 try {
 	const value = getThemeOverride();
-	if (isValidTheme(value)) {
+	if (value !== null) {
 		savedTheme = value;
-		addThemeToBody(value);
+		applyThemeToBody(value);
 	}
 } catch (e) {}
 
@@ -87,7 +83,13 @@ type UiStore = ReturnType<typeof useUIStore>;
 export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
-	const theme = ref<ThemeOption>(savedTheme);
+	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
+		writeDefaults: false,
+		serializer: {
+			read: (value) => (isValidTheme(value) ? value : savedTheme),
+			write: identity,
+		},
+	});
 	const modalsById = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
@@ -198,6 +200,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				url: '',
 			},
 		},
+		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowName: '',
+			},
+		},
 	});
 
 	const modalStack = ref<string[]>([]);
@@ -225,14 +233,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const userStore = useUsersStore();
 
-	// Keep track of the preferred theme and update it when the system preference changes
-	const preferredTheme = getPreferredTheme();
-	const preferredSystemTheme = ref<AppliedThemeOption>(preferredTheme.theme);
-	preferredTheme.mediaQuery?.addEventListener('change', () => {
-		preferredSystemTheme.value = getPreferredTheme().theme;
-	});
+	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
+	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
+		isDarkThemePreferred.value ? 'dark' : 'light',
+	);
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? preferredSystemTheme.value : theme.value;
@@ -347,7 +352,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const setTheme = (newTheme: ThemeOption): void => {
 		theme.value = newTheme;
-		updateTheme(newTheme);
+		applyThemeToBody(newTheme);
 	};
 
 	const setMode = (name: keyof Modals, mode: string): void => {
@@ -417,20 +422,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const submitContactEmail = async (email: string, agree: boolean) => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.submitEmailOnSignup(
-				instanceId,
-				currentUser,
-				email ?? currentUser.email,
-				agree,
-			);
-		}
-		return null;
-	};
-
 	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -454,7 +445,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openMoveToFolderModal = (
 		resourceType: 'folder' | 'workflow',
-		resource: { id: string; name: string; parentFolderId?: string },
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
 		workflowListEventBus: EventBus,
 	) => {
 		openModalWithData({
@@ -530,6 +526,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const initialize = (options: { banners: BannerName[] }) => {
+		options.banners.forEach(pushBannerToStack);
+	};
+
 	return {
 		appGridDimensions,
 		appliedTheme,
@@ -554,7 +554,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarMenuCollapsed,
 		sidebarMenuCollapsedPreference,
 		bannerStack,
-		theme,
+		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
 		isAnyModalOpen,
@@ -569,7 +569,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
-		submitContactEmail,
 		openCommunityPackageUninstallConfirmModal,
 		openCommunityPackageUpdateConfirmModal,
 		addActiveAction,
@@ -584,6 +583,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
+		initialize,
 	};
 });
 

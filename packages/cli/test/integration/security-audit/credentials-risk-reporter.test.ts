@@ -1,3 +1,4 @@
+import { testDb } from '@n8n/backend-test-utils';
 import type { SecurityConfig } from '@n8n/config';
 import { generateNanoId } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -12,7 +13,6 @@ import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 
 import { getRiskSection } from './utils';
-import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 

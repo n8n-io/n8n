@@ -2,19 +2,21 @@
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
-import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
-import {
-	EnterpriseEditionFeature,
-	VALID_EMAIL_REGEX,
-	INVITE_USER_MODAL_KEY,
-	ROLE,
-} from '@/constants';
+import type {
+	FormFieldValueUpdate,
+	IFormInputs,
+	IInviteResponse,
+	IUser,
+	InvitableRoleName,
+} from '@/Interface';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
@@ -131,11 +133,15 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 	return false;
 };
 
-function onInput(e: { name: string; value: InvitableRoleName }) {
-	if (e.name === 'emails') {
+function isInvitableRoleName(val: unknown): val is InvitableRoleName {
+	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
+}
+
+function onInput(e: FormFieldValueUpdate) {
+	if (e.name === 'emails' && typeof e.value === 'string') {
 		emails.value = e.value;
 	}
-	if (e.name === 'role') {
+	if (e.name === 'role' && isInvitableRoleName(e.value)) {
 		role.value = e.value;
 	}
 }
@@ -316,7 +322,7 @@ function getEmail(email: string): string {
 				</n8n-users-list>
 			</div>
 			<n8n-form-inputs
-				v-else
+				v-else-if="config"
 				:inputs="config"
 				:event-bus="formBus"
 				:column-view="true"

@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { nonExistingJsonPath } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
@@ -39,9 +39,10 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
+const clipboard = useClipboard();
+
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const clipboard = useClipboard();
 const { activeNode } = ndvStore;
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();

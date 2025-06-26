@@ -12,7 +12,7 @@ import {
 	type SchemaNode,
 } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -42,7 +42,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { pick } from 'lodash-es';
+import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
@@ -193,7 +193,8 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const fields: Renders[] = flattenSchema({ schema, depth: 1 }).flatMap((renderItem) => {
+	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
 
@@ -320,7 +321,14 @@ const flattenedNodes = computed(() =>
 );
 
 const flattenNodeSchema = computed(() =>
-	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
+	nodeSchema.value
+		? flattenSchema({
+				schema: nodeSchema.value,
+				depth: 0,
+				level: -1,
+				isDataEmpty: props.data.length === 0,
+			})
+		: [],
 );
 
 /**
@@ -465,7 +473,7 @@ const onDragEnd = (el: HTMLElement) => {
 						</VirtualSchemaItem>
 
 						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
-							<N8nIcon :size="14" :icon="item.icon" class="icon" />
+							<N8nIcon size="small" :icon="item.icon" class="icon" />
 						</N8nTooltip>
 
 						<div

@@ -2,11 +2,12 @@
 import { useUIStore } from '@/stores/ui.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { CalloutTheme } from '@n8n/design-system';
 
 interface Props {
 	name: BannerName;
-	theme?: string;
+	theme?: CalloutTheme;
 	customIcon?: string;
 	dismissible?: boolean;
 }

@@ -1,3 +1,4 @@
+import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,7 +10,6 @@ import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credentia
 import { CredentialsHelper } from '@/credentials-helper';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
-import * as testDb from '@test-integration/test-db';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 

@@ -1,23 +1,28 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, h } from 'vue';
-import { truncate } from '@n8n/utils/string/truncate';
-import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
-import { VIEWS } from '@/constants';
-import { ResourceType, splitName } from '@/utils/projects.utils';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { ProjectTypes } from '@/types/projects.types';
-import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
 import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
+import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { VIEWS } from '@/constants';
+import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { ProjectTypes } from '@/types/projects.types';
+import {
+	getTruncatedProjectName,
+	MAX_NAME_LENGTH,
+	ResourceType,
+	splitName,
+} from '@/utils/projects.utils';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { truncate } from '@n8n/utils/string/truncate';
+import { computed, h, onMounted, ref } from 'vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -88,10 +93,9 @@ const selectedProject = computed(() =>
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 const targetProjectName = computed(() => {
-	const { name, email } = splitName(selectedProject.value?.name ?? '');
-	return truncate(name ?? email ?? '', 25);
+	return getTruncatedProjectName(selectedProject.value?.name);
 });
-const resourceName = computed(() => truncate(props.data.resource.name, 25));
+const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -120,6 +124,7 @@ const moveResource = async () => {
 			props.data.resourceType,
 			props.data.resource.id,
 			selectedProject.value.id,
+			undefined,
 			shareUsedCredentials.value ? shareableCredentials.value.map((c) => c.id) : undefined,
 		);
 		closeModal();
@@ -171,6 +176,8 @@ onMounted(async () => {
 		[`${props.data.resourceType}_id`]: props.data.resource.id,
 		project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
 	});
+
+	await projectsStore.getAvailableProjects();
 
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
@@ -233,7 +240,7 @@ onMounted(async () => {
 						v-for="p in filteredProjects"
 						:key="p.id"
 						:value="p.id"
-						:label="p.name"
+						:label="p.name ?? ''"
 					></N8nOption>
 				</N8nSelect>
 				<N8nText>

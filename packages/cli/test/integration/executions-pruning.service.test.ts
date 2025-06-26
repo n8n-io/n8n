@@ -1,12 +1,16 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { ExecutionEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
-import { Time } from '@/constants';
-import { DbConnection } from '@/databases/db-connection';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
@@ -14,9 +18,6 @@ import {
 	createExecution,
 	createSuccessfulExecution,
 } from './shared/db/executions';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
-import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: ExecutionsPruningService;

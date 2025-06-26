@@ -1,13 +1,10 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types/icon';
+import type { IconSize, CalloutTheme } from '@n8n/design-system/types';
 
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
-
-const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
-export type CalloutTheme = (typeof THEMES)[number];
 
 const CALLOUT_DEFAULT_ICONS: Record<string, string> = {
 	info: 'info-circle',
@@ -82,14 +79,25 @@ const getIconSize = computed<IconSize>(() => {
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
 	align-items: center;
-	line-height: var(--font-line-height-loose);
+	line-height: var(--font-line-height-xloose);
 	border-color: var(--color-callout-info-border);
 	background-color: var(--color-callout-info-background);
 	color: var(--color-callout-info-font);
 
 	&.slim {
-		line-height: var(--font-line-height-loose);
+		line-height: var(--font-line-height-xloose);
 		padding: var(--spacing-3xs) var(--spacing-2xs);
+	}
+
+	a {
+		color: var(--color-secondary-link);
+		font-weight: var(--font-weight-medium);
+		text-decoration-line: underline;
+		text-decoration-style: solid;
+		text-decoration-skip-ink: none;
+		text-decoration-thickness: auto;
+		text-underline-offset: auto;
+		text-underline-position: from-font;
 	}
 }
 
@@ -151,7 +159,7 @@ const getIconSize = computed<IconSize>(() => {
 
 .icon {
 	line-height: 1;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
 }
 
 .secondary {

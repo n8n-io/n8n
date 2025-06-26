@@ -4,10 +4,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref, onBeforeUnmount } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
 
 const emit = defineEmits<{
@@ -37,7 +37,7 @@ async function onUserMessage(content: string) {
 	await builderStore.initBuilderChat(content, 'chat');
 }
 
-function fixWorkflowStickiesPosition(workflowData: IWorkflowDataUpdate): IWorkflowDataUpdate {
+function fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): WorkflowDataUpdate {
 	const STICKY_WIDTH = 480;
 	const HEADERS_HEIGHT = 40;
 	const NEW_LINE_HEIGHT = 20;
@@ -76,7 +76,7 @@ function fixWorkflowStickiesPosition(workflowData: IWorkflowDataUpdate): IWorkfl
 }
 
 function onInsertWorkflow(code: string) {
-	let workflowData: IWorkflowDataUpdate;
+	let workflowData: WorkflowDataUpdate;
 	try {
 		workflowData = JSON.parse(code);
 	} catch (error) {

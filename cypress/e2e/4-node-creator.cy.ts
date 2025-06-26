@@ -76,20 +76,10 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		WorkflowPage.actions.addNodeToCanvas('Manual', false);
 
-		cy.ifCanvasVersion(
-			() => {
-				nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
-				nodeCreatorFeature.getters.nodeCreator().should('not.exist');
-				// TODO: Replace once we have canvas feature utils
-				cy.get('div').contains('Add first step').should('be.hidden');
-			},
-			() => {
-				nodeCreatorFeature.getters.canvasAddButton().should('not.exist');
-				nodeCreatorFeature.getters.nodeCreator().should('not.exist');
-				// TODO: Replace once we have canvas feature utils
-				cy.get('div').contains('Add first step').should('not.exist');
-			},
-		);
+		nodeCreatorFeature.getters.canvasAddButton().should('not.exist');
+		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
+		// TODO: Replace once we have canvas feature utils
+		cy.get('div').contains('Add first step').should('not.exist');
 
 		nodeCreatorFeature.actions.openNodeCreator();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
@@ -326,7 +316,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.actions.deleteNode('When clicking ‘Execute workflow’');
-			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
+			WorkflowPage.getters.canvasNodePlusEndpointByName('Create a credential').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
@@ -334,7 +324,11 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes(
+				'Create a credential',
+				'Create a credential1',
+				'Summarize',
+			);
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
@@ -356,14 +350,7 @@ describe('Node Creator', () => {
 	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
 		WorkflowPage.actions.addNodeToCanvas('Manual');
 
-		cy.ifCanvasVersion(
-			() => {
-				cy.get('.plus-endpoint').click();
-			},
-			() => {
-				cy.getByTestId('canvas-handle-plus').click();
-			},
-		);
+		cy.getByTestId('canvas-handle-plus').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
 		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
@@ -376,7 +363,9 @@ describe('Node Creator', () => {
 		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
 	});
 
-	it('should have most relevenat nodes on top when searching', () => {
+	// Skipping while we wait for a decision on how to handle the search results
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should have most relevant nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
@@ -565,7 +554,7 @@ describe('Node Creator', () => {
 	});
 
 	it('should add node directly for sub-connection as tool', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		clickGetBackToCanvas();
 

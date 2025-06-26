@@ -1,7 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { HookContext, WebhookContext, Logger } from 'n8n-core';
+import { HookContext, WebhookContext } from 'n8n-core';
 import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
@@ -31,11 +32,11 @@ export class WebhookService {
 	) {}
 
 	async populateCache() {
-		const allWebhooks = await this.webhookRepository.find();
+		const staticWebhooks = await this.webhookRepository.getStaticWebhooks();
 
-		if (!allWebhooks) return;
+		if (staticWebhooks.length === 0) return;
 
-		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
+		void this.cacheService.setMany(staticWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
 	async findAll() {
@@ -138,6 +139,17 @@ export class WebhookService {
 			.then((rows) => rows.map((r) => r.method));
 	}
 
+	private isDynamicPath(rawPath: string) {
+		const firstSlashIndex = rawPath.indexOf('/');
+		const path = firstSlashIndex !== -1 ? rawPath.substring(firstSlashIndex + 1) : rawPath;
+
+		// if dynamic, first segment is webhook ID so disregard it
+
+		if (path === '' || path === ':' || path === '/:') return false;
+
+		return path.startsWith(':') || path.includes('/:');
+	}
+
 	/**
 	 * Returns all the webhooks which should be created for the give node
 	 */
@@ -231,7 +243,8 @@ export class WebhookService {
 			}
 
 			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+
+			if (this.isDynamicPath(path) && node.webhookId) {
 				webhookId = node.webhookId;
 			}
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 defineProps<{
 	isReadOnly?: boolean;
@@ -26,9 +26,9 @@ const emit = defineEmits<{
 			v-if="!isReadOnly"
 			type="tertiary"
 			:class="['n8n-input', $style.overrideCloseButton]"
-			outline="false"
+			:outline="false"
 			icon="xmark"
-			size="xsmall"
+			size="mini"
 			@click="emit('close')"
 		/>
 	</div>

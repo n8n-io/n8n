@@ -3,7 +3,7 @@
 import Imap from 'imap';
 
 import { ConnectionClosedError, ConnectionEndedError, ConnectionTimeoutError } from './errors';
-import { ImapSimple } from './ImapSimple';
+import { ImapSimple } from './imap-simple';
 import type { ImapSimpleOptions, MessagePart } from './types';
 
 /**
@@ -95,6 +95,6 @@ export function getParts(
 	return parts;
 }
 
-export * from './ImapSimple';
+export * from './imap-simple';
 export * from './errors';
 export * from './types';

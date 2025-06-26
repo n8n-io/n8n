@@ -4,8 +4,14 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { SharedCredentials, ProjectRelationRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	SharedCredentials,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	AuthenticatedRequest,
+} from '@n8n/db';
 import {
 	Delete,
 	Get,
@@ -21,7 +27,6 @@ import {
 } from '@n8n/decorators';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
@@ -32,7 +37,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, CredentialRequest } from '@/requests';
+import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';

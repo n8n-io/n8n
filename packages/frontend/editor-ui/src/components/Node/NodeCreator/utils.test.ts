@@ -11,6 +11,8 @@ import {
 	prepareCommunityNodeDetailsViewStack,
 	removeTrailingTrigger,
 	sortNodeCreateElements,
+	shouldShowCommunityNodeDetails,
+	getHumanInTheLoopActions,
 } from './utils';
 import {
 	mockActionCreateElement,
@@ -19,6 +21,11 @@ import {
 } from './__tests__/utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+
+import { mock } from 'vitest-mock-extended';
+import type { ViewStack } from './composables/useViewStacks';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { DISCORD_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE } from '../../../constants';
 
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
@@ -352,6 +359,110 @@ describe('NodeCreator - utils', () => {
 			['Telegram   Trigger', 'Telegram'],
 		])('should transform "%s" to "%s"', (input, expected) => {
 			expect(removeTrailingTrigger(input)).toEqual(expected);
+		});
+	});
+
+	describe('shouldShowCommunityNodeDetails', () => {
+		it('should return false if rootView is "AI Other" and title is "Tools"', () => {
+			const viewStack = mock<ViewStack>({ rootView: 'AI Other', title: 'Tools' });
+			expect(shouldShowCommunityNodeDetails(true, viewStack)).toBe(false);
+			expect(shouldShowCommunityNodeDetails(false, viewStack)).toBe(false);
+		});
+
+		it('should return false if communityNode is true and communityNodeDetails is defined in viewStack', () => {
+			const viewStack = mock<ViewStack>({ communityNodeDetails: { title: 'test' } });
+			expect(shouldShowCommunityNodeDetails(true, viewStack)).toBe(false);
+		});
+
+		it('should return true if communityNode is true and communityNodeDetails is not defined in viewStack, and the viewStack does not have rootView "AI Other" and title "Tools"', () => {
+			expect(shouldShowCommunityNodeDetails(true, {})).toBe(true);
+		});
+
+		it('should return false if communityNode is false and communityNodeDetails is not defined in viewStack', () => {
+			expect(shouldShowCommunityNodeDetails(false, {})).toBe(false);
+		});
+	});
+
+	describe('getHumanInTheLoopActions', () => {
+		it('should return an empty array if no actions are passed in', () => {
+			const actions: ActionTypeDescription[] = [];
+			expect(getHumanInTheLoopActions(actions)).toEqual([]);
+		});
+
+		it('should return an empty array if no actions have the SEND_AND_WAIT_OPERATION actionKey', () => {
+			const actions: ActionTypeDescription[] = [
+				{
+					name: 'Test Action',
+					group: ['trigger'],
+					codex: {
+						label: 'Test Actions',
+						categories: ['Actions'],
+					},
+					iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+					outputs: ['main'],
+					defaults: {
+						name: 'TestAction',
+					},
+					actionKey: 'test',
+					description: 'Test action',
+					displayName: 'Test Action',
+				},
+			];
+			expect(getHumanInTheLoopActions(actions)).toEqual([]);
+		});
+
+		it('should set the resource and operation for Discord actions', () => {
+			const actions: ActionTypeDescription[] = [
+				{
+					name: DISCORD_NODE_TYPE,
+					group: ['trigger'],
+					codex: {
+						label: 'Discord Actions',
+						categories: ['Actions'],
+					},
+					iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+					outputs: ['main'],
+					defaults: {
+						name: 'DiscordAction',
+					},
+					actionKey: SEND_AND_WAIT_OPERATION,
+					description: 'Discord action',
+					displayName: 'Discord Action',
+					values: {},
+				},
+			];
+			const result = getHumanInTheLoopActions(actions);
+			expect(result[0].values).toEqual({
+				resource: 'message',
+				operation: SEND_AND_WAIT_OPERATION,
+			});
+		});
+
+		it('should set the resource and operation for Microsoft Teams actions', () => {
+			const actions: ActionTypeDescription[] = [
+				{
+					name: MICROSOFT_TEAMS_NODE_TYPE,
+					group: ['trigger'],
+					codex: {
+						label: 'Microsoft Teams Actions',
+						categories: ['Actions'],
+					},
+					iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+					outputs: ['main'],
+					defaults: {
+						name: 'MicrosoftTeamsAction',
+					},
+					actionKey: SEND_AND_WAIT_OPERATION,
+					description: 'Microsoft Teams action',
+					displayName: 'Microsoft Teams Action',
+					values: {},
+				},
+			];
+			const result = getHumanInTheLoopActions(actions);
+			expect(result[0].values).toEqual({
+				resource: 'chatMessage',
+				operation: SEND_AND_WAIT_OPERATION,
+			});
 		});
 	});
 });

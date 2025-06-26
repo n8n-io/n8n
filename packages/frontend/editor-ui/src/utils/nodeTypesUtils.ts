@@ -2,9 +2,9 @@ import type {
 	AppliedThemeOption,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	ITemplatesNode,
 	NodeAuthenticationOption,
 } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -12,7 +12,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

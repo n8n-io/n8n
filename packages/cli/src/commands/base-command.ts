@@ -1,14 +1,21 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
+import {
+	inDevelopment,
+	inTest,
+	LicenseState,
+	Logger,
+	ModuleRegistry,
+	ModulesConfig,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
-	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
@@ -19,29 +26,23 @@ import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ModuleRegistry } from '@/modules/module-registry';
-import type { ModulePreInit } from '@/modules/modules.config';
-import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DbConnection);
+	protected dbConnection: DbConnection;
 
 	protected errorReporter: ErrorReporter;
 
@@ -61,6 +62,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
+	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -74,36 +77,11 @@ export abstract class BaseCommand extends Command {
 	protected needsTaskRunner = false;
 
 	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
-			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
-				// register module in the registry for the dependency injection
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-
-				this.modulesConfig.addLoadedModule(moduleName);
-				this.logger.debug(`Loaded module "${moduleName}"`);
-			}
-		}
-
-		await Container.get(ModuleRegistry).initializeModules();
-
-		if (this.instanceSettings.isMultiMain) {
-			Container.get(MultiMainSetup).registerEventHandlers();
-		}
+		await this.moduleRegistry.loadModules();
 	}
 
 	async init(): Promise<void> {
+		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
@@ -160,7 +138,7 @@ export abstract class BaseCommand extends Command {
 		const { communityPackages } = this.globalConfig.nodes;
 		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/community-packages.service');
-			await Container.get(CommunityPackagesService).checkForMissingPackages();
+			await Container.get(CommunityPackagesService).init();
 		}
 
 		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
@@ -274,11 +252,6 @@ export abstract class BaseCommand extends Command {
 				this.logger.error('Could not activate license', { error });
 			}
 		}
-	}
-
-	async initExternalSecrets() {
-		const secretsManager = Container.get(ExternalSecretsManager);
-		await secretsManager.init();
 	}
 
 	initWorkflowHistory() {

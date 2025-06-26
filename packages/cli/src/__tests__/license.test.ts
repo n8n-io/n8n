@@ -1,3 +1,4 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
@@ -5,7 +6,6 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { mockLogger } from '@test/mocking';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -60,6 +60,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -90,6 +91,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -211,6 +213,64 @@ describe('License', () => {
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan).toBeUndefined();
+	});
+
+	describe('onExpirySoon', () => {
+		it.each([
+			{
+				instanceType: 'main' as const,
+				isLeader: true,
+				shouldReload: false,
+				description: 'Leader main should not reload',
+			},
+			{
+				instanceType: 'main' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Follower main should reload',
+			},
+			{
+				instanceType: 'worker' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Worker should reload',
+			},
+			{
+				instanceType: 'webhook' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Webhook should reload',
+			},
+		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
+			const logger = mockLogger();
+			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
+
+			license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig }),
+			);
+
+			await license.init();
+
+			const licenseManager = LicenseManager as jest.MockedClass<typeof LicenseManager>;
+			const calls = licenseManager.mock.calls;
+			const licenseManagerCall = calls[calls.length - 1][0];
+			const onExpirySoon = licenseManagerCall.onExpirySoon;
+
+			if (shouldReload) {
+				expect(onExpirySoon).toBeDefined();
+				onExpirySoon!();
+				expect(reloadSpy).toHaveBeenCalled();
+			} else {
+				expect(onExpirySoon).toBeUndefined();
+				expect(reloadSpy).not.toHaveBeenCalled();
+			}
+		});
 	});
 });
 

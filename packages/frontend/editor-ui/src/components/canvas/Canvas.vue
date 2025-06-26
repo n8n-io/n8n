@@ -6,7 +6,7 @@ import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { useKeybindings } from '@/composables/useKeybindings';
+import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
 import type { NodeCreatorOpenSource } from '@/Interface';
@@ -53,7 +53,8 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
-import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
+import { isOutsideSelected } from '@/utils/htmlUtils';
 
 const $style = useCssModule();
 
@@ -101,10 +102,12 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
+	'extract-workflow': [ids: string[]];
 }>();
 
 const props = withDefaults(
@@ -277,9 +280,12 @@ function selectUpstreamNodes(id: string) {
 }
 
 const keyMap = computed(() => {
-	const readOnlyKeymap = {
+	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
-		ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+		ctrl_c: {
+			disabled: () => isOutsideSelected(viewportRef.value),
+			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
 		ctrl_a: () => addSelectedNodes(graphNodes.value),
 		// Support both key and code for zooming in and out
@@ -300,7 +306,7 @@ const keyMap = computed(() => {
 
 	if (props.readOnly) return readOnlyKeymap;
 
-	const fullKeymap = {
+	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
 		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
@@ -310,10 +316,12 @@ const keyMap = computed(() => {
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 		tab: () => emit('create:node', 'tab'),
 		shift_s: () => emit('create:sticky'),
+		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
+		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
@@ -695,6 +703,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'extract_sub_workflow':
+			return emit('extract-workflow', nodeIds);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

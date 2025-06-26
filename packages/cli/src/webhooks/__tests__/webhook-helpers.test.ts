@@ -1,6 +1,8 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
 	Workflow,
 	INode,
@@ -15,8 +17,6 @@ import type {
 import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
-
-import { mockInstance } from '@test/mocking';
 
 import {
 	autoDetectResponseMode,
@@ -62,6 +62,24 @@ describe('autoDetectResponseMode', () => {
 		});
 		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
 		expect(result).toBe('responseNode');
+	});
+
+	test('should return formPage when start node is FORM_NODE_TYPE and method is POST and there is a following FORM_NODE_TYPE node', () => {
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			name: 'startNode',
+			parameters: {},
+		});
+		workflow.getChildNodes.mockReturnValue(['childNode']);
+		workflow.nodes.childNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {
+				operation: 'completion',
+			},
+			disabled: false,
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('formPage');
 	});
 
 	test('should return undefined when start node is FORM_NODE_TYPE with no other form child nodes', () => {
