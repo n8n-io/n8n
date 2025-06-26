@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/vue';
 
 import N8nAlert from './Alert.vue';
-import N8nIcon from '../N8nIcon';
 
 describe('components', () => {
 	describe('N8nAlert', () => {
@@ -25,7 +24,10 @@ describe('components', () => {
 				},
 				global: {
 					components: {
-						'n8n-icon': N8nIcon,
+						'n8n-icon': {
+							template: '<span class="n8n-icon" />',
+							props: ['icon'],
+						},
 					},
 				},
 			});

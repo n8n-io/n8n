@@ -42,11 +42,6 @@ const components = {
 		template: '<button :data-icon="icon" data-testid="icon-picker-button" />',
 		props: ['icon'],
 	},
-	// N8nIcon: {
-	// 	template:
-	// 		'<div class="mock-icon" :data-icon="typeof icon === \'string\' ? icon : icon.iconName" />',
-	// 	props: ['icon'],
-	// },
 };
 
 describe('IconPicker', () => {
