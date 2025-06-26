@@ -132,7 +132,7 @@ function onActivate(event: MouseEvent) {
 
 <template>
 	<ExperimentalInPlaceNodeSettings
-		v-if="experimentalNdvStore.isActive"
+		v-if="experimentalNdvStore.isEnabled && experimentalNdvStore.maxCanvasZoom === viewport.zoom"
 		:node-id="id"
 		:class="classes"
 		:style="styles"

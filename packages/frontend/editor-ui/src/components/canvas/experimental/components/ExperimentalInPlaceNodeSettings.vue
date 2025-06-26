@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { ref, computed } from 'vue';
+import { onBeforeUnmount, ref, computed } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
@@ -23,6 +23,21 @@ const nodeType = computed(() => {
 	return null;
 });
 const vf = useVueFlow(workflowsStore.workflowId);
+
+const isMoving = ref(false);
+
+const moveStartListener = vf.onMoveStart(() => {
+	isMoving.value = true;
+});
+
+const moveEndListener = vf.onMoveEnd(() => {
+	isMoving.value = false;
+});
+
+onBeforeUnmount(() => {
+	moveStartListener.off();
+	moveEndListener.off();
+});
 
 const isVisible = computed(() =>
 	vf.isNodeIntersecting(
@@ -57,10 +72,13 @@ function handleToggleExpand() {
 				v-if="isExpanded"
 				:node-id="nodeId"
 				:class="$style.settingsView"
+				:no-wheel="
+					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
+				"
 			>
 				<template #actions>
 					<N8nIconButton
-						:icon="isExpanded ? 'compress' : 'expand'"
+						icon="compress"
 						type="secondary"
 						text
 						size="mini"
@@ -73,7 +91,7 @@ function handleToggleExpand() {
 			<div v-else :class="$style.collapsedContent" is-read-only :node="node" :node-type="nodeType">
 				<NodeTitle v-if="node" class="node-name" :model-value="node.name" :node-type="nodeType" />
 				<N8nIconButton
-					:icon="isExpanded ? 'compress' : 'expand'"
+					icon="expand"
 					type="secondary"
 					text
 					size="mini"
@@ -98,9 +116,10 @@ function handleToggleExpand() {
 	outline: none !important;
 	box-shadow: none !important;
 	background-color: transparent !important;
+	width: calc(var(--canvas-node--width) * 1.5) !important;
 
 	&.collapsed {
-		height: calc(var(--canvas-node--width) * 0.5) !important;
+		height: 50px !important;
 		margin-block: calc(var(--canvas-node--width) * 0.25) !important;
 	}
 }
@@ -119,8 +138,8 @@ function handleToggleExpand() {
 	border: 1px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	z-index: 1000;
 	position: absolute;
-	left: calc(var(--canvas-node--width) * -0.25);
-	width: calc(var(--canvas-node--width) * 1.5) !important;
+	left: 0;
+	width: 100%;
 
 	:global(.selected) & {
 		box-shadow: 0 0 0 4px var(--color-canvas-selected-transparent);

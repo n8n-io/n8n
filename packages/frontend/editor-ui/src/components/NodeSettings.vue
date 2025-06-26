@@ -69,6 +69,7 @@ const props = withDefaults(
 		inputSize: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
+		noWheel?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -78,6 +79,7 @@ const props = withDefaults(
 		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
+		noWheel: false,
 	},
 );
 
@@ -1018,6 +1020,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
+
+function handleWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -1107,8 +1115,9 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		<div
 			v-if="node && nodeValid"
 			ref="nodeParameterWrapper"
-			:class="['node-parameters-wrapper', hasOverflowY ? 'nowheel' : '']"
+			:class="['node-parameters-wrapper', noWheel && hasOverflowY ? 'nowheel' : '']"
 			data-test-id="node-parameters"
+			@wheel="noWheel ? handleWheelEvent : undefined"
 		>
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
@@ -1130,6 +1139,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
+					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"

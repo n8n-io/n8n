@@ -7,7 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 
-const { nodeId } = defineProps<{ nodeId: string }>();
+const { nodeId, noWheel } = defineProps<{ nodeId: string; noWheel?: boolean }>();
 
 defineSlots<{ actions?: {} }>();
 
@@ -44,6 +44,7 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 		:executable="false"
 		:input-size="0"
 		is-embedded-in-canvas
+		:no-wheel="noWheel"
 		@value-changed="handleValueChanged"
 	>
 		<template #actions>
