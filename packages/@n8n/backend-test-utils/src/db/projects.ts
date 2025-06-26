@@ -1,12 +1,20 @@
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ProjectRelation } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import type { Project, User, ProjectRelation } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 
 import { randomName } from '../random';
+
+export const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
+	const projectRelationRepository = Container.get(ProjectRelationRepository);
+	await projectRelationRepository.save(
+		projectRelationRepository.create({
+			projectId: project.id,
+			userId: user.id,
+			role,
+		}),
+	);
+};
 
 export const createTeamProject = async (name?: string, adminUser?: User) => {
 	const projectRepository = Container.get(ProjectRepository);
@@ -22,17 +30,6 @@ export const createTeamProject = async (name?: string, adminUser?: User) => {
 	}
 
 	return project;
-};
-
-export const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
-	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	await projectRelationRepository.save(
-		projectRelationRepository.create({
-			projectId: project.id,
-			userId: user.id,
-			role,
-		}),
-	);
 };
 
 export async function getProjectByNameOrFail(name: string) {

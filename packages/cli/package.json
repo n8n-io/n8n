@@ -49,8 +49,7 @@
   "files": [
     "bin",
     "templates",
-    "dist",
-    "!dist/**/e2e.*"
+    "dist"
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

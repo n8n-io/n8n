@@ -4,11 +4,14 @@ import { computed, useCssModule, getCurrentInstance } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
-import type { IMenuItem } from '../../types';
+import type { IMenuItem, IMenuElement } from '../../types';
+import { isCustomMenuItem } from '../../types';
+import type { IconColor } from '../../types/icon';
 import { getInitials } from '../../utils/labelUtil';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
 interface MenuItemProps {
@@ -26,12 +29,14 @@ const props = withDefaults(defineProps<MenuItemProps>(), {
 	tooltipDelay: 300,
 	popperClass: '',
 	mode: 'router',
+	activeTab: undefined,
+	handleSelect: undefined,
 });
 
 const $style = useCssModule();
 const $route = useRoute();
 
-const availableChildren = computed((): IMenuItem[] =>
+const availableChildren = computed((): IMenuElement[] =>
 	Array.isArray(props.item.children)
 		? props.item.children.filter((child) => child.available !== false)
 		: [],
@@ -49,7 +54,7 @@ const submenuPopperClass = computed((): string => {
 	return popperClass.join(' ');
 });
 
-const isActive = (item: IMenuItem): boolean => {
+const isActive = (item: IMenuElement): boolean => {
 	if (props.mode === 'router') {
 		return doesMenuItemMatchCurrentRoute(item, currentRoute.value);
 	} else {
@@ -65,6 +70,14 @@ const isItemActive = (item: IMenuItem): boolean => {
 
 // Get self component to avoid dependency cycle
 const N8nMenuItem = getCurrentInstance()?.type;
+
+const getIconColor = (item: IMenuItem): IconColor | undefined => {
+	if (typeof item.icon === 'string') {
+		return undefined;
+	}
+
+	return item.icon?.color;
+};
 </script>
 
 <template>
@@ -82,28 +95,51 @@ const N8nMenuItem = getCurrentInstance()?.type;
 			:popper-class="submenuPopperClass"
 		>
 			<template #title>
-				<N8nIcon
-					v-if="item.icon"
-					:class="$style.icon"
-					:icon="item.icon"
-					:size="item.customIconSize || 'large'"
-				/>
+				<template v-if="item.icon">
+					<div :class="$style.icon">
+						<div :class="$style.notificationContainer">
+							<N8nIcon
+								v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+								:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+								:size="item.customIconSize || 'large'"
+								:color="getIconColor(item)"
+							/>
+							<N8nText
+								v-else-if="item.icon.type === 'emoji'"
+								:size="item.customIconSize || 'large'"
+								:color="getIconColor(item)"
+							>
+								{{ item.icon.value }}
+							</N8nText>
+							<div v-if="item.notification" :class="$style.notification">
+								<div></div>
+							</div>
+						</div>
+					</div>
+				</template>
 				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 				<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 					getInitials(item.label)
 				}}</span>
 			</template>
-			<N8nMenuItem
-				v-for="child in availableChildren"
-				:key="child.id"
-				:item="child"
-				:compact="false"
-				:tooltip-delay="tooltipDelay"
-				:popper-class="popperClass"
-				:mode="mode"
-				:active-tab="activeTab"
-				:handle-select="handleSelect"
-			/>
+			<template v-for="child in availableChildren" :key="child.id">
+				<component
+					:is="child.component"
+					v-if="isCustomMenuItem(child)"
+					v-bind="child.props"
+					:class="$style.custom"
+				/>
+				<N8nMenuItem
+					v-else
+					:item="child"
+					:compact="false"
+					:tooltip-delay="tooltipDelay"
+					:popper-class="popperClass"
+					:mode="mode"
+					:active-tab="activeTab"
+					:handle-select="handleSelect"
+				/>
+			</template>
 		</ElSubMenu>
 		<N8nTooltip
 			v-else
@@ -121,23 +157,36 @@ const N8nMenuItem = getCurrentInstance()?.type;
 						[$style.disableActiveStyle]: !isItemActive(item),
 						[$style.active]: isItemActive(item),
 						[$style.compact]: compact,
+						[$style.small]: item.size === 'small',
 					}"
 					data-test-id="menu-item"
 					:index="item.id"
 					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
-					<div v-if="item.icon">
-						<N8nIcon
-							v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
-							:class="$style.icon"
-							:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
-							:size="item.customIconSize || 'large'"
-						/>
-						<span v-else-if="item.icon.type === 'emoji'" :class="$style.icon">{{
-							item.icon.value
-						}}</span>
-					</div>
+					<template v-if="item.icon">
+						<div :class="$style.icon">
+							<div :class="$style.notificationContainer">
+								<N8nIcon
+									v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+									:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+									:size="item.customIconSize || 'large'"
+									:color="getIconColor(item)"
+								/>
+								<N8nText
+									v-else-if="item.icon.type === 'emoji'"
+									:size="item.customIconSize || 'large'"
+									:color="getIconColor(item)"
+								>
+									{{ item.icon.value }}
+								</N8nText>
+								<div v-if="item.notification" :class="$style.notification">
+									<div></div>
+								</div>
+							</div>
+						</div>
+					</template>
+
 					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 						getInitials(item.label)
@@ -261,12 +310,53 @@ const N8nMenuItem = getCurrentInstance()?.type;
 		padding: var(--spacing-2xs) 0 !important;
 		justify-content: center;
 	}
+
+	&.small {
+		font-size: var(--font-size-2xs) !important;
+		padding-top: var(--spacing-3xs) !important;
+		padding-bottom: var(--spacing-3xs) !important;
+		padding-left: var(--spacing-s) !important;
+		padding-right: var(--spacing-xs) !important;
+
+		.icon {
+			margin-right: var(--spacing-3xs);
+		}
+	}
 }
 
 .icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	line-height: 1;
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
-	text-align: center;
+
+	svg {
+		margin-right: 0 !important;
+	}
+}
+
+.notificationContainer {
+	display: flex;
+	position: relative;
+}
+
+.notification {
+	display: flex;
+	position: absolute;
+	top: -0.15em;
+	right: -0.3em;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 0.36em;
+		width: 0.36em;
+		background-color: var(--color-primary);
+		border-radius: 50%;
+	}
 }
 
 .loading {
@@ -312,11 +402,12 @@ const N8nMenuItem = getCurrentInstance()?.type;
 	display: block;
 
 	ul {
-		padding: 0 var(--spacing-xs) !important;
+		padding: var(--spacing-3xs) var(--spacing-2xs) !important;
 	}
+
 	.menuItem {
 		display: flex;
-		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+		padding: var(--spacing-2xs) !important;
 		margin: var(--spacing-2xs) 0 !important;
 	}
 
@@ -328,6 +419,10 @@ const N8nMenuItem = getCurrentInstance()?.type;
 		.label {
 			display: inline-block;
 		}
+	}
+
+	.custom {
+		margin-left: 0 !important;
 	}
 }
 </style>
