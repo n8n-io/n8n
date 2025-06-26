@@ -8,11 +8,13 @@ import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ResourceType } from '@/utils/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
 import type { SourceControlledFile } from '@n8n/api-types';
 import {
+	ROLE,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
@@ -20,6 +22,7 @@ import {
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -33,7 +36,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { refDebounced } from '@vueuse/core';
+import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
@@ -54,6 +57,13 @@ const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const telemetry = useTelemetry();
+const usersStore = useUsersStore();
+
+const projectAdminCalloutDismissed = useStorage(
+	'SOURCE_CONTROL_PROJECT_ADMIN_CALLOUT_DISMISSED',
+	false,
+	localStorage,
+);
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
@@ -533,13 +543,6 @@ const tabs = computed(() => {
 	];
 });
 
-const filtersActiveText = computed(() => {
-	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return i18n.baseText('workflows.filters.active');
-	}
-	return i18n.baseText('credentials.filters.active');
-});
-
 const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return i18n.baseText('workflows.noResults');
@@ -645,6 +648,26 @@ function castProject(project: ProjectListItem) {
 					</N8nPopover>
 				</div>
 			</div>
+			<template v-if="usersStore.currentUser && usersStore.currentUser.role">
+				<template
+					v-if="
+						usersStore.currentUser.role !== ROLE.Owner && usersStore.currentUser.role !== ROLE.Admin
+					"
+				>
+					<N8nCallout theme="secondary" class="mt-s" v-if="!projectAdminCalloutDismissed">
+						{{ i18n.baseText('settings.sourceControl.modals.push.projectAdmin.callout') }}
+						<template #trailingContent>
+							<N8nIcon
+								icon="times"
+								title="Dismiss"
+								size="medium"
+								type="secondary"
+								@click="projectAdminCalloutDismissed = true"
+							/>
+						</template>
+					</N8nCallout>
+				</template>
+			</template>
 		</template>
 		<template #content>
 			<div style="display: flex; height: 100%">
