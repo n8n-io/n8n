@@ -58,10 +58,10 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
-		description: 'Name of the binary property that contains the file to process',
+		description: 'Name of the input binary field that contains the file to process',
 		placeholder: 'e.g. data',
 		hint: 'Uploaded document files must not exceed 50 MB in size and should be no longer than 1,000 pages.',
 		required: true,
