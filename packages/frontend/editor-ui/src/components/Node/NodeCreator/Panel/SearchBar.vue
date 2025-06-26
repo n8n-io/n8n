@@ -67,10 +67,8 @@ defineExpose({
 				@input="onInput"
 			/>
 		</div>
-		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
-			<button :class="[$style.clear, $style.clickable]">
-				<n8n-icon icon="times-circle" />
-			</button>
+		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
+			<n8n-icon size="small" icon="times-circle" />
 		</div>
 	</div>
 </template>
@@ -142,5 +140,9 @@ defineExpose({
 	&:hover svg path {
 		fill: $node-creator-search-clear-background-color-hover;
 	}
+}
+
+.clickable {
+	cursor: pointer;
 }
 </style>

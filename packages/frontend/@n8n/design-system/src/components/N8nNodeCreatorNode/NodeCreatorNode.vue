@@ -63,7 +63,7 @@ const { t } = useI18n();
 		</div>
 		<slot name="dragContent" />
 		<button v-if="showActionArrow" :class="$style.panelIcon">
-			<N8nIcon :class="$style.panelArrow" icon="arrow-right" />
+			<N8nIcon icon="arrow-right" size="large" />
 		</button>
 	</div>
 </template>
@@ -109,10 +109,6 @@ const { t } = useI18n();
 	margin-left: var(--spacing-3xs);
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
-}
-.panelArrow {
-	font-size: var(--font-size-2xs);
-	width: 12px;
 }
 .details {
 	display: flex;
