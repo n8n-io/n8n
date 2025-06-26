@@ -2,6 +2,7 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
+import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
@@ -162,6 +163,72 @@ describe('getChatModel', () => {
 		mockContext.getInputConnectionData.mockResolvedValue(fakeInvalidModel);
 		mockContext.getNode.mockReturnValue(mock());
 		await expect(getChatModel(mockContext)).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should return the first model when multiple models are connected and no index specified', async () => {
+		const fakeChatModel1 = new FakeStreamingChatModel({});
+		const fakeChatModel2 = new FakeStreamingChatModel({});
+
+		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1, fakeChatModel2]);
+
+		const model = await getChatModel(mockContext);
+		expect(model).toEqual(fakeChatModel2); // Should return the last model (reversed array)
+	});
+
+	it('should return the model at specified index when multiple models are connected', async () => {
+		const fakeChatModel1 = new FakeStreamingChatModel({});
+
+		const fakeChatModel2 = new FakeStreamingChatModel({});
+
+		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1, fakeChatModel2]);
+
+		const model = await getChatModel(mockContext, 0);
+		expect(model).toEqual(fakeChatModel2); // Should return the first model after reversal (index 0)
+	});
+
+	it('should return the fallback model at index 1 when multiple models are connected', async () => {
+		const fakeChatModel1 = new FakeStreamingChatModel({});
+		const fakeChatModel2 = new FakeStreamingChatModel({});
+
+		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1, fakeChatModel2]);
+
+		const model = await getChatModel(mockContext, 1);
+		expect(model).toEqual(fakeChatModel1); // Should return the second model after reversal (index 1)
+	});
+
+	it('should return undefined when requested index is out of bounds', async () => {
+		const fakeChatModel1 = mock<BaseChatModel>();
+		fakeChatModel1.bindTools = jest.fn();
+		fakeChatModel1.lc_namespace = ['chat_models'];
+
+		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1]);
+		mockContext.getNode.mockReturnValue(mock());
+
+		const result = await getChatModel(mockContext, 2);
+
+		expect(result).toBeUndefined();
+	});
+
+	it('should throw error when single model does not support tools', async () => {
+		const fakeInvalidModel = new FakeLLM({}); // doesn't support tool calls
+
+		mockContext.getInputConnectionData.mockResolvedValue(fakeInvalidModel);
+		mockContext.getNode.mockReturnValue(mock());
+
+		await expect(getChatModel(mockContext)).rejects.toThrow(NodeOperationError);
+		await expect(getChatModel(mockContext)).rejects.toThrow(
+			'Tools Agent requires Chat Model which supports Tools calling',
+		);
+	});
+
+	it('should throw error when model at specified index does not support tools', async () => {
+		const fakeChatModel1 = new FakeStreamingChatModel({});
+		const fakeInvalidModel = new FakeLLM({}); // doesn't support tool calls
+
+		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1, fakeInvalidModel]);
+		mockContext.getNode.mockReturnValue(mock());
+
+		await expect(getChatModel(mockContext, 0)).rejects.toThrow(NodeOperationError);
 	});
 });
 
