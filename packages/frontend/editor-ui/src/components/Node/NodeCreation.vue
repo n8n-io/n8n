@@ -18,8 +18,7 @@ import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
-import { useNodeSettingsInCanvas } from '../canvas/composables/useNodeSettingsInCanvas';
-import { useCanvasStore } from '@/stores/canvas.store';
+import { useExperimentalNdvStore } from '../canvas/experimental/experimentalNdv.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -42,14 +41,13 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const i18n = useI18n();
-const canvasStore = useCanvasStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
 const wrapperRef = ref<HTMLElement | undefined>();
 const wrapperBoundingRect = ref<DOMRect | undefined>();
 const isStickyNotesButtonVisible = ref(true);
-const nodeSettingsInCanvas = useNodeSettingsInCanvas();
 
 const onMouseMove = useThrottleFn((event: MouseEvent) => {
 	if (wrapperBoundingRect.value) {
@@ -145,16 +143,16 @@ onBeforeUnmount(() => {
 					/>
 				</KeyboardShortcutTooltip>
 				<n8n-icon-button
-					v-if="nodeSettingsInCanvas.isEnabled"
+					v-if="experimentalNdvStore.isEnabled"
 					type="tertiary"
 					icon="expand"
-					@click="canvasStore.expandAllNodes"
+					@click="experimentalNdvStore.expandAllNodes"
 				/>
 				<n8n-icon-button
-					v-if="nodeSettingsInCanvas.isEnabled"
+					v-if="experimentalNdvStore.isEnabled"
 					type="tertiary"
 					icon="compress"
-					@click="canvasStore.collapseAllNodes"
+					@click="experimentalNdvStore.collapseAllNodes"
 				/>
 			</div>
 		</div>

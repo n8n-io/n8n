@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { useNodeSettingsInCanvas } from '../composables/useNodeSettingsInCanvas';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { computed } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExperimentalNdvStore } from '../experimentalNdv.store';
+import NodeTitle from '@/components/NodeTitle.vue';
+import { N8nIconButton } from '@n8n/design-system';
 
 const { nodeId } = defineProps<{ nodeId: string }>();
 
-const { maxCanvasZoom = 4 } = useNodeSettingsInCanvas();
-const canvasStore = useCanvasStore();
-const isExpanded = computed(() => !canvasStore.collapsedNodes[nodeId]);
+const experimentalNdvStore = useExperimentalNdvStore();
+const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const node = computed(() => workflowsStore.getNodeById(nodeId) ?? null);
@@ -22,14 +22,14 @@ const nodeType = computed(() => {
 });
 
 function handleToggleExpand() {
-	canvasStore.setNodeExpanded(nodeId);
+	experimentalNdvStore.setNodeExpanded(nodeId);
 }
 </script>
 
 <template>
 	<div
 		:class="['nowheel', $style.component, isExpanded ? $style.expanded : $style.collapsed]"
-		:style="{ '--zoom': `${1 / maxCanvasZoom}` }"
+		:style="{ '--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}` }"
 	>
 		<ExperimentalCanvasNodeSettings
 			v-if="isExpanded"
@@ -48,25 +48,18 @@ function handleToggleExpand() {
 				/>
 			</template>
 		</ExperimentalCanvasNodeSettings>
-		<NodeSettingsHeader
-			v-else
-			:class="$style.collapsedContent"
-			is-read-only
-			:node="node"
-			:node-type="nodeType"
-		>
-			<template #actions>
-				<N8nIconButton
-					:icon="isExpanded ? 'compress' : 'expand'"
-					type="secondary"
-					text
-					size="mini"
-					icon-size="large"
-					aria-label="Toggle expand"
-					@click="handleToggleExpand"
-				/>
-			</template>
-		</NodeSettingsHeader>
+		<div v-else :class="$style.collapsedContent" is-read-only :node="node" :node-type="nodeType">
+			<NodeTitle v-if="node" class="node-name" :model-value="node.name" :node-type="nodeType" />
+			<N8nIconButton
+				:icon="isExpanded ? 'compress' : 'expand'"
+				type="secondary"
+				text
+				size="mini"
+				icon-size="large"
+				aria-label="Toggle expand"
+				@click="handleToggleExpand"
+			/>
+		</div>
 	</div>
 </template>
 

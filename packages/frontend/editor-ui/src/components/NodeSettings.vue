@@ -52,8 +52,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import NodeSettingsHeader from './NodeSettingsHeader.vue';
-import { shouldShowParameter } from './canvas/elements/nodes/experimental/experimentalNdvUtils';
+import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -1019,13 +1018,16 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		@keydown.stop
 	>
 		<div :class="$style.header">
-			<NodeSettingsHeader
-				:node="node"
-				:node-type="nodeType"
-				:is-read-only="isReadOnly"
-				@name-changes="nameChanged"
-			>
-				<template v-if="isExecutable || slots.actions" #actions>
+			<div class="header-side-menu">
+				<NodeTitle
+					v-if="node"
+					class="node-name"
+					:model-value="node.name"
+					:node-type="nodeType"
+					:read-only="isReadOnly"
+					@update:model-value="nameChanged"
+				/>
+				<template v-if="isExecutable || slots.actions">
 					<NodeExecuteButton
 						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
@@ -1040,7 +1042,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					/>
 					<slot name="actions" />
 				</template>
-			</NodeSettingsHeader>
+			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
 				:model-value="openPanel"

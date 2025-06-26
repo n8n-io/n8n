@@ -5,9 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
-import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
-import ExperimentalInPlaceNodeSettings from '@/components/canvas/components/ExperimentalInPlaceNodeSettings.vue';
+import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalInPlaceNodeSettings.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -45,7 +45,7 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
-const nodeSettingsZoom = useNodeSettingsInCanvas();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const classes = computed(() => {
 	return {
@@ -132,7 +132,7 @@ function onActivate(event: MouseEvent) {
 
 <template>
 	<ExperimentalInPlaceNodeSettings
-		v-if="nodeSettingsZoom.isEnabled?.value"
+		v-if="experimentalNdvStore.isActive"
 		:node-id="id"
 		:class="classes"
 		:style="styles"
