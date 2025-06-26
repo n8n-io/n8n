@@ -10,18 +10,20 @@ import { CommunityPackagesService } from '@/services/community-packages.service'
 import { BaseCommand } from './base-command';
 
 const flagsSchema = z.object({
-	uninstall: z.boolean().describe('Uninstalls the node'),
-	package: z.string().describe('Package name of the community node.'),
+	uninstall: z.boolean().describe('Uninstalls the node').optional(),
+	package: z.string().describe('Package name of the community node.').optional(),
 	credential: z
 		.string()
 		.describe(
 			"Type of the credential.\nGet this value by visiting the node's .credential.ts file and getting the value of `name`",
-		),
+		)
+		.optional(),
 	userId: z
 		.string()
 		.describe(
 			'The ID of the user who owns the credential.\nOn self-hosted, query the database.\nOn cloud, query the API with your API key',
-		),
+		)
+		.optional(),
 });
 
 @Command({

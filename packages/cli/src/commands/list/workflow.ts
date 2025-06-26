@@ -6,8 +6,11 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	active: z.string().describe('Filters workflows by active status. Can be true or false'),
-	onlyId: z.boolean().describe('Outputs workflow IDs only, one per line.'),
+	active: z
+		.string()
+		.describe('Filters workflows by active status. Can be true or false')
+		.optional(),
+	onlyId: z.boolean().describe('Outputs workflow IDs only, one per line.').default(false),
 });
 
 @Command({

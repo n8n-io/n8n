@@ -37,12 +37,16 @@ interface ISkipList {
 }
 
 const flagsSchema = z.object({
-	debug: z.boolean().describe('Toggles on displaying all errors and debug messages.'),
+	debug: z
+		.boolean()
+		.describe('Toggles on displaying all errors and debug messages.')
+		.default(false),
 	ids: z
 		.string()
 		.describe(
 			'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
-		),
+		)
+		.optional(),
 	concurrency: z
 		.number()
 		.int()
@@ -52,28 +56,36 @@ const flagsSchema = z.object({
 		.string()
 		.describe(
 			'Enable execution saving, You must inform an existing folder to save execution via this param',
-		),
+		)
+		.optional(),
 	snapshot: z
 		.string()
 		.describe(
 			'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
-		),
+		)
+		.optional(),
 	compare: z
 		.string()
 		.describe(
 			'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
-		),
+		)
+		.optional(),
 	shallow: z
 		.boolean()
 		.describe(
 			'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
-		),
+		)
+		.optional(),
 	githubWorkflow: z
 		.boolean()
 		.describe(
 			'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
-		),
-	skipList: z.string().describe('File containing a comma separated list of workflow IDs to skip.'),
+		)
+		.optional(),
+	skipList: z
+		.string()
+		.describe('File containing a comma separated list of workflow IDs to skip.')
+		.optional(),
 	retries: z
 		.number()
 		.int()
@@ -81,7 +93,8 @@ const flagsSchema = z.object({
 		.describe('Retries failed workflows up to N tries. Default is 1. Set 0 to disable.'),
 	shortOutput: z
 		.boolean()
-		.describe('Omits the full execution information from output, displaying only summary.'),
+		.describe('Omits the full execution information from output, displaying only summary.')
+		.optional(),
 });
 
 @Command({

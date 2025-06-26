@@ -38,19 +38,19 @@ import { BaseCommand } from './base-command';
 const open = require('open');
 
 const flagsSchema = z.object({
-	open: z.boolean().optional().describe('opens the UI automatically in browser'),
+	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
 	tunnel: z
 		.boolean()
-		.optional()
 		.describe(
 			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		),
+		)
+		.optional(),
 	reinstallMissingPackages: z
 		.boolean()
-		.optional()
 		.describe(
 			'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
-		),
+		)
+		.optional(),
 });
 
 @Command({

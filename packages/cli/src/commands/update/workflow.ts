@@ -6,9 +6,9 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	active: z.string().describe('Active state the workflow/s should be set to'),
-	all: z.boolean().describe('Operate on all workflows'),
-	id: z.string().describe('The ID of the workflow to operate on'),
+	active: z.string().describe('Active state the workflow/s should be set to').optional(),
+	all: z.boolean().describe('Operate on all workflows').optional(),
+	id: z.string().describe('The ID of the workflow to operate on').optional(),
 });
 
 @Command({

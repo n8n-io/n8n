@@ -22,7 +22,7 @@ export class CommandRegistry {
 	}
 
 	async execute() {
-		if (this.commandName === '--help') {
+		if (this.commandName === '--help' || this.commandName === '-h') {
 			await this.listAllCommands();
 			process.exit(0);
 		}
@@ -41,14 +41,13 @@ export class CommandRegistry {
 			process.exit(1);
 		}
 
-		if (this.argv.help) {
+		if (this.argv.help || this.argv.h) {
 			this.printCommandUsage(commandEntry);
 			process.exit(0);
 		}
 
 		const command = Container.get(commandEntry.class);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		command.flags = commandEntry.flagsSchema?.parse(this.argv) ?? {};
+		command.flags = this.parseFlags(commandEntry);
 
 		let error: Error | undefined = undefined;
 		try {
@@ -60,6 +59,26 @@ export class CommandRegistry {
 		} finally {
 			await command.finally?.(error);
 		}
+	}
+
+	private parseFlags(commandEntry: CommandEntry) {
+		if (!commandEntry.flagsSchema) return {};
+		const { _, ...argv } = this.argv;
+		Object.entries(commandEntry.flagsSchema.shape).forEach(([key, flagSchema]) => {
+			let schemaDef = flagSchema._def as z.ZodTypeDef & {
+				typeName: string;
+				innerType?: z.ZodType;
+			};
+			if (schemaDef.typeName === 'ZodOptional' && schemaDef.innerType) {
+				schemaDef = schemaDef.innerType._def as typeof schemaDef;
+			}
+			const alias = schemaDef._alias;
+			if (alias?.length && !(key in argv)) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				argv[key] = argv[alias];
+			}
+		});
+		return commandEntry.flagsSchema.parse(argv);
 	}
 
 	private async listAllCommands() {
@@ -100,7 +119,7 @@ export class CommandRegistry {
 			const flagEntries = Object.entries(
 				z
 					.object({
-						help: z.boolean().describe('Show CLI help'),
+						help: z.boolean().alias('h').describe('Show CLI help'),
 					})
 					.merge(flagsSchema).shape,
 			);
@@ -115,6 +134,9 @@ export class CommandRegistry {
 				const typeName = schemaDef.typeName;
 
 				let flagString = `--${flagName}`;
+				if (schemaDef._alias) {
+					flagString = `-${schemaDef._alias}, ${flagString}`;
+				}
 				if (['ZodString', 'ZodNumber', 'ZodArray'].includes(typeName)) {
 					flagString += ' <value>';
 				}
@@ -150,3 +172,18 @@ export class CommandRegistry {
 		this.logger.info(output);
 	}
 }
+
+// Monkey-patch zod to support aliases
+declare module 'zod' {
+	interface ZodType {
+		alias<T extends ZodType>(this: T, aliasName: string): T;
+	}
+	interface ZodTypeDef {
+		_alias: string;
+	}
+}
+
+z.ZodType.prototype.alias = function <T extends z.ZodType>(this: T, aliasName: string) {
+	this._def._alias = aliasName;
+	return this;
+};

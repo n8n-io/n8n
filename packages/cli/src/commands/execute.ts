@@ -14,8 +14,8 @@ import { BaseCommand } from './base-command';
 import config from '../config';
 
 const flagsSchema = z.object({
-	id: z.string().describe('id of the workflow to execute'),
-	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text'),
+	id: z.string().describe('id of the workflow to execute').optional(),
+	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text').optional(),
 	/**@deprecated */
 	file: z.string(),
 });

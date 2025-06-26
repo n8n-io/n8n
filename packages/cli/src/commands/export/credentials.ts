@@ -13,26 +13,32 @@ import type { ICredentialsDecryptedDb } from '@/interfaces';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	all: z.boolean().describe('Export all credentials'),
+	all: z.boolean().describe('Export all credentials').optional(),
 	backup: z
 		.boolean()
 		.describe(
 			'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
-		),
-	id: z.string().describe('The ID of the credential to export'),
-	// TODO: also handle `-o` shorthand
-	output: z.string().describe('Output file name or directory if using separate files'),
-	pretty: z.boolean().describe('Format the output in an easier to read fashion'),
+		)
+		.optional(),
+	id: z.string().describe('The ID of the credential to export').optional(),
+	output: z
+		.string()
+		.alias('o')
+		.describe('Output file name or directory if using separate files')
+		.optional(),
+	pretty: z.boolean().describe('Format the output in an easier to read fashion').optional(),
 	separate: z
 		.boolean()
 		.describe(
 			'Exports one file per credential (useful for versioning). Must inform a directory via --output.',
-		),
+		)
+		.optional(),
 	decrypted: z
 		.boolean()
 		.describe(
 			'Exports data decrypted / in plain text. ALL SENSITIVE INFORMATION WILL BE VISIBLE IN THE FILES. Use to migrate from a installation to another that have a different secret key (in the config file).',
-		),
+		)
+		.optional(),
 });
 
 @Command({
@@ -130,7 +136,7 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			for (i = 0; i < credentials.length; i++) {
 				fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					(flags.output.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
+					(flags.output!.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
 					credentials[i].id
 				}.json`;
 				fs.writeFileSync(filename, fileContents);

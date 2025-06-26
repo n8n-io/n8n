@@ -15,10 +15,23 @@ import { UM_FIX_INSTRUCTION } from '@/constants';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	input: z.string().describe('Input file name or directory if --separate is used'),
-	separate: z.boolean().describe('Imports *.json files from directory provided by --input'),
-	userId: z.string().describe('The ID of the user to assign the imported credentials to'),
-	projectId: z.string().describe('The ID of the project to assign the imported credential to'),
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input file name or directory if --separate is used')
+		.optional(),
+	separate: z
+		.boolean()
+		.default(false)
+		.describe('Imports *.json files from directory provided by --input'),
+	userId: z
+		.string()
+		.describe('The ID of the user to assign the imported credentials to')
+		.optional(),
+	projectId: z
+		.string()
+		.describe('The ID of the project to assign the imported credential to')
+		.optional(),
 });
 
 @Command({

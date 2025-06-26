@@ -30,17 +30,20 @@ const flagsSchema = z.object({
 		.string()
 		.describe(
 			'The ID of the user to assign the workflows and credentials owned by the deleted LDAP users to',
-		),
+		)
+		.optional(),
 	projectId: z
 		.string()
 		.describe(
 			'The ID of the project to assign the workflows and credentials owned by the deleted LDAP users to',
-		),
+		)
+		.optional(),
 	deleteWorkflowsAndCredentials: z
 		.boolean()
 		.describe(
 			'Delete all workflows and credentials owned by the users that were created by the users managed via LDAP.',
-		),
+		)
+		.optional(),
 });
 
 @Command({

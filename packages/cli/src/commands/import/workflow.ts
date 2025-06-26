@@ -35,10 +35,20 @@ function assertHasWorkflowsToImport(
 }
 
 const flagsSchema = z.object({
-	input: z.string().describe('Input file name or directory if --separate is used'),
-	separate: z.boolean().describe('Imports *.json files from directory provided by --input'),
-	userId: z.string().describe('The ID of the user to assign the imported workflows to'),
-	projectId: z.string().describe('The ID of the project to assign the imported workflows to'),
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input file name or directory if --separate is used')
+		.optional(),
+	separate: z
+		.boolean()
+		.describe('Imports *.json files from directory provided by --input')
+		.default(false),
+	userId: z.string().describe('The ID of the user to assign the imported workflows to').optional(),
+	projectId: z
+		.string()
+		.describe('The ID of the project to assign the imported workflows to')
+		.optional(),
 });
 
 @Command({
