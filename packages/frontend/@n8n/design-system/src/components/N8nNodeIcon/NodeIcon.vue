@@ -21,6 +21,7 @@ interface NodeIconProps {
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
 	badge?: { src: string; type: IconType };
+	// temporarily until we roll out FA icons for all nodes
 	useUpdatedIcons?: boolean;
 }
 
