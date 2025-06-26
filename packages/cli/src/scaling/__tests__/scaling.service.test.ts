@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
@@ -7,7 +8,6 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { mockInstance } from '@test/mocking';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';

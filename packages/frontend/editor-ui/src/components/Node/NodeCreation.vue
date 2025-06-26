@@ -1,14 +1,17 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
+	FOCUS_PANEL_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { usePostHog } from '@/stores/posthog.store';
 import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
@@ -39,6 +42,8 @@ const emit = defineEmits<{
 }>();
 
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
+const posthogStore = usePostHog();
 const i18n = useI18n();
 
 const { getAddedNodesAndConnections } = useActions();
@@ -46,6 +51,9 @@ const { getAddedNodesAndConnections } = useActions();
 const wrapperRef = ref<HTMLElement | undefined>();
 const wrapperBoundingRect = ref<DOMRect | undefined>();
 const isStickyNotesButtonVisible = ref(true);
+const isOpenFocusPanelButtonVisible = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
 
 const onMouseMove = useThrottleFn((event: MouseEvent) => {
 	if (wrapperBoundingRect.value) {
@@ -111,7 +119,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<div ref="wrapperRef" :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
+		<div ref="wrapperRef" :class="$style.nodeCreatorButton">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"
 				:shortcut="{ keys: ['Tab'] }"
@@ -121,7 +129,7 @@ onBeforeUnmount(() => {
 					size="large"
 					icon="plus"
 					type="tertiary"
-					:class="$style.nodeCreatorPlus"
+					data-test-id="node-creator-plus-button"
 					@click="openNodeCreator"
 				/>
 			</KeyboardShortcutTooltip>
@@ -138,6 +146,19 @@ onBeforeUnmount(() => {
 					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
 				</KeyboardShortcutTooltip>
 			</div>
+			<KeyboardShortcutTooltip
+				v-if="isOpenFocusPanelButtonVisible"
+				:label="i18n.baseText('nodeView.openFocusPanel')"
+				:shortcut="{ keys: ['f'], shiftKey: true }"
+				placement="left"
+			>
+				<n8n-icon-button
+					type="tertiary"
+					size="large"
+					icon="list"
+					@click="focusPanelStore.toggleFocusPanel"
+				/>
+			</KeyboardShortcutTooltip>
 		</div>
 	</div>
 	<Suspense>
@@ -169,19 +190,11 @@ onBeforeUnmount(() => {
 	pointer-events: all;
 }
 
-.noEvents {
-	pointer-events: none;
-}
-
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
 	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
-}
-.nodeCreatorPlus {
-	width: 36px;
-	height: 36px;
 }
 </style>

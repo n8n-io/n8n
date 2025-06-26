@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:"
+    "@types/lodash": "catalog:",
+    "express": "5.1.0"
   }
 }

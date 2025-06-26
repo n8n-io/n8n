@@ -1,9 +1,9 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 
 import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 import { CredentialsController } from '../credentials.controller';

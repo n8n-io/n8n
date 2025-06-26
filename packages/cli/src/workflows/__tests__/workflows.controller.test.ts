@@ -1,10 +1,10 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types/src/dto/workflows/import-workflow-from-url.dto';
+import type { AuthenticatedRequest } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { AuthenticatedRequest } from '@/requests';
 
 import { WorkflowsController } from '../workflows.controller';
 
