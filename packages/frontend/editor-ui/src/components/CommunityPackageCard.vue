@@ -42,7 +42,7 @@ const hasVerifiedPackageUpdate = computed(() => {
 	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
 });
 
-const packageActions = [
+const packageActions: Array<UserAction<IUser>> = [
 	{
 		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
 		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
