@@ -27,6 +27,7 @@ import IconLucideArrowRight from '~icons/lucide/arrow-right';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
 import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
+import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
@@ -375,6 +376,7 @@ export const allIcons = {
 	download: IconLucideHardDriveDownload,
 	'power-off': IconLucidePower,
 	'paper-plane': IconLucideSend,
+	bell: IconLucideBell,
 } as const;
 
 export type IconName = keyof typeof allIcons;

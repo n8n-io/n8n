@@ -8,7 +8,10 @@ import type { IconName } from '../components/N8nIcon/icons';
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: IconName | { type: 'icon'; value: IconName; color?: IconColor } | { type: 'emoji'; value: string };
+	icon?:
+		| IconName
+		| { type: 'icon'; value: IconName; color?: IconColor }
+		| { type: 'emoji'; value: string; color?: IconColor };
 	secondaryIcon?: {
 		name: IconName;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';
