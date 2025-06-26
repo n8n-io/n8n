@@ -263,8 +263,25 @@ export const getAgentStepsParser =
  * @param ctx - The execution context
  * @returns The validated chat model
  */
-export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
-	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+export async function getChatModel(
+	ctx: IExecuteFunctions,
+	index: number = 0,
+): Promise<BaseChatModel | undefined> {
+	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+
+	let model;
+
+	if (Array.isArray(connectedModels) && index !== undefined) {
+		if (connectedModels.length <= index) {
+			return undefined;
+		}
+		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
+		const reversedModels = [...connectedModels].reverse();
+		model = reversedModels[index] as BaseChatModel;
+	} else {
+		model = connectedModels as BaseChatModel;
+	}
+
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
