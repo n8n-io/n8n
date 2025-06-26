@@ -54,7 +54,7 @@ export class ModuleRegistry {
 			// docker
 			const n8nPackagePath = require.resolve('n8n/package.json');
 			const n8nRoot = path.dirname(n8nPackagePath);
-			modulesDir = path.join(n8nRoot, 'src', 'modules');
+			modulesDir = path.join(n8nRoot, 'dist', 'modules');
 		} catch {
 			// local dev
 			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
