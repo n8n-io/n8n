@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { ref, useTemplateRef, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import NodeTitle from '@/components/NodeTitle.vue';
 import { N8nIconButton } from '@n8n/design-system';
-import { useIntersectionObserver } from '@vueuse/core';
+import { useVueFlow } from '@vue-flow/core';
+import { watchOnce } from '@vueuse/core';
 
 const { nodeId } = defineProps<{ nodeId: string }>();
 
@@ -21,21 +22,24 @@ const nodeType = computed(() => {
 	}
 	return null;
 });
-const containerRef = useTemplateRef('container');
-const isVisible = ref(false);
+const vf = useVueFlow(workflowsStore.workflowId);
 
-useIntersectionObserver(
-	containerRef,
-	(entries) => {
-		for (const e of entries) {
-			if (e.isIntersecting) {
-				isVisible.value = true;
-				return;
-			}
-		}
-	},
-	{ immediate: true },
+const isVisible = computed(() =>
+	vf.isNodeIntersecting(
+		{ id: nodeId },
+		{
+			x: -vf.viewport.value.x / vf.viewport.value.zoom,
+			y: -vf.viewport.value.y / vf.viewport.value.zoom,
+			width: vf.viewportRef.value?.offsetWidth ?? 0,
+			height: vf.viewportRef.value?.offsetHeight ?? 0,
+		},
+	),
 );
+const isOnceVisible = ref(isVisible.value);
+
+watchOnce(isVisible, (visible) => {
+	isOnceVisible.value = isOnceVisible.value || visible;
+});
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -48,7 +52,7 @@ function handleToggleExpand() {
 		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
 		:style="{ '--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}` }"
 	>
-		<template v-if="isVisible">
+		<template v-if="isOnceVisible">
 			<ExperimentalCanvasNodeSettings
 				v-if="isExpanded"
 				:node-id="nodeId"
