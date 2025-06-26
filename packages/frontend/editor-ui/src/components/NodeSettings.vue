@@ -1033,6 +1033,7 @@ function handleWheelEvent(event: WheelEvent) {
 		:class="{
 			'node-settings': true,
 			dragging: dragging,
+			embedded: props.isEmbeddedInCanvas,
 		}"
 		@keydown.stop
 	>
@@ -1275,6 +1276,22 @@ function handleWheelEvent(event: WheelEvent) {
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+	}
+
+	&.embedded .node-parameters-wrapper {
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-2xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid white;
+			}
+		}
 	}
 
 	&.dragging {
