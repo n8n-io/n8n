@@ -145,6 +145,16 @@ export const responseModeProperty: INodeProperties = {
 			value: 'responseNode',
 			description: 'Response defined in that node',
 		},
+		{
+			name: 'Streaming Response',
+			value: 'streaming',
+			description: 'Streaming response from specified nodes (e.g. Agents)',
+			displayOptions: {
+				hide: {
+					'@version': [1, 1.1, 2],
+				},
+			},
+		},
 	],
 	default: 'onReceived',
 	description: 'When and how to respond to the webhook',

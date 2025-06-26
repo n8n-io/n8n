@@ -42,7 +42,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.1,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -323,6 +324,16 @@ export class ChatTrigger extends Node {
 								value: 'responseNode',
 								description: 'Response defined in that node',
 							},
+							{
+								name: 'Streaming Response',
+								value: 'streaming',
+								description: 'Streaming response from specified nodes (e.g. Agents)',
+								displayOptions: {
+									hide: {
+										'@version': [1, 1.1],
+									},
+								},
+							},
 						],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
@@ -493,6 +504,9 @@ ${cssVariables}
 			customCss?: string;
 		};
 
+		const responseMode = ctx.getNodeParameter('options.responseMode', 'lastNode') as string;
+		const enableStreaming = responseMode === 'streaming';
+
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
@@ -543,6 +557,7 @@ ${cssVariables}
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
+					//	enableStreaming,
 				});
 
 				res.status(200).send(page).end();
@@ -573,6 +588,32 @@ ${cssVariables}
 
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
+
+		// Handle streaming responses
+		if (enableStreaming) {
+			// Set up streaming response headers
+			res.writeHead(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive',
+			});
+
+			// Flush headers immediately
+			res.flushHeaders();
+
+			if (req.contentType === 'multipart/form-data') {
+				returnData = [await this.handleFormData(ctx)];
+			} else {
+				returnData = [{ json: bodyData }];
+			}
+
+			return {
+				workflowData: [ctx.helpers.returnJsonArray(returnData)],
+				noWebhookResponse: true,
+			};
+		}
+
 		if (req.contentType === 'multipart/form-data') {
 			returnData = [await this.handleFormData(ctx)];
 			return {
