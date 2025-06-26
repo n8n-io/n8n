@@ -131,7 +131,7 @@ describe('WhatsNewModal', () => {
 	});
 
 	it('should render with update button disabled', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				data: {
 					articleId: 1,
@@ -145,10 +145,7 @@ describe('WhatsNewModal', () => {
 		expect(screen.getByText("What's New in n8n 1.100.0")).toBeInTheDocument();
 		expect(getByTestId('whats-new-article-1')).toMatchSnapshot();
 		expect(getByTestId('whats-new-modal-update-button')).toBeDisabled();
-		expect(getByTestId('whats-new-modal-next-versions-link')).toBeInTheDocument();
-		expect(getByTestId('whats-new-modal-next-versions-link')).toHaveTextContent(
-			'You are up to date',
-		);
+		expect(queryByTestId('whats-new-modal-next-versions-link')).not.toBeInTheDocument();
 	});
 
 	it('should render with update button enabled', async () => {

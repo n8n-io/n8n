@@ -95,23 +95,23 @@ onMounted(() => {
 							<N8nHeading size="medium" color="text-light">{{
 								dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
 							}}</N8nHeading>
-							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
-							<N8nLink
-								size="medium"
-								theme="primary"
-								data-test-id="whats-new-modal-next-versions-link"
-								@click="openUpdatesPanel"
-							>
-								{{
-									versionsStore.hasVersionUpdates
-										? i18n.baseText('whatsNew.versionsBehind', {
-												interpolate: {
-													count: nextVersions.length > 99 ? '99+' : nextVersions.length,
-												},
-											})
-										: i18n.baseText('whatsNew.upToDate')
-								}}
-							</N8nLink>
+							<template v-if="versionsStore.hasVersionUpdates">
+								<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
+								<N8nLink
+									size="medium"
+									theme="primary"
+									data-test-id="whats-new-modal-next-versions-link"
+									@click="openUpdatesPanel"
+								>
+									{{
+										i18n.baseText('whatsNew.versionsBehind', {
+											interpolate: {
+												count: nextVersions.length > 99 ? '99+' : nextVersions.length,
+											},
+										})
+									}}
+								</N8nLink>
+							</template>
 						</div>
 					</div>
 				</div>
