@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -9,6 +9,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const loadingService = useLoadingService();
 
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
+	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
+
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
 		nodes.value.filter((node) => node.type.includes('langchain')),
@@ -19,14 +21,39 @@ export const useCanvasStore = defineStore('canvas', () => {
 		hasRangeSelection.value = value;
 	}
 
+	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
+		collapsedNodes.value = {
+			...collapsedNodes.value,
+			[nodeId]: isExpanded ?? !collapsedNodes.value[nodeId],
+		};
+	}
+
+	function collapseAllNodes() {
+		collapsedNodes.value = workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>(
+			(acc, node) => {
+				acc[node.id] = true;
+				return acc;
+			},
+			{},
+		);
+	}
+
+	function expandAllNodes() {
+		collapsedNodes.value = {};
+	}
+
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		hasRangeSelection: computed(() => hasRangeSelection.value),
+		collapsedNodes: computed(() => collapsedNodes.value),
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
 		setHasRangeSelection,
+		setNodeExpanded,
+		expandAllNodes,
+		collapseAllNodes,
 	};
 });

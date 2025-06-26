@@ -18,6 +18,8 @@ import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
+import { useNodeSettingsInCanvas } from '../canvas/composables/useNodeSettingsInCanvas';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -40,12 +42,14 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const i18n = useI18n();
+const canvasStore = useCanvasStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
 const wrapperRef = ref<HTMLElement | undefined>();
 const wrapperBoundingRect = ref<DOMRect | undefined>();
 const isStickyNotesButtonVisible = ref(true);
+const nodeSettingsInCanvas = useNodeSettingsInCanvas();
 
 const onMouseMove = useThrottleFn((event: MouseEvent) => {
 	if (wrapperBoundingRect.value) {
@@ -127,16 +131,31 @@ onBeforeUnmount(() => {
 			</KeyboardShortcutTooltip>
 			<div
 				:class="[$style.addStickyButton, isStickyNotesButtonVisible ? $style.visibleButton : '']"
-				data-test-id="add-sticky-button"
-				@click="addStickyNote"
 			>
 				<KeyboardShortcutTooltip
 					:label="i18n.baseText('nodeView.addStickyHint')"
 					:shortcut="{ keys: ['s'], shiftKey: true }"
 					placement="left"
 				>
-					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
+					<n8n-icon-button
+						type="tertiary"
+						:icon="['far', 'note-sticky']"
+						data-test-id="add-sticky-button"
+						@click="addStickyNote"
+					/>
 				</KeyboardShortcutTooltip>
+				<n8n-icon-button
+					v-if="nodeSettingsInCanvas.isEnabled"
+					type="tertiary"
+					icon="expand"
+					@click="canvasStore.expandAllNodes"
+				/>
+				<n8n-icon-button
+					v-if="nodeSettingsInCanvas.isEnabled"
+					type="tertiary"
+					icon="compress"
+					@click="canvasStore.collapseAllNodes"
+				/>
 			</div>
 		</div>
 	</div>
@@ -162,6 +181,10 @@ onBeforeUnmount(() => {
 	opacity: 0;
 	transition: 0.1s;
 	transition-timing-function: linear;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-3xs);
+	align-items: center;
 }
 
 .visibleButton {

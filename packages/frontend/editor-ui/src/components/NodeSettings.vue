@@ -26,10 +26,8 @@ import type {
 
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import get from 'lodash/get';
@@ -54,7 +52,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { N8nIconButton } from '@n8n/design-system';
+import NodeSettingsHeader from './NodeSettingsHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -68,7 +66,6 @@ const props = withDefaults(
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
-		canExpand?: boolean;
 		hideConnections?: boolean;
 	}>(),
 	{
@@ -78,7 +75,6 @@ const props = withDefaults(
 		inputSize: 0,
 		blockUI: false,
 		activeNode: undefined,
-		canExpand: false,
 		hideConnections: false,
 	},
 );
@@ -91,8 +87,9 @@ const emit = defineEmits<{
 	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
 	activate: [];
 	execute: [];
-	expand: [];
 }>();
+
+const slots = defineSlots<{ actions?: {} }>();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -1019,16 +1016,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		@keydown.stop
 	>
 		<div :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:node-type="nodeType"
-					:read-only="isReadOnly"
-					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable || props.canExpand" :class="$style.headerActions">
+			<NodeSettingsHeader
+				:node="node"
+				:node-type="nodeType"
+				:is-read-only="isReadOnly"
+				@name-changes="nameChanged"
+			>
+				<template v-if="isExecutable || slots.actions" #actions>
 					<NodeExecuteButton
 						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
@@ -1041,18 +1035,9 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 						@stop-execution="onStopExecution"
 						@value-changed="valueChanged"
 					/>
-					<N8nIconButton
-						v-if="props.canExpand"
-						icon="expand"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Expand"
-						@click="emit('expand')"
-					/>
-				</div>
-			</div>
+					<slot name="actions" />
+				</template>
+			</NodeSettingsHeader>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
 				:model-value="openPanel"
@@ -1206,12 +1191,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 <style lang="scss" module>
 .header {
 	background-color: var(--color-background-base);
-}
-
-.headerActions {
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
 }
 
 .warningIcon {
