@@ -1,6 +1,7 @@
 import { randomValidPassword, uniqueId } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
@@ -9,11 +10,11 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
+import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
 import { TOTPService } from '@/mfa/totp.service';
 
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
 import * as utils from '../shared/utils';
-import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
 
 jest.mock('@/telemetry');
 
@@ -23,6 +24,7 @@ const externalHooks = mockInstance(ExternalHooks);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
+	enabledFeatures: [LICENSE_FEATURES.MFA_ENFORCEMENT],
 });
 
 beforeEach(async () => {
@@ -411,6 +413,10 @@ describe('Enforce MFA', () => {
 	test('Enforce MFA for the instance', async () => {
 		const settingsRepository = Container.get(SettingsRepository);
 
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
+
 		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 
 		expect(enforced).toBe(null);
@@ -434,6 +440,10 @@ describe('Enforce MFA', () => {
 
 	test('Disable MFA for the instance', async () => {
 		const settingsRepository = Container.get(SettingsRepository);
+
+		await settingsRepository.delete({
+			key: MFA_ENFORCE_SETTING,
+		});
 
 		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 
