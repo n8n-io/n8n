@@ -34,8 +34,8 @@ const properties: INodeProperties[] = [
 		required: true,
 		default: 'binary',
 		disabledOptions: {
-			hide: {
-				batch: [{ _cnd: { eq: false } }],
+			show: {
+				'options.batch': [true],
 			},
 		},
 	},
@@ -87,37 +87,47 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Enable Batch Processing',
-		name: 'batch',
-		type: 'boolean',
-		description: 'Whether to process multiple documents in a single API call (more cost-efficient)',
-		default: false,
-	},
-	{
-		displayName: 'Batch Size',
-		name: 'batchSize',
-		type: 'number',
-		description: 'Maximum number of documents to process in a single batch',
-		default: 50,
-		typeOptions: { maxValue: 2048 },
-		required: true,
-		displayOptions: {
-			show: {
-				batch: [true],
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Enable Batch Processing',
+				name: 'batch',
+				type: 'boolean',
+				description:
+					'Whether to process multiple documents in a single API call (more cost-efficient)',
+				default: false,
 			},
-		},
-	},
-	{
-		displayName: 'Delete Files After Processing',
-		name: 'deleteFiles',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to delete the files on Mistral Cloud after processing',
-		displayOptions: {
-			show: {
-				batch: [true],
+			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				type: 'number',
+				description: 'Maximum number of documents to process in a single batch',
+				default: 50,
+				typeOptions: { maxValue: 2048 },
+				required: true,
+				displayOptions: {
+					show: {
+						batch: [true],
+					},
+				},
 			},
-		},
+			{
+				displayName: 'Delete Files After Processing',
+				name: 'deleteFiles',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to delete the files on Mistral Cloud after processing',
+				displayOptions: {
+					show: {
+						batch: [true],
+					},
+				},
+			},
+		],
 	},
 ];
 
