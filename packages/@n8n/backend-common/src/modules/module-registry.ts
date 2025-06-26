@@ -51,14 +51,14 @@ export class ModuleRegistry {
 		let modulesDir: string;
 
 		try {
-			// docker
+			// docker + tests
 			const n8nPackagePath = require.resolve('n8n/package.json');
 			const n8nRoot = path.dirname(n8nPackagePath);
-			modulesDir = path.join(n8nRoot, 'dist', 'modules');
+			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
-			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
-			modulesDir = path.resolve(__dirname, `../../../../cli/${dir}/modules`);
+			modulesDir = path.resolve(__dirname, '../../../../cli/dist/modules');
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
