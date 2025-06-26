@@ -1,7 +1,7 @@
 import type { Event } from '@sentry/node';
 import callsites from 'callsites';
 
-import type { ErrorLevel, ReportingOptions } from '@/errors/error.types';
+import type { ErrorLevel, ReportingOptions } from './error.types';
 
 /**
  * @deprecated Use `UserError`, `OperationalError` or `UnexpectedError` instead.

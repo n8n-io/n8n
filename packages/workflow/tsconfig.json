@@ -1,5 +1,10 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.modern.json",
+	"compilerOptions": {
+		"noUncheckedIndexedAccess": false,
+		"noImplicitOverride": false,
+		"verbatimModuleSyntax": false
+	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"exclude": ["node_modules"]
 }

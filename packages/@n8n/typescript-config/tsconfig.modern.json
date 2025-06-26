@@ -13,7 +13,8 @@
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
 
-		"module": "NodeNext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 
