@@ -1,5 +1,6 @@
 import { ALPHABET } from '@/constants';
 import { ApplicationError } from '@/errors/application.error';
+import { ExecutionCancelledError } from '@/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
@@ -11,6 +12,7 @@ import {
 	hasKey,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
+	sleepWithAbort,
 } from '@/utils';
 
 describe('isObjectEmpty', () => {
@@ -392,5 +394,70 @@ describe('setSafeObjectProperty', () => {
 		const obj: Record<string, unknown> = {};
 		setSafeObjectProperty(obj, key, value);
 		expect(obj).toEqual(expected);
+	});
+});
+
+describe('sleepWithAbort', () => {
+	it('should resolve after the specified time when not aborted', async () => {
+		const start = Date.now();
+		await sleepWithAbort(100);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		// Allow some tolerance for timing
+		expect(elapsed).toBeGreaterThanOrEqual(90);
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should reject immediately if abort signal is already aborted', async () => {
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
+			ExecutionCancelledError,
+		);
+	});
+
+	it('should reject when abort signal is triggered during sleep', async () => {
+		const abortController = new AbortController();
+
+		// Start the sleep and abort after 50ms
+		setTimeout(() => abortController.abort(), 50);
+
+		const start = Date.now();
+		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
+			ExecutionCancelledError,
+		);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		// Should have been aborted after ~50ms, not the full 1000ms
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should work without abort signal', async () => {
+		const start = Date.now();
+		await sleepWithAbort(100, undefined);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		expect(elapsed).toBeGreaterThanOrEqual(90);
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should clean up timeout when aborted during sleep', async () => {
+		const abortController = new AbortController();
+		const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+		// Start the sleep and abort after 50ms
+		const sleepPromise = sleepWithAbort(1000, abortController.signal);
+		setTimeout(() => abortController.abort(), 50);
+
+		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+
+		// clearTimeout should have been called to clean up
+		expect(clearTimeoutSpy).toHaveBeenCalled();
+
+		clearTimeoutSpy.mockRestore();
 	});
 });
