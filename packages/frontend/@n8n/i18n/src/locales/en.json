@@ -1081,6 +1081,8 @@
 	"mainSidebar.workflows.readOnlyEnv.tooltip.link": "More info",
 	"mainSidebar.executions": "Executions",
 	"mainSidebar.workersView": "Workers",
+	"mainSidebar.whatsNew": "What’s New",
+	"mainSidebar.whatsNew.fullChangelog": "Full changelog",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
 	"menuActions.push": "Push to Git",
@@ -3228,5 +3230,10 @@
 	"insights.upgradeModal.perks.0": "View up to one year of insights history",
 	"insights.upgradeModal.perks.1": "Zoom into last 24 hours with hourly granularity",
 	"insights.upgradeModal.perks.2": "Gain deeper visibility into workflow trends over time",
-	"insights.upgradeModal.title": "Upgrade to Enterprise"
+	"insights.upgradeModal.title": "Upgrade to Enterprise",
+	"whatsNew.modal.title": "What's New in n8n {version}",
+	"whatsNew.versionsBehind": "{count} version behind | {count} versions behind",
+	"whatsNew.update": "Update",
+	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
+	"whatsNew.updateAvailable.changelogLink": "in the full changelog"
 }
