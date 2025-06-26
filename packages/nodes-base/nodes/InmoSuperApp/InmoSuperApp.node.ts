@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import gm from 'gm';
 
 export class InmoSuperApp implements INodeType {
 	description: INodeTypeDescription = {
@@ -467,23 +468,32 @@ async function processImage(
 	const { binaryData, propertyName } = binaryInfo;
 
 	try {
-		// binary buffer
+		// Get binary buffer
 		const buffer = await getBinaryBuffer(context, binaryData, itemIndex, propertyName);
 
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		const sharp = require('sharp');
-		let sharpInstance = sharp(buffer);
+		// Initialize gm instance with the image buffer
+		let gmInstance = gm(buffer);
+		gmInstance = gmInstance.background('transparent');
 
 		if (showImage) {
-			// const imageX = context.getNodeParameter('imagePosX', itemIndex) as number;
-			// const imageY = context.getNodeParameter('imagePosY', itemIndex) as number;
 			const width = context.getNodeParameter('imageResizeWidth', itemIndex) as number;
 			const height = context.getNodeParameter('imageResizeHeight', itemIndex) as number;
 
-			sharpInstance = sharpInstance.resize(width, height);
+			// Use gm resize with ignoreAspectRatio option (!) to maintain exact dimensions
+			gmInstance = gmInstance.resize(width, height, '!');
 		}
 
-		const processedBuffer = await sharpInstance.toBuffer();
+		// Convert the processed image to buffer using gm's toBuffer method
+		const processedBuffer = await new Promise<Buffer>((resolve, reject) => {
+			gmInstance.toBuffer((error: Error | null, buffer: Buffer) => {
+				if (error) {
+					reject(error);
+					return;
+				}
+				resolve(buffer);
+			});
+		});
+
 		const newBinaryData = await context.helpers.prepareBinaryData(
 			processedBuffer,
 			binaryData.fileName,

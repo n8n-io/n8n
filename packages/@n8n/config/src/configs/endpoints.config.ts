@@ -67,7 +67,7 @@ class PrometheusMetricsConfig {
 export class EndpointsConfig {
 	/** Max payload size in MiB */
 	@Env('N8N_PAYLOAD_SIZE_MAX')
-	payloadSizeMax: number = 16;
+	payloadSizeMax: number = 256;
 
 	/** Max payload size for files in form-data webhook payloads in MiB */
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
