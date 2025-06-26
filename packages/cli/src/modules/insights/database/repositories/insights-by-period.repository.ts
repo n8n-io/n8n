@@ -44,6 +44,11 @@ const aggregatedInsightsByWorkflowParser = z
 	})
 	.array();
 
+const optionalNumberLike = z
+	.union([z.number(), z.string()])
+	.optional()
+	.transform((value) => (value !== undefined ? Number(value) : undefined));
+
 const aggregatedInsightsByTimeParser = z
 	.object({
 		periodStart: z.union([z.date(), z.string()]).transform((value) => {
@@ -59,22 +64,10 @@ const aggregatedInsightsByTimeParser = z
 			// fallback on native date parsing
 			return new Date(value).toISOString();
 		}),
-		runTime: z
-			.union([z.number(), z.string()])
-			.optional()
-			.transform((value) => (value ? Number(value) : undefined)),
-		succeeded: z
-			.union([z.number(), z.string()])
-			.optional()
-			.transform((value) => (value ? Number(value) : undefined)),
-		failed: z
-			.union([z.number(), z.string()])
-			.optional()
-			.transform((value) => (value ? Number(value) : undefined)),
-		timeSaved: z
-			.union([z.number(), z.string()])
-			.optional()
-			.transform((value) => (value ? Number(value) : undefined)),
+		runTime: optionalNumberLike,
+		succeeded: optionalNumberLike,
+		failed: optionalNumberLike,
+		timeSaved: optionalNumberLike,
 	})
 	.array();
 
@@ -408,6 +401,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		const rawRows = await rawRowsQuery.getRawMany();
+
+		console.log(rawRows);
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
