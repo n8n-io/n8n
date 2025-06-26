@@ -43,8 +43,8 @@ export function useWorkflowActivate() {
 
 		let currWorkflowId: string | undefined = workflowId;
 		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			const saved = await workflowSaving.saveCurrentWorkflow();
-			if (!saved) {
+			const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow();
+			if (!maybeWorkflowId) {
 				updatingWorkflowActivation.value = false;
 				return false; // Return false if save failed
 			}

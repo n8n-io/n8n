@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-
+import type { IWorkflowDb } from '@/Interface';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -141,10 +141,10 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		return await new Promise<string>((resolve) => {
+		return await new Promise<IWorkflowDb['id']>((resolve) => {
 			if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				nodeViewEventBus.emit('saveWorkflow', () => {
-					resolve(workflow.value.id);
+				nodeViewEventBus.emit('saveWorkflow', (workflowId: IWorkflowDb['id']) => {
+					resolve(workflowId);
 				});
 			} else {
 				resolve(workflow.value.id);

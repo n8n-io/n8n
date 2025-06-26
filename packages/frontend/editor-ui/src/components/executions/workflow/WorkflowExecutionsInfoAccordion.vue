@@ -179,12 +179,12 @@ async function onSaveWorkflowClick(): Promise<void> {
 	if (!currentId) {
 		return;
 	}
-	const saved = await workflowSaving.saveCurrentWorkflow({
+	const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow({
 		id: currentId,
 		name: workflowName.value,
 		tags: currentWorkflowTagIds.value,
 	});
-	if (saved) {
+	if (!!maybeWorkflowId) {
 		await npsSurveyStore.fetchPromptsData();
 	}
 }

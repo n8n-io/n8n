@@ -38,12 +38,20 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus, type OnSaveWorkflowFn } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+	onBeforeMount,
+	onBeforeUnmount,
+} from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
@@ -282,10 +290,10 @@ function getWorkflowId(): string | undefined {
 	return id;
 }
 
-async function onSaveButtonClick() {
+async function onSaveButtonClick(): Promise<IWorkflowDb['id'] | null> {
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
-		return;
+		return null;
 	}
 
 	const id = getWorkflowId();
@@ -293,13 +301,13 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
-	const saved = await workflowSaving.saveCurrentWorkflow({
+	const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
 		tags,
 	});
 
-	if (saved) {
+	if (!!maybeWorkflowId) {
 		showCreateWorkflowSuccessToast(id);
 
 		await npsSurveyStore.fetchPromptsData();
@@ -310,7 +318,11 @@ async function onSaveButtonClick() {
 				params: { name: props.id },
 			});
 		}
+
+		return maybeWorkflowId;
 	}
+
+	return null;
 }
 
 function onShareButtonClick() {
@@ -350,14 +362,14 @@ async function onTagsBlur() {
 	}
 	tagsSaving.value = true;
 
-	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
+	const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,
 		new_tag_count: tags.length,
 	});
 
 	tagsSaving.value = false;
-	if (saved) {
+	if (!!maybeWorkflowId) {
 		isTagsEditEnabled.value = false;
 	}
 }
@@ -393,8 +405,8 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId();
-	const saved = await workflowSaving.saveCurrentWorkflow({ name });
-	if (saved) {
+	const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow({ name });
+	if (!!maybeWorkflowId) {
 		showCreateWorkflowSuccessToast(id);
 		workflowHelpers.setDocumentTitle(newName, 'IDLE');
 	}
@@ -681,6 +693,21 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		});
 	}
 };
+
+const saveWorkflowEventListener = async (eventFn: OnSaveWorkflowFn) => {
+	const maybeWorkflowId = await onSaveButtonClick();
+	if (!maybeWorkflowId) {
+		return;
+	}
+	eventFn(maybeWorkflowId);
+};
+
+onBeforeMount(() => {
+	nodeViewEventBus.on('saveWorkflow', saveWorkflowEventListener);
+});
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('saveWorkflow', saveWorkflowEventListener);
+});
 </script>
 
 <template>

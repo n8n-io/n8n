@@ -854,8 +854,8 @@ async function onSaveWorkflow() {
 	if (workflowIsSaved || workflowIsArchived) {
 		return;
 	}
-	const saved = await workflowSaving.saveCurrentWorkflow();
-	if (saved) {
+	const maybeWorkflowId = await workflowSaving.saveCurrentWorkflow();
+	if (!!maybeWorkflowId) {
 		canvasEventBus.emit('saved:workflow');
 	}
 }
