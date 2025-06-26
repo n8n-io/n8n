@@ -53,6 +53,7 @@ import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
+import { shouldShowParameter } from './canvas/elements/nodes/experimental/experimentalNdvUtils';
 
 const props = withDefaults(
 	defineProps<{
@@ -66,7 +67,7 @@ const props = withDefaults(
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
-		hideConnections?: boolean;
+		isEmbeddedInCanvas?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -75,7 +76,7 @@ const props = withDefaults(
 		inputSize: 0,
 		blockUI: false,
 		activeNode: undefined,
-		hideConnections: false,
+		isEmbeddedInCanvas: false,
 	},
 );
 
@@ -213,10 +214,12 @@ const parameters = computed(() => {
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
-const parametersNoneSetting = computed(() =>
+const parametersNoneSetting = computed(() => {
 	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	parameters.value.filter((item) => !item.isNodeSetting),
-);
+	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
+
+	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
+});
 
 const isDisplayingCredentials = computed(
 	() =>
@@ -1114,6 +1117,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
+						v-if="!isEmbeddedInCanvas"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -1178,7 +1182,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.hideConnections"
+			v-if="node && !props.isEmbeddedInCanvas"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"

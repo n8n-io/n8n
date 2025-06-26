@@ -43,7 +43,7 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 		:block-u-i="false"
 		:executable="false"
 		:input-size="0"
-		hide-connections
+		is-embedded-in-canvas
 		@value-changed="handleValueChanged"
 	>
 		<template #actions>
