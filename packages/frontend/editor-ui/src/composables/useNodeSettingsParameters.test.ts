@@ -46,8 +46,6 @@ describe('useNodeSettingsParameters', () => {
 			expect(nodeSettingsParameters.nodeValues.value.color).toBe('#ffffff');
 			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({});
 
-			// nodeSettingsParameters.setValue('parameters', {});
-
 			nodeSettingsParameters.setValue('parameters.key', 3);
 
 			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({ key: 3 });
