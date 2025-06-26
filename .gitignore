@@ -26,3 +26,7 @@ build-storybook.log
 junit.xml
 test-results.json
 *.0x
+compiled_app_output
+trivy_report*
+compiled
+jest.config.js

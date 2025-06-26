@@ -1,3 +1,4 @@
+import type { CredentialPayload } from '@n8n/backend-test-utils';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import type { CredentialsEntity } from '@n8n/db';
 import type { Project } from '@n8n/db';
@@ -5,7 +6,6 @@ import type { User } from '@n8n/db';
 import type { ICredentialsDb } from '@n8n/db';
 import type { Application } from 'express';
 import type { Server } from 'http';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type TestAgent from 'supertest/lib/agent';
 
 import type { LicenseMocker } from './license';
@@ -69,13 +69,6 @@ export interface TestServer {
 	restlessAgent: TestAgent;
 	license: LicenseMocker;
 }
-
-export type CredentialPayload = {
-	name: string;
-	type: string;
-	data: ICredentialDataDecryptedObject;
-	isManaged?: boolean;
-};
 
 export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,

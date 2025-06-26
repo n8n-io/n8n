@@ -64,6 +64,10 @@ export class TemplateConfig {
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED')
 	'credentials-shared': string = '';
+
+	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_PROJECT_SHARED')
+	'project-shared': string = '';
 }
 
 const emailModeSchema = z.enum(['', 'smtp']);

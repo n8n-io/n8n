@@ -1,3 +1,12 @@
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+} from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
 import type { WorkflowFolderUnionFull } from '@n8n/db';
@@ -17,18 +26,9 @@ import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
-import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import {
-	createWorkflow,
-	shareWorkflowWithProjects,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';

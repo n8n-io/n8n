@@ -1,3 +1,6 @@
+import { randomEmail, randomName, uniqueId } from '@n8n/backend-test-utils';
+import { getPersonalProject } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { AuthProviderSyncHistoryRepository } from '@n8n/db';
@@ -15,11 +18,8 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import { randomEmail, randomName, uniqueId } from './../shared/random';
-import { getPersonalProject } from '../shared/db/projects';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
