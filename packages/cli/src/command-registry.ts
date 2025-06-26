@@ -1,9 +1,10 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { CommandMetadata } from '@n8n/decorators';
+import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import picocolors from 'picocolors';
 import argvParser from 'yargs-parser';
+import { z } from 'zod';
 
 @Service()
 export class CommandRegistry {
@@ -34,21 +35,20 @@ export class CommandRegistry {
 		// Load modules to ensure all module commands are registered
 		await this.moduleRegistry.loadModules();
 
-		const CommandEntry = this.commandMetadata.get(this.commandName);
-		if (!CommandEntry) {
+		const commandEntry = this.commandMetadata.get(this.commandName);
+		if (!commandEntry) {
 			this.logger.error(picocolors.red(`Error: Command "${this.commandName}" not found`));
 			process.exit(1);
 		}
 
 		if (this.argv.help) {
-			// TODO: print command usage from the flags schema and then print the examples
-			this.logger.info('print command usage');
+			this.printCommandUsage(commandEntry);
 			process.exit(0);
 		}
 
-		const command = Container.get(CommandEntry.class);
+		const command = Container.get(commandEntry.class);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		command.flags = CommandEntry.flagsSchema?.parse(this.argv) ?? {};
+		command.flags = commandEntry.flagsSchema?.parse(this.argv) ?? {};
 
 		let error: Error | undefined = undefined;
 		try {
@@ -85,5 +85,68 @@ export class CommandRegistry {
 		this.logger.info(
 			'\nFor more detailed information, visit:\nhttps://docs.n8n.io/hosting/cli-commands/',
 		);
+	}
+
+	private printCommandUsage(commandEntry: CommandEntry) {
+		const { commandName } = this;
+		let output = '';
+
+		output += `${picocolors.bold('USAGE')}\n`;
+		output += `  $ n8n ${commandName}\n\n`;
+
+		const { flagsSchema } = commandEntry;
+		if (flagsSchema && Object.keys(flagsSchema.shape).length > 0) {
+			const flagLines: Array<[string, string]> = [];
+			const flagEntries = Object.entries(
+				z
+					.object({
+						help: z.boolean().describe('Show CLI help'),
+					})
+					.merge(flagsSchema).shape,
+			);
+			for (const [flagName, flagSchema] of flagEntries) {
+				let schemaDef = flagSchema._def as z.ZodTypeDef & {
+					typeName: string;
+					innerType?: z.ZodType;
+				};
+				if (schemaDef.typeName === 'ZodOptional' && schemaDef.innerType) {
+					schemaDef = schemaDef.innerType._def as typeof schemaDef;
+				}
+				const typeName = schemaDef.typeName;
+
+				let flagString = `--${flagName}`;
+				if (['ZodString', 'ZodNumber', 'ZodArray'].includes(typeName)) {
+					flagString += ' <value>';
+				}
+
+				let flagLine = flagSchema.description ?? '';
+				if ('defaultValue' in schemaDef) {
+					const defaultValue = (schemaDef as z.ZodDefaultDef).defaultValue() as unknown;
+					flagLine += ` [default: ${String(defaultValue)}]`;
+				}
+				flagLines.push([flagString, flagLine]);
+			}
+
+			const flagColumnWidth = Math.max(...flagLines.map(([flagString]) => flagString.length));
+
+			output += `${picocolors.bold('FLAGS')}\n`;
+			output += flagLines
+				.map(([flagString, flagLine]) => `  ${flagString.padEnd(flagColumnWidth)}  ${flagLine}`)
+				.join('\n');
+			output += '\n\n';
+		}
+
+		output += `${picocolors.bold('DESCRIPTION')}\n`;
+		output += `  ${commandEntry.description}\n`;
+
+		if (commandEntry.examples?.length) {
+			output += `\n${picocolors.bold('EXAMPLES')}\n`;
+			output += commandEntry.examples
+				.map((example) => `  $ n8n ${commandName}${example ? ` ${example}` : ''}`)
+				.join('\n');
+			output += '\n';
+		}
+
+		this.logger.info(output);
 	}
 }

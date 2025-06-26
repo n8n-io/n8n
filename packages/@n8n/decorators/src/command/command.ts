@@ -11,7 +11,7 @@ export const Command =
 			description,
 			flagsSchema,
 			class: commandClass,
-			examples: (examples ?? ['']).map((example) => `$ n8n ${name} ${example}`.trim()),
+			examples,
 		});
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Service()(target);
