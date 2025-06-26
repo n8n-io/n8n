@@ -56,9 +56,12 @@ modalBus.on('opened', () => {
 });
 
 onMounted(() => {
-	for (const article of versionsStore.whatsNewArticles) {
-		if (!versionsStore.isWhatsNewArticleRead(article.id)) {
-			versionsStore.setWhatsNewArticleRead(article.id);
+	// Mark all items as read when the modal is opened.
+	// Later versions of the What's new articles might contain partially same items,
+	// but we only want to show the new ones as unread on the main sidebar.
+	for (const item of versionsStore.whatsNewArticles) {
+		if (!versionsStore.isWhatsNewArticleRead(item.id)) {
+			versionsStore.setWhatsNewArticleRead(item.id);
 		}
 	}
 });
