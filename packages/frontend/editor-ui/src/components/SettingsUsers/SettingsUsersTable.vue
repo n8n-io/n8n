@@ -103,8 +103,8 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 		label: i18n.baseText('auth.roles.admin'),
 	},
 	{
-		id: 'remove',
-		label: i18n.baseText('settings.users.table.row.removeUser'),
+		id: 'delete',
+		label: i18n.baseText('settings.users.table.row.deleteUser'),
 		divided: true,
 	},
 ]);
@@ -119,6 +119,14 @@ const filterActions = (user: UsersList['items'][number]) => {
 	return props.actions.filter(
 		(action) => action.guard?.({ ...user, isPendingUser: user.isPending } as IUser) ?? true,
 	);
+};
+
+const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
+	if (role === 'delete') {
+		emit('action', { action: 'delete', userId });
+	} else {
+		emit('update:role', { role: role as Role, userId });
+	}
 };
 </script>
 
@@ -141,7 +149,7 @@ const filterActions = (user: UsersList['items'][number]) => {
 					:data="item"
 					:roles="roles"
 					:actions="roleActions"
-					@update:role="$emit('update:role', $event)"
+					@update:role="onRoleChange"
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default].label }}</N8nText>
 			</template>

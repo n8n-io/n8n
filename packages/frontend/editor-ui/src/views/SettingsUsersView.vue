@@ -50,7 +50,6 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
-		await usersStore.fetchUsers();
 		await updateUsersTableData(usersTableState.value);
 	}
 });

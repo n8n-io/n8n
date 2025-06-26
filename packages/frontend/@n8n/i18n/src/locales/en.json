@@ -1998,7 +1998,7 @@
 	"settings.users.table.header.lastActive": "Last Active",
 	"settings.users.table.row.allProjects": "All projects",
 	"settings.users.table.row.personalProject": "Personal project",
-	"settings.users.table.row.removeUser": "Remove user",
+	"settings.users.table.row.deleteUser": "Remove user",
 	"settings.users.table.row.role.description.admin": "Full access to all workflows, credentials, projects, users and more",
 	"settings.users.table.row.role.description.member": "Manage and create own workflows and credentials",
 	"settings.users.table.row.2fa.enabled": "@:_reusableBaseText.enabled",
