@@ -442,12 +442,17 @@ const activeTab = ref<
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const allVisibleItemsSelected = computed(() => {
+	debugger;
 	if (!activeSelection.value.size) {
 		return false;
 	}
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		const workflowsSet = new Set(sortedWorkflows.value.map(({ id }) => id));
+
+		if (!workflowsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = workflowsSet.difference(toRaw(activeSelection.value));
 
 		return !Boolean(notSelectedVisibleItems.size);
@@ -455,6 +460,9 @@ const allVisibleItemsSelected = computed(() => {
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		const credentialsSet = new Set(sortedCredentials.value.map(({ id }) => id));
+		if (!credentialsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = credentialsSet.difference(toRaw(activeSelection.value));
 
 		return !Boolean(notSelectedVisibleItems.size);
@@ -489,6 +497,14 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedCredentials.value;
 	}
 	return [];
+});
+
+const activeEntityLocale = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return 'generic.workflows';
+	}
+
+	return 'generic.credentials';
 });
 
 const activeSelection = computed(() => {
@@ -656,6 +672,7 @@ function castProject(project: ProjectListItem) {
 								:indeterminate="selectAllIndeterminate"
 								:model-value="allVisibleItemsSelected"
 								data-test-id="source-control-push-modal-toggle-all"
+								:disabled="activeDataSourceFiltered.length === 0"
 								@update:model-value="onToggleSelectAll"
 							>
 								<N8nText> Title </N8nText>
@@ -666,7 +683,14 @@ function castProject(project: ProjectListItem) {
 								:bold="false"
 								:class="$style.filtersApplied"
 							>
-								{{ filtersActiveText }}
+								{{
+									i18n.baseText('settings.sourceControl.modals.push.filter', {
+										interpolate: {
+											count: `${activeDataSourceFiltered.length} / ${activeDataSource.length}`,
+											entity: i18n.baseText(activeEntityLocale).toLowerCase(),
+										},
+									})
+								}}
 								<N8nLink
 									size="small"
 									data-test-id="source-control-filters-reset"
