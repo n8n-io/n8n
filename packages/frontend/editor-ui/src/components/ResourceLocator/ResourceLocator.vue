@@ -656,16 +656,19 @@ function loadResourcesDebounced() {
 }
 
 function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>) {
+	// Force reactivity by creating a completely new cached responses object
+	const existingResponse = cachedResponses.value[paramsKey] || {};
+	const newResponse = { ...existingResponse, ...response };
+
 	cachedResponses.value = {
 		...cachedResponses.value,
-		[paramsKey]: { ...cachedResponses.value[paramsKey], ...response },
+		[paramsKey]: newResponse,
 	};
 }
 
 async function loadResources() {
 	const params = currentRequestParams.value;
 	const paramsKey = currentRequestKey.value;
-	const cachedResponse = cachedResponses.value[paramsKey];
 
 	if (credentialsNotSet.value) {
 		setResponse(paramsKey, { error: true });
@@ -683,18 +686,22 @@ async function loadResources() {
 	let paginationToken: string | undefined;
 
 	try {
+		// Re-get the cached response and current key at the time of setting loading state
+		const currentKey = currentRequestKey.value;
+		const cachedResponse = cachedResponses.value[currentKey];
+
 		if (cachedResponse) {
 			const nextPageToken = cachedResponse.nextPageToken as string;
 			if (nextPageToken) {
 				paginationToken = nextPageToken;
-				setResponse(paramsKey, { loading: true });
+				setResponse(currentKey, { loading: true });
 			} else if (cachedResponse.error) {
-				setResponse(paramsKey, { error: false, loading: true });
+				setResponse(currentKey, { error: false, loading: true });
 			} else {
 				return; // end of results
 			}
 		} else {
-			setResponse(paramsKey, {
+			setResponse(currentKey, {
 				loading: true,
 				error: false,
 				results: [],
@@ -729,8 +736,12 @@ async function loadResources() {
 
 		const response = await nodeTypesStore.getResourceLocatorResults(requestParams);
 
-		setResponse(paramsKey, {
-			results: (cachedResponse?.results ?? []).concat(response.results),
+		// Use current key when setting the final response
+		const finalKey = currentRequestKey.value;
+		const finalCachedResponse = cachedResponses.value[finalKey];
+
+		setResponse(finalKey, {
+			results: (finalCachedResponse?.results ?? []).concat(response.results),
 			nextPageToken: response.paginationToken ?? null,
 			loading: false,
 			error: false,
@@ -741,7 +752,8 @@ async function loadResources() {
 			trackEvent('User searched resource locator list');
 		}
 	} catch (e) {
-		setResponse(paramsKey, {
+		const errorKey = currentRequestKey.value;
+		setResponse(errorKey, {
 			loading: false,
 			error: true,
 			errorDetails: {
