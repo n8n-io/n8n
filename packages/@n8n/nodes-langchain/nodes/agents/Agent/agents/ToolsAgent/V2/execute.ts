@@ -1,12 +1,19 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
-import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import {
+	getOptionalOutputParser,
+	type N8nOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
 
 import {
 	fixEmptyContentMessage,
@@ -18,6 +25,41 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+
+/**
+ * Creates an agent executor with the given configuration
+ */
+function createAgentExecutor(
+	model: BaseChatModel,
+	tools: Array<DynamicStructuredTool | Tool>,
+	prompt: ChatPromptTemplate,
+	options: { maxIterations?: number; returnIntermediateSteps?: boolean },
+	outputParser?: N8nOutputParser,
+	memory?: BaseChatMemory,
+	fallbackModel?: BaseChatModel | null,
+) {
+	const modelWithFallback = fallbackModel ? model.withFallbacks([fallbackModel]) : model;
+	const agent = createToolCallingAgent({
+		llm: modelWithFallback,
+		tools,
+		prompt,
+		streamRunnable: false,
+	});
+
+	const runnableAgent = RunnableSequence.from([
+		agent,
+		getAgentStepsParser(outputParser, memory),
+		fixEmptyContentMessage,
+	]);
+
+	return AgentExecutor.fromAgentAndTools({
+		agent: runnableAgent,
+		memory,
+		tools,
+		returnIntermediateSteps: options.returnIntermediateSteps === true,
+		maxIterations: options.maxIterations ?? 10,
+	});
+}
 
 /* -----------------------------------------------------------
    Main Executor Function
@@ -42,8 +84,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		0,
 		0,
 	) as number;
+	const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
 	const memory = await getOptionalMemory(this);
-	const model = await getChatModel(this);
+	const model = await getChatModel(this, 0);
+	assert(model, 'Please connect a model to the Chat Model input');
+	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+
+	if (needsFallback && !fallbackModel) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Please connect a model to the Fallback Model input or disable the fallback option',
+		);
+	}
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -57,7 +109,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				promptTypeKey: 'promptType',
 			});
 			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
@@ -76,38 +128,26 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
 
-			// Create the base agent that calls tools.
-			const agent = createToolCallingAgent({
-				llm: model,
+			// Create executors for primary and fallback models
+			const executor = createAgentExecutor(
+				model,
 				tools,
 				prompt,
-				streamRunnable: false,
-			});
-			agent.streamRunnable = false;
-			// Wrap the agent with parsers and fixes.
-			const runnableAgent = RunnableSequence.from([
-				agent,
-				getAgentStepsParser(outputParser, memory),
-				fixEmptyContentMessage,
-			]);
-			const executor = AgentExecutor.fromAgentAndTools({
-				agent: runnableAgent,
+				options,
+				outputParser,
 				memory,
-				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
-				maxIterations: options.maxIterations ?? 10,
-			});
-
-			// Invoke the executor with the given input and system message.
-			return await executor.invoke(
-				{
-					input,
-					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
+				fallbackModel,
 			);
+			// Invoke with fallback logic
+			const invokeParams = {
+				input,
+				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+				formatting_instructions:
+					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+			};
+			const executeOptions = { signal: this.getExecutionCancelSignal() };
+
+			return await executor.invoke(invokeParams, executeOptions);
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);

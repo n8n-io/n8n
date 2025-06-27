@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -18,7 +18,6 @@ import type {
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
-import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -48,25 +47,9 @@ const i18n = useI18n();
 
 const { getAddedNodesAndConnections } = useActions();
 
-const wrapperRef = ref<HTMLElement | undefined>();
-const wrapperBoundingRect = ref<DOMRect | undefined>();
-const isStickyNotesButtonVisible = ref(true);
 const isOpenFocusPanelButtonVisible = computed(() => {
 	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
 });
-
-const onMouseMove = useThrottleFn((event: MouseEvent) => {
-	if (wrapperBoundingRect.value) {
-		const offset = 100;
-		isStickyNotesButtonVisible.value =
-			event.clientX >= wrapperBoundingRect.value.left - offset &&
-			event.clientX <= wrapperBoundingRect.value.right + offset &&
-			event.clientY >= wrapperBoundingRect.value.top - offset &&
-			event.clientY <= wrapperBoundingRect.value.bottom + offset;
-	} else {
-		isStickyNotesButtonVisible.value = true;
-	}
-}, 250);
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -99,67 +82,49 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
-
-function setWrapperRect() {
-	wrapperBoundingRect.value = wrapperRef.value?.getBoundingClientRect();
-}
-
-onMounted(() => {
-	setWrapperRect();
-
-	document.addEventListener('mousemove', onMouseMove);
-	window.addEventListener('resize', setWrapperRect);
-});
-
-onBeforeUnmount(() => {
-	document.removeEventListener('mousemove', onMouseMove);
-	window.removeEventListener('resize', setWrapperRect);
-});
 </script>
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<div ref="wrapperRef" :class="$style.nodeCreatorButton">
-			<KeyboardShortcutTooltip
-				:label="i18n.baseText('nodeView.openNodesPanel')"
-				:shortcut="{ keys: ['Tab'] }"
-				placement="left"
-			>
-				<n8n-icon-button
-					size="large"
-					icon="plus"
-					type="tertiary"
-					data-test-id="node-creator-plus-button"
-					@click="openNodeCreator"
-				/>
-			</KeyboardShortcutTooltip>
-			<div
-				:class="[$style.addStickyButton, isStickyNotesButtonVisible ? $style.visibleButton : '']"
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.openNodesPanel')"
+			:shortcut="{ keys: ['Tab'] }"
+			placement="left"
+		>
+			<n8n-icon-button
+				size="large"
+				icon="plus"
+				type="tertiary"
+				data-test-id="node-creator-plus-button"
+				@click="openNodeCreator"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.addStickyHint')"
+			:shortcut="{ keys: ['s'], shiftKey: true }"
+			placement="left"
+		>
+			<n8n-icon-button
+				size="large"
+				type="tertiary"
+				:icon="['far', 'note-sticky']"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
-			>
-				<KeyboardShortcutTooltip
-					:label="i18n.baseText('nodeView.addStickyHint')"
-					:shortcut="{ keys: ['s'], shiftKey: true }"
-					placement="left"
-				>
-					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
-				</KeyboardShortcutTooltip>
-			</div>
-			<KeyboardShortcutTooltip
-				v-if="isOpenFocusPanelButtonVisible"
-				:label="i18n.baseText('nodeView.openFocusPanel')"
-				:shortcut="{ keys: ['f'], shiftKey: true }"
-				placement="left"
-			>
-				<n8n-icon-button
-					type="tertiary"
-					size="large"
-					icon="list"
-					@click="focusPanelStore.toggleFocusPanel"
-				/>
-			</KeyboardShortcutTooltip>
-		</div>
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="isOpenFocusPanelButtonVisible"
+			:label="i18n.baseText('nodeView.openFocusPanel')"
+			:shortcut="{ keys: ['f'], shiftKey: true }"
+			placement="left"
+		>
+			<n8n-icon-button
+				type="tertiary"
+				size="large"
+				icon="list"
+				@click="focusPanelStore.toggleFocusPanel"
+			/>
+		</KeyboardShortcutTooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -176,25 +141,9 @@ onBeforeUnmount(() => {
 	top: 0;
 	right: 0;
 	display: flex;
-}
-
-.addStickyButton {
-	margin-top: var(--spacing-2xs);
-	opacity: 0;
-	transition: 0.1s;
-	transition-timing-function: linear;
-}
-
-.visibleButton {
-	opacity: 1;
-	pointer-events: all;
-}
-
-.nodeCreatorButton {
-	position: absolute;
-	text-align: center;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	flex-direction: column;
+	gap: var(--spacing-2xs);
+	padding: var(--spacing-s);
 	pointer-events: all !important;
 }
 </style>

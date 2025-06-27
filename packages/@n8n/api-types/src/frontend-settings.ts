@@ -5,6 +5,8 @@ import { type InsightsDateRange } from './schemas/insights.schema';
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
+	whatsNewEnabled: boolean;
+	whatsNewEndpoint: string;
 	infoUrl: string;
 }
 
