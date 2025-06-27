@@ -1,3 +1,12 @@
+## [1.100.2](https://github.com/n8n-io/n8n/compare/n8n@1.100.1...n8n@1.100.2) (2025-06-27)
+
+
+### Bug Fixes
+
+* **Snowflake Node:** Fix key-pair credentials ([#16635](https://github.com/n8n-io/n8n/issues/16635)) ([d499856](https://github.com/n8n-io/n8n/commit/d499856e421c96546d5662893e295d58cc2c878f))
+
+
+
 ## [1.100.1](https://github.com/n8n-io/n8n/compare/n8n@1.100.0...n8n@1.100.1) (2025-06-25)
 
 
