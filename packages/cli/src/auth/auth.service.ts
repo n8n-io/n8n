@@ -10,7 +10,7 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -68,7 +68,7 @@ export class AuthService {
 	}
 
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		const token = req.cookies[AUTH_COOKIE_NAME];
+		const token = req.cookies[this.globalConfig.auth.cookie.name];
 		if (token) {
 			try {
 				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
@@ -88,11 +88,11 @@ export class AuthService {
 	}
 
 	clearCookie(res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+		res.clearCookie(this.globalConfig.auth.cookie.name);
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
-		const token = req.cookies[AUTH_COOKIE_NAME];
+		const token = req.cookies[this.globalConfig.auth.cookie.name];
 		if (!token) return;
 		try {
 			const { exp } = this.jwtService.decode(token);
@@ -120,8 +120,8 @@ export class AuthService {
 		}
 
 		const token = this.issueJWT(user, browserId);
-		const { samesite, secure } = this.globalConfig.auth.cookie;
-		res.cookie(AUTH_COOKIE_NAME, token, {
+		const { name, samesite, secure } = this.globalConfig.auth.cookie;
+		res.cookie(name, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: samesite,

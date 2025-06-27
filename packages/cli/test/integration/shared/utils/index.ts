@@ -21,7 +21,6 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
@@ -123,7 +122,7 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 /**
  * Extract the value (token) of the auth cookie in a response.
  */
-export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
+export function getAuthToken(response: request.Response, authCookieName = config.auth.cookie.name) {
 	const cookiesHeader = response.headers['set-cookie'];
 	if (!cookiesHeader) return undefined;
 

@@ -10,7 +10,7 @@ import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
+import config from '@/config';
 import { MeController } from '@/controllers/me.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -70,7 +70,7 @@ describe('MeController', () => {
 				fieldsChanged: ['firstName', 'lastName'], // email did not change
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
-				AUTH_COOKIE_NAME,
+				config.auth.cookie.name,
 				'signed-token',
 				expect.objectContaining({
 					maxAge: expect.any(Number),
@@ -257,7 +257,7 @@ describe('MeController', () => {
 			expect(req.user.password).not.toBe(passwordHash);
 
 			expect(res.cookie).toHaveBeenCalledWith(
-				AUTH_COOKIE_NAME,
+				config.auth.cookie.name,
 				'new-signed-token',
 				expect.objectContaining({
 					maxAge: expect.any(Number),

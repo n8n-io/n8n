@@ -1,7 +1,8 @@
 import { randFirstName, randLastName } from '@ngneat/falso';
+import config from '@n8n/config';
 
 export const BACKEND_BASE_URL = 'http://localhost:5678';
-export const N8N_AUTH_COOKIE = 'n8n-auth';
+export const N8N_AUTH_COOKIE = config.auth.cookie.name;
 
 const DEFAULT_USER_PASSWORD = 'CypressTest123';
 

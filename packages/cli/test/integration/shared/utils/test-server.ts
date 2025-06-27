@@ -14,7 +14,6 @@ import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -59,7 +58,7 @@ function createAgent(
 
 	if (options?.auth && options?.user) {
 		const token = Container.get(AuthService).issueJWT(options.user, browserId);
-		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+		agent.jar.setCookie(`${config.auth.cookie.name}=${token}`);
 	}
 	return agent;
 }
