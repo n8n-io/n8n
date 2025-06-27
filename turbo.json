@@ -11,6 +11,9 @@
 		"clean": {
 			"cache": false
 		},
+		"build:playwright": {
+			"dependsOn": ["install-browsers", "build"]
+		},
 		"build:backend": {
 			"dependsOn": ["n8n#build"]
 		},
@@ -139,6 +142,12 @@
 		"dev": {
 			"cache": false,
 			"persistent": true
+		},
+		"install-browsers": {
+			"cache": true,
+			"inputs": ["package.json"],
+			"outputs": ["ms-playwright-cache/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		}
 	}
 }
