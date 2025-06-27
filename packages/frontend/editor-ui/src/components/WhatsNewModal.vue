@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
-import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { RELEASE_NOTES_URL, VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
@@ -143,7 +143,7 @@ modalBus.on('opened', () => {
 								:size="'small'"
 								:underline="true"
 								theme="primary"
-								to="https://docs.n8n.io/release-notes/"
+								:to="RELEASE_NOTES_URL"
 								target="_blank"
 							>
 								{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
