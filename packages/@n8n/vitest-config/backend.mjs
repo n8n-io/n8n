@@ -1,4 +1,5 @@
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { coverage } from './common.mjs';
 
 /**
  * Define a Vitest configuration
@@ -10,12 +11,7 @@ export const createVitestConfig = (options = {}) => {
 		test: {
 			silent: true,
 			globals: true,
-			coverage: {
-				enabled: false,
-				all: false,
-				provider: 'v8',
-				reporter: ['text-summary', 'lcov', 'html-spa'],
-			},
+			coverage,
 			...options,
 		},
 	});

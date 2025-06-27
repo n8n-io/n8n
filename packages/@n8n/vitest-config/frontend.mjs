@@ -1,4 +1,5 @@
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { coverage } from './common.mjs';
 
 /**
  * Define a Vitest configuration
@@ -12,12 +13,7 @@ export const createVitestConfig = (options = {}) => {
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				enabled: false,
-				all: false,
-				provider: 'v8',
-				reporter: ['text-summary', 'lcov', 'html-spa'],
-			},
+			coverage,
 			css: {
 				modules: {
 					classNameStrategy: 'non-scoped',
@@ -27,14 +23,7 @@ export const createVitestConfig = (options = {}) => {
 		},
 	});
 
-	if (process.env.COVERAGE_ENABLED === 'true') {
-		const { coverage } = vitestConfig.test;
-		coverage.enabled = true;
-		if (process.env.CI === 'true') {
-			coverage.all = true;
-			coverage.reporter = ['cobertura'];
-		}
-	}
+	enableCoverage(vitestConfig);
 
 	return vitestConfig;
 };
