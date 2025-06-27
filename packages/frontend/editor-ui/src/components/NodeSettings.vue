@@ -770,7 +770,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					/>
 					<N8nIconButton
 						v-if="props.canExpand"
-						icon="expand"
+						icon="maximize"
 						type="secondary"
 						text
 						size="mini"
@@ -790,7 +790,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
-				<n8n-icon icon="exclamation-triangle" />
+				<n8n-icon icon="triangle-alert" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>

@@ -20,7 +20,7 @@ describe('components', () => {
 					title: 'Title',
 					default: 'Message',
 					aside: '<button>Click me</button>',
-					icon: '<n8n-icon icon="plus-circle" />',
+					icon: '<n8n-icon icon="circle-plus" />',
 				},
 				global: {
 					components: {

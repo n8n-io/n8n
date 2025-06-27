@@ -110,7 +110,7 @@ const onLearnMoreLinkClick = () => {
 				</div>
 				<n8n-button
 					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
-					icon="external-link-alt"
+					icon="external-link"
 					:class="$style.browseButton"
 					@click="openNPMPage"
 				/>

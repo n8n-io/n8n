@@ -91,7 +91,7 @@ describe('ProjectHeader', () => {
 		const projectName = 'My Project';
 		projectsStore.currentProject = { name: projectName } as Project;
 		await rerender({});
-		expect(container.querySelector('svg[data-icon=layer-group]')).toBeVisible();
+		expect(container.querySelector('svg[data-icon=layers]')).toBeVisible();
 	});
 
 	it('Overview: should render the correct title and subtitle', async () => {

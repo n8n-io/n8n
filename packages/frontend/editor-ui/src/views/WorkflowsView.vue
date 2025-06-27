@@ -1602,7 +1602,7 @@ const onNameSubmit = async (name: string) => {
 			<N8nCallout
 				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
-				icon="robot"
+				icon="bot"
 				:class="$style['easy-ai-workflow-callout']"
 			>
 				{{ i18n.baseText('workflows.list.easyAI') }}
@@ -1618,7 +1618,7 @@ const onNameSubmit = async (name: string) => {
 						</N8nButton>
 						<N8nIcon
 							size="small"
-							icon="times"
+							icon="x"
 							:title="i18n.baseText('generic.dismiss')"
 							class="clickable"
 							@click="dismissEasyAICallout"
@@ -1796,7 +1796,7 @@ const onNameSubmit = async (name: string) => {
 						@click="openAIWorkflow('empty')"
 					>
 						<div :class="$style.emptyStateCardContent">
-							<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" color="foreground-dark" />
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="bot" color="foreground-dark" />
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
 								{{ i18n.baseText('workflows.empty.easyAI') }}
 							</N8nText>

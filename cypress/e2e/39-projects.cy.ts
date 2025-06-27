@@ -342,7 +342,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should set and update project icon', () => {
-			const DEFAULT_ICON = 'layer-group';
+			const DEFAULT_ICON = 'layers';
 			const NEW_PROJECT_NAME = 'Test Project';
 
 			cy.signinAsAdmin();

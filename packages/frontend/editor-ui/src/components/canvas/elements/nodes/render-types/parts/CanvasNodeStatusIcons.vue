@@ -40,7 +40,7 @@ const dirtiness = computed(() =>
 			<template #content>
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
-			<N8nIcon icon="exclamation-triangle" />
+			<N8nIcon icon="triangle-alert" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionWaiting || executionStatus === 'waiting'">
@@ -53,7 +53,7 @@ const dirtiness = computed(() =>
 			</N8nTooltip>
 		</div>
 		<div :class="[$style.status, $style['node-waiting-spinner']]">
-			<N8nIcon icon="sync-alt" spin />
+			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -64,14 +64,14 @@ const dirtiness = computed(() =>
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>
-		<N8nIcon icon="sync-alt" spin />
+		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
 		data-test-id="canvas-node-status-pinned"
 		:class="[$style.status, $style.pinnedData]"
 	>
-		<N8nIcon icon="thumbtack" />
+		<N8nIcon icon="pin" />
 	</div>
 	<div v-else-if="dirtiness !== undefined">
 		<N8nTooltip :show-after="500" placement="bottom">

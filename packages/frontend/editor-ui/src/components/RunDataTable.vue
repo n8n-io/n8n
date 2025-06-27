@@ -481,7 +481,7 @@ watch(focusedMappableInput, (curr) => {
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
-								icon="external-link-alt"
+								icon="external-link"
 								data-test-id="debug-sub-execution"
 								size="mini"
 								target="_blank"
@@ -565,7 +565,7 @@ watch(focusedMappableInput, (curr) => {
 								</div>
 							</template>
 							<span>
-								<n8n-icon :class="$style['warningTooltip']" icon="exclamation-triangle" />
+								<n8n-icon :class="$style['warningTooltip']" icon="triangle-alert" />
 								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</N8nTooltip>
@@ -617,7 +617,7 @@ watch(focusedMappableInput, (curr) => {
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
-								icon="external-link-alt"
+								icon="external-link"
 								data-test-id="debug-sub-execution"
 								size="mini"
 								target="_blank"

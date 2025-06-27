@@ -68,7 +68,7 @@ defineExpose({
 			/>
 		</div>
 		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
-			<n8n-icon size="small" icon="times-circle" />
+			<n8n-icon size="small" icon="circle-x" />
 		</div>
 	</div>
 </template>

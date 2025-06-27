@@ -40,7 +40,7 @@ Default.args = {
 	buttonTooltip: 'Select an icon',
 };
 
-const CustomTooltipTemplate = createTemplate({ type: 'icon', value: 'layer-group' });
+const CustomTooltipTemplate = createTemplate({ type: 'icon', value: 'layers' });
 export const WithCustomIconAndTooltip = CustomTooltipTemplate.bind({});
 WithCustomIconAndTooltip.args = {
 	buttonTooltip: 'Select something...',

@@ -127,21 +127,21 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		>
 			<div v-if="!isReadOnly" class="delete-item clickable">
 				<N8nIcon
-					icon="trash"
+					icon="trash-2"
 					:title="i18n.baseText('multipleParameter.deleteItem')"
 					@click="deleteItem(index)"
 				/>
 				<div v-if="sortable">
 					<N8nIcon
 						v-if="index !== 0"
-						icon="angle-up"
+						icon="chevron-up"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveUp')"
 						@click="moveOptionUp(index)"
 					/>
 					<N8nIcon
 						v-if="index !== mutableValues.length - 1"
-						icon="angle-down"
+						icon="chevron-down"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveDown')"
 						@click="moveOptionDown(index)"

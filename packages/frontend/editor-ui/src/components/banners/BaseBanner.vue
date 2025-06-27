@@ -56,7 +56,7 @@ async function onCloseClick() {
 				<n8n-icon
 					v-if="dismissible"
 					size="small"
-					icon="times"
+					icon="x"
 					:title="i18n.baseText('generic.dismiss')"
 					class="clickable"
 					:data-test-id="`banner-${props.name}-close`"

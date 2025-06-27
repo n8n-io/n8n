@@ -171,7 +171,7 @@ onBeforeMount(() => {
 	<n8n-popover trigger="click" :placement="popoverPlacement" width="440">
 		<template #reference>
 			<n8n-button
-				icon="filter"
+				icon="funnel"
 				type="tertiary"
 				size="medium"
 				square
@@ -307,7 +307,7 @@ onBeforeMount(() => {
 					</template>
 					<span :class="[$style.label, $style.savedDataLabel]">
 						<span>{{ locale.baseText('executionsFilter.savedData') }}</span>
-						<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="medium" />
+						<n8n-icon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
 					</span>
 				</n8n-tooltip>
 				<div :class="$style.subGroup">

@@ -10,7 +10,7 @@ const props = withDefaults(
 		initialExpanded?: boolean;
 	}>(),
 	{
-		icon: 'tasks',
+		icon: 'list-checks',
 		iconColor: 'text-dark',
 		initialExpanded: true,
 	},

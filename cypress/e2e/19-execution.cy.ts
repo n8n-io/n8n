@@ -48,7 +48,7 @@ describe('Execution', () => {
 			.within(() => cy.get('svg[data-icon=check]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('svg[data-icon=sync-alt]'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -108,7 +108,7 @@ describe('Execution', () => {
 			.within(() => cy.get('svg[data-icon=check]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('svg[data-icon=sync-alt]'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -128,7 +128,7 @@ describe('Execution', () => {
 
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('svg[data-icon=sync-alt]').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=refresh-cw]').should('not.exist'));
 
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -188,7 +188,7 @@ describe('Execution', () => {
 			.within(() => cy.get('svg[data-icon=check]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('svg[data-icon=sync-alt]'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')

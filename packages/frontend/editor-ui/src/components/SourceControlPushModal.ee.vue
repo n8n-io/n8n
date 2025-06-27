@@ -535,7 +535,7 @@ function castProject(project: ProjectListItem) {
 					<N8nPopover trigger="click" width="304" style="align-self: normal">
 						<template #reference>
 							<N8nButton
-								icon="filter"
+								icon="funnel"
 								type="tertiary"
 								style="height: 100%"
 								:active="Boolean(filterCount)"

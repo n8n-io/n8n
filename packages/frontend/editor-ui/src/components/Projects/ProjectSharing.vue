@@ -52,7 +52,7 @@ const filteredProjects = computed(() =>
 );
 
 const projectIcon = computed<IconOrEmoji>(() => {
-	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layer-group' };
+	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
 	const project = props.projects.find((p) => p.id === selectedProject.value);
 
 	if (project?.type === ProjectTypes.Personal) {
@@ -171,7 +171,7 @@ watch(
 					type="tertiary"
 					native-type="button"
 					square
-					icon="trash"
+					icon="trash-2"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"
 					@click="onRoleAction(project, 'remove')"

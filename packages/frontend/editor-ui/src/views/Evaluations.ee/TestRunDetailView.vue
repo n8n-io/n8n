@@ -146,12 +146,7 @@ onMounted(async () => {
 				}}
 			</n8n-heading>
 		</div>
-		<n8n-callout
-			v-if="run?.status === 'error'"
-			theme="danger"
-			icon="exclamation-triangle"
-			class="mb-s"
-		>
+		<n8n-callout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
 			<N8nText size="small" :class="$style.capitalized">
 				{{
 					locale.baseText(

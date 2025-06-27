@@ -88,9 +88,9 @@ const badgeIcon = computed<IconOrEmoji>(() => {
 		case ProjectState.SharedTeam:
 			return isIconOrEmoji(props.resource.homeProject?.icon)
 				? props.resource.homeProject?.icon
-				: { type: 'icon', value: 'layer-group' };
+				: { type: 'icon', value: 'layers' };
 		default:
-			return { type: 'icon', value: 'layer-group' };
+			return { type: 'icon', value: 'layers' };
 	}
 });
 const badgeTooltip = computed(() => {

@@ -106,7 +106,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 											}}</template>
 										</i18n-t>
 									</template>
-									<N8nIcon :class="$style.icon" icon="info-circle" />
+									<N8nIcon :class="$style.icon" icon="info" />
 								</N8nTooltip>
 							</small>
 						</span>
@@ -118,7 +118,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								<N8nIcon
 									:class="[$style.icon, getImpactStyle(id, deviation)]"
 									:icon="
-										deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'
+										deviation === 0
+											? 'chevron-right'
+											: deviation > 0
+												? 'chevron-up'
+												: 'chevron-down'
 									"
 								/>
 								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">

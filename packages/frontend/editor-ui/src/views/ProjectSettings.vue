@@ -58,7 +58,7 @@ const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const projectIcon = ref<IconOrEmoji>({
 	type: 'icon',
-	value: 'layer-group',
+	value: 'layers',
 });
 
 const usersList = computed(() =>
@@ -413,7 +413,7 @@ onMounted(() => {
 								type="tertiary"
 								native-type="button"
 								square
-								icon="trash"
+								icon="trash-2"
 								data-test-id="project-user-remove"
 								@click="onRoleAction(user.id, 'remove')"
 							/>

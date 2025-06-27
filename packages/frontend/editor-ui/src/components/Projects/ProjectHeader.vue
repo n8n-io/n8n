@@ -38,9 +38,9 @@ const headerIcon = computed((): IconOrEmoji => {
 	} else if (projectsStore.currentProject?.name) {
 		return isIconOrEmoji(projectsStore.currentProject.icon)
 			? projectsStore.currentProject.icon
-			: { type: 'icon', value: 'layer-group' };
+			: { type: 'icon', value: 'layers' };
 	} else {
-		return { type: 'icon', value: 'home' };
+		return { type: 'icon', value: 'house' };
 	}
 });
 

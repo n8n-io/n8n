@@ -26,9 +26,9 @@ const projectIcon = computed((): IconOrEmoji => {
 	} else if (props.currentProject?.name) {
 		return isIconOrEmoji(props.currentProject.icon)
 			? props.currentProject.icon
-			: { type: 'icon', value: 'layer-group' };
+			: { type: 'icon', value: 'layers' };
 	} else {
-		return { type: 'icon', value: 'home' };
+		return { type: 'icon', value: 'house' };
 	}
 });
 

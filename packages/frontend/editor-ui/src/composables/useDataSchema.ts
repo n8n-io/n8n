@@ -294,12 +294,12 @@ export type RenderEmpty = {
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
 const icons: { [key: string]: IconName } = {
-	object: 'cube',
+	object: 'box',
 	array: 'list',
-	['string']: 'font',
-	null: 'font',
-	['number']: 'hashtag',
-	['boolean']: 'check-square',
+	['string']: 'case-upper',
+	null: 'case-upper',
+	['number']: 'hash',
+	['boolean']: 'square-check',
 	function: 'code',
 	bigint: 'calculator',
 	symbol: 'sun',
@@ -322,7 +322,7 @@ const emptyItem = (
 const moreFieldsItem = (): RenderIcon => ({
 	id: `moreFields-${window.crypto.randomUUID()}`,
 	type: 'icon',
-	icon: 'ellipsis-h',
+	icon: 'ellipsis',
 	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 

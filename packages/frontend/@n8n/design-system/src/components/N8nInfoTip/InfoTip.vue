@@ -12,14 +12,14 @@ const THEME = ['info', 'info-light', 'warning', 'warning-light', 'danger', 'succ
 const TYPE = ['note', 'tooltip'] as const;
 
 const ICON_MAP: { [name: string]: IconName } = {
-	info: 'info-circle',
+	info: 'info',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'info-light': 'info-circle',
-	warning: 'exclamation-triangle',
+	'info-light': 'info',
+	warning: 'triangle-alert',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'warning-light': 'triangle', // NOTE: This requires a custom icon
-	danger: 'exclamation-triangle',
-	success: 'check-circle',
+	danger: 'triangle-alert',
+	success: 'circle-check',
 } as const;
 
 const COLOR_MAP: Record<keyof IconMap, IconColor> = {

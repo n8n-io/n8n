@@ -51,7 +51,7 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	<div :class="$style.block">
 		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
 			<button :class="$style.blockToggle">
-				<N8nIcon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="large" />
+				<N8nIcon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" size="large" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
 			<N8nRadioButtons

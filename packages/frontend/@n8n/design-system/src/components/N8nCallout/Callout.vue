@@ -8,10 +8,10 @@ import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 
 const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
-	info: 'info-circle',
-	success: 'check-circle',
-	warning: 'exclamation-triangle',
-	danger: 'exclamation-triangle',
+	info: 'info',
+	success: 'circle-check',
+	warning: 'triangle-alert',
+	danger: 'triangle-alert',
 };
 
 interface CalloutProps {

@@ -4,9 +4,11 @@ import { computed, useCssModule } from 'vue';
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
 import type { IconName } from './icons';
-import { allIcons } from './icons';
+import { deprecatedIconSet, updatedIconSet } from './icons';
 
 interface IconProps {
+	// component supports both deprecated and updated icon set to support project icons
+	// but only allow new icon names to be used in the future
 	icon: IconName;
 	size?: IconSize | number;
 	spin?: boolean;
@@ -64,8 +66,14 @@ const styles = computed(() => {
 
 <template>
 	<Component
-		:is="allIcons[icon as keyof typeof allIcons]"
-		v-if="allIcons[icon as keyof typeof allIcons]"
+		:is="
+			updatedIconSet[icon as keyof typeof updatedIconSet] ??
+			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
+		"
+		v-if="
+			updatedIconSet[icon as keyof typeof updatedIconSet] ??
+			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
+		"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"

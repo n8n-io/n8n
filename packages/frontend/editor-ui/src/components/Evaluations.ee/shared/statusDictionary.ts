@@ -19,7 +19,7 @@ export const statusDictionary: Record<
 		color: 'success',
 	},
 	error: {
-		icon: 'exclamation-triangle',
+		icon: 'triangle-alert',
 		color: 'danger',
 	},
 	cancelled: {

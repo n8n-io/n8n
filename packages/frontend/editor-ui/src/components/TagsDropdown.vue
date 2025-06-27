@@ -233,7 +233,7 @@ onClickOutside(
 				:value="CREATE_KEY"
 				class="ops"
 			>
-				<n8n-icon icon="plus-circle" />
+				<n8n-icon icon="circle-plus" />
 				<span>
 					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>

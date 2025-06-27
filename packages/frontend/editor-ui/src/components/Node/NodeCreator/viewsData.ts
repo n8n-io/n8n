@@ -255,7 +255,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
 					info: getSubcategoryInfo(AI_CATEGORY_DOCUMENT_LOADERS),
-					icon: 'file-import',
+					icon: 'file-input',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiDocument),
 				},
 			},
@@ -305,7 +305,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
 					info: getSubcategoryInfo(AI_CATEGORY_TEXT_SPLITTERS),
-					icon: 'grip-lines-vertical',
+					icon: 'tally-2',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiTextSplitter),
 				},
 			},
@@ -343,7 +343,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					info: getSubcategoryInfo(AI_CATEGORY_VECTOR_STORES),
-					icon: 'project-diagram',
+					icon: 'waypoints',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiVectorStore),
 				},
 			},
@@ -571,7 +571,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'code-branch',
+					icon: 'git-branch',
 					sections: [
 						{
 							key: 'popular',

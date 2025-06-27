@@ -76,7 +76,7 @@ describe('IconPicker', () => {
 	});
 
 	it('renders icon picker with custom icon and tooltip', async () => {
-		const ICON = 'layer-group';
+		const ICON = 'layers';
 		const TOOLTIP = 'Select something...';
 		const { getByTestId, getByRole } = render(IconPicker, {
 			props: {

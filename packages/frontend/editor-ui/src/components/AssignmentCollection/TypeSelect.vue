@@ -21,7 +21,7 @@ const i18n = useI18n();
 const types = ASSIGNMENT_TYPES;
 
 const icon = computed(
-	(): IconName => types.find((type) => type.type === props.modelValue)?.icon ?? 'cube',
+	(): IconName => types.find((type) => type.type === props.modelValue)?.icon ?? 'box',
 );
 
 const onTypeChange = (type: string): void => {

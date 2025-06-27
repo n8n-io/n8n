@@ -66,7 +66,7 @@ const accordionItems = computed((): IAccordionItem[] => [
 	{
 		id: 'manualExecutions',
 		label: locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
-		icon: workflowSaveSettings.value.saveTestExecutions ? 'check' : 'times',
+		icon: workflowSaveSettings.value.saveTestExecutions ? 'check' : 'x',
 		iconColor: workflowSaveSettings.value.saveTestExecutions ? 'success' : 'danger',
 	},
 ]);
@@ -84,9 +84,9 @@ const productionExecutionsIcon = computed((): { color: IconColor; icon: IconName
 	if (productionExecutionsStatus.value === 'saving') {
 		return { icon: 'check', color: 'success' };
 	} else if (productionExecutionsStatus.value === 'not-saving') {
-		return { icon: 'times', color: 'danger' };
+		return { icon: 'x', color: 'danger' };
 	}
-	return { icon: 'exclamation-triangle', color: 'warning' };
+	return { icon: 'triangle-alert', color: 'warning' };
 });
 const productionExecutionsStatus = computed(() => {
 	if (
@@ -107,7 +107,7 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 		!workflowSaveSettings.value.saveTestExecutions ||
 		productionExecutionsStatus.value !== 'saving'
 	) {
-		return { icon: 'exclamation-triangle', color: 'warning' };
+		return { icon: 'triangle-alert', color: 'warning' };
 	}
 	return undefined;
 });

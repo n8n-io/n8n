@@ -158,7 +158,7 @@ function onRetryMenuItemSelect(action: string): void {
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					:disabled="!workflowPermissions.execute"
-					activator-icon="redo"
+					activator-icon="redo-2"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
@@ -166,13 +166,13 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<N8nIcon :class="[$style.icon, $style.manual]" icon="flask" />
+					<N8nIcon :class="[$style.icon, $style.manual]" icon="flask-conical" />
 				</N8nTooltip>
 				<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
 					<template #content>
 						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
 					</template>
-					<N8nIcon :class="[$style.icon, $style.evaluation]" icon="check-double" />
+					<N8nIcon :class="[$style.icon, $style.evaluation]" icon="check-check" />
 				</N8nTooltip>
 			</div>
 		</router-link>

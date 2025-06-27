@@ -14,7 +14,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
     <div
       class="diffSection"
     >
-      
+
       <div
         class="diff"
       >
@@ -23,13 +23,13 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             const SIGNING_SECRET = $input.first().json.slack_secret_signature;
@@ -44,13 +44,13 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             const item = $('Webhook to call for Slack command').first();
@@ -71,7 +71,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             const SIGNING_SECRET = items[0].json.slack_secret_signature;
@@ -92,7 +92,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             const item = items[0];
@@ -107,13 +107,13 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="seperator diffContent"
         >
           <span>
-               
+
           </span>
           <span>
             ...
@@ -128,13 +128,13 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             const crypto = require('crypto');
@@ -149,13 +149,13 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span />
         </div>
@@ -174,7 +174,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              const { binary: { data } } = item;
@@ -195,7 +195,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              if (
@@ -216,7 +216,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              const rawBody = Buffer.from(data.data, 'base64').toString()
@@ -237,10 +237,10 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
-             
+
           </span>
         </div>
       </div>
@@ -258,14 +258,14 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
-             // compute the 
+             // compute the
           </span>
         </div>
       </div>
-      
+
     </div>
     <div
       class="actions"
@@ -276,7 +276,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         data-test-id="replace-code-button"
         disabled="false"
         element="button"
-        icon="refresh"
+        icon="refresh-cw"
         label=""
         loading="false"
         outline="false"
@@ -304,7 +304,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
     <div
       class="diffSection"
     >
-      
+
       <div
         class="diff"
       >
@@ -313,13 +313,13 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -334,13 +334,13 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -355,13 +355,13 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Named is the mother of all things.
@@ -382,7 +382,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The named is the mother of all things.
@@ -403,7 +403,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span />
         </div>
@@ -422,7 +422,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              The two are the same,
@@ -443,7 +443,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              But after they are produced,
@@ -464,7 +464,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              they have different names.
@@ -485,7 +485,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             They both may be called deep and profound.
@@ -506,7 +506,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             Deeper and more profound,
@@ -527,14 +527,14 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The door of all subtleties!
           </span>
         </div>
       </div>
-      
+
     </div>
     <div
       class="actions"
@@ -543,7 +543,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <n8n-icon-stub
           class="mr-5xs"
           color="danger"
-          icon="exclamation-triangle"
+          icon="triangle-alert"
           spin="false"
         />
         <span
@@ -571,7 +571,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
     <div
       class="diffSection"
     >
-      
+
       <div
         class="diff"
       >
@@ -580,13 +580,13 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -601,13 +601,13 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -622,13 +622,13 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Named is the mother of all things.
@@ -649,7 +649,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The named is the mother of all things.
@@ -670,7 +670,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span />
         </div>
@@ -689,7 +689,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              The two are the same,
@@ -710,7 +710,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              But after they are produced,
@@ -731,7 +731,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              they have different names.
@@ -752,7 +752,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             They both may be called deep and profound.
@@ -773,7 +773,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             Deeper and more profound,
@@ -794,14 +794,14 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The door of all subtleties!
           </span>
         </div>
       </div>
-      
+
     </div>
     <div
       class="actions"
@@ -813,7 +813,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           data-test-id="undo-replace-button"
           disabled="false"
           element="button"
-          icon="undo"
+          icon="undo-2"
           label=""
           loading="false"
           outline="false"
@@ -854,7 +854,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
     <div
       class="diffSection"
     >
-      
+
       <div
         class="diff"
       >
@@ -863,13 +863,13 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Way that can be told of is not the eternal Way;
@@ -884,13 +884,13 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The name that can be named is not the eternal name.
@@ -905,13 +905,13 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         >
           <!-- ln1 is line number in original text -->
           <!-- ln2 is line number in updated text -->
-           
+
         </div>
         <div
           class="del diffContent"
         >
           <span>
-             - 
+             -
           </span>
           <span>
             The Named is the mother of all things.
@@ -932,7 +932,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The named is the mother of all things.
@@ -953,7 +953,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span />
         </div>
@@ -972,7 +972,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              The two are the same,
@@ -993,7 +993,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              But after they are produced,
@@ -1014,7 +1014,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="normal diffContent"
         >
           <span>
-               
+
           </span>
           <span>
              they have different names.
@@ -1035,7 +1035,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             They both may be called deep and profound.
@@ -1056,7 +1056,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             Deeper and more profound,
@@ -1077,14 +1077,14 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
           class="add diffContent"
         >
           <span>
-             + 
+             +
           </span>
           <span>
             The door of all subtleties!
           </span>
         </div>
       </div>
-      
+
     </div>
     <div
       class="actions"
@@ -1095,7 +1095,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         data-test-id="replace-code-button"
         disabled="false"
         element="button"
-        icon="refresh"
+        icon="refresh-cw"
         label=""
         loading="true"
         outline="false"

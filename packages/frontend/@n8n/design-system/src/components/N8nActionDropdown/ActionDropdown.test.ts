@@ -43,7 +43,7 @@ describe('components', () => {
 						{
 							id: 'item3',
 							label: 'Action 3',
-							icon: 'home',
+							icon: 'house',
 							divided: true,
 						},
 					],

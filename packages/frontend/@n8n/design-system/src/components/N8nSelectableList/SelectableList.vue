@@ -90,7 +90,7 @@ function itemComparator(a: Item, b: Item) {
 				v-if="!disabled"
 				:class="$style.slotRemoveIcon"
 				size="xsmall"
-				icon="trash"
+				icon="trash-2"
 				:data-test-id="`selectable-list-remove-slot-${item.name}`"
 				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>

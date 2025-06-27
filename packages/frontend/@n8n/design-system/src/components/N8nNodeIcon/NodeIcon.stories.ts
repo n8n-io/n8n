@@ -26,7 +26,7 @@ FileIcon.args = {
 export const FontIcon = DefaultTemplate.bind({});
 FontIcon.args = {
 	type: 'icon',
-	name: 'cogs',
+	name: 'cog',
 	size: 200,
 };
 

@@ -306,7 +306,7 @@ defineExpose({ isWithinDropdown });
 				<div :class="$style.urlLink">
 					<n8n-icon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-						icon="external-link-alt"
+						icon="external-link"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>

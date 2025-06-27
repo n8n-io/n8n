@@ -36,7 +36,7 @@ const emit = defineEmits<{
 	<div class="schema-item" :class="{ draggable }" data-test-id="run-data-schema-item">
 		<div class="toggle-container">
 			<div v-if="collapsable" class="toggle" @click="emit('click')">
-				<N8nIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
+				<N8nIcon icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 		</div>
 		<div
