@@ -101,13 +101,15 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const nodeValues = nodeSettingsParameters.nodeValues;
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
-const hasOverflowY = ref(false);
+const shouldShowStaticScrollbar = ref(false);
 
-useResizeObserver(nodeParameterWrapper, () => {
-	hasOverflowY.value =
-		(nodeParameterWrapper.value?.scrollHeight ?? 0) >
-		(nodeParameterWrapper.value?.offsetHeight ?? 0);
-});
+if (props.isEmbeddedInCanvas) {
+	useResizeObserver(nodeParameterWrapper, () => {
+		shouldShowStaticScrollbar.value =
+			(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+			(nodeParameterWrapper.value?.offsetHeight ?? 0);
+	});
+}
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -844,8 +846,8 @@ function handleWheelEvent(event: WheelEvent) {
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
-				hasOverflowY ? 'has-overflow-y' : '',
-				noWheel && hasOverflowY ? 'nowheel' : '',
+				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
 			]"
 			data-test-id="node-parameters"
 			@wheel="noWheel ? handleWheelEvent : undefined"
@@ -1016,7 +1018,7 @@ function handleWheelEvent(event: WheelEvent) {
 		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
 	}
 
-	&.embedded .node-parameters-wrapper.has-overflow-y {
+	&.embedded .node-parameters-wrapper.with-static-scrollbar {
 		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
 
 		@supports not (selector(::-webkit-scrollbar)) {
