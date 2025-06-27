@@ -61,7 +61,7 @@ exports[`viewsData > AIView > should return ai view with ai transform node 1`] =
       "key": "AI Other",
       "properties": {
         "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
-        "icon": "bot",
+        "icon": "robot",
         "title": "Other AI Nodes",
       },
       "type": "view",
@@ -121,7 +121,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
       "key": "AI Other",
       "properties": {
         "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
-        "icon": "bot",
+        "icon": "robot",
         "title": "Other AI Nodes",
       },
       "type": "view",
@@ -181,7 +181,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
       "key": "AI Other",
       "properties": {
         "description": "Embeddings, Vector Stores, LLMs and other AI nodes",
-        "icon": "bot",
+        "icon": "robot",
         "title": "Other AI Nodes",
       },
       "type": "view",

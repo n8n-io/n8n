@@ -22,14 +22,14 @@ exports[`V1 Banner > should render banner 1`] = `
       <span
         class="n8n-text size-small regular"
       >
-
-
+        
+        
         <div
           class="mainContent keepSpace"
         >
-
+          
           <span>
-            n8n has been updated to version 1, introducing some breaking changes. Please consult the
+            n8n has been updated to version 1, introducing some breaking changes. Please consult the 
             <a
               href="https://docs.n8n.io/1-0-migration-checklist"
               target="_blank"
@@ -39,21 +39,21 @@ exports[`V1 Banner > should render banner 1`] = `
              for more information.
           </span>
           <!--v-if-->
-
+          
         </div>
-
-
+        
+        
       </span>
-
-
-
+         
+      
+      
     </div>
-
+    
     <div
       class="trailingContent"
     >
-
-
+      
+      
       <n8n-icon-stub
         class="clickable"
         data-test-id="banner-V1-close"
@@ -63,7 +63,7 @@ exports[`V1 Banner > should render banner 1`] = `
         title="Dismiss"
       />
     </div>
-
+    
   </div>
 </div>
 `;
@@ -90,14 +90,14 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
       <span
         class="n8n-text size-small regular"
       >
-
-
+        
+        
         <div
           class="mainContent keepSpace"
         >
-
+          
           <span>
-            n8n has been updated to version 1, introducing some breaking changes. Please consult the
+            n8n has been updated to version 1, introducing some breaking changes. Please consult the 
             <a
               href="https://docs.n8n.io/1-0-migration-checklist"
               target="_blank"
@@ -114,21 +114,21 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
               Don't show again
             </span>
           </a>
-
+          
         </div>
-
-
+        
+        
       </span>
-
-
-
+         
+      
+      
     </div>
-
+    
     <div
       class="trailingContent"
     >
-
-
+      
+      
       <n8n-icon-stub
         class="clickable"
         data-test-id="banner-V1-close"
@@ -138,7 +138,7 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
         title="Dismiss"
       />
     </div>
-
+    
   </div>
 </div>
 `;

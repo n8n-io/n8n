@@ -3,8 +3,8 @@
 exports[`PushConnectionTracker > should not render error when connected and connection not requested 1`] = `
 <div>
   <span>
-
-
+    
+    
   </span>
 </div>
 `;
@@ -12,8 +12,8 @@ exports[`PushConnectionTracker > should not render error when connected and conn
 exports[`PushConnectionTracker > should not render error when connected and connection requested 1`] = `
 <div>
   <span>
-
-
+    
+    
   </span>
 </div>
 `;
@@ -24,7 +24,7 @@ exports[`PushConnectionTracker > should render error when disconnected and conne
     <div
       class="push-connection-lost primary-color"
     >
-
+      
       <span
         class="el-tooltip__trigger"
       >
@@ -36,7 +36,7 @@ exports[`PushConnectionTracker > should render error when disconnected and conne
       </span>
       <!--teleport start-->
       <!--teleport end-->
-
+      
     </div>
   </span>
 </div>
