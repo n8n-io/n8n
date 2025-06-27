@@ -69,6 +69,13 @@ const properties: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
+		displayName: 'Output Content as JSON',
+		name: 'jsonOutput',
+		type: 'boolean',
+		description: 'Whether to attempt to return the response in JSON format',
+		default: false,
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -89,7 +96,106 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to allow the model to execute code it generates to produce a response',
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+			},
+			{
+				displayName: 'Frequency Penalty',
+				name: 'frequencyPenalty',
+				default: 0,
+				description:
+					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
+				type: 'number',
+				typeOptions: {
+					minValue: -2,
+					maxValue: 2,
+					numberPrecision: 1,
+				},
+			},
+			{
+				displayName: 'Maximum Number of Tokens',
+				name: 'maxOutputTokens',
+				default: 16,
+				description: 'The maximum number of tokens to generate in the completion',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 2147483647, // signed int32 max value
+					numberPrecision: 0,
+				},
+			},
+			{
+				displayName: 'Number of Completions',
+				name: 'candidateCount',
+				default: 1,
+				description: 'How many completions to generate for each prompt',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 8, // Google Gemini supports up to 8 candidates
+					numberPrecision: 0,
+				},
+			},
+			{
+				displayName: 'Presence Penalty',
+				name: 'presencePenalty',
+				default: 0,
+				description:
+					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+				type: 'number',
+				typeOptions: {
+					minValue: -2,
+					maxValue: 2,
+					numberPrecision: 1,
+				},
+			},
+			{
+				displayName: 'Output Randomness (Temperature)',
+				name: 'temperature',
+				default: 1,
+				description:
+					'Controls the randomness of the output. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 2,
+					numberPrecision: 1,
+				},
+			},
+			{
+				displayName: 'Output Randomness (Top P)',
+				name: 'topP',
+				default: 1,
+				description: 'The maximum cumulative probability of tokens to consider when sampling',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1,
+					numberPrecision: 1,
+				},
+			},
+			{
+				displayName: 'Output Randomness (Top K)',
+				name: 'topK',
+				default: 1,
+				description: 'The maximum number of tokens to consider when sampling',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 2147483647, // signed int32 max value
+					numberPrecision: 0,
+				},
+			},
+			{
+				displayName: 'Max Tool Calls Iterations',
+				name: 'maxToolsIterations',
+				type: 'number',
+				default: 15,
+				description:
+					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit',
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
 			},
 		],
 	},
@@ -111,8 +217,23 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		role: string;
 	}>;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
+	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
 
+	const generationConfig: IDataObject = {
+		frequencyPenalty: options.frequencyPenalty,
+		maxOutputTokens: options.maxOutputTokens,
+		candidateCount: options.candidateCount,
+		presencePenalty: options.presencePenalty,
+		temperature: options.temperature,
+		topP: options.topP,
+		topK: options.topK,
+	};
+	if (jsonOutput) {
+		generationConfig.responseMimeType = 'application/json';
+	}
+
+	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const tools: IDataObject[] = [];
 	if (options.codeExecution) {
 		tools.push({
@@ -126,11 +247,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			parts: [{ text: m.content }],
 			role: m.role,
 		})),
+		generationConfig,
 		systemInstruction: options.systemMessage
 			? { parts: [{ text: options.systemMessage }] }
 			: undefined,
 	};
 
+	// TODO: types
 	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 		body,
 	})) as { candidates: IDataObject[] };
