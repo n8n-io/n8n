@@ -194,6 +194,7 @@ describe('Logs', () => {
 	it('should show logs for a workflow with a node that waits for webhook', () => {
 		workflow.navigateToNewWorkflowPage();
 		workflow.pasteWorkflow(Workflow_wait_for_webhook);
+		workflow.getCanvas().click('topLeft'); // click canvas to deselect nodes
 		workflow.clickZoomToFit();
 		logs.openLogsPanel();
 
@@ -202,7 +203,6 @@ describe('Logs', () => {
 		workflow.getNodesWithSpinner().should('contain.text', 'Wait');
 		workflow.getWaitingNodes().should('contain.text', 'Wait');
 		logs.getLogEntries().should('have.length', 2);
-		logs.getLogEntries().eq(0).click(); // click selected row to deselect
 		logs.getLogEntries().eq(1).should('contain.text', 'Wait node');
 		logs.getLogEntries().eq(1).should('contain.text', 'Waiting');
 
@@ -224,6 +224,7 @@ describe('Logs', () => {
 			.getOverviewStatus()
 			.contains(/Success in [\d\.]+m?s/)
 			.should('exist');
+		logs.getLogEntries().eq(1).click(); // click selected row to deselect
 		logs.getLogEntries().should('have.length', 2);
 		logs.getLogEntries().eq(1).should('contain.text', 'Wait node');
 		logs.getLogEntries().eq(1).should('contain.text', 'Success');

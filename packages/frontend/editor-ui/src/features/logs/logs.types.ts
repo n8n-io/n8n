@@ -7,7 +7,6 @@ export interface LogEntry {
 	node: INodeUi;
 	id: string;
 	children: LogEntry[];
-	depth: number;
 	runIndex: number;
 	runData: ITaskData | undefined;
 	consumedTokens: LlmTokenUsageData;
@@ -18,7 +17,7 @@ export interface LogEntry {
 
 export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;
-	depth: number;
+	ancestorRunIndexes: number[];
 	workflow: Workflow;
 	executionId: string;
 	data: IRunExecutionData;
@@ -34,7 +33,7 @@ export interface LatestNodeInfo {
 
 export type LogEntrySelection =
 	| { type: 'initial' }
-	| { type: 'selected'; id: string }
+	| { type: 'selected'; entry: LogEntry }
 	| { type: 'none' };
 
 export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_STATE];

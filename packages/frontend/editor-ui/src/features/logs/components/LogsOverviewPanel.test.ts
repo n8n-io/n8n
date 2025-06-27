@@ -93,7 +93,8 @@ describe('LogsOverviewPanel', () => {
 		const row1 = within(tree.queryAllByRole('treeitem')[0]);
 
 		expect(row1.queryByText('AI Agent')).toBeInTheDocument();
-		expect(row1.queryByText('Success in 1.778s')).toBeInTheDocument();
+		expect(row1.queryByText('Success')).toBeInTheDocument();
+		expect(row1.queryByText('in 1.778s')).toBeInTheDocument();
 		expect(row1.queryByText('Started 00:00:00.002, 26 Mar')).toBeInTheDocument();
 
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);

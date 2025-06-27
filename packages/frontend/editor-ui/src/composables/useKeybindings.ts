@@ -1,7 +1,7 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
-import { computed, inject, unref } from 'vue';
+import { computed, inject, ref, unref } from 'vue';
 import { PiPWindowSymbol } from '@/constants';
 
 type KeyboardEventHandler =
@@ -30,7 +30,7 @@ export const useKeybindings = (
 		disabled: MaybeRef<boolean>;
 	},
 ) => {
-	const pipWindow = inject(PiPWindowSymbol);
+	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 	const activeElement = useActiveElement({ window: pipWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 

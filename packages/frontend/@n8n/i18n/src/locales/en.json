@@ -215,7 +215,7 @@
 	"chat.window.logsFromNode": "from {nodeName} node",
 	"chat.window.noChatNode": "No Chat Node",
 	"chat.window.noExecution": "Nothing got executed yet",
-	"chat.window.chat.placeholder": "Type a message, or press ‘up’ arrow for previous one",
+	"chat.window.chat.placeholder": "Type message, or press ‘up’ for prev one",
 	"chat.window.chat.placeholderPristine": "Type a message",
 	"chat.window.chat.sendButtonText": "Send",
 	"chat.window.chat.provideMessage": "Please provide a message",

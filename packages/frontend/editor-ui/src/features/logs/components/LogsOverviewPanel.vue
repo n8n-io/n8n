@@ -8,14 +8,11 @@ import LogsOverviewRow from '@/features/logs/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
 import LogsViewExecutionSummary from '@/features/logs/components/LogsViewExecutionSummary.vue';
-import {
-	getSubtreeTotalConsumedTokens,
-	getTotalConsumedTokens,
-	hasSubExecution,
-} from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, getTotalConsumedTokens } from '@/features/logs/logs.utils';
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
+import { getScrollbarWidth } from '@/utils/htmlUtils';
 
 const {
 	isOpen,
@@ -43,7 +40,6 @@ const emit = defineEmits<{
 	clearExecutionData: [];
 	openNdv: [LogEntry];
 	toggleExpanded: [LogEntry];
-	loadSubExecution: [LogEntry];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -57,6 +53,7 @@ const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
+const hasStaticScrollbar = getScrollbarWidth() > 0;
 const consumedTokens = computed(() =>
 	getTotalConsumedTokens(
 		...entries.map((entry) =>
@@ -73,6 +70,12 @@ const shouldShowTokenCountColumn = computed(
 		consumedTokens.value.totalTokens > 0 ||
 		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
+const isExpanded = computed(() =>
+	flatLogEntries.reduce<Record<string, boolean>>((acc, entry, index, arr) => {
+		acc[entry.id] = arr[index + 1]?.parent?.id === entry.id;
+		return acc;
+	}, {}),
+);
 const virtualList = useVirtualList(
 	toRef(() => flatLogEntries),
 	{ itemHeight: 32 },
@@ -80,14 +83,6 @@ const virtualList = useVirtualList(
 
 function handleSwitchView(value: 'overview' | 'details') {
 	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
-}
-
-function handleToggleExpanded(treeNode: LogEntry) {
-	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
-		emit('loadSubExecution', treeNode);
-		return;
-	}
-	emit('toggleExpanded', treeNode);
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
@@ -98,25 +93,46 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	}
 }
 
+// While executing, scroll to the bottom if there's no selection
+watch(
+	[() => execution?.status === 'running', () => flatLogEntries.length],
+	async ([isRunning, flatEntryCount], [wasRunning]) => {
+		await nextTick(() => {
+			if (selected === undefined && (isRunning || wasRunning)) {
+				virtualList.scrollTo(flatEntryCount - 1);
+			}
+		});
+	},
+	{ immediate: true },
+);
+
 // Scroll selected row into view
 watch(
-	() => selected,
-	async (selection) => {
-		if (selection && virtualList.list.value.every((e) => e.data.id !== selection.id)) {
-			const index = flatLogEntries.findIndex((e) => e.id === selection?.id);
+	() => selected?.id,
+	async (selectedId) => {
+		await nextTick(() => {
+			if (selectedId === undefined) {
+				return;
+			}
+
+			const index = virtualList.list.value.some((e) => e.data.id === selectedId)
+				? -1
+				: flatLogEntries.findIndex((e) => e.id === selectedId);
 
 			if (index >= 0) {
-				// Wait for the node to be added to the list, and then scroll
-				await nextTick(() => virtualList.scrollTo(index));
+				virtualList.scrollTo(index);
 			}
-		}
+		});
 	},
 	{ immediate: true },
 );
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="logs-overview">
+	<div
+		:class="[$style.container, hasStaticScrollbar ? $style.staticScrollBar : '']"
+		data-test-id="logs-overview"
+	>
 		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
 			data-test-id="logs-overview-header"
@@ -180,9 +196,9 @@ watch(
 							:is-compact="isCompact"
 							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
-							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
+							:expanded="isExpanded[data.id]"
 							:can-open-ndv="data.executionId === execution?.id"
-							@toggle-expanded="handleToggleExpanded(data)"
+							@toggle-expanded="emit('toggleExpanded', data)"
 							@open-ndv="emit('openNdv', data)"
 							@trigger-partial-execution="handleTriggerPartialExecution(data)"
 							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
@@ -228,6 +244,7 @@ watch(
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: stretch;
+	padding-right: var(--spacing-5xs);
 
 	&.empty {
 		align-items: center;
@@ -247,7 +264,30 @@ watch(
 .tree {
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
 
-	scroll-padding-block: var(--spacing-3xs);
+	.container:not(.staticScrollBar) & {
+		scroll-padding-block: var(--spacing-3xs);
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+
+		@supports selector(::-webkit-scrollbar) {
+			padding-right: var(--spacing-5xs);
+			scrollbar-gutter: stable;
+
+			&::-webkit-scrollbar {
+				width: var(--spacing-4xs);
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-4xs);
+				background: var(--color-foreground-dark);
+			}
+		}
+	}
+
+	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
+	scroll-behavior: smooth;
 
 	& :global(.el-icon) {
 		display: none;
