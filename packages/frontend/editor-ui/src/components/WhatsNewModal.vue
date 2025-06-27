@@ -5,7 +5,7 @@ import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
@@ -17,6 +17,7 @@ const props = defineProps<{
 	};
 }>();
 
+const articleRefs = ref<Record<number, HTMLElement>>({});
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const i18n = useI18n();
@@ -41,16 +42,13 @@ const onUpdateClick = async () => {
 
 const scrollToItem = async (articleId: number) => {
 	await nextTick(() => {
-		const container = document.getElementsByClassName('modal-content')[0] as HTMLElement;
-		const target = document.getElementById(`whats-new-item-${articleId}`);
+		const target = articleRefs.value[articleId];
 
-		if (!container || !target) return;
+		if (!target) return;
 
-		const offset = target.offsetTop - container.offsetTop;
-
-		container.scrollTo({
-			top: offset,
+		target.scrollIntoView({
 			behavior: 'smooth',
+			block: 'start',
 		});
 	});
 };
@@ -155,7 +153,11 @@ modalBus.on('opened', () => {
 				</N8nCallout>
 				<div
 					v-for="item in versionsStore.whatsNewArticles"
-					:id="`whats-new-item-${item.id}`"
+					:ref="
+						(el: any) => {
+							if (el) articleRefs[item.id] = el as HTMLElement;
+						}
+					"
 					:key="item.id"
 					:class="$style.article"
 					:data-test-id="`whats-new-item-${item.id}`"
