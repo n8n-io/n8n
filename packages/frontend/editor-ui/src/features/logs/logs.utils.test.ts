@@ -585,12 +585,20 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
@@ -621,12 +629,20 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
@@ -650,12 +666,20 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
@@ -667,7 +691,7 @@ describe(findSelectedLogEntry, () => {
 			);
 		});
 
-		it('should return undefined if there is no log entry with error nor executed AI agent node', () => {
+		it('should return last log entry if there is no log entry with error nor executed AI agent node', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
 					nodes: [
@@ -679,19 +703,21 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 2 }),
+			);
 		});
 	});
 

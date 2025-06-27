@@ -107,6 +107,7 @@ export function useLogsSelection(
 				canvasStore.hasRangeSelection ||
 				selected.value?.node.name === selectedOnCanvas
 			) {
+				nodeNameToSelect.value = undefined;
 				return;
 			}
 

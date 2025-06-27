@@ -172,13 +172,13 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
-function findLogEntryToAutoSelectRec(subTree: LogEntry[]): LogEntry | undefined {
+function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {
 	for (const entry of subTree) {
 		if (entry.runData?.error) {
 			return entry;
 		}
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children);
+		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children, depth + 1);
 
 		if (childAutoSelect) {
 			return childAutoSelect;
@@ -193,7 +193,7 @@ function findLogEntryToAutoSelectRec(subTree: LogEntry[]): LogEntry | undefined 
 		}
 	}
 
-	return undefined;
+	return depth === 0 ? subTree[subTree.length - 1] : undefined;
 }
 
 export function createLogTree(
@@ -288,7 +288,7 @@ export function findSelectedLogEntry(
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
-			return isExecuting ? undefined : findLogEntryToAutoSelectRec(entries);
+			return isExecuting ? undefined : findLogEntryToAutoSelectRec(entries, 0);
 		case 'none':
 			return undefined;
 		case 'selected': {
