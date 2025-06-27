@@ -172,9 +172,11 @@
 		},
 		{
 			"parameters": {
-				"batch": true,
-				"batchSize": 2,
-				"deleteFiles": false
+				"options": {
+					"batch": true,
+					"batchSize": 2,
+					"deleteFiles": false
+				}
 			},
 			"type": "n8n-nodes-base.mistralAi",
 			"typeVersion": 1,
@@ -190,8 +192,10 @@
 		},
 		{
 			"parameters": {
-				"batch": true,
-				"batchSize": 2
+				"options": {
+					"batch": true,
+					"batchSize": 2
+				}
 			},
 			"type": "n8n-nodes-base.mistralAi",
 			"typeVersion": 1,
