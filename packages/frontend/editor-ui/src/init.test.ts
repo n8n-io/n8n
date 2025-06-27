@@ -18,9 +18,10 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
 const showMessage = vi.fn();
+const showToast = vi.fn();
 
 vi.mock('@/composables/useToast', () => ({
-	useToast: () => ({ showMessage }),
+	useToast: () => ({ showMessage, showToast }),
 }));
 
 vi.mock('@/stores/users.store', () => ({
@@ -88,6 +89,23 @@ describe('Init', () => {
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw an error if settings initialization fails', async () => {
+			const error = new Error('Settings initialization failed');
+
+			vi.spyOn(settingsStore, 'initialize').mockImplementation(() => {
+				throw error;
+			});
+
+			await initializeCore();
+
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Error connecting to n8n',
+					type: 'error',
+				}),
+			);
 		});
 
 		it('should initialize authentication hooks', async () => {

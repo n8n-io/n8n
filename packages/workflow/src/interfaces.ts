@@ -1908,7 +1908,8 @@ export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
-	nodes: string[]; // Allowed nodes
+	nodes?: string[]; // Allowed nodes
+	excludedNodes?: string[];
 }
 
 export interface INodeInputConfiguration {

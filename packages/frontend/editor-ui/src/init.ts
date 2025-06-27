@@ -43,13 +43,25 @@ export async function initializeCore() {
 	const ssoStore = useSSOStore();
 	const uiStore = useUIStore();
 
+	const toast = useToast();
+	const i18n = useI18n();
+
 	registerAuthenticationHooks();
 
 	/**
 	 * Initialize stores
 	 */
 
-	await settingsStore.initialize();
+	try {
+		await settingsStore.initialize();
+	} catch (error) {
+		toast.showToast({
+			title: i18n.baseText('startupError'),
+			message: i18n.baseText('startupError.message'),
+			type: 'error',
+			duration: 0,
+		});
+	}
 
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement

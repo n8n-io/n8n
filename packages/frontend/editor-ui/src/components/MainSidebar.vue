@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
+
+import { useI18n } from '@n8n/i18n';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import type { IMenuItem } from '@n8n/design-system';
+import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -11,23 +17,16 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
-import Logo from './Logo/Logo.vue';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import Logo from '@/components/Logo/Logo.vue';
+import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -67,6 +66,14 @@ const userMenuItems = ref([
 		label: i18n.baseText('auth.signout'),
 	},
 ]);
+
+const showWhatsNewNotification = computed(
+	() =>
+		versionsStore.hasVersionUpdates ||
+		versionsStore.whatsNewArticles.some(
+			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
+		),
+);
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -175,16 +182,52 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 		],
 	},
+	{
+		id: 'whats-new',
+		icon: 'bell',
+		notification: showWhatsNewNotification.value,
+		label: i18n.baseText('mainSidebar.whatsNew'),
+		position: 'bottom',
+		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+		children: [
+			...versionsStore.whatsNewArticles.map(
+				(article) =>
+					({
+						id: `whats-new-article-${article.id}`,
+						label: article.title,
+						size: 'small',
+						customIconSize: 'small',
+						icon: {
+							type: 'emoji',
+							value: '•',
+							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+						},
+					}) satisfies IMenuItem,
+			),
+			{
+				id: 'full-changelog',
+				icon: 'external-link-alt',
+				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+				link: {
+					href: 'https://docs.n8n.io/release-notes/',
+					target: '_blank',
+				},
+				size: 'small',
+				customIconSize: 'small',
+			},
+			{
+				id: 'version-upgrade-cta',
+				component: VersionUpdateCTA,
+				available: versionsStore.hasVersionUpdates,
+				props: {},
+			},
+		],
+	},
 ]);
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const hasVersionUpdates = computed(
-	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
-);
-
-const nextVersions = computed(() => versionsStore.nextVersions);
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
@@ -250,10 +293,6 @@ const toggleCollapse = () => {
 	}
 };
 
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
-
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
@@ -280,6 +319,20 @@ const handleSelect = (key: string) => {
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 		default:
+			if (key.startsWith('whats-new-article-')) {
+				const articleId = Number(key.replace('whats-new-article-', ''));
+
+				telemetry.track("User clicked on what's new section", {
+					article_id: articleId,
+				});
+				uiStore.openModalWithData({
+					name: WHATS_NEW_MODAL_KEY,
+					data: {
+						articleId,
+					},
+				});
+			}
+
 			break;
 	}
 };
@@ -432,24 +485,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			</template>
 			<template #menuSuffix>
 				<div>
-					<div
-						v-if="hasVersionUpdates"
-						data-test-id="version-updates-panel-button"
-						:class="$style.updates"
-						@click="openUpdatesPanel"
-					>
-						<div :class="$style.giftContainer">
-							<GiftNotificationIcon />
-						</div>
-						<N8nText
-							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-							color="text-base"
-						>
-							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-								nextVersions.length > 1 ? 's' : ''
-							}}
-						</N8nText>
-					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
