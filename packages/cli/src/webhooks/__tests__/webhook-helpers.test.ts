@@ -14,7 +14,12 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
-import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
@@ -24,6 +29,7 @@ import {
 	getResponseOnReceived,
 	setupResponseNodePromise,
 	prepareExecutionData,
+	handleHostedChatResponse,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -37,6 +43,15 @@ describe('autoDetectResponseMode', () => {
 	beforeEach(() => {
 		workflow = mock<Workflow>();
 		workflow.nodes = {};
+	});
+
+	test('should return hostedChat when start node is CHAT_TRIGGER_NODE_TYPE, method is POST, and public is true', () => {
+		const workflowStartNode = mock<INode>({
+			type: CHAT_TRIGGER_NODE_TYPE,
+			parameters: { public: true },
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('hostedChat');
 	});
 
 	test('should return undefined if start node is WAIT_NODE_TYPE with resume not equal to form', () => {
@@ -300,6 +315,61 @@ describe('setupResponseNodePromise', () => {
 			{ executionId, workflowId },
 		);
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
+	});
+});
+
+describe('handleHostedChatResponse', () => {
+	it('should send executionStarted: true and executionId when responseMode is hostedChat and didSendResponse is false', async () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'hostedChat';
+
+		(res.send as jest.Mock).mockImplementation((data) => {
+			expect(data).toEqual({ executionStarted: true, executionId });
+		});
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).toHaveBeenCalled();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(res.end).toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it('should not send response when responseMode is not hostedChat', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'responseNode';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(false);
+	});
+
+	it('should not send response when didSendResponse is true', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = true;
+		const responseMode = 'hostedChat';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(true);
 	});
 });
 

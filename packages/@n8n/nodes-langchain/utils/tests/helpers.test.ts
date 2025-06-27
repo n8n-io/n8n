@@ -10,6 +10,7 @@ import {
 	getConnectedTools,
 	nodeNameToToolName,
 	unwrapNestedOutput,
+	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
 
@@ -421,5 +422,51 @@ describe('unwrapNestedOutput', () => {
 		};
 
 		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+});
+
+describe('getSessionId', () => {
+	let mockCtx: any;
+
+	beforeEach(() => {
+		mockCtx = {
+			getNodeParameter: jest.fn(),
+			evaluateExpression: jest.fn(),
+			getChatTrigger: jest.fn(),
+			getNode: jest.fn(),
+		};
+	});
+
+	it('should retrieve sessionId from bodyData', () => {
+		mockCtx.getBodyData = jest.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: '12345' });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should retrieve sessionId from chat trigger', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValueOnce(undefined);
+		mockCtx.getChatTrigger.mockReturnValue({ name: 'chatTrigger' });
+		mockCtx.evaluateExpression.mockReturnValueOnce('67890');
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('67890');
+	});
+
+	it('should throw error if sessionId is not found', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should use custom sessionId if provided', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('custom').mockReturnValueOnce('customSessionId');
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('customSessionId');
 	});
 });

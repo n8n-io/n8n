@@ -36,6 +36,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
+	CHAT_TRIGGER_NODE_TYPE,
 	createDeferredPromise,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -63,6 +64,21 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+
+export function handleHostedChatResponse(
+	res: express.Response,
+	responseMode: WebhookResponseMode,
+	didSendResponse: boolean,
+	executionId: string,
+): boolean {
+	if (responseMode === 'hostedChat' && !didSendResponse) {
+		res.send({ executionStarted: true, executionId });
+		process.nextTick(() => res.end());
+		return true;
+	}
+
+	return didSendResponse;
+}
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -125,6 +141,14 @@ export function autoDetectResponseMode(
 				return 'formPage';
 			}
 		}
+	}
+
+	if (
+		workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
+		method === 'POST' &&
+		workflowStartNode.parameters.public
+	) {
+		return 'hostedChat';
 	}
 
 	// If there are form nodes connected to a current form node we're dealing with a multipage form
@@ -404,7 +428,11 @@ export async function executeWebhook(
 		'firstEntryJson',
 	) as WebhookResponseData | string | undefined;
 
-	if (!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming'].includes(responseMode)) {
+	if (
+		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
+			responseMode,
+		)
+	) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -681,6 +709,8 @@ export async function executeWebhook(
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}
+
+		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
