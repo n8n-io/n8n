@@ -3,6 +3,11 @@
  * This is used as a fallback when tiktoken would be too slow (e.g., with repetitive content).
  */
 
+import type { TiktokenModel } from 'js-tiktoken';
+
+import { encodingForModel } from './tiktoken';
+import { hasLongSequentialRepeat } from '../helpers';
+
 /**
  * Model-specific average characters per token ratios.
  * These are approximate values based on typical English text.
@@ -109,5 +114,63 @@ export function estimateTextSplitsByTokens(
 	} catch (error) {
 		// Return text as single chunk on error
 		return text ? [text] : [];
+	}
+}
+
+/**
+ * Estimates the total number of tokens for a list of strings.
+ * Uses tiktoken for normal text but falls back to character-based estimation
+ * for repetitive content or on errors.
+ *
+ * @param list Array of strings to estimate tokens for
+ * @param model The model or encoding name to use for estimation
+ * @returns Total estimated number of tokens across all strings
+ */
+export async function estimateTokensFromStringList(
+	list: string[],
+	model: TiktokenModel,
+): Promise<number> {
+	try {
+		// Validate input
+		if (!Array.isArray(list)) {
+			return 0;
+		}
+
+		const encoder = await encodingForModel(model);
+		const encodedListLength = await Promise.all(
+			list.map(async (text) => {
+				try {
+					// Handle null/undefined text
+					if (!text || typeof text !== 'string') {
+						return 0;
+					}
+
+					// Check for repetitive content
+					if (hasLongSequentialRepeat(text)) {
+						const estimatedTokens = estimateTokensByCharCount(text, model);
+						return estimatedTokens;
+					}
+
+					// Use tiktoken for normal text
+					try {
+						const tokens = encoder.encode(text);
+						return tokens.length;
+					} catch (encodingError) {
+						// Fall back to estimation if tiktoken fails
+						return estimateTokensByCharCount(text, model);
+					}
+				} catch (itemError) {
+					// Return 0 for individual item errors
+					return 0;
+				}
+			}),
+		);
+
+		const totalTokens = encodedListLength.reduce((acc, curr) => acc + curr, 0);
+
+		return totalTokens;
+	} catch (error) {
+		// Return 0 on complete failure
+		return 0;
 	}
 }

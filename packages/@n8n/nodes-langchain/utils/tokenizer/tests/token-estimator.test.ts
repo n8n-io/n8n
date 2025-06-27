@@ -1,4 +1,10 @@
-import { estimateTokensByCharCount, estimateTextSplitsByTokens } from '../token-estimator';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import {
+	estimateTokensByCharCount,
+	estimateTextSplitsByTokens,
+	estimateTokensFromStringList,
+} from '../token-estimator';
 
 describe('token-estimator', () => {
 	describe('estimateTokensByCharCount', () => {
@@ -19,7 +25,7 @@ describe('token-estimator', () => {
 		});
 
 		it('should use default ratio for unknown models', () => {
-			const text = 'Test text with 20 chars.'; // 24 characters
+			const text = 'Test text with 24 chars.'; // 24 characters
 			const result = estimateTokensByCharCount(text, 'unknown-model');
 			expect(result).toBe(6); // 24 / 4.0 = 6
 		});
@@ -174,6 +180,69 @@ describe('token-estimator', () => {
 			// The function should return [text] on error
 			const result = estimateTextSplitsByTokens(text, 10, 0);
 			expect(result.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('estimateTokensFromStringList', () => {
+		// Since this function uses tiktoken which requires external data files,
+		// we'll test it with integration-style tests that don't require mocking
+
+		it('should handle empty list', async () => {
+			const result = await estimateTokensFromStringList([], 'gpt-4');
+			expect(result).toBe(0);
+		});
+
+		it('should handle non-array input', async () => {
+			const result = await estimateTokensFromStringList(null as any, 'gpt-4');
+			expect(result).toBe(0);
+
+			const result2 = await estimateTokensFromStringList('not an array' as any, 'gpt-4');
+			expect(result2).toBe(0);
+		});
+
+		it('should handle null/undefined items in list', async () => {
+			const list = ['Valid text', null, undefined, '', 123 as any];
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toEqual(2);
+		});
+
+		it('should estimate tokens for normal text', async () => {
+			const list = ['Hello world', 'Test text'];
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toBeGreaterThan(0);
+		});
+
+		it('should use character-based estimation for repetitive content', async () => {
+			const list = ['a'.repeat(1500)];
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toBe(375); // 1500 chars / 4.0 = 375 tokens
+		});
+
+		it('should handle mixed content', async () => {
+			const list = ['Normal text content', 'a'.repeat(1500), 'More normal text'];
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toBeGreaterThan(375); // At least the repetitive content tokens
+		});
+
+		it('should work with different models', async () => {
+			const list = ['Test text for different model'];
+			const result1 = await estimateTokensFromStringList(list, 'gpt-4');
+			const result2 = await estimateTokensFromStringList(list, 'gpt-4o');
+			// Both should return positive values
+			expect(result1).toBeGreaterThan(0);
+			expect(result2).toBeGreaterThan(0);
+		});
+
+		it('should handle very long lists', async () => {
+			const list = Array(10000).fill('Sample text');
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toBeGreaterThan(0);
+		});
+
+		it('should handle unicode text', async () => {
+			const list = ['你好世界', '🌍🌎🌏', 'مرحبا بالعالم'];
+			const result = await estimateTokensFromStringList(list, 'gpt-4');
+			expect(result).toBeGreaterThan(0);
 		});
 	});
 });

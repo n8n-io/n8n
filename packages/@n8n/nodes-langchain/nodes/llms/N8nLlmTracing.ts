@@ -12,9 +12,8 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { hasLongSequentialRepeat, logAiEvent } from '@utils/helpers';
-import { encodingForModel } from '@utils/tokenizer/tiktoken';
-import { estimateTokensByCharCount } from '@utils/tokenizer/token-estimator';
+import { logAiEvent } from '@utils/helpers';
+import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
@@ -84,50 +83,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromStringList(list: string[]) {
-		try {
-			// Validate input
-			if (!Array.isArray(list)) {
-				return 0;
-			}
-
-			const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-			const encoder = await encodingForModel(embeddingModel);
-			const encodedListLength = await Promise.all(
-				list.map(async (text) => {
-					try {
-						// Handle null/undefined text
-						if (!text || typeof text !== 'string') {
-							return 0;
-						}
-
-						// Check for repetitive content
-						if (hasLongSequentialRepeat(text)) {
-							const estimatedTokens = estimateTokensByCharCount(text, embeddingModel);
-							return estimatedTokens;
-						}
-
-						// Use tiktoken for normal text
-						try {
-							const tokens = encoder.encode(text);
-							return tokens.length;
-						} catch (encodingError) {
-							// Fall back to estimation if tiktoken fails
-							return estimateTokensByCharCount(text, embeddingModel);
-						}
-					} catch (itemError) {
-						// Return 0 for individual item errors
-						return 0;
-					}
-				}),
-			);
-
-			const totalTokens = encodedListLength.reduce((acc, curr) => acc + curr, 0);
-
-			return totalTokens;
-		} catch (error) {
-			// Return 0 on complete failure
-			return 0;
-		}
+		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
+		return await estimateTokensFromStringList(list, embeddingModel);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
