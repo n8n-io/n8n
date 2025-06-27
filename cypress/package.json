@@ -1,7 +1,6 @@
 {
   "name": "n8n-cypress",
   "private": true,
-  "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "cypress:install": "cypress install",
