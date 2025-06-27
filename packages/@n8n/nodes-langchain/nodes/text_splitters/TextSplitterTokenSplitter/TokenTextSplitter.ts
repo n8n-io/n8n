@@ -37,10 +37,25 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 		}
 
 		const splits: string[] = [];
+		const textSize = text.length;
 
+		console.log(
+			`[Tiktoken Benchmark - TextSplitter] Starting text splitting for ${textSize} bytes`,
+		);
+		console.time(`tiktoken-text-splitter-encode-${textSize}bytes`);
+
+		const startTime = Date.now();
 		const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);
+		const encodeTime = Date.now() - startTime;
+
+		console.timeEnd(`tiktoken-text-splitter-encode-${textSize}bytes`);
+		console.log(
+			`[Tiktoken Benchmark - TextSplitter] Encoding time: ${encodeTime}ms, Text size: ${textSize} bytes, Token count: ${input_ids.length}, Ratio: ${(textSize / input_ids.length).toFixed(2)} chars/token`,
+		);
 
 		let start_idx = 0;
+		let chunkCount = 0;
+		const decodeStartTime = Date.now();
 
 		while (start_idx < input_ids.length) {
 			if (start_idx > 0) {
@@ -48,9 +63,21 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 			}
 			const end_idx = Math.min(start_idx + this.chunkSize, input_ids.length);
 			const chunk_ids = input_ids.slice(start_idx, end_idx);
+
+			console.time(`tiktoken-decode-chunk-${chunkCount}`);
 			splits.push(this.tokenizer.decode(chunk_ids));
+			console.timeEnd(`tiktoken-decode-chunk-${chunkCount}`);
+
+			chunkCount++;
 			start_idx = end_idx;
 		}
+
+		const decodeTime = Date.now() - decodeStartTime;
+		const totalTime = Date.now() - startTime;
+
+		console.log(
+			`[Tiktoken Benchmark - TextSplitter] Total chunks created: ${chunkCount}, Decode time: ${decodeTime}ms, Total time: ${totalTime}ms`,
+		);
 
 		return splits;
 	}

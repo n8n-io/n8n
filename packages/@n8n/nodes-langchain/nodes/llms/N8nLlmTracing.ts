@@ -86,11 +86,32 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
 		const encoder = await encodingForModel(embeddingModel);
 
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => encoder.encode(text).length),
+		const totalSize = list.reduce((sum, text) => sum + text.length, 0);
+		console.log(
+			`[Tiktoken Benchmark] Starting token estimation for ${list.length} texts, total size: ${totalSize} bytes`,
 		);
 
-		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
+		const startTime = Date.now();
+		const encodedListLength = await Promise.all(
+			list.map(async (text) => {
+				const textSize = text.length;
+				console.time(`tiktoken-encode-${textSize}bytes`);
+				const tokens = encoder.encode(text);
+				console.timeEnd(`tiktoken-encode-${textSize}bytes`);
+				console.log(
+					`[Tiktoken Benchmark] Text size: ${textSize} bytes, Token count: ${tokens.length}, Ratio: ${(textSize / tokens.length).toFixed(2)} chars/token`,
+				);
+				return tokens.length;
+			}),
+		);
+		const endTime = Date.now();
+
+		const totalTokens = encodedListLength.reduce((acc, curr) => acc + curr, 0);
+		console.log(
+			`[Tiktoken Benchmark] Total encoding time: ${endTime - startTime}ms for ${totalSize} bytes resulting in ${totalTokens} tokens`,
+		);
+
+		return totalTokens;
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
