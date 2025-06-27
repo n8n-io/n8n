@@ -12,8 +12,9 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
+import { hasLongSequentialRepeat, logAiEvent } from '@utils/helpers';
 import { encodingForModel } from '@utils/tokenizer/tiktoken';
+import { estimateTokensByCharCount } from '@utils/tokenizer/token-estimator';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
@@ -83,35 +84,50 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromStringList(list: string[]) {
-		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-		const encoder = await encodingForModel(embeddingModel);
+		try {
+			// Validate input
+			if (!Array.isArray(list)) {
+				return 0;
+			}
 
-		const totalSize = list.reduce((sum, text) => sum + text.length, 0);
-		console.log(
-			`[Tiktoken Benchmark] Starting token estimation for ${list.length} texts, total size: ${totalSize} bytes`,
-		);
+			const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
+			const encodedListLength = await Promise.all(
+				list.map(async (text) => {
+					try {
+						// Handle null/undefined text
+						if (!text || typeof text !== 'string') {
+							return 0;
+						}
 
-		const startTime = Date.now();
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => {
-				const textSize = text.length;
-				console.time(`tiktoken-encode-${textSize}bytes`);
-				const tokens = encoder.encode(text);
-				console.timeEnd(`tiktoken-encode-${textSize}bytes`);
-				console.log(
-					`[Tiktoken Benchmark] Text size: ${textSize} bytes, Token count: ${tokens.length}, Ratio: ${(textSize / tokens.length).toFixed(2)} chars/token`,
-				);
-				return tokens.length;
-			}),
-		);
-		const endTime = Date.now();
+						// Check for repetitive content
+						if (hasLongSequentialRepeat(text)) {
+							const estimatedTokens = estimateTokensByCharCount(text, embeddingModel);
+							return estimatedTokens;
+						}
 
-		const totalTokens = encodedListLength.reduce((acc, curr) => acc + curr, 0);
-		console.log(
-			`[Tiktoken Benchmark] Total encoding time: ${endTime - startTime}ms for ${totalSize} bytes resulting in ${totalTokens} tokens`,
-		);
+						// Use tiktoken for normal text
+						try {
+							const encoder = await encodingForModel(embeddingModel);
+							const tokens = encoder.encode(text);
+							return tokens.length;
+						} catch (encodingError) {
+							// Fall back to estimation if tiktoken fails
+							return estimateTokensByCharCount(text, embeddingModel);
+						}
+					} catch (itemError) {
+						// Return 0 for individual item errors
+						return 0;
+					}
+				}),
+			);
 
-		return totalTokens;
+			const totalTokens = encodedListLength.reduce((acc, curr) => acc + curr, 0);
+
+			return totalTokens;
+		} catch (error) {
+			// Return 0 on complete failure
+			return 0;
+		}
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {

@@ -3,7 +3,9 @@ import type { TokenTextSplitterParams } from '@langchain/textsplitters';
 import { TextSplitter } from '@langchain/textsplitters';
 import type * as tiktoken from 'js-tiktoken';
 
+import { hasLongSequentialRepeat } from '@utils/helpers';
 import { getEncoding } from '@utils/tokenizer/tiktoken';
+import { estimateTextSplitsByTokens } from '@utils/tokenizer/token-estimator';
 
 /**
  * Implementation of splitter which looks at tokens.
@@ -32,53 +34,61 @@ export class TokenTextSplitter extends TextSplitter implements TokenTextSplitter
 	}
 
 	async splitText(text: string): Promise<string[]> {
-		if (!this.tokenizer) {
-			this.tokenizer = await getEncoding(this.encodingName);
-		}
-
-		const splits: string[] = [];
-		const textSize = text.length;
-
-		console.log(
-			`[Tiktoken Benchmark - TextSplitter] Starting text splitting for ${textSize} bytes`,
-		);
-		console.time(`tiktoken-text-splitter-encode-${textSize}bytes`);
-
-		const startTime = Date.now();
-		const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);
-		const encodeTime = Date.now() - startTime;
-
-		console.timeEnd(`tiktoken-text-splitter-encode-${textSize}bytes`);
-		console.log(
-			`[Tiktoken Benchmark - TextSplitter] Encoding time: ${encodeTime}ms, Text size: ${textSize} bytes, Token count: ${input_ids.length}, Ratio: ${(textSize / input_ids.length).toFixed(2)} chars/token`,
-		);
-
-		let start_idx = 0;
-		let chunkCount = 0;
-		const decodeStartTime = Date.now();
-
-		while (start_idx < input_ids.length) {
-			if (start_idx > 0) {
-				start_idx -= this.chunkOverlap;
+		try {
+			// Validate input
+			if (!text || typeof text !== 'string') {
+				return [];
 			}
-			const end_idx = Math.min(start_idx + this.chunkSize, input_ids.length);
-			const chunk_ids = input_ids.slice(start_idx, end_idx);
 
-			console.time(`tiktoken-decode-chunk-${chunkCount}`);
-			splits.push(this.tokenizer.decode(chunk_ids));
-			console.timeEnd(`tiktoken-decode-chunk-${chunkCount}`);
+			// Check for repetitive content
+			if (hasLongSequentialRepeat(text)) {
+				const splits = estimateTextSplitsByTokens(
+					text,
+					this.chunkSize,
+					this.chunkOverlap,
+					this.encodingName,
+				);
+				return splits;
+			}
 
-			chunkCount++;
-			start_idx = end_idx;
+			// Use tiktoken for normal text
+			try {
+				if (!this.tokenizer) {
+					this.tokenizer = await getEncoding(this.encodingName);
+				}
+
+				const splits: string[] = [];
+				const input_ids = this.tokenizer.encode(text, this.allowedSpecial, this.disallowedSpecial);
+
+				let start_idx = 0;
+				let chunkCount = 0;
+
+				while (start_idx < input_ids.length) {
+					if (start_idx > 0) {
+						start_idx = Math.max(0, start_idx - this.chunkOverlap);
+					}
+					const end_idx = Math.min(start_idx + this.chunkSize, input_ids.length);
+					const chunk_ids = input_ids.slice(start_idx, end_idx);
+
+					splits.push(this.tokenizer.decode(chunk_ids));
+
+					chunkCount++;
+					start_idx = end_idx;
+				}
+
+				return splits;
+			} catch (tiktokenError) {
+				// Fall back to character-based splitting if tiktoken fails
+				return estimateTextSplitsByTokens(
+					text,
+					this.chunkSize,
+					this.chunkOverlap,
+					this.encodingName,
+				);
+			}
+		} catch (error) {
+			// Return empty array on complete failure
+			return [];
 		}
-
-		const decodeTime = Date.now() - decodeStartTime;
-		const totalTime = Date.now() - startTime;
-
-		console.log(
-			`[Tiktoken Benchmark - TextSplitter] Total chunks created: ${chunkCount}, Decode time: ${decodeTime}ms, Total time: ${totalTime}ms`,
-		);
-
-		return splits;
 	}
 }
