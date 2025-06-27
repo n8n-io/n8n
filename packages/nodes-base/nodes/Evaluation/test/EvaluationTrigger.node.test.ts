@@ -53,6 +53,11 @@ describe('Evaluation Trigger Node', () => {
 				});
 			});
 
+			test('credential test for googleApi should be in methods', async () => {
+				const evaluationTrigger = new EvaluationTrigger();
+				expect(evaluationTrigger.methods.credentialTest.googleApiCredentialTest).toBeDefined();
+			});
+
 			test('should return a single row from google sheet', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
