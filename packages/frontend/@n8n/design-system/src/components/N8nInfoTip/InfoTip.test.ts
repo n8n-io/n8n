@@ -30,4 +30,17 @@ describe('N8nInfoTip', () => {
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
+
+	it('should render correctly with a specific size', () => {
+		const wrapper = render(N8nInfoTip, {
+			slots,
+			props: {
+				size: 'large',
+			},
+			global: {
+				stubs,
+			},
+		});
+		expect(wrapper.html()).toMatchSnapshot();
+	});
 });

@@ -2,6 +2,7 @@
 import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
+import type { IconSize } from '@n8n/design-system/types';
 import type { IconColor } from '@n8n/design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
@@ -41,6 +42,7 @@ interface InfoTipProps {
 	bold?: boolean;
 	tooltipPlacement?: Placement;
 	enterable?: boolean;
+	size?: IconSize;
 }
 
 defineOptions({ name: 'N8nInfoTip' });
@@ -50,6 +52,7 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	bold: true,
 	tooltipPlacement: 'top',
 	enterable: true,
+	size: undefined,
 });
 
 const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
@@ -80,7 +83,7 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 			:enterable
 		>
 			<span :class="$style.iconText">
-				<N8nIcon :icon="iconData.icon" :color="iconData.color" />
+				<N8nIcon :icon="iconData.icon" :color="iconData.color" :size="size" />
 			</span>
 			<template #content>
 				<span>
@@ -89,7 +92,7 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 			</template>
 		</N8nTooltip>
 		<span v-else :class="$style.iconText">
-			<N8nIcon :icon="iconData.icon" :color="iconData.color" />
+			<N8nIcon :icon="iconData.icon" :color="iconData.color" :size="size" />
 			<span>
 				<slot />
 			</span>
