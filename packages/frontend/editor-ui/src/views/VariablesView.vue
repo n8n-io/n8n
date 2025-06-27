@@ -400,6 +400,10 @@ onMounted(() => {
 				opacity: 1;
 			}
 		}
+
+		td:nth-child(2) {
+			white-space: normal;
+		}
 	}
 
 	@media screen and (max-width: $breakpoint-sm) {
