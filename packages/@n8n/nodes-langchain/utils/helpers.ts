@@ -287,8 +287,6 @@ export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean
 		}
 
 		let count = 1;
-		let charPosition = 1;
-
 		for (const char of iterator) {
 			if (char === prev.value) {
 				count++;
@@ -299,7 +297,6 @@ export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean
 				count = 1;
 				prev = { value: char, done: false };
 			}
-			charPosition++;
 		}
 
 		return false;

@@ -91,6 +91,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			}
 
 			const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
+			const encoder = await encodingForModel(embeddingModel);
 			const encodedListLength = await Promise.all(
 				list.map(async (text) => {
 					try {
@@ -107,7 +108,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 						// Use tiktoken for normal text
 						try {
-							const encoder = await encodingForModel(embeddingModel);
 							const tokens = encoder.encode(text);
 							return tokens.length;
 						} catch (encodingError) {
