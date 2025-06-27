@@ -9,7 +9,11 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
+import {
+	DELETE_USER_MODAL_KEY,
+	EnterpriseEditionFeature,
+	INVITE_USER_MODAL_KEY,
+} from '@/constants';
 import type { InvitableRoleName, IUser } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
@@ -135,7 +139,15 @@ function onInvite() {
 	uiStore.openModal(INVITE_USER_MODAL_KEY);
 }
 async function onDelete(userId: string) {
-	uiStore.openDeleteUserModal(userId);
+	uiStore.openModalWithData({
+		name: DELETE_USER_MODAL_KEY,
+		data: {
+			userId,
+			afterDelete: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
 }
 async function onReinvite(userId: string) {
 	const user = usersStore.usersById[userId];
