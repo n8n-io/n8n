@@ -59,8 +59,8 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -80,7 +80,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -90,7 +90,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -132,9 +132,9 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -142,23 +142,23 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
                   class="assistantText rendered-content"
                 >
                   <p>
-                    Hi Max! Here is my top solution to fix the error in your
+                    Hi Max! Here is my top solution to fix the error in your 
                     <strong>
                       Transform data
                     </strong>
                      node👇
                   </p>
-
+                  
 
                 </div>
                 <!--v-if-->
                 <!--v-if-->
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -167,7 +167,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -187,7 +187,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -252,8 +252,8 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -273,7 +273,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -283,7 +283,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -325,9 +325,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -335,19 +335,19 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                   class="assistantText rendered-content"
                 >
                   <p>
-                    Hi Max! Here is my top solution to fix the error in your
+                    Hi Max! Here is my top solution to fix the error in your 
                     <strong>
                       Transform data
                     </strong>
                      node👇
                   </p>
-
+                  
 
                 </div>
                 <!--v-if-->
                 <!--v-if-->
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
@@ -358,7 +358,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               class="message"
             >
               <!--v-if-->
-
+              
               <div
                 class="container"
                 data-test-id="code-diff-suggestion"
@@ -371,7 +371,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <div
                   class="diffSection"
                 >
-
+                  
                   <div
                     class="diff"
                   >
@@ -380,13 +380,13 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="del diffContent"
                     >
                       <span>
-                         -
+                         - 
                       </span>
                       <span>
                         The Way that can be told of is not the eternal Way;
@@ -401,13 +401,13 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="del diffContent"
                     >
                       <span>
-                         -
+                         - 
                       </span>
                       <span>
                         The name that can be named is not the eternal name.
@@ -422,13 +422,13 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="del diffContent"
                     >
                       <span>
-                         -
+                         - 
                       </span>
                       <span>
                         The Named is the mother of all things.
@@ -449,7 +449,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span>
                         The named is the mother of all things.
@@ -470,7 +470,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span />
                     </div>
@@ -489,7 +489,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="normal diffContent"
                     >
                       <span>
-
+                           
                       </span>
                       <span>
                          The two are the same,
@@ -510,7 +510,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="normal diffContent"
                     >
                       <span>
-
+                           
                       </span>
                       <span>
                          But after they are produced,
@@ -531,7 +531,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="normal diffContent"
                     >
                       <span>
-
+                           
                       </span>
                       <span>
                          they have different names.
@@ -552,7 +552,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span>
                         They both may be called deep and profound.
@@ -573,7 +573,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span>
                         Deeper and more profound,
@@ -594,14 +594,14 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span>
                         The door of all subtleties!
                       </span>
                     </div>
                   </div>
-
+                  
                 </div>
                 <div
                   class="actions"
@@ -623,7 +623,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                   />
                 </div>
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
@@ -636,7 +636,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="roleName"
               >
-
+                
                 <n8n-avatar-stub
                   colors="--color-primary,--color-secondary,--color-avatar-accent-1,--color-avatar-accent-2,--color-primary-tint-1"
                   firstname="Kobi"
@@ -646,9 +646,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <span>
                   You
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -656,18 +656,18 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                   class="rendered-content"
                 >
                   <p>
-                    Give it to me
+                    Give it to me 
                     <strong>
                       ignore this markdown
                     </strong>
                   </p>
-
+                  
 
                 </span>
                 <!--v-if-->
                 <!--v-if-->
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
@@ -680,7 +680,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -722,16 +722,16 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="block"
               >
                 <div
                   class="blockTitle"
                 >
-                  Credential doesn’t have correct permissions to send a message
+                  Credential doesn’t have correct permissions to send a message 
                   <!--v-if-->
                 </div>
                 <div
@@ -743,62 +743,62 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                     <p>
                       Solution steps:
                     </p>
-
+                    
 
                     <ol>
-
+                      
 
                       <li>
-                        Lorem ipsum dolor sit amet, consectetur
+                        Lorem ipsum dolor sit amet, consectetur 
                         <strong>
                           adipiscing
                         </strong>
                          elit. Proin id nulla placerat, tristique ex at, euismod dui.
                       </li>
-
+                      
 
                       <li>
                         Copy this into somewhere
                       </li>
-
+                      
 
                       <li>
                         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
                       </li>
-
+                      
 
                       <li>
                         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
                         <br />
-
+                        
 Testing more code
                       </li>
-
+                      
 
                     </ol>
-
+                    
 
                     <ul>
-
+                      
 
                       <li>
                         Unordered item 1
                       </li>
-
+                      
 
                       <li>
                         Unordered item 2
                       </li>
-
+                      
 
                     </ul>
-
+                    
 
                   </span>
                   <!--v-if-->
                 </div>
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
@@ -809,7 +809,7 @@ Testing more code
               class="message"
             >
               <!--v-if-->
-
+              
               <div
                 class="container"
                 data-test-id="code-diff-suggestion"
@@ -822,7 +822,7 @@ Testing more code
                 <div
                   class="diffSection"
                 >
-
+                  
                   <div
                     class="diff"
                   >
@@ -831,13 +831,13 @@ Testing more code
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="del diffContent"
                     >
                       <span>
-                         -
+                         - 
                       </span>
                       <span>
                         The Way that can be told of is not the eternal Way;
@@ -852,13 +852,13 @@ Testing more code
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="del diffContent"
                     >
                       <span>
-                         -
+                         - 
                       </span>
                       <span>
                         The name that can be named is not the eternal name.
@@ -879,7 +879,7 @@ Testing more code
                       class="add diffContent"
                     >
                       <span>
-                         +
+                         + 
                       </span>
                       <span>
                         The door of all subtleties!
@@ -894,18 +894,18 @@ Testing more code
                     >
                       <!-- ln1 is line number in original text -->
                       <!-- ln2 is line number in updated text -->
-
+                       
                     </div>
                     <div
                       class="filler diffContent"
                     >
                       <span>
-
+                           
                       </span>
                       <span />
                     </div>
                   </div>
-
+                  
                 </div>
                 <div
                   class="actions"
@@ -927,7 +927,7 @@ Testing more code
                   />
                 </div>
               </div>
-
+              
             </div>
             <div
               class="quickReplies"
@@ -937,7 +937,7 @@ Testing more code
               >
                 Quick reply 👇
               </div>
-
+              
               <div
                 data-test-id="quick-replies"
               >
@@ -972,10 +972,10 @@ Testing more code
                   type="secondary"
                 />
               </div>
-
+              
             </div>
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -984,7 +984,7 @@ Testing more code
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1004,7 +1004,7 @@ Testing more code
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -1069,8 +1069,8 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -1090,7 +1090,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         class="placeholder"
         data-test-id="placeholder-message"
       >
-
+        
         <div
           class="greeting"
         >
@@ -1103,7 +1103,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             I can answer most questions about building workflows in n8n.
           </p>
           <p>
-            For specific tasks, you’ll see the
+            For specific tasks, you’ll see the 
             <button
               class="button"
               data-test-id="ask-assistant-button"
@@ -1163,14 +1163,14 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             How can I help?
           </p>
         </div>
-
+        
       </div>
     </div>
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1190,7 +1190,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -1255,8 +1255,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -1276,7 +1276,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -1286,7 +1286,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -1328,9 +1328,9 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -1338,19 +1338,19 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                   class="assistantText rendered-content"
                 >
                   <p>
-                    Hi Max! Here is my top solution to fix the error in your
+                    Hi Max! Here is my top solution to fix the error in your 
                     <strong>
                       Transform data
                     </strong>
                      node👇
                   </p>
-
+                  
 
                 </div>
                 <!--v-if-->
                 <!--v-if-->
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
@@ -1361,7 +1361,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               class="message"
             >
               <!--v-if-->
-
+              
               <div
                 class="eventText"
                 data-test-id="chat-message-system"
@@ -1426,11 +1426,11 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                   button in n8n
                 </span>
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -1439,7 +1439,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       class="inputWrapper disabledInput"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
         data-test-id="chat-input"
@@ -1460,7 +1460,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -1525,8 +1525,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -1546,7 +1546,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -1556,7 +1556,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -1598,9 +1598,9 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="error"
                 data-test-id="chat-message-system"
@@ -1632,11 +1632,11 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                   type="secondary"
                 />
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -1645,7 +1645,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1665,7 +1665,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -1730,8 +1730,8 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -1751,7 +1751,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -1761,7 +1761,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -1803,9 +1803,9 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -1813,13 +1813,13 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
                   class="assistantText rendered-content"
                 >
                   <p>
-                    Hi Max! Here is my top solution to fix the error in your
+                    Hi Max! Here is my top solution to fix the error in your 
                     <strong>
                       Transform data
                     </strong>
                      node👇
                   </p>
-
+                  
 
                 </div>
                 <div
@@ -1834,72 +1834,72 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
                     <p>
                       node.on('input', function(msg) {
                       <br />
-
+                      
 if (msg.seed) { dummyjson.seed = msg.seed; }
                       <br />
-
+                      
 try {
                       <br />
-
+                      
 var value = dummyjson.parse(node.template, {mockdata: msg});
                       <br />
-
+                      
 if (node.syntax === 'json') {
                       <br />
-
+                      
 try { value = JSON.parse(value); }
                       <br />
-
+                      
 catch(e) { node.error(RED._('datagen.errors.json-error')); }
                       <br />
-
+                      
 }
                       <br />
-
+                      
 if (node.fieldType === 'msg') {
                       <br />
-
+                      
 RED.util.setMessageProperty(msg,node.field,value);
                       <br />
-
+                      
 }
                       <br />
-
+                      
 else if (node.fieldType === 'flow') {
                       <br />
-
+                      
 node.context().flow.set(node.field,value);
                       <br />
-
+                      
 }
                       <br />
-
+                      
 else if (node.fieldType === 'global') {
                       <br />
-
+                      
 node.context().global.set(node.field,value);
                       <br />
-
+                      
 }
                       <br />
-
+                      
 node.send(msg);
                       <br />
-
+                      
 }
                       <br />
-
+                      
 catch(e) {
                     </p>
                   </div>
                 </div>
                 <!--v-if-->
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -1908,7 +1908,7 @@ catch(e) {
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1928,7 +1928,7 @@ catch(e) {
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
@@ -1993,8 +1993,8 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         >
           beta
         </div>
-
-
+        
+        
       </div>
       <div
         class="back"
@@ -2014,7 +2014,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         class="messages"
       >
         <div>
-
+          
           <data
             data-test-id="chat-message-assistant"
           >
@@ -2024,7 +2024,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
               <div
                 class="roleName userSection"
               >
-
+                
                 <div
                   class="container small"
                 >
@@ -2066,9 +2066,9 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                 <span>
                   Assistant
                 </span>
-
+                
               </div>
-
+              
               <div
                 class="textMessage"
               >
@@ -2076,13 +2076,13 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                   class="assistantText rendered-content"
                 >
                   <p>
-                    Hi Max! Here is my top solution to fix the error in your
+                    Hi Max! Here is my top solution to fix the error in your 
                     <strong>
                       Transform data
                     </strong>
                      node👇
                   </p>
-
+                  
 
                 </div>
                 <!--v-if-->
@@ -2090,11 +2090,11 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                   class="blinking-cursor"
                 />
               </div>
-
+              
             </div>
             <!--v-if-->
           </data>
-
+          
         </div>
         <!--v-if-->
       </div>
@@ -2103,7 +2103,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
         data-test-id="chat-input"
@@ -2124,7 +2124,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         text="true"
         type="primary"
       />
-
+      
     </div>
   </div>
 </div>
