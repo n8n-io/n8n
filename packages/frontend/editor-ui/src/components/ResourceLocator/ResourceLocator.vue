@@ -669,6 +669,7 @@ function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>
 async function loadResources() {
 	const params = currentRequestParams.value;
 	const paramsKey = currentRequestKey.value;
+	const cachedResponse = cachedResponses.value[paramsKey];
 
 	if (credentialsNotSet.value) {
 		setResponse(paramsKey, { error: true });
@@ -686,22 +687,18 @@ async function loadResources() {
 	let paginationToken: string | undefined;
 
 	try {
-		// Re-get the cached response and current key at the time of setting loading state
-		const currentKey = currentRequestKey.value;
-		const cachedResponse = cachedResponses.value[currentKey];
-
 		if (cachedResponse) {
 			const nextPageToken = cachedResponse.nextPageToken as string;
 			if (nextPageToken) {
 				paginationToken = nextPageToken;
-				setResponse(currentKey, { loading: true });
+				setResponse(paramsKey, { loading: true });
 			} else if (cachedResponse.error) {
-				setResponse(currentKey, { error: false, loading: true });
+				setResponse(paramsKey, { error: false, loading: true });
 			} else {
 				return; // end of results
 			}
 		} else {
-			setResponse(currentKey, {
+			setResponse(paramsKey, {
 				loading: true,
 				error: false,
 				results: [],
@@ -736,24 +733,28 @@ async function loadResources() {
 
 		const response = await nodeTypesStore.getResourceLocatorResults(requestParams);
 
-		// Use current key when setting the final response
-		const finalKey = currentRequestKey.value;
-		const finalCachedResponse = cachedResponses.value[finalKey];
-
-		setResponse(finalKey, {
-			results: (finalCachedResponse?.results ?? []).concat(response.results),
+		const responseData = {
+			results: (cachedResponse?.results ?? []).concat(response.results),
 			nextPageToken: response.paginationToken ?? null,
 			loading: false,
 			error: false,
-		});
+		};
+
+		// Store response under the original key to prevent cache pollution
+		setResponse(paramsKey, responseData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, responseData);
+		}
 
 		if (params.filter && !hasCompletedASearch.value) {
 			hasCompletedASearch.value = true;
 			trackEvent('User searched resource locator list');
 		}
 	} catch (e) {
-		const errorKey = currentRequestKey.value;
-		setResponse(errorKey, {
+		const errorData = {
 			loading: false,
 			error: true,
 			errorDetails: {
@@ -762,7 +763,16 @@ async function loadResources() {
 				httpCode: e.httpCode,
 				stackTrace: e.stacktrace,
 			},
-		});
+		};
+
+		// Store error under the original key
+		setResponse(paramsKey, errorData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, errorData);
+		}
 	}
 }
 
