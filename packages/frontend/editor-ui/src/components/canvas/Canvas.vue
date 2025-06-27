@@ -857,7 +857,7 @@ provide(CanvasKey, {
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
-		:max-zoom="experimentalNdvStore.maxCanvasZoom"
+		:max-zoom="experimentalNdvStore.isEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
