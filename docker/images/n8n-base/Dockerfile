@@ -20,8 +20,8 @@ RUN apk add --no-cache git openssh graphicsmagick tini tzdata ca-certificates li
 # Remove npm update after vulnerability is fixed in in node image
 RUN npm install -g full-icu@1.5.0 npm@11.4.2
 
-RUN apk del apk-tools && \
-  rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* /var/cache/apk/* /lib/apk/db
+RUN rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
+  apk del apk-tools
 
 # ==============================================================================
 # STAGE 2: Final Base Runtime Image
