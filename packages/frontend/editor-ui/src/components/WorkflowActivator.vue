@@ -143,7 +143,7 @@ async function activeChanged(newActiveState: boolean) {
 			uiStore.openModalWithData({
 				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 				data: {
-					triggerName: trigger.name,
+					triggerType: trigger.type,
 					workflowName: conflictingWorkflow.name,
 					...conflict,
 				},

@@ -7,10 +7,16 @@ import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit } from '../entities/insights-shared';
+import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
+const displayTypeName = {
+	[TypeToNumber.success]: 'succeeded',
+	[TypeToNumber.failure]: 'failed',
+	[TypeToNumber.runtime_ms]: 'runTime',
+	[TypeToNumber.time_saved_min]: 'timeSaved',
+};
 
 const summaryParser = z
 	.object({
@@ -38,6 +44,11 @@ const aggregatedInsightsByWorkflowParser = z
 	})
 	.array();
 
+const optionalNumberLike = z
+	.union([z.number(), z.string()])
+	.optional()
+	.transform((value) => (value !== undefined ? Number(value) : undefined));
+
 const aggregatedInsightsByTimeParser = z
 	.object({
 		periodStart: z.union([z.date(), z.string()]).transform((value) => {
@@ -53,10 +64,10 @@ const aggregatedInsightsByTimeParser = z
 			// fallback on native date parsing
 			return new Date(value).toISOString();
 		}),
-		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
-		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
-		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
-		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		runTime: optionalNumberLike,
+		succeeded: optionalNumberLike,
+		failed: optionalNumberLike,
+		timeSaved: optionalNumberLike,
 	})
 	.array();
 
@@ -340,15 +351,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				'metadata.workflowName AS "workflowName"',
 				'metadata.projectId AS "projectId"',
 				'metadata.projectName AS "projectName"',
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.success]}"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.failure]}"`,
 				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
 				sql`CASE
 								WHEN ${sumOfExecutions} = 0 THEN 0
 								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
 							END AS "failureRate"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.runtime_ms]}"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.time_saved_min]}"`,
 				sql`CASE
 								WHEN ${sumOfExecutions} = 0	THEN 0
 								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
@@ -373,17 +384,17 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	async getInsightsByTime({
 		maxAgeInDays,
 		periodUnit,
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		insightTypes,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes: TypeUnit[] }) {
 		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+
+		const typesAggregation = insightTypes.map((type) => {
+			return `SUM(CASE WHEN type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
+		});
+
 		const rawRowsQuery = this.createQueryBuilder()
 			.addCommonTableExpression(cte, 'date_range')
-			.select([
-				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
-				`SUM(CASE WHEN type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
-				`SUM(CASE WHEN type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
-				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
-				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
-			])
+			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_range', 'date_range', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
 			.groupBy(this.getPeriodStartExpr(periodUnit))
