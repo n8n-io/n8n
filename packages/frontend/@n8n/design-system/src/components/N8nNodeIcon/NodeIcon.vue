@@ -4,6 +4,7 @@ import type { Placement } from 'element-plus';
 import { computed, getCurrentInstance } from 'vue';
 
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import { isSupportedIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
@@ -76,6 +77,10 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 
+const updatedIconName = computed((): IconName | undefined => {
+	return props.useUpdatedIcons && isSupportedIconName(props.name) ? props.name : undefined;
+});
+
 // Get self component to avoid dependency cycle
 const N8nNodeIcon = getCurrentInstance()?.type;
 </script>
@@ -92,7 +97,9 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<N8nTooltip v-if="showTooltip" :placement="tooltipPosition" :disabled="!showTooltip">
-				<template #content>{{ nodeTypeName }}</template>
+				<template #content>
+					{{ nodeTypeName }}
+				</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<FontAwesomeIcon v-else :icon="`${name}`" :class="$style.iconFa" :style="fontStyleData" />
@@ -105,8 +112,8 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<N8nIcon
-						v-else-if="props.useUpdatedIcons && isSupportedIconName(name)"
-						:icon="name"
+						v-else-if="updatedIconName"
+						:icon="updatedIconName"
 						:style="fontStyleData"
 						size="xlarge"
 					/>

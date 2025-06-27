@@ -168,6 +168,7 @@ import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
 import IconLucideUserRound from '~icons/lucide/user-round';
 import IconLucideUsers from '~icons/lucide/users';
+import IconLucideVariable from '~icons/lucide/variable';
 import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
@@ -176,7 +177,6 @@ import IconLucideX from '~icons/lucide/x';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
-import IconLucideVariable from '~icons/lucide/variable';
 
 /**
  * Need to keep old icon names
