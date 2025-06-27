@@ -2,7 +2,12 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { NodeOperationError } from 'n8n-workflow';
 
 import { pushFileToSession, triggerFileInput } from './helpers';
-import { sessionIdField, windowIdField, elementDescriptionField } from '../common/fields';
+import {
+	sessionIdField,
+	windowIdField,
+	elementDescriptionField,
+	includeHiddenElementsField,
+} from '../common/fields';
 
 const displayOptions = {
 	show: {
@@ -37,6 +42,10 @@ export const description: INodeProperties[] = [
 		placeholder: 'e.g. the file upload selection box',
 		displayOptions,
 	},
+	{
+		...includeHiddenElementsField,
+		displayOptions,
+	},
 ];
 
 export async function execute(
@@ -47,10 +56,21 @@ export async function execute(
 	const sessionId = this.getNodeParameter('sessionId', index, '') as string;
 	const windowId = this.getNodeParameter('windowId', index, '') as string;
 	const elementDescription = this.getNodeParameter('elementDescription', index, '') as string;
+	const includeHiddenElements = this.getNodeParameter(
+		'includeHiddenElements',
+		index,
+		false,
+	) as boolean;
 
 	try {
 		await pushFileToSession.call(this, fileId, sessionId);
-		await triggerFileInput.call(this, fileId, windowId, sessionId, elementDescription);
+		await triggerFileInput.call(this, {
+			fileId,
+			windowId,
+			sessionId,
+			elementDescription,
+			includeHiddenElements,
+		});
 
 		return this.helpers.returnJsonArray({
 			sessionId,

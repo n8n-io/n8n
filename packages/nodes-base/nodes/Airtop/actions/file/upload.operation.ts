@@ -8,7 +8,12 @@ import {
 	createFileBuffer,
 } from './helpers';
 import { validateRequiredStringField } from '../../GenericFunctions';
-import { sessionIdField, windowIdField, elementDescriptionField } from '../common/fields';
+import {
+	sessionIdField,
+	windowIdField,
+	elementDescriptionField,
+	includeHiddenElementsField,
+} from '../common/fields';
 
 const displayOptions = {
 	show: {
@@ -130,6 +135,15 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		...includeHiddenElementsField,
+		displayOptions: {
+			show: {
+				triggerFileInputParameter: [true],
+				...displayOptions.show,
+			},
+		},
+	},
 ];
 
 export async function execute(
@@ -149,7 +163,11 @@ export async function execute(
 		true,
 	) as boolean;
 	const elementDescription = this.getNodeParameter('elementDescription', index, '') as string;
-
+	const includeHiddenElements = this.getNodeParameter(
+		'includeHiddenElements',
+		index,
+		false,
+	) as boolean;
 	// Get the file content based on source type
 	const fileValue = source === 'url' ? url : binaryPropertyName;
 
@@ -160,7 +178,13 @@ export async function execute(
 		await pushFileToSession.call(this, fileId, sessionId);
 
 		if (triggerFileInputParameter) {
-			await triggerFileInput.call(this, fileId, windowId, sessionId, elementDescription);
+			await triggerFileInput.call(this, {
+				fileId,
+				windowId,
+				sessionId,
+				elementDescription,
+				includeHiddenElements,
+			});
 		}
 
 		return this.helpers.returnJsonArray({

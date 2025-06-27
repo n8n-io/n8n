@@ -30,6 +30,7 @@ export const INTEGRATION_URL =
 export const DEFAULT_TIMEOUT_MINUTES = 10;
 export const MIN_TIMEOUT_MINUTES = 1;
 export const MAX_TIMEOUT_MINUTES = 10080;
+export const DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 30;
 export const SESSION_STATUS = {
 	INITIALIZING: 'initializing',
 	RUNNING: 'running',
