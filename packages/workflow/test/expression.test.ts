@@ -187,7 +187,7 @@ describe('Expression', () => {
 				continue;
 			}
 			test(t.expression, () => {
-				vi.useFakeTimers({ now: new Date() });
+				vi.spyOn(workflow, 'getParentNodes').mockReturnValue(['Parent']);
 
 				const evaluationTests = t.tests.filter(
 					(test): test is ExpressionTestEvaluation => test.type === 'evaluation',
@@ -197,13 +197,15 @@ describe('Expression', () => {
 					const input = test.input.map((d) => ({ json: d })) as any;
 
 					if ('error' in test) {
+						vi.useFakeTimers({ now: test.error.timestamp });
+
 						expect(() => evaluate(t.expression, input)).toThrowError(test.error);
+
+						vi.useRealTimers();
 					} else {
 						expect(evaluate(t.expression, input)).toStrictEqual(test.output);
 					}
 				}
-
-				vi.useRealTimers();
 			});
 		}
 	});
@@ -214,12 +216,16 @@ describe('Expression', () => {
 				continue;
 			}
 			test(t.expression, () => {
+				vi.useFakeTimers({ now: new Date() });
+
 				for (const test of t.tests.filter(
 					(test): test is ExpressionTestTransform => test.type === 'transform',
 				)) {
 					const expr = t.expression;
 					expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
 				}
+
+				vi.useRealTimers();
 			});
 		}
 	});

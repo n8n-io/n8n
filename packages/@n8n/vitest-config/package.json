@@ -3,17 +3,23 @@
   "version": "1.3.0",
   "type": "module",
   "peerDependencies": {
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "devDependencies": {
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "files": [
+    "backend.mjs",
     "frontend.mjs"
   ],
   "exports": {
+    "./backend": {
+      "import": "./backend.mjs",
+      "require": "./backend.mjs",
+      "types": "./backend.d.ts"
+    },
     "./frontend": {
       "import": "./frontend.mjs",
       "require": "./frontend.mjs",
