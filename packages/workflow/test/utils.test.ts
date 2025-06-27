@@ -1,6 +1,6 @@
-import { ALPHABET } from '@/constants';
-import { ApplicationError } from '@/errors/application.error';
-import { ExecutionCancelledError } from '@/errors/execution-cancelled.error';
+import { ALPHABET } from '../src/constants';
+import { ApplicationError } from '../src/errors/application.error';
+import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
@@ -13,7 +13,7 @@ import {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	sleepWithAbort,
-} from '@/utils';
+} from '../src/utils';
 
 describe('isObjectEmpty', () => {
 	it('should handle null and undefined', () => {
@@ -69,7 +69,7 @@ describe('isObjectEmpty', () => {
 	});
 
 	it('should not call Object.keys unless a plain object', () => {
-		const keySpy = jest.spyOn(Object, 'keys');
+		const keySpy = vi.spyOn(Object, 'keys');
 		const { calls } = keySpy.mock;
 
 		const assertCalls = (count: number) => {
@@ -447,7 +447,7 @@ describe('sleepWithAbort', () => {
 
 	it('should clean up timeout when aborted during sleep', async () => {
 		const abortController = new AbortController();
-		const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 
 		// Start the sleep and abort after 50ms
 		const sleepPromise = sleepWithAbort(1000, abortController.signal);

@@ -1,0 +1,10 @@
+{
+	"extends": ["./tsconfig.json"],
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist/esm",
+		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules"]
+}

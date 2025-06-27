@@ -7,7 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
-} from '@/interfaces';
+} from '../src/interfaces';
 import {
 	getNodeParameters,
 	isSubNodeType,
@@ -21,8 +21,8 @@ import {
 	isDefaultNodeName,
 	makeNodeName,
 	isTool,
-} from '@/node-helpers';
-import type { Workflow } from '@/workflow';
+} from '../src/node-helpers';
+import type { Workflow } from '../src/workflow';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -4226,7 +4226,7 @@ describe('NodeHelpers', () => {
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
-				getSimpleParameterValue: jest.fn().mockReturnValue([NodeConnectionTypes.Main]),
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
 			},
 		} as unknown as Workflow;
 
@@ -4382,7 +4382,7 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					(workflowMock.expression.getSimpleParameterValue as jest.Mock).mockReturnValueOnce(
+					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);
 				}

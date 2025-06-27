@@ -1,7 +1,7 @@
-import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '@/constants';
-import { NodeOperationError } from '@/errors';
-import { NodeApiError } from '@/errors/node-api.error';
-import type { INode, JsonObject } from '@/interfaces';
+import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/constants';
+import { NodeOperationError } from '../src/errors';
+import { NodeApiError } from '../src/errors/node-api.error';
+import type { INode, JsonObject } from '../src/interfaces';
 
 const node: INode = {
 	id: '1',

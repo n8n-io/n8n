@@ -1,9 +1,5 @@
-import {
-	parse as esprimaParse,
-	Syntax,
-	type Node as SyntaxNode,
-	type ExpressionStatement,
-} from 'esprima-next';
+import { parse as esprimaParse, Syntax } from 'esprima-next';
+import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 

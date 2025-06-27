@@ -6,8 +6,8 @@ import {
 	parseExtractableSubgraphSelection,
 	hasPath,
 	buildAdjacencyList,
-} from '@/graph/graph-utils';
-import type { IConnection, IConnections, NodeConnectionType } from '@/index';
+} from '../../src/graph/graph-utils';
+import type { IConnection, IConnections, NodeConnectionType } from '../../src/index';
 
 function makeConnection(
 	node: string,

@@ -1,8 +1,8 @@
 import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
 
-import type { FilterConditionValue, FilterValue } from '@/interfaces';
-import { arrayContainsValue, executeFilter } from '@/node-parameters/filter-parameter';
+import type { FilterConditionValue, FilterValue } from '../src/interfaces';
+import { arrayContainsValue, executeFilter } from '../src/node-parameters/filter-parameter';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];

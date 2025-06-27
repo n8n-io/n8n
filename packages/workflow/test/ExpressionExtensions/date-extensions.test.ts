@@ -1,13 +1,10 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
 import { DateTime } from 'luxon';
 
-import { dateExtensions } from '@/extensions/date-extensions';
-import { getGlobalState } from '@/global-state';
-
 import { evaluate, getLocalISOString } from './helpers';
+import { dateExtensions } from '../../src/extensions/date-extensions';
+import { getGlobalState } from '../../src/global-state';
 
 const { defaultTimezone } = getGlobalState();
 

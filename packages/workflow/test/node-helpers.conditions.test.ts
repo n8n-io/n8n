@@ -1,5 +1,5 @@
-import type { INodeParameters, INodeProperties } from '@/interfaces';
-import { getNodeParameters } from '@/node-helpers';
+import type { INodeParameters, INodeProperties } from '../src/interfaces';
+import { getNodeParameters } from '../src/node-helpers';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters, displayOptions set using DisplayCondition', () => {

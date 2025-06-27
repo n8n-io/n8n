@@ -1,11 +1,11 @@
-import type { INode } from '@/interfaces';
+import type { INode } from '../src/interfaces';
 import {
 	hasDotNotationBannedChar,
 	backslashEscape,
 	dollarEscape,
 	applyAccessPatterns,
 	extractReferencesInNodeExpressions,
-} from '@/node-reference-parser-utils';
+} from '../src/node-reference-parser-utils';
 
 const makeNode = (name: string, expressions?: string[]) =>
 	({

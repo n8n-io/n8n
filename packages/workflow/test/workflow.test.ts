@@ -1,7 +1,8 @@
-import { mock } from 'jest-mock-extended';
+/* eslint-disable import/order */
+import { mock } from 'vitest-mock-extended';
 
-import { UserError } from '@/errors';
-import { NodeConnectionTypes } from '@/interfaces';
+import { UserError } from '../src/errors';
+import { NodeConnectionTypes } from '../src/interfaces';
 import type {
 	IBinaryKeyData,
 	IConnection,
@@ -12,11 +13,12 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	NodeParameterValueType,
-} from '@/interfaces';
-import { Workflow } from '@/workflow';
+} from '../src/interfaces';
+import { Workflow } from '../src/workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
+// eslint-disable-next-line import/order
 import * as Helpers from './helpers';
 
 interface StubNode {
@@ -347,7 +349,7 @@ describe('Workflow', () => {
 	});
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('renameNodeInParameterValue', () => {
@@ -2621,7 +2623,7 @@ describe('Workflow', () => {
 
 		test('should skip nodes that do not exist and log a warning', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'NonExistentNode', 'Set1']);
 			expect(nodes).toHaveLength(2);
@@ -2634,7 +2636,7 @@ describe('Workflow', () => {
 
 		test('should return an empty array if none of the requested nodes exist', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['NonExistentNode1', 'NonExistentNode2']);
 			expect(nodes).toHaveLength(0);

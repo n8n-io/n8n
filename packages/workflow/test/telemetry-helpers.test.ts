@@ -1,8 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
-import { STICKY_NODE_TYPE } from '@/constants';
-import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
+import { nodeTypes } from './ExpressionExtensions/helpers';
+import type { NodeTypes } from './node-types';
+import { STICKY_NODE_TYPE } from '../src/constants';
+import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
 	INode,
 	INodeTypeDescription,
@@ -11,9 +13,9 @@ import type {
 	NodeConnectionType,
 	IWorkflowBase,
 	INodeParameters,
-} from '@/interfaces';
-import { NodeConnectionTypes } from '@/interfaces';
-import * as nodeHelpers from '@/node-helpers';
+} from '../src/interfaces';
+import { NodeConnectionTypes } from '../src/interfaces';
+import * as nodeHelpers from '../src/node-helpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	extractLastExecutedNodeCredentialData,
@@ -24,11 +26,8 @@ import {
 	resolveAIMetrics,
 	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
-} from '@/telemetry-helpers';
-import { randomInt } from '@/utils';
-
-import { nodeTypes } from './ExpressionExtensions/helpers';
-import type { NodeTypes } from './node-types';
+} from '../src/telemetry-helpers';
+import { randomInt } from '../src/utils';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -932,7 +931,7 @@ describe('generateNodesGraph', () => {
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
 		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
 
-		jest.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -2206,9 +2205,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			},
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2260,9 +2259,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			],
 		});
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2288,9 +2287,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: 'gpt-4' }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: 'gpt-4' }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2378,9 +2377,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
