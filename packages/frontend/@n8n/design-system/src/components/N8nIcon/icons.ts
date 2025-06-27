@@ -1,5 +1,3 @@
-/* eslint-disable import/extensions, import/no-unresolved */
-
 import Binary from './custom/binary.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Json from './custom/json.svg';

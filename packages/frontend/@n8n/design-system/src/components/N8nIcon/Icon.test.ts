@@ -1,7 +1,7 @@
 import { render } from '@testing-library/vue';
 
 import Icon from './Icon.vue';
-import { deprecatedIconSet, IconName } from './icons';
+import { deprecatedIconSet, type IconName } from './icons';
 
 describe('Icon', () => {
 	it('should render correctly with default props', () => {
