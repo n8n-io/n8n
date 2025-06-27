@@ -85,6 +85,19 @@ export const insightsByTimeDataSchemas = {
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
+export const restrictedInsightsByTimeDataSchema = {
+	date: z.string().refine((val) => !isNaN(Date.parse(val)) && new Date(val).toISOString() === val, {
+		message: 'Invalid date format, must be ISO 8601 format',
+	}),
+	values: z
+		.object({
+			timeSaved: z.number(),
+		})
+		.strict(),
+} as const;
+export const restrictedInsightsByTimeSchema = z.object(restrictedInsightsByTimeDataSchema).strict();
+export type RestrictedInsightsByTime = z.infer<typeof restrictedInsightsByTimeSchema>;
+
 export const insightsDateRangeSchema = z
 	.object({
 		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
