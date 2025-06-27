@@ -1,5 +1,5 @@
 import { defineConfig as defineVitestConfig } from 'vitest/config';
-import { coverage } from './common.mjs';
+import { coverage, enableCoverage } from './common.mjs';
 
 /**
  * Define a Vitest configuration
@@ -16,14 +16,7 @@ export const createVitestConfig = (options = {}) => {
 		},
 	});
 
-	if (process.env.COVERAGE_ENABLED === 'true') {
-		const { coverage } = vitestConfig.test;
-		coverage.enabled = true;
-		if (process.env.CI === 'true') {
-			coverage.all = true;
-			coverage.reporter = ['cobertura'];
-		}
-	}
+	enableCoverage(vitestConfig);
 
 	return vitestConfig;
 };

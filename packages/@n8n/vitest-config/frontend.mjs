@@ -1,5 +1,5 @@
 import { defineConfig as defineVitestConfig } from 'vitest/config';
-import { coverage } from './common.mjs';
+import { coverage, enableCoverage } from './common.mjs';
 
 /**
  * Define a Vitest configuration
