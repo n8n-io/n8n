@@ -578,6 +578,53 @@ describe('getInsightsByTime', () => {
 			timeSaved: 0,
 		});
 	});
+
+	test('compacted data with limited insight types are grouped by time correctly', async () => {
+		// ARRANGE
+		for (const workflow of [workflow1, workflow2]) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: workflow === workflow1 ? 1 : 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'time_saved_min',
+				value: workflow === workflow1 ? 10 : 20,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+		}
+
+		// ACT
+		const byTime = await insightsService.getInsightsByTime({
+			maxAgeInDays: 14,
+			periodUnit: 'day',
+			insightTypes: ['time_saved_min', 'failure'],
+		});
+
+		// ASSERT
+		expect(byTime).toHaveLength(2);
+
+		// expect results to contain only failure and time saved insights
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[0].values).toEqual({
+			timeSaved: 30,
+			failed: 0,
+		});
+
+		expect(byTime[1].date).toEqual(DateTime.utc().startOf('day').toISO());
+		expect(byTime[1].values).toEqual({
+			timeSaved: 0,
+			failed: 4,
+		});
+	});
 });
 
 describe('getAvailableDateRanges', () => {

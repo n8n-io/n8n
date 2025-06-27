@@ -107,7 +107,7 @@ const computedInlineStyles = computed(() => {
 		<EditableArea
 			:style="computedInlineStyles"
 			:class="$style.inlineRenameArea"
-			@click="forceFocus"
+			data-test-id="inline-editable-area"
 		>
 			<span ref="measureSpan" :class="$style.measureSpan">
 				{{ temp }}

@@ -21,7 +21,12 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	FORM_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -909,6 +914,26 @@ export function useWorkflowHelpers() {
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
+	function getMethod(trigger: INode) {
+		if (trigger.type === WEBHOOK_NODE_TYPE) {
+			return (trigger.parameters.method as string) ?? 'GET';
+		}
+		return 'GET';
+	}
+
+	function getWebhookPath(trigger: INode) {
+		if (trigger.type === WEBHOOK_NODE_TYPE) {
+			return trigger.parameters.path as string;
+		}
+		if (trigger.type === FORM_TRIGGER_NODE_TYPE) {
+			return (
+				(((trigger.parameters.options as { path: string }) || {}).path as string) ??
+				trigger.webhookId
+			);
+		}
+		return '';
+	}
+
 	async function checkConflictingWebhooks(workflowId: string) {
 		let data;
 		if (uiStore.stateIsDirty) {
@@ -917,14 +942,15 @@ export function useWorkflowHelpers() {
 			data = await workflowsStore.fetchWorkflow(workflowId);
 		}
 
-		const webhookTriggers = data.nodes.filter(
-			(node) => node.disabled !== true && node.type === WEBHOOK_NODE_TYPE,
+		const triggers = data.nodes.filter(
+			(node) =>
+				node.disabled !== true && [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type),
 		);
 
-		for (const trigger of webhookTriggers) {
-			const method = (trigger.parameters.method as string) ?? 'GET';
+		for (const trigger of triggers) {
+			const method = getMethod(trigger);
 
-			const path = trigger.parameters.path as string;
+			const path = getWebhookPath(trigger);
 
 			const conflict = await findWebhook(rootStore.restApiContext, {
 				path,
