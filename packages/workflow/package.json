@@ -20,8 +20,8 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint src --quiet",
+    "lintfix": "eslint src --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"
