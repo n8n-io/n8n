@@ -167,8 +167,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		</ModalRoot>
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
-			<template #default="{ modalName, activeId }">
-				<DeleteUserModal :modal-name="modalName" :active-id="activeId" />
+			<template #default="{ modalName, data }">
+				<DeleteUserModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

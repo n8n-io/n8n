@@ -69,7 +69,10 @@ describe('DeleteUserModal', () => {
 	it('should delete invited users', async () => {
 		const { getByTestId } = renderModal({
 			props: {
-				activeId: invitedUser.id,
+				modalName: DELETE_USER_MODAL_KEY,
+				data: {
+					userId: invitedUser.id,
+				},
 			},
 			global,
 			pinia,
@@ -85,7 +88,10 @@ describe('DeleteUserModal', () => {
 	it('should delete user and transfer workflows and credentials', async () => {
 		const { getByTestId, getAllByRole } = renderModal({
 			props: {
-				activeId: user.id,
+				modalName: DELETE_USER_MODAL_KEY,
+				data: {
+					userId: user.id,
+				},
 			},
 			global,
 			pinia,
@@ -116,7 +122,10 @@ describe('DeleteUserModal', () => {
 	it('should delete user without transfer', async () => {
 		const { getByTestId, getAllByRole, getByRole } = renderModal({
 			props: {
-				activeId: user.id,
+				modalName: DELETE_USER_MODAL_KEY,
+				data: {
+					userId: user.id,
+				},
 			},
 			global,
 			pinia,
