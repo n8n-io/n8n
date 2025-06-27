@@ -184,6 +184,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]: {
 			open: false,
 			data: {
+				triggerType: '',
 				workflowName: '',
 				workflowId: '',
 				webhookPath: '',
