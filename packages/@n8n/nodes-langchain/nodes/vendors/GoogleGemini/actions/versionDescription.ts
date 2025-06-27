@@ -35,8 +35,17 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	// TODO: update this if going to add tool or memory support
-	inputs: [NodeConnectionTypes.Main],
+	inputs: `={{
+		(() => {
+			const resource = $parameter.resource;
+	  	const operation = $parameter.operation;
+			if (resource === 'text' && operation === 'message') {
+				return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
+			}
+
+			return ['main'];
+		})()
+	}}`,
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{

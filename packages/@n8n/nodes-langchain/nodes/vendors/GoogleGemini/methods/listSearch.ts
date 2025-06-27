@@ -25,18 +25,20 @@ async function baseModelSearch(
 	};
 }
 
+// TODO: rename to `textModelSearch`?
 export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	return await baseModelSearch.call(
 		this,
-		// TODO: double check this
 		(model) =>
+			// TODO: double check filter, filter out gemma as well?
 			!model.includes('embedding') &&
 			!model.includes('image') &&
 			!model.includes('veo') &&
-			!model.includes('audio'),
+			!model.includes('audio') &&
+			!model.includes('tts'),
 		filter,
 	);
 }

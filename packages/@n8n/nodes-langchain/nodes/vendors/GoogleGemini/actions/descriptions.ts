@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const modelRLC = (searchListMethod: string = 'modelSearch'): INodeProperties => ({
+export const modelRLC = (searchListMethod: string): INodeProperties => ({
 	displayName: 'Model',
 	name: 'modelId',
 	type: 'resourceLocator',
