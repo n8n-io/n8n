@@ -72,7 +72,7 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
       <!--teleport start-->
       <!--teleport end-->
     </li>
-    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
       <!--teleport start-->
       <!--teleport end-->
     </li>
@@ -180,7 +180,7 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
       <!--teleport start-->
       <!--teleport end-->
     </li>
-    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
       <!--teleport start-->
       <!--teleport end-->
     </li>
