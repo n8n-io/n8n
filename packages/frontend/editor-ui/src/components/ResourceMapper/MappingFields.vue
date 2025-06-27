@@ -368,7 +368,7 @@ defineExpose({
 							})
 						}}</span>
 					</template>
-					<n8n-icon icon="circle-help" />
+					<N8nIcon icon="circle-help" />
 				</N8nTooltip>
 			</div>
 			<div

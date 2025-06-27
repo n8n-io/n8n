@@ -18,7 +18,7 @@ import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
