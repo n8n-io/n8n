@@ -33,6 +33,9 @@ describe('GET /insights routes work for owner and admins for server with dashboa
 			const authAgent = agents[agentName];
 			await authAgent.get('/insights/summary').expect(agentName.includes('member') ? 403 : 200);
 			await authAgent.get('/insights/by-time').expect(agentName.includes('member') ? 403 : 200);
+			await authAgent
+				.get('/insights/by-time/time-saved')
+				.expect(agentName.includes('member') ? 403 : 200);
 			await authAgent.get('/insights/by-workflow').expect(agentName.includes('member') ? 403 : 200);
 		},
 	);
@@ -48,6 +51,9 @@ describe('GET /insights routes return 403 for dashboard routes when summary lice
 			const authAgent = agents[agentName];
 			await authAgent.get('/insights/summary').expect(agentName.includes('member') ? 403 : 200);
 			await authAgent.get('/insights/by-time').expect(403);
+			await authAgent
+				.get('/insights/by-time/time-saved')
+				.expect(agentName.includes('member') ? 403 : 200);
 			await authAgent.get('/insights/by-workflow').expect(403);
 		},
 	);
@@ -62,6 +68,7 @@ describe('GET /insights routes return 403 if date range outside license limits',
 		const authAgent = agents.admin;
 		await authAgent.get('/insights/summary').expect(403);
 		await authAgent.get('/insights/by-time').expect(403);
+		await authAgent.get('/insights/by-time/time-saved').expect(403);
 		await authAgent.get('/insights/by-workflow').expect(403);
 	});
 
@@ -69,6 +76,7 @@ describe('GET /insights routes return 403 if date range outside license limits',
 		const authAgent = agents.admin;
 		await authAgent.get('/insights/summary?dateRange=day').expect(403);
 		await authAgent.get('/insights/by-time?dateRange=day').expect(403);
+		await authAgent.get('/insights/by-time/time-saved?dateRange=day').expect(403);
 		await authAgent.get('/insights/by-workflow?dateRange=day').expect(403);
 	});
 });
@@ -97,6 +105,7 @@ describe('GET /insights routes return 200 if date range inside license limits', 
 		const authAgent = agents.admin;
 		await authAgent.get(`/insights/summary?dateRange=${dateRange}`).expect(200);
 		await authAgent.get(`/insights/by-time?dateRange=${dateRange}`).expect(200);
+		await authAgent.get(`/insights/by-time/time-saved?dateRange=${dateRange}`).expect(200);
 		await authAgent.get(`/insights/by-workflow?dateRange=${dateRange}`).expect(200);
 	});
 });

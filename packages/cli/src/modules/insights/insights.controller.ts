@@ -81,9 +81,12 @@ export class InsightsController {
 		})) as InsightsByTime[];
 	}
 
+	/**
+	 * This endpoint is used to get the time saved insights by time.
+	 * time data for time saved insights is not restricted by the license
+	 */
 	@Get('/by-time/time-saved')
 	@GlobalScope('insights:list')
-	@Licensed('feat:insights:viewDashboard:timeSaved')
 	async getTimeSavedInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
