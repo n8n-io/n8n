@@ -1,3 +1,6 @@
+import { randomValidPassword, uniqueId } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
@@ -7,11 +10,8 @@ import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { TOTPService } from '@/mfa/totp.service';
-import { mockInstance } from '@test/mocking';
 
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
-import { randomValidPassword, uniqueId } from '../shared/random';
-import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
 
 jest.mock('@/telemetry');

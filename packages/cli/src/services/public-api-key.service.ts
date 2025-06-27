@@ -1,6 +1,6 @@
 import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
-import type { User } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
@@ -12,7 +12,6 @@ import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';

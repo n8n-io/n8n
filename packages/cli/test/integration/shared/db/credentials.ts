@@ -1,3 +1,4 @@
+import type { CredentialPayload } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ICredentialsDb } from '@n8n/db';
@@ -7,8 +8,6 @@ import { ProjectRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { CredentialSharingRole } from '@n8n/permissions';
-
-import type { CredentialPayload } from '../types';
 
 export async function encryptCredentialData(
 	credential: CredentialsEntity,

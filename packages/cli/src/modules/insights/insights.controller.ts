@@ -1,9 +1,8 @@
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import type { UserError } from 'n8n-workflow';
-
-import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
 

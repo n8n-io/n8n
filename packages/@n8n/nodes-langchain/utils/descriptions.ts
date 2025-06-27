@@ -84,7 +84,7 @@ export const buildInputSchemaField = (props?: {
 		}
 	}
 }`,
-	noDataExpression: true,
+	noDataExpression: false,
 	typeOptions: {
 		rows: 10,
 	},

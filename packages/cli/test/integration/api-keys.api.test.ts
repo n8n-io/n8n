@@ -1,4 +1,7 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import { testDb } from '@n8n/backend-test-utils';
+import { randomValidPassword } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
@@ -12,11 +15,8 @@ import { mock } from 'jest-mock-extended';
 
 import type { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
-import { mockInstance } from '@test/mocking';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 

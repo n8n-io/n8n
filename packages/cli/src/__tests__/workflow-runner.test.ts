@@ -1,3 +1,6 @@
+import { testDb } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ExecutionEntity } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -29,11 +32,8 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;

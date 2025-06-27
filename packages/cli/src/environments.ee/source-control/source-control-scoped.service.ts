@@ -1,10 +1,10 @@
+import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import {
+	type AuthenticatedRequest,
 	type CredentialsEntity,
 	type Folder,
 	type Project,
-	ProjectRepository,
 	type WorkflowEntity,
-	WorkflowRepository,
 	type WorkflowTagMapping,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -13,7 +13,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { AuthenticatedRequest } from '@/requests';
 
 import { SourceControlContext } from './types/source-control-context';
 

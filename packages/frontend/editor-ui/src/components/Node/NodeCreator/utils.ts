@@ -15,7 +15,9 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
+	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MICROSOFT_TEAMS_NODE_TYPE,
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -336,3 +338,27 @@ export const shouldShowCommunityNodeDetails = (communityNode: boolean, viewStack
 
 	return communityNode && !viewStack.communityNodeDetails;
 };
+
+export function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
+	const actions = nodeActions.filter((action) => action.actionKey === SEND_AND_WAIT_OPERATION);
+
+	if (actions.length) {
+		const name = actions[0].name;
+		if (name === DISCORD_NODE_TYPE) {
+			actions[0].values = {
+				...actions[0].values,
+				resource: 'message',
+				operation: SEND_AND_WAIT_OPERATION,
+			};
+		}
+		if (name === MICROSOFT_TEAMS_NODE_TYPE) {
+			actions[0].values = {
+				...actions[0].values,
+				resource: 'chatMessage',
+				operation: SEND_AND_WAIT_OPERATION,
+			};
+		}
+	}
+
+	return actions;
+}

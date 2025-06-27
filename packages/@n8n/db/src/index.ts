@@ -12,6 +12,7 @@ export {
 export { generateNanoId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { separate } from './utils/separate';
+export { sql } from './utils/sql';
 export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
 
 export * from './entities';
