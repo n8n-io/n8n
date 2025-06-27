@@ -12,6 +12,7 @@ import { getSubtreeTotalConsumedTokens, getTotalConsumedTokens } from '@/feature
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
+import { getScrollbarWidth } from '@/utils/htmlUtils';
 
 const {
 	isOpen,
@@ -52,6 +53,7 @@ const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
+const hasStaticScrollbar = getScrollbarWidth() > 0;
 const consumedTokens = computed(() =>
 	getTotalConsumedTokens(
 		...entries.map((entry) =>
@@ -127,7 +129,10 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="logs-overview">
+	<div
+		:class="[$style.container, hasStaticScrollbar ? $style.staticScrollBar : '']"
+		data-test-id="logs-overview"
+	>
 		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
 			data-test-id="logs-overview-header"
@@ -259,23 +264,25 @@ watch(
 .tree {
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
 
-	scroll-padding-block: var(--spacing-3xs);
+	.container:not(.staticScrollBar) & {
+		scroll-padding-block: var(--spacing-3xs);
 
-	@supports not (selector(::-webkit-scrollbar)) {
-		scrollbar-width: thin;
-	}
-
-	@supports selector(::-webkit-scrollbar) {
-		padding-right: var(--spacing-5xs);
-		scrollbar-gutter: stable;
-
-		&::-webkit-scrollbar {
-			width: var(--spacing-4xs);
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
 		}
 
-		&::-webkit-scrollbar-thumb {
-			border-radius: var(--spacing-4xs);
-			background: var(--color-foreground-dark);
+		@supports selector(::-webkit-scrollbar) {
+			padding-right: var(--spacing-5xs);
+			scrollbar-gutter: stable;
+
+			&::-webkit-scrollbar {
+				width: var(--spacing-4xs);
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-4xs);
+				background: var(--color-foreground-dark);
+			}
 		}
 	}
 
