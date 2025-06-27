@@ -144,15 +144,18 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		return await new Promise<string>(async (resolve, reject) => {
+		return await new Promise<string>((resolve, reject) => {
 			if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				const parentFolderId = route.query.folderId as string | undefined;
-				const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
-				if (workflowId) {
-					resolve(workflowId);
-				} else {
-					reject(new Error('Failed to save workflow'));
-				}
+				workflowSaving
+					.saveAsNewWorkflow({ parentFolderId })
+					.then((workflowId) => {
+						if (!workflowId) {
+							return reject(new Error(i18n.baseText('workflows.shareModal.onSave.error.title')));
+						}
+						resolve(workflowId);
+					})
+					.catch(reject);
 			} else {
 				resolve(workflow.value.id);
 			}
