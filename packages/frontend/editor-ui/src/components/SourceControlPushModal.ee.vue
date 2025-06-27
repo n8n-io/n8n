@@ -658,7 +658,7 @@ function castProject(project: ProjectListItem) {
 						{{ i18n.baseText('settings.sourceControl.modals.push.projectAdmin.callout') }}
 						<template #trailingContent>
 							<N8nIcon
-								icon="times"
+								icon="x"
 								title="Dismiss"
 								size="medium"
 								type="secondary"
