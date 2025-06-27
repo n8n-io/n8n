@@ -240,6 +240,7 @@ export const issueFields: INodeProperties[] = [
 			show: {
 				resource: ['issue'],
 				operation: ['update'],
+				'@version': [1],
 			},
 		},
 		options: [
@@ -286,12 +287,70 @@ export const issueFields: INodeProperties[] = [
 						value: 0,
 					},
 				],
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
 				default: 0,
+			},
+			{
+				displayName: 'State Name or ID',
+				name: 'stateId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getStates',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Team Name or ID',
+				name: 'teamId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['issue'],
+				operation: ['update'],
+			},
+			hide: {
+				'@version': [1],
+			},
+		},
+		options: [
+			{
+				displayName: 'Assignee Name or ID',
+				name: 'assigneeId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Priority Name/ID',
@@ -319,11 +378,6 @@ export const issueFields: INodeProperties[] = [
 						value: 0,
 					},
 				],
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
-					},
-				},
 				default: 0,
 			},
 			{
