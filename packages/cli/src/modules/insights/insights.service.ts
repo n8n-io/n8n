@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
-import { NumberToType } from './database/entities/insights-shared';
+import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
@@ -174,24 +174,36 @@ export class InsightsService {
 	async getInsightsByTime({
 		maxAgeInDays,
 		periodUnit,
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		// Default to all insight types
+		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes?: TypeUnit[] }) {
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
 			maxAgeInDays,
 			periodUnit,
+			insightTypes,
 		});
 
 		return rows.map((r) => {
-			const total = r.succeeded + r.failed;
+			const { periodStart, runTime, ...rest } = r;
+			const values: typeof rest & {
+				total?: number;
+				successRate?: number;
+				failureRate?: number;
+				averageRunTime?: number;
+			} = rest;
+
+			// Compute ratio if total has been computed
+			if (typeof r.succeeded === 'number' && typeof r.failed === 'number') {
+				const total = r.succeeded + r.failed;
+				values.total = total;
+				values.failureRate = total ? r.failed / total : 0;
+				if (typeof runTime === 'number') {
+					values.averageRunTime = total ? runTime / total : 0;
+				}
+			}
 			return {
 				date: r.periodStart,
-				values: {
-					total,
-					succeeded: r.succeeded,
-					failed: r.failed,
-					failureRate: r.failed / total,
-					averageRunTime: r.runTime / total,
-					timeSaved: r.timeSaved,
-				},
+				values,
 			};
 		});
 	}
