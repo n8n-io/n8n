@@ -68,6 +68,12 @@ const shouldShowTokenCountColumn = computed(
 		consumedTokens.value.totalTokens > 0 ||
 		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
+const isExpanded = computed(() =>
+	flatLogEntries.reduce<Record<string, boolean>>((acc, entry, index, arr) => {
+		acc[entry.id] = arr[index + 1]?.parent?.id === entry.id;
+		return acc;
+	}, {}),
+);
 const virtualList = useVirtualList(
 	toRef(() => flatLogEntries),
 	{ itemHeight: 32 },
@@ -83,12 +89,6 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	if (latestName) {
 		await runWorkflow.runWorkflow({ destinationNode: latestName });
 	}
-}
-
-function isExpanded(treeNode: LogEntry): boolean {
-	const index = flatLogEntries.findIndex((e) => e.id === treeNode.id);
-
-	return index >= 0 ? flatLogEntries[index + 1]?.parent?.id === treeNode.id : false;
 }
 
 // While executing, scroll to the bottom if there's no selection
@@ -191,7 +191,7 @@ watch(
 							:is-compact="isCompact"
 							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
-							:expanded="isExpanded(data)"
+							:expanded="isExpanded[data.id]"
 							:can-open-ndv="data.executionId === execution?.id"
 							@toggle-expanded="emit('toggleExpanded', data)"
 							@open-ndv="emit('openNdv', data)"
