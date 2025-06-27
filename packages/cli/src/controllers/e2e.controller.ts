@@ -106,6 +106,7 @@ export class E2EController {
 		[LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA]: false,
 		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
 		[LICENSE_FEATURES.OIDC]: false,
+		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

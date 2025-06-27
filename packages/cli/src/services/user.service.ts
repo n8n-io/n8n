@@ -61,6 +61,7 @@ export class UserService {
 			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
+			mfaAuthenticated?: boolean;
 		},
 	) {
 		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
@@ -89,6 +90,8 @@ export class UserService {
 		if (options?.withScopes) {
 			publicUser.globalScopes = getGlobalScopes(user);
 		}
+
+		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
 	}

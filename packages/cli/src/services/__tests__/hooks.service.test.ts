@@ -22,6 +22,11 @@ describe('HooksService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
+
+	const authMiddleware = jest.fn();
+
+	authService.createAuthMiddleware.mockReturnValue(authMiddleware);
+
 	const hooksService = new HooksService(
 		userService,
 		authService,
@@ -49,12 +54,13 @@ describe('HooksService', () => {
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
 		// ARRANGE
 		const res = mock<Response>();
+		mockedUser.mfaEnabled = false; // Mock mfaEnabled property
 
 		// ACT
 		hooksService.issueCookie(res, mockedUser);
 
 		// ASSERT
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser, false);
 	});
 
 	it('hooksService.findOneUser should call userRepository.findOne', async () => {
@@ -134,7 +140,7 @@ describe('HooksService', () => {
 		await hooksService.authMiddleware(req, res, next);
 
 		// ASSERT
-		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res, next);
+		expect(authMiddleware).toHaveBeenCalledWith(req, res, next);
 	});
 
 	it('hooksService.dbCollections should return valid repositories', async () => {

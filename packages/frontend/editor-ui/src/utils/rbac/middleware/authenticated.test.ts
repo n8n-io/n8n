@@ -2,6 +2,7 @@ import { authenticatedMiddleware } from '@/utils/rbac/middleware/authenticated';
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
 import type { RouteLocationNormalized } from 'vue-router';
+import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -9,6 +10,10 @@ vi.mock('@/stores/users.store', () => ({
 
 describe('Middleware', () => {
 	describe('authenticated', () => {
+		beforeEach(() => {
+			setActivePinia(createPinia());
+		});
+
 		it('should redirect to signin if no current user is present', async () => {
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as ReturnType<
 				typeof useUsersStore

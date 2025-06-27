@@ -26,6 +26,7 @@ export const defaultSettings: FrontendSettings = {
 		ldap: false,
 		oidc: false,
 		saml: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		debugInEditor: false,
 		advancedExecutionFilters: false,
@@ -122,6 +123,7 @@ export const defaultSettings: FrontendSettings = {
 	previewMode: false,
 	mfa: {
 		enabled: false,
+		enforced: false,
 	},
 	askAi: {
 		enabled: false,

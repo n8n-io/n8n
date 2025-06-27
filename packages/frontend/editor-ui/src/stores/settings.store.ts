@@ -49,6 +49,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveManualExecutions = ref(false);
 	const saveDataProgressExecution = ref(false);
+	const isMFAEnforced = ref(false);
 
 	const isDocker = computed(() => settings.value?.isDocker ?? false);
 
@@ -129,6 +130,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isTelemetryEnabled = computed(
 		() => settings.value.telemetry && settings.value.telemetry.enabled,
 	);
+
+	const isMFAEnforcementLicensed = computed(() => {
+		return settings.value.enterprise?.mfaEnforcement ?? false;
+	});
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
@@ -234,6 +239,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
+
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
@@ -391,5 +398,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		getModuleSettings,
 		moduleSettings,
+		isMFAEnforcementLicensed,
+		isMFAEnforced,
 	};
 });

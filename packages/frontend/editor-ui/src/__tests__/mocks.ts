@@ -221,6 +221,7 @@ export function createMockEnterpriseSettings(
 		ldap: false,
 		saml: false,
 		oidc: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: false,

@@ -114,6 +114,12 @@ export async function request(config: {
 		}
 
 		const errorResponseData = error.response?.data;
+		if (errorResponseData?.mfaRequired === true) {
+			if (window.location.pathname !== '/settings/personal') {
+				window.location.search = '';
+				window.location.pathname = '/settings/personal';
+			}
+		}
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;

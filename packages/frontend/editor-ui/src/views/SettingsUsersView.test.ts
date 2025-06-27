@@ -89,6 +89,56 @@ describe('SettingsUsersView', () => {
 		showError.mockReset();
 	});
 
+	it('turn enforcing mfa on', async () => {
+		const pinia = createTestingPinia({
+			initialState: getInitialState({
+				settings: {
+					settings: {
+						enterprise: {
+							mfaEnforcement: true,
+						},
+					},
+				},
+			}),
+		});
+
+		const userStore = mockedStore(useUsersStore);
+		const { getByTestId } = renderView({ pinia });
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		expect(actionSwitch).toBeInTheDocument();
+
+		await userEvent.click(actionSwitch);
+
+		expect(userStore.updateEnforceMfa).toHaveBeenCalledWith(true);
+	});
+
+	it('turn enforcing mfa off', async () => {
+		const pinia = createTestingPinia({
+			initialState: getInitialState({
+				settings: {
+					settings: {
+						enterprise: {
+							mfaEnforcement: true,
+						},
+					},
+				},
+			}),
+		});
+
+		const userStore = mockedStore(useUsersStore);
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isMFAEnforced = true;
+		const { getByTestId } = renderView({ pinia });
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		expect(actionSwitch).toBeInTheDocument();
+
+		await userEvent.click(actionSwitch);
+
+		expect(userStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+	});
+
 	it('hides invite button visibility based on user permissions', async () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 		const userStore = mockedStore(useUsersStore);

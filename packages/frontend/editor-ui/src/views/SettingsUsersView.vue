@@ -26,6 +26,8 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
+const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
+
 const i18n = useI18n();
 
 const showUMSetupWarning = computed(() => {
@@ -238,6 +240,23 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+async function onUpdateMfaEnforced(value: boolean) {
+	try {
+		await usersStore.updateEnforceMfa(value);
+		showToast({
+			type: 'success',
+			title: value
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
+			message: value
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.mfa.enforce.error'));
+	}
+}
 </script>
 
 <template>
@@ -284,6 +303,44 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 				</template>
 			</i18n-t>
 		</n8n-notice>
+		<div :class="$style.settingsContainer">
+			<div :class="$style.settingsContainerInfo">
+				<n8n-text :bold="true">{{ i18n.baseText('settings.personal.mfa.enforce.title') }}</n8n-text>
+				<n8n-text size="small" color="text-light">{{
+					i18n.baseText('settings.personal.mfa.enforce.message')
+				}}</n8n-text>
+			</div>
+			<div :class="$style.settingsContainerAction">
+				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
+					<el-switch
+						:model-value="settingsStore.isMFAEnforced"
+						size="large"
+						data-test-id="enable-force-mfa"
+						@update:model-value="onUpdateMfaEnforced"
+					/>
+					<template #fallback>
+						<N8nTooltip>
+							<el-switch
+								:model-value="settingsStore.isMFAEnforced"
+								size="large"
+								:disabled="true"
+								@update:model-value="onUpdateMfaEnforced"
+							/>
+							<template #content>
+								<i18n-t :keypath="tooltipKey" tag="span">
+									<template #action>
+										<a @click="goToUpgrade">
+											{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
+										</a>
+									</template>
+								</i18n-t>
+							</template>
+						</N8nTooltip>
+					</template>
+				</EnterpriseEdition>
+			</div>
+		</div>
+
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
@@ -347,5 +404,33 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 
 .alert {
 	left: calc(50% + 100px);
+}
+
+.settingsContainer {
+	display: flex;
+	align-items: center;
+	padding-left: 16px;
+	justify-content: space-between;
+	flex-shrink: 0;
+
+	border-radius: 4px;
+	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+}
+
+.settingsContainerInfo {
+	display: flex;
+	padding: 8px 0px;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 1px;
+}
+
+.settingsContainerAction {
+	display: flex;
+	padding: 20px 16px 20px 248px;
+	justify-content: flex-end;
+	align-items: center;
+	flex-shrink: 0;
 }
 </style>
