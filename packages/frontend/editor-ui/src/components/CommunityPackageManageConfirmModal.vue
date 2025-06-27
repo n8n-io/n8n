@@ -42,6 +42,11 @@ const isUsingVerifiedPackagesOnly =
 const communityStorePackage = computed(
 	() => communityNodesStore.installedPackages[props.activePackageName],
 );
+const updateVersion = computed(() => {
+	return settingsStore.isUnverifiedPackagesEnabled
+		? communityStorePackage.value.updateAvailable
+		: nodeTypeStorePackage.value?.npmVersion;
+});
 const nodeTypeStorePackage = ref<CommunityNodeType>();
 
 const isLatestPackageVerified = ref<boolean>(true);
@@ -132,16 +137,12 @@ const onUpdate = async () => {
 		});
 		loading.value = true;
 
-		let updatedVersion: string | undefined;
-
 		if (settingsStore.isUnverifiedPackagesEnabled) {
-			updatedVersion = communityStorePackage.value.updateAvailable;
 			await communityNodesStore.updatePackage(props.activePackageName);
 		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
-			updatedVersion = nodeTypeStorePackage.value?.npmVersion;
 			await communityNodesStore.updatePackage(
 				props.activePackageName,
-				updatedVersion,
+				updateVersion.value,
 				nodeTypeStorePackage.value?.checksum,
 			);
 		} else {
@@ -154,7 +155,7 @@ const onUpdate = async () => {
 			message: i18n.baseText('settings.communityNodes.messages.update.success.message', {
 				interpolate: {
 					packageName: props.activePackageName,
-					version: updatedVersion ?? '',
+					version: updateVersion.value ?? '',
 				},
 			}),
 			type: 'success',
