@@ -118,6 +118,7 @@ export function useLogsSelection(
 				return;
 			}
 
+			nodeNameToSelect.value = undefined;
 			manualLogEntrySelection.value = { type: 'selected', entry };
 
 			let parent = entry.parent;
