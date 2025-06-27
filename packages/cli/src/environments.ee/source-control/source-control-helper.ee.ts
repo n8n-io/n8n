@@ -54,16 +54,32 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	tags: TagEntity[];
 	mappings: WorkflowTagMapping[];
 }> {
-	return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
-		await fsReadFile(file, { encoding: 'utf8' }),
-		{ fallbackValue: { tags: [], mappings: [] } },
-	);
+	try {
+		return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+			await fsReadFile(file, { encoding: 'utf8' }),
+			{ fallbackValue: { tags: [], mappings: [] } },
+		);
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { tags: [], mappings: [] };
+		}
+		throw error;
+	}
 }
 
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
-	return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
-		fallbackValue: { folders: [] },
-	});
+	try {
+		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: { folders: [] },
+		});
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { folders: [] };
+		}
+		throw error;
+	}
 }
 
 export function sourceControlFoldersExistCheck(
