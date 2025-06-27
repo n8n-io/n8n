@@ -16,3 +16,24 @@ export const createSendMessageResponse = (
 ): SendMessageResponse => ({
 	output,
 });
+
+export function createStreamingFetchResponse(chunks: Array<{ type: string; output?: string }>) {
+	return async () => {
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			start(controller) {
+				chunks.forEach((chunk) => {
+					const data = JSON.stringify(chunk) + '\n';
+					controller.enqueue(encoder.encode(data));
+				});
+				controller.close();
+			},
+		});
+
+		return {
+			ok: true,
+			status: 200,
+			body: stream,
+		} as Response;
+	};
+}

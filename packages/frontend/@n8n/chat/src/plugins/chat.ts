@@ -38,31 +38,98 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				chatEventBus.emit('scrollToBottom');
 			});
 
-			const sendMessageResponse = await api.sendMessage(
-				text,
-				files,
-				currentSessionId.value as string,
-				options,
-			);
+			let receivedMessage: ChatMessage | null = null;
 
-			let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+			try {
+				if (options?.enableStreaming) {
+					await api.sendMessageStreaming(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+						(chunk: string) => {
+							if (receivedMessage) {
+								messages.value.splice(messages.value.length - 1, 1);
+							}
+							receivedMessage = {
+								id: uuidv4(),
+								type: 'text',
+								text: receivedMessage?.text ?? '',
+								sender: 'bot',
+							};
 
-			if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
-				try {
-					textMessage = JSON.stringify(sendMessageResponse, null, 2);
-				} catch (e) {
-					// Failed to stringify the object so fallback to empty string
+							if (receivedMessage && 'text' in receivedMessage) {
+								receivedMessage.text += chunk;
+							}
+
+							messages.value.push(receivedMessage);
+
+							void nextTick(() => {
+								chatEventBus.emit('scrollToBottom');
+							});
+						},
+						() => {
+							receivedMessage = {
+								id: uuidv4(),
+								type: 'text',
+								text: ' ',
+								sender: 'bot',
+							};
+							messages.value.push(receivedMessage);
+
+							void nextTick(() => {
+								chatEventBus.emit('scrollToBottom');
+							});
+						},
+						() => {
+							// Message end - no additional action needed
+						},
+					);
+				} else {
+					receivedMessage = {
+						id: uuidv4(),
+						type: 'text',
+						text: '',
+						sender: 'bot',
+					};
+
+					const sendMessageResponse = await api.sendMessage(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+					);
+
+					let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+
+					if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+						try {
+							textMessage = JSON.stringify(sendMessageResponse, null, 2);
+						} catch (e) {
+							// Failed to stringify the object so fallback to empty string
+						}
+					}
+
+					receivedMessage.text = textMessage;
+					messages.value.push(receivedMessage);
 				}
+			} catch (error) {
+				if (!receivedMessage) {
+					receivedMessage = {
+						id: uuidv4(),
+						type: 'text',
+						text: '',
+						sender: 'bot',
+					};
+					messages.value.push(receivedMessage);
+				}
+				if (receivedMessage && 'text' in receivedMessage) {
+					receivedMessage.text = 'Error: Failed to receive response';
+				}
+				console.error('Chat API error:', error);
+			} finally {
+				waitingForResponse.value = false;
 			}
-
-			const receivedMessage: ChatMessage = {
-				id: uuidv4(),
-				text: textMessage,
-				sender: 'bot',
-			};
-			messages.value.push(receivedMessage);
-
-			waitingForResponse.value = false;
 
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
