@@ -25,7 +25,7 @@ const openCommunityNodeDocsPage = () => {
 		<N8nText size="small" bold style="margin-right: 5px">
 			{{ i18n.baseText('communityNodesDocsLink.title') }}
 		</N8nText>
-		<FontAwesomeIcon icon="external-link-alt" />
+		<N8nIcon icon="external-link" />
 	</N8nLink>
 </template>
 

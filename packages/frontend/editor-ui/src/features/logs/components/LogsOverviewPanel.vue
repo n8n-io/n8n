@@ -130,7 +130,7 @@ watch(
 					<N8nButton
 						size="mini"
 						type="secondary"
-						icon="trash"
+						icon="trash-2"
 						icon-size="medium"
 						data-test-id="clear-execution-data-button"
 						:class="$style.clearButton"

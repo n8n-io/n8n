@@ -6,7 +6,7 @@ const i18n = useI18n();
 <template>
 	<N8nIconButton
 		class="stop-execution"
-		icon="stop"
+		icon="square"
 		size="large"
 		:title="i18n.baseText('nodeView.stopWaitingForWebhookCall')"
 		type="secondary"

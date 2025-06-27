@@ -53,7 +53,7 @@ defineExpose({
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<font-awesome-icon icon="search" size="sm" />
+			<n8n-icon icon="search" size="small" />
 		</div>
 		<div :class="$style.text">
 			<input
@@ -67,10 +67,8 @@ defineExpose({
 				@input="onInput"
 			/>
 		</div>
-		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
-			<button :class="[$style.clear, $style.clickable]">
-				<font-awesome-icon icon="times-circle" />
-			</button>
+		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
+			<n8n-icon size="small" icon="circle-x" />
 		</div>
 	</div>
 </template>
@@ -142,5 +140,9 @@ defineExpose({
 	&:hover svg path {
 		fill: $node-creator-search-clear-background-color-hover;
 	}
+}
+
+.clickable {
+	cursor: pointer;
 }
 </style>

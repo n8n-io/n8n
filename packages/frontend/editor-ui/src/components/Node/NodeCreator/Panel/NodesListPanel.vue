@@ -184,7 +184,7 @@ function onBackButton() {
 						:class="$style.backButton"
 						@click="onBackButton"
 					>
-						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
+						<n8n-icon :class="$style.backButtonIcon" icon="arrow-left" :size="22" />
 					</button>
 					<NodeIcon
 						v-if="activeViewStack.nodeIcon"
@@ -193,6 +193,7 @@ function onBackButton() {
 						:circle="false"
 						:show-tooltip="false"
 						:size="20"
+						:use-updated-icons="true"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
 
@@ -275,12 +276,11 @@ function onBackButton() {
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	padding: 0 var(--spacing-xs) 0 0;
+	padding: var(--spacing-2xs) var(--spacing-xs) 0 0;
 }
 
 .backButtonIcon {
 	color: $node-creator-arrow-color;
-	height: 16px;
 	padding: 0;
 }
 .nodeIcon {

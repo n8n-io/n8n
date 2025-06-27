@@ -2,10 +2,11 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType, splitName } from '@/utils/projects.utils';
-import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
+import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type Props = {
 	resource: WorkflowResource | CredentialsResource | FolderResource;
@@ -76,7 +77,7 @@ const badgeText = computed(() => {
 	}
 });
 
-const badgeIcon = computed<BadgeIcon>(() => {
+const badgeIcon = computed<IconOrEmoji>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
@@ -85,9 +86,11 @@ const badgeIcon = computed<BadgeIcon>(() => {
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return props.resource.homeProject?.icon ?? { type: 'icon', value: 'layer-group' };
+			return isIconOrEmoji(props.resource.homeProject?.icon)
+				? props.resource.homeProject?.icon
+				: { type: 'icon', value: 'layers' };
 		default:
-			return { type: 'icon', value: 'layer-group' };
+			return { type: 'icon', value: 'layers' };
 	}
 });
 const badgeTooltip = computed(() => {

@@ -288,7 +288,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 							type="tertiary"
 							:title="locale.baseText('executionsList.retryExecution')"
 							:disabled="!workflowPermissions.update"
-							icon="redo"
+							icon="redo-2"
 							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
 						/>
@@ -313,7 +313,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!workflowPermissions.update"
-					icon="trash"
+					icon="trash-2"
 					size="medium"
 					type="tertiary"
 					data-test-id="execution-preview-delete-button"

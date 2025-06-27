@@ -480,7 +480,7 @@ function activatePane() {
 								<template #content>
 									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
 								</template>
-								<N8nIcon icon="question-circle" />
+								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</template>
 					</i18n-t>

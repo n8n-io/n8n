@@ -89,7 +89,7 @@ defineExpose({
 			<slot>
 				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
 					<N8nIcon
-						:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
 						:size="iconSize"
 					/>
 				</span>
@@ -120,7 +120,7 @@ defineExpose({
 						<div :class="$style.iconContainer">
 							<N8nIcon
 								v-if="action.type === 'external-link'"
-								icon="external-link-alt"
+								icon="external-link"
 								size="xsmall"
 								color="text-base"
 							/>

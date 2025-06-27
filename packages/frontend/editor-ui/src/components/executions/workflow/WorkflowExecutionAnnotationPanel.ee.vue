@@ -51,7 +51,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		<N8nButton
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
-			icon="tasks"
+			icon="list-checks"
 			:class="{
 				[$style.highlightDataButton]: true,
 				[$style.highlightDataButtonActive]: customDataLength > 0,

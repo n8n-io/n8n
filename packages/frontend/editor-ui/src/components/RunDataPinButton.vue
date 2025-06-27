@@ -56,7 +56,7 @@ const visible = computed(() =>
 			:class="$style.pinDataButton"
 			type="tertiary"
 			:active="props.pinnedData.hasData.value"
-			icon="thumbtack"
+			icon="pin"
 			:disabled="props.disabled"
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"

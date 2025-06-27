@@ -57,7 +57,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="expand"
+				icon="maximize"
 				data-test-id="zoom-to-fit"
 				@click="onZoomToFit"
 			/>
@@ -66,7 +66,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-plus"
+				icon="zoom-in"
 				data-test-id="zoom-in-button"
 				@click="onZoomIn"
 			/>
@@ -75,7 +75,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-minus"
+				icon="zoom-out"
 				data-test-id="zoom-out-button"
 				@click="onZoomOut"
 			/>
@@ -88,7 +88,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="undo"
+				icon="undo-2"
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>

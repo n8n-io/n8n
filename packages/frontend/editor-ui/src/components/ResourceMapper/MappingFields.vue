@@ -319,10 +319,10 @@ defineExpose({
 								})
 							}}</span>
 						</template>
-						<N8nIcon icon="exclamation-triangle" size="small" color="warning" />
+						<N8nIcon icon="triangle-alert" size="small" color="warning" />
 					</N8nTooltip>
 					<N8nIconButton
-						icon="refresh"
+						icon="refresh-cw"
 						type="tertiary"
 						size="small"
 						:text="true"
@@ -368,7 +368,7 @@ defineExpose({
 							})
 						}}</span>
 					</template>
-					<font-awesome-icon icon="question-circle" />
+					<N8nIcon icon="circle-help" />
 				</N8nTooltip>
 			</div>
 			<div
@@ -385,7 +385,7 @@ defineExpose({
 					type="tertiary"
 					text
 					size="mini"
-					icon="trash"
+					icon="trash-2"
 					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					:title="
 						locale.baseText('resourceMapper.removeField', {

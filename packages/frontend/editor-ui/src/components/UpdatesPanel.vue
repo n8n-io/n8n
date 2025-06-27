@@ -59,7 +59,7 @@ const i18n = useI18n();
 					:bold="true"
 					@click="pageRedirectionHelper.goToVersions()"
 				>
-					<font-awesome-icon icon="info-circle" class="mr-2xs" />
+					<n8n-icon icon="info" class="mr-2xs" />
 					<span>
 						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>

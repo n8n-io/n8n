@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { splitName } from '@/utils/projects.utils';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type Props = {
 	project: ProjectListItem | ProjectSharingData;
@@ -21,7 +22,7 @@ const processedName = computed(() => {
 });
 
 const projectIcon = computed(() => {
-	if (props.project.icon) {
+	if (props.project.icon && isIconOrEmoji(props.project.icon)) {
 		return props.project.icon;
 	}
 	return null;

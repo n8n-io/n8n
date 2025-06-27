@@ -76,7 +76,7 @@ describe('ProjectHeader', () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { container } = renderComponent();
 
-		expect(container.querySelector('.fa-home')).not.toBeInTheDocument();
+		expect(container.querySelector('svg[data-icon=home]')).not.toBeInTheDocument();
 	});
 
 	it('should render the correct icon', async () => {
@@ -86,12 +86,12 @@ describe('ProjectHeader', () => {
 		// We no longer render icon for personal project
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
 		await rerender({});
-		expect(container.querySelector('.fa-user')).not.toBeInTheDocument();
+		expect(container.querySelector('svg[data-icon=user]')).not.toBeInTheDocument();
 
 		const projectName = 'My Project';
 		projectsStore.currentProject = { name: projectName } as Project;
 		await rerender({});
-		expect(container.querySelector('.fa-layer-group')).toBeVisible();
+		expect(container.querySelector('svg[data-icon=layers]')).toBeVisible();
 	});
 
 	it('Overview: should render the correct title and subtitle', async () => {

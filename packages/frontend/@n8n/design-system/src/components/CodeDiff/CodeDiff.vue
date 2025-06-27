@@ -109,14 +109,14 @@ const diffs = computed(() => {
 		</div>
 		<div :class="$style.actions">
 			<div v-if="error">
-				<N8nIcon icon="exclamation-triangle" color="danger" class="mr-5xs" />
+				<N8nIcon icon="triangle-alert" color="danger" class="mr-5xs" />
 				<span :class="$style.infoText">{{ t('codeDiff.couldNotReplace') }}</span>
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
 					type="secondary"
 					size="mini"
-					icon="undo"
+					icon="undo-2"
 					data-test-id="undo-replace-button"
 					@click="() => emit('undo')"
 				>
@@ -131,7 +131,7 @@ const diffs = computed(() => {
 				v-else
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
-				icon="refresh"
+				icon="refresh-cw"
 				data-test-id="replace-code-button"
 				:disabled="!content || streaming"
 				:loading="replacing"

@@ -229,7 +229,7 @@ onMounted(() => {
 						<n8n-icon-button
 							v-if="scope.row.canDelete"
 							:title="i18n.baseText('tagsTable.deleteTag')"
-							icon="trash"
+							icon="trash-2"
 							data-test-id="delete-tag-button"
 							@click.stop="enableDelete(scope.row)"
 						/>

@@ -93,7 +93,7 @@ const onClaimCreditsClicked = async () => {
 		<n8n-callout
 			v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
 			theme="secondary"
-			icon="exclamation-circle"
+			icon="circle-alert"
 		>
 			{{
 				i18n.baseText('freeAi.credits.callout.claim.title', {
@@ -110,7 +110,7 @@ const onClaimCreditsClicked = async () => {
 				/>
 			</template>
 		</n8n-callout>
-		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="check-circle">
+		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="circle-check">
 			<n8n-text size="small">
 				{{
 					i18n.baseText('freeAi.credits.callout.success.title.part1', {

@@ -519,7 +519,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -549,7 +549,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 
@@ -578,7 +578,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 						<el-col :span="14">
@@ -600,7 +600,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -629,7 +629,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -658,7 +658,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -687,7 +687,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -716,7 +716,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -745,7 +745,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14">
@@ -772,7 +772,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 						<el-col :span="4">
@@ -817,7 +817,7 @@ onMounted(async () => {
 								<template #content>
 									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip') }}
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</label>
 					</el-col>

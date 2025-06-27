@@ -111,7 +111,7 @@ onBeforeMount(async () => {
 	<n8n-popover trigger="click" width="304" size="large">
 		<template #reference>
 			<n8n-button
-				icon="filter"
+				icon="funnel"
 				type="tertiary"
 				size="small"
 				:active="hasFilters"

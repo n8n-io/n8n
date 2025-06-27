@@ -205,7 +205,7 @@ defineExpose({ focus, select });
 				square
 				outline
 				type="tertiary"
-				icon="external-link-alt"
+				icon="external-link"
 				size="mini"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"

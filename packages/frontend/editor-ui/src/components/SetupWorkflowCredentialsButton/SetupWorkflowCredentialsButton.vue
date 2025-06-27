@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		data-test-id="setup-credentials-button"
 		size="large"
-		icon="box-open"
+		icon="package-open"
 		type="secondary"
 		@click="handleClick()"
 	/>

@@ -180,7 +180,7 @@ function handleCopyClick(commandData: { command: string }) {
 		<n8n-icon-button
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
-			icon="copy"
+			icon="files"
 			type="tertiary"
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
@@ -189,7 +189,7 @@ function handleCopyClick(commandData: { command: string }) {
 			<span class="el-dropdown-link">
 				<n8n-icon-button
 					:title="i18n.baseText('runData.copyToClipboard')"
-					icon="copy"
+					icon="files"
 					type="tertiary"
 					:circle="false"
 				/>

@@ -87,9 +87,10 @@ function itemComparator(a: Item, b: Item) {
 			:data-test-id="`selectable-list-slot-${item.name}`"
 		>
 			<N8nIcon
+				v-if="!disabled"
 				:class="$style.slotRemoveIcon"
 				size="xsmall"
-				:icon="disabled ? 'none' : 'trash'"
+				icon="trash-2"
 				:data-test-id="`selectable-list-remove-slot-${item.name}`"
 				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>

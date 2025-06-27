@@ -61,6 +61,8 @@ catalogs:
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4
     pinia: ^2.2.4
+    unplugin-icons: ^0.19.0
+    unplugin-vue-components: ^0.27.2
     vue: ^3.5.13
     vue-i18n: ^11.1.2
     vue-router: ^4.5.0

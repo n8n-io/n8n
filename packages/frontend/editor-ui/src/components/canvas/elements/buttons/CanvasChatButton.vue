@@ -9,7 +9,7 @@ defineProps<Props>();
 	<N8nButton
 		:label="label"
 		size="large"
-		icon="comment"
+		icon="message-circle"
 		:type="type"
 		data-test-id="workflow-chat-button"
 	/>

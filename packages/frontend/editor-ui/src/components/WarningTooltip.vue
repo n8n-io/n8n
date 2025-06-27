@@ -4,7 +4,7 @@
 			<template #content>
 				<slot />
 			</template>
-			<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
+			<n8n-icon :class="$style['icon']" icon="triangle-alert" />
 		</n8n-tooltip>
 	</span>
 </template>

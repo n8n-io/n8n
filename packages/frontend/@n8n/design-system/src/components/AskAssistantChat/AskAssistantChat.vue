@@ -294,7 +294,7 @@ function onSubmitFeedback(feedback: string) {
 				/>
 				<N8nIconButton
 					:class="{ [$style.sendButton]: true }"
-					icon="paper-plane"
+					icon="send"
 					:text="true"
 					size="large"
 					data-test-id="send-message-button"

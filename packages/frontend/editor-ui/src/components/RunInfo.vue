@@ -52,7 +52,12 @@ const runMetadata = computed(() => {
 		></span>
 	</N8nInfoTip>
 	<div v-else-if="runMetadata" :class="$style.tooltipRow">
-		<N8nInfoTip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
+		<N8nInfoTip
+			type="note"
+			:theme="theme"
+			:data-test-id="`node-run-status-${theme}`"
+			size="large"
+		/>
 		<N8nInfoTip
 			type="tooltip"
 			theme="info"

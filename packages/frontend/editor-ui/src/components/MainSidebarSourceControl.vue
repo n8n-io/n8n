@@ -128,7 +128,7 @@ async function pullWorkfolder() {
 			data-test-id="main-sidebar-source-control-connected"
 		>
 			<span :class="$style.branchName">
-				<n8n-icon icon="code-branch" />
+				<n8n-icon icon="git-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">

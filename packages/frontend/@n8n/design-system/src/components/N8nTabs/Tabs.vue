@@ -97,7 +97,7 @@ const scrollRight = () => scroll(50);
 						<div>
 							{{ option.label }}
 							<span :class="$style.external">
-								<N8nIcon icon="external-link-alt" size="xsmall" />
+								<N8nIcon icon="external-link" size="small" />
 							</span>
 						</div>
 					</a>

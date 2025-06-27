@@ -342,14 +342,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should set and update project icon', () => {
-			const DEFAULT_ICON = 'fa-layer-group';
+			const DEFAULT_ICON = 'layers';
 			const NEW_PROJECT_NAME = 'Test Project';
 
 			cy.signinAsAdmin();
 			cy.visit(workflowsPage.url);
 			projects.createProject(NEW_PROJECT_NAME);
 			// New project should have default icon
-			projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+			projects.getIconPickerButton().find('svg').should('have.attr', 'data-icon', DEFAULT_ICON);
 			// Choose another icon
 			projects.getIconPickerButton().click();
 			projects.getIconPickerTab('Emojis').click();

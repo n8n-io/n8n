@@ -12,6 +12,7 @@ import type { ActionDropdownItem, IconSize, ButtonSize } from '@n8n/design-syste
 
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
@@ -20,7 +21,7 @@ const TRIGGER = ['click', 'hover'] as const;
 interface ActionDropdownProps {
 	items: ActionDropdownItem[];
 	placement?: Placement;
-	activatorIcon?: string;
+	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
@@ -31,7 +32,7 @@ interface ActionDropdownProps {
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
-	activatorIcon: 'ellipsis-h',
+	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',

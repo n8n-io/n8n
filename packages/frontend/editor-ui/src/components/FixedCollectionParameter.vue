@@ -287,7 +287,7 @@ const trackWorkflowInputFieldAdded = () => {
 										type="tertiary"
 										text
 										size="mini"
-										icon="trash"
+										icon="trash-2"
 										data-test-id="fixed-collection-delete"
 										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 										@click="deleteOption(property.name, index)"
@@ -315,7 +315,7 @@ const trackWorkflowInputFieldAdded = () => {
 							type="tertiary"
 							text
 							size="mini"
-							icon="trash"
+							icon="trash-2"
 							data-test-id="fixed-collection-delete"
 							:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"

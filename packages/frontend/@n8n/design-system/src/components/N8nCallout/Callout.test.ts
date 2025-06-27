@@ -78,7 +78,7 @@ describe('components', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
 					theme: 'custom',
-					icon: 'code-branch',
+					icon: 'git-branch',
 				},
 				global: {
 					stubs: ['n8n-icon', 'n8n-text'],
@@ -93,7 +93,7 @@ describe('components', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
 					theme: 'custom',
-					icon: 'code-branch',
+					icon: 'git-branch',
 				},
 				global: {
 					stubs: ['n8n-icon', 'n8n-text', 'n8n-link'],

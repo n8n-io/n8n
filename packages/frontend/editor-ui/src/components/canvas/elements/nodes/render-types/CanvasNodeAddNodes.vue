@@ -44,7 +44,7 @@ function onClick() {
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
-				<FontAwesomeIcon icon="plus" size="lg" />
+				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
@@ -77,14 +77,6 @@ function onClick() {
 	min-width: 100px;
 	min-height: 100px;
 	cursor: pointer;
-
-	svg {
-		width: 26px !important;
-		height: 40px;
-		path {
-			fill: var(--color-foreground-xdark);
-		}
-	}
 }
 
 .label {

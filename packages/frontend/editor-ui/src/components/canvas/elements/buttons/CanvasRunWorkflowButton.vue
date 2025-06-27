@@ -83,7 +83,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:loading="executing"
 				:disabled="disabled"
 				size="large"
-				icon="flask"
+				icon="flask-conical"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
@@ -120,7 +120,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						:disabled="disabled"
 						:class="$style.chevron"
 						aria-label="Select trigger node"
-						icon="angle-down"
+						icon="chevron-down"
 					/>
 				</template>
 				<template #menuItem="item">

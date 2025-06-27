@@ -53,9 +53,9 @@ const i18n = useI18n();
 					<span>{{ i18n.baseText('nodeCreator.noResults.requestTheNode') }}</span
 					>&nbsp;
 					<span>
-						<font-awesome-icon
+						<n8n-icon
 							:class="$style.external"
-							icon="external-link-alt"
+							icon="external-link"
 							:title="i18n.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>

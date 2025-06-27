@@ -462,7 +462,7 @@ async function onAskAssistantClick() {
 				>
 					<div class="copy-button">
 						<N8nIconButton
-							icon="copy"
+							icon="files"
 							type="secondary"
 							size="mini"
 							:text="true"
@@ -484,7 +484,7 @@ async function onAskAssistantClick() {
 					class="node-error-view__details"
 				>
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
+						<n8n-icon class="node-error-view__details-icon" icon="chevron-right" />
 						{{
 							i18n.baseText('nodeErrorView.details.from', {
 								interpolate: { node: `${nodeDefaultName}` },
@@ -539,7 +539,7 @@ async function onAskAssistantClick() {
 
 				<details class="node-error-view__details">
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
+						<n8n-icon class="node-error-view__details-icon" icon="chevron-right" />
 						{{ i18n.baseText('nodeErrorView.details.info') }}
 					</summary>
 					<div class="node-error-view__details-content">

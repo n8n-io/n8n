@@ -438,7 +438,7 @@ const goToUpgrade = () => {
 								<template v-else-if="total > executions.length || estimated">
 									<N8nButton
 										ref="loadMoreButton"
-										icon="sync"
+										icon="refresh-cw"
 										:title="i18n.baseText('executionsList.loadMore')"
 										:label="i18n.baseText('executionsList.loadMore')"
 										:loading="executionsStore.loading"

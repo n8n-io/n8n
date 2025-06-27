@@ -241,7 +241,7 @@ onMounted(async () => {
 				<div>
 					<n8n-button
 						type="primary"
-						icon="download"
+						icon="hard-drive-download"
 						float="right"
 						:label="i18n.baseText('mfa.setup.step2.button.download')"
 						data-test-id="mfa-recovery-codes-button"

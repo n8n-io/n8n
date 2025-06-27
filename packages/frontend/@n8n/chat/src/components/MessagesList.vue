@@ -36,7 +36,7 @@ watch(
 		class="empty-container"
 	>
 		<div class="empty" data-test-id="chat-messages-empty">
-			<N8nIcon icon="comment" size="large" class="emptyIcon" />
+			<N8nIcon icon="message-circle" size="large" class="emptyIcon" />
 			<N8nText tag="p" size="medium" color="text-base">
 				{{ emptyText }}
 			</N8nText>

@@ -70,6 +70,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export * from '@n8n/design-system/types';
 
@@ -668,7 +669,7 @@ export type SimplifiedNodeType = Pick<
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
-	icon?: string;
+	icon?: IconName;
 	iconProps?: {
 		color?: string;
 	};
@@ -1072,7 +1073,7 @@ export interface ITab<Value extends string | number = string | number> {
 	value: Value;
 	label?: string;
 	href?: string;
-	icon?: string;
+	icon?: IconName;
 	align?: 'right';
 	tooltip?: string;
 }

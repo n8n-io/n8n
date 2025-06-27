@@ -176,7 +176,7 @@ async function copySessionId() {
 						type="secondary"
 						size="small"
 						icon-size="medium"
-						icon="undo"
+						icon="undo-2"
 						:title="locale.baseText('chat.window.session.reset')"
 						@click.stop="onRefreshSession"
 					/>
@@ -202,7 +202,7 @@ async function copySessionId() {
 					<MessageOptionAction
 						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="repost-message-button"
-						icon="redo"
+						icon="redo-2"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 						placement="left"
 						@click.once="repostMessage(message)"
@@ -211,7 +211,7 @@ async function copySessionId() {
 					<MessageOptionAction
 						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="reuse-message-button"
-						icon="copy"
+						icon="files"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 						placement="left"
 						@click="reuseMessage(message)"

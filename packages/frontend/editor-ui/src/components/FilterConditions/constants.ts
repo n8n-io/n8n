@@ -285,13 +285,13 @@ export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'string',
 		name: 'type.string',
-		icon: 'font',
+		icon: 'case-upper',
 		children: OPERATORS.filter((operator) => operator.type === 'string'),
 	},
 	{
 		id: 'number',
 		name: 'type.number',
-		icon: 'hashtag',
+		icon: 'hash',
 		children: OPERATORS.filter((operator) => operator.type === 'number'),
 	},
 	{
@@ -303,7 +303,7 @@ export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'boolean',
 		name: 'type.boolean',
-		icon: 'check-square',
+		icon: 'square-check',
 		children: OPERATORS.filter((operator) => operator.type === 'boolean'),
 	},
 	{
@@ -315,7 +315,7 @@ export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'object',
 		name: 'type.object',
-		icon: 'cube',
+		icon: 'box',
 		children: OPERATORS.filter((operator) => operator.type === 'object'),
 	},
 ];

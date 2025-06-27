@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { SCHEMA_PREVIEW_DOCS_URL } from '@/constants';
 
 const props = defineProps<{
@@ -27,7 +26,7 @@ const emit = defineEmits<{
 	<div class="schema-header-wrapper">
 		<div class="schema-header" data-test-id="run-data-schema-header">
 			<div class="toggle" @click.capture.stop="emit('click:toggle')">
-				<FontAwesomeIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
+				<N8nIcon icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 
 			<NodeIcon
@@ -41,7 +40,7 @@ const emit = defineEmits<{
 				{{ title }}
 				<span v-if="info" class="info">{{ info }}</span>
 			</div>
-			<FontAwesomeIcon v-if="isTrigger" class="trigger-icon" icon="bolt" size="xs" />
+			<N8nIcon v-if="isTrigger" class="trigger-icon" icon="zap" size="xsmall" />
 			<div v-if="itemCount" class="extra-info" data-test-id="run-data-schema-node-item-count">
 				{{ i18n.baseText('ndv.output.items', { interpolate: { count: itemCount } }) }}
 			</div>

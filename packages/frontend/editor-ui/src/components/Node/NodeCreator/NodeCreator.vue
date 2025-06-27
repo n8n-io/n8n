@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
 			v-if="active"
 			:class="$style.close"
 			type="secondary"
-			icon="times"
+			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"
 		/>
