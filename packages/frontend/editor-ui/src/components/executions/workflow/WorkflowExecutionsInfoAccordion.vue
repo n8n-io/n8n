@@ -102,12 +102,12 @@ const productionExecutionsStatus = computed(() => {
 	}
 });
 const workflowSettings = computed(() => deepCopy(workflowsStore.workflowSettings));
-const accordionIcon = computed(() => {
+const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefined => {
 	if (
 		!workflowSaveSettings.value.saveTestExecutions ||
 		productionExecutionsStatus.value !== 'saving'
 	) {
-		return { icon: 'exclamation-triangle' as IconName, color: 'warning' as IconColor };
+		return { icon: 'exclamation-triangle', color: 'warning' };
 	}
 	return undefined;
 });
