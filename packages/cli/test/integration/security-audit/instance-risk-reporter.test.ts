@@ -1,3 +1,4 @@
+import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { generateNanoId } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -17,7 +18,6 @@ import {
 	simulateOutdatedInstanceOnce,
 	simulateUpToDateInstance,
 } from './utils';
-import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 

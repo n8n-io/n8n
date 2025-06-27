@@ -1,11 +1,10 @@
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { createExecution } from '@test-integration/db/executions';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from './shared/test-db';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;

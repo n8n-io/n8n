@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionEntity } from '@n8n/db';
 import type { ExecutionData } from '@n8n/db';
 import { ExecutionDataRepository } from '@n8n/db';
@@ -9,7 +10,6 @@ import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 mockInstance(Telemetry);
 

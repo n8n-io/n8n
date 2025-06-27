@@ -1,9 +1,9 @@
 import { OidcConfigDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { AuthenticatedRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '../constants';

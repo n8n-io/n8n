@@ -43,6 +43,10 @@ on:
         required: false
         type: boolean
         default: true
+      success_url:
+        description: 'URL to call after the build is successful'
+        required: false
+        type: string
 
   pull_request:
     types:
@@ -317,6 +321,16 @@ jobs:
             --tag $MANIFEST_TAG \
             ${MANIFEST_TAG}-amd64 \
             ${MANIFEST_TAG}-arm64
+
+  call-success-url:
+    name: Call Success URL
+    needs: [create_multi_arch_manifest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Success URL - optionally
+        if: ${{ github.event.inputs.success_url != '' }}
+        run: curl -v ${{github.event.inputs.success_url}} || echo ""
+        shell: bash
 
   security-scan:
     name: Security Scan

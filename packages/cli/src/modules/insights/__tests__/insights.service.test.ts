@@ -1,6 +1,10 @@
 import type { InsightsDateRange } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
@@ -11,11 +15,6 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
-
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import {
 	createCompactedInsightsEvent,
@@ -577,6 +576,53 @@ describe('getInsightsByTime', () => {
 			failureRate: 4 / 7,
 			averageRunTime: 0,
 			timeSaved: 0,
+		});
+	});
+
+	test('compacted data with limited insight types are grouped by time correctly', async () => {
+		// ARRANGE
+		for (const workflow of [workflow1, workflow2]) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: workflow === workflow1 ? 1 : 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'time_saved_min',
+				value: workflow === workflow1 ? 10 : 20,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+		}
+
+		// ACT
+		const byTime = await insightsService.getInsightsByTime({
+			maxAgeInDays: 14,
+			periodUnit: 'day',
+			insightTypes: ['time_saved_min', 'failure'],
+		});
+
+		// ASSERT
+		expect(byTime).toHaveLength(2);
+
+		// expect results to contain only failure and time saved insights
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[0].values).toEqual({
+			timeSaved: 30,
+			failed: 0,
+		});
+
+		expect(byTime[1].date).toEqual(DateTime.utc().startOf('day').toISO());
+		expect(byTime[1].values).toEqual({
+			timeSaved: 0,
+			failed: 4,
 		});
 	});
 });

@@ -1,10 +1,9 @@
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
-
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-import * as testModules from '@test-integration/test-modules';
 
 import { createMetadata, createRawInsightsEvent } from './db-utils';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';

@@ -1,3 +1,6 @@
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { DataDeduplicationService } from 'n8n-core';
 import type { ICheckProcessedContextData } from 'n8n-workflow';
 import type { IDeduplicationOutput, INode, DeduplicationItemTypes } from 'n8n-workflow';
@@ -6,11 +9,7 @@ import { Workflow } from 'n8n-workflow';
 import { getDataDeduplicationService } from '@/deduplication';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { mockInstance } from '@test/mocking';
-import { createWorkflow } from '@test-integration/db/workflows';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import * as testDb from '../shared/test-db';
 
 let workflow: Workflow;
 

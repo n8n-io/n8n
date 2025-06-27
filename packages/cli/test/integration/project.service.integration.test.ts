@@ -1,3 +1,10 @@
+import {
+	linkUserToProject,
+	createTeamProject,
+	getAllProjectRelations,
+} from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -5,10 +12,7 @@ import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { LicenseMocker } from '@test-integration/license';
 
-import { linkUserToProject, createTeamProject, getAllProjectRelations } from './shared/db/projects';
 import { createUser } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;

@@ -42,6 +42,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	LOCAL_STORAGE_THEME,
+	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -121,6 +122,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
+				WHATS_NEW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -182,6 +184,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]: {
 			open: false,
 			data: {
+				triggerType: '',
 				workflowName: '',
 				workflowId: '',
 				webhookPath: '',
@@ -204,6 +207,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				workflowName: '',
+			},
+		},
+		[WHATS_NEW_MODAL_KEY]: {
+			open: false,
+			data: {
+				articleId: undefined,
 			},
 		},
 	});
