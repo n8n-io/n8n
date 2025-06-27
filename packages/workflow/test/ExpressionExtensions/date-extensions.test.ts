@@ -2,10 +2,9 @@
 
 import { DateTime } from 'luxon';
 
+import { evaluate, getLocalISOString } from './helpers';
 import { dateExtensions } from '../../src/extensions/date-extensions';
 import { getGlobalState } from '../../src/global-state';
-
-import { evaluate, getLocalISOString } from './helpers';
 
 const { defaultTimezone } = getGlobalState();
 

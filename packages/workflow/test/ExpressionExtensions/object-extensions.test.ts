@@ -1,7 +1,6 @@
+import { evaluate } from './helpers';
 import { ApplicationError } from '../../src/errors';
 import { objectExtensions } from '../../src/extensions/object-extensions';
-
-import { evaluate } from './helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {

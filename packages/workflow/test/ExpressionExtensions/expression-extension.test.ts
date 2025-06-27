@@ -2,11 +2,10 @@
 
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 
+import { evaluate } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 import { extendTransform, extend } from '../../src/extensions';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
-
-import { evaluate } from './helpers';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {

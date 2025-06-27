@@ -2,7 +2,6 @@
   "name": "n8n-workflow",
   "version": "1.97.0",
   "description": "Workflow base code of n8n",
-  "type": "module",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",
@@ -42,8 +41,6 @@
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

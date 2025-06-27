@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import { mock } from 'vitest-mock-extended';
 
 import { UserError } from '../src/errors';
@@ -17,6 +18,7 @@ import { Workflow } from '../src/workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
+// eslint-disable-next-line import/order
 import * as Helpers from './helpers';
 
 interface StubNode {
