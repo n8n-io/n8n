@@ -146,7 +146,11 @@ const onSave = async () => {
 	const saveWorkflowPromise = async () => {
 		if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			const parentFolderId = route.query.folderId as string | undefined;
-			return await workflowSaving.saveAsNewWorkflow({ parentFolderId });
+			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
+			if (!workflowId) {
+				throw new Error(i18n.baseText('workflows.shareModal.onSave.error.title'));
+			}
+			return workflowId;
 		} else {
 			return workflow.value.id;
 		}
