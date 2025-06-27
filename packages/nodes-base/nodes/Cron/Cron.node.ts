@@ -5,7 +5,7 @@ import type {
 	ITriggerResponse,
 	TriggerTime,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, toCronExpression } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, toScheduleInterval } from 'n8n-workflow';
 
 export class Cron implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,17 +55,17 @@ export class Cron implements INodeType {
 			item: TriggerTime[];
 		};
 
-		// Get all the trigger times
-		const cronTimes = (triggerTimes.item || []).map(toCronExpression);
-
 		// The trigger function to execute when the cron-time got reached
 		// or when manually triggered
 		const executeTrigger = () => {
 			this.emit([this.helpers.returnJsonArray([{}])]);
 		};
 
-		// Register the cron-jobs
-		cronTimes.forEach((cronTime) => this.helpers.registerCron(cronTime, executeTrigger));
+		// Register the scheduled tasks
+		const scheduleIntervals = (triggerTimes.item || []).map(toScheduleInterval);
+		scheduleIntervals.forEach((scheduleInterval) =>
+			this.helpers.registerScheduledTask(scheduleInterval, executeTrigger),
+		);
 
 		return {
 			manualTriggerFunction: async () => executeTrigger(),

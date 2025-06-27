@@ -10,19 +10,21 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	toCronExpression,
+	toScheduleInterval,
 	TriggerCloseError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
+	UserError,
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
-import { ScheduledTaskManager } from './scheduled-task-manager';
+import { ScheduledTask, ScheduledTaskManager } from './scheduling';
 import { TriggersAndPollers } from './triggers-and-pollers';
+
+const MINIMUM_POLLING_INTERVAL = 60_000; // 60 seconds
 
 @Service()
 export class ActiveWorkflows {
@@ -148,8 +150,6 @@ export class ActiveWorkflows {
 			item: TriggerTime[];
 		};
 
-		// Get all the trigger times
-		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
 			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
@@ -177,15 +177,16 @@ export class ActiveWorkflows {
 		// Execute the trigger directly to be able to know if it works
 		await executeTrigger(true);
 
-		for (const cronTime of cronTimes) {
-			const cronTimeParts = cronTime.split(' ');
-			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute.',
-				);
+		const scheduleIntervals = (pollTimes.item || []).map(toScheduleInterval);
+		for (const interval of scheduleIntervals) {
+			const scheduledTask = new ScheduledTask(interval, workflow);
+			const nextTick = scheduledTask.nextTick();
+			const pollingInterval = scheduledTask.nextTick(nextTick).toMillis() - nextTick.toMillis();
+			if (pollingInterval < MINIMUM_POLLING_INTERVAL) {
+				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, cronTime, executeTrigger);
+			this.scheduledTaskManager.register(scheduledTask, executeTrigger);
 		}
 	}
 
@@ -198,7 +199,7 @@ export class ActiveWorkflows {
 			return false;
 		}
 
-		this.scheduledTaskManager.deregisterCrons(workflowId);
+		this.scheduledTaskManager.deregister(workflowId);
 
 		const w = this.activeWorkflows[workflowId];
 		for (const r of w.triggerResponses ?? []) {
