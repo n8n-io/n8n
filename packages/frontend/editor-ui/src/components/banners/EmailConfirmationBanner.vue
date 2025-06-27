@@ -4,12 +4,13 @@ import { useToast } from '@/composables/useToast';
 import { i18n as locale } from '@n8n/i18n';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 const toast = useToast();
+const cloudPlanStore = useCloudPlanStore();
 
 const userEmail = computed(() => {
-	const { currentUserCloudInfo } = useUsersStore();
-	return currentUserCloudInfo?.email ?? '';
+	return cloudPlanStore.currentUserCloudInfo?.email ?? '';
 });
 
 async function onConfirmEmailClick() {

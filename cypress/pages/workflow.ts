@@ -437,7 +437,6 @@ export class WorkflowPage extends BasePage {
 				.click({ force: true });
 		},
 		addSticky: () => {
-			this.getters.nodeCreatorPlusButton().realHover();
 			this.getters.addStickyButton().click();
 		},
 		deleteSticky: () => {

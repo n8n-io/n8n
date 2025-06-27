@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { ProjectRole, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { UrlService } from '@/services/url.service';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
@@ -58,10 +60,11 @@ describe('UserManagementMailer', () => {
 			},
 		});
 		const urlService = mock<UrlService>();
+		const userRepository = mock<UserRepository>();
 		const userManagementMailer = new UserManagementMailer(
 			config,
 			mock(),
-			mock(),
+			userRepository,
 			urlService,
 			mock(),
 		);
@@ -92,6 +95,101 @@ describe('UserManagementMailer', () => {
 				body: expect.stringContaining(`href="${passwordResetData.passwordResetUrl}"`),
 				emailRecipients: email,
 				subject: 'n8n password reset',
+			});
+		});
+
+		it('should send workflow share notifications', async () => {
+			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+			const newShareeIds = ['recipient1', 'recipient2'];
+			const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
+			userRepository.getEmailsByIds.mockResolvedValue([
+				{ id: 'recipient1', email: 'recipient1@user.com' },
+				{ id: 'recipient2', email: 'recipient2@user.com' },
+			] as User[]);
+			const result = await userManagementMailer.notifyWorkflowShared({
+				sharer,
+				newShareeIds,
+				workflow,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledTimes(2);
+			newShareeIds.forEach((id, index) => {
+				expect(nodeMailer.sendMail).toHaveBeenNthCalledWith(index + 1, {
+					body: expect.stringContaining(`href="https://n8n.url/workflow/${workflow.id}"`),
+					emailRecipients: `${id}@user.com`,
+					subject: 'Sharer has shared an n8n workflow with you',
+				});
+
+				const callBody = nodeMailer.sendMail.mock.calls[index][0].body;
+				expect(callBody).toContain('Test Workflow');
+				expect(callBody).toContain('A workflow has been shared with you');
+			});
+		});
+
+		it('should send credentials share notifications', async () => {
+			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+			const newShareeIds = ['recipient1', 'recipient2'];
+			userRepository.getEmailsByIds.mockResolvedValue([
+				{ id: 'recipient1', email: 'recipient1@user.com' },
+				{ id: 'recipient2', email: 'recipient2@user.com' },
+			] as User[]);
+			const result = await userManagementMailer.notifyCredentialsShared({
+				sharer,
+				newShareeIds,
+				credentialsName: 'Test Credentials',
+			});
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledTimes(2);
+			newShareeIds.forEach((id, index) => {
+				expect(nodeMailer.sendMail).toHaveBeenNthCalledWith(index + 1, {
+					body: expect.stringContaining('href="https://n8n.url/home/credentials"'),
+					emailRecipients: `${id}@user.com`,
+					subject: 'Sharer has shared an n8n credential with you',
+				});
+
+				const callBody = nodeMailer.sendMail.mock.calls[index][0].body;
+				expect(callBody).toContain('Test Credentials');
+				expect(callBody).toContain('A credential has been shared with you');
+			});
+		});
+
+		it('should send project share notifications', async () => {
+			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+			const newSharees = [
+				{ userId: 'recipient1', role: 'project:editor' as ProjectRole },
+				{ userId: 'recipient2', role: 'project:viewer' as ProjectRole },
+			];
+			const project = { id: 'project1', name: 'Test Project' };
+			userRepository.getEmailsByIds.mockResolvedValue([
+				{
+					id: 'recipient1',
+					email: 'recipient1@user.com',
+				} as User,
+				{
+					id: 'recipient2',
+					email: 'recipient2@user.com',
+				} as User,
+			]);
+			const result = await userManagementMailer.notifyProjectShared({
+				sharer,
+				newSharees,
+				project,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledTimes(2);
+			newSharees.forEach((sharee, index) => {
+				expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+					body: expect.stringContaining(`href="https://n8n.url/projects/${project.id}"`),
+					emailRecipients: `recipient${index + 1}@user.com`,
+					subject: 'Sharer has invited you to a project',
+				});
+
+				const callBody = nodeMailer.sendMail.mock.calls[index][0].body;
+				expect(callBody).toContain(
+					`You have been added as a ${sharee.role.replace('project:', '')} to the ${project.name} project`,
+				);
 			});
 		});
 	});

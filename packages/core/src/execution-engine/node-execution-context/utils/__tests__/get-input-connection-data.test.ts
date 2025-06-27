@@ -711,4 +711,342 @@ describe('makeHandleToolInvocation', () => {
 		expect(contextFactory).toHaveBeenCalledWith(1);
 		expect(contextFactory).toHaveBeenCalledWith(2);
 	});
+
+	describe('retry functionality', () => {
+		const contextFactory = jest.fn();
+		const toolArgs = { input: 'test' };
+		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
+		let mockContext: unknown;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockContext = {
+				addInputData: jest.fn(),
+				addOutputData: jest.fn(),
+				logger: { warn: jest.fn() },
+			};
+			contextFactory.mockReturnValue(mockContext);
+		});
+
+		it('should not retry when retryOnFail is false', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: false,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(contextFactory).toHaveBeenCalledTimes(1);
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
+			expect(result).toContain('Error during node execution');
+		});
+
+		it('should retry up to maxTries when retryOnFail is true', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 0,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(contextFactory).toHaveBeenCalledTimes(3);
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(3);
+			expect(result).toContain('Error during node execution');
+		});
+
+		it('should succeed on retry after initial failure', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 0,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest
+					.fn()
+					.mockRejectedValueOnce(new Error('First attempt fails'))
+					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(contextFactory).toHaveBeenCalledTimes(2);
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(2);
+			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
+		});
+
+		it('should respect maxTries limits (2-5)', async () => {
+			const testCases = [
+				{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
+				{ maxTries: 3, expected: 3 },
+				{ maxTries: 6, expected: 5 }, // Should be clamped to maximum 5
+			];
+
+			for (const { maxTries, expected } of testCases) {
+				jest.clearAllMocks();
+
+				const connectedNode = mock<INode>({
+					name: 'Test Tool',
+					retryOnFail: true,
+					maxTries,
+					waitBetweenTries: 0,
+				});
+				const connectedNodeType = mock<INodeType>({
+					execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				});
+
+				handleToolInvocation = makeHandleToolInvocation(
+					contextFactory,
+					connectedNode,
+					connectedNodeType,
+					runExecutionData,
+				);
+
+				await handleToolInvocation(toolArgs);
+
+				expect(connectedNodeType.execute).toHaveBeenCalledTimes(expected);
+			}
+		});
+
+		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
+			const sleepWithAbortSpy = jest
+				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
+				.mockResolvedValue(undefined);
+
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 2,
+				waitBetweenTries: 1500,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			await handleToolInvocation(toolArgs);
+
+			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1500, undefined);
+			sleepWithAbortSpy.mockRestore();
+		});
+	});
+
+	describe('abort signal functionality', () => {
+		const contextFactory = jest.fn();
+		const toolArgs = { input: 'test' };
+		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
+		let mockContext: unknown;
+		let abortController: AbortController;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			abortController = new AbortController();
+			mockContext = {
+				addInputData: jest.fn(),
+				addOutputData: jest.fn(),
+				logger: { warn: jest.fn() },
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+			};
+			contextFactory.mockReturnValue(mockContext);
+		});
+
+		it('should return cancellation message if signal is already aborted', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 100,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest.fn().mockResolvedValue([[{ json: { result: 'success' } }]]),
+			});
+
+			// Abort before starting
+			abortController.abort();
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(result).toBe('Error during node execution: Execution was cancelled');
+			expect(connectedNodeType.execute).not.toHaveBeenCalled();
+		});
+
+		it('should handle abort signal during retry wait', async () => {
+			const sleepWithAbortSpy = jest
+				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
+				.mockRejectedValue(new Error('Execution was cancelled'));
+
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 1000,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest
+					.fn()
+					.mockRejectedValueOnce(new Error('First attempt fails'))
+					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(result).toBe('Error during node execution: Execution was cancelled');
+			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1000, abortController.signal);
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1); // Only first attempt
+
+			sleepWithAbortSpy.mockRestore();
+		});
+
+		it('should handle abort signal during execution', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 0,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest.fn().mockImplementation(() => {
+					// Simulate abort during execution
+					abortController.abort();
+					throw new Error('Execution failed');
+				}),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(result).toBe('Error during node execution: Execution was cancelled');
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
+		});
+
+		it('should complete successfully if not aborted', async () => {
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 3,
+				waitBetweenTries: 10,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest
+					.fn()
+					.mockRejectedValueOnce(new Error('First attempt fails'))
+					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
+			});
+
+			const sleepWithAbortSpy = jest
+				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
+				.mockResolvedValue(undefined);
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
+			expect(connectedNodeType.execute).toHaveBeenCalledTimes(2);
+			expect(sleepWithAbortSpy).toHaveBeenCalledWith(10, abortController.signal);
+
+			sleepWithAbortSpy.mockRestore();
+		});
+
+		it('should work when getExecutionCancelSignal is not available', async () => {
+			const contextWithoutSignal = {
+				addInputData: jest.fn(),
+				addOutputData: jest.fn(),
+				logger: { warn: jest.fn() },
+				// No getExecutionCancelSignal method
+			};
+			contextFactory.mockReturnValue(contextWithoutSignal);
+
+			const connectedNode = mock<INode>({
+				name: 'Test Tool',
+				retryOnFail: true,
+				maxTries: 2,
+				waitBetweenTries: 10,
+			});
+			const connectedNodeType = mock<INodeType>({
+				execute: jest
+					.fn()
+					.mockRejectedValueOnce(new Error('First attempt fails'))
+					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
+			});
+
+			const sleepWithAbortSpy = jest
+				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
+				.mockResolvedValue(undefined);
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			const result = await handleToolInvocation(toolArgs);
+
+			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
+			expect(sleepWithAbortSpy).toHaveBeenCalledWith(10, undefined);
+
+			sleepWithAbortSpy.mockRestore();
+		});
+	});
 });

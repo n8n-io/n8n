@@ -1189,11 +1189,15 @@ async function onSwitchActiveNode(nodeName: string) {
 	selectNodes([node.id]);
 }
 
-async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
-	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
+async function onOpenSelectiveNodeCreator(
+	node: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) {
+	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, connectionIndex });
 }
 
-async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
