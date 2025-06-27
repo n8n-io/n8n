@@ -3,6 +3,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { testModules } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { APIRequest } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -58,7 +59,8 @@ function createAgent(
 
 	if (options?.auth && options?.user) {
 		const token = Container.get(AuthService).issueJWT(options.user, browserId);
-		agent.jar.setCookie(`${config.auth.cookie.name}=${token}`);
+		const globalConfig = Container.get(GlobalConfig);
+		agent.jar.setCookie(`${globalConfig.auth.cookie.name}=${token}`);
 	}
 	return agent;
 }

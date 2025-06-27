@@ -1,6 +1,7 @@
 import { randomEmail, randomName, uniqueId } from '@n8n/backend-test-utils';
 import { getPersonalProject } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { AuthProviderSyncHistoryRepository } from '@n8n/db';
@@ -458,6 +459,8 @@ test('GET /ldap/sync should return paginated synchronizations', async () => {
 });
 
 describe('POST /login', () => {
+	const globalConfig = Container.get(GlobalConfig);
+
 	const runTest = async (ldapUser: LdapUser) => {
 		const ldapConfig = await createLdapConfig();
 		Container.get(LdapService).setConfig(ldapConfig);
@@ -474,7 +477,7 @@ describe('POST /login', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
-		expect(response.headers['set-cookie'][0]).toContain(`${config.auth.cookie.name}=`);
+		expect(response.headers['set-cookie'][0]).toContain(`${globalConfig.auth.cookie.name}=`);
 
 		// Make sure the changes in the "LDAP server" were persisted in the database
 		const localLdapIdentities = await getLdapIdentities();

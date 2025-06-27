@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -122,9 +123,11 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 /**
  * Extract the value (token) of the auth cookie in a response.
  */
-export function getAuthToken(response: request.Response, authCookieName = config.auth.cookie.name) {
+export function getAuthToken(response: request.Response) {
 	const cookiesHeader = response.headers['set-cookie'];
 	if (!cookiesHeader) return undefined;
+
+	const authCookieName = Container.get(GlobalConfig).auth.cookie.name;
 
 	const cookies = Array.isArray(cookiesHeader) ? cookiesHeader : [cookiesHeader];
 

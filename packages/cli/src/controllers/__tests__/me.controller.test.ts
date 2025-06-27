@@ -1,5 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
@@ -10,7 +11,6 @@ import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
-import config from '@/config';
 import { MeController } from '@/controllers/me.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -33,6 +33,7 @@ describe('MeController', () => {
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
+	const globalConfig = Container.get(GlobalConfig);
 
 	describe('updateCurrentUser', () => {
 		it('should update the user in the DB, and issue a new cookie', async () => {
@@ -70,7 +71,7 @@ describe('MeController', () => {
 				fieldsChanged: ['firstName', 'lastName'], // email did not change
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
-				config.auth.cookie.name,
+				globalConfig.auth.cookie.name,
 				'signed-token',
 				expect.objectContaining({
 					maxAge: expect.any(Number),
@@ -257,7 +258,7 @@ describe('MeController', () => {
 			expect(req.user.password).not.toBe(passwordHash);
 
 			expect(res.cookie).toHaveBeenCalledWith(
-				config.auth.cookie.name,
+				globalConfig.auth.cookie.name,
 				'new-signed-token',
 				expect.objectContaining({
 					maxAge: expect.any(Number),

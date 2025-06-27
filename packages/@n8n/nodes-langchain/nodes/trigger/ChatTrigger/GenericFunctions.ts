@@ -1,6 +1,7 @@
 import basicAuth from 'basic-auth';
 import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
-import type config from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { ChatTriggerAuthorizationError } from './error';
 import type { AuthenticationChatOption } from './types';
@@ -45,7 +46,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 			return '';
 		}
 
-		const authCookie = getCookie(config.auth.cookie.name);
+		const authCookie = getCookie(Container.get(GlobalConfig).auth.cookie.name);
 		if (!authCookie && webhookName !== 'setup') {
 			// Data is not defined on node so can not authenticate
 			throw new ChatTriggerAuthorizationError(500, 'User not authenticated!');
