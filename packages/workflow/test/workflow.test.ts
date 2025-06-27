@@ -13,6 +13,7 @@ import type {
 	IRunExecutionData,
 	NodeParameterValueType,
 } from '@/interfaces';
+import { deepCopy } from '@/utils';
 import { Workflow } from '@/workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
@@ -348,6 +349,167 @@ describe('Workflow', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+	});
+
+	describe('constructor', () => {
+		const node1 = mock<INode>({ name: 'Node1' });
+		const node2 = mock<INode>({ name: 'Node2' });
+		const node3 = mock<INode>({ name: 'Node3' });
+
+		const tests: Array<{
+			description: string;
+			connections: IConnections;
+			connectionsBySourceNode?: IConnections;
+			connectionsByDestinationNode: IConnections;
+		}> = [
+			{
+				description: 'should return empty object when there are no connections',
+				connections: {},
+				connectionsByDestinationNode: {},
+			},
+			{
+				description: 'should handle nodes with no connections',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [[]],
+					},
+				},
+				connectionsByDestinationNode: {},
+			},
+			{
+				description: 'should return connections by source/destination node',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 },
+								{ node: node3.name, type: NodeConnectionTypes.Main, index: 1 },
+							],
+						],
+					},
+				},
+				connectionsByDestinationNode: {
+					[node2.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node1.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					[node3.name]: {
+						[NodeConnectionTypes.Main]: [
+							[],
+							[{ node: node1.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			},
+			{
+				description: 'should handle multiple connection types',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+						[NodeConnectionTypes.AiAgent]: [
+							[{ node: node3.name, type: NodeConnectionTypes.AiAgent, index: 0 }],
+						],
+					},
+				},
+				connectionsByDestinationNode: {
+					[node2.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node1.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					[node3.name]: {
+						[NodeConnectionTypes.AiAgent]: [
+							[{ node: node1.name, type: NodeConnectionTypes.AiAgent, index: 0 }],
+						],
+					},
+				},
+			},
+			{
+				// @issue https://linear.app/n8n/issue/N8N-7880/cannot-load-some-templates
+				description: 'should handle nodes with null connections',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [
+							null as unknown as IConnection[],
+							[{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				connectionsByDestinationNode: {
+					[node2.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node1.name, type: NodeConnectionTypes.Main, index: 1 }],
+						],
+					},
+				},
+			},
+			{
+				description: 'should handle nodes with multiple input connections',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					[node3.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				connectionsByDestinationNode: {
+					[node2.name]: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: node1.name, type: NodeConnectionTypes.Main, index: 0 },
+								{ node: node3.name, type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+				},
+			},
+			{
+				description: 'should handle connections for destination nodes that do not exists',
+				connections: {
+					[node1.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Ghost node', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				connectionsBySourceNode: { [node1.name]: { main: [[]] } },
+				connectionsByDestinationNode: {},
+			},
+			{
+				description: 'should handle connections for source nodes that do not exists',
+				connections: {
+					'Ghost node': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				connectionsBySourceNode: {},
+				connectionsByDestinationNode: {},
+			},
+		];
+
+		test.each(tests)(
+			'$description',
+			({ connections, connectionsBySourceNode, connectionsByDestinationNode }) => {
+				const workflow = new Workflow({
+					nodes: [node1, node2, node3],
+					connections: deepCopy(connections),
+					active: false,
+					nodeTypes,
+				});
+				expect(workflow.connectionsBySourceNode).toEqual(connectionsBySourceNode ?? connections);
+				expect(workflow.connectionsByDestinationNode).toEqual(connectionsByDestinationNode);
+			},
+		);
 	});
 
 	describe('renameNodeInParameterValue', () => {
@@ -2101,127 +2263,6 @@ describe('Workflow', () => {
 					name: 'Switch',
 				},
 			]);
-		});
-	});
-
-	describe('getConnectionsByDestination', () => {
-		it('should return empty object when there are no connections', () => {
-			const result = Workflow.getConnectionsByDestination({});
-
-			expect(result).toEqual({});
-		});
-
-		it('should return connections by destination node', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[
-							{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 },
-							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 1 },
-						],
-					],
-				},
-			};
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.Main]: [
-						[],
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			});
-		});
-
-		it('should handle multiple connection types', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-					[NodeConnectionTypes.AiAgent]: [
-						[{ node: 'Node3', type: NodeConnectionTypes.AiAgent, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.AiAgent]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.AiAgent, index: 0 }],
-					],
-				},
-			});
-		});
-
-		it('should handle nodes with no connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [[]],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({});
-		});
-
-		// @issue https://linear.app/n8n/issue/N8N-7880/cannot-load-some-templates
-		it('should handle nodes with null connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						null as unknown as IConnection[],
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 1 }],
-					],
-				},
-			});
-		});
-
-		it('should handle nodes with multiple input connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[
-							{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 },
-							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 },
-						],
-					],
-				},
-			});
 		});
 	});
 
