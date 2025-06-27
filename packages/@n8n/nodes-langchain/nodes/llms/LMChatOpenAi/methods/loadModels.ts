@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -16,7 +16,9 @@ export async function searchModels(
 	const openai = new OpenAI({
 		baseURL,
 		apiKey: credentials.apiKey as string,
-		httpAgent: getHttpProxyAgent(),
+		fetchOptions: {
+			dispatcher: getProxyAgent(baseURL),
+		},
 	});
 	const { data: models = [] } = await openai.models.list();
 

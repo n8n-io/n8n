@@ -12,7 +12,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { searchModels } from './methods/searchModels';
@@ -331,7 +331,9 @@ export class LmChatAnthropic implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
 			clientOptions: {
-				httpAgent: getHttpProxyAgent(),
+				fetchOptions: {
+					dispatcher: getProxyAgent(baseURL),
+				},
 			},
 		});
 

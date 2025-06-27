@@ -9,7 +9,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -251,8 +251,11 @@ export class LmOpenAi implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			httpAgent: getHttpProxyAgent(),
+			fetchOptions: {
+				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1'),
+			},
 		};
+
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		}
