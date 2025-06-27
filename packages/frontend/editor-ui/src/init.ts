@@ -128,6 +128,7 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
+	const uiStore = useUIStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -150,6 +151,16 @@ export async function initializeAuthenticatedFeatures(
 	if (settingsStore.isCloudDeployment) {
 		try {
 			await cloudPlanStore.initialize();
+
+			if (cloudPlanStore.userIsTrialing) {
+				if (cloudPlanStore.trialExpired) {
+					uiStore.pushBannerToStack('TRIAL_OVER');
+				} else {
+					uiStore.pushBannerToStack('TRIAL');
+				}
+			} else if (!cloudPlanStore.currentUserCloudInfo?.confirmed) {
+				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
+			}
 		} catch (e) {
 			console.error('Failed to initialize cloud plan store:', e);
 		}
