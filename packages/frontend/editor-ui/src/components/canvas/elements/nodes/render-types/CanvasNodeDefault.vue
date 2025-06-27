@@ -310,6 +310,7 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
+	pointer-events: none;
 }
 
 .label,
