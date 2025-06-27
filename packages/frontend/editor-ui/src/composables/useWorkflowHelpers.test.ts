@@ -362,6 +362,92 @@ describe('useWorkflowHelpers', () => {
 			} as unknown as WorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
 		});
+
+		it('should return null if no conflicts with FORM_TRIGGER_NODE_TYPE', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						parameters: {
+							options: {
+								path: 'test-path',
+							},
+						},
+						webhookId: '123',
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
+			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+		});
+
+		it('should return conflicting webhook data and workflow id is different with FORM_TRIGGER_NODE_TYPE', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						parameters: {
+							options: {
+								path: 'test-path',
+							},
+						},
+						webhookId: '123',
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'GET',
+				webhookPath: 'test-path',
+				node: 'Form Trigger 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'GET',
+					node: 'Form Trigger 1',
+					webhookPath: 'test-path',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {
+						options: {
+							path: 'test-path',
+						},
+					},
+					type: 'n8n-nodes-base.formTrigger',
+					webhookId: '123',
+				},
+			});
+		});
+
+		it('should return null if webhook already exist but workflow id is the same with FORM_TRIGGER_NODE_TYPE', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						parameters: {
+							options: {
+								path: 'test-path',
+							},
+						},
+						webhookId: '123',
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'GET',
+				webhookPath: 'test-path',
+				node: 'Form Trigger 1',
+				workflowId: '123',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
+		});
 	});
 
 	describe('executeData', () => {

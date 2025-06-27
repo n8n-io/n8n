@@ -3,23 +3,37 @@
   "version": "1.3.0",
   "type": "module",
   "peerDependencies": {
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "devDependencies": {
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "@n8n/typescript-config": "workspace:*",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "files": [
     "frontend.mjs"
   ],
   "exports": {
     "./frontend": {
-      "import": "./frontend.mjs",
-      "require": "./frontend.mjs",
-      "types": "./frontend.d.ts"
+      "import": "./dist/frontend.js",
+      "require": "./dist/frontend.js",
+      "types": "./dist/frontend.d.ts"
     },
-    "./*": "./*"
+   "./node": {
+      "import": "./dist/node.js",
+      "require": "./dist/node.js",
+      "types": "./dist/node.d.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "watch": "tsc -p tsconfig.build.json --watch"
   },
   "license": "See LICENSE.md file in the root of the repository"
 }
