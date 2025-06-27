@@ -1782,7 +1782,12 @@ const onNameSubmit = async (name: string) => {
 						@click="addWorkflow"
 					>
 						<div :class="$style.emptyStateCardContent">
-							<N8nIcon :class="$style.emptyStateCardIcon" icon="file" color="foreground-dark" />
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								icon="file"
+								color="foreground-dark"
+								:strokeWidth="1"
+							/>
 							<N8nText size="large" class="mt-xs">
 								{{ i18n.baseText('workflows.empty.startFromScratch') }}
 							</N8nText>

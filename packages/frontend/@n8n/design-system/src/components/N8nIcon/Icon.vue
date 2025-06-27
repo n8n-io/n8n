@@ -13,6 +13,7 @@ interface IconProps {
 	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
+	strokeWidth?: number | undefined;
 }
 
 defineOptions({ name: 'N8nIcon' });
@@ -30,7 +31,11 @@ const classes = computed(() => {
 		applied.push('spin');
 	}
 
-	return applied.map((c) => $style[c]);
+	if (props.strokeWidth) {
+		applied.push('strokeWidth');
+	}
+
+	return ['n8n-icon', ...applied.map((c) => $style[c])];
 });
 
 const sizesInPixels: Record<IconSize, number> = {
@@ -60,6 +65,10 @@ const styles = computed(() => {
 		stylesToApply.color = `var(--color-${props.color})`;
 	}
 
+	if (props.strokeWidth) {
+		stylesToApply[`--n8n-icon-stroke-width`] = `${props.strokeWidth}px`;
+	}
+
 	return stylesToApply;
 });
 </script>
@@ -85,15 +94,13 @@ const styles = computed(() => {
 	/>
 </template>
 
-<style>
-.n8n-icon {
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-}
-</style>
-
 <style lang="scss" module>
+.strokeWidth {
+	path {
+		stroke-width: var(--n8n-icon-stroke-width, 'inherit');
+	}
+}
+
 .spin {
 	animation: spin 1s linear infinite;
 }

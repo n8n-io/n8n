@@ -15,7 +15,6 @@ import StatusWarning from './custom/status-warning.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
-import Variable from './custom/variable.svg';
 import VectorSquare from './custom/vector-square.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
@@ -177,6 +176,7 @@ import IconLucideX from '~icons/lucide/x';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
+import IconLucideVariable from '~icons/lucide/variable';
 
 /**
  * Need to keep old icon names
@@ -185,7 +185,7 @@ import IconLucideZoomOut from '~icons/lucide/zoom-out';
  */
 export const deprecatedIconSet = {
 	// customIcons
-	variable: Variable,
+	variable: IconLucideVariable,
 	'pop-out': PopOut,
 	triangle: Triangle,
 	'status-completed': StatusCompleted,
@@ -384,7 +384,7 @@ export const deprecatedIconSet = {
 
 export const updatedIconSet = {
 	// custom icons
-	variable: Variable,
+	variable: IconLucideVariable,
 	'pop-out': PopOut,
 	triangle: Triangle,
 	'status-completed': StatusCompleted,

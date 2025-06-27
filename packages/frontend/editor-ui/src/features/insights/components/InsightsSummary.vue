@@ -106,7 +106,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 											}}</template>
 										</i18n-t>
 									</template>
-									<N8nIcon :class="$style.icon" icon="info" />
+									<N8nIcon :class="$style.icon" icon="info" size="medium" />
 								</N8nTooltip>
 							</small>
 						</span>
@@ -222,8 +222,6 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						font-weight: var(--font-weight-bold);
 
 						.icon {
-							height: 20px;
-							width: 8px;
 							top: 5px;
 							transform: translateY(0);
 							color: var(--color-text-light);
