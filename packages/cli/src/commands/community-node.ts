@@ -1,45 +1,43 @@
 import { type InstalledNodes, type InstalledPackages, type User } from '@n8n/db';
 import { CredentialsRepository, InstalledNodesRepository, UserRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
+import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 
 import { BaseCommand } from './base-command';
 
-export class CommunityNode extends BaseCommand {
-	static description = '\nUninstall a community node and its credentials';
+const flagsSchema = z.object({
+	uninstall: z.boolean().describe('Uninstalls the node').optional(),
+	package: z.string().describe('Package name of the community node.').optional(),
+	credential: z
+		.string()
+		.describe(
+			"Type of the credential.\nGet this value by visiting the node's .credential.ts file and getting the value of `name`",
+		)
+		.optional(),
+	userId: z
+		.string()
+		.describe(
+			'The ID of the user who owns the credential.\nOn self-hosted, query the database.\nOn cloud, query the API with your API key',
+		)
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n community-node --uninstall --package n8n-nodes-evolution-api',
-		'$ n8n community-node --uninstall --credential evolutionApi --userId 1234',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		uninstall: Flags.boolean({
-			description: 'Uninstalls the node',
-		}),
-		package: Flags.string({
-			description: 'Package name of the community node.',
-		}),
-		credential: Flags.string({
-			description:
-				"Type of the credential.\nGet this value by visiting the node's .credential.ts file and getting the value of `name`",
-		}),
-		userId: Flags.string({
-			description:
-				'The ID of the user who owns the credential.\nOn self-hosted, query the database.\nOn cloud, query the API with your API key',
-		}),
-	};
-
-	async init() {
-		await super.init();
-	}
-
+@Command({
+	name: 'community-node',
+	description: 'Uninstall a community node and its credentials',
+	examples: [
+		'--uninstall --package n8n-nodes-evolution-api',
+		'--uninstall --credential evolutionApi --userId 1234',
+	],
+	flagsSchema,
+})
+export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
-		const { flags } = await this.parseFlags();
+		const { flags } = this;
 
 		const packageName = flags.package;
 		const credentialType = flags.credential;
@@ -137,10 +135,6 @@ export class CommunityNode extends BaseCommand {
 
 	async pruneDependencies() {
 		await Container.get(CommunityPackagesService).executeNpmCommand('npm prune');
-	}
-
-	async parseFlags() {
-		return await this.parse(CommunityNode);
 	}
 
 	async deleteCommunityNode(node: InstalledNodes) {

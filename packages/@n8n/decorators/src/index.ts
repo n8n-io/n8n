@@ -1,4 +1,5 @@
 export * from './controller';
+export * from './command';
 export { Debounce } from './debounce';
 export * from './execution-lifecycle';
 export { Memoized } from './memoized';

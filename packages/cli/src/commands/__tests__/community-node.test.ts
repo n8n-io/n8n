@@ -1,7 +1,6 @@
 import { type InstalledNodes } from '@n8n/db';
 import { type CredentialsEntity } from '@n8n/db';
 import { type User } from '@n8n/db';
-import { type Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 
 import { CommunityNode } from '../community-node';
@@ -9,8 +8,7 @@ import { CommunityNode } from '../community-node';
 describe('uninstallCredential', () => {
 	const userId = '1234';
 
-	const config: Config = mock<Config>();
-	const communityNode = new CommunityNode(['--uninstall', '--credential', 'evolutionApi'], config);
+	const communityNode = new CommunityNode();
 
 	beforeEach(() => {
 		communityNode.deleteCredential = jest.fn();
@@ -31,9 +29,8 @@ describe('uninstallCredential', () => {
 		const user = mock<User>();
 		const credentials = [credential];
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { credential: credentialType, uninstall: true, userId },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
 		communityNode.findCredentialsByType = jest.fn().mockReturnValue(credentials);
 		communityNode.findUserById = jest.fn().mockReturnValue(user);
 
@@ -59,9 +56,8 @@ describe('uninstallCredential', () => {
 		const credential = mock<CredentialsEntity>();
 		credential.id = '666';
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { credential: credentialType, uninstall: true, userId },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
 		communityNode.findUserById = jest.fn().mockReturnValue(null);
 
 		const deleteCredential = jest.spyOn(communityNode, 'deleteCredential');
@@ -83,9 +79,8 @@ describe('uninstallCredential', () => {
 		const credential = mock<CredentialsEntity>();
 		credential.id = '666';
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { credential: credentialType, uninstall: true, userId },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
 		communityNode.findUserById = jest.fn().mockReturnValue(mock<User>());
 		communityNode.findCredentialsByType = jest.fn().mockReturnValue(null);
 
@@ -116,9 +111,8 @@ describe('uninstallCredential', () => {
 		const user = mock<User>();
 		const credentials = [credential1, credential2];
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { credential: credentialType, uninstall: true, userId },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { credential: credentialType, uninstall: true, userId };
 		communityNode.findCredentialsByType = jest.fn().mockReturnValue(credentials);
 		communityNode.findUserById = jest.fn().mockReturnValue(user);
 
@@ -141,11 +135,7 @@ describe('uninstallCredential', () => {
 });
 
 describe('uninstallPackage', () => {
-	const config: Config = mock<Config>();
-	const communityNode = new CommunityNode(
-		['--uninstall', '--package', 'n8n-nodes-evolution-api.evolutionApi'],
-		config,
-	);
+	const communityNode = new CommunityNode();
 
 	beforeEach(() => {
 		communityNode.removeCommunityPackage = jest.fn();
@@ -164,9 +154,8 @@ describe('uninstallPackage', () => {
 			installedNodes: [installedNode],
 		};
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { package: 'n8n-nodes-evolution-api', uninstall: true },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
 		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
 
 		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
@@ -196,9 +185,8 @@ describe('uninstallPackage', () => {
 			installedNodes: [installedNode0, installedNode1],
 		};
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { package: 'n8n-nodes-evolution-api', uninstall: true },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
 		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
 
 		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
@@ -222,9 +210,8 @@ describe('uninstallPackage', () => {
 	});
 
 	it('should return if a package is not found', async () => {
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { package: 'n8n-nodes-evolution-api', uninstall: true },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
 		communityNode.findCommunityPackage = jest.fn().mockReturnValue(null);
 
 		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
@@ -246,9 +233,8 @@ describe('uninstallPackage', () => {
 			installedNodes: [],
 		};
 
-		communityNode.parseFlags = jest.fn().mockReturnValue({
-			flags: { package: 'n8n-nodes-evolution-api', uninstall: true },
-		});
+		// @ts-expect-error Protected property
+		communityNode.flags = { package: 'n8n-nodes-evolution-api', uninstall: true };
 		communityNode.findCommunityPackage = jest.fn().mockReturnValue(communityPackage);
 
 		const deleteCommunityNode = jest.spyOn(communityNode, 'deleteCommunityNode');
