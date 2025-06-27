@@ -18,7 +18,6 @@ import type {
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -43,7 +42,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
 	const currentUserId = ref<string | null>(null);
 	const usersById = ref<Record<string, IUser>>({});
-	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 	const userQuota = ref<number>(-1);
 
 	const loginHooks = ref<LoginHook[]>([]);
@@ -179,7 +177,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const unsetCurrentUser = () => {
 		currentUserId.value = null;
-		currentUserCloudInfo.value = null;
 	};
 
 	const deleteUserById = (userId: string) => {
@@ -391,16 +388,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const fetchUserCloudAccount = async () => {
-		let cloudUser: Cloud.UserAccount | null = null;
-		try {
-			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
-			currentUserCloudInfo.value = cloudUser;
-		} catch (error) {
-			throw new Error(error);
-		}
-	};
-
 	const sendConfirmationEmail = async () => {
 		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
@@ -438,7 +425,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		initialized,
 		currentUserId,
 		usersById,
-		currentUserCloudInfo,
 		allUsers,
 		currentUser,
 		userActivated,
@@ -481,7 +467,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		enableMfa,
 		disableMfa,
 		canEnableMFA,
-		fetchUserCloudAccount,
 		sendConfirmationEmail,
 		updateGlobalRole,
 		setEasyAIWorkflowOnboardingDone,
