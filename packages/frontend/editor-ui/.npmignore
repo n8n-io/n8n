@@ -9,4 +9,4 @@ postcss.config.js
 vue.config.js
 dist/report.html
 public/
-.eslintrc.js
+eslint.config.js
