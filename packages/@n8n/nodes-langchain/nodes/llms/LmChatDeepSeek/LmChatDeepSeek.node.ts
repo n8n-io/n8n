@@ -230,7 +230,7 @@ export class LmChatDeepSeek implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			httpAgent: getHttpProxyAgent(),
+			httpAgent: getHttpProxyAgent(credentials.url),
 		};
 
 		const model = new ChatOpenAI({

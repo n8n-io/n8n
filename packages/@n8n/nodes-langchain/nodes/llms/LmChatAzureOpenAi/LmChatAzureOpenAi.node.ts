@@ -114,7 +114,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
-					httpAgent: getHttpProxyAgent(),
+					httpAgent: getHttpProxyAgent(undefined),
 				},
 				modelKwargs: options.responseFormat
 					? {
