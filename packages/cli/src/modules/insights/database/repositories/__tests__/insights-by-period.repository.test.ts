@@ -53,6 +53,7 @@ describe('InsightsByPeriodRepository', () => {
 				const result = await insightsByPeriodRepository.getInsightsByTime({
 					maxAgeInDays: 1,
 					periodUnit: 'day',
+					insightTypes: ['success', 'failure', 'time_saved_min'],
 				});
 
 				// ASSERT
