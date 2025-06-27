@@ -174,25 +174,25 @@ describe('InsightsController', () => {
 				},
 			]);
 		});
+	});
 
+	describe('getTimeSavedInsightsByTime', () => {
 		it('should return insights by time with limited data', async () => {
 			// ARRANGE
 			const mockData = [
 				{
 					periodStart: '2023-10-01T00:00:00.000Z',
 					timeSaved: 0,
-					failed: 2,
 				},
 				{
 					periodStart: '2023-10-02T00:00:00.000Z',
-					timeSaved: 0,
-					failed: 4,
+					timeSaved: 2,
 				},
 			];
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
 			// ACT
-			const response = await controller.getInsightsByTime(
+			const response = await controller.getTimeSavedInsightsByTime(
 				mock<AuthenticatedRequest>(),
 				mock<Response>(),
 				{ dateRange: 'week' },
@@ -204,14 +204,12 @@ describe('InsightsController', () => {
 					date: '2023-10-01T00:00:00.000Z',
 					values: {
 						timeSaved: 0,
-						failed: 2,
 					},
 				},
 				{
 					date: '2023-10-02T00:00:00.000Z',
 					values: {
-						timeSaved: 0,
-						failed: 4,
+						timeSaved: 2,
 					},
 				},
 			]);
