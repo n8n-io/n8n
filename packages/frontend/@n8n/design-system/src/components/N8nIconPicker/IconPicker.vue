@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
-// eslint-disable import/no-extraneous-dependencies
+// eslint-disable import-x/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed } from 'vue';
