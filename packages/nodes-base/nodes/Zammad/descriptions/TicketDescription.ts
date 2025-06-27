@@ -39,6 +39,13 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Retrieve many tickets',
 				action: 'Get many tickets',
 			},
+			//[ria]
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a ticket',
+				action: 'Update a ticket',
+			},
 		],
 		default: 'create',
 	},
@@ -125,6 +132,22 @@ export const ticketDescription: INodeProperties[] = [
 			show: {
 				resource: ['ticket'],
 				operation: ['delete'],
+			},
+		},
+	},
+	//[ria]
+	{
+		displayName: 'Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		description:
+			'Ticket to update. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -254,6 +277,143 @@ export const ticketDescription: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Field',
 		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadTicketCustomFields',
+								},
+								default: '',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	// [ria]
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['ticket'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the ticket',
+			},
+			{
+				displayName: 'Group Name or ID',
+				name: 'group_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadGroupNames',
+				},
+				default: '',
+				description:
+					'Group that will own the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'State Name or ID',
+				name: 'state_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadTicketStates',
+				},
+				default: '',
+				description:
+					'State of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Priority Name or ID',
+				name: 'priority_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadTicketPriorities',
+				},
+				default: '',
+				description:
+					'Priority of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadAgentNames',
+				},
+				default: '',
+				description:
+					'Agent responsible for the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Customer Name or ID',
+				name: 'customer_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadCustomerIds',
+				},
+				default: '',
+				description:
+					'Customer associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Note',
+				name: 'note',
+				type: 'string',
+				default: '',
+				description: 'Note for the ticket',
+			},
+			{
+				displayName: 'Pending Time',
+				name: 'pending_time',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Date and time when the pending ticket should be activated (required for pending reminder, pending close, and snooze states)',
+			},
+			{
+				displayName: 'Merge Into Ticket ID',
+				name: 'merge_to',
+				type: 'string',
+				default: '',
+				description:
+					'ID of the ticket to merge this ticket into (required when setting state to merged)',
+			},
 			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
