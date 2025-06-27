@@ -1,6 +1,6 @@
 /* eslint-disable import/no-extraneous-dependencies,import/no-default-export */
 export default async () => {
-	const { createVitestConfig } = await import('@n8n/vitest-config/backend');
+	const { createVitestConfig } = await import('@n8n/vitest-config/node');
 
 	return createVitestConfig({
 		include: ['test/**/*.test.ts'],

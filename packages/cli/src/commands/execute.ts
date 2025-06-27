@@ -109,7 +109,7 @@ export class Execute extends BaseCommand {
 			this.logger.info(JSON.stringify(data, null, 2));
 
 			const { error } = data.data.resultData;
-			// eslint-disable-next-line @typescript-eslint/no-throw-literal
+			// eslint-disable-next-line @typescript-eslint/only-throw-error
 			throw {
 				...error,
 				stack: error.stack,
