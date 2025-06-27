@@ -5,7 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
+import zodToJsonSchema from 'zod-to-json-schema';
 
+import { getConnectedTools } from '@utils/helpers';
+
+import type { GenerateContentResponse, Content } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -119,7 +123,6 @@ const properties: INodeProperties[] = [
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 2147483647, // signed int32 max value
 					numberPrecision: 0,
 				},
 			},
@@ -181,7 +184,6 @@ const properties: INodeProperties[] = [
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 2147483647, // signed int32 max value
 					numberPrecision: 0,
 				},
 			},
@@ -210,6 +212,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function getToolCalls(response: GenerateContentResponse) {
+	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
+}
+
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as Array<{
@@ -220,7 +226,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
 
-	const generationConfig: IDataObject = {
+	const generationConfig = {
 		frequencyPenalty: options.frequencyPenalty,
 		maxOutputTokens: options.maxOutputTokens,
 		candidateCount: options.candidateCount,
@@ -228,35 +234,90 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		topP: options.topP,
 		topK: options.topK,
+		responseMimeType: jsonOutput ? 'application/json' : undefined,
 	};
-	if (jsonOutput) {
-		generationConfig.responseMimeType = 'application/json';
-	}
 
-	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
-	const tools: IDataObject[] = [];
+	const availableTools = await getConnectedTools(this, true);
+	const tools = [
+		{
+			functionDeclarations: availableTools.map((t) => ({
+				name: t.name,
+				description: t.description,
+				parameters: {
+					...zodToJsonSchema(t.schema, { target: 'openApi3' }),
+					// Google Gemini API throws an error if `additionalProperties` field is present
+					additionalProperties: undefined,
+				},
+			})),
+		},
+	] as IDataObject[];
 	if (options.codeExecution) {
 		tools.push({
 			code_execution: {},
 		});
 	}
 
+	const contents: Content[] = messages.map((m) => ({
+		parts: [{ text: m.content }],
+		role: m.role,
+	}));
 	const body = {
 		tools,
-		contents: messages.map((m) => ({
-			parts: [{ text: m.content }],
-			role: m.role,
-		})),
+		contents,
 		generationConfig,
 		systemInstruction: options.systemMessage
 			? { parts: [{ text: options.systemMessage }] }
 			: undefined,
 	};
 
-	// TODO: types
-	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
+	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 		body,
-	})) as { candidates: IDataObject[] };
+	})) as GenerateContentResponse;
+
+	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
+	const abortSignal = this.getExecutionCancelSignal();
+	let currentIteration = 1;
+	let toolCalls = getToolCalls(response);
+	while (toolCalls.length) {
+		if (
+			!!abortSignal?.aborted ||
+			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
+		) {
+			break;
+		}
+
+		contents.push(...response.candidates.map((c) => c.content));
+
+		for (const { functionCall } of toolCalls) {
+			let toolResponse;
+			for (const availableTool of availableTools) {
+				if (availableTool.name === functionCall.name) {
+					toolResponse = (await availableTool.invoke(functionCall.args)) as IDataObject;
+				}
+			}
+
+			contents.push({
+				parts: [
+					{
+						functionResponse: {
+							id: functionCall.id,
+							name: functionCall.name,
+							response: {
+								result: toolResponse,
+							},
+						},
+					},
+				],
+				role: 'tool',
+			});
+		}
+
+		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
+			body,
+		})) as GenerateContentResponse;
+		toolCalls = getToolCalls(response);
+		currentIteration++;
+	}
 
 	if (simplify) {
 		return response.candidates.map((candidate) => ({
@@ -267,7 +328,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: response,
+			json: { ...response },
 			pairedItem: { item: i },
 		},
 	];
