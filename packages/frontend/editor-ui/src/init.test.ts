@@ -10,12 +10,14 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useSSOStore } from '@/stores/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
+import type { IUser } from '@/Interface';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
+import type { Cloud } from '@n8n/rest-api-client';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -38,7 +40,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 describe('Init', () => {
 	let settingsStore: ReturnType<typeof useSettingsStore>;
-	let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
+	let cloudPlanStore: ReturnType<typeof mockedStore<typeof useCloudPlanStore>>;
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
@@ -56,7 +58,7 @@ describe('Init', () => {
 		);
 
 		settingsStore = useSettingsStore();
-		cloudPlanStore = useCloudPlanStore();
+		cloudPlanStore = mockedStore(useCloudPlanStore);
 		sourceControlStore = useSourceControlStore();
 		nodeTypesStore = useNodeTypesStore();
 		usersStore = useUsersStore();
@@ -214,6 +216,68 @@ describe('Init', () => {
 				'Failed to initialize source control store',
 				expect.anything(),
 			);
+		});
+
+		describe('cloudPlanStore', () => {
+			it('should initialize cloudPlanStore correctly', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+			});
+
+			it('should push TRIAL_OVER banner if trial is expired', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = true;
+				cloudPlanStore.trialExpired = true;
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
+			});
+
+			it('should push TRIAL banner if trial is active', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = true;
+				cloudPlanStore.trialExpired = false;
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+			});
+
+			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = false;
+				cloudPlanStore.currentUserCloudInfo = { confirmed: false } as Cloud.UserAccount;
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+			});
 		});
 	});
 });
