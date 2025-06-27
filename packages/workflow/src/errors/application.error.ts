@@ -17,7 +17,7 @@ export class ApplicationError extends Error {
 
 	constructor(
 		message: string,
-		{ level, tags = {}, extra, ...rest }: Partial<ErrorOptions> & ReportingOptions = {},
+		{ level, tags = {}, extra, ...rest }: ErrorOptions & ReportingOptions = {},
 	) {
 		super(message, rest);
 		this.level = level ?? 'error';

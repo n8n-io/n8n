@@ -1,9 +1,9 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.modern.json",
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
 		"rootDir": ".",
 		"noUncheckedIndexedAccess": false,
-		"types": ["vitest/globals"]
+		"types": ["vite/client", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
 	"exclude": ["node_modules"]

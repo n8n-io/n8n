@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"module": "umd",
+		"moduleResolution": "node",
+		"verbatimModuleSyntax": false,
+		"resolveJsonModule": false,
+		"declaration": false
+	}
+}

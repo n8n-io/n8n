@@ -2,13 +2,15 @@
   "name": "n8n-workflow",
   "version": "1.97.0",
   "description": "Workflow base code of n8n",
-  "types": "dist/index.d.ts",
-  "module": "dist/index.ts",
-  "main": "dist/index.js",
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "main": "dist/cjs/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
     },
     "./*": "./*"
   },
@@ -16,12 +18,13 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --build tsconfig.build.json",
+    "build:vite": "vite build",
+    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "watch": "tsc -p tsconfig.build.json --watch",
+    "watch": "vite build --watch",
     "test": "jest",
     "test:dev": "jest --watch",
     "test:vitest": "vitest"
@@ -39,6 +42,8 @@
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

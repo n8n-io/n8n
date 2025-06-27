@@ -22,6 +22,6 @@
 		"declarationMap": true,
 		"sourceMap": true,
 
-		"lib": ["es2022", "dom", "dom.iterable"]
+		"lib": ["es2022", "es2022.error", "dom", "dom.iterable"]
 	}
 }
