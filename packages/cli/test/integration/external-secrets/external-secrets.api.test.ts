@@ -1,5 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -23,7 +24,6 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
-import { mockInstance } from '../../shared/mocking';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';

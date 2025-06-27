@@ -118,7 +118,7 @@ export class LmChatGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'models/gemini-1.0-pro',
+				default: 'models/gemini-2.5-flash',
 			},
 			additionalOptions,
 		],

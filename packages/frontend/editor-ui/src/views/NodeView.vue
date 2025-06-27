@@ -136,6 +136,7 @@ import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -186,6 +187,7 @@ const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
+const focusPanelStore = useFocusPanelStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
@@ -1187,11 +1189,15 @@ async function onSwitchActiveNode(nodeName: string) {
 	selectNodes([node.id]);
 }
 
-async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
-	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
+async function onOpenSelectiveNodeCreator(
+	node: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) {
+	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, connectionIndex });
 }
 
-async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
@@ -1205,6 +1211,14 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	if (!options.createNodeActive && !options.hasAddedNodes) {
 		uiStore.resetLastInteractedWith();
 	}
+}
+
+function onToggleFocusPanel() {
+	if (!isFocusPanelFeatureEnabled.value) {
+		return;
+	}
+
+	focusPanelStore.toggleFocusPanel();
 }
 
 function closeNodeCreator() {
@@ -2039,6 +2053,7 @@ onBeforeUnmount(() => {
 			@selection:end="onSelectionEnd"
 			@drag-and-drop="onDragAndDrop"
 			@tidy-up="onTidyUp"
+			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
 		>

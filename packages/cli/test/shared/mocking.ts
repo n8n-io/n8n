@@ -1,17 +1,7 @@
-import { Container } from '@n8n/di';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, Class } from 'n8n-core';
-import type { DeepPartial } from 'ts-essentials';
-
-export const mockInstance = <T>(
-	serviceClass: Class<T>,
-	data: DeepPartial<T> | undefined = undefined,
-) => {
-	const instance = mock<T>(data);
-	Container.set(serviceClass, instance);
-	return instance;
-};
 
 export const mockEntityManager = (entityClass: Class) => {
 	const entityManager = mockInstance(EntityManager);

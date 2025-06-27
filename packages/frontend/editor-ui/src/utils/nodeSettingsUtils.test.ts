@@ -1,7 +1,12 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { IConnections, NodeParameterValueType, IDataObject } from 'n8n-workflow';
-import { updateDynamicConnections } from './nodeSettingsUtils';
+import type {
+	IConnections,
+	NodeParameterValueType,
+	IDataObject,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { updateDynamicConnections, updateParameterByPath } from './nodeSettingsUtils';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -195,5 +200,85 @@ describe('updateDynamicConnections', () => {
 		const result = updateDynamicConnections(node, connections, parameterData);
 
 		expect(result).toBeNull();
+	});
+});
+
+describe('updateParameterByPath', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should update a parameter value by path', () => {
+		const nodeParameters = {
+			rules: { values: [{ id: 'rule1' }, { id: 'rule2' }] },
+		};
+
+		const nodeType = mock<INodeTypeDescription>({
+			properties: [],
+		});
+
+		const parameterPath = 'parameters.rules.values[1].id';
+		const newValue = 'updatedRule2';
+
+		const updatedPath = updateParameterByPath(parameterPath, newValue, nodeParameters, nodeType, 1);
+
+		expect(updatedPath).toBe('rules.values[1].id');
+		expect(nodeParameters.rules.values[1].id).toBe('updatedRule2');
+	});
+
+	it('should remove a parameter value if newValue is undefined', () => {
+		const nodeParameters = {
+			rules: { values: [{ id: 'rule1' }, { id: 'rule2' }] },
+		};
+
+		const nodeType = mock<INodeTypeDescription>({
+			properties: [],
+		});
+
+		const parameterPath = 'parameters.rules.values[1]';
+		const newValue = undefined;
+
+		const updatedPath = updateParameterByPath(parameterPath, newValue, nodeParameters, nodeType, 1);
+
+		expect(updatedPath).toBe('rules.values[1]');
+		expect(nodeParameters.rules.values).toHaveLength(1);
+		expect(nodeParameters.rules.values[0].id).toBe('rule1');
+	});
+
+	it('should add a new parameter value if path does not exist', () => {
+		const nodeParameters = {
+			rules: { values: [{ id: 'rule1' }] },
+		};
+
+		const nodeType = mock<INodeTypeDescription>({
+			properties: [],
+		});
+
+		const parameterPath = 'parameters.rules.values[1].id';
+		const newValue = 'newRule';
+
+		const updatedPath = updateParameterByPath(parameterPath, newValue, nodeParameters, nodeType, 1);
+
+		expect(updatedPath).toBe('rules.values[1].id');
+		expect(nodeParameters.rules.values[1].id).toBe('newRule');
+	});
+
+	it('should handle array deletion when newValue is undefined and path is an array', () => {
+		const nodeParameters = {
+			arrayParam: ['value1', 'value2', 'value3'],
+		};
+
+		const nodeType = mock<INodeTypeDescription>({
+			properties: [],
+		});
+
+		const parameterPath = 'parameters.arrayParam[1]';
+		const newValue = undefined;
+
+		const updatedPath = updateParameterByPath(parameterPath, newValue, nodeParameters, nodeType, 1);
+
+		expect(updatedPath).toBe('arrayParam[1]');
+		expect(nodeParameters.arrayParam).toHaveLength(2);
+		expect(nodeParameters.arrayParam).toEqual(['value1', 'value3']);
 	});
 });

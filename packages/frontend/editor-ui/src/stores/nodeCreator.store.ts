@@ -94,10 +94,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		connectionType,
 		node,
 		creatorView,
+		connectionIndex = 0,
 	}: {
 		connectionType: NodeConnectionType;
 		node: string;
 		creatorView?: NodeFilterType;
+		connectionIndex?: number;
 	}) {
 		const nodeName = node ?? ndvStore.activeNodeName;
 		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
@@ -118,7 +120,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 						sourceHandle: createCanvasConnectionHandleString({
 							mode: 'inputs',
 							type: connectionType,
-							index: 0,
+							index: connectionIndex,
 						}),
 					},
 					eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,

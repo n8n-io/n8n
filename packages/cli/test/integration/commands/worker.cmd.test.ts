@@ -1,5 +1,6 @@
 process.argv[2] = 'worker';
 
+import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
@@ -20,8 +21,6 @@ import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server'
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
-
-import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
