@@ -1,6 +1,8 @@
 import { dirname } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
 import type { PyodideInterface } from 'pyodide';
+import { Container } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
 
 let pyodideInstance: PyodideInterface | undefined;
 
@@ -28,33 +30,28 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 		)) as PyodideInterface;
 
 		await pyodideInstance.runPythonAsync(`
-blocked_modules = ["os"]
+import os
 
-import sys
-for module_name in blocked_modules:
-	del sys.modules[module_name]
+def blocked_system(*args, **kwargs):
+    raise RuntimeError("os.system is blocked for security reasons.")
+
+os.system = blocked_system
 
 from importlib.abc import MetaPathFinder
 from importlib.machinery import ModuleSpec
 from types import ModuleType
 from typing import Sequence, Optional
 
-class ImportBlocker(MetaPathFinder):
-	def find_spec(
-		self,
-		fullname: str,
-		path: Sequence[bytes | str] | None,
-		target: ModuleType | None = None,
-) -> Optional[ModuleSpec]:
-		if fullname in blocked_modules:
-				raise ModuleNotFoundError(f"Module {fullname!r} is blocked", name=fullname)
-		return None
-
-sys.meta_path.insert(0, ImportBlocker())
-
 from _pyodide_core import jsproxy_typedict
 from js import Object
 `);
+		const globalConfig = Container.get(GlobalConfig);
+		const packagesToPreload = globalConfig.nodes.pythonPackagesPreload;
+
+		if (packagesToPreload) {
+			const packages = packagesToPreload.split(',').map((p) => p.trim()).filter(Boolean);
+			await pyodideInstance.loadPackage(packages);
+		}
 	}
 
 	return pyodideInstance;
