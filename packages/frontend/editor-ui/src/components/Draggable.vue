@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraggableMode, XYPosition } from '@/Interface';
 import { isPresent } from '@/utils/typesUtils';
-import { type StyleValue, computed, ref } from 'vue';
+import { type StyleValue, computed, nextTick, onBeforeUnmount, ref } from 'vue';
 
 type Props = {
 	type: DraggableMode;
@@ -109,12 +109,14 @@ const onDragEnd = () => {
 		window.cancelAnimationFrame(animationFrameId.value);
 	}
 
-	setTimeout(() => {
-		if (draggingElement.value) emit('dragend', draggingElement.value);
-		isDragging.value = false;
-		draggingElement.value = undefined;
-	}, 0);
+	if (draggingElement.value) emit('dragend', draggingElement.value);
+	isDragging.value = false;
+	draggingElement.value = undefined;
 };
+
+onBeforeUnmount(() => {
+	if (draggingElement.value) onDragEnd();
+});
 </script>
 
 <template>
