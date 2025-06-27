@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraggableMode, XYPosition } from '@/Interface';
 import { isPresent } from '@/utils/typesUtils';
-import { type StyleValue, computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { type StyleValue, computed, onBeforeUnmount, ref } from 'vue';
 
 type Props = {
 	type: DraggableMode;
