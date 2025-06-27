@@ -411,7 +411,7 @@ describe('WorkflowDataProxy', () => {
 			async ({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
-					fail('should throw');
+					throw new Error('should throw');
 				} catch (e) {
 					const error = ensureError(e);
 					expect(error.message).toEqual(
@@ -437,7 +437,7 @@ describe('WorkflowDataProxy', () => {
 		test('item should throw when it cannot find a paired item', async () => {
 			try {
 				proxy.$('DebugHelper').item;
-				fail('should throw');
+				throw new Error('should throw');
 			} catch (e) {
 				const error = ensureError(e);
 				expect(error.message).toEqual(

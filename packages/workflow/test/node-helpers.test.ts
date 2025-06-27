@@ -4382,7 +4382,7 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					(workflowMock.expression.getSimpleParameterValue as vi.Mock).mockReturnValueOnce(
+					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);
 				}

@@ -2623,7 +2623,7 @@ describe('Workflow', () => {
 
 		test('should skip nodes that do not exist and log a warning', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'NonExistentNode', 'Set1']);
 			expect(nodes).toHaveLength(2);
@@ -2636,7 +2636,7 @@ describe('Workflow', () => {
 
 		test('should return an empty array if none of the requested nodes exist', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['NonExistentNode1', 'NonExistentNode2']);
 			expect(nodes).toHaveLength(0);
