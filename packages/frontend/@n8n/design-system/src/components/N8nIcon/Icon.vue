@@ -97,7 +97,7 @@ const styles = computed(() => {
 <style lang="scss" module>
 .strokeWidth {
 	path {
-		stroke-width: var(--n8n-icon-stroke-width, 'inherit');
+		stroke-width: var(--n8n-icon-stroke-width);
 	}
 }
 
