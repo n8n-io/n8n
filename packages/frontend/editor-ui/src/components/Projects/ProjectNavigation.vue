@@ -26,7 +26,7 @@ const usersStore = useUsersStore();
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
-const hasMultipleInstanceUsers = computed(
+const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
 );
 
@@ -110,7 +110,7 @@ onBeforeMount(async () => {
 			<N8nMenuItem
 				v-if="
 					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-					hasMultipleInstanceUsers
+					hasMultipleVerifiedUsers
 				"
 				:item="shared"
 				:compact="props.collapsed"
