@@ -52,7 +52,7 @@ export const ALL_ICON_PICKER_ICONS: IconName[] = [
 	'scissors',
 	'database',
 	'circle-dot',
-	'tally-2',
+	'grip-lines-vertical',
 	'grip-vertical',
 	'square-pen',
 	'ellipsis',

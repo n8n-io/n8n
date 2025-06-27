@@ -305,7 +305,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
 					info: getSubcategoryInfo(AI_CATEGORY_TEXT_SPLITTERS),
-					icon: 'tally-2',
+					icon: 'grip-lines-vertical',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiTextSplitter),
 				},
 			},

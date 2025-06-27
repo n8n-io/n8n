@@ -1,6 +1,7 @@
 /* eslint-disable import/extensions, import/no-unresolved */
 
 import Binary from './custom/binary.svg';
+import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Json from './custom/json.svg';
 import PopOut from './custom/pop-out.svg';
 import Schema from './custom/schema.svg';
@@ -154,7 +155,6 @@ import IconLucideStickyNote from '~icons/lucide/sticky-note';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
-import IconLucideTally2 from '~icons/lucide/tally-2';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
@@ -266,7 +266,7 @@ export const deprecatedIconSet = {
 	cut: IconLucideScissors,
 	database: IconLucideDatabase,
 	'dot-circle': IconLucideCircleDot,
-	'grip-lines-vertical': IconLucideTally2,
+	'grip-lines-vertical': GripLinesVertical,
 	'grip-vertical': IconLucideGripVertical,
 	edit: IconLucideSquarePen,
 	'ellipsis-h': IconLucideEllipsis,
@@ -384,6 +384,7 @@ export const deprecatedIconSet = {
 
 export const updatedIconSet = {
 	// custom icons
+	'grip-lines-vertical': GripLinesVertical,
 	variable: IconLucideVariable,
 	'pop-out': PopOut,
 	triangle: Triangle,
@@ -540,7 +541,6 @@ export const updatedIconSet = {
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
-	'tally-2': IconLucideTally2,
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
