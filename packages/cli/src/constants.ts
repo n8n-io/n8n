@@ -51,8 +51,6 @@ export const RESPONSE_ERROR_MESSAGES = {
 	MISSING_SCOPE: 'User is missing a scope required to perform this action',
 } as const;
 
-export const AUTH_COOKIE_NAME = 'n8n-auth';
-
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR: 'No matching version found for',

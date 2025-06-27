@@ -37,7 +37,7 @@ describe('LastActiveAtService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		jest.setSystemTime(now);
-		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
+		globalConfig.auth.cookie = { name: 'n8n-auth', secure: true, samesite: 'lax' };
 		queryBuilderMock = {
 			update: jest.fn().mockReturnThis(),
 			set: jest.fn().mockReturnThis(),

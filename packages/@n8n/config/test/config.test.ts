@@ -29,6 +29,7 @@ describe('GlobalConfig', () => {
 		protocol: 'http',
 		auth: {
 			cookie: {
+				name: 'n8n-auth',
 				samesite: 'lax',
 				secure: true,
 			},

@@ -10,7 +10,6 @@ import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
@@ -26,7 +25,9 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const user = mock<User>(userData);
-	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
+	const globalConfig = mock<GlobalConfig>({
+		auth: { cookie: { name: 'n8n-auth', secure: true, samesite: 'lax' } },
+	});
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
@@ -52,7 +53,7 @@ describe('AuthService', () => {
 		jest.setSystemTime(now);
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
-		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
+		globalConfig.auth.cookie = { name: 'n8n-auth', secure: true, samesite: 'lax' };
 	});
 
 	describe('createJWTHash', () => {
@@ -105,7 +106,7 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 if no cookie is set', async () => {
-			req.cookies[AUTH_COOKIE_NAME] = undefined;
+			req.cookies[globalConfig.auth.cookie.name] = undefined;
 
 			await authService.authMiddleware(req, res, next);
 
@@ -115,7 +116,7 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 and clear the cookie if the JWT is expired', async () => {
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			req.cookies[globalConfig.auth.cookie.name] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
@@ -125,11 +126,11 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name);
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			req.cookies[globalConfig.auth.cookie.name] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
 			await authService.authMiddleware(req, res, next);
@@ -138,11 +139,11 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name);
 		});
 
 		it('should refresh the cookie before it expires', async () => {
-			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			req.cookies[globalConfig.auth.cookie.name] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
@@ -150,7 +151,7 @@ describe('AuthService', () => {
 			await authService.authMiddleware(req, res, next);
 
 			expect(next).toHaveBeenCalled();
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+			expect(res.cookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name, expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -164,7 +165,7 @@ describe('AuthService', () => {
 		it('should issue a cookie with the correct options', () => {
 			authService.issueCookie(res, user, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+			expect(res.cookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name, validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -173,11 +174,11 @@ describe('AuthService', () => {
 		});
 
 		it('should allow changing cookie options', () => {
-			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
+			globalConfig.auth.cookie = { secure: false, samesite: 'none', name: 'auth-n8n1' };
 
 			authService.issueCookie(res, user, browserId);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+			expect(res.cookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name, validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'none',
@@ -285,7 +286,7 @@ describe('AuthService', () => {
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+			expect(res.cookie).toHaveBeenCalledWith(globalConfig.auth.cookie.name, expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -395,7 +396,7 @@ describe('AuthService', () => {
 	describe('invalidateToken', () => {
 		const req = mock<AuthenticatedRequest>({
 			cookies: {
-				[AUTH_COOKIE_NAME]: validToken,
+				[globalConfig.auth.cookie.name]: validToken,
 			},
 		});
 

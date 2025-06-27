@@ -1,12 +1,12 @@
 import { randomValidPassword } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
@@ -162,6 +162,8 @@ describe('POST /login', () => {
 });
 
 describe('GET /login', () => {
+	const globalConfig = Container.get(GlobalConfig);
+
 	test('should return 401 Unauthorized if no cookie', async () => {
 		const response = await testServer.authlessAgent.get('/login');
 
@@ -172,7 +174,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {
-		testServer.authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+		testServer.authlessAgent.jar.setCookie(`${globalConfig.auth.cookie.name}=invalid`);
 
 		const response = await testServer.authlessAgent.get('/login');
 
@@ -396,11 +398,13 @@ describe('GET /resolve-signup-token', () => {
 });
 
 describe('POST /logout', () => {
+	const globalConfig = Container.get(GlobalConfig);
+
 	test('should log user out', async () => {
 		const owner = await createUser({ role: 'global:owner' });
 		const ownerAgent = testServer.authAgentFor(owner);
 		// @ts-expect-error `accessInfo` types are incorrect
-		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
+		const cookie = ownerAgent.jar.getCookie(globalConfig.auth.cookie.name, { path: '/' });
 
 		const response = await ownerAgent.post('/logout');
 
@@ -410,7 +414,7 @@ describe('POST /logout', () => {
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
 
-		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		ownerAgent.jar.setCookie(`${globalConfig.auth.cookie.name}=${cookie!.value}`);
 		await ownerAgent.get('/login').expect(401);
 	});
 });
