@@ -1,4 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies,import/no-default-export */
+/* eslint-disable import-x/no-default-export */
 export default async () => {
 	const { createVitestConfig } = await import('@n8n/vitest-config/node');
 
