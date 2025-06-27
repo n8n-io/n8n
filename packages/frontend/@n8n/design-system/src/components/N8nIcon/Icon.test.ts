@@ -1,6 +1,7 @@
 import { render } from '@testing-library/vue';
 
 import Icon from './Icon.vue';
+import { deprecatedIconSet, IconName } from './icons';
 
 describe('Icon', () => {
 	it('should render correctly with default props', () => {
@@ -52,13 +53,10 @@ describe('Icon', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('should render correctly with all props combined', () => {
+	it('should render correctly with a deprecated icon', () => {
 		const wrapper = render(Icon, {
 			props: {
-				icon: 'check',
-				size: 'medium',
-				spin: true,
-				color: 'secondary',
+				icon: Object.keys(deprecatedIconSet)[0] as IconName,
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
