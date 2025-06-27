@@ -104,11 +104,7 @@ const computedInlineStyles = computed(() => {
 		@update:model-value="onInput"
 		@update:state="onStateChange"
 	>
-		<EditableArea
-			:style="computedInlineStyles"
-			:class="$style.inlineRenameArea"
-			@click="forceFocus"
-		>
+		<EditableArea :style="computedInlineStyles" :class="$style.inlineRenameArea">
 			<span ref="measureSpan" :class="$style.measureSpan">
 				{{ temp }}
 			</span>
