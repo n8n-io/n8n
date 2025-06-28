@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Zammad } from '../Zammad.node';
 import * as GenericFunctions from '../GenericFunctions';
+import { Zammad } from '../Zammad.node';
 
 jest.mock('../GenericFunctions', () => ({
 	...jest.requireActual('../GenericFunctions'),
@@ -115,7 +115,7 @@ describe('Zammad Node', () => {
 				success: true,
 			});
 
-			const result = await node.methods!.credentialTest!.zammadBasicAuthApiTest!.call(
+			const result = await node.methods.credentialTest.zammadBasicAuthApiTest.call(
 				mockCredentialTestFunctions as ICredentialTestFunctions,
 				credentials,
 			);
@@ -153,7 +153,7 @@ describe('Zammad Node', () => {
 				success: true,
 			});
 
-			const result = await node.methods!.credentialTest!.zammadTokenAuthApiTest!.call(
+			const result = await node.methods.credentialTest.zammadTokenAuthApiTest.call(
 				mockCredentialTestFunctions as ICredentialTestFunctions,
 				credentials,
 			);
@@ -190,7 +190,7 @@ describe('Zammad Node', () => {
 			const error = new Error('Unauthorized');
 			(mockCredentialTestFunctions.helpers!.request as jest.Mock).mockRejectedValue(error);
 
-			const result = await node.methods!.credentialTest!.zammadBasicAuthApiTest!.call(
+			const result = await node.methods.credentialTest.zammadBasicAuthApiTest.call(
 				mockCredentialTestFunctions as ICredentialTestFunctions,
 				credentials,
 			);
@@ -219,7 +219,7 @@ describe('Zammad Node', () => {
 				value: 1,
 			});
 
-			const result = await node.methods!.loadOptions!.loadGroupCustomFields!.call(
+			const result = await node.methods.loadOptions.loadGroupCustomFields.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
@@ -230,19 +230,19 @@ describe('Zammad Node', () => {
 
 		it('should load ticket states', async () => {
 			const mockStates = [
-				{ id: 1, name: 'open' },
-				{ id: 2, name: 'closed' },
+				{ id: 1, name: 'Open' },
+				{ id: 2, name: 'Closed' },
 			];
 			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockStates);
 
-			const result = await node.methods!.loadOptions!.loadTicketStates!.call(
+			const result = await node.methods.loadOptions.loadTicketStates.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
 			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/ticket_states');
 			expect(result).toEqual([
-				{ name: 'open', value: 1 },
-				{ name: 'closed', value: 2 },
+				{ name: 'Open', value: 1 },
+				{ name: 'Closed', value: 2 },
 			]);
 		});
 
@@ -253,7 +253,7 @@ describe('Zammad Node', () => {
 			];
 			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockGroups);
 
-			const result = await node.methods!.loadOptions!.loadGroups!.call(
+			const result = await node.methods.loadOptions.loadGroups.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
@@ -271,7 +271,7 @@ describe('Zammad Node', () => {
 			];
 			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockGroups);
 
-			const result = await node.methods!.loadOptions!.loadGroupNames!.call(
+			const result = await node.methods.loadOptions.loadGroupNames.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
@@ -293,7 +293,7 @@ describe('Zammad Node', () => {
 				(org) => org.name !== 'Zammad Foundation',
 			);
 
-			const result = await node.methods!.loadOptions!.loadOrganizationNames!.call(
+			const result = await node.methods.loadOptions.loadOrganizationNames.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
@@ -315,7 +315,7 @@ describe('Zammad Node', () => {
 				(user) => user.role === 'customer',
 			);
 
-			const result = await node.methods!.loadOptions!.loadCustomerEmails!.call(
+			const result = await node.methods.loadOptions.loadCustomerEmails.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
@@ -922,7 +922,7 @@ describe('Zammad Node', () => {
 						case 'additionalFields':
 							return {
 								customFieldsUi: {
-									customFieldPairs: [{ name: 'custom_field', value: 'value' }],
+									customFieldPairs: [{ name: 'Custom_field', value: 'value' }],
 								},
 							};
 						default:
@@ -938,7 +938,7 @@ describe('Zammad Node', () => {
 			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/users', {
 				firstname: 'John',
 				lastname: 'Doe',
-				custom_field: 'value',
+				Custom_field: 'value',
 			});
 			expect(result).toEqual([[{ json: mockUser, itemData: { item: 0 } }]]);
 		});
@@ -958,7 +958,7 @@ describe('Zammad Node', () => {
 						case 'updateFields':
 							return {
 								customFieldsUi: {
-									customFieldPairs: [{ name: 'custom_priority', value: 'high' }],
+									customFieldPairs: [{ name: 'Custom_priority', value: 'high' }],
 								},
 							};
 						default:
@@ -972,7 +972,7 @@ describe('Zammad Node', () => {
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
 			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', '/tickets/1', {
-				custom_priority: 'high',
+				Custom_priority: 'high',
 			});
 			expect(result).toEqual([[{ json: mockTicket, itemData: { item: 0 } }]]);
 		});
