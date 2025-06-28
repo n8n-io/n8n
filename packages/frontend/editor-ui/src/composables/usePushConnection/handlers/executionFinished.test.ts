@@ -1,10 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { continueEvaluationLoop, type SimplifiedExecution } from './executionFinished';
-import type { ITaskData } from 'n8n-workflow';
+import {
+	continueEvaluationLoop,
+	executionFinished,
+	type SimplifiedExecution,
+} from './executionFinished';
+import type { ExecutionStatus, ITaskData } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { Router } from 'vue-router';
+import { mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 const runWorkflow = vi.fn();
 
@@ -168,5 +176,31 @@ describe('continueEvaluationLoop()', () => {
 		continueEvaluationLoop(execution, mock<Router>());
 
 		expect(runWorkflow).not.toHaveBeenCalled();
+	});
+});
+
+describe('executionFinished', () => {
+	beforeEach(() => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+	});
+
+	it('should clear lastAddedExecutingNode when execution is finished', () => {
+		const workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowsStore.lastAddedExecutingNode = 'test-node';
+
+		executionFinished(
+			{
+				executionId: '1',
+				workflowId: '1',
+				status: 'success',
+			},
+			{
+				router: mock<Router>(),
+			},
+		);
+
+		expect(workflowsStore.lastAddedExecutingNode).toBeNull();
 	});
 });
