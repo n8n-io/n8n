@@ -43,6 +43,8 @@ export async function executionFinished(
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
+	workflowsStore.lastAddedExecutingNode = null;
+
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
 		return;
