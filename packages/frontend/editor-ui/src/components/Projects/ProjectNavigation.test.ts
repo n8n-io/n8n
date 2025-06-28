@@ -6,6 +6,7 @@ import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectsNavigation from '@/components/Projects/ProjectNavigation.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -64,6 +65,7 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
@@ -74,6 +76,7 @@ describe('ProjectsNavigation', () => {
 
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
 	});
 
 	it('should not throw an error', () => {
@@ -225,5 +228,44 @@ describe('ProjectsNavigation', () => {
 
 		expect(getByTestId('add-first-project-button')).toBeVisible();
 		expect(getByTestId('add-first-project-button').classList.contains('collapsed')).toBe(true);
+	});
+
+	it('should not render shared menu item when only one verified user', async () => {
+		// Only one verified user
+		usersStore.allUsers = [
+			{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			{ id: '2', isPendingUser: true, isDefaultUser: false, mfaEnabled: false },
+		];
+		projectsStore.teamProjectsLimit = -1;
+		projectsStore.isTeamProjectFeatureEnabled = true;
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		// The shared menu item should not be rendered
+		expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
+	});
+
+	it('should render shared menu item when more than one verified user', async () => {
+		// Only one verified user
+		usersStore.allUsers = [
+			{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			{ id: '2', isPendingUser: true, isDefaultUser: false, mfaEnabled: false },
+			{ id: '3', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+		];
+		projectsStore.teamProjectsLimit = -1;
+		projectsStore.isTeamProjectFeatureEnabled = true;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		// The shared menu item should not be rendered
+		expect(getByTestId('project-shared-menu-item')).toBeInTheDocument();
 	});
 });
