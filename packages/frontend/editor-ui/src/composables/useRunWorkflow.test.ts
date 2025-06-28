@@ -27,7 +27,7 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
-import { SLACK_TRIGGER_NODE_TYPE } from '@/constants';
+import { SLACK_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -298,6 +298,100 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toEqual(mockExecutionResponse);
 
 			expect(toast.showMessage).not.toHaveBeenCalledWith({
+				title: i18n.baseText('workflowRun.showError.deactivate'),
+				message: i18n.baseText('workflowRun.showError.productionActive', {
+					interpolate: { nodeName: 'Webhook' },
+				}),
+				type: 'error',
+			});
+		});
+
+		it('should execute the workflow if there is a single webhook trigger, but another trigger is chosen', async () => {
+			// ARRANGE
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const i18n = useI18n();
+			const { runWorkflow } = useRunWorkflow({ router });
+			const mockExecutionResponse = { executionId: '123' };
+			const triggerNode = 'Manual';
+
+			vi.mocked(workflowsStore).isWorkflowActive = true;
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [
+					{
+						name: 'Slack',
+						type: SLACK_TRIGGER_NODE_TYPE,
+						disabled: false,
+					},
+					{
+						name: triggerNode,
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						disabled: false,
+					},
+				],
+			} as unknown as WorkflowData);
+			vi.mocked(uiStore).activeActions = [''];
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+			} as unknown as Workflow);
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = true;
+			vi.mocked(workflowsStore).getWorkflowRunData = { NodeName: [] };
+
+			// ACT
+			const result = await runWorkflow({ triggerNode });
+
+			// ASSERT
+			expect(result).toEqual(mockExecutionResponse);
+			expect(toast.showMessage).not.toHaveBeenCalledWith({
+				title: i18n.baseText('workflowRun.showError.deactivate'),
+				message: i18n.baseText('workflowRun.showError.productionActive', {
+					interpolate: { nodeName: 'Webhook' },
+				}),
+				type: 'error',
+			});
+		});
+
+		it('should prevent execution and show error message when workflow is active with multiple tirggers and a single webhook trigger is chosen', async () => {
+			// ARRANGE
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const i18n = useI18n();
+			const { runWorkflow } = useRunWorkflow({ router });
+			const mockExecutionResponse = { executionId: '123' };
+			const triggerNode = 'Slack';
+
+			vi.mocked(workflowsStore).isWorkflowActive = true;
+			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [
+					{
+						name: triggerNode,
+						type: SLACK_TRIGGER_NODE_TYPE,
+						disabled: false,
+					},
+					{
+						name: 'Manual',
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						disabled: false,
+					},
+				],
+			} as unknown as WorkflowData);
+			vi.mocked(uiStore).activeActions = [''];
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+			} as unknown as Workflow);
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = true;
+			vi.mocked(workflowsStore).getWorkflowRunData = { NodeName: [] };
+
+			// ACT
+			const result = await runWorkflow({ triggerNode });
+
+			// ASSERT
+			expect(result).toBeUndefined();
+			expect(toast.showMessage).toHaveBeenCalledWith({
 				title: i18n.baseText('workflowRun.showError.deactivate'),
 				message: i18n.baseText('workflowRun.showError.productionActive', {
 					interpolate: { nodeName: 'Webhook' },
