@@ -259,7 +259,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('should execute workflow has pin data and is active with single webhook trigger', async () => {
+		it('should execute the workflow if the single webhook trigger has pin data', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 			const toast = useToast();
