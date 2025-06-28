@@ -526,15 +526,11 @@ describe('useCanvasOperations', () => {
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
 
-			expect(useTelemetry().track).toHaveBeenCalledWith(
-				'User tidied up canvas',
-				{
-					nodes_count: 2,
-					source: 'canvas-button',
-					target: 'all',
-				},
-				{ withPostHog: true },
-			);
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'all',
+			});
 		});
 	});
 

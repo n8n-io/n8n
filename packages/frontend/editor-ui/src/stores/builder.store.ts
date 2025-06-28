@@ -242,14 +242,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
-			telemetry.track(
-				'Assistant session started',
-				{
-					chat_session_id: currentSessionId.value,
-					task: 'workflow-generation',
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('Assistant session started', {
+				chat_session_id: currentSessionId.value,
+				task: 'workflow-generation',
+			});
 		} else if (currentSessionId.value !== response.sessionId) {
 			// Ignore messages from other sessions
 			return;
@@ -263,14 +259,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Core API functions
 	async function initBuilderChat(userMessage: string, source: 'chat' | 'canvas') {
-		telemetry.track(
-			'User submitted workflow prompt',
-			{
-				source,
-				prompt: userMessage,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User submitted workflow prompt', {
+			source,
+			prompt: userMessage,
+		});
 		resetBuilderChat();
 		const id = getRandomId();
 

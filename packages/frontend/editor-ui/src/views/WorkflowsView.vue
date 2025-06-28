@@ -765,13 +765,9 @@ function isValidProjectId(projectId: string) {
 
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
-	telemetry.track(
-		'User clicked test AI workflow',
-		{
-			source,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User clicked test AI workflow', {
+		source,
+	});
 
 	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 

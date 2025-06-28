@@ -62,17 +62,11 @@ const nodeNames = computed(() => {
 //#region Methods
 
 const onCredentialModalOpened = () => {
-	telemetry.track(
-		'User opened Credential modal',
-		{
-			source: 'cred_setup',
-			credentialType: props.credentials.credentialType,
-			new_credential: !props.selectedCredentialId,
-		},
-		{
-			withPostHog: true,
-		},
-	);
+	telemetry.track('User opened Credential modal', {
+		source: 'cred_setup',
+		credentialType: props.credentials.credentialType,
+		new_credential: !props.selectedCredentialId,
+	});
 };
 
 //#endregion Methods

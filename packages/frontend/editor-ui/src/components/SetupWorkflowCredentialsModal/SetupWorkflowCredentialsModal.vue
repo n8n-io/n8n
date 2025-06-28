@@ -33,7 +33,7 @@ const {
 onMounted(() => {
 	setInitialCredentialSelection();
 
-	telemetry.track('User opened cred setup', { source: 'canvas' }, { withPostHog: true });
+	telemetry.track('User opened cred setup', { source: 'canvas' });
 });
 
 onUnmounted(() => {

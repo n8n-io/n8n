@@ -569,7 +569,6 @@ describe('VirtualSchema.vue', () => {
 						src_nodes_back: '1',
 						src_has_credential: false,
 					}),
-					{ withPostHog: true },
 				),
 			);
 		});
@@ -616,7 +615,6 @@ describe('VirtualSchema.vue', () => {
 						src_view: 'schema_preview',
 						src_has_credential: true,
 					}),
-					{ withPostHog: true },
 				),
 			);
 		});

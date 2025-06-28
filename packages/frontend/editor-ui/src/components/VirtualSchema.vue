@@ -407,7 +407,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
+		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 250); // ensure dest data gets set if drop
 };
 </script>
