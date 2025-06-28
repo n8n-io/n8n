@@ -233,8 +233,8 @@ describe('ProjectsNavigation', () => {
 	it('should not render shared menu item when only one verified user', async () => {
 		// Only one verified user
 		usersStore.allUsers = [
-			{ id: '1', isPendingUser: false },
-			{ id: '2', isPendingUser: true },
+			{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			{ id: '2', isPendingUser: true, isDefaultUser: false, mfaEnabled: false },
 		];
 		projectsStore.teamProjectsLimit = -1;
 		projectsStore.isTeamProjectFeatureEnabled = true;
@@ -252,9 +252,9 @@ describe('ProjectsNavigation', () => {
 	it('should render shared menu item when more than one verified user', async () => {
 		// Only one verified user
 		usersStore.allUsers = [
-			{ id: '1', isPendingUser: false },
-			{ id: '2', isPendingUser: true },
-			{ id: '3', isPendingUser: false },
+			{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			{ id: '2', isPendingUser: true, isDefaultUser: false, mfaEnabled: false },
+			{ id: '3', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
 		];
 		projectsStore.teamProjectsLimit = -1;
 		projectsStore.isTeamProjectFeatureEnabled = true;
