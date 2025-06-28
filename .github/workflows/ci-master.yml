@@ -1,9 +1,6 @@
 name: Test Master
 
-on:
-  push:
-    branches:
-      - master
+
 
 jobs:
   install-and-build:
