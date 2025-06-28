@@ -39,7 +39,6 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Retrieve many tickets',
 				action: 'Get many tickets',
 			},
-			//[ria]
 			{
 				name: 'Update',
 				value: 'update',
@@ -135,7 +134,6 @@ export const ticketDescription: INodeProperties[] = [
 			},
 		},
 	},
-	//[ria]
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -315,7 +313,6 @@ export const ticketDescription: INodeProperties[] = [
 			},
 		],
 	},
-	// [ria]
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -341,7 +338,7 @@ export const ticketDescription: INodeProperties[] = [
 				name: 'group_id',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'loadGroupNames',
+					loadOptionsMethod: 'loadGroups',
 				},
 				default: '',
 				description:
@@ -359,6 +356,14 @@ export const ticketDescription: INodeProperties[] = [
 					'State of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
+				displayName: 'Pending Time',
+				name: 'pending_time',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Date and time when the pending ticket should be activated (required for pending reminder, pending close, and snooze states)',
+			},
+			{
 				displayName: 'Priority Name or ID',
 				name: 'priority_id',
 				type: 'options',
@@ -370,18 +375,15 @@ export const ticketDescription: INodeProperties[] = [
 					'Priority of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner ID',
 				name: 'owner_id',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'loadAgentNames',
-				},
+				type: 'string',
 				default: '',
 				description:
-					'Agent responsible for the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Agent responsible for the ticket. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Customer Name or ID',
+				displayName: 'Customer ID',
 				name: 'customer_id',
 				type: 'options',
 				typeOptions: {
@@ -389,30 +391,15 @@ export const ticketDescription: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Customer associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Customer ID associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
+				typeOptions: { editor: 'htmlEditor' },
 				default: '',
-				description: 'Note for the ticket',
-			},
-			{
-				displayName: 'Pending Time',
-				name: 'pending_time',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Date and time when the pending ticket should be activated (required for pending reminder, pending close, and snooze states)',
-			},
-			{
-				displayName: 'Merge Into Ticket ID',
-				name: 'merge_to',
-				type: 'string',
-				default: '',
-				description:
-					'ID of the ticket to merge this ticket into (required when setting state to merged)',
+				description: 'Internal note for the ticket.',
 			},
 			{
 				displayName: 'Custom Fields',

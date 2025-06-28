@@ -220,7 +220,7 @@ export class Zammad implements INodeType {
 
 				return users.filter(isCustomer).map((i) => ({ name: i.email, value: i.email }));
 			},
-			//[ria]
+
 			/**
 			 * PUT /tickets requires customer ID for customer_id field.
 			 */
@@ -247,20 +247,17 @@ export class Zammad implements INodeType {
 
 				return orgs.filter(isNotZammadFoundation).map((i) => ({ name: i.name, value: i.id }));
 			},
-
+			// Zammad API constraint: Any listings will return users own information only. -> https://docs.zammad.org/en/latest/api/user.html
 			async loadUsers(this: ILoadOptionsFunctions) {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
 
 				return users.filter(doesNotBelongToZammad).map((i) => ({ name: i.login, value: i.id }));
 			},
-			// [ria]
 			async loadTicketStates(this: ILoadOptionsFunctions) {
 				const states = (await zammadApiRequest.call(this, 'GET', '/ticket_states')) as Array<{
 					id: number;
 					name: string;
 				}>;
-				// [ria] maybe we can do something like
-				// if state.pending_till or state.merged_to then we can show the additional field in the UI
 				return states.map((state) => ({ name: state.name, value: state.id }));
 			},
 
@@ -275,14 +272,6 @@ export class Zammad implements INodeType {
 				}>;
 
 				return priorities.map((priority) => ({ name: priority.name, value: priority.id }));
-			},
-
-			async loadAgentNames(this: ILoadOptionsFunctions) {
-				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
-				// [ria] - loads only one account!
-				return users
-					.filter((user) => user.role_ids && user.role_ids.includes(2)) // role_id 2 is 'Agent' -> https://docs.zammad.org/en/latest/api/role.html
-					.map((user) => ({ name: `${user.login} (${user.email})`, value: user.id }));
 			},
 		},
 		credentialTest: {
@@ -732,7 +721,6 @@ export class Zammad implements INodeType {
 							'GET',
 							`/ticket_articles/by_ticket/${id}`,
 						);
-						//[ria]
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//          ticket:update
@@ -749,7 +737,16 @@ export class Zammad implements INodeType {
 							throwOnEmptyUpdate.call(this, resource);
 						}
 
-						const { customFieldsUi, pending_time, merge_to, ...rest } = updateFields;
+						const { note, customFieldsUi, pending_time, ...rest } = updateFields;
+
+						if (note) {
+							body.article = {
+								body: note,
+								internal: true,
+								type: 'note',
+								content_type: 'text/html',
+							};
+						}
 
 						if (customFieldsUi) {
 							const customFields = customFieldsUi as {
@@ -760,19 +757,11 @@ export class Zammad implements INodeType {
 							});
 						}
 
-						// Handle pending_time for pending states
-						if (pending_time) {
-							body.pending_time = pending_time;
-						}
-
-						// Handle merge_to for merged state
-						if (merge_to) {
-							// For merged tickets, we may need to handle this differently
-							// The merge operation might require a specific API call
-							body.merge_to = merge_to;
-						}
-
 						Object.assign(body, rest);
+
+						if (pending_time === '') {
+							delete body.pending_time;
+						}
 
 						responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${id}`, body);
 					} else if (operation === 'delete') {
