@@ -5,6 +5,7 @@ import {
 	TransferFolderBodyDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Post,
 	RestController,
@@ -24,7 +25,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -64,6 +64,29 @@ export class ProjectController {
 		try {
 			const tree = await this.folderService.getFolderTree(folderId, projectId);
 			return tree;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/credentials')
+	@ProjectScope('folder:read')
+	async getFolderUsedCredentials(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+	) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const credentials = await this.enterpriseWorkflowService.getFolderUsedCredentials(
+				req.user,
+				folderId,
+				projectId,
+			);
+			return credentials;
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);

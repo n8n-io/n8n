@@ -96,7 +96,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		workflowPage.actions.openNode('Notion');
+		workflowPage.actions.openNode('Append a block');
 		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
 		ndv.actions.close();
 	});
@@ -112,7 +112,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		workflowPage.actions.openNode('Notion');
+		workflowPage.actions.openNode('Append a block');
 		ndv.getters
 			.credentialInput()
 			.find('input')
@@ -126,8 +126,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowW2Url);
 		cy.waitForLoad();
-		cy.wait(1000);
-		cy.get('.el-notification').contains('Could not find workflow').should('be.visible');
+		cy.location('pathname', { timeout: 10000 }).should('eq', '/entity-not-authorized/workflow');
 	});
 
 	it('should have access to W1, W2, as U1', () => {
@@ -136,7 +135,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 		workflowsPage.getters.workflowCardContent('Workflow W1').click();
-		workflowPage.actions.openNode('Notion');
+		workflowPage.actions.openNode('Append a block');
 		ndv.getters
 			.credentialInput()
 			.find('input')

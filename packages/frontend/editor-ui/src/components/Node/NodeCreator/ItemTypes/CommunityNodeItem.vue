@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import CommunityNodeInstallHint from '../Panel/CommunityNodeInstallHint.vue';
 import { N8nButton } from '@n8n/design-system';
 

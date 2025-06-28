@@ -56,7 +56,7 @@ describe('TestWebhooks', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	describe('needsWebhook()', () => {
@@ -190,6 +190,21 @@ describe('TestWebhooks', () => {
 			await testWebhooks.deactivateWebhooks(workflow);
 
 			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
+		});
+	});
+
+	describe('getWebhookMethods()', () => {
+		test('should normalize trailing slash', async () => {
+			const METHOD = 'POST';
+			const PATH_WITH_SLASH = 'register/';
+			const PATH_WITHOUT_SLASH = 'register';
+			registrations.getAllKeys.mockResolvedValue([`${METHOD}|${PATH_WITHOUT_SLASH}`]);
+
+			const resultWithSlash = await testWebhooks.getWebhookMethods(PATH_WITH_SLASH);
+			const resultWithoutSlash = await testWebhooks.getWebhookMethods(PATH_WITHOUT_SLASH);
+
+			expect(resultWithSlash).toEqual([METHOD]);
+			expect(resultWithoutSlash).toEqual([METHOD]);
 		});
 	});
 });

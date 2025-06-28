@@ -2,7 +2,7 @@
 import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePushConnection } from '@/composables/usePushConnection';

@@ -19,7 +19,7 @@ export type TestCaseExecutionStatus =
 
 /**
  * This entity represents the linking between the test runs and individual executions.
- * It stores status, links to past, new and evaluation executions, and metrics produced by individual evaluation wf executions
+ * It stores status, link to the evaluation execution, and metrics produced by individual test case
  * Entries in this table are meant to outlive the execution entities, which might be pruned over time.
  * This allows us to keep track of the details of test runs' status and metrics even after the executions are deleted.
  */
@@ -27,15 +27,6 @@ export type TestCaseExecutionStatus =
 export class TestCaseExecution extends WithStringId {
 	@ManyToOne('TestRun')
 	testRun: TestRun;
-
-	@ManyToOne('ExecutionEntity', {
-		onDelete: 'SET NULL',
-		nullable: true,
-	})
-	pastExecution: ExecutionEntity | null;
-
-	@Column({ type: 'varchar', nullable: true })
-	pastExecutionId: string | null;
 
 	@OneToOne('ExecutionEntity', {
 		onDelete: 'SET NULL',
@@ -45,15 +36,6 @@ export class TestCaseExecution extends WithStringId {
 
 	@Column({ type: 'varchar', nullable: true })
 	executionId: string | null;
-
-	@OneToOne('ExecutionEntity', {
-		onDelete: 'SET NULL',
-		nullable: true,
-	})
-	evaluationExecution: ExecutionEntity | null;
-
-	@Column({ type: 'varchar', nullable: true })
-	evaluationExecutionId: string | null;
 
 	@Column()
 	status: TestCaseExecutionStatus;

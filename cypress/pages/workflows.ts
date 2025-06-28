@@ -43,7 +43,7 @@ export class WorkflowsPage extends BasePage {
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>
-			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Change owner'),
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
 		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
 		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
 		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),

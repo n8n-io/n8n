@@ -1,4 +1,3 @@
-import * as onboardingApi from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -41,10 +40,12 @@ import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
+	LOCAL_STORAGE_THEME,
+	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	INodeUi,
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
@@ -58,45 +59,38 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { dismissBannerPermanently } from '@/api/ui';
+import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
-import {
-	addThemeToBody,
-	getPreferredTheme,
-	getThemeOverride,
-	isValidTheme,
-	updateTheme,
-} from './ui.utils';
+import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { ProjectSharingData } from '@/types/projects.types';
+import identity from 'lodash/identity';
 
 let savedTheme: ThemeOption = 'system';
 
 try {
 	const value = getThemeOverride();
-	if (isValidTheme(value)) {
+	if (value !== null) {
 		savedTheme = value;
-		addThemeToBody(value);
+		applyThemeToBody(value);
 	}
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
 
-type Draggable = {
-	isDragging: boolean;
-	type: string;
-	data: string;
-	canDrop: boolean;
-	stickyPosition: null | XYPosition;
-};
-
 export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
-	const theme = ref<ThemeOption>(savedTheme);
+	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
+		writeDefaults: false,
+		serializer: {
+			read: (value) => (isValidTheme(value) ? value : savedTheme),
+			write: identity,
+		},
+	});
 	const modalsById = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
@@ -128,6 +122,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
+				WHATS_NEW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -189,6 +184,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]: {
 			open: false,
 			data: {
+				triggerType: '',
 				workflowName: '',
 				workflowId: '',
 				webhookPath: '',
@@ -207,27 +203,27 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				url: '',
 			},
 		},
+		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowName: '',
+			},
+		},
+		[WHATS_NEW_MODAL_KEY]: {
+			open: false,
+			data: {
+				articleId: undefined,
+			},
+		},
 	});
 
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
-	const draggable = ref<Draggable>({
-		isDragging: false,
-		type: '',
-		data: '',
-		canDrop: false,
-		stickyPosition: null,
-	});
-
 	const stateIsDirty = ref<boolean>(false);
 	const lastSelectedNode = ref<string | null>(null);
-	const lastSelectedNodeOutputIndex = ref<number | null>(null);
-	const lastSelectedNodeEndpointUuid = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
-	const nodeViewMoveInProgress = ref<boolean>(false);
-	const selectedNodes = ref<INodeUi[]>([]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const bannersHeight = ref<number>(0);
@@ -246,14 +242,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const userStore = useUsersStore();
 
-	// Keep track of the preferred theme and update it when the system preference changes
-	const preferredTheme = getPreferredTheme();
-	const preferredSystemTheme = ref<AppliedThemeOption>(preferredTheme.theme);
-	preferredTheme.mediaQuery?.addEventListener('change', () => {
-		preferredSystemTheme.value = getPreferredTheme().theme;
-	});
+	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
+	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
+		isDarkThemePreferred.value ? 'dark' : 'light',
+	);
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? preferredSystemTheme.value : theme.value;
@@ -317,23 +310,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
-	const getLastSelectedNode = computed(() => {
-		if (lastSelectedNode.value) {
-			return workflowsStore.getNodeByName(lastSelectedNode.value);
-		}
-		return null;
-	});
-
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
 			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
 		}
 
 		return null;
-	});
-
-	const isVersionsOpen = computed(() => {
-		return modalsById.value[VERSIONS_MODAL_KEY].open;
 	});
 
 	const isModalActiveById = computed(() =>
@@ -360,25 +342,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
-	const getSelectedNodes = computed(() => {
-		const seen = new Set();
-		return selectedNodes.value.filter((node) => {
-			// dedupe for instances when same node is selected in different ways
-			if (!seen.has(node)) {
-				seen.add(node);
-				return true;
-			}
-			return false;
-		});
-	});
-
-	const isNodeSelected = computed(() =>
-		selectedNodes.value.reduce((acc: { [nodeName: string]: true }, node) => {
-			acc[node.name] = true;
-			return acc;
-		}, {}),
-	);
-
 	const headerHeight = computed(() => {
 		const style = getComputedStyle(document.body);
 		return Number(style.getPropertyValue('--header-height'));
@@ -398,7 +361,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const setTheme = (newTheme: ThemeOption): void => {
 		theme.value = newTheme;
-		updateTheme(newTheme);
+		applyThemeToBody(newTheme);
 	};
 
 	const setMode = (name: keyof Modals, mode: string): void => {
@@ -450,40 +413,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
 	};
 
-	const draggableStartDragging = (type: string, data: string) => {
-		draggable.value = {
-			isDragging: true,
-			type,
-			data,
-			canDrop: false,
-			stickyPosition: null,
-		};
-	};
-
-	const draggableStopDragging = () => {
-		draggable.value = {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		};
-	};
-
-	const setDraggableStickyPos = (position: XYPosition) => {
-		draggable.value = {
-			...draggable.value,
-			stickyPosition: position,
-		};
-	};
-
-	const setDraggableCanDrop = (canDrop: boolean) => {
-		draggable.value = {
-			...draggable.value,
-			canDrop,
-		};
-	};
-
 	const openDeleteUserModal = (id: string) => {
 		setActiveId(DELETE_USER_MODAL_KEY, id);
 		openModal(DELETE_USER_MODAL_KEY);
@@ -500,20 +429,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
-	};
-
-	const submitContactEmail = async (email: string, agree: boolean) => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.submitEmailOnSignup(
-				instanceId,
-				currentUser,
-				email ?? currentUser.email,
-				agree,
-			);
-		}
-		return null;
 	};
 
 	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
@@ -539,7 +454,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openMoveToFolderModal = (
 		resourceType: 'folder' | 'workflow',
-		resource: { id: string; name: string; parentFolderId?: string },
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+			sharedWithProjects?: ProjectSharingData[];
+		},
 		workflowListEventBus: EventBus,
 	) => {
 		openModalWithData({
@@ -559,33 +479,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		if (actionIndex !== -1) {
 			activeActions.value.splice(actionIndex, 1);
 		}
-	};
-
-	const addSelectedNode = (node: INodeUi) => {
-		const isAlreadySelected = selectedNodes.value.some((n) => n.name === node.name);
-		if (!isAlreadySelected) {
-			selectedNodes.value.push(node);
-		}
-	};
-
-	const removeNodeFromSelection = (node: INodeUi) => {
-		for (const [index] of selectedNodes.value.entries()) {
-			if (selectedNodes.value[index].name === node.name) {
-				selectedNodes.value.splice(Number(index), 1);
-				break;
-			}
-		}
-	};
-
-	const resetSelectedNodes = () => {
-		selectedNodes.value = [];
-	};
-
-	const setCurlCommand = (payload: { name: string; command: string }) => {
-		modalsById.value[payload.name] = {
-			...modalsById.value[payload.name],
-			curlCommand: payload.command,
-		};
 	};
 
 	const toggleSidebarMenuCollapse = () => {
@@ -627,10 +520,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
 
-	const deleteNotificationsForView = (view: VIEWS) => {
-		delete pendingNotificationsForViews.value[view];
-	};
-
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -646,39 +535,35 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const initialize = (options: { banners: BannerName[] }) => {
+		options.banners.forEach(pushBannerToStack);
+	};
+
 	return {
 		appGridDimensions,
 		appliedTheme,
 		contextBasedTranslationKeys,
-		getLastSelectedNode,
-		isVersionsOpen,
 		isModalActiveById,
 		isReadOnlyView,
 		isActionActive,
 		activeActions,
-		getSelectedNodes,
-		isNodeSelected,
 		headerHeight,
 		stateIsDirty,
-		lastSelectedNodeOutputIndex,
 		activeCredentialType,
 		lastSelectedNode,
-		selectedNodes,
 		bannersHeight,
-		lastSelectedNodeEndpointUuid,
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
 		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
-		nodeViewMoveInProgress,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
 		sidebarMenuCollapsedPreference,
 		bannerStack,
-		theme,
+		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
 		isAnyModalOpen,
@@ -686,41 +571,28 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
-		setMode,
-		setActiveId,
-		setShowAuthSelector,
 		setModalData,
 		openModalWithData,
 		openModal,
 		closeModal,
-		draggableStartDragging,
-		draggableStopDragging,
-		setDraggableStickyPos,
-		setDraggableCanDrop,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
-		submitContactEmail,
 		openCommunityPackageUninstallConfirmModal,
 		openCommunityPackageUpdateConfirmModal,
 		addActiveAction,
 		removeActiveAction,
-		addSelectedNode,
-		removeNodeFromSelection,
-		resetSelectedNodes,
-		setCurlCommand,
 		toggleSidebarMenuCollapse,
-		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,
 		pushBannerToStack,
 		clearBannerStack,
 		setNotificationsForView,
-		deleteNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
+		initialize,
 	};
 });
 

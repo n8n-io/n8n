@@ -4,6 +4,7 @@ export * from './execution-lifecycle';
 export { Memoized } from './memoized';
 export * from './module';
 export * from './multi-main';
+export * from './pubsub';
 export { Redactable } from './redactable';
 export * from './shutdown';
 export * from './module/module-metadata';

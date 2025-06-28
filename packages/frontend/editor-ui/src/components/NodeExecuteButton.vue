@@ -24,12 +24,13 @@ import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { type IUpdateInformation } from '@/Interface';
+import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
+import type { ButtonType } from '@n8n/design-system';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -41,8 +42,8 @@ const props = withDefaults(
 		telemetrySource: string;
 		disabled?: boolean;
 		label?: string;
-		type?: string;
-		size?: string;
+		type?: ButtonType;
+		size?: ButtonSize;
 		transparent?: boolean;
 		hideIcon?: boolean;
 		tooltip?: string;

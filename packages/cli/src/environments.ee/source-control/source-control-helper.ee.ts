@@ -1,10 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { Logger } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
+import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
@@ -16,6 +18,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
+import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
@@ -45,6 +48,38 @@ export function getTagsPath(gitFolder: string): string {
 
 export function getFoldersPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+}
+
+export async function readTagAndMappingsFromSourceControlFile(file: string): Promise<{
+	tags: TagEntity[];
+	mappings: WorkflowTagMapping[];
+}> {
+	try {
+		return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+			await fsReadFile(file, { encoding: 'utf8' }),
+			{ fallbackValue: { tags: [], mappings: [] } },
+		);
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { tags: [], mappings: [] };
+		}
+		throw error;
+	}
+}
+
+export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
+	try {
+		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: { folders: [] },
+		});
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { folders: [] };
+		}
+		throw error;
+	}
 }
 
 export function sourceControlFoldersExistCheck(

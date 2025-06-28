@@ -1,14 +1,15 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import type { ButtonType } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
 		isSaving?: boolean;
 		disabled?: boolean;
-		type?: string;
+		type?: ButtonType;
 		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;

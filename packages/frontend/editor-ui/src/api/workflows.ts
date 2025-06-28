@@ -1,21 +1,22 @@
 import type {
-	ChangeLocationSearchResult,
+	ChangeLocationSearchResponseItem,
 	FolderCreateResponse,
 	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IRestApiContext,
+	IUsedCredential,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
 	ExecutionOptions,
 	ExecutionSummary,
 	IDataObject,
 } from 'n8n-workflow';
-import { getFullApiResponse, makeRestApiRequest } from '@/utils/apiUtils';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(
@@ -146,15 +147,33 @@ export async function getProjectFolders(
 		excludeFolderIdAndDescendants?: string;
 		name?: string;
 	},
-): Promise<ChangeLocationSearchResult[]> {
-	const res = await getFullApiResponse<ChangeLocationSearchResult[]>(
+	select?: string[],
+): Promise<{ data: ChangeLocationSearchResponseItem[]; count: number }> {
+	const res = await getFullApiResponse<ChangeLocationSearchResponseItem[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/folders`,
 		{
 			...(filter ? { filter } : {}),
 			...(options ? options : {}),
+			...(select ? { select: JSON.stringify(select) } : {}),
 		},
+	);
+	return {
+		data: res.data,
+		count: res.count,
+	};
+}
+
+export async function getFolderUsedCredentials(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<IUsedCredential[]> {
+	const res = await getFullApiResponse<IUsedCredential[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/credentials`,
 	);
 	return res.data;
 }

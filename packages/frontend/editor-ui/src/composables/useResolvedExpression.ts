@@ -2,10 +2,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
-import { useRouter } from 'vue-router';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
 
 export function useResolvedExpression({
@@ -13,17 +12,18 @@ export function useResolvedExpression({
 	additionalData,
 	isForCredential,
 	stringifyObject,
+	contextNodeName,
 }: {
 	expression: MaybeRefOrGetter<unknown>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	isForCredential?: MaybeRefOrGetter<boolean>;
 	stringifyObject?: MaybeRefOrGetter<boolean>;
+	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const router = useRouter();
-	const { resolveExpression } = useWorkflowHelpers({ router });
+	const { resolveExpression } = useWorkflowHelpers();
 
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
@@ -47,9 +47,10 @@ export function useResolvedExpression({
 		let options: ResolveParameterOptions = {
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),
+			contextNodeName: toValue(contextNodeName),
 		};
 
-		if (ndvStore.isInputParentOfActiveNode) {
+		if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
 			options = {
 				...options,
 				targetItem: targetItem.value ?? undefined,

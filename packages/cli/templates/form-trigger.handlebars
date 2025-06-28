@@ -857,9 +857,7 @@
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
 
 					let postUrl = '';
-					if (window.location.href.includes('form-waiting')) {
-						intervalId = setTimeout(checkExecutionStatus, interval);
-					} else {
+					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
 					}
 
@@ -880,7 +878,8 @@
 
 								if(json?.formWaitingUrl) {
 									formWaitingUrl = json.formWaitingUrl;
-									intervalId = setTimeout(checkExecutionStatus, interval);
+									clearTimeout(timeoutId);
+									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
 								}
 
@@ -934,6 +933,12 @@
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+						})
+						.finally(() => {
+							if (window.location.href.includes('form-waiting')) {
+								clearTimeout(timeoutId);
+								timeoutId = setTimeout(checkExecutionStatus, interval);
+							}
 						});
 				}
 			});

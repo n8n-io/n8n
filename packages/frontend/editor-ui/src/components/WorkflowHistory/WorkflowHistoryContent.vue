@@ -5,17 +5,18 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { IUser } from 'n8n-workflow';
 
 const i18n = useI18n();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
-	actions: UserAction[];
+	actions: Array<UserAction<IUser>>;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();

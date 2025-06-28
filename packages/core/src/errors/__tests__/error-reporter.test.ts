@@ -1,10 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 import { ApplicationError, BaseError } from 'n8n-workflow';
-
-import type { Logger } from '@/logging/logger';
 
 import { ErrorReporter } from '../error-reporter';
 

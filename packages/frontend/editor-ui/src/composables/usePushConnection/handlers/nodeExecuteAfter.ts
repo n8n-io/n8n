@@ -27,12 +27,7 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 	}
 
 	workflowsStore.updateNodeExecutionData(pushData);
-
-	// Remove the node from the executing queue after a short delay
-	// To allow the running spinner to show for at least 50ms
-	setTimeout(() => {
-		workflowsStore.removeExecutingNode(pushData.nodeName);
-	}, 50);
+	workflowsStore.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);
 	void schemaPreviewStore.trackSchemaPreviewExecution(pushData);

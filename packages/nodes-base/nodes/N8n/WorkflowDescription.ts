@@ -246,6 +246,46 @@ const getAllOperation: INodeProperties[] = [
 				description: 'Include only workflows with these tags',
 				hint: 'Comma separated list of tags (empty value is ignored)',
 			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					request: {
+						qs: {
+							name: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				routing: {
+					request: {
+						qs: {
+							projectId: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Exclude Pinned Data',
+				name: 'excludePinnedData',
+				description: 'Whether to exclude pinned data from the response',
+				type: 'boolean',
+				default: false,
+				routing: {
+					request: {
+						qs: {
+							excludePinnedData: '={{ $value }}',
+						},
+					},
+				},
+			},
 		],
 	},
 ];

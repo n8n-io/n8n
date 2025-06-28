@@ -3,7 +3,7 @@ import type { IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type {
 	FilterConditionValue,

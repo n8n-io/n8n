@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
-import type { ITemplatesCollection } from '@/Interface';
+import type { ITemplatesCollection } from '@n8n/rest-api-client/api/templates';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
 import { VueAgile } from 'vue-agile';

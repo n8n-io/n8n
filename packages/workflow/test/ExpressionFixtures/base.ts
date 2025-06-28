@@ -1,5 +1,5 @@
 import { ExpressionError } from '@/errors/expression.error';
-import type { GenericValue, IDataObject } from '@/Interfaces';
+import type { GenericValue, IDataObject } from '@/interfaces';
 
 interface ExpressionTestBase {
 	type: 'evaluation' | 'transform';

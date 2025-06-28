@@ -92,11 +92,12 @@ export class ExecutionError extends SerializableError {
 	private toErrorDetailsAndType(messageRow?: string) {
 		if (!messageRow) return [null, null];
 
-		const [errorDetails, errorType] = messageRow
-			.split(':')
-			.reverse()
-			.map((i) => i.trim());
-
+		const segments = messageRow.split(':').map((i) => i.trim());
+		if (segments[1] === "Cannot find module 'node") {
+			segments[1] = `${segments[1]}:${segments[2]}`;
+			segments.splice(2, 1);
+		}
+		const [errorDetails, errorType] = segments.reverse();
 		return [errorDetails, errorType === 'Error' ? null : errorType];
 	}
 }

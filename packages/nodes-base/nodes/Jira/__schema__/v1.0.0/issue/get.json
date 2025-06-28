@@ -7,6 +7,20 @@
         "fields": {
             "type": "object",
             "properties": {
+                "aggregateprogress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "aggregatetimeoriginalestimate": {
+                    "type": "null"
+                },
                 "attachment": {
                     "type": "array",
                     "items": {
@@ -79,6 +93,415 @@
                             "thumbnail": {
                                 "type": "string"
                             }
+                        }
+                    }
+                },
+                "comment": {
+                    "type": "object",
+                    "properties": {
+                        "comments": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "author": {
+                                        "type": "object",
+                                        "properties": {
+                                            "accountId": {
+                                                "type": "string"
+                                            },
+                                            "accountType": {
+                                                "type": "string"
+                                            },
+                                            "active": {
+                                                "type": "boolean"
+                                            },
+                                            "avatarUrls": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "16x16": {
+                                                        "type": "string"
+                                                    },
+                                                    "24x24": {
+                                                        "type": "string"
+                                                    },
+                                                    "32x32": {
+                                                        "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "displayName": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "timeZone": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    },
+                                    "created": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "jsdPublic": {
+                                        "type": "boolean"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    },
+                                    "updateAuthor": {
+                                        "type": "object",
+                                        "properties": {
+                                            "accountId": {
+                                                "type": "string"
+                                            },
+                                            "accountType": {
+                                                "type": "string"
+                                            },
+                                            "active": {
+                                                "type": "boolean"
+                                            },
+                                            "avatarUrls": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "16x16": {
+                                                        "type": "string"
+                                                    },
+                                                    "24x24": {
+                                                        "type": "string"
+                                                    },
+                                                    "32x32": {
+                                                        "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "displayName": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "timeZone": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "updated": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "maxResults": {
+                            "type": "integer"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "startAt": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "created": {
+                    "type": "string"
+                },
+                "creator": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "fixVersions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "archived": {
+                                "type": "boolean"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "released": {
+                                "type": "boolean"
+                            },
+                            "releaseDate": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "issuelinks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "outwardIssue": {
+                                "type": "object",
+                                "properties": {
+                                    "fields": {
+                                        "type": "object",
+                                        "properties": {
+                                            "issuetype": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "avatarId": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "entityId": {
+                                                        "type": "string"
+                                                    },
+                                                    "hierarchyLevel": {
+                                                        "type": "integer"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "subtask": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "priority": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "status": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "statusCategory": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "colorName": {
+                                                                "type": "string"
+                                                            },
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "key": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "self": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "summary": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "self": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "inward": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "outward": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "issuetype": {
+                    "type": "object",
+                    "properties": {
+                        "avatarId": {
+                            "type": "integer"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "entityId": {
+                            "type": "string"
+                        },
+                        "hierarchyLevel": {
+                            "type": "integer"
+                        },
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "subtask": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "priority": {
+                    "type": "object",
+                    "properties": {
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "progress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
                         }
                     }
                 },
@@ -165,6 +588,9 @@
                         }
                     }
                 },
+                "security": {
+                    "type": "null"
+                },
                 "status": {
                     "type": "object",
                     "properties": {
@@ -205,8 +631,182 @@
                         }
                     }
                 },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "statuscategorychangedate": {
+                    "type": "string"
+                },
+                "subtasks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "fields": {
+                                "type": "object",
+                                "properties": {
+                                    "issuetype": {
+                                        "type": "object",
+                                        "properties": {
+                                            "avatarId": {
+                                                "type": "integer"
+                                            },
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "entityId": {
+                                                "type": "string"
+                                            },
+                                            "hierarchyLevel": {
+                                                "type": "integer"
+                                            },
+                                            "iconUrl": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "subtask": {
+                                                "type": "boolean"
+                                            }
+                                        }
+                                    },
+                                    "priority": {
+                                        "type": "object",
+                                        "properties": {
+                                            "iconUrl": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "status": {
+                                        "type": "object",
+                                        "properties": {
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "iconUrl": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "statusCategory": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "colorName": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "key": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "key": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "summary": {
                     "type": "string"
+                },
+                "timeestimate": {
+                    "type": "null"
+                },
+                "timeoriginalestimate": {
+                    "type": "null"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "votes": {
+                    "type": "object",
+                    "properties": {
+                        "hasVoted": {
+                            "type": "boolean"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "votes": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "watches": {
+                    "type": "object",
+                    "properties": {
+                        "isWatching": {
+                            "type": "boolean"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "watchCount": {
+                            "type": "integer"
+                        }
+                    }
                 },
                 "worklog": {
                     "type": "object",
@@ -255,9 +855,6 @@
                                                 }
                                             },
                                             "displayName": {
-                                                "type": "string"
-                                            },
-                                            "emailAddress": {
                                                 "type": "string"
                                             },
                                             "self": {
@@ -324,9 +921,6 @@
                                             "displayName": {
                                                 "type": "string"
                                             },
-                                            "emailAddress": {
-                                                "type": "string"
-                                            },
                                             "self": {
                                                 "type": "string"
                                             },
@@ -342,6 +936,9 @@
                             }
                         }
                     }
+                },
+                "workratio": {
+                    "type": "integer"
                 }
             }
         },
@@ -355,5 +952,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

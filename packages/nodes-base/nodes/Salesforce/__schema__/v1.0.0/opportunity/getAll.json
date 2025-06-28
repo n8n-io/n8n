@@ -14,10 +14,7 @@
         },
         "Id": {
             "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

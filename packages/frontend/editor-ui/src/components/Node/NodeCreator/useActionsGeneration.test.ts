@@ -404,7 +404,7 @@ describe('useActionsGenerator', () => {
 		});
 
 		it('should not return evaluation or evaluation trigger node if variant is not enabled', () => {
-			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
+			vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(false);
 
 			const node: INodeTypeDescription = {
 				...baseV2NodeWoProps,

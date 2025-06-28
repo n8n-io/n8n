@@ -13,14 +13,31 @@ const renderComponent = createComponentRenderer(InsightsDashboard, {
 	},
 });
 
+const moduleSettings = {
+	insights: {
+		summary: true,
+		dashboard: true,
+		dateRanges: [
+			{
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+			},
+		],
+	},
+};
+
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
-		createTestingPinia({ initialState: { settings: { settings: defaultSettings } } });
+		createTestingPinia({
+			initialState: { settings: { settings: defaultSettings, moduleSettings } },
+		});
 	});
 
 	it('should render without error', () => {
 		mockedStore(useInsightsStore);
 		expect(() => renderComponent()).not.toThrow();
+		expect(document.title).toBe('Insights - n8n');
 	});
 
 	it('should update the selected time range', async () => {

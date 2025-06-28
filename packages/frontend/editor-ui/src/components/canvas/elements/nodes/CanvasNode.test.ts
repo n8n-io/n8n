@@ -94,6 +94,7 @@ describe('CanvasNode', () => {
 							inputs: [
 								{ type: NodeConnectionTypes.Main, index: 0 },
 								{ type: NodeConnectionTypes.AiAgent, index: 0, required: true },
+								{ type: NodeConnectionTypes.AiMemory, index: 0 },
 								{ type: NodeConnectionTypes.AiTool, index: 0 },
 							],
 							outputs: [],
@@ -109,8 +110,9 @@ describe('CanvasNode', () => {
 
 			const inputHandles = getAllByTestId('canvas-node-input-handle');
 
-			expect(inputHandles[1]).toHaveStyle('left: 20%');
-			expect(inputHandles[2]).toHaveStyle('left: 80%');
+			expect(inputHandles[1]).toHaveStyle('left: 40px');
+			expect(inputHandles[2]).toHaveStyle('left: 160px');
+			expect(inputHandles[3]).toHaveStyle('left: 200px');
 		});
 	});
 

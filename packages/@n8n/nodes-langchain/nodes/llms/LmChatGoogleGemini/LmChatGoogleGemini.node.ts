@@ -118,7 +118,7 @@ export class LmChatGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'models/gemini-1.0-pro',
+				default: 'models/gemini-2.5-flash',
 			},
 			additionalOptions,
 		],
@@ -149,7 +149,7 @@ export class LmChatGoogleGemini implements INodeType {
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
-			modelName,
+			model: modelName,
 			topK: options.topK,
 			topP: options.topP,
 			temperature: options.temperature,

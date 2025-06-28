@@ -64,9 +64,6 @@
                 }
             }
         },
-        "cardRole": {
-            "type": "null"
-        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -203,5 +200,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

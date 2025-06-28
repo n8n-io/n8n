@@ -214,7 +214,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		);
 	}
 
-	// Duplicated from packages/cli/src/databases/entities/User.ts
+	// Duplicated from packages/@n8n/db/src/entities/User.ts
 	// Reason:
 	// This migration should work the same even if we refactor the function in
 	// `User.ts`.

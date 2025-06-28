@@ -6,7 +6,7 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 type Props = {
 	activeCredentialType: string;

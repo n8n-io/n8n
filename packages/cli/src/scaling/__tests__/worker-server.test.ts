@@ -1,15 +1,15 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { DbConnection } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
-import type { DbConnection } from '@/databases/db-connection';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
-import { mockLogger } from '@test/mocking';
 
 import { WorkerServer } from '../worker-server';
 
@@ -48,7 +48,7 @@ describe('WorkerServer', () => {
 	beforeEach(() => {
 		globalConfig = mock<GlobalConfig>({
 			queue: {
-				health: { active: true, port: 5678, address: '0.0.0.0' },
+				health: { active: true, port: 5678, address: '::' },
 			},
 			credentials: {
 				overwrite: { endpoint: '' },

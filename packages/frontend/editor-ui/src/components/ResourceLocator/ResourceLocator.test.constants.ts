@@ -49,6 +49,27 @@ export const TEST_PARAMETER_SINGLE_MODE: INodeProperties = {
 	],
 };
 
+export const TEST_PARAMETER_ADD_RESOURCE: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterAddResource',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'testSearch',
+				searchable: true,
+				allowNewResource: {
+					label: 'resourceLocator.mode.list.addNewResource.vectorStoreInMemory',
+					method: 'testAddResource',
+					defaultName: 'test',
+				},
+			},
+		},
+	],
+};
+
 export const TEST_NODE_MULTI_MODE: INode = {
 	type: 'n8n-nodes-base.airtable',
 	typeVersion: 2.1,

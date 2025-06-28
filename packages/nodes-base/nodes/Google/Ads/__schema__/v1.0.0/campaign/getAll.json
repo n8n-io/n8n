@@ -7,8 +7,14 @@
         "amountMicros": {
             "type": "string"
         },
+        "averageCpm": {
+            "type": "number"
+        },
         "costMicros": {
             "type": "string"
+        },
+        "ctr": {
+            "type": "number"
         },
         "id": {
             "type": "string"
@@ -16,11 +22,17 @@
         "impressions": {
             "type": "string"
         },
+        "interactionRate": {
+            "type": "number"
+        },
         "interactions": {
             "type": "string"
         },
         "name": {
             "type": "string"
+        },
+        "optimizationScore": {
+            "type": "number"
         },
         "period": {
             "type": "string"
@@ -35,5 +47,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

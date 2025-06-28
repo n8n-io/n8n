@@ -199,6 +199,6 @@ describe('GlobalExecutionsListItem', () => {
 
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
-		expect(executionTimeElement.textContent).toBe('30:00m');
+		expect(executionTimeElement.textContent).toBe('30m 0s');
 	});
 });

@@ -22,6 +22,7 @@
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
 	]

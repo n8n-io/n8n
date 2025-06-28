@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,

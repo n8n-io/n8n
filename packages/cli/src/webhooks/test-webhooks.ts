@@ -1,3 +1,4 @@
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
@@ -168,13 +169,33 @@ export class TestWebhooks implements IWebhookManager {
 		});
 	}
 
+	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })
+	async handleClearTestWebhooks({
+		webhookKey,
+		workflowEntity,
+		pushRef,
+	}: {
+		webhookKey: string;
+		workflowEntity: IWorkflowBase;
+		pushRef: string;
+	}) {
+		if (!this.push.hasPushRef(pushRef)) return;
+
+		this.clearTimeout(webhookKey);
+
+		const workflow = this.toWorkflow(workflowEntity);
+
+		await this.deactivateWebhooks(workflow);
+	}
+
 	clearTimeout(key: string) {
 		const timeout = this.timeouts[key];
 
 		if (timeout) clearTimeout(timeout);
 	}
 
-	async getWebhookMethods(path: string) {
+	async getWebhookMethods(rawPath: string) {
+		const path = removeTrailingSlash(rawPath);
 		const allKeys = await this.registrations.getAllKeys();
 
 		const webhookMethods = allKeys

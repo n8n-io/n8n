@@ -143,7 +143,7 @@ export class LmChatGroq implements INodeType {
 
 		const model = new ChatGroq({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],

@@ -1,6 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import type { EventDestinations } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee';

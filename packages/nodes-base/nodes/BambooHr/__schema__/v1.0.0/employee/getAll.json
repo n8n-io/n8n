@@ -21,10 +21,7 @@
         },
         "photoUrl": {
             "type": "string"
-        },
-        "pronouns": {
-            "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

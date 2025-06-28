@@ -81,8 +81,8 @@ describe('Insights Transformers', () => {
 			});
 
 			it('should return Infinity if value equals deviation (and thus previous value is 0)', () => {
-				expect(transformInsightsDeviation.total(10, 10)).toBe(Infinity);
-				expect(transformInsightsDeviation.failed(5, 5)).toBe(Infinity);
+				expect(transformInsightsDeviation.total(10, 10)).toBe(null);
+				expect(transformInsightsDeviation.failed(5, 5)).toBe(null);
 			});
 
 			it('should return 0 if deviation is 0 and value is not 0', () => {

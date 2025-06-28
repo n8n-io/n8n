@@ -18,14 +18,8 @@ type MarkAsFailedOptions = StatusUpdateOptions & {
 	errorDetails?: IDataObject;
 };
 
-type MarkAsWarningOptions = MarkAsFailedOptions;
-
 type MarkAsRunningOptions = StatusUpdateOptions & {
 	executionId: string;
-};
-
-type MarkAsEvaluationRunningOptions = StatusUpdateOptions & {
-	evaluationExecutionId: string;
 };
 
 type MarkAsCompletedOptions = StatusUpdateOptions & {
@@ -38,14 +32,17 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		super(TestCaseExecution, dataSource.manager);
 	}
 
-	async createBatch(testRunId: string, pastExecutionIds: string[]) {
+	async createTestCaseExecution(testCaseExecutionProps: DeepPartial<TestCaseExecution>) {
+		const testCaseExecution = this.create(testCaseExecutionProps);
+
+		return await this.save(testCaseExecution);
+	}
+
+	async createBatch(testRunId: string, testCases: string[]) {
 		const mappings = this.create(
-			pastExecutionIds.map<DeepPartial<TestCaseExecution>>((id) => ({
+			testCases.map<DeepPartial<TestCaseExecution>>(() => ({
 				testRun: {
 					id: testRunId,
-				},
-				pastExecution: {
-					id,
 				},
 				status: 'new',
 			})),
@@ -64,24 +61,6 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 				status: 'running',
 				executionId,
 				runAt: new Date(),
-			},
-		);
-	}
-
-	async markAsEvaluationRunning({
-		testRunId,
-		pastExecutionId,
-		evaluationExecutionId,
-		trx,
-	}: MarkAsEvaluationRunningOptions) {
-		trx = trx ?? this.manager;
-
-		return await trx.update(
-			TestCaseExecution,
-			{ testRun: { id: testRunId }, pastExecutionId },
-			{
-				status: 'evaluation_running',
-				evaluationExecutionId,
 			},
 		);
 	}
@@ -127,23 +106,6 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'error',
-				completedAt: new Date(),
-				errorCode,
-				errorDetails,
-			},
-		);
-	}
-
-	async markAsWarning({
-		testRunId,
-		pastExecutionId,
-		errorCode,
-		errorDetails,
-	}: MarkAsWarningOptions) {
-		return await this.update(
-			{ testRun: { id: testRunId }, pastExecutionId },
-			{
-				status: 'warning',
 				completedAt: new Date(),
 				errorCode,
 				errorDetails,

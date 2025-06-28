@@ -77,7 +77,7 @@ export async function modelSearch(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
 	const url = credentials.url && new URL(credentials.url);
-	const isCustomAPI = url && url.hostname !== 'api.openai.com';
+	const isCustomAPI = url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname);
 	return await getModelSearch(
 		(model) =>
 			!isCustomAPI &&

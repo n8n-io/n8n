@@ -5,7 +5,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
 import { WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
 import { reactive } from 'vue';

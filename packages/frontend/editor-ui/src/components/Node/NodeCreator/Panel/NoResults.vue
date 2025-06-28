@@ -7,7 +7,7 @@ import {
 import type { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export interface Props {
 	showIcon?: boolean;

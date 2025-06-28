@@ -18,13 +18,27 @@ import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow
 import {
 	buildInputSchemaField,
 	buildJsonSchemaExampleField,
+	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
 import { nodeNameToToolName } from '@utils/helpers';
-import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
+
+const jsonSchemaExampleField = buildJsonSchemaExampleField({
+	showExtraProps: { specifyInputSchema: [true] },
+});
+
+const jsonSchemaExampleNotice = buildJsonSchemaExampleNotice({
+	showExtraProps: {
+		specifyInputSchema: [true],
+		'@version': [{ _cnd: { gte: 1.3 } }],
+	},
+});
+
+const jsonSchemaField = buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } });
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +47,7 @@ export class ToolCode implements INodeType {
 		icon: 'fa:code',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Write a tool in JS or Python',
 		defaults: {
 			name: 'Code Tool',
@@ -173,8 +187,9 @@ export class ToolCode implements INodeType {
 				default: false,
 			},
 			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
-			buildJsonSchemaExampleField({ showExtraProps: { specifyInputSchema: [true] } }),
-			buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } }),
+			jsonSchemaExampleField,
+			jsonSchemaExampleNotice,
+			jsonSchemaField,
 		],
 	};
 
@@ -275,9 +290,10 @@ export class ToolCode implements INodeType {
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 
 				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+
 				const jsonSchema =
 					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
+						? generateSchemaFromExample(jsonExample, this.getNode().typeVersion >= 1.3)
 						: jsonParse<JSONSchema7>(inputSchema);
 
 				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);

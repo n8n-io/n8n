@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';
@@ -39,11 +39,16 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
-const { startChat } = useCanvasOperations({ router });
+const { startChat } = useCanvasOperations();
 
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
+
+async function handleClickExecute() {
+	workflowsStore.setSelectedTriggerNodeName(name);
+	await runEntireWorkflow('node', name);
+}
 </script>
 
 <template>
@@ -59,6 +64,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					<N8nButton
 						v-if="isChatOpen"
 						type="secondary"
+						icon="comment"
 						size="large"
 						:disabled="isExecuting"
 						:data-test-id="testId"
@@ -72,6 +78,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 					>
 						<N8nButton
 							type="primary"
+							icon="comment"
 							size="large"
 							:disabled="isExecuting"
 							:data-test-id="testId"
@@ -83,11 +90,12 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 				<N8nButton
 					v-else
 					type="primary"
+					icon="flask"
 					size="large"
 					:disabled="isExecuting"
 					:data-test-id="testId"
 					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-					@click.capture="runEntireWorkflow('node', name)"
+					@click.capture="handleClickExecute"
 				/>
 			</template>
 		</div>

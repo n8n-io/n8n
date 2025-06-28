@@ -80,13 +80,21 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
-export function prepareItems(
-	items: INodeExecutionData[],
-	fields: string[],
+export function prepareItems({
+	items,
+	fields,
 	updateKey = '',
 	useDotNotation = false,
-	dateFields: string[] = [],
-) {
+	dateFields = [],
+	isUpdate = false,
+}: {
+	items: INodeExecutionData[];
+	fields: string[];
+	updateKey?: string;
+	useDotNotation?: boolean;
+	dateFields?: string[];
+	isUpdate?: boolean;
+}) {
 	let data = items;
 
 	if (updateKey) {
@@ -112,7 +120,7 @@ export function prepareItems(
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (useDotNotation) {
+			if (useDotNotation && !isUpdate) {
 				set(updateItem, field, fieldData);
 			} else {
 				updateItem[field] = fieldData;

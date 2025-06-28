@@ -1,3 +1,4 @@
+import { randomName } from '@n8n/backend-test-utils';
 import type { TagEntity } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
@@ -5,8 +6,6 @@ import { TagRepository } from '@n8n/db';
 import { WorkflowTagMappingRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-
-import { randomName } from '../random';
 
 export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: IWorkflowBase) {
 	const { name } = attributes;
@@ -24,6 +23,12 @@ export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: 
 	}
 
 	return tag;
+}
+
+export async function updateTag(tag: TagEntity, attributes: Partial<TagEntity>) {
+	const tagRepository = Container.get(TagRepository);
+	const updatedTag = tagRepository.merge(tag, attributes);
+	return await tagRepository.save(updatedTag);
 }
 
 export async function assignTagToWorkflow(tag: TagEntity, workflow: WorkflowEntity) {

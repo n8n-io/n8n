@@ -146,7 +146,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 
 		const embeddings = new MistralAIEmbeddings({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			...options,
 		});
 

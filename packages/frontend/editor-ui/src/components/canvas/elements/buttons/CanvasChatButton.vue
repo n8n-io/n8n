@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-export interface Props {
-	type: 'primary' | 'tertiary';
-	label: string;
-}
+import { type ButtonProps } from '@n8n/design-system';
+
+export type Props = Pick<ButtonProps, 'label' | 'type'>;
+
 defineProps<Props>();
 </script>
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useLogsStore } from '@/stores/logs.store';
@@ -67,6 +67,13 @@ const onClick = () => {
 	bottom: calc(var(--canvas-panel-height-offset, 0px) + var(--spacing-s));
 	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
+
+	/* Prevent overlap with 'Execute Workflow' / 'Open Chat' buttons on small screens */
+	@include mixins.breakpoint('sm-only') {
+		bottom: calc(
+			var(--canvas-panel-height-offset, 0px) + var(--spacing-s) + var(--spacing-xs) + 42px
+		);
+	}
 }
 
 .tooltip {

@@ -58,7 +58,7 @@ exports[`InputPanel > should render 1`] = `
                 data-test-id="radio-button-debugging"
               >
                 
-                Debugging
+                From AI
                 
               </div>
             </label>

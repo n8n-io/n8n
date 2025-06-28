@@ -44,6 +44,19 @@ describe('ListInsightsWorkflowQueryDto', () => {
 					sortBy: 'total:desc',
 				},
 			},
+			{
+				name: 'limit take to 100',
+				request: {
+					skip: '0',
+					take: '200',
+					sortBy: 'total:asc',
+				},
+				parsedResult: {
+					skip: 0,
+					take: 100,
+					sortBy: 'total:asc',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = ListInsightsWorkflowQueryDto.safeParse(request);
 			expect(result.success).toBe(true);

@@ -7,115 +7,6 @@
         "fields": {
             "type": "object",
             "properties": {
-                "created": {
-                    "type": "string"
-                },
-                "issuetype": {
-                    "type": "object",
-                    "properties": {
-                        "avatarId": {
-                            "type": "integer"
-                        },
-                        "description": {
-                            "type": "string"
-                        },
-                        "entityId": {
-                            "type": "string"
-                        },
-                        "hierarchyLevel": {
-                            "type": "integer"
-                        },
-                        "iconUrl": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "subtask": {
-                            "type": "boolean"
-                        }
-                    }
-                },
-                "labels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "priority": {
-                    "type": "object",
-                    "properties": {
-                        "iconUrl": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "progress": {
-                    "type": "object",
-                    "properties": {
-                        "progress": {
-                            "type": "integer"
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "project": {
-                    "type": "object",
-                    "properties": {
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                },
-                                "48x48": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "key": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "projectTypeKey": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "simplified": {
-                            "type": "boolean"
-                        }
-                    }
-                },
                 "status": {
                     "type": "object",
                     "properties": {
@@ -171,5 +62,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

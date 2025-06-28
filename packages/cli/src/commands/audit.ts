@@ -4,7 +4,6 @@ import { Flags } from '@oclif/core';
 import { UserError } from 'n8n-workflow';
 
 import { RISK_CATEGORIES } from '@/security-audit/constants';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import type { Risk } from '@/security-audit/types';
 
 import { BaseCommand } from './base-command';
@@ -50,6 +49,8 @@ export class SecurityAudit extends BaseCommand {
 
 			throw new UserError([message, hint].join('. '));
 		}
+
+		const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
 
 		const result = await Container.get(SecurityAuditService).run(
 			categories,

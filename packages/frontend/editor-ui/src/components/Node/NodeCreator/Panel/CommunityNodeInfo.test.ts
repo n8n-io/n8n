@@ -59,7 +59,7 @@ vi.mock('../composables/useViewStacks', () => ({
 			mode: 'community-node',
 			rootView: undefined,
 			subcategory: 'Other Node',
-			title: 'Community node details',
+			title: 'Node details',
 		},
 	})),
 }));

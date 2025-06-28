@@ -21,31 +21,14 @@
                         },
                         "type": {
                             "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
                         }
                     }
                 },
                 "date": {
                     "type": "integer"
-                },
-                "entities": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "length": {
-                                "type": "integer"
-                            },
-                            "offset": {
-                                "type": "integer"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "url": {
-                                "type": "string"
-                            }
-                        }
-                    }
                 },
                 "from": {
                     "type": "object",
@@ -73,5 +56,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

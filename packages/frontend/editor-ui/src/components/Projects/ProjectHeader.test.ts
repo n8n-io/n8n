@@ -35,6 +35,7 @@ vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
 		isSharedSubPage: false,
+		isProjectsSubPage: false,
 	}),
 }));
 
@@ -130,9 +131,10 @@ describe('ProjectHeader', () => {
 		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
 	});
 
-	it('Team project: should render the correct title and subtitle', async () => {
+	it('Team project: should render the correct title and no subtitle if there is no description', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isProjectsSubPage', 'get').mockReturnValue(true);
 		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		const projectName = 'My Project';
@@ -144,18 +146,23 @@ describe('ProjectHeader', () => {
 		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
-	it('should overwrite default subtitle with slot', () => {
-		const defaultSubtitle = 'All the workflows, credentials and executions you have access to';
-		const subtitle = 'Custom subtitle';
+	it('Team project: should render the correct title and subtitle if there is a description', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isProjectsSubPage', 'get').mockReturnValue(true);
+		const { getByTestId, rerender } = renderComponent();
 
-		const { getByText, queryByText } = renderComponent({
-			slots: {
-				subtitle,
-			},
-		});
+		const projectName = 'My Project';
+		const projectDescription = 'This is a team project description';
+		projectsStore.currentProject = {
+			name: projectName,
+			description: projectDescription,
+		} as Project;
 
-		expect(getByText(subtitle)).toBeVisible();
-		expect(queryByText(defaultSubtitle)).not.toBeInTheDocument();
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent(projectName);
+		expect(getByTestId('project-subtitle')).toHaveTextContent(projectDescription);
 	});
 
 	it('should render ProjectTabs Settings if project is team project and user has update scope', () => {

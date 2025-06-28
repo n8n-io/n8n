@@ -11,7 +11,7 @@ import type {
 	BaseNode,
 	CredentialUsages,
 } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 

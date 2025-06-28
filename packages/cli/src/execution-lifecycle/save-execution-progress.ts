@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 export async function saveExecutionProgress(

@@ -9,6 +9,7 @@
 		"emitDecoratorMetadata": true,
 
 		// remove all options below this line
+		"strict": false,
 		"strictPropertyInitialization": false
 	},
 	"include": ["src/**/*.ts"],

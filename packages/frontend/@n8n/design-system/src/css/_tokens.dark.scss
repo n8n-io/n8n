@@ -178,6 +178,13 @@
 	--color-line-break: var(--prim-gray-420);
 	--color-code-line-break: var(--prim-color-secondary-tint-100);
 
+	// Tag
+	--tag-background-color: var(--prim-gray-670);
+	--tag-background-hover-color: var(--prim-gray-540);
+	--tag-border-color: var(--prim-gray-710);
+	--tag-border-hover-color: var(--prim-gray-670);
+	--tag-text-color: var(--color-text-dark);
+
 	// Variables
 	--color-variables-usage-font: var(--prim-color-alt-a-tint-300);
 	--color-variables-usage-syntax-bg: var(--prim-color-alt-a-alpha-025);

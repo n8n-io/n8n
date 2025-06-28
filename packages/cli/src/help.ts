@@ -1,9 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { Help } from '@oclif/core';
-import { Logger } from 'n8n-core';
 
 // oclif expects a default export
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default class CustomHelp extends Help {
 	async showRootHelp() {
 		Container.get(Logger).info(

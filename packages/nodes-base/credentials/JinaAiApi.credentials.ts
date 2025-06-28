@@ -10,7 +10,7 @@ export class JinaAiApi implements ICredentialType {
 
 	displayName = 'Jina AI API';
 
-	documentationUrl = 'jinaAi';
+	documentationUrl = 'jinaai';
 
 	properties: INodeProperties[] = [
 		{

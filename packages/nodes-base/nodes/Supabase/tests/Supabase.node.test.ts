@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import {
 	type IDataObject,
 	type IExecuteFunctions,

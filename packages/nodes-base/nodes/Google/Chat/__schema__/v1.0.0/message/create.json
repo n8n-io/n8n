@@ -16,6 +16,9 @@
         "sender": {
             "type": "object",
             "properties": {
+                "displayName": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -27,7 +30,33 @@
         "space": {
             "type": "object",
             "properties": {
+                "lastActiveTime": {
+                    "type": "string"
+                },
+                "membershipCount": {
+                    "type": "object",
+                    "properties": {
+                        "joinedDirectHumanUserCount": {
+                            "type": "integer"
+                        }
+                    }
+                },
                 "name": {
+                    "type": "string"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -44,5 +73,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

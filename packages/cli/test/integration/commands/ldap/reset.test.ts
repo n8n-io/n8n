@@ -1,3 +1,11 @@
+import {
+	createTeamProject,
+	findProject,
+	getPersonalProject,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
@@ -14,13 +22,9 @@ import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../../shared/mocking';
 import { saveCredential } from '../../shared/db/credentials';
-import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
 import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
-import { createWorkflow } from '../../shared/db/workflows';
 import { createLdapConfig } from '../../shared/ldap';
-import { randomCredentialPayload } from '../../shared/random';
 
 mockInstance(Telemetry);
 

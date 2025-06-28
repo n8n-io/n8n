@@ -155,10 +155,7 @@
                     }
                 }
             }
-        },
-        "Vendor_Name": {
-            "type": "null"
         }
     },
-    "version": 3
+    "version": 4
 }

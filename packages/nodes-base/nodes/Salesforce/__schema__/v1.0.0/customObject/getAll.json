@@ -11,10 +11,7 @@
                     "type": "string"
                 }
             }
-        },
-        "Id": {
-            "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

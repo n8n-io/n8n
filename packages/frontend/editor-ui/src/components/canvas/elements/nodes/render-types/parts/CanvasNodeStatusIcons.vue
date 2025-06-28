@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 
@@ -16,6 +16,7 @@ const {
 	hasIssues,
 	executionStatus,
 	executionWaiting,
+	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
 	runDataIterations,
@@ -59,7 +60,7 @@ const dirtiness = computed(() =>
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
-		v-else-if="executionRunning || executionStatus === 'running'"
+		v-else-if="executionRunning || executionWaitingForNext || executionStatus === 'running'"
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>

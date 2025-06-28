@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { OpenAIEmbeddings } from '@langchain/openai';
+import { AzureOpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -143,7 +143,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			options.timeout = undefined;
 		}
 
-		const embeddings = new OpenAIEmbeddings({
+		const embeddings = new AzureOpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
 			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,

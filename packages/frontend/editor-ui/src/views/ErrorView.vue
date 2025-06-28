@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 const router = useRouter();
 
 const props = defineProps<{

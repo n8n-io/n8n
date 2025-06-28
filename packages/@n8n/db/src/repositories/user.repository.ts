@@ -1,10 +1,10 @@
+import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { GlobalRole } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
-import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { Project, ProjectRelation, User } from '../entities';
-import type { ListQuery } from '../entities/types-db';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -22,7 +22,7 @@ export class UserRepository extends Repository<User> {
 	 * @deprecated Use `UserRepository.save` instead if you can.
 	 *
 	 * We need to use `save` so that that the subscriber in
-	 * packages/cli/src/databases/entities/Project.ts receives the full user.
+	 * packages/@n8n/db/src/entities/Project.ts receives the full user.
 	 * With `update` it would only receive the updated fields, e.g. the `id`
 	 * would be missing. test('does not use `Repository.update`, but
 	 * `Repository.save` instead'.
@@ -75,47 +75,12 @@ export class UserRepository extends Repository<User> {
 		);
 	}
 
-	async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<User> = {};
-
-		if (!listQueryOptions) {
-			findManyOptions.relations = ['authIdentities'];
-			return findManyOptions;
-		}
-
-		const { filter, select, take, skip } = listQueryOptions;
-
-		if (select) findManyOptions.select = select;
-		if (take) findManyOptions.take = take;
-		if (skip) findManyOptions.skip = skip;
-
-		if (take && !select) {
-			findManyOptions.relations = ['authIdentities'];
-		}
-
-		if (take && select && !select?.id) {
-			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-		}
-
-		if (filter) {
-			const { isOwner, ...otherFilters } = filter;
-
-			findManyOptions.where = otherFilters;
-
-			if (isOwner !== undefined) {
-				findManyOptions.where.role = isOwner ? 'global:owner' : Not('global:owner');
-			}
-		}
-
-		return findManyOptions;
-	}
-
 	/**
 	 * Get emails of users who have completed setup, by user IDs.
 	 */
 	async getEmailsByIds(userIds: string[]) {
 		return await this.find({
-			select: ['email'],
+			select: ['id', 'email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
 	}
@@ -180,5 +145,149 @@ export class UserRepository extends Repository<User> {
 				},
 			},
 		});
+	}
+
+	private applyUserListSelect(
+		queryBuilder: SelectQueryBuilder<User>,
+		select: Array<keyof User> | undefined,
+	): SelectQueryBuilder<User> {
+		if (select !== undefined) {
+			if (!select.includes('id')) {
+				select.unshift('id'); // Ensure id is always selected
+			}
+			queryBuilder.select(select.map((field) => `user.${field}`));
+		}
+		return queryBuilder;
+	}
+
+	private applyUserListFilter(
+		queryBuilder: SelectQueryBuilder<User>,
+		filter: UsersListFilterDto['filter'],
+	): SelectQueryBuilder<User> {
+		if (filter?.email !== undefined) {
+			queryBuilder.andWhere('user.email = :email', {
+				email: filter.email,
+			});
+		}
+
+		if (filter?.firstName !== undefined) {
+			queryBuilder.andWhere('user.firstName = :firstName', {
+				firstName: filter.firstName,
+			});
+		}
+
+		if (filter?.lastName !== undefined) {
+			queryBuilder.andWhere('user.lastName = :lastName', {
+				lastName: filter.lastName,
+			});
+		}
+
+		if (filter?.mfaEnabled !== undefined) {
+			queryBuilder.andWhere('user.mfaEnabled = :mfaEnabled', {
+				mfaEnabled: filter.mfaEnabled,
+			});
+		}
+
+		if (filter?.isOwner !== undefined) {
+			if (filter.isOwner) {
+				queryBuilder.andWhere('user.role = :role', {
+					role: 'global:owner',
+				});
+			} else {
+				queryBuilder.andWhere('user.role <> :role', {
+					role: 'global:owner',
+				});
+			}
+		}
+
+		if (filter?.fullText !== undefined) {
+			const fullTextFilter = `%${filter.fullText}%`;
+			queryBuilder.andWhere(
+				new Brackets((qb) => {
+					qb.where('LOWER(user.firstName) like LOWER(:firstNameFullText)', {
+						firstNameFullText: fullTextFilter,
+					})
+						.orWhere('LOWER(user.lastName) like LOWER(:lastNameFullText)', {
+							lastNameFullText: fullTextFilter,
+						})
+						.orWhere('LOWER(user.email) like LOWER(:email)', {
+							email: fullTextFilter,
+						});
+				}),
+			);
+		}
+
+		return queryBuilder;
+	}
+
+	private applyUserListExpand(
+		queryBuilder: SelectQueryBuilder<User>,
+		expand: UsersListFilterDto['expand'],
+	): SelectQueryBuilder<User> {
+		if (expand?.includes('projectRelations')) {
+			queryBuilder.leftJoinAndSelect(
+				'user.projectRelations',
+				'projectRelations',
+				'projectRelations.role <> :projectRole',
+				{
+					projectRole: 'project:personalOwner', // Exclude personal project relations
+				},
+			);
+			queryBuilder.leftJoinAndSelect('projectRelations.project', 'project');
+		}
+
+		return queryBuilder;
+	}
+
+	private applyUserListSort(
+		queryBuilder: SelectQueryBuilder<User>,
+		sortBy: UsersListFilterDto['sortBy'],
+	): SelectQueryBuilder<User> {
+		if (sortBy) {
+			for (const sort of sortBy) {
+				const [field, order] = sort.split(':');
+				if (field === 'role') {
+					queryBuilder.addSelect(
+						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
+						'userroleorder',
+					);
+					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC');
+				} else {
+					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
+				}
+			}
+		}
+
+		return queryBuilder;
+	}
+
+	private applyUserListPagination(
+		queryBuilder: SelectQueryBuilder<User>,
+		take: number,
+		skip: number | undefined,
+	): SelectQueryBuilder<User> {
+		if (take >= 0) queryBuilder.take(take);
+		if (skip) queryBuilder.skip(skip);
+
+		return queryBuilder;
+	}
+
+	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+		const queryBuilder = this.createQueryBuilder('user');
+
+		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
+
+		if (listQueryOptions === undefined) {
+			return queryBuilder;
+		}
+		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
+
+		this.applyUserListSelect(queryBuilder, select as Array<keyof User>);
+		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListExpand(queryBuilder, expand);
+		this.applyUserListPagination(queryBuilder, take, skip);
+		this.applyUserListSort(queryBuilder, sortBy);
+
+		return queryBuilder;
 	}
 }

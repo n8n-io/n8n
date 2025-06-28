@@ -1,11 +1,11 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { Settings, User } from '@n8n/db';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
-import { Logger } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';

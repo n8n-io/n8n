@@ -13,6 +13,7 @@ import {
 	sendAnimationMessageResponse,
 	sendAudioResponse,
 	getMemberResponse,
+	sendMessageWithBinaryDataAndReplyMarkupResponse,
 } from './apiResponses';
 
 describe('Telegram', () => {
@@ -28,6 +29,7 @@ describe('Telegram', () => {
 			const mock = nock(credentials.telegramApi.baseUrl);
 
 			mock.post('/bottestToken/getChat').reply(200, getChatResponse);
+			mock.post('/bottestToken/getChat').reply(404, { error: 'Chat not found' });
 			mock.post('/bottestToken/sendMessage').reply(200, sendMessageResponse);
 			mock.post('/bottestToken/sendMediaGroup').reply(200, sendMediaGroupResponse);
 			mock.post('/bottestToken/sendLocation').reply(200, sendLocationMessageResponse);
@@ -46,6 +48,17 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
-		new NodeTestHarness().setupTests({ credentials });
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['workflow.json'] });
+	});
+
+	describe('Binary Data and Reply Markup', () => {
+		beforeAll(() => {
+			const mock = nock(credentials.telegramApi.baseUrl);
+			mock
+				.post('/bottestToken/sendDocument')
+				.reply(200, sendMessageWithBinaryDataAndReplyMarkupResponse);
+		});
+
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['binaryData.workflow.json'] });
 	});
 });

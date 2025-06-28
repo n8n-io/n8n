@@ -1,7 +1,7 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import type { ResourceMapperFields, ResourceMapperValue } from 'n8n-workflow';
 
 export const NODE_PARAMETER_VALUES = {

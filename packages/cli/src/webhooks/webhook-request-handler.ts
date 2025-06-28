@@ -1,6 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { Logger } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';

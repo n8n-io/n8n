@@ -3,14 +3,14 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
-import type { IRestApiContext } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	SourceControlPreferences,
 	SourceControlStatus,
 	SshKeyTypes,
 } from '@/types/sourceControl.types';
 
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const sourceControlApiRoot = '/source-control';

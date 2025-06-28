@@ -9,7 +9,6 @@ import {
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
-import { isCanvasV2 } from '../utils/workflowUtils';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -127,15 +126,9 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
-		if (isCanvasV2()) {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
-		} else {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
-		}
+		workflowPage.getters
+			.canvasNodeByName('Wait')
+			.within(() => cy.get('.fa-sync-alt').should('not.exist'));
 
 		workflowPage.getters
 			.canvasNodeByName('Set')
@@ -490,7 +483,7 @@ describe('Execution', () => {
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
 
-			const expectedKeys = ['Start Manually', 'Edit Fields', 'Process The Data'];
+			const expectedKeys = ['Start on Schedule', 'Edit Fields', 'Process The Data'];
 
 			const { runData } = interception.request.body;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);

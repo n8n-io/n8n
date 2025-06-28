@@ -1,18 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "createdDateTime": {
-            "type": "string"
-        },
         "displayName": {
             "type": "string"
         },
         "id": {
             "type": "string"
-        },
-        "userPrincipalName": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

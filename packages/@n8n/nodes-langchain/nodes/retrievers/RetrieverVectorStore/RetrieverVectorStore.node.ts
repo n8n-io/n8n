@@ -1,5 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { VectorStore } from '@langchain/core/vectorstores';
+import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
+import { VectorStore } from '@langchain/core/vectorstores';
+import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -65,9 +67,23 @@ export class RetrieverVectorStore implements INodeType {
 		const vectorStore = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiVectorStore,
 			itemIndex,
-		)) as VectorStore;
+		)) as
+			| VectorStore
+			| {
+					reranker: BaseDocumentCompressor;
+					vectorStore: VectorStore;
+			  };
 
-		const retriever = vectorStore.asRetriever(topK);
+		let retriever = null;
+
+		if (vectorStore instanceof VectorStore) {
+			retriever = vectorStore.asRetriever(topK);
+		} else {
+			retriever = new ContextualCompressionRetriever({
+				baseCompressor: vectorStore.reranker,
+				baseRetriever: vectorStore.vectorStore.asRetriever(topK),
+			});
+		}
 
 		return {
 			response: logWrapper(retriever, this),
