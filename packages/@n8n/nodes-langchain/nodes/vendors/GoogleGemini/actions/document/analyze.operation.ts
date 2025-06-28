@@ -1,13 +1,8 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-	IBinaryData,
-} from 'n8n-workflow';
-import { updateDisplayOptions, jsonParse, ApplicationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { Content, GenerateContentResponse } from '../../helpers/interfaces';
+import { downloadFile, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -124,45 +119,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((url) => url.trim())
 			.filter((url) => url)
 			.map(async (url) => {
-				const downloadResponse = (await this.helpers.httpRequest({
-					method: 'GET',
-					url,
-					returnFullResponse: true,
-					encoding: 'arraybuffer',
-				})) as { body: ArrayBuffer; headers: IDataObject };
-
-				const mimeType =
-					(downloadResponse.headers?.['content-type'] as string)?.split(';')?.[0] ??
-					'application/pdf';
-				const fileContent = Buffer.from(downloadResponse.body);
-				const numBytes = fileContent.length;
-
-				const uploadInitResponse = (await apiRequest.call(this, 'POST', '/upload/v1beta/files', {
-					headers: {
-						'X-Goog-Upload-Protocol': 'resumable',
-						'X-Goog-Upload-Command': 'start',
-						'X-Goog-Upload-Header-Content-Length': numBytes.toString(),
-						'X-Goog-Upload-Header-Content-Type': mimeType,
-						'Content-Type': 'application/json',
-					},
-					option: {
-						resolveWithFullResponse: true,
-					},
-				})) as { headers: IDataObject };
-				const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
-
-				const uploadResponse = (await this.helpers.httpRequest({
-					method: 'POST',
-					url: uploadUrl,
-					headers: {
-						'Content-Length': numBytes.toString(),
-						'X-Goog-Upload-Offset': '0',
-						'X-Goog-Upload-Command': 'upload, finalize',
-					},
-					body: fileContent,
-				})) as { file: { uri: string; mimeType: string } };
-
-				return { fileUri: uploadResponse.file.uri, mimeType: uploadResponse.file.mimeType };
+				const { fileContent, mimeType } = await downloadFile.call(this, url, 'application/pdf');
+				return await uploadFile.call(this, fileContent, mimeType);
 			});
 
 		const filesData = await Promise.all(filesDataPromises);
@@ -175,70 +133,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			},
 		];
 	} else {
-		contents = [];
-		// TODO: redo this later
-		// // Handle binary files
-		// const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-		// const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		// const filePromises = Object.entries(binaryData).map(async ([, binary]) => {
-		// 	if (!binary || typeof binary !== 'object') {
-		// 		throw new ApplicationError('Binary data is missing or invalid');
-		// 	}
-		// 	const binaryItem = binary as unknown as IBinaryData;
-		// 	const mimeType = binaryItem.mimeType || 'application/pdf';
-		// 	const fileBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		// 	const numBytes = fileBuffer.length;
-		// 	// Generate a display name from the file name
-		// 	const displayName = binaryItem.fileName ? binaryItem.fileName.split('.')[0] : 'document';
-		// 	// Step 1: Initial resumable request to get upload URL
-		// 	const uploadInitResponse = (await this.helpers.httpRequest({
-		// 		method: 'POST',
-		// 		url: 'https://generativelanguage.googleapis.com/upload/v1beta/files',
-		// 		headers: {
-		// 			'X-Goog-Upload-Protocol': 'resumable',
-		// 			'X-Goog-Upload-Command': 'start',
-		// 			'X-Goog-Upload-Header-Content-Length': numBytes.toString(),
-		// 			'X-Goog-Upload-Header-Content-Type': mimeType,
-		// 			'Content-Type': 'application/json',
-		// 		},
-		// 		body: JSON.stringify({
-		// 			file: {
-		// 				display_name: displayName,
-		// 			},
-		// 		}),
-		// 		returnFullResponse: true,
-		// 	})) as { headers: IDataObject };
-		// 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
-		// 	// Step 2: Upload the actual file bytes
-		// 	const uploadResponse = (await this.helpers.httpRequest({
-		// 		method: 'POST',
-		// 		url: uploadUrl,
-		// 		headers: {
-		// 			'Content-Length': numBytes.toString(),
-		// 			'X-Goog-Upload-Offset': '0',
-		// 			'X-Goog-Upload-Command': 'upload, finalize',
-		// 		},
-		// 		body: fileBuffer,
-		// 		returnFullResponse: true,
-		// 	})) as { body: string };
-		// 	const fileInfo = jsonParse<{ file: { uri: string } }>(uploadResponse.body);
-		// 	return {
-		// 		mimeType,
-		// 		fileUri: fileInfo.file.uri,
-		// 	};
-		// });
-		// const files = await Promise.all(filePromises);
-		// contents = [
-		// 	{
-		// 		role: 'user',
-		// 		parts: files.map((file) => ({
-		// 			fileData: {
-		// 				fileUri: file.fileUri,
-		// 				mimeType: file.mimeType,
-		// 			},
-		// 		})),
-		// 	},
-		// ];
+		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+		const fileData = await uploadFile.call(this, buffer, binaryData.mimeType);
+		contents = [
+			{
+				role: 'user',
+				parts: [
+					{
+						fileData,
+					},
+				],
+			},
+		];
 	}
 
 	contents[0].parts.push({ text });
