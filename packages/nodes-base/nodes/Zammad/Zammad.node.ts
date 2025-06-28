@@ -737,7 +737,7 @@ export class Zammad implements INodeType {
 							throwOnEmptyUpdate.call(this, resource);
 						}
 
-						const { note, customFieldsUi, pending_time, ...rest } = updateFields;
+						const { note, customFieldsUi, ...rest } = updateFields;
 
 						if (note) {
 							body.article = {
@@ -759,7 +759,7 @@ export class Zammad implements INodeType {
 
 						Object.assign(body, rest);
 
-						if (pending_time === '') {
+						if (body.pending_time === '') {
 							delete body.pending_time;
 						}
 
