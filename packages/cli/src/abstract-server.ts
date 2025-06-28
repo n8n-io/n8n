@@ -21,6 +21,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import { webhookRequestSanitizer } from '@/webhooks/webhook-request-sanitizer-middleware';
 
 @Service()
 export abstract class AbstractServer {
@@ -196,36 +197,62 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointForm}/*path`,
+				webhookRequestSanitizer,
+				liveWebhooksRequestHandler,
+			);
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointWebhook}/*path`,
+				webhookRequestSanitizer,
+				liveWebhooksRequestHandler,
+			);
 
 			// Register a handler for waiting forms
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
+				webhookRequestSanitizer,
 				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				webhookRequestSanitizer,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointMcp}/*path`,
+				webhookRequestSanitizer,
+				liveWebhooksRequestHandler,
+			);
 		}
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointFormTest}/*path`,
+				webhookRequestSanitizer,
+				testWebhooksRequestHandler,
+			);
+			this.app.all(
+				`/${this.endpointWebhookTest}/*path`,
+				webhookRequestSanitizer,
+				testWebhooksRequestHandler,
+			);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointMcpTest}/*path`,
+				webhookRequestSanitizer,
+				testWebhooksRequestHandler,
+			);
 		}
 
 		// Block bots from scanning the application
