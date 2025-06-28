@@ -37,7 +37,7 @@ const modelParameter: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ $responseItem.id.includes('embed') }}",
+								pass: "={{ $responseItem.id.toLowerCase().includes('embed') }}",
 							},
 						},
 						{
