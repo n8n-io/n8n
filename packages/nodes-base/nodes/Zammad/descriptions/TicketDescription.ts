@@ -334,7 +334,7 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Title of the ticket',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group',
 				name: 'group_id',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export const ticketDescription: INodeProperties[] = [
 					'Group that will own the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State',
 				name: 'state_id',
 				type: 'options',
 				typeOptions: {
@@ -364,7 +364,7 @@ export const ticketDescription: INodeProperties[] = [
 					'Date and time when the pending ticket should be activated (required for pending reminder, pending close, and snooze states)',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority',
 				name: 'priority_id',
 				type: 'options',
 				typeOptions: {
@@ -375,7 +375,7 @@ export const ticketDescription: INodeProperties[] = [
 					'Priority of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner',
 				name: 'owner_id',
 				type: 'string',
 				default: '',
@@ -383,7 +383,7 @@ export const ticketDescription: INodeProperties[] = [
 					'Agent responsible for the ticket. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Customer ID',
+				displayName: 'Customer',
 				name: 'customer_id',
 				type: 'options',
 				typeOptions: {
@@ -391,7 +391,7 @@ export const ticketDescription: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Customer ID associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Customer associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -416,7 +416,7 @@ export const ticketDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {

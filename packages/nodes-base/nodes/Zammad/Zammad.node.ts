@@ -221,16 +221,16 @@ export class Zammad implements INodeType {
 				return users.filter(isCustomer).map((i) => ({ name: i.email, value: i.email }));
 			},
 
+			// by ID
+
 			/**
-			 * PUT /tickets requires customer ID for customer_id field.
+			 * PUT /tickets requires customer ID instead of customer email.
 			 */
 			async loadCustomerIds(this: ILoadOptionsFunctions) {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
 
 				return users.filter(isCustomer).map((i) => ({ name: `${i.email}`, value: i.id }));
 			},
-
-			// by ID
 
 			async loadGroups(this: ILoadOptionsFunctions) {
 				const groups = (await zammadApiRequest.call(this, 'GET', '/groups')) as ZammadTypes.Group[];
