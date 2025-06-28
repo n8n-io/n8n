@@ -39,3 +39,10 @@ export type Part =
 				fileUri?: string;
 			};
 	  };
+
+export interface ImagenResponse {
+	predictions: Array<{
+		bytesBase64Encoded: string;
+		mimeType: string;
+	}>;
+}

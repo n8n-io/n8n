@@ -114,6 +114,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let contents: Content[];
 	if (inputType === 'url') {
 		const documentUrls = this.getNodeParameter('documentUrls', i, '') as string;
+		// NOTE: here we allow multiple URLs, but only one file if using binary data, need to sort this out
 		const filesDataPromises = documentUrls
 			.split(',')
 			.map((url) => url.trim())

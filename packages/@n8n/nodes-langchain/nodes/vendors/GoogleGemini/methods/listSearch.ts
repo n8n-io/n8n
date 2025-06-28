@@ -35,7 +35,7 @@ export async function modelSearch(
 		(model) =>
 			// TODO: double check filter, filter out gemma as well?
 			!model.includes('embedding') &&
-			!model.includes('image') &&
+			// !model.includes('image') &&
 			!model.includes('veo') &&
 			!model.includes('audio') &&
 			!model.includes('tts'),
