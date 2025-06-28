@@ -2,11 +2,13 @@ ARG NODE_VERSION=20
 ARG GIT_COMMIT_HASH="86b2796"
 
 # 1. Create an image to build n8n
-FROM --platform=linux/amd64 ghcr.io/ozlevka/n8n-base:${NODE_VERSION}-${GIT_COMMIT_HASH} AS builder
+FROM --platform="linux/amd64" ghcr.io/ozlevka/n8n-base:${NODE_VERSION}-${GIT_COMMIT_HASH} AS builder
 
 # Build the application from source
 WORKDIR /src
 COPY . /src
+# Install pnpm globally
+RUN npm install -g pnpm
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
 RUN pnpm build
 
@@ -22,7 +24,7 @@ RUN mkdir /compiled
 RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional --legacy deploy /compiled
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
-FROM ghcr.io/ozlevka/n8n-base:${NODE_VERSION}
+FROM ghcr.io/ozlevka/n8n-base:${NODE_VERSION}-${GIT_COMMIT_HASH}
 ENV NODE_ENV=production
 
 ARG N8N_RELEASE_TYPE=dev
