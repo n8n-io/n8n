@@ -66,7 +66,7 @@ export const versionDescription: INodeTypeDescription = {
 				},
 				{
 					name: 'Document',
-					value: 'Document',
+					value: 'document',
 				},
 				{
 					name: 'Image',

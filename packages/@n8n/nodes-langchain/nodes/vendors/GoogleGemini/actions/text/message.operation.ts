@@ -280,8 +280,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let toolCalls = getToolCalls(response);
 	while (toolCalls.length) {
 		if (
-			!!abortSignal?.aborted ||
-			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations)
+			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations) ||
+			abortSignal?.aborted
 		) {
 			break;
 		}
