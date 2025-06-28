@@ -192,9 +192,12 @@ describe('executionFinished', () => {
 
 		executionFinished(
 			{
-				executionId: '1',
-				workflowId: '1',
-				status: 'success',
+				type: 'executionFinished',
+				data: {
+					executionId: '1',
+					workflowId: '1',
+					status: 'success',
+				},
 			},
 			{
 				router: mock<Router>(),
