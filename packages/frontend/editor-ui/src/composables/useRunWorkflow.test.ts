@@ -27,6 +27,7 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { SLACK_TRIGGER_NODE_TYPE } from '@/constants';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -241,7 +242,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [
 					{
 						name: 'Slack',
-						type: 'n8n-nodes-base.slackTrigger',
+						type: SLACK_TRIGGER_NODE_TYPE,
 						disabled: false,
 					},
 				],
@@ -272,7 +273,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [
 					{
 						name: 'Slack',
-						type: 'n8n-nodes-base.slackTrigger',
+						type: SLACK_TRIGGER_NODE_TYPE,
 						disabled: false,
 					},
 				],
