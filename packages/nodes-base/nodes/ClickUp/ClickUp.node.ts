@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 import type {
-	IExecuteFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -992,7 +992,11 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'get') {
 						const taskId = this.getNodeParameter('id', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
+						const includeSubtasks = this.getNodeParameter('includeSubtasks', i, false) as boolean;
+						if (includeSubtasks) {
+							qs.include_subtasks = true;
+						}
+						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`, {}, qs);
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);

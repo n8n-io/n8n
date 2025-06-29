@@ -457,6 +457,19 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Include Subtasks',
+		name: 'includeSubtasks',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to also fetch and include subtasks for this task',
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['get'],
+			},
+		},
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
