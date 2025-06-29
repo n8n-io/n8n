@@ -996,6 +996,14 @@ export class ClickUp implements INodeType {
 						if (includeSubtasks) {
 							qs.include_subtasks = true;
 						}
+						const includeMarkdownDescription = this.getNodeParameter(
+							'includeMarkdownDescription',
+							i,
+							false,
+						) as boolean;
+						if (includeMarkdownDescription) {
+							qs.include_markdown_description = true;
+						}
 						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`, {}, qs);
 					}
 					if (operation === 'getAll') {

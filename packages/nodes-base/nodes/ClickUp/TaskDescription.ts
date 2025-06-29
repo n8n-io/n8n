@@ -470,6 +470,20 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Include Markdown Description',
+		name: 'includeMarkdownDescription',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to include the markdown_description field in the response. This is important for preserving links in the description.',
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['get'],
+			},
+		},
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
