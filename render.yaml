@@ -3,7 +3,7 @@ services:
     name: n8n
     env: docker
     plan: free
-    dockerfilePath: ./docker/images/n8n/Dockerfile
+    dockerfilePath: Dockerfile
     envVars:
       - key: N8N_BASIC_AUTH_ACTIVE
         value: "true"
