@@ -38,7 +38,7 @@ const draggableStyle = computed<StyleValue>(() => ({
 }));
 
 const onDragStart = (event: MouseEvent) => {
-	if (props.disabled) {
+	if (props.disabled || event.button !== 0) {
 		return;
 	}
 
