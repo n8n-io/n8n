@@ -647,20 +647,14 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-			expect(track).toHaveBeenCalledWith(
-				'Manual exec errored',
-				{
-					error_title: 'invalid syntax',
-					node_type: 'n8n-nodes-base.set',
-					node_type_version: 3.4,
-					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-					node_graph_string:
-						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
-				},
-				{
-					withPostHog: true,
-				},
-			);
+			expect(track).toHaveBeenCalledWith('Manual exec errored', {
+				error_title: 'invalid syntax',
+				node_type: 'n8n-nodes-base.set',
+				node_type_version: 3.4,
+				node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				node_graph_string:
+					'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+			});
 		});
 
 		it('sets workflow pin data', () => {
