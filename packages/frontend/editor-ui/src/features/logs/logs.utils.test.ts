@@ -670,16 +670,8 @@ describe(findSelectedLogEntry, () => {
 							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
 								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
-								createTestTaskData({
-									error: {} as ExecutionError,
-									executionStatus: 'error',
-									startTime: 3,
-								}),
-								createTestTaskData({
-									error: {} as ExecutionError,
-									executionStatus: 'error',
-									startTime: 4,
-								}),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
@@ -688,6 +680,37 @@ describe(findSelectedLogEntry, () => {
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
+			);
+		});
+
+		it('should return first log entry with error when it appears after a log entry for AI agent', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
+							C: [
+								createTestTaskData({
+									executionStatus: 'success',
+									error: {} as ExecutionError,
+									startTime: 2,
+								}),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 0 }),
 			);
 		});
 

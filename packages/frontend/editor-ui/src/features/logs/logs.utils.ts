@@ -172,28 +172,25 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
-function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {
-	for (const entry of subTree) {
-		if (entry.runData?.error) {
-			return entry;
-		}
+function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
+	const entryWithError = findLogEntryRec((e) => !!e.runData?.error, subTree);
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children, depth + 1);
-
-		if (childAutoSelect) {
-			return childAutoSelect;
-		}
-
-		if (entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			if (isPlaceholderLog(entry) && entry.children.length > 0) {
-				return entry.children[0];
-			}
-
-			return entry;
-		}
+	if (entryWithError) {
+		return entryWithError;
 	}
 
-	return depth === 0 ? subTree[subTree.length - 1] : undefined;
+	const entryForAiAgent = findLogEntryRec(
+		(entry) =>
+			entry.node.type === AGENT_LANGCHAIN_NODE_TYPE ||
+			(entry.parent?.node.type === AGENT_LANGCHAIN_NODE_TYPE && isPlaceholderLog(entry.parent)),
+		subTree,
+	);
+
+	if (entryForAiAgent) {
+		return entryForAiAgent;
+	}
+
+	return subTree[subTree.length - 1];
 }
 
 export function createLogTree(
@@ -288,7 +285,7 @@ export function findSelectedLogEntry(
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
-			return isExecuting ? undefined : findLogEntryToAutoSelectRec(entries, 0);
+			return isExecuting ? undefined : findLogEntryToAutoSelect(entries);
 		case 'none':
 			return undefined;
 		case 'selected': {
