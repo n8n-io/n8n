@@ -2,7 +2,6 @@
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { AI_CREDITS_EXPERIMENT } from '@/constants';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
@@ -58,7 +57,6 @@ const userCanClaimOpenAiCredits = computed(() => {
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant &&
 		!userHasOpenAiCredentialAlready.value &&
 		!userHasClaimedAiCreditsAlready.value
 	);

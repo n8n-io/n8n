@@ -732,12 +732,6 @@ export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const AI_CREDITS_EXPERIMENT = {
-	name: '027_free_openai_calls',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '30_workflow_builder',
 	control: 'control',
@@ -758,7 +752,6 @@ export const FOCUS_PANEL_EXPERIMENT = {
 
 export const EXPERIMENTS_TO_TRACK = [
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
-	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 ];
