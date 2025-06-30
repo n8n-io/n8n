@@ -76,7 +76,7 @@ describe('Data mapping', () => {
 			.inputTbodyCell(1, 0)
 			.find('span')
 			.contains('count')
-			.trigger('mousedown', { force: true });
+			.trigger('mousedown', { force: true, button: 0, buttons: 1 });
 		ndv.actions.mapToParameter('value');
 
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
