@@ -208,7 +208,7 @@ describe('VirtualSchema.vue', () => {
 				stubs: {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
-					FontAwesomeIcon: true,
+					N8nIcon: true,
 					Notice: NoticeStub,
 				},
 			},

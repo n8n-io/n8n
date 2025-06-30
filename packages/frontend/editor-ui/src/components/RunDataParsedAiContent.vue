@@ -128,7 +128,7 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					:class="$style.copyToClipboard"
 					type="secondary"
 					:title="i18n.baseText('nodeErrorView.copyToClipboard')"
-					icon="copy"
+					icon="files"
 					@click="onCopyToClipboard(raw)"
 				/>
 				<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />

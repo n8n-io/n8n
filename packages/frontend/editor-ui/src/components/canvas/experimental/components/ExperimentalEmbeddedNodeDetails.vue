@@ -78,7 +78,7 @@ function handleToggleExpand() {
 			>
 				<template #actions>
 					<N8nIconButton
-						icon="compress"
+						icon="minimize-2"
 						type="secondary"
 						text
 						size="mini"
@@ -96,7 +96,7 @@ function handleToggleExpand() {
 					:node-type="nodeType"
 					read-only
 				/>
-				<N8nIcon icon="expand" size="large" />
+				<N8nIcon icon="maximize-2" size="large" />
 			</div>
 		</template>
 	</div>

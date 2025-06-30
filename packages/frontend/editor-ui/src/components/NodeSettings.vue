@@ -801,7 +801,7 @@ function handleWheelEvent(event: WheelEvent) {
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
-				<font-awesome-icon icon="exclamation-triangle" />
+				<n8n-icon icon="triangle-alert" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>
