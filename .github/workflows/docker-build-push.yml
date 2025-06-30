@@ -75,7 +75,6 @@ jobs:
     outputs:
       image_ref: ${{ steps.determine-tags.outputs.primary_tag }}
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
-      push_enabled_status: ${{ steps.context.outputs.push_enabled }}
       release_type: ${{ steps.context.outputs.release_type }}
       n8n_version: ${{ steps.context.outputs.n8n_version }}
     steps:
@@ -111,35 +110,28 @@ jobs:
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "release_type=nightly" >> $GITHUB_OUTPUT
             echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
             echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
             echo "n8n_version=${{ inputs.n8n_version }}" >> $GITHUB_OUTPUT
-            echo "push_enabled=${{ inputs.push_enabled }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${{ inputs.release_type }}" == "branch" ]]; then
               BRANCH_NAME="${{ github.ref_name }}"
               SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
               echo "release_type=branch" >> $GITHUB_OUTPUT
               echo "n8n_version=branch-${SAFE_BRANCH_NAME}" >> $GITHUB_OUTPUT
-              echo "push_enabled=${{ inputs.push_to_registry }}" >> $GITHUB_OUTPUT
             else
               echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
               echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-              echo "push_enabled=true" >> $GITHUB_OUTPUT
             fi
           elif [[ "${{ github.event_name }}" == "push" ]]; then
             echo "release_type=dev" >> $GITHUB_OUTPUT
             echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "release_type=dev" >> $GITHUB_OUTPUT
             echo "n8n_version=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-            echo "push_enabled=false" >> $GITHUB_OUTPUT
           else
             echo "release_type=dev" >> $GITHUB_OUTPUT
             echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Determine Docker tags
@@ -214,7 +206,7 @@ jobs:
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Login to GitHub Container Registry
-        if: steps.context.outputs.push_enabled == 'true'
+        if: inputs.push_enabled == 'true'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ghcr.io
@@ -222,7 +214,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
-        if: steps.context.outputs.push_enabled == 'true'
+        if: inputs.push_enabled == 'true'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -239,7 +231,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ steps.context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false
-          push: ${{ steps.context.outputs.push_enabled }}
+          push: ${{ inputs.push_enabled }}
           tags: ${{ steps.determine-tags.outputs.tags }}
 
   create_multi_arch_manifest:
@@ -248,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       needs.build-and-push-docker.result == 'success' &&
-      needs.build-and-push-docker.outputs.push_enabled_status == 'true'
+      inputs.push_enabled == 'true'
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
