@@ -103,38 +103,38 @@ function handleToggleExpand() {
 </template>
 
 <style lang="scss" module>
-.component {
+:root .component {
 	position: relative;
 	align-items: flex-start;
 	justify-content: stretch;
-	overflow: visible !important;
+	overflow: visible;
 	border-width: 0 !important;
-	outline: none !important;
+	outline: none;
 	box-shadow: none !important;
-	background-color: transparent !important;
-	width: calc(var(--canvas-node--width) * 1.5) !important;
+	background-color: transparent;
+	width: calc(var(--canvas-node--width) * 1.5);
 
 	&.expanded {
-		cursor: default !important;
+		cursor: default;
 	}
 
 	&.collapsed {
-		height: 50px !important;
-		margin-block: calc(var(--canvas-node--width) * 0.25) !important;
+		height: 50px;
+		margin-block: calc(var(--canvas-node--width) * 0.25);
 	}
 }
 
-:global(.vue-flow__node):has(.component) {
-	z-index: 10 !important;
+:root :global(.vue-flow__node):has(.component) {
+	z-index: 10;
 
 	:global(.selected) & {
-		z-index: 11 !important;
+		z-index: 11;
 	}
 }
 
-.collapsedContent,
-.settingsView {
-	border-radius: 4px !important;
+:root .collapsedContent,
+:root .settingsView {
+	border-radius: 4px;
 	border: 1px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	z-index: 1000;
 	position: absolute;
@@ -151,11 +151,11 @@ function handleToggleExpand() {
 	}
 }
 
-.settingsView {
-	height: auto !important;
-	max-height: min(200%, 300px) !important;
+:root .settingsView {
+	height: auto;
+	max-height: min(200%, 300px);
 	top: -10%;
-	min-height: 120% !important;
+	min-height: 120%;
 }
 
 .collapsedContent {
