@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
+import type { InlineConfig } from 'vitest/node';
 
-export const createVitestConfig = (options = {}) => {
+export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
 		test: {
 			silent: true,

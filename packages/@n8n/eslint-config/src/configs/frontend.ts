@@ -1,6 +1,7 @@
 import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
@@ -98,4 +99,5 @@ export const frontendConfig = tseslint.config(
 			'vue/return-in-computed-property': 'warn',
 		},
 	},
+	eslintConfigPrettier,
 );

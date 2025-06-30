@@ -27,7 +27,7 @@ const emit = defineEmits<{
 			type="tertiary"
 			:class="['n8n-input', $style.overrideCloseButton]"
 			:outline="false"
-			icon="xmark"
+			icon="x"
 			size="mini"
 			@click="emit('close')"
 		/>

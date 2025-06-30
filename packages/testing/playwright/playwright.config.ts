@@ -84,6 +84,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			fullyParallel: false,
 			workers: 1,
 			use: { containerConfig: mergedConfig } as any,
+			timeout: 120000,
 		},
 	];
 }
@@ -94,7 +95,7 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 2 : 8,
-	timeout: 120000,
+	timeout: 60000,
 
 	reporter: process.env.CI
 		? [
@@ -114,7 +115,7 @@ export default defineConfig({
 		testIdAttribute: 'data-test-id',
 		headless: true,
 		viewport: { width: 1536, height: 960 },
-		actionTimeout: 15000,
+		actionTimeout: 10000,
 		navigationTimeout: 10000,
 	},
 

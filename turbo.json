@@ -84,7 +84,7 @@
 			]
 		},
 		"lint": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
 		"lintfix": {},
 		"test:backend": {

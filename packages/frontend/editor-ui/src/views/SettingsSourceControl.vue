@@ -199,7 +199,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 			v-if="sourceControlStore.isEnterpriseSourceControlEnabled"
 			data-test-id="source-control-content-licensed"
 		>
-			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
+			<n8n-callout theme="secondary" icon="info" class="mt-2xl mb-l">
 				<i18n-t keypath="settings.sourceControl.description" tag="span">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
@@ -231,7 +231,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 						:class="$style.disconnectButton"
 						type="tertiary"
 						size="large"
-						icon="trash"
+						icon="trash-2"
 						data-test-id="source-control-disconnect-button"
 						@click="onDisconnect"
 						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
@@ -267,7 +267,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 						v-if="!isConnected"
 						size="large"
 						type="tertiary"
-						icon="sync"
+						icon="refresh-cw"
 						data-test-id="source-control-refresh-ssh-key-button"
 						@click="refreshSshKey"
 					>
@@ -326,7 +326,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 							<n8n-button
 								size="small"
 								type="tertiary"
-								icon="sync"
+								icon="refresh-cw"
 								square
 								:class="$style.refreshBranches"
 								data-test-id="source-control-refresh-branches-button"

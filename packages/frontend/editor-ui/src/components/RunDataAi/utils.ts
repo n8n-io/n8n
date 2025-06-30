@@ -49,7 +49,7 @@ export function getTreeNodeData(
 	nodeName: string,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
-	runIndex?: number,
+	runIndex: number,
 ): TreeNode[] {
 	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, runIndex);
 }
@@ -60,44 +60,37 @@ function getTreeNodeDataRec(
 	currentDepth: number,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
-	runIndex: number | undefined,
+	runIndex: number,
 ): TreeNode[] {
 	const connections = workflow.connectionsByDestinationNode[nodeName];
 	const resultData =
-		aiData?.filter(
-			(data) => data.node === nodeName && (runIndex === undefined || runIndex === data.runIndex),
-		) ?? [];
+		aiData?.filter((data) => data.node === nodeName && runIndex === data.runIndex) ?? [];
 
 	if (!connections) {
 		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
-	// When at root depth, filter AI data to only show executions that were triggered by this node
+	// Filter AI data to only show executions that were triggered by this node
 	// This prevents duplicate entries in logs when a sub-node is connected to multiple root nodes
 	// Nodes without source info or with empty source arrays are always included
-	const filteredAiData =
-		currentDepth === 0
-			? aiData?.filter(({ data }) => {
-					if (!data?.source || data.source.every((source) => source === null)) {
-						return true;
-					}
+	const filteredAiData = aiData?.filter(({ data }) => {
+		if (!data?.source || data.source.every((source) => source === null)) {
+			return true;
+		}
 
-					return data.source.some(
-						(source) =>
-							source?.previousNode === nodeName &&
-							(runIndex === undefined || source.previousNodeRun === runIndex),
-					);
-				})
-			: aiData;
+		return data.source.some(
+			(source) => source?.previousNode === nodeName && source.previousNodeRun === runIndex,
+		);
+	});
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
-	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
+	const treeNode = createNode(parent, nodeName, currentDepth, runIndex);
 
 	// Only include sub-nodes which have data
 	const children = (filteredAiData ?? []).flatMap((data) =>
-		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
+		connectedSubNodes.includes(data.node)
 			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
 			: [],
 	);
