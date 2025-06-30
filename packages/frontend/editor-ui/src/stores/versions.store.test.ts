@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useVersionsStore } from './versions.store';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
-import type { Version, WhatsNewArticle } from '@n8n/rest-api-client/api/versions';
+import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import { useToast } from '@/composables/useToast';
@@ -44,11 +44,18 @@ const whatsNewArticle: WhatsNewArticle = {
 	id: 1,
 	title: 'Test article',
 	content: 'Some markdown content here',
-	calloutTitle: 'Callout title',
-	calloutText: 'Callout text.',
 	createdAt: '2025-06-19T12:37:54.885Z',
 	updatedAt: '2025-06-19T12:41:44.919Z',
 	publishedAt: '2025-06-19T12:41:44.914Z',
+};
+
+const whatsNew: WhatsNewSection = {
+	title: "What's New title",
+	calloutText: 'Callout text.',
+	footer: "What's new footer",
+	items: [whatsNewArticle],
+	createdAt: '2025-06-19T12:37:54.885Z',
+	updatedAt: '2025-06-19T12:41:44.919Z',
 };
 
 const toast = useToast();
@@ -102,7 +109,7 @@ describe('versions.store', () => {
 
 	describe('fetchWhatsNew()', () => {
 		it("should fetch What's new articles", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 
 			const rootStore = useRootStore();
 			rootStore.setVersionCli(currentVersionName);
@@ -113,7 +120,7 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).toHaveBeenCalledWith(
+			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
 				currentVersionName,
 				instanceId,
@@ -123,7 +130,7 @@ describe('versions.store', () => {
 		});
 
 		it("should not fetch What's new articles if version notifications are disabled", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles');
+			vi.spyOn(versionsApi, 'getWhatsNewSection');
 
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize({
@@ -133,12 +140,12 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).not.toHaveBeenCalled();
+			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
 		});
 
 		it("should not fetch What's new articles if not enabled", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles');
+			vi.spyOn(versionsApi, 'getWhatsNewSection');
 
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize({
@@ -149,14 +156,14 @@ describe('versions.store', () => {
 
 			await versionsStore.fetchWhatsNew();
 
-			expect(versionsApi.getWhatsNewArticles).not.toHaveBeenCalled();
+			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
 		});
 	});
 
 	describe('checkForNewVersions()', () => {
 		it('should check for new versions', async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([currentVersion]);
 
 			const rootStore = useRootStore();
@@ -168,7 +175,7 @@ describe('versions.store', () => {
 
 			await versionsStore.checkForNewVersions();
 
-			expect(versionsApi.getWhatsNewArticles).toHaveBeenCalledWith(
+			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
 				currentVersionName,
 				instanceId,
@@ -187,7 +194,7 @@ describe('versions.store', () => {
 		});
 
 		it("should still initialize versions if what's new articles fail", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockRejectedValueOnce(new Error('oopsie'));
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockRejectedValueOnce(new Error('oopsie'));
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([currentVersion]);
 
 			const rootStore = useRootStore();
@@ -211,7 +218,7 @@ describe('versions.store', () => {
 		});
 
 		it("should still initialize what's new articles if versions fail", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([whatsNewArticle]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 			vi.spyOn(versionsApi, 'getNextVersions').mockRejectedValueOnce(new Error('oopsie'));
 
 			const rootStore = useRootStore();
@@ -235,7 +242,7 @@ describe('versions.store', () => {
 		});
 
 		it('should show toast if important version updates are available', async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewArticles').mockResolvedValue([]);
+			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue({ ...whatsNew, items: [] });
 			vi.spyOn(versionsApi, 'getNextVersions').mockResolvedValue([
 				{
 					...currentVersion,
@@ -349,6 +356,152 @@ describe('versions.store', () => {
 			versionsStore.currentVersion = currentVersion;
 
 			expect(versionsStore.latestVersion.name).toBe(currentVersionName);
+		});
+	});
+
+	describe('hasSignificantUpdates', () => {
+		beforeEach(() => {
+			const settingsStore = useSettingsStore();
+			settingsStore.settings.releaseChannel = 'stable';
+		});
+
+		it('should return true if current version is behind by at least two minor versions', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0',
+				},
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return true if current version is behind by at least two minor versions, more exotic versions', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.100.1+rc.1',
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0-alpha+20180301',
+				},
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return true if current version has security issue', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				hasSecurityIssue: true,
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.101.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return false if current version is not behind by at least two minor versions', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.101.0',
+			};
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.102.0',
+				},
+				{
+					...currentVersion,
+					name: '1.101.1',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return false if current version is only behind by patch versions', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.100.9',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return true if current version is behind by a major', () => {
+			const versionsStore = useVersionsStore();
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: '1.100.0',
+			};
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '2.0.0',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(true);
+		});
+
+		it('should return false if current version is not semver', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = {
+				...currentVersion,
+				name: 'alpha-1',
+			};
+
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: '1.100.2',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
+		});
+
+		it('should return false if latest version is not semver', () => {
+			const versionsStore = useVersionsStore();
+
+			versionsStore.currentVersion = currentVersion;
+			versionsStore.nextVersions = [
+				{
+					...currentVersion,
+					name: 'alpha-2',
+				},
+			];
+
+			expect(versionsStore.hasSignificantUpdates).toBe(false);
 		});
 	});
 });
