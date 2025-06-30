@@ -30,18 +30,13 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		return await super.fromExistingIndex(embeddings, args);
 	}
 
-	async similaritySearch(
-		query: string,
-		k: number,
-		filter?: IDataObject,
-		callbacks?: Callbacks | undefined,
-	) {
-		const given_filter = ExtendedWeaviateVectorStore.defaultFilter;
-		if (given_filter) {
-			const composed_filter = parseCompositeFilter(given_filter);
-			return await super.similaritySearch(query, k, composed_filter, callbacks);
+	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
+		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
+		if (filter) {
+			const composedFilter = parseCompositeFilter(filter as WeaviateCompositeFilter);
+			return await super.similaritySearchVectorWithScore(query, k, composedFilter);
 		} else {
-			return await super.similaritySearch(query, k, undefined, callbacks);
+			return await super.similaritySearchVectorWithScore(query, k, undefined);
 		}
 	}
 }
