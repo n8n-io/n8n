@@ -134,7 +134,7 @@ function handleToggleExpand() {
 
 :root .collapsedContent,
 :root .settingsView {
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	border: 1px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	z-index: 1000;
 	position: absolute;
