@@ -388,6 +388,14 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/workflow-diff/:sourceWorkflowId/:targetWorkflowId',
+		props: true,
+		components: {
+			default: () => import('@/features/workflow-diff/WorkflowDiff.vue'),
+			sidebar: MainSidebar,
+		},
+	},
+	{
 		path: '/workflow',
 		redirect: '/workflow/new',
 	},
