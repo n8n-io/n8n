@@ -20,6 +20,7 @@ import type {
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
+import { useExperimentalNdvStore } from '../canvas/experimental/experimentalNdv.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -44,6 +45,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -125,6 +127,20 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 				@click="focusPanelStore.toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
+		<n8n-icon-button
+			v-if="experimentalNdvStore.isEnabled"
+			type="tertiary"
+			size="large"
+			icon="expand"
+			@click="experimentalNdvStore.expandAllNodes"
+		/>
+		<n8n-icon-button
+			v-if="experimentalNdvStore.isEnabled"
+			type="tertiary"
+			size="large"
+			icon="compress"
+			@click="experimentalNdvStore.collapseAllNodes"
+		/>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
