@@ -12,9 +12,15 @@
     "vitest": "catalog:"
   },
   "files": [
+    "backend.mjs",
     "frontend.mjs"
   ],
   "exports": {
+    "./backend": {
+      "import": "./backend.mjs",
+      "require": "./backend.mjs",
+      "types": "./backend.d.ts"
+    },
     "./frontend": {
       "import": "./dist/frontend.js",
       "require": "./dist/frontend.js",
