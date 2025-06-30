@@ -1,5 +1,11 @@
 import { setActivePinia } from 'pinia';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	type INode,
+	type INodeTypeDescription,
+	type Workflow,
+} from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { createTestNode, createMockEnterpriseSettings } from '@/__tests__/mocks';
@@ -10,7 +16,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import type { ExecutionStatus, IRunData } from 'n8n-workflow';
 import { faker } from '@faker-js/faker';
-import type { IUsedCredential } from '@/Interface';
+import type { INodeUi, IUsedCredential } from '@/Interface';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
@@ -19,6 +26,178 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('isNodeExecutable()', () => {
+		it('should return true if the node is null but explicitly executable', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const result = isNodeExecutable(null, true, []);
+			expect(result).toBe(true);
+		});
+
+		it('should return false if node has no Main input and is not trigger or tool', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const node: INodeUi = {
+				id: 'node-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				id: 'workflow-id',
+				getNode: () => node,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([NodeConnectionTypes.AiDocument]);
+
+			const result = isNodeExecutable(node, true, []);
+			expect(result).toBe(false);
+		});
+
+		it('should return true if node has Main input and is marked executable', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const node: INodeUi = {
+				id: 'node-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				getNode: () => node,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([NodeConnectionTypes.Main]);
+
+			const result = isNodeExecutable(node, true, []);
+			expect(result).toBe(true);
+		});
+
+		it('should return true if node has foreign credentials even if not marked executable', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const node: INodeUi = {
+				id: 'node-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				getNode: () => node,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([NodeConnectionTypes.Main]);
+
+			const result = isNodeExecutable(node, false, ['foreign-cred-id']);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for trigger nodes regardless of inputs', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const triggerNode: INodeUi = {
+				id: 'node-id',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				getNode: () => triggerNode,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(true);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([]);
+
+			const result = isNodeExecutable(triggerNode, true, []);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for tool nodes regardless of inputs', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const toolNode: INodeUi = {
+				id: 'node-id',
+				name: 'Tool Node',
+				type: 'n8n-nodes-base.ai-tool',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				getNode: () => toolNode,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(true);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([]);
+
+			const result = isNodeExecutable(toolNode, true, []);
+			expect(result).toBe(true);
+		});
+
+		it('should return true if node is structurally valid and has foreign credentials, even if not executable', () => {
+			const { isNodeExecutable } = useNodeHelpers();
+
+			const node: INodeUi = {
+				id: 'node-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const mockWorkflow = {
+				getNode: () => node,
+			};
+
+			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
+			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
+			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([NodeConnectionTypes.Main]);
+
+			const result = isNodeExecutable(node, false, ['cred-1']);
+			expect(result).toBe(true);
+		});
 	});
 
 	describe('getForeignCredentialsIfSharingEnabled()', () => {

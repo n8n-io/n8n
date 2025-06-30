@@ -99,6 +99,19 @@ export function useNodeHelpers() {
 		return false;
 	}
 
+	/**
+	 * Determines whether a given node is considered executable in the workflow editor.
+	 *
+	 * A node is considered executable if:
+	 * - It structurally qualifies for execution (e.g. is a trigger, tool, or has a 'Main' input),
+	 *   AND
+	 * - It is either explicitly marked as `executable`, OR uses foreign credentials
+	 *   (credentials the current user cannot access, allowed under Workflow Sharing).
+	 *
+	 * @param node The node to check
+	 * @param executable Whether the node is in a state that allows execution (e.g. not readonly)
+	 * @param foreignCredentials List of credential IDs that the current user cannot access
+	 */
 	function isNodeExecutable(
 		node: INodeUi | null,
 		executable: boolean | undefined,
