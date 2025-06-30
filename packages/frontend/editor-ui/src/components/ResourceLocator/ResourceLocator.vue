@@ -847,14 +847,10 @@ function onInputBlur(event: FocusEvent) {
 function applyOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, props.modelValue.value?.toString() ?? '');
 
 	emit('update:modelValue', {
@@ -866,14 +862,10 @@ function applyOverride() {
 function removeOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	emit('update:modelValue', {
 		...props.modelValue,
 		value: buildValueFromOverride(fromAIOverride.value, props, false),
