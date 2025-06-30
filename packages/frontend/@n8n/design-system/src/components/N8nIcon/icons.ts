@@ -41,7 +41,9 @@ import IconLucideChevronDown from '~icons/lucide/chevron-down';
 import IconLucideChevronLeft from '~icons/lucide/chevron-left';
 import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
+import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
+import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
@@ -118,6 +120,7 @@ import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMilestone from '~icons/lucide/milestone';
+import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
@@ -259,6 +262,7 @@ export const deprecatedIconSet = {
 	clone: IconLucideCopy,
 	cloud: IconLucideCloud,
 	'cloud-download-alt': IconLucideCloudDownload,
+	compress: IconLucideChevronsUpDown,
 	copy: IconLucideFiles,
 	cube: IconLucideBox,
 	cut: IconLucideScissors,
@@ -498,6 +502,7 @@ export const updatedIconSet = {
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,
 	mail: IconLucideMail,
+	'minimize-2': IconLucideMinimize2,
 	maximize: IconLucideMaximize,
 	'maximize-2': IconLucideMaximize2,
 	menu: IconLucideMenu,

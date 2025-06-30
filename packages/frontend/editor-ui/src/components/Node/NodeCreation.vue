@@ -131,14 +131,14 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			v-if="experimentalNdvStore.isEnabled"
 			type="tertiary"
 			size="large"
-			icon="expand"
+			icon="maximize-2"
 			@click="experimentalNdvStore.expandAllNodes"
 		/>
 		<n8n-icon-button
 			v-if="experimentalNdvStore.isEnabled"
 			type="tertiary"
 			size="large"
-			icon="compress"
+			icon="minimize-2"
 			@click="experimentalNdvStore.collapseAllNodes"
 		/>
 	</div>
