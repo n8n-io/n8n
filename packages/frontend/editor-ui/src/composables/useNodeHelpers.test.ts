@@ -2,12 +2,15 @@ import { setActivePinia } from 'pinia';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { useSettingsStore } from '@/stores/settings.store';
+import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import type { ExecutionStatus, IRunData } from 'n8n-workflow';
+import { faker } from '@faker-js/faker';
+import type { IUsedCredential } from '@/Interface';
 
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
@@ -16,6 +19,121 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('getForeignCredentialsIfSharingEnabled()', () => {
+		it('should return an empty array when user has the wrong license', () => {
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+
+			const credentialWithoutAccess: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: false,
+			};
+
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: false,
+			});
+			mockedStore(useWorkflowsStore).usedCredentials = {
+				[credentialWithoutAccess.id]: credentialWithoutAccess,
+			};
+
+			const result = getForeignCredentialsIfSharingEnabled({
+				[credentialWithoutAccess.id]: {
+					id: credentialWithoutAccess.id,
+					name: credentialWithoutAccess.name,
+				},
+			});
+			expect(result).toEqual([]);
+		});
+
+		it('should return an empty array when credentials are undefined', () => {
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+
+			const result = getForeignCredentialsIfSharingEnabled(undefined);
+			expect(result).toEqual([]);
+		});
+
+		it('should return an empty array when user has access to all credentials', () => {
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+
+			const credentialWithAccess1: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: true,
+			};
+
+			const credentialWithAccess2: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: true,
+			};
+
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+			mockedStore(useWorkflowsStore).usedCredentials = {
+				[credentialWithAccess1.id]: credentialWithAccess1,
+				[credentialWithAccess2.id]: credentialWithAccess2,
+			};
+
+			const result = getForeignCredentialsIfSharingEnabled({
+				[credentialWithAccess1.id]: {
+					id: credentialWithAccess1.id,
+					name: credentialWithAccess1.name,
+				},
+				[credentialWithAccess2.id]: {
+					id: credentialWithAccess2.id,
+					name: credentialWithAccess2.name,
+				},
+			});
+			expect(result).toEqual([]);
+		});
+
+		it('should return an array of foreign credentials', () => {
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+
+			const credentialWithAccess: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: true,
+			};
+
+			const credentialWithoutAccess: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: false,
+			};
+
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+			mockedStore(useWorkflowsStore).usedCredentials = {
+				[credentialWithAccess.id]: credentialWithAccess,
+				[credentialWithoutAccess.id]: credentialWithoutAccess,
+			};
+
+			const result = getForeignCredentialsIfSharingEnabled({
+				[credentialWithAccess.id]: {
+					id: credentialWithAccess.id,
+					name: credentialWithAccess.name,
+				},
+				[credentialWithoutAccess.id]: {
+					id: credentialWithoutAccess.id,
+					name: credentialWithoutAccess.name,
+				},
+			});
+			expect(result).toEqual([credentialWithoutAccess.id]);
+		});
 	});
 
 	describe('isCustomApiCallSelected', () => {

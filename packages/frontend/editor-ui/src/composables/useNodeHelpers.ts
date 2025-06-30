@@ -125,23 +125,30 @@ export function useNodeHelpers() {
 		return Boolean(executable || foreignCredentials.length > 0);
 	}
 
-	const getForeignCredentials = (credentials: INodeCredentials | undefined) => {
-		const usedCredentials = workflowsStore.usedCredentials;
-		const foreignCredentialsArray: string[] = [];
-		if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-			Object.values(credentials).forEach((credential) => {
-				if (
-					credential.id &&
-					usedCredentials[credential.id] &&
-					!usedCredentials[credential.id].currentUserHasAccess
-				) {
-					foreignCredentialsArray.push(credential.id);
-				}
-			});
+	/**
+	 * Returns a list of credential IDs that the current user does not have access to,
+	 * if the Sharing feature is enabled.
+	 *
+	 * These are considered "foreign" credentials: the user can't view or manage them,
+	 * but can still execute workflows that use them.
+	 */
+	function getForeignCredentialsIfSharingEnabled(
+		credentials: INodeCredentials | undefined,
+	): string[] {
+		if (
+			!credentials ||
+			!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
+		) {
+			return [];
 		}
 
-		return foreignCredentialsArray;
-	};
+		const usedCredentials = workflowsStore.usedCredentials;
+
+		return Object.values(credentials)
+			.map(({ id }) => id)
+			.filter((id) => id !== null)
+			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
+	}
 
 	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
 		return get(nodeValues, path ? path + '.' + parameterName : parameterName);
@@ -1057,7 +1064,7 @@ export function useNodeHelpers() {
 		hasProxyAuth,
 		isCustomApiCallSelected,
 		isNodeExecutable,
-		getForeignCredentials,
+		getForeignCredentialsIfSharingEnabled,
 		getParameterValue,
 		displayParameter,
 		getNodeIssues,

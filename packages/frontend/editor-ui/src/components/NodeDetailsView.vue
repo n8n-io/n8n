@@ -331,7 +331,7 @@ const blockUi = computed(
 );
 
 const foreignCredentials = computed(() =>
-	nodeHelpers.getForeignCredentials(activeNode.value?.credentials),
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
