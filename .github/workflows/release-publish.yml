@@ -76,7 +76,6 @@ jobs:
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
       release_type: stable
-      push_enabled: true
     secrets: inherit
 
   create-github-release:

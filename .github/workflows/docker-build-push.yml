@@ -328,11 +328,11 @@ jobs:
     name: Security Scan
     needs: [build-and-push-docker]
     if: |
-      success() &&
+      success() && inputs.push_enabled == 'true' &&
       (github.event_name == 'schedule' ||
        (github.event_name == 'workflow_call' && inputs.release_type == 'stable'))
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
+      image_ref: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
