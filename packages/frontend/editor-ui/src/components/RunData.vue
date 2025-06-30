@@ -715,18 +715,12 @@ onMounted(() => {
 		const errorsToTrack = ['unknown error'];
 
 		if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
-			telemetry.track(
-				'User encountered an error',
-				{
-					node: node.value.type,
-					errorMessage: error.message,
-					nodeVersion: node.value.typeVersion,
-					n8nVersion: rootStore.versionCli,
-				},
-				{
-					withPostHog: true,
-				},
-			);
+			telemetry.track('User encountered an error', {
+				node: node.value.type,
+				errorMessage: error.message,
+				nodeVersion: node.value.typeVersion,
+				n8nVersion: rootStore.versionCli,
+			});
 		}
 	}
 });

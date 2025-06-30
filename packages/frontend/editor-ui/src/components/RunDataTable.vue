@@ -308,9 +308,7 @@ function onDragEnd(column: string, src: string, depth = '0') {
 
 		void externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload, {
-			withPostHog: true,
-		});
+		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 }
 

@@ -3,6 +3,7 @@ import { type CanvasNode } from '@/types';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { N8nText } from '@n8n/design-system';
 import { computed, watch, ref } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const { selectedNodes } = defineProps<{ selectedNodes: CanvasNode[] }>();
 
@@ -14,6 +15,13 @@ const content = computed(() =>
 			: undefined,
 );
 const lastContent = ref<string | CanvasNode | undefined>();
+const { setActiveNodeName } = useNDVStore();
+
+function handleOpenNdv() {
+	if (typeof content.value === 'object' && content.value.data) {
+		setActiveNodeName(content.value.data.name);
+	}
+}
 
 // Sync lastContent to be "last defined content" (for drawer animation)
 watch(
@@ -36,8 +44,19 @@ watch(
 			v-else-if="lastContent !== undefined"
 			:key="lastContent.id"
 			:node-id="lastContent.id"
-			can-open-ndv
-		/>
+		>
+			<template #actions>
+				<N8nIconButton
+					icon="expand"
+					type="secondary"
+					text
+					size="mini"
+					icon-size="large"
+					aria-label="Expand"
+					@click="handleOpenNdv"
+				/>
+			</template>
+		</ExperimentalCanvasNodeSettings>
 	</div>
 </template>
 
