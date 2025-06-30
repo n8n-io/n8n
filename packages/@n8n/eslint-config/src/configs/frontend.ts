@@ -1,6 +1,7 @@
 import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
@@ -91,10 +92,6 @@ export const frontendConfig = tseslint.config(
 			],
 			'vue/no-v-html': 'error',
 
-			// Disabled as these conflict with our current formatting style, and we trust on prettier here.
-			'vue/html-indent': 'off',
-			'vue/max-attributes-per-line': 'off',
-
 			// TODO: remove these
 			'vue/no-mutating-props': 'warn',
 			'vue/no-side-effects-in-computed-properties': 'warn',
@@ -102,4 +99,5 @@ export const frontendConfig = tseslint.config(
 			'vue/return-in-computed-property': 'warn',
 		},
 	},
+	eslintConfigPrettier,
 );
