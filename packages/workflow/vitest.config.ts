@@ -4,6 +4,5 @@ export default async () => {
 
 	return createVitestConfig({
 		include: ['test/**/*.test.ts'],
-		alias: [{ find: /^@\/(.*)/, replacement: 'src/$1' }],
 	});
 };
