@@ -47,7 +47,7 @@ watch(
 		>
 			<template #actions>
 				<N8nIconButton
-					icon="expand"
+					icon="maximize-2"
 					type="secondary"
 					text
 					size="mini"

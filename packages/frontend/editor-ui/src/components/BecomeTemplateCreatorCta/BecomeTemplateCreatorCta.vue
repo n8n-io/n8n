@@ -28,7 +28,7 @@ const onClick = () => {
 				data-test-id="close-become-template-creator-cta"
 				@click="store.dismissCta()"
 			>
-				<n8n-icon icon="times" size="xsmall" :title="i18n.baseText('generic.close')" />
+				<n8n-icon icon="x" size="xsmall" :title="i18n.baseText('generic.close')" />
 			</button>
 		</div>
 

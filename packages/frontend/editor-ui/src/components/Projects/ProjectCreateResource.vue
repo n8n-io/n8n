@@ -35,7 +35,7 @@ defineExpose({
 			<N8nIconButton
 				:disabled="disabled"
 				:class="[$style.buttonGroupDropdown]"
-				icon="angle-down"
+				icon="chevron-down"
 				:type="type ?? 'primary'"
 			/>
 		</N8nActionToggle>

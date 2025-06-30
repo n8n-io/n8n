@@ -95,7 +95,7 @@ const options = computed<ITab[]>(() => {
 
 	if (isCommunityNode.value) {
 		options.push({
-			icon: 'cube',
+			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
 			tooltip: i18n.baseText('generic.communityNode.tooltip', {

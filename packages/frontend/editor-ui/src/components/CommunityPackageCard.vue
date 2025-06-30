@@ -133,7 +133,7 @@ watch(
 							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
 						</div>
 					</template>
-					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
+					<n8n-icon icon="triangle-alert" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
@@ -152,7 +152,7 @@ watch(
 							{{ i18n.baseText('settings.communityNodes.upToDate.tooltip') }}
 						</div>
 					</template>
-					<n8n-icon icon="check-circle" color="text-light" size="large" />
+					<n8n-icon icon="circle-check" color="text-light" size="large" />
 				</n8n-tooltip>
 				<div :class="$style.cardActions">
 					<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>

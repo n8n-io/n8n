@@ -1106,7 +1106,7 @@ const { width } = useElementSize(credNameRef);
 					<n8n-icon-button
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
-						icon="trash"
+						icon="trash-2"
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"

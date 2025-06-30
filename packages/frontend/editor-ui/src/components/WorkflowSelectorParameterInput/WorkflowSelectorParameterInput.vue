@@ -415,7 +415,7 @@ const onAddResourceClicked = async () => {
 						data-test-id="rlc-open-resource-link"
 					>
 						<n8n-link theme="text" @click.stop="openWorkflow()">
-							<font-awesome-icon icon="external-link-alt" :title="'Open resource link'" />
+							<n8n-icon icon="external-link" :title="'Open resource link'" />
 						</n8n-link>
 					</div>
 				</div>
