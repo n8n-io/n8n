@@ -1,6 +1,10 @@
 import { ref } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
-import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	EnterpriseEditionFeature,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
 
 import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -26,6 +30,7 @@ import type {
 	NodeConnectionType,
 	IRunExecutionData,
 	NodeHint,
+	INodeCredentials,
 } from 'n8n-workflow';
 
 import type {
@@ -47,6 +52,7 @@ import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -63,6 +69,7 @@ export function useNodeHelpers() {
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
@@ -91,6 +98,50 @@ export function useNodeHelpers() {
 
 		return false;
 	}
+
+	function isNodeExecutable(
+		node: INodeUi | null,
+		executable: boolean | undefined,
+		foreignCredentials: string[],
+	): boolean {
+		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
+		if (node && nodeType) {
+			const currentWorkflowInstance = workflowsStore.getCurrentWorkflow();
+			const workflowNode = currentWorkflowInstance.getNode(node.name);
+
+			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
+			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
+
+			if (workflowNode) {
+				const inputs = NodeHelpers.getNodeInputs(currentWorkflowInstance, workflowNode, nodeType);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
+					return false;
+				}
+			}
+		}
+
+		return Boolean(executable || foreignCredentials.length > 0);
+	}
+
+	const getForeignCredentials = (credentials: INodeCredentials | undefined) => {
+		const usedCredentials = workflowsStore.usedCredentials;
+		const foreignCredentialsArray: string[] = [];
+		if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+			Object.values(credentials).forEach((credential) => {
+				if (
+					credential.id &&
+					usedCredentials[credential.id] &&
+					!usedCredentials[credential.id].currentUserHasAccess
+				) {
+					foreignCredentialsArray.push(credential.id);
+				}
+			});
+		}
+
+		return foreignCredentialsArray;
+	};
 
 	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
 		return get(nodeValues, path ? path + '.' + parameterName : parameterName);
@@ -1005,6 +1056,8 @@ export function useNodeHelpers() {
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
+		isNodeExecutable,
+		getForeignCredentials,
 		getParameterValue,
 		displayParameter,
 		getNodeIssues,
