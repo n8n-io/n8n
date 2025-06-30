@@ -38,7 +38,6 @@ import type {
 } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -100,7 +99,6 @@ const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
