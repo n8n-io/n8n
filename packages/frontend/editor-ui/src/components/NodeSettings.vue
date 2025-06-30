@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	INodeTypeDescription,
 	INodeParameters,
@@ -18,10 +18,8 @@ import type {
 
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import get from 'lodash/get';
@@ -42,8 +40,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { N8nIconButton } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -57,8 +56,8 @@ const props = withDefaults(
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
-		canExpand?: boolean;
-		hideConnections?: boolean;
+		isEmbeddedInCanvas?: boolean;
+		noWheel?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -67,8 +66,8 @@ const props = withDefaults(
 		inputSize: 0,
 		blockUI: false,
 		activeNode: undefined,
-		canExpand: false,
-		hideConnections: false,
+		isEmbeddedInCanvas: false,
+		noWheel: false,
 	},
 );
 
@@ -84,8 +83,9 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
-	expand: [];
 }>();
+
+const slots = defineSlots<{ actions?: {} }>();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -99,6 +99,17 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const nodeValues = nodeSettingsParameters.nodeValues;
+
+const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
+const shouldShowStaticScrollbar = ref(false);
+
+if (props.isEmbeddedInCanvas) {
+	useResizeObserver(nodeParameterWrapper, () => {
+		shouldShowStaticScrollbar.value =
+			(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+			(nodeParameterWrapper.value?.offsetHeight ?? 0);
+	});
+}
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -198,10 +209,12 @@ const parameters = computed(() => {
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
-const parametersNoneSetting = computed(() =>
+const parametersNoneSetting = computed(() => {
 	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	parameters.value.filter((item) => !item.isNodeSetting),
-);
+	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
+
+	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
+});
 
 const isDisplayingCredentials = computed(
 	() =>
@@ -735,6 +748,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
+
+function handleWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -742,6 +761,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		:class="{
 			'node-settings': true,
 			dragging: dragging,
+			embedded: props.isEmbeddedInCanvas,
 		}"
 		@keydown.stop
 	>
@@ -754,8 +774,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:node-type="nodeType"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable || props.canExpand" :class="$style.headerActions">
+				/>
+				<template v-if="isExecutable || slots.actions">
 					<NodeExecuteButton
 						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
@@ -768,17 +788,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 						@stop-execution="onStopExecution"
 						@value-changed="valueChanged"
 					/>
-					<N8nIconButton
-						v-if="props.canExpand"
-						icon="expand"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Expand"
-						@click="emit('expand')"
-					/>
-				</div>
+					<slot name="actions" />
+				</template>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -830,7 +841,17 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				</template>
 			</i18n-t>
 		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
+		<div
+			v-if="node && nodeValid"
+			ref="nodeParameterWrapper"
+			:class="[
+				'node-parameters-wrapper',
+				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
+			]"
+			data-test-id="node-parameters"
+			@wheel="noWheel ? handleWheelEvent : undefined"
+		>
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -851,11 +872,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
+					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
+						v-if="!isEmbeddedInCanvas"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -920,7 +943,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.hideConnections"
+			v-if="node && !props.isEmbeddedInCanvas"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -933,12 +956,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 <style lang="scss" module>
 .header {
 	background-color: var(--color-background-base);
-}
-
-.headerActions {
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
 }
 
 .warningIcon {
@@ -976,6 +993,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		}
 	}
 
+	&.embedded .header-side-menu {
+		padding: var(--spacing-xs);
+	}
+
 	.node-is-not-valid {
 		height: 75%;
 		padding: 10px;
@@ -991,6 +1012,28 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+	}
+
+	&.embedded .node-parameters-wrapper {
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+	}
+
+	&.embedded .node-parameters-wrapper.with-static-scrollbar {
+		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-2xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid white;
+			}
+		}
 	}
 
 	&.dragging {

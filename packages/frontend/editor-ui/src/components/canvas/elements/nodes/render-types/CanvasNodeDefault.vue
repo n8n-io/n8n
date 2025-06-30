@@ -5,9 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
-import { useNodeSettingsInCanvas } from '@/components/canvas/composables/useNodeSettingsInCanvas';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
-import ExperimentalCanvasNodeSettings from '../../../components/ExperimentalCanvasNodeSettings.vue';
+import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -45,7 +45,7 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
-const nodeSettingsZoom = useNodeSettingsInCanvas();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const classes = computed(() => {
 	return {
@@ -61,7 +61,6 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
-		[$style.settingsView]: nodeSettingsZoom.value !== undefined,
 	};
 });
 
@@ -81,7 +80,6 @@ const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node-icon-size': `${iconSize.value}px`,
-	...(nodeSettingsZoom.value === undefined ? {} : { '--zoom': nodeSettingsZoom.value }),
 }));
 
 const dataTestId = computed(() => {
@@ -133,35 +131,39 @@ function onActivate(event: MouseEvent) {
 </script>
 
 <template>
+	<ExperimentalInPlaceNodeSettings
+		v-if="experimentalNdvStore.isActive(viewport.zoom)"
+		:node-id="id"
+		:class="classes"
+		:style="styles"
+	/>
 	<div
+		v-else
 		:class="classes"
 		:style="styles"
 		:data-test-id="dataTestId"
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<ExperimentalCanvasNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
-		<template v-else>
-			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-			<NodeIcon
-				:icon-source="iconSource"
-				:size="iconSize"
-				:shrink="false"
-				:disabled="isDisabled"
-				:class="$style.icon"
-			/>
-			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-			<div :class="$style.description">
-				<div v-if="label" :class="$style.label">
-					{{ label }}
-				</div>
-				<div v-if="isDisabled" :class="$style.disabledLabel">
-					({{ i18n.baseText('node.disabled') }})
-				</div>
-				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+		<NodeIcon
+			:icon-source="iconSource"
+			:size="iconSize"
+			:shrink="false"
+			:disabled="isDisabled"
+			:class="$style.icon"
+		/>
+		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+		<div :class="$style.description">
+			<div v-if="label" :class="$style.label">
+				{{ label }}
 			</div>
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
-		</template>
+			<div v-if="isDisabled" :class="$style.disabledLabel">
+				({{ i18n.baseText('node.disabled') }})
+			</div>
+			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		</div>
+		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>
 </template>
 
@@ -186,20 +188,6 @@ function onActivate(event: MouseEvent) {
 	&.trigger {
 		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
 			var(--border-radius-large) var(--trigger-node--border-radius);
-	}
-
-	&.settingsView {
-		height: calc(var(--canvas-node--height) * 2.4) !important;
-		width: calc(var(--canvas-node--width) * 1.6) !important;
-		align-items: flex-start;
-		justify-content: stretch;
-		overflow: auto;
-		border-radius: var(--border-radius-large) !important;
-
-		& > * {
-			zoom: calc(1 / var(--zoom, 1));
-			width: 100% !important;
-		}
 	}
 
 	/**
@@ -272,32 +260,47 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.success {
-		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
+		--canvas-node--border-color: var(
+			--color-canvas-node-success-border-color,
+			var(--color-success)
+		);
 	}
 
 	&.warning {
-		border-color: var(--color-warning);
+		--canvas-node--border-color: var(--color-warning);
 	}
 
 	&.error {
-		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
 	}
 
 	&.pinned {
-		border-color: var(--color-canvas-node-pinned-border-color, var(--color-node-pinned-border));
+		--canvas-node--border-color: var(
+			--color-canvas-node-pinned-border-color,
+			var(--color-node-pinned-border)
+		);
 	}
 
 	&.disabled {
-		border-color: var(--color-canvas-node-disabled-border-color, var(--color-foreground-base));
+		--canvas-node--border-color: var(
+			--color-canvas-node-disabled-border-color,
+			var(--color-foreground-base)
+		);
 	}
 
 	&.running {
 		background-color: var(--color-node-executing-background);
-		border-color: var(--color-canvas-node-running-border-color, var(--color-node-running-border));
+		--canvas-node--border-color: var(
+			--color-canvas-node-running-border-color,
+			var(--color-node-running-border)
+		);
 	}
 
 	&.waiting {
-		border-color: var(--color-canvas-node-waiting-border-color, var(--color-secondary));
+		--canvas-node--border-color: var(
+			--color-canvas-node-waiting-border-color,
+			var(--color-secondary)
+		);
 	}
 }
 

@@ -6,7 +6,6 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   data-test-id="canvas-configurable-node"
   style="--canvas-node--width: 240px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -43,7 +42,6 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     </div>
   </div>
   <!--v-if-->
-  
 </div>
 `;
 
@@ -53,7 +51,6 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   data-test-id="canvas-configurable-node"
   style="--canvas-node--width: 240px; --canvas-node--height: 75px; --node-icon-size: 30px;"
 >
-  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -90,7 +87,6 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
     </div>
   </div>
   <!--v-if-->
-  
 </div>
 `;
 
@@ -100,7 +96,6 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   data-test-id="canvas-configuration-node"
   style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
-  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -137,7 +132,6 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
     </div>
   </div>
   <!--v-if-->
-  
 </div>
 `;
 
@@ -147,7 +141,6 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   data-test-id="canvas-default-node"
   style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -184,7 +177,6 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     </div>
   </div>
   <!--v-if-->
-  
 </div>
 `;
 
@@ -194,7 +186,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   data-test-id="canvas-trigger-node"
   style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -231,6 +222,5 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     </div>
   </div>
   <!--v-if-->
-  
 </div>
 `;
