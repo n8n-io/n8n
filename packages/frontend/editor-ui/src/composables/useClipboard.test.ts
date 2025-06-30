@@ -36,8 +36,6 @@ describe('Copy node to clipboard', () => {
 	});
 
 	describe('useClipboard()', () => {
-		let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-
 		beforeAll(() => {
 			userEvent.setup();
 		});
@@ -46,7 +44,7 @@ describe('Copy node to clipboard', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			nodeTypesStore = useNodeTypesStore();
+			useNodeTypesStore();
 
 			// Mock document.execCommand implementation to set clipboard items
 			document.execCommand = vi.fn().mockImplementation((command) => {
@@ -139,8 +137,6 @@ describe('Copy sticky to clipboard', () => {
 	});
 
 	describe('useClipboard()', () => {
-		let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-
 		beforeAll(() => {
 			userEvent.setup();
 		});
@@ -149,7 +145,7 @@ describe('Copy sticky to clipboard', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			nodeTypesStore = useNodeTypesStore();
+			useNodeTypesStore();
 
 			// Mock document.execCommand implementation to set clipboard items
 			document.execCommand = vi.fn().mockImplementation((command) => {
