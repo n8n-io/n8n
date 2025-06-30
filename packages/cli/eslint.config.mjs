@@ -103,7 +103,7 @@ export default defineConfig(
 		files: ['**/*.module.ts'],
 
 		rules: {
-			'n8n-local-rules/no-relative-imports-outside-init-method': 'error',
+			'n8n-local-rules/no-top-level-relative-imports-in-backend-module': 'error',
 			'n8n-local-rules/no-constructor-in-backend-module': 'error',
 		},
 	},
