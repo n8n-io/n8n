@@ -309,7 +309,9 @@ const onSearch = (value: string) => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
+		<n8n-heading size="2xlarge">
+			{{ i18n.baseText('settings.users') }}
+		</n8n-heading>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
 			<n8n-input
 				:class="$style.search"
