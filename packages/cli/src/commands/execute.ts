@@ -17,7 +17,7 @@ const flagsSchema = z.object({
 	id: z.string().describe('id of the workflow to execute').optional(),
 	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text').optional(),
 	/**@deprecated */
-	file: z.string().optional(),
+	file: z.string().describe('DEPRECATED: Please use --id instead').optional(),
 });
 
 @Command({
