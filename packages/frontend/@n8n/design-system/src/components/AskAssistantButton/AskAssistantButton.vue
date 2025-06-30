@@ -79,7 +79,7 @@ function onMouseLeave() {
 }
 
 .num {
-	color: var(--prim-color-white);
+	color: var(--p-white); // ! TODO Token should be used here
 	background: var(--color-assistant-highlight-reverse);
 	border-radius: 50%;
 	width: var(--spacing-s);

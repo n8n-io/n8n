@@ -351,7 +351,7 @@ function hideGithubButton() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--prim-color-primary-shade-100);
+		color: var(--p-color-primary-420); // ! TODO Token should be used here
 	}
 }
 .github-button-container {
