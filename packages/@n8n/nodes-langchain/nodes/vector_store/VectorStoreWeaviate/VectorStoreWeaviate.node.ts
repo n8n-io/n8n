@@ -1,4 +1,3 @@
-import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { WeaviateStore } from '@langchain/weaviate';
 import type { WeaviateLibArgs } from '@langchain/weaviate';
