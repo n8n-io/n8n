@@ -262,7 +262,7 @@ watch(
 						@click="displayActivationError"
 					></div>
 				</template>
-				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
+				<n8n-icon icon="triangle-alert" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>

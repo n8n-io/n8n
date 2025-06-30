@@ -397,7 +397,7 @@ const { width } = useElementSize(defNameRef);
 					<div :class="$style.destinationActions">
 						<n8n-button
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
 								testMessageSent && testMessageResult
 									? 'Event sent and returned OK'
@@ -413,7 +413,7 @@ const { width } = useElementSize(defNameRef);
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
-								icon="trash"
+								icon="trash-2"
 								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"

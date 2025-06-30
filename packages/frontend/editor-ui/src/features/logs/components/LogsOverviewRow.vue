@@ -142,11 +142,7 @@ watch(
 					<N8nText :color="isError ? 'danger' : undefined" :bold="isError" size="small">
 						<AnimatedSpinner v-if="isRunning" :class="$style.statusTextIcon" />
 						<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusTextIcon" />
-						<N8nIcon
-							v-else-if="isError"
-							icon="exclamation-triangle"
-							:class="$style.statusTextIcon"
-						/>
+						<N8nIcon v-else-if="isError" icon="triangle-alert" :class="$style.statusTextIcon" />
 						{{ statusText }}
 					</N8nText>
 				</template>
@@ -181,14 +177,14 @@ watch(
 			v-if="isError && isCompact"
 			size="medium"
 			color="danger"
-			icon="exclamation-triangle"
+			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
 			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
 			size="small"
-			icon="edit"
+			icon="square-pen"
 			icon-size="medium"
 			:style="{
 				visibility: props.canOpenNdv ? '' : 'hidden',

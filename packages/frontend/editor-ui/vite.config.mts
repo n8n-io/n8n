@@ -78,7 +78,7 @@ const plugins = [
 					return { name: componentName, from: '@n8n/design-system' };
 			},
 			iconsResolver({
-				prefix: 'icon',
+				prefix: 'Icon',
 			}),
 		],
 	}),

@@ -1,10 +1,7 @@
-/**
- * @jest-environment jsdom
- */
-
-import { arrayExtensions } from '@/extensions/array-extensions';
+// @vitest-environment jsdom
 
 import { evaluate } from './helpers';
+import { arrayExtensions } from '../../src/extensions/array-extensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {

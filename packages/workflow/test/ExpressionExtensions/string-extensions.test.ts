@@ -1,11 +1,8 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensionError } from '@/errors';
-
 import { evaluate } from './helpers';
+import { ExpressionExtensionError } from '../../src/errors';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
@@ -287,9 +284,11 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "1713976144063".toDateTime("ms") }}')).toBeInstanceOf(DateTime);
 			expect(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}')).toBeInstanceOf(DateTime);
 
-			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrowError(
+			vi.useFakeTimers({ now: new Date() });
+			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(
 				new ExpressionExtensionError('cannot convert to Luxon DateTime'),
 			);
+			vi.useRealTimers();
 		});
 
 		test('.extractUrlPath should work on a string', () => {
