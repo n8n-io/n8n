@@ -24,7 +24,6 @@ import { useToast } from '@/composables/useToast';
 import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
-	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -323,11 +322,8 @@ const statusFilterOptions = computed(() => [
 ]);
 
 const showEasyAIWorkflowCallout = computed(() => {
-	const isEasyAIWorkflowExperimentEnabled =
-		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
+	return !easyAIWorkflowOnboardingDone;
 });
 
 const projectPermissions = computed(() => {
