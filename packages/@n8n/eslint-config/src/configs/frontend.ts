@@ -90,9 +90,9 @@ export const frontendConfig = tseslint.config(
 				},
 			],
 			'vue/no-v-html': 'error',
-			'vue/html-indent': ['warn', 'tab'],
 
-			// Disabled as it conflicts with our current formatting style
+			// Disabled as these conflict with our current formatting style, and we trust on prettier here.
+			'vue/html-indent': 'off',
 			'vue/max-attributes-per-line': 'off',
 
 			// TODO: remove these
