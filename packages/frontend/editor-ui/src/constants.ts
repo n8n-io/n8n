@@ -726,12 +726,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const AI_CREDITS_EXPERIMENT = {
-	name: '027_free_openai_calls',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '30_workflow_builder',
 	control: 'control',
@@ -751,7 +745,6 @@ export const FOCUS_PANEL_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 ];
