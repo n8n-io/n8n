@@ -2,6 +2,7 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, mockedStore } from '@/__tests__/utils';
+import { DELETE_USER_MODAL_KEY } from '@/constants';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { createUser } from '@/__tests__/data/users';
@@ -203,8 +204,13 @@ describe('SettingsUsersView', () => {
 
 			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
 
-			const uiStore = useUIStore();
-			expect(uiStore.openDeleteUserModal).toHaveBeenCalledWith(user.id);
+			const uiStore = mockedStore(useUIStore);
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				modalName: DELETE_USER_MODAL_KEY,
+				data: {
+					userId: user.id,
+				},
+			});
 		});
 
 		it('should allow coping reset password link', async () => {
