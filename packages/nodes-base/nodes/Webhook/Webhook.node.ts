@@ -27,6 +27,7 @@ import {
 	responseCodeProperty,
 	responseDataProperty,
 	responseModeProperty,
+	responseModePropertyStreaming,
 } from './description';
 import { WebhookAuthorizationError } from './error';
 import {
@@ -137,6 +138,7 @@ export class Webhook extends Node {
 			},
 			authenticationProperty(this.authPropertyName),
 			responseModeProperty,
+			responseModePropertyStreaming,
 			{
 				displayName:
 					'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details</a>',

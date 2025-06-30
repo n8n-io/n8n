@@ -125,39 +125,57 @@ export const responseCodeProperty: INodeProperties = {
 	description: 'The HTTP Response code to return',
 };
 
+const responseModeOptions = [
+	{
+		name: 'Immediately',
+		value: 'onReceived',
+		description: 'As soon as this node executes',
+	},
+	{
+		name: 'When Last Node Finishes',
+		value: 'lastNode',
+		description: 'Returns data of the last-executed node',
+	},
+	{
+		name: "Using 'Respond to Webhook' Node",
+		value: 'responseNode',
+		description: 'Response defined in that node',
+	},
+];
+
 export const responseModeProperty: INodeProperties = {
 	displayName: 'Respond',
 	name: 'responseMode',
 	type: 'options',
+	options: responseModeOptions,
+	default: 'onReceived',
+	description: 'When and how to respond to the webhook',
+	displayOptions: {
+		show: {
+			'@version': [1, 1.1, 2],
+		},
+	},
+};
+
+export const responseModePropertyStreaming: INodeProperties = {
+	displayName: 'Respond',
+	name: 'responseMode',
+	type: 'options',
 	options: [
-		{
-			name: 'Immediately',
-			value: 'onReceived',
-			description: 'As soon as this node executes',
-		},
-		{
-			name: 'When Last Node Finishes',
-			value: 'lastNode',
-			description: 'Returns data of the last-executed node',
-		},
-		{
-			name: "Using 'Respond to Webhook' Node",
-			value: 'responseNode',
-			description: 'Response defined in that node',
-		},
+		...responseModeOptions,
 		{
 			name: 'Streaming Response',
 			value: 'streaming',
-			description: 'Streaming response from specified nodes (e.g. Agents)',
-			displayOptions: {
-				hide: {
-					'@version': [1, 1.1, 2],
-				},
-			},
+			description: 'Returns data in real time from streaming enabled nodes',
 		},
 	],
 	default: 'onReceived',
 	description: 'When and how to respond to the webhook',
+	displayOptions: {
+		hide: {
+			'@version': [1, 1.1, 2],
+		},
+	},
 };
 
 export const responseDataProperty: INodeProperties = {
