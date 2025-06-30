@@ -276,9 +276,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					return true;
 				});
 
-			const singleWebhookTrigger = triggers.find((node) =>
-				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
-			);
+			const singleWebhookTrigger =
+				options.triggerNode === undefined
+					? // if there is no chosen trigger we check all triggers
+						triggers.find((node) => SINGLE_WEBHOOK_TRIGGERS.includes(node.type))
+					: // if there is a chosen trigger we check this one only
+						workflowData.nodes.find(
+							(node) =>
+								node.name === options.triggerNode && SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
+						);
 
 			if (
 				singleWebhookTrigger &&
