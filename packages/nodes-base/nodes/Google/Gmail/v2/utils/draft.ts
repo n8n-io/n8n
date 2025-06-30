@@ -22,7 +22,9 @@ export async function addThreadHeadersToEmail(
 
 	if (thread?.messages) {
 		const lastMessage = thread.messages.length - 1;
-		const messageId: string = thread.messages[lastMessage].payload.headers[0].value;
+		const messageId = thread.messages[lastMessage].payload.headers.find(
+			(header: { name: string; value: string }) => header.name === 'Message-ID',
+		)?.value;
 
 		email.inReplyTo = messageId;
 		email.reference = messageId;
