@@ -99,4 +99,12 @@ export default defineConfig(
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
 		},
 	},
+	{
+		files: ['**/*.module.ts'],
+
+		rules: {
+			'n8n-local-rules/no-relative-imports-outside-init-method': 'error',
+			'n8n-local-rules/no-constructor-in-backend-module': 'error',
+		},
+	},
 );
