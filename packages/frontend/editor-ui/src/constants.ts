@@ -750,8 +750,6 @@ export const FOCUS_PANEL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
-
 export const EXPERIMENTS_TO_TRACK = [
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
