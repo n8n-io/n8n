@@ -47,14 +47,14 @@ jobs:
       - name: Generate GitHub App Token
         if: steps.verify_file.outputs.file_exists == 'true'
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout Docs Repository
         if: steps.verify_file.outputs.file_exists == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: n8n-io/n8n-docs
           token: ${{ steps.generate_token.outputs.token }}
