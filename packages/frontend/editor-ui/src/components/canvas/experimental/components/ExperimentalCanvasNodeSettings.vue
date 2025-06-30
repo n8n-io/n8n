@@ -2,18 +2,18 @@
 import NodeSettings from '@/components/NodeSettings.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { type IUpdateInformation } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 
-const { nodeId, canOpenNdv } = defineProps<{ nodeId: string; canOpenNdv?: boolean }>();
+const { nodeId, noWheel } = defineProps<{ nodeId: string; noWheel?: boolean }>();
+
+defineSlots<{ actions?: {} }>();
 
 const settingsEventBus = createEventBus();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const { setActiveNodeName } = useNDVStore();
 const { renameNode } = useCanvasOperations();
 
 const activeNode = computed(() => workflowsStore.getNodeById(nodeId));
@@ -24,12 +24,6 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-function handleOpenNdv() {
-	if (activeNode.value) {
-		setActiveNodeName(activeNode.value.name);
-	}
-}
-
 function handleValueChanged(parameterData: IUpdateInformation) {
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
@@ -39,7 +33,6 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 
 <template>
 	<NodeSettings
-		:can-expand="canOpenNdv"
 		:event-bus="settingsEventBus"
 		:dragging="false"
 		:active-node="activeNode"
@@ -50,8 +43,12 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 		:block-u-i="false"
 		:executable="false"
 		:input-size="0"
-		hide-connections
-		@expand="handleOpenNdv"
+		is-embedded-in-canvas
+		:no-wheel="noWheel"
 		@value-changed="handleValueChanged"
-	/>
+	>
+		<template #actions>
+			<slot name="actions" />
+		</template>
+	</NodeSettings>
 </template>
