@@ -8,7 +8,7 @@ on:
     paths:
       # Trigger if:
       # - any of the public API files change
-      - 'packages/cli/src/public-api/**'
+      - 'packages/cli/src/public-api/*.{css,yaml,yml}'
       # - the build script or dependencies change
       - 'packages/cli/package.json'
       # - any main dependencies change
@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout Main n8n Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v3
@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install Dependencies
@@ -95,7 +95,7 @@ jobs:
           signoff: false
 
           # Create a unique branch and delete after we're done
-          branch: 'chore/openapi-sync-${{ github.run_id }}'
+          branch: 'chore/openapi-sync-${{ github.run_id }}-${{ github.run_attempt }}'
           delete-branch: true
 
           title: 'chore: Update Public API schema'
