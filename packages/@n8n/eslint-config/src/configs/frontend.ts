@@ -91,6 +91,10 @@ export const frontendConfig = tseslint.config(
 			],
 			'vue/no-v-html': 'error',
 
+			// Disabled as these conflict with our current formatting style, and we trust on prettier here.
+			'vue/html-indent': 'off',
+			'vue/max-attributes-per-line': 'off',
+
 			// TODO: remove these
 			'vue/no-mutating-props': 'warn',
 			'vue/no-side-effects-in-computed-properties': 'warn',

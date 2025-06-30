@@ -6,7 +6,7 @@ import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -209,7 +209,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				icon: 'external-link-alt',
 				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 				link: {
-					href: 'https://docs.n8n.io/release-notes/',
+					href: RELEASE_NOTES_URL,
 					target: '_blank',
 				},
 				size: 'small',
