@@ -13,7 +13,7 @@ import './zod-alias-support';
  */
 @Service()
 export class CommandRegistry {
-	private readonly commandName: string;
+	private commandName: string;
 
 	private readonly argv: argvParser.Arguments;
 
@@ -30,6 +30,11 @@ export class CommandRegistry {
 		if (this.commandName === '--help' || this.commandName === '-h') {
 			await this.listAllCommands();
 			return process.exit(0);
+		}
+
+		if (this.commandName === 'executeBatch') {
+			this.logger.warn('WARNING: "executeBatch" has been renamed to "execute-batch".');
+			this.commandName = 'execute-batch';
 		}
 
 		// Try to load regular commands

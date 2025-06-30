@@ -98,7 +98,7 @@ const flagsSchema = z.object({
 });
 
 @Command({
-	name: 'executeBatch',
+	name: 'execute-batch',
 	description: 'Executes multiple workflows once',
 	examples: [
 		'',
