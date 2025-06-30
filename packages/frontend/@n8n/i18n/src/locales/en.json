@@ -1911,6 +1911,7 @@
 	"settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel": "Uninstalling",
 	"settings.communityNodes.confirmModal.update.title": "Update community node package?",
 	"settings.communityNodes.confirmModal.update.message": "You are about to update {packageName} to version {version}",
+	"settings.communityNodes.confirmModal.update.warning": "This version has not been verified by n8n and may contain breaking changes or bugs.",
 	"settings.communityNodes.confirmModal.update.description": "We recommend you deactivate workflows that use any of the package's nodes and reactivate them once the update is completed",
 	"settings.communityNodes.confirmModal.update.buttonLabel": "Update package",
 	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
