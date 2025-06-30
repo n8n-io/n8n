@@ -582,7 +582,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 									:items="getIssues(type.name)"
 								/>
 							</template>
-							<N8nIcon icon="exclamation-triangle" />
+							<N8nIcon icon="triangle-alert" />
 						</N8nTooltip>
 					</div>
 

@@ -1355,7 +1355,7 @@ defineExpose({ enterEditMode });
 				!isProductionExecutionPreview
 			"
 			theme="secondary"
-			icon="thumbtack"
+			icon="pin"
 			:class="$style.pinnedDataCallout"
 			data-test-id="ndv-pinned-data-callout"
 		>
@@ -1444,7 +1444,7 @@ defineExpose({ enterEditMode });
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
-					icon="pencil-alt"
+					icon="pencil"
 					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"

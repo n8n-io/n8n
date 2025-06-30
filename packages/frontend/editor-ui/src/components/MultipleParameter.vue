@@ -9,7 +9,6 @@ import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { useNDVStore } from '@/stores/ndv.store';
 import { storeToRefs } from 'pinia';
 
@@ -127,22 +126,22 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			:class="parameter.type"
 		>
 			<div v-if="!isReadOnly" class="delete-item clickable">
-				<FontAwesomeIcon
-					icon="trash"
+				<N8nIcon
+					icon="trash-2"
 					:title="i18n.baseText('multipleParameter.deleteItem')"
 					@click="deleteItem(index)"
 				/>
 				<div v-if="sortable">
-					<FontAwesomeIcon
+					<N8nIcon
 						v-if="index !== 0"
-						icon="angle-up"
+						icon="chevron-up"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveUp')"
 						@click="moveOptionUp(index)"
 					/>
-					<FontAwesomeIcon
+					<N8nIcon
 						v-if="index !== mutableValues.length - 1"
-						icon="angle-down"
+						icon="chevron-down"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveDown')"
 						@click="moveOptionDown(index)"

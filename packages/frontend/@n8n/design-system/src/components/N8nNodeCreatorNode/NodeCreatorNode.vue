@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
+import N8nIcon from '../N8nIcon';
 
 export interface Props {
 	active?: boolean;
@@ -44,10 +44,10 @@ const { t } = useI18n();
 				<ElTag v-if="tag" :class="$style.tag" size="small" round :type="tag.type ?? 'success'">
 					{{ tag.text }}
 				</ElTag>
-				<FontAwesomeIcon
+				<N8nIcon
 					v-if="isTrigger"
-					icon="bolt"
-					size="xs"
+					icon="zap"
+					size="xsmall"
 					:title="t('nodeCreator.nodeItem.triggerIconTitle')"
 					:class="$style.triggerIcon"
 				/>
@@ -63,7 +63,7 @@ const { t } = useI18n();
 		</div>
 		<slot name="dragContent" />
 		<button v-if="showActionArrow" :class="$style.panelIcon">
-			<FontAwesomeIcon :class="$style.panelArrow" icon="arrow-right" />
+			<N8nIcon icon="arrow-right" size="large" />
 		</button>
 	</div>
 </template>
@@ -109,10 +109,6 @@ const { t } = useI18n();
 	margin-left: var(--spacing-3xs);
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
-}
-.panelArrow {
-	font-size: var(--font-size-2xs);
-	width: 12px;
 }
 .details {
 	display: flex;

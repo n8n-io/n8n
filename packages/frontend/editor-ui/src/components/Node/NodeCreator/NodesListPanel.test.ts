@@ -249,7 +249,7 @@ describe('NodesListPanel', () => {
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0);
 			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
 
-			await fireEvent.click(container.querySelector('.clear')!);
+			await fireEvent.click(container.querySelector('svg[data-icon=circle-x]')!);
 			await nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
 		});

@@ -171,7 +171,7 @@ onBeforeMount(() => {
 	<n8n-popover trigger="click" :placement="popoverPlacement" width="440">
 		<template #reference>
 			<n8n-button
-				icon="filter"
+				icon="funnel"
 				type="tertiary"
 				size="medium"
 				square
@@ -305,9 +305,9 @@ onBeforeMount(() => {
 					<template #content>
 						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip" />
 					</template>
-					<span :class="$style.label">
-						{{ locale.baseText('executionsFilter.savedData') }}
-						<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
+					<span :class="[$style.label, $style.savedDataLabel]">
+						<span>{{ locale.baseText('executionsFilter.savedData') }}</span>
+						<n8n-icon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
 					</span>
 				</n8n-tooltip>
 				<div :class="$style.subGroup">
@@ -405,6 +405,14 @@ onBeforeMount(() => {
 		font-size: var(--font-size-2xs);
 		margin: var(--spacing-s) 0 var(--spacing-3xs);
 		color: var(--color-text-dark);
+	}
+}
+
+.label.savedDataLabel {
+	display: flex;
+	align-items: center;
+	span {
+		margin-right: var(--spacing-3xs);
 	}
 }
 

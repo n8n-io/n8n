@@ -19,7 +19,13 @@ describe('CanvasRunWorkflowButton', () => {
 	});
 
 	it('should render correctly', () => {
-		const wrapper = renderComponent();
+		const wrapper = renderComponent({
+			global: {
+				stubs: {
+					N8nButton: { template: '<n8n-button-stub><slot /></n8n-button-stub>' },
+				},
+			},
+		});
 
 		expect(wrapper.html()).toMatchSnapshot();
 	});

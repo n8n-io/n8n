@@ -125,14 +125,14 @@ onBeforeMount(() => {
 			:class="{ [$style.leftButton]: true }"
 			@click="scrollLeft"
 		>
-			<font-awesome-icon icon="chevron-left" />
+			<n8n-icon icon="chevron-left" />
 		</button>
 		<button
 			v-show="showNavigation && !scrollEnd"
 			:class="{ [$style.rightButton]: true }"
 			@click="scrollRight"
 		>
-			<font-awesome-icon icon="chevron-right" />
+			<n8n-icon icon="chevron-right" />
 		</button>
 	</div>
 </template>

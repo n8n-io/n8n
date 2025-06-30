@@ -65,7 +65,7 @@ watch(
 			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" />
 			<N8nIcon v-else-if="option.value === 'binary'" icon="binary" size="small" />
 			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
-			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" />
+			<N8nIcon v-else-if="option.value === 'html'" icon="file-code" size="small" />
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>

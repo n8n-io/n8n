@@ -92,7 +92,7 @@ export function getNodeByName(name: string) {
 export function getNodesWithSpinner() {
 	return cy
 		.getByTestId('canvas-node')
-		.filter((_, el) => Cypress.$(el).find('[data-icon=sync-alt]').length > 0);
+		.filter((_, el) => Cypress.$(el).find('[data-icon=refresh-cw]').length > 0);
 }
 
 export function getWaitingNodes() {

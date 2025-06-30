@@ -21,7 +21,7 @@ export default mergeConfig(
 				dts: false,
 				resolvers: [
 					iconsResolver({
-						prefix: 'icon',
+						prefix: 'Icon',
 					}),
 				],
 			}),
