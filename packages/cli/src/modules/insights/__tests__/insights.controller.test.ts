@@ -104,4 +104,115 @@ describe('InsightsController', () => {
 			});
 		});
 	});
+
+	describe('getInsightsByTime', () => {
+		it('should return insights by time with empty data', async () => {
+			// ARRANGE
+			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+			// ACT
+			const response = await controller.getInsightsByTime(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{ dateRange: 'week' },
+			);
+
+			// ASSERT
+			expect(response).toEqual([]);
+		});
+
+		it('should return insights by time with all data', async () => {
+			// ARRANGE
+			const mockData = [
+				{
+					periodStart: '2023-10-01T00:00:00.000Z',
+					succeeded: 10,
+					timeSaved: 0,
+					failed: 2,
+					runTime: 10,
+				},
+				{
+					periodStart: '2023-10-02T00:00:00.000Z',
+					succeeded: 12,
+					timeSaved: 0,
+					failed: 4,
+					runTime: 10,
+				},
+			];
+			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+			// ACT
+			const response = await controller.getInsightsByTime(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{ dateRange: 'year' },
+			);
+
+			// ASSERT
+			expect(response).toEqual([
+				{
+					date: '2023-10-01T00:00:00.000Z',
+					values: {
+						succeeded: 10,
+						timeSaved: 0,
+						failed: 2,
+						averageRunTime: 10 / 12,
+						failureRate: 2 / 12,
+						total: 12,
+					},
+				},
+				{
+					date: '2023-10-02T00:00:00.000Z',
+					values: {
+						succeeded: 12,
+						timeSaved: 0,
+						failed: 4,
+						averageRunTime: 10 / 16,
+						failureRate: 4 / 16,
+						total: 16,
+					},
+				},
+			]);
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		it('should return insights by time with limited data', async () => {
+			// ARRANGE
+			const mockData = [
+				{
+					periodStart: '2023-10-01T00:00:00.000Z',
+					timeSaved: 0,
+				},
+				{
+					periodStart: '2023-10-02T00:00:00.000Z',
+					timeSaved: 2,
+				},
+			];
+			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+			// ACT
+			const response = await controller.getTimeSavedInsightsByTime(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{ dateRange: 'week' },
+			);
+
+			// ASSERT
+			expect(response).toEqual([
+				{
+					date: '2023-10-01T00:00:00.000Z',
+					values: {
+						timeSaved: 0,
+					},
+				},
+				{
+					date: '2023-10-02T00:00:00.000Z',
+					values: {
+						timeSaved: 2,
+					},
+				},
+			]);
+		});
+	});
 });

@@ -105,7 +105,7 @@ const save = async (): Promise<void> => {
 			);
 		}
 
-		const saved = await workflowSaving.saveAsNewWorkflow({
+		const workflowId = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
 			data: workflowToUpdate,
 			tags: currentTagIds.value,
@@ -115,7 +115,7 @@ const save = async (): Promise<void> => {
 			parentFolderId,
 		});
 
-		if (saved) {
+		if (!!workflowId) {
 			closeDialog();
 			telemetry.track('User duplicated workflow', {
 				old_workflow_id: currentWorkflowId,

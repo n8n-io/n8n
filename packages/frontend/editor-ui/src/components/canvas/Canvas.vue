@@ -55,6 +55,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
+import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 
@@ -173,6 +174,8 @@ const {
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
 const { layout } = useCanvasLayout({ id: props.id });
+
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const isPaneReady = ref(false);
 
@@ -854,7 +857,7 @@ provide(CanvasKey, {
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
-		:max-zoom="4"
+		:max-zoom="experimentalNdvStore.isEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"

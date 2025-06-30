@@ -3,6 +3,9 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
 import { computed, getCurrentInstance } from 'vue';
 
+import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
+import { isSupportedIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 type IconType = 'file' | 'icon' | 'unknown';
@@ -19,6 +22,8 @@ interface NodeIconProps {
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
 	badge?: { src: string; type: IconType };
+	// temporarily until we roll out FA icons for all nodes
+	useUpdatedIcons?: boolean;
 }
 
 const props = withDefaults(defineProps<NodeIconProps>(), {
@@ -72,6 +77,10 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 
+const updatedIconName = computed((): IconName | undefined => {
+	return props.useUpdatedIcons && isSupportedIconName(props.name) ? props.name : undefined;
+});
+
 // Get self component to avoid dependency cycle
 const N8nNodeIcon = getCurrentInstance()?.type;
 </script>
@@ -88,7 +97,9 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<N8nTooltip v-if="showTooltip" :placement="tooltipPosition" :disabled="!showTooltip">
-				<template #content>{{ nodeTypeName }}</template>
+				<template #content>
+					{{ nodeTypeName }}
+				</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<FontAwesomeIcon v-else :icon="`${name}`" :class="$style.iconFa" :style="fontStyleData" />
@@ -100,6 +111,12 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 			<template v-else>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<N8nIcon
+						v-else-if="updatedIconName"
+						:icon="updatedIconName"
+						:style="fontStyleData"
+						size="xlarge"
+					/>
 					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
 						<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />

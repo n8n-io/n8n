@@ -516,7 +516,7 @@ export class LoadNodesAndCredentials {
 
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
+		// eslint-disable-next-line import-x/no-extraneous-dependencies
 		const { watch } = await import('chokidar');
 
 		const { Push } = await import('@/push');

@@ -215,6 +215,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
+			this.logger.error('Failed to export variables to work folder', { error });
 			throw new UnexpectedError('Failed to export variables to work folder', {
 				cause: error,
 			});
@@ -296,6 +297,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
+			this.logger.error('Failed to export folders to work folder', { error });
 			throw new UnexpectedError('Failed to export folders to work folder', { cause: error });
 		}
 	}
@@ -355,7 +357,8 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw new UnexpectedError('Failed to export variables to work folder', { cause: error });
+			this.logger.error('Failed to export tags to work folder', { error });
+			throw new UnexpectedError('Failed to export tags to work folder', { cause: error });
 		}
 	}
 
@@ -456,6 +459,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
+			this.logger.error('Failed to export credentials to work folder', { error });
 			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
 		}
 	}

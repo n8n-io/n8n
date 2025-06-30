@@ -568,6 +568,18 @@ describe('DirectoryLoader', () => {
 
 			expect(() => loader.loadCredentialFromFile(filePath)).toThrow('Class could not be found');
 		});
+
+		it('should not push credential to types array when lazy loaded', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			loader.isLazyLoaded = true;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			expect(loader.credentialTypes).toEqual({
+				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+			});
+			expect(loader.types.credentials).toEqual([]);
+		});
 	});
 
 	describe('getCredential', () => {

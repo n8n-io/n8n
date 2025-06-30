@@ -26,6 +26,7 @@ describe('Test Airtop file helpers', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		(transport.apiRequest as jest.Mock).mockReset();
 	});
 
 	describe('requestAllFiles', () => {
@@ -206,7 +207,7 @@ describe('Test Airtop file helpers', () => {
 
 			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
 
-			expect(apiRequestMock).toHaveBeenCalledTimes(2);
+			expect(apiRequestMock).toHaveBeenCalledTimes(1);
 			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
 		});
 

@@ -43,7 +43,7 @@ describe('Test Airtop, session waitForDownload operation', () => {
 		expect(GenericFunctions.waitForSessionEvent).toHaveBeenCalledWith(
 			'test-session-123',
 			expect.any(Function),
-			1 * 1000,
+			1,
 		);
 
 		expect(result).toEqual([

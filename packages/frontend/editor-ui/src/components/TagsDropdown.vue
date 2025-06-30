@@ -233,7 +233,7 @@ onClickOutside(
 				:value="CREATE_KEY"
 				class="ops"
 			>
-				<font-awesome-icon icon="plus-circle" />
+				<n8n-icon icon="circle-plus" />
 				<span>
 					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
@@ -257,7 +257,7 @@ onClickOutside(
 			/>
 
 			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
-				<font-awesome-icon icon="cog" />
+				<n8n-icon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</N8nOption>
 		</N8nSelect>

@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
+import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 const modalBus = createEventBus();
 const uiStore = useUIStore();
@@ -14,6 +15,7 @@ const rootStore = useRootStore();
 const props = defineProps<{
 	data: {
 		workflowName: string;
+		triggerType: string;
 		workflowId: string;
 		webhookPath: string;
 		node: string;
@@ -24,6 +26,11 @@ const { data } = props;
 
 const webhookUrl = computed(() => {
 	return rootStore.webhookUrl;
+});
+
+const webhookType = computed(() => {
+	if (data.triggerType === FORM_TRIGGER_NODE_TYPE) return 'form';
+	return 'webhook';
 });
 
 const workflowUrl = computed(() => {
@@ -39,14 +46,14 @@ const onClick = async () => {
 	<Modal
 		width="540px"
 		:name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY"
-		title="Conflicting Webhook Path"
+		:title="`Conflicting ${webhookType === 'form' ? 'Form' : 'Webhook'} Path`"
 		:event-bus="modalBus"
 		:center="true"
 	>
 		<template #content>
 			<n8n-callout theme="danger" data-test-id="conflicting-webhook-callout">
-				A webhook trigger '{{ data.node }}' in the workflow '{{ data.workflowName }}' uses a
-				conflicting URL path, so this workflow cannot be activated
+				A {{ webhookType }} trigger '{{ data.node }}' in the workflow '{{ data.workflowName }}' uses
+				a conflicting URL path, so this workflow cannot be activated
 			</n8n-callout>
 			<div :class="$style.container">
 				<div>

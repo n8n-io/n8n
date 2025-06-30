@@ -121,7 +121,16 @@ const actions = computed(() => {
 		disabled: isDefault.value,
 	};
 
-	const parameterActions = hasFocusAction.value ? [resetAction, focusAction] : [resetAction];
+	// The reset value action is not working correctly for these
+	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
+		props.parameter.typeOptions?.editor ?? '',
+	);
+
+	// Conditionally build actions array without nulls to ensure correct typing
+	const parameterActions = [
+		hasResetAction ? [resetAction] : [],
+		hasFocusAction.value ? [focusAction] : [],
+	].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -168,7 +177,7 @@ const getArgument = (argumentName: string) => {
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
 			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				<n8n-icon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
 			</n8n-text>
 		</div>

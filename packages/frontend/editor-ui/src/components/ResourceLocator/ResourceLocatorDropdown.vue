@@ -244,7 +244,7 @@ defineExpose({ isWithinDropdown });
 				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
-					<font-awesome-icon :class="$style.searchIcon" icon="search" />
+					<n8n-icon :class="$style.searchIcon" icon="search" />
 				</template>
 			</N8nInput>
 		</div>
@@ -278,7 +278,7 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span :class="$style.addResourceText">{{ allowNewResources.label }}</span>
-					<font-awesome-icon :class="$style.addResourceIcon" :icon="['fa', 'plus']" />
+					<n8n-icon :class="$style.addResourceIcon" icon="plus" />
 				</div>
 			</div>
 			<div
@@ -304,9 +304,9 @@ defineExpose({ isWithinDropdown });
 					</span>
 				</div>
 				<div :class="$style.urlLink">
-					<font-awesome-icon
+					<n8n-icon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-						icon="external-link-alt"
+						icon="external-link"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>

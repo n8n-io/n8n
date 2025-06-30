@@ -242,6 +242,7 @@ export abstract class DirectoryLoader {
 			sourcePath: filePath,
 		};
 
+		if (this.isLazyLoaded) return;
 		this.types.credentials.push(tempCredential);
 	}
 

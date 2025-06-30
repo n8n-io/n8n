@@ -10,7 +10,7 @@ interface ExecutionBaseErrorOptions extends ReportingOptions {
 export abstract class ExecutionBaseError extends ApplicationError {
 	description: string | null | undefined;
 
-	cause?: Error;
+	override cause?: Error;
 
 	errorResponse?: JsonObject;
 

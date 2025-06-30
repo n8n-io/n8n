@@ -291,16 +291,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
-			telemetry.track(
-				'Assistant session started',
-				{
-					chat_session_id: currentSessionId.value,
-					task: chatSessionTask.value,
-					node_type: chatSessionError.value?.node.type,
-					credential_type: chatSessionCredType.value?.name,
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('Assistant session started', {
+				chat_session_id: currentSessionId.value,
+				task: chatSessionTask.value,
+				node_type: chatSessionError.value?.node.type,
+				credential_type: chatSessionCredType.value?.name,
+			});
 			// Track first user message in support chat now that we have a session id
 			if (usersMessages.value.length === 1 && chatSessionTask.value === 'support') {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
