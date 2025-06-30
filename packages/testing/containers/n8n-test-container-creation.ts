@@ -25,7 +25,7 @@ import {
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
 const NGINX_IMAGE = 'nginx:stable';
-const N8N_E2E_IMAGE = 'n8n-local:dev';
+const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
 const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE || N8N_E2E_IMAGE;
@@ -299,7 +299,7 @@ async function createN8NContainer({
 	isWorker,
 	instanceNumber,
 	networkAlias,
-}: CreateContainerOptions): Promise<StartedTestContainer> {
+}: CreateContainerOptions): StartedTestContainer {
 	let container = new GenericContainer(N8N_IMAGE);
 
 	container = container
@@ -325,5 +325,18 @@ async function createN8NContainer({
 		}
 	}
 
-	return await container.start();
+	try {
+		await container.start();
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('failed to resolve reference')) {
+			console.error(`Failed to start container ${name}:`, error);
+			console.error('This is likely because the image is not available locally.');
+			console.error('To fix this, you can either:');
+			console.error('1. Build the image by running: pnpm build:docker at the root');
+			console.error('2. Use a different image by setting: N8N_DOCKER_IMAGE=<image-tag>');
+			throw error;
+		}
+		throw error;
+	}
+	return container;
 }

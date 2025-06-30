@@ -3,7 +3,7 @@
  * Build n8n Docker image locally
  *
  * This script simulates the CI build process for local testing.
- * Default output: 'n8n-local:dev'
+ * Default output: 'n8nio/n8n:local'
  * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
  */
 
@@ -82,8 +82,8 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const config = {
 	dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
-	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8n-local',
-	imageTag: process.env.IMAGE_TAG || 'dev',
+	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
+	imageTag: process.env.IMAGE_TAG || 'local',
 	buildContext: rootDir,
 	compiledAppDir: path.join(rootDir, 'compiled'),
 	get fullImageName() {

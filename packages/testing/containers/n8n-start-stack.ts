@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
+import { execSync } from 'node:child_process';
 
 import type { N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
@@ -69,6 +70,15 @@ ${colors.yellow}Notes:${colors.reset}
 `);
 }
 
+function checkDockerImageExists(imageName: string): boolean {
+	try {
+		execSync(`docker image inspect ${imageName}`, { stdio: 'ignore' });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 async function main() {
 	const { values } = parseArgs({
 		args: process.argv.slice(2),
@@ -88,6 +98,25 @@ async function main() {
 	if (values.help) {
 		showHelp();
 		process.exit(0);
+	}
+
+	// Check Docker image availability
+	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+
+	if (!checkDockerImageExists(dockerImage)) {
+		log.error(`Docker image '${dockerImage}' not found locally!`);
+		console.log('');
+		log.info('To fix this, you can either:');
+		console.log(
+			`  1. Build the image by running: ${colors.bright}pnpm build:docker${colors.reset} at the root`,
+		);
+		console.log(
+			`  2. Use a different image by setting: ${colors.bright}N8N_DOCKER_IMAGE=<image-tag>${colors.reset}`,
+		);
+		console.log('');
+		log.info('Example with different image:');
+		console.log(`  ${colors.bright}N8N_DOCKER_IMAGE=n8nio/n8n:latest npm run stack${colors.reset}`);
+		process.exit(1);
 	}
 
 	// Build configuration
@@ -172,7 +201,7 @@ async function main() {
 
 function displayConfig(config: any) {
 	// Show Docker image being used
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8n-local:dev';
+	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
