@@ -94,7 +94,7 @@ describe('ManualExecutionService', () => {
 				},
 			});
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
-			expect(executionStartNode?.name).toBe(undefined);
+			expect(executionStartNode?.name).toBeUndefined();
 		});
 	});
 
