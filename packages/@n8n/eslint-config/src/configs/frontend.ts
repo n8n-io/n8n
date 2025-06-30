@@ -90,6 +90,10 @@ export const frontendConfig = tseslint.config(
 				},
 			],
 			'vue/no-v-html': 'error',
+			'vue/html-indent': ['warn', 'tab'],
+
+			// Disabled as it conflicts with our current formatting style
+			'vue/max-attributes-per-line': 'off',
 
 			// TODO: remove these
 			'vue/no-mutating-props': 'warn',
