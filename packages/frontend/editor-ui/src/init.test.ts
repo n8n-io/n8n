@@ -80,13 +80,11 @@ describe('Init', () => {
 		it('should initialize core features only once', async () => {
 			const usersStoreSpy = vi.spyOn(usersStore, 'initialize');
 			const settingsStoreSpy = vi.spyOn(settingsStore, 'initialize');
-			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
 
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalled();
 			expect(usersStoreSpy).toHaveBeenCalled();
-			expect(versionsSpy).toHaveBeenCalled();
 
 			await initializeCore();
 
@@ -173,6 +171,7 @@ describe('Init', () => {
 			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
+			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as ReturnType<
 				typeof useUsersStore
 			>);
@@ -181,12 +180,14 @@ describe('Init', () => {
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
+			expect(versionsSpy).not.toHaveBeenCalled();
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {
 			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
+			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
 				typeof useUsersStore
 			>);
@@ -196,6 +197,7 @@ describe('Init', () => {
 			expect(cloudStoreSpy).toHaveBeenCalled();
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
+			expect(versionsSpy).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 

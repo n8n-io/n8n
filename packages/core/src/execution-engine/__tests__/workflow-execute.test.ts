@@ -970,6 +970,47 @@ describe('WorkflowExecute', () => {
 				expect.objectContaining({ executionIndex: 1 }),
 			]);
 		});
+
+		//                    ►►
+		// ┌─────┐1     ┌─────┐
+		// │node1├──────►node2│
+		// └─────┘      └─────┘
+		test('should find closest parent with run data when no trigger exists', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(node1, node2)
+				.addConnections({ from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[node1.name]: [toITaskData([{ data: { name: node1.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+			const destinationNode = node2.name;
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('checkReadyForExecution', () => {
