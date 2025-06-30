@@ -838,8 +838,11 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			console.error(failure);
 		}
 		const settingsStore = useSettingsStore();
-		if (settingsStore.isMFAEnforced) {
-			return next();
+		if (settingsStore.isMFAEnforced && failure.mfaRequired) {
+			if (to.name !== VIEWS.PERSONAL_SETTINGS) {
+				return next({ name: VIEWS.PERSONAL_SETTINGS });
+			}
+			next();
 		}
 	}
 });
