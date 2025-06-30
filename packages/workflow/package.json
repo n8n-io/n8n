@@ -2,14 +2,14 @@
   "name": "n8n-workflow",
   "version": "1.98.0",
   "description": "Workflow base code of n8n",
-  "main": "dist/index.js",
-  "module": "src/index.ts",
-  "types": "dist/index.d.ts",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "main": "dist/cjs/index.js",
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
     },
     "./*": "./*"
   },
@@ -17,14 +17,15 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build:vite": "vite build",
+    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint src --quiet",
     "lintfix": "eslint src --fix",
-    "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:dev": "jest --watch"
+    "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
+    "test": "vitest run",
+    "test:dev": "vitest --watch"
   },
   "files": [
     "dist/**/*"
@@ -32,13 +33,16 @@
   "devDependencies": {
     "@langchain/core": "catalog:",
     "@n8n/config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
-    "@types/xml2js": "catalog:"
+    "@types/xml2js": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@n8n/tournament": "1.0.6",
