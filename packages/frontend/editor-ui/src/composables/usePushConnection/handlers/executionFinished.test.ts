@@ -185,12 +185,12 @@ describe('executionFinished', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should clear lastAddedExecutingNode when execution is finished', () => {
+	it('should clear lastAddedExecutingNode when execution is finished', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 
 		workflowsStore.lastAddedExecutingNode = 'test-node';
 
-		executionFinished(
+		await executionFinished(
 			{
 				type: 'executionFinished',
 				data: {
