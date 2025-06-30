@@ -1,13 +1,13 @@
-import { WorkflowRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
-
-import { createTestRun } from '../../shared/db/evaluation';
 import {
 	createWorkflowWithTrigger,
 	createWorkflow,
 	getAllWorkflows,
-} from '../../shared/db/workflows';
-import * as testDb from '../../shared/test-db';
+} from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { createTestRun } from '../../shared/db/evaluation';
 
 describe('WorkflowRepository', () => {
 	beforeAll(async () => {

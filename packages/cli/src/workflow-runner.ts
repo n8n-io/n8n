@@ -23,7 +23,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
@@ -265,6 +265,15 @@ export class WorkflowRunner {
 			lifecycleHooks.addHandler('sendResponse', (response) => {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
 			});
+
+			if (data.streamingEnabled) {
+				if (data.executionMode !== 'manual') {
+					lifecycleHooks.addHandler('sendChunk', (chunk) => {
+						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+						data.httpResponse?.flush?.();
+					});
+				}
+			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,

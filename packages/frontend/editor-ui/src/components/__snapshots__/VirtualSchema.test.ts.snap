@@ -316,7 +316,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         <span
-          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
+          class="n8n-text compact size-small regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
         >
           
@@ -325,7 +325,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             beatfade="false"
             border="false"
             bounce="false"
-            class="14"
+            class="small"
             fade="false"
             fixedwidth="false"
             flash="false"

@@ -7,7 +7,7 @@ import type {
 	Resource,
 	SortingAndPaginationUpdates,
 	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+} from '@/Interface';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
@@ -33,12 +33,11 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	FolderListItem,
-	IUser,
 	UserAction,
 	WorkflowListItem,
 	WorkflowListResource,
 } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -64,7 +63,7 @@ import {
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
@@ -148,7 +147,7 @@ const showCardsBadge = ref(false);
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
 const folderActions = computed<
-	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+	Array<UserAction<IUser> & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
 >(() => [
 	{
 		label: i18n.baseText('generic.open'),
@@ -183,16 +182,18 @@ const folderActions = computed<
 	},
 ]);
 
-const folderCardActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
-	),
+const folderCardActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
+		),
 );
 
-const mainBreadcrumbsActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
-	),
+const mainBreadcrumbsActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
+		),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -1859,7 +1860,7 @@ const onNameSubmit = async (name: string) => {
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
-				<n8n-action-box
+				<N8nActionBox
 					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
@@ -1878,7 +1879,7 @@ const onNameSubmit = async (name: string) => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></n8n-action-box
+					</template></N8nActionBox
 				>
 			</div>
 		</template>

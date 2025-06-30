@@ -180,7 +180,7 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-vi.mock('@/permissions', () => ({
+vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: vi.fn(() => ({
 		credential: {
 			create: true,

@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
@@ -18,7 +18,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';

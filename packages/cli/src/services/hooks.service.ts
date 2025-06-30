@@ -1,4 +1,10 @@
-import type { Settings, CredentialsEntity, User, WorkflowEntity } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	Settings,
+	CredentialsEntity,
+	User,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	CredentialsRepository,
 	WorkflowRepository,
@@ -14,7 +20,6 @@ import type { NextFunction, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import type { Invitation } from '@/interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 
 /**

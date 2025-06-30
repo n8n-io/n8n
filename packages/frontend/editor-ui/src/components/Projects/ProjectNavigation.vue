@@ -43,10 +43,10 @@ const shared = computed<IMenuItem>(() => ({
 	},
 }));
 
-const getProjectMenuItem = (project: ProjectListItem) => ({
+const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
-	label: project.name,
-	icon: project.icon,
+	label: project.name ?? '',
+	icon: project.icon as IMenuItem['icon'],
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -70,6 +70,14 @@ const personalProject = computed<IMenuItem>(() => ({
 const showAddFirstProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
 );
+
+const activeTabId = computed(() => {
+	return (
+		(Array.isArray(projectsStore.projectNavActiveId)
+			? projectsStore.projectNavActiveId[0]
+			: projectsStore.projectNavActiveId) ?? undefined
+	);
+});
 </script>
 
 <template>
@@ -78,7 +86,7 @@ const showAddFirstProject = computed(
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-home-menu-item"
 			/>
@@ -86,7 +94,7 @@ const showAddFirstProject = computed(
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-personal-menu-item"
 			/>
@@ -94,7 +102,7 @@ const showAddFirstProject = computed(
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 				:item="shared"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-shared-menu-item"
 			/>
@@ -136,7 +144,7 @@ const showAddFirstProject = computed(
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-menu-item"
 			/>

@@ -32,6 +32,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "dev": "tsup --watch",
+    "lint": "eslint . --quiet",
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
     "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup && pnpm create-json-schema",
@@ -47,7 +48,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "rimraf": "catalog:",
-    "vite": "catalog:frontend",
+    "vite": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend",

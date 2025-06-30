@@ -1,11 +1,15 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
-// eslint-disable import/no-extraneous-dependencies
+// eslint-disable import-x/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
+import N8nTabs from '../N8nTabs';
 import N8nTooltip from '../N8nTooltip';
 
 /**

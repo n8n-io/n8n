@@ -25,7 +25,7 @@ function onCopyToClipboard(content: string) {
 </script>
 
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
+	<WorkerAccordion icon="tasks" icon-color="text-dark" :initial-expanded="false">
 		<template #title>
 			{{ i18n.baseText('workerList.item.netListTitle') }} ({{ items.length }})
 		</template>

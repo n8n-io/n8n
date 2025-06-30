@@ -8,11 +8,11 @@ import { computed, ref } from 'vue';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
-import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
+import { toggleCheckbox } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
 
 interface IImage {
-	id: string;
+	id: string | number;
 	url: string;
 }
 
@@ -24,7 +24,7 @@ interface Options {
 }
 
 interface MarkdownProps {
-	content?: string;
+	content?: string | null;
 	withMultiBreaks?: boolean;
 	images?: IImage[];
 	loading?: boolean;
@@ -44,7 +44,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 	theme: 'markdown',
 	options: () => ({
 		markdown: {
-			html: true,
+			html: false,
 			linkify: true,
 			typographer: true,
 			breaks: true,
@@ -110,7 +110,8 @@ const htmlContent = computed(() => {
 	if (props.withMultiBreaks) {
 		contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
 	}
-	const html = md.render(escapeMarkdown(contentToRender));
+	const html = md.render(contentToRender);
+
 	const safeHtml = xss(html, {
 		onTagAttr(tag, name, value) {
 			if (tag === 'img' && name === 'src') {
@@ -422,6 +423,10 @@ input[type='checkbox'] + label {
 
 	iframe {
 		aspect-ratio: 16/9 auto;
+	}
+
+	summary {
+		cursor: pointer;
 	}
 }
 

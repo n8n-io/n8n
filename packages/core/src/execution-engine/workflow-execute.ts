@@ -61,6 +61,7 @@ import PCancelable from 'p-cancelable';
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -1193,6 +1194,27 @@ export class WorkflowExecute {
 						: await nodeType.execute.call(context);
 			}
 
+			// If data is not json compatible then log it as incorrect output
+			// Does not block the execution from continuing
+			const jsonCompatibleResult = isJsonCompatible(data);
+			if (!jsonCompatibleResult.isValid) {
+				Container.get(ErrorReporter).error(
+					new UnexpectedError('node execution output incorrect data'),
+					{
+						extra: {
+							nodeName: node.name,
+							nodeType: node.type,
+							nodeVersion: node.typeVersion,
+							workflowId: workflow.id,
+							workflowName: workflow.name ?? 'Unnamed workflow',
+							executionId: this.additionalData.executionId ?? 'unsaved-execution',
+							errorPath: jsonCompatibleResult.errorPath,
+							errorMessage: jsonCompatibleResult.errorMessage,
+						},
+					},
+				);
+			}
+
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),
 			);
@@ -1678,6 +1700,11 @@ export class WorkflowExecute {
 					if (executionError !== undefined) {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
+
+						// Send error to the response if necessary
+						await hooks?.runHook('sendChunk', [
+							{ type: 'error', content: executionError.description },
+						]);
 
 						if (
 							executionData.node.continueOnFail === true ||

@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
     "test": "echo \"Error: no test specified\" && exit 1",

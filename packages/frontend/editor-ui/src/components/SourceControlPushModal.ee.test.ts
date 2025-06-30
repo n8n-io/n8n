@@ -323,7 +323,6 @@ describe('SourceControlPushModal', () => {
 	});
 
 	it('should show credentials in a different tab', async () => {
-		// source-control-push-modal-tab
 		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
@@ -486,15 +485,18 @@ describe('SourceControlPushModal', () => {
 			});
 		});
 
-		it('should filter by project', async () => {
+		test.each([
+			['credential', 'Credentials'],
+			['workflow', 'Workflows'],
+		])('should filter %s by project', async (entity, name) => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.availableProjects = projects as unknown as ProjectListItem[];
 
 			const status: SourceControlledFile[] = [
 				{
 					id: 'gTbbBkkYTnNyX1jD',
-					name: 'My workflow 1',
-					type: 'workflow',
+					name: `My ${name} 1`,
+					type: entity as SourceControlledFile['type'],
 					status: 'created',
 					location: 'local',
 					conflict: false,
@@ -508,8 +510,8 @@ describe('SourceControlPushModal', () => {
 				},
 				{
 					id: 'JIGKevgZagmJAnM6',
-					name: 'My workflow 2',
-					type: 'workflow',
+					name: `My ${name} 1`,
+					type: entity as SourceControlledFile['type'],
 					status: 'created',
 					location: 'local',
 					conflict: false,
@@ -532,6 +534,12 @@ describe('SourceControlPushModal', () => {
 				},
 			});
 
+			const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
+				textContent?.includes(name),
+			);
+
+			await userEvent.click(tab[0]);
+
 			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
 
 			await userEvent.click(getByTestId('source-control-filter-dropdown'));
@@ -545,6 +553,9 @@ describe('SourceControlPushModal', () => {
 			await userEvent.click(getAllByTestId('project-sharing-info')[0]);
 
 			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			expect(getByTestId('source-control-push-modal-file-checkbox')).toHaveTextContent(
+				`My ${name} 1`,
+			);
 		});
 
 		it('should reset', async () => {

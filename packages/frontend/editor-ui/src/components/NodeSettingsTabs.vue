@@ -119,7 +119,7 @@ const options = computed<ITab[]>(() => {
 	return options;
 });
 
-function onTabSelect(tab: string) {
+function onTabSelect(tab: string | number) {
 	if (tab === 'docs' && props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
@@ -147,7 +147,7 @@ function onTabSelect(tab: string) {
 	}
 }
 
-function onTooltipClick(tab: string, event: MouseEvent) {
+function onTooltipClick(tab: string | number, event: MouseEvent) {
 	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}

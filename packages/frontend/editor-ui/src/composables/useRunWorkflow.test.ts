@@ -948,10 +948,12 @@ describe('useRunWorkflow({ router })', () => {
 				createdAt: new Date('2025-04-01T00:00:00.000Z'),
 			};
 			const markStoppedSpy = vi.spyOn(workflowsStore, 'markExecutionAsStopped');
+			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
-			workflowsStore.workflowExecutionData = executionData;
 			workflowsStore.activeWorkflows = ['test-wf-id'];
 			workflowsStore.setActiveExecutionId('test-exec-id');
+
+			getExecutionSpy.mockResolvedValue(executionData);
 
 			// Exercise - don't wait for returned promise to resolve
 			void runWorkflowComposable.stopCurrentExecution();
@@ -959,16 +961,18 @@ describe('useRunWorkflow({ router })', () => {
 			// Assert that markExecutionAsStopped() isn't called yet after a simulated delay
 			await new Promise((resolve) => setTimeout(resolve, 10));
 			expect(markStoppedSpy).not.toHaveBeenCalled();
+			expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id');
 
 			// Simulated executionFinished event
-			workflowsStore.workflowExecutionData = {
+			getExecutionSpy.mockResolvedValue({
 				...executionData,
 				status: 'canceled',
 				stoppedAt: new Date('2025-04-01T00:00:99.000Z'),
-			};
+			});
 
 			// Assert that markExecutionAsStopped() is called eventually
 			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
+			expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id');
 		});
 	});
 

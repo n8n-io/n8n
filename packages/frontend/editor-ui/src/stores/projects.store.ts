@@ -15,7 +15,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 

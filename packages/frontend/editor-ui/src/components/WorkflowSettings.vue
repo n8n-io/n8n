@@ -20,7 +20,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -701,7 +701,7 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveManualOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>
@@ -730,7 +730,7 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveExecutionProgressOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>

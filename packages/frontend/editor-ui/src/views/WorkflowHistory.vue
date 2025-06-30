@@ -19,8 +19,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import type { IUser } from 'n8n-workflow';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -72,7 +73,7 @@ const editorRoute = computed(() => ({
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
-const actions = computed<UserAction[]>(() =>
+const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:

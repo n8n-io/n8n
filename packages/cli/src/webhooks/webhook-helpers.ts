@@ -404,7 +404,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	) as WebhookResponseData | string | undefined;
 
-	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -563,9 +563,12 @@ export async function executeWebhook(
 					| undefined;
 			};
 
-			if (responseHeaders !== undefined && responseHeaders.entries !== undefined) {
-				for (const item of responseHeaders.entries) {
-					res.setHeader(item.name, item.value);
+			if (!res.headersSent) {
+				// Only set given headers if they haven't been sent yet, e.g. for streaming
+				if (responseHeaders !== undefined && responseHeaders.entries !== undefined) {
+					for (const item of responseHeaders.entries) {
+						res.setHeader(item.name, item.value);
+					}
 				}
 			}
 		}
@@ -661,6 +664,17 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		if (responseMode === 'streaming') {
+			Container.get(Logger).debug(
+				`Execution of workflow "${workflow.name}" from with ID ${executionId} is set to streaming`,
+				{ executionId },
+			);
+			// TODO: Add check for streaming nodes here
+			runData.httpResponse = res;
+			runData.streamingEnabled = true;
+			didSendResponse = true;
+		}
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
