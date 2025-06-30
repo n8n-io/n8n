@@ -28,7 +28,7 @@ export class PrometheusMetricsService {
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
-	) {}
+	) { }
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
@@ -51,6 +51,7 @@ export class PrometheusMetricsService {
 			apiPath: this.globalConfig.endpoints.metrics.includeApiPathLabel,
 			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
 			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
+			workflowName: this.globalConfig.endpoints.metrics.includeWorkflowNameLabel,
 		},
 	};
 
@@ -322,25 +323,41 @@ export class PrometheusMetricsService {
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
-					return this.includes.labels.workflowId
-						? { workflow_id: payload.workflowId ?? 'unknown' }
-						: {};
+					const labels: Record<string, string> = {};
+					if (this.includes.labels.workflowId) {
+						labels.workflow_id = payload.workflowId ?? 'unknown';
+					}
+					if (this.includes.labels.workflowName) {
+						labels.workflow_name = payload.workflowName ?? 'unknown';
+					}
+					return labels;
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				return this.includes.labels.nodeType
-					? {
-							node_type: (payload.nodeType ?? 'unknown')
-								.replace('n8n-nodes-', '')
-								.replace(/\./g, '_'),
-						}
-					: {};
+				const nodeLabels: Record<string, string> = {};
+				if (this.includes.labels.nodeType) {
+					nodeLabels.node_type = (payload.nodeType ?? 'unknown')
+						.replace('n8n-nodes-', '')
+						.replace(/\./g, '_');
+				}
+				if (this.includes.labels.workflowId) {
+					nodeLabels.workflow_id = payload.workflowId ?? 'unknown';
+				}
+				if (this.includes.labels.workflowName) {
+					nodeLabels.workflow_name = payload.workflowName ?? 'unknown';
+				}
+				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
-				return this.includes.labels.workflowId
-					? { workflow_id: payload.workflowId ?? 'unknown' }
-					: {};
+				const workflowLabels: Record<string, string> = {};
+				if (this.includes.labels.workflowId) {
+					workflowLabels.workflow_id = payload.workflowId ?? 'unknown';
+				}
+				if (this.includes.labels.workflowName) {
+					workflowLabels.workflow_name = payload.workflowName ?? 'unknown';
+				}
+				return workflowLabels;
 		}
 
 		return {};
