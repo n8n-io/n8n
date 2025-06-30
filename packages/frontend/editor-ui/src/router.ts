@@ -837,6 +837,10 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		} else {
 			console.error(failure);
 		}
+		const settingsStore = useSettingsStore();
+		if (settingsStore.isMFAEnforced) {
+			return next();
+		}
 	}
 });
 

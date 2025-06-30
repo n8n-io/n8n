@@ -4,6 +4,7 @@ import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	MFA_SETUP_MODAL_KEY,
+	VIEWS,
 } from '../constants';
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
@@ -14,6 +15,7 @@ import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
+import router from '@/router';
 
 // ---------------------------------------------------------------------------
 // #region Reactive properties
@@ -108,9 +110,7 @@ const onSetupClick = async () => {
 		});
 		if (settingsStore.isMFAEnforced) {
 			await userStore.logout();
-			setTimeout(() => {
-				window.location.reload();
-			}, 1000);
+			await router.push({ name: VIEWS.SIGNIN });
 		}
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
@@ -235,7 +235,7 @@ onMounted(async () => {
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<i18nn-t keypath="mfa.setup.step2.infobox.description" tag="span">
+					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
 						<template #part1>
 							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
 						</template>
@@ -244,7 +244,7 @@ onMounted(async () => {
 								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
 							</n8n-text>
 						</template>
-					</i18nn-t>
+					</i18n-t>
 				</n8n-info-tip>
 				<div>
 					<n8n-button
