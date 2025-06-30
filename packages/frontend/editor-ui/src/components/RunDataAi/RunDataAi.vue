@@ -84,7 +84,7 @@ const aiData = computed<AIResult[]>(() =>
 );
 
 const executionTree = computed<TreeNode[]>(() =>
-	getTreeNodeData(props.node.name, props.workflow, aiData.value),
+	getTreeNodeData(props.node.name, props.workflow, aiData.value, props.runIndex),
 );
 
 watch(() => props.runIndex, selectFirst, { immediate: true });
