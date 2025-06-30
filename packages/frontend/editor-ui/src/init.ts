@@ -96,8 +96,6 @@ export async function initializeCore() {
 		await usersStore.initialize({
 			quota: settingsStore.userManagement.quota,
 		});
-
-		void versionsStore.checkForNewVersions();
 	}
 
 	state.initialized = true;
@@ -129,6 +127,7 @@ export async function initializeAuthenticatedFeatures(
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
+	const versionsStore = useVersionsStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -168,6 +167,10 @@ export async function initializeAuthenticatedFeatures(
 
 	if (insightsStore.isSummaryEnabled) {
 		void insightsStore.weeklySummary.execute();
+	}
+
+	if (!settingsStore.isPreviewMode) {
+		void versionsStore.checkForNewVersions();
 	}
 
 	await Promise.all([
