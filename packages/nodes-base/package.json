@@ -663,6 +663,7 @@
       "dist/nodes/Microsoft/ToDo/MicrosoftToDo.node.js",
       "dist/nodes/Mindee/Mindee.node.js",
       "dist/nodes/Misp/Misp.node.js",
+      "dist/nodes/MistralAI/MistralAi.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",
