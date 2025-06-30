@@ -1,5 +1,13 @@
 import type { N8nLocaleTranslateFnOptions } from '@n8n/design-system/types/i18n';
 
+export type FormFieldValue = string | number | boolean | null | undefined;
+
+export type FormInputsToFormValues<T extends IFormInput[], V> = {
+	[K in T[number]['name']]: V;
+};
+
+export type FormFieldValueUpdate = { name: string; value: FormFieldValue };
+
 export type Rule = { name: string; config?: unknown };
 
 export type RuleGroup = {
@@ -64,6 +72,8 @@ export type IFormInput = {
 };
 
 export type IFormInputs = IFormInput[];
+
+export type FormValues = FormInputsToFormValues<IFormInput[], FormFieldValue>;
 
 export type IFormBoxConfig = {
 	title: string;

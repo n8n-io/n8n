@@ -220,9 +220,9 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return `${props.modelValue}`;
 	}
 
 	if (isListMode.value) {
@@ -398,6 +398,9 @@ const handleAddResourceClick = async () => {
 	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
 		requestParams,
 	)) as NodeParameterValue;
+	if (typeof newResource === 'boolean') {
+		return;
+	}
 
 	refreshList();
 	await loadResources();
@@ -563,7 +566,7 @@ function findModeByName(name: string): INodePropertyMode | null {
 	return null;
 }
 
-function getModeLabel(mode: INodePropertyMode): string | null {
+function getModeLabel(mode: INodePropertyMode): string | undefined {
 	if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
 		return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 	}
@@ -571,7 +574,7 @@ function getModeLabel(mode: INodePropertyMode): string | null {
 	return mode.displayName;
 }
 
-function onInputChange(value: NodeParameterValue): void {
+function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = currentQueryResults.value.find((result) => result.value === value);
@@ -823,7 +826,7 @@ function showResourceDropdown() {
 	resourceDropdownVisible.value = true;
 }
 
-function onListItemSelected(value: NodeParameterValue) {
+function onListItemSelected(value: INodeParameterResourceLocator['value']) {
 	onInputChange(value);
 	hideResourceDropdown();
 }
@@ -844,14 +847,10 @@ function onInputBlur(event: FocusEvent) {
 function applyOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, props.modelValue.value?.toString() ?? '');
 
 	emit('update:modelValue', {
@@ -863,14 +862,10 @@ function applyOverride() {
 function removeOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	emit('update:modelValue', {
 		...props.modelValue,
 		value: buildValueFromOverride(fromAIOverride.value, props, false),

@@ -1,4 +1,9 @@
 import { faker } from '@faker-js/faker';
+import { createWorkflow, getWorkflowSharing } from '@n8n/backend-test-utils';
+import { randomCredentialPayload } from '@n8n/backend-test-utils';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, ProjectRole } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
@@ -9,7 +14,6 @@ import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { mockInstance } from '@test/mocking';
 import {
 	createCredentials,
 	getCredentialSharings,
@@ -19,12 +23,8 @@ import {
 } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
-import { createWorkflow, getWorkflowSharing } from '@test-integration/db/workflows';
-import { randomCredentialPayload } from '@test-integration/random';
 
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -765,10 +765,12 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			parentFolderId: folder.id,
 		};
 
-		await authOwnerAgent
+		const response = await authOwnerAgent
 			.patch(`/projects/${project.id}/folders/${folder.id}`)
 			.send(payload)
 			.expect(400);
+
+		expect(response.body.message).toBe('Cannot set a folder as its own parent');
 
 		const folderInDb = await folderRepository.findOne({
 			where: { id: folder.id },
@@ -777,6 +779,89 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 
 		expect(folderInDb).toBeDefined();
 		expect(folderInDb?.parentFolder).toBeNull();
+	});
+
+	test("should not allow setting folder's parent to a folder that is a direct child", async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		// A
+		// └── B
+		//     └── C
+		const folderA = await createFolder(project, { name: 'A' });
+		const folderB = await createFolder(project, {
+			name: 'B',
+			parentFolder: folderA,
+		});
+		const folderC = await createFolder(project, {
+			name: 'C',
+			parentFolder: folderB,
+		});
+
+		// Attempt to make the parent of B its child C
+		const payload = {
+			parentFolderId: folderC.id,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderB.id}`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toBe(
+			"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+		);
+
+		const folderBInDb = await folderRepository.findOne({
+			where: { id: folderB.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(folderBInDb).toBeDefined();
+		expect(folderBInDb?.parentFolder?.id).toBe(folderA.id);
+	});
+
+	test("should not allow setting folder's parent to a folder that is a descendant", async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		// A
+		// └── B
+		//     └── C
+		//         └── D
+		const folderA = await createFolder(project, { name: 'A' });
+		const folderB = await createFolder(project, {
+			name: 'B',
+			parentFolder: folderA,
+		});
+		const folderC = await createFolder(project, {
+			name: 'C',
+			parentFolder: folderB,
+		});
+		const folderD = await createFolder(project, {
+			name: 'D',
+			parentFolder: folderC,
+		});
+
+		// Attempt to make the parent of A the descendant D
+		const payload = {
+			parentFolderId: folderD.id,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderA.id}`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toBe(
+			"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+		);
+
+		const folderAInDb = await folderRepository.findOne({
+			where: { id: folderA.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(folderAInDb).toBeDefined();
+		expect(folderAInDb?.parentFolder?.id).not.toBeDefined();
 	});
 });
 

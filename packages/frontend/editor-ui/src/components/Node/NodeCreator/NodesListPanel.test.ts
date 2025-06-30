@@ -10,6 +10,12 @@ import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
 import type { NodeFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
+vi.mock('vue-router', () => ({
+	useRoute: vi.fn(() => ({ query: {}, params: {} })),
+	useRouter: vi.fn(),
+	RouterLink: vi.fn(),
+}));
+
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
 		components: {

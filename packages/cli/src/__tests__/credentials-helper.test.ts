@@ -1,3 +1,5 @@
+import { CredentialsEntity, type CredentialsRepository } from '@n8n/db';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type {
 	IAuthenticateGeneric,
@@ -12,19 +14,42 @@ import { deepCopy, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
 	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const credentialsRepository = mock<CredentialsRepository>();
 
 	const credentialsHelper = new CredentialsHelper(
 		new CredentialTypes(mockNodesAndCredentials),
 		mock(),
-		mock(),
+		credentialsRepository,
 		mock(),
 		mock(),
 	);
+
+	describe('getCredentials', () => {
+		test('turns `EntityNotFoundError` into `CredentialNotFoundError`s', async () => {
+			credentialsRepository.findOneByOrFail.mockRejectedValueOnce(
+				new EntityNotFoundError(CredentialsEntity, 'foo'),
+			);
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow(CredentialNotFoundError);
+		});
+
+		test('passes other error through', async () => {
+			const errorMessage = 'Connection terminated due to connection timeout';
+			credentialsRepository.findOneByOrFail.mockRejectedValueOnce(new Error(errorMessage));
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow(errorMessage);
+		});
+	});
 
 	describe('authenticate', () => {
 		const tests: Array<{

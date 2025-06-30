@@ -13,9 +13,25 @@ const renderComponent = createComponentRenderer(InsightsDashboard, {
 	},
 });
 
+const moduleSettings = {
+	insights: {
+		summary: true,
+		dashboard: true,
+		dateRanges: [
+			{
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+			},
+		],
+	},
+};
+
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
-		createTestingPinia({ initialState: { settings: { settings: defaultSettings } } });
+		createTestingPinia({
+			initialState: { settings: { settings: defaultSettings, moduleSettings } },
+		});
 	});
 
 	it('should render without error', () => {

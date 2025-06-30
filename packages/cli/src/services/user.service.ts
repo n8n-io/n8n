@@ -65,11 +65,11 @@ export class UserService {
 	) {
 		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
 
-		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: ldapIdentity ? 'ldap' : 'email',
+			signInType: providerType ?? 'email',
 			isOwner: user.role === 'global:owner',
 		};
 

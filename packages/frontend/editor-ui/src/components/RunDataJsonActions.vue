@@ -39,9 +39,10 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
+const clipboard = useClipboard();
+
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const clipboard = useClipboard();
 const { activeNode } = ndvStore;
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();

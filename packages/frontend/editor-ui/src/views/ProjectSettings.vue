@@ -23,6 +23,7 @@ import { getAllIconNames } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
+	description?: string;
 	role?: ProjectRelation[];
 	memberAdded?: ProjectRelation[];
 	memberRemoved?: ProjectRelation[];
@@ -44,8 +45,9 @@ const upgradeDialogVisible = ref(false);
 const isDirty = ref(false);
 const isValid = ref(false);
 const isCurrentProjectEmpty = ref(true);
-const formData = ref<Pick<Project, 'name' | 'relations'>>({
+const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	name: '',
+	description: '',
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
@@ -100,9 +102,9 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onRoleAction = (user: Partial<IUser>, role: string) => {
+const onRoleAction = (userId: string, role?: string) => {
 	isDirty.value = true;
-	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === user.id);
+	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === userId);
 	if (role === 'remove') {
 		formData.value.relations.splice(index, 1);
 	} else {
@@ -110,7 +112,7 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 	}
 };
 
-const onNameInput = () => {
+const onTextInput = () => {
 	isDirty.value = true;
 };
 
@@ -119,6 +121,7 @@ const onCancel = () => {
 		? deepCopy(projectsStore.currentProject.relations)
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
+	formData.value.description = projectsStore.currentProject?.description ?? '';
 	isDirty.value = false;
 };
 
@@ -130,6 +133,10 @@ const makeFormDataDiff = (): FormDataDiff => {
 
 	if (formData.value.name !== projectsStore.currentProject.name) {
 		diff.name = formData.value.name ?? '';
+	}
+
+	if (formData.value.description !== projectsStore.currentProject.description) {
+		diff.description = formData.value.description ?? '';
 	}
 
 	if (formData.value.relations.length !== projectsStore.currentProject.relations.length) {
@@ -198,6 +205,7 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
 			icon: projectIcon.value,
+			description: formData.value.description!,
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
 				role: r.role as TeamProjectRole,
@@ -274,6 +282,7 @@ watch(
 	() => projectsStore.currentProject,
 	async () => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
+		formData.value.description = projectsStore.currentProject?.description ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
 			? deepCopy(projectsStore.currentProject.relations)
 			: [];
@@ -335,10 +344,26 @@ onMounted(() => {
 						data-test-id="project-settings-name-input"
 						:class="$style['project-name-input']"
 						@enter="onSubmit"
-						@input="onNameInput"
+						@input="onTextInput"
 						@validate="isValid = $event"
 					/>
 				</div>
+			</fieldset>
+			<fieldset>
+				<label for="projectDescription">{{ i18n.baseText('projects.settings.description') }}</label>
+				<N8nFormInput
+					id="projectDescription"
+					v-model="formData.description"
+					label=""
+					name="description"
+					type="textarea"
+					:maxlength="512"
+					:autosize="true"
+					data-test-id="project-settings-description-input"
+					@enter="onSubmit"
+					@input="onTextInput"
+					@validate="isValid = $event"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
@@ -369,7 +394,7 @@ onMounted(() => {
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
 								data-test-id="projects-settings-user-role-select"
-								@update:model-value="onRoleAction(user, $event)"
+								@update:model-value="onRoleAction(user.id, $event)"
 							>
 								<N8nOption
 									v-for="role in projectRoles"
@@ -394,7 +419,7 @@ onMounted(() => {
 								square
 								icon="trash"
 								data-test-id="project-user-remove"
-								@click="onRoleAction(user, 'remove')"
+								@click="onRoleAction(user.id, 'remove')"
 							/>
 						</div>
 					</template>

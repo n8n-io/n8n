@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
-import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
@@ -37,11 +37,15 @@ const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
 const isSettled = computed(
 	() =>
-		props.data.runData.executionStatus &&
+		props.data.runData?.executionStatus &&
 		!['running', 'waiting'].includes(props.data.runData.executionStatus),
 );
-const isError = computed(() => !!props.data.runData.error);
+const isError = computed(() => !!props.data.runData?.error);
 const startedAtText = computed(() => {
+	if (props.data.runData === undefined) {
+		return '—';
+	}
+
 	const time = new Date(props.data.runData.startTime);
 
 	return locale.baseText('logs.overview.body.started', {
@@ -50,23 +54,23 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(props.data.runData.executionStatus));
+const statusText = computed(() => upperFirst(props.data.runData?.executionStatus ?? ''));
 const timeText = computed(() =>
-	locale.displayTimer(
-		isSettled.value
-			? props.data.runData.executionTime
-			: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
-		true,
-	),
+	props.data.runData
+		? locale.displayTimer(
+				isSettled.value
+					? props.data.runData.executionTime
+					: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
+				true,
+			)
+		: undefined,
 );
 
 const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
 );
 
-const hasChildren = computed(
-	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
-);
+const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
 
 function isLastChild(level: number) {
 	let parent = props.data.parent;
@@ -144,13 +148,14 @@ watch(
 				</template>
 				<template #time>{{ timeText }}</template>
 			</I18nT>
-			<template v-else>
+			<template v-else-if="timeText !== undefined">
 				{{
 					locale.baseText('logs.overview.body.summaryText.for', {
 						interpolate: { status: statusText, time: timeText },
 					})
 				}}
 			</template>
+			<template v-else>—</template>
 		</N8nText>
 		<N8nText
 			v-if="!isCompact"
@@ -185,8 +190,9 @@ watch(
 		<N8nIconButton
 			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
-			size="medium"
+			size="small"
 			icon="edit"
+			icon-size="medium"
 			style="color: var(--color-text-base)"
 			:style="{
 				visibility: props.canOpenNdv ? '' : 'hidden',
@@ -215,6 +221,8 @@ watch(
 			v-if="!isCompact || hasChildren"
 			type="secondary"
 			size="small"
+			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
+			icon-size="medium"
 			:square="true"
 			:style="{
 				visibility: hasChildren ? '' : 'hidden',
@@ -223,9 +231,7 @@ watch(
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded')"
-		>
-			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
-		</N8nButton>
+		/>
 	</div>
 </template>
 
@@ -237,6 +243,7 @@ watch(
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
+	padding-inline-end: var(--spacing-5xs);
 
 	& > * {
 		overflow: hidden;
@@ -264,7 +271,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--color-danger-tint-2);
+		background-color: var(--color-callout-danger-background);
 	}
 }
 
@@ -337,6 +344,10 @@ watch(
 .compactErrorIcon {
 	flex-grow: 0;
 	flex-shrink: 0;
+	width: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	.container:hover & {
 		display: none;
@@ -371,10 +382,6 @@ watch(
 	color: var(--color-text-base);
 	align-items: center;
 	justify-content: center;
-
-	&:last-child {
-		margin-inline-end: var(--spacing-5xs);
-	}
 
 	&:hover {
 		background: transparent;

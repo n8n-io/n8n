@@ -1,14 +1,13 @@
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject } from '@n8n/backend-test-utils';
+import { getAllSharedWorkflows, getAllWorkflows } from '@n8n/backend-test-utils';
 import { nanoid } from 'nanoid';
 
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../shared/mocking';
-import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createOwner } from '../shared/db/users';
-import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);

@@ -1,4 +1,5 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
 import querystring from 'querystring';
@@ -8,7 +9,7 @@ import url from 'url';
 import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
-import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
 

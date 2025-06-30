@@ -3,8 +3,9 @@ import type {
 	ICredentialTestFunctions,
 	ILoadOptionsFunctions,
 	ITriggerFunctions,
+	Logger,
 } from 'n8n-workflow';
-import { createServer, type AddressInfo } from 'node:net';
+import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
@@ -53,14 +54,37 @@ const getPostgresConfig = (
 	return dbConfig;
 };
 
+function withCleanupHandler(proxy: Server, abortController: AbortController, logger: Logger) {
+	proxy.on('error', (error) => {
+		logger.error('TCP Proxy: Got error, calling abort controller', { error });
+		abortController.abort();
+	});
+	proxy.on('close', () => {
+		logger.error('TCP Proxy: Was closed, calling abort controller');
+		abortController.abort();
+	});
+	proxy.on('drop', (dropArgument) => {
+		logger.error('TCP Proxy: Connection was dropped, calling abort controller', {
+			dropArgument,
+		});
+		abortController.abort();
+	});
+	abortController.signal.addEventListener('abort', () => {
+		logger.debug('Got abort signal. Closing TCP proxy server.');
+		proxy.close();
+	});
+
+	return proxy;
+}
+
 export async function configurePostgres(
 	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions | ITriggerFunctions,
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
 ): Promise<ConnectionsData> {
-	const poolManager = ConnectionPoolManager.getInstance();
+	const poolManager = ConnectionPoolManager.getInstance(this.logger);
 
-	const fallBackHandler = async () => {
+	const fallBackHandler = async (abortController: AbortController) => {
 		const pgp = pgPromise({
 			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
 			// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
@@ -101,74 +125,33 @@ export async function configurePostgres(
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
 				credentials.privateKey = formatPrivateKey(credentials.privateKey);
 			}
-			const sshClient = await this.helpers.getSSHClient(credentials);
+			const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 			// Create a TCP proxy listening on a random available port
-			const proxy = createServer();
+			const proxy = withCleanupHandler(createServer(), abortController, this.logger);
+
 			const proxyPort = await new Promise<number>((resolve) => {
 				proxy.listen(0, LOCALHOST, () => {
 					resolve((proxy.address() as AddressInfo).port);
 				});
 			});
 
-			const close = () => {
-				proxy.close();
-				sshClient.off('end', close);
-				sshClient.off('error', close);
-			};
-			sshClient.on('end', close);
-			sshClient.on('error', close);
-
-			await new Promise<void>((resolve, reject) => {
-				proxy.on('error', (err) => reject(err));
-				proxy.on('connection', (localSocket) => {
-					sshClient.forwardOut(
-						LOCALHOST,
-						localSocket.remotePort!,
-						credentials.host,
-						credentials.port,
-						(err, clientChannel) => {
-							if (err) {
-								proxy.close();
-								localSocket.destroy();
-							} else {
-								localSocket.pipe(clientChannel);
-								clientChannel.pipe(localSocket);
-							}
-						},
-					);
-				});
-				resolve();
-			}).catch((err) => {
-				proxy.close();
-
-				let message = err.message;
-				let description = err.description;
-
-				if (err.message.includes('ECONNREFUSED')) {
-					message = 'Connection refused';
-					try {
-						description = err.message.split('ECONNREFUSED ')[1].trim();
-					} catch (e) {}
-				}
-
-				if (err.message.includes('ENOTFOUND')) {
-					message = 'Host not found';
-					try {
-						description = err.message.split('ENOTFOUND ')[1].trim();
-					} catch (e) {}
-				}
-
-				if (err.message.includes('ETIMEDOUT')) {
-					message = 'Connection timed out';
-					try {
-						description = err.message.split('ETIMEDOUT ')[1].trim();
-					} catch (e) {}
-				}
-
-				err.message = message;
-				err.description = description;
-				throw err;
+			proxy.on('connection', (localSocket) => {
+				sshClient.forwardOut(
+					LOCALHOST,
+					localSocket.remotePort!,
+					credentials.host,
+					credentials.port,
+					(error, clientChannel) => {
+						if (error) {
+							this.logger.error('SSH Client: Port forwarding encountered an error', { error });
+							abortController.abort();
+						} else {
+							localSocket.pipe(clientChannel);
+							clientChannel.pipe(localSocket);
+						}
+					},
+				);
 			});
 
 			const db = pgp({
@@ -176,7 +159,20 @@ export async function configurePostgres(
 				port: proxyPort,
 				host: LOCALHOST,
 			});
-			return { db, pgp };
+
+			abortController.signal.addEventListener('abort', async () => {
+				this.logger.debug('configurePostgres: Got abort signal, closing pg connection.');
+				try {
+					if (!db.$pool.ended) await db.$pool.end();
+				} catch (error) {
+					this.logger.error('configurePostgres: Encountered error while closing the pool.', {
+						error,
+					});
+					throw error;
+				}
+			});
+
+			return { db, pgp, sshClient };
 		}
 	};
 
@@ -185,8 +181,10 @@ export async function configurePostgres(
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
 		fallBackHandler,
-		cleanUpHandler: async ({ db }) => {
-			if (!db.$pool.ended) await db.$pool.end();
+		wasUsed: ({ sshClient }) => {
+			if (sshClient) {
+				this.helpers.updateLastUsed(sshClient);
+			}
 		},
 	});
 }

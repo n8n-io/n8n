@@ -57,7 +57,7 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 
 const fetchPaginatedTableData = ({
 	page = 0,
-	itemsPerPage = 20,
+	itemsPerPage = 25,
 	sortBy,
 	dateRange = selectedDateRange.value,
 }: {

@@ -1,5 +1,7 @@
 import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +14,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -25,7 +27,6 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 
@@ -150,6 +151,20 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// OIDC
+		// ----------------------------------------
+
+		try {
+			if (this.licenseState.isOidcLicensed()) {
+				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+				await Container.get(OidcService).init();
+				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
+			}
+		} catch (error) {
+			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
+		}
+
+		// ----------------------------------------
 		// Source Control
 		// ----------------------------------------
 
@@ -255,6 +270,12 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(async () => frontendService.getSettings()),
+			);
+
+			// Returns settings for all loaded modules
+			this.app.get(
+				`/${this.restEndpoint}/module-settings`,
+				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
 			// Return Sentry config as a static file

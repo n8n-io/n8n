@@ -13,8 +13,19 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import { useSSOStore } from '@/stores/sso.store';
+import { EnterpriseEditionFeature } from '@/constants';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import type { BannerName } from '@n8n/api-types';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRBACStore } from '@/stores/rbac.store';
 
-let coreInitialized = false;
+export const state = {
+	initialized: false,
+};
 let authenticatedFeaturesInitialized = false;
 
 /**
@@ -22,25 +33,74 @@ let authenticatedFeaturesInitialized = false;
  * This is called once, when the first route is loaded.
  */
 export async function initializeCore() {
-	if (coreInitialized) {
+	if (state.initialized) {
 		return;
 	}
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const ssoStore = useSSOStore();
+	const uiStore = useUIStore();
 
-	await settingsStore.initialize();
+	const toast = useToast();
+	const i18n = useI18n();
+
+	registerAuthenticationHooks();
+
+	/**
+	 * Initialize stores
+	 */
+
+	try {
+		await settingsStore.initialize();
+	} catch (error) {
+		toast.showToast({
+			title: i18n.baseText('startupError'),
+			message: i18n.baseText('startupError.message'),
+			type: 'error',
+			duration: 0,
+		});
+	}
+
+	ssoStore.initialize({
+		authenticationMethod: settingsStore.userManagement
+			.authenticationMethod as UserManagementAuthenticationMethod,
+		config: settingsStore.settings.sso,
+		features: {
+			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+		},
+	});
+
+	const banners: BannerName[] = [];
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		banners.push('NON_PRODUCTION_LICENSE');
+	}
+	if (
+		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		banners.push('V1');
+	}
+	uiStore.initialize({
+		banners,
+	});
+
+	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	void useExternalHooks().run('app.mount');
 
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize();
+		await usersStore.initialize({
+			quota: settingsStore.userManagement.quota,
+		});
 
 		void versionsStore.checkForNewVersions();
 	}
 
-	coreInitialized = true;
+	state.initialized = true;
 }
 
 /**
@@ -68,6 +128,7 @@ export async function initializeAuthenticatedFeatures(
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
 	const insightsStore = useInsightsStore();
+	const uiStore = useUIStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -83,12 +144,6 @@ export async function initializeAuthenticatedFeatures(
 		}
 	}
 
-	if (settingsStore.isTemplatesEnabled) {
-		try {
-			await settingsStore.testTemplatesEndpoint();
-		} catch (e) {}
-	}
-
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
 	}
@@ -96,6 +151,16 @@ export async function initializeAuthenticatedFeatures(
 	if (settingsStore.isCloudDeployment) {
 		try {
 			await cloudPlanStore.initialize();
+
+			if (cloudPlanStore.userIsTrialing) {
+				if (cloudPlanStore.trialExpired) {
+					uiStore.pushBannerToStack('TRIAL_OVER');
+				} else {
+					uiStore.pushBannerToStack('TRIAL');
+				}
+			} else if (!cloudPlanStore.currentUserCloudInfo?.confirmed) {
+				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
+			}
 		} catch (e) {
 			console.error('Failed to initialize cloud plan store:', e);
 		}
@@ -113,4 +178,31 @@ export async function initializeAuthenticatedFeatures(
 	]);
 
 	authenticatedFeaturesInitialized = true;
+}
+
+function registerAuthenticationHooks() {
+	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
+	const postHogStore = usePostHog();
+	const uiStore = useUIStore();
+	const npsSurveyStore = useNpsSurveyStore();
+	const telemetry = useTelemetry();
+	const RBACStore = useRBACStore();
+
+	usersStore.registerLoginHook((user) => {
+		RBACStore.setGlobalScopes(user.globalScopes ?? []);
+		telemetry.identify(rootStore.instanceId, user.id);
+		postHogStore.init(user.featureFlags);
+		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+	});
+
+	usersStore.registerLogoutHook(() => {
+		uiStore.clearBannerStack();
+		npsSurveyStore.resetNpsSurveyOnLogOut();
+		postHogStore.reset();
+		cloudPlanStore.reset();
+		telemetry.reset();
+		RBACStore.setGlobalScopes([]);
+	});
 }

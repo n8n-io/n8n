@@ -12,11 +12,13 @@ export function useResolvedExpression({
 	additionalData,
 	isForCredential,
 	stringifyObject,
+	contextNodeName,
 }: {
 	expression: MaybeRefOrGetter<unknown>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	isForCredential?: MaybeRefOrGetter<boolean>;
 	stringifyObject?: MaybeRefOrGetter<boolean>;
+	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
@@ -45,9 +47,10 @@ export function useResolvedExpression({
 		let options: ResolveParameterOptions = {
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),
+			contextNodeName: toValue(contextNodeName),
 		};
 
-		if (ndvStore.isInputParentOfActiveNode) {
+		if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
 			options = {
 				...options,
 				targetItem: targetItem.value ?? undefined,

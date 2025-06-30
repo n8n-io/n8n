@@ -63,6 +63,10 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
+	// Collect DB entities from modules _before_ `DbConnectionOptions` is instantiated.
+	const { BaseCommand } = await import('../dist/commands/base-command.js');
+	await new BaseCommand([], { root: __dirname }).loadModules();
+
 	const oclif = await import('@oclif/core');
 	await oclif.execute({ dir: __dirname });
 })();

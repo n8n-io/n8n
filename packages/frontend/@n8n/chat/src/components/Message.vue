@@ -105,7 +105,7 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
-		<div v-if="$slots.beforeMessage" class="chat-message-actions">
+		<div v-if="!!$slots.beforeMessage" class="chat-message-actions">
 			<slot name="beforeMessage" v-bind="{ message }" />
 		</div>
 		<slot>
@@ -197,6 +197,7 @@ onMounted(async () => {
 	> .chat-message-markdown {
 		display: block;
 		box-sizing: border-box;
+		font-size: inherit;
 
 		> *:first-child {
 			margin-top: 0;

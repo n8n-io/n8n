@@ -104,6 +104,7 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 }
 
 export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
+	// @ts-ignore CAT-957
 	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 

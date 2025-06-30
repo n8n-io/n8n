@@ -6,7 +6,6 @@ import axios from 'axios';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { isApiEnabled } from '@/public-api';
 import {
@@ -84,7 +83,7 @@ export class InstanceRiskReporter implements RiskReporter {
 	}
 
 	private getSecuritySettings() {
-		if (config.getEnv('deployment.type') === 'cloud') return null;
+		if (this.globalConfig.deployment.type === 'cloud') return null;
 
 		const settings: Record<string, unknown> = {};
 

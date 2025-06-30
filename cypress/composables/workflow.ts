@@ -1,6 +1,6 @@
 import { getManualChatModal } from './modals/chat-modal';
 import { clickGetBackToCanvas, getParameterInputByName } from './ndv';
-import { ROUTES } from '../constants';
+import { META_KEY, ROUTES } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 
 /**
@@ -363,4 +363,49 @@ export function openExecutions() {
 
 export function clickClearExecutionDataButton() {
 	cy.getByTestId('clear-execution-data-button').click();
+}
+
+/**
+ * Undo/Redo
+ */
+
+export function hitComboShortcut(modifier: string, key: string) {
+	cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
+}
+export function hitUndo() {
+	hitComboShortcut(`{${META_KEY}}`, 'z');
+}
+export function hitRedo() {
+	cy.get('body').type(`{${META_KEY}+shift+z}`);
+}
+export function hitSelectAll() {
+	hitComboShortcut(`{${META_KEY}}`, 'a');
+}
+export function hitDeleteAllNodes() {
+	hitSelectAll();
+	cy.get('body').type('{backspace}');
+}
+export function hitDisableNodeShortcut() {
+	cy.get('body').type('d');
+}
+export function hitCopy() {
+	hitComboShortcut(`{${META_KEY}}`, 'c');
+}
+export function hitPinNodeShortcut() {
+	cy.get('body').type('p');
+}
+export function hitSaveWorkflow() {
+	cy.get('body').type(`{${META_KEY}+s}`);
+}
+export function hitExecuteWorkflow() {
+	cy.get('body').type(`{${META_KEY}+enter}`);
+}
+export function hitDuplicateNode() {
+	cy.get('body').type(`{${META_KEY}+d}`);
+}
+export function hitAddSticky() {
+	cy.get('body').type('{shift+S}');
+}
+export function selectRight() {
+	cy.get('body').type('{shift+rightArrow}');
 }

@@ -9,7 +9,7 @@ export interface LogEntry {
 	children: LogEntry[];
 	depth: number;
 	runIndex: number;
-	runData: ITaskData;
+	runData: ITaskData | undefined;
 	consumedTokens: LlmTokenUsageData;
 	workflow: Workflow;
 	executionId: string;

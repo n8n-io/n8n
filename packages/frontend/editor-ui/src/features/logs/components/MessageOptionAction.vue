@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
+import { useAttrs } from 'vue';
 
 defineProps({
 	label: {
@@ -15,6 +16,13 @@ defineProps({
 		default: 'top',
 	},
 });
+
+const attrs = useAttrs();
+
+const onClick = () => {
+	// @ts-expect-error Attrs onClick is not typed
+	attrs.onClick?.();
+};
 </script>
 
 <template>
@@ -23,7 +31,7 @@ defineProps({
 			<template #content>
 				{{ label }}
 			</template>
-			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="$attrs.onClick" />
+			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="onClick" />
 		</n8n-tooltip>
 	</div>
 </template>

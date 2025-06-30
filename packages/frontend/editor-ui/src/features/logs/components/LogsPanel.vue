@@ -14,6 +14,8 @@ import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand
 import { type LogEntry } from '@/features/logs/logs.types';
 import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
+import { type KeyMap } from '@/composables/useKeybindings';
+import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
@@ -78,6 +80,16 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
 
+const keyMap = computed<KeyMap>(() => ({
+	j: selectNext,
+	k: selectPrev,
+	Escape: () => select(undefined),
+	ArrowDown: selectNext,
+	ArrowUp: selectPrev,
+	Space: () => selected.value && toggleExpanded(selected.value),
+	Enter: () => selected.value && handleOpenNdv(selected.value),
+}));
+
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
 		select(undefined);
@@ -86,11 +98,11 @@ function handleResizeOverviewPanelEnd() {
 	onOverviewPanelResizeEnd();
 }
 
-async function handleOpenNdv(treeNode: LogEntry) {
+function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	await nextTick(() => {
-		const source = treeNode.runData.source[0];
+	void nextTick(() => {
+		const source = treeNode.runData?.source[0];
 		const inputBranch = source?.previousNodeOutput ?? 0;
 
 		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
@@ -102,6 +114,12 @@ async function handleOpenNdv(treeNode: LogEntry) {
 
 <template>
 	<div ref="pipContainer">
+		<!-- force re-create with key for shortcuts to work in PiP window -->
+		<LogsViewKeyboardEventListener
+			:key="String(!!pipWindow)"
+			:key-map="keyMap"
+			:container="container"
+		/>
 		<div ref="pipContent" :class="$style.pipContent">
 			<N8nResizeWrapper
 				:height="height"
@@ -112,18 +130,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
-				<div
-					ref="container"
-					:class="$style.container"
-					tabindex="-1"
-					@keydown.esc.exact.stop="select(undefined)"
-					@keydown.j.exact.stop="selectNext"
-					@keydown.down.exact.stop.prevent="selectNext"
-					@keydown.k.exact.stop="selectPrev"
-					@keydown.up.exact.stop.prevent="selectPrev"
-					@keydown.space.exact.stop="selected && toggleExpanded(selected)"
-					@keydown.enter.exact.stop="selected && handleOpenNdv(selected)"
-				>
+				<div ref="container" :class="$style.container" tabindex="-1">
 					<N8nResizeWrapper
 						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
@@ -136,6 +143,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
+							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pip' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"

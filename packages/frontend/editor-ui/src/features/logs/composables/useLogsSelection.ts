@@ -4,6 +4,7 @@ import {
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
+	isSubNodeLog,
 } from '@/features/logs/logs.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { canvasEventBus } from '@/event-bus/canvas';
@@ -71,6 +72,16 @@ export function useLogsSelection(
 		manualLogEntrySelection.value = { type: 'selected', id: nextEntry.id };
 		syncSelectionToCanvasIfEnabled(nextEntry);
 	}
+
+	watch(
+		selected,
+		(sel) => {
+			if (sel) {
+				logsStore.setSubNodeSelected(isSubNodeLog(sel));
+			}
+		},
+		{ immediate: true },
+	);
 
 	// Synchronize selection from canvas
 	watch(

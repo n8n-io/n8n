@@ -79,6 +79,18 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
 		}}",
   "properties": [
     {
+      "default": "",
+      "displayName": "Tip: Get a feel for vector stores in n8n with our",
+      "name": "ragStarterCallout",
+      "type": "callout",
+      "typeOptions": {
+        "calloutAction": {
+          "label": "RAG starter template",
+          "type": "openRagStarterTemplate",
+        },
+      },
+    },
+    {
       "default": "retrieve",
       "displayName": "Operation Mode",
       "name": "mode",

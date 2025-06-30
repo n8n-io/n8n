@@ -347,6 +347,7 @@ export const useFlattenSchema = () => {
 	};
 
 	const flattenSchema = ({
+		isDataEmpty,
 		schema,
 		nodeType,
 		nodeName,
@@ -356,6 +357,7 @@ export const useFlattenSchema = () => {
 		level = 0,
 		preview,
 	}: {
+		isDataEmpty: boolean;
 		schema: Schema;
 		expressionPrefix?: string;
 		nodeType?: string;
@@ -367,7 +369,7 @@ export const useFlattenSchema = () => {
 	}): Renders[] => {
 		// only show empty item for the first level
 		if (isEmptySchema(schema) && level < 0) {
-			return [emptyItem('emptyData')];
+			return [emptyItem(isDataEmpty ? 'emptyData' : 'emptySchema')];
 		}
 
 		const expression = `{{ ${expressionPrefix ? expressionPrefix + schema.path : schema.path.slice(1)} }}`;
@@ -403,6 +405,7 @@ export const useFlattenSchema = () => {
 					.map((item) => {
 						const itemPrefix = schema.type === 'array' ? schema.key : '';
 						return flattenSchema({
+							isDataEmpty,
 							schema: item,
 							expressionPrefix,
 							nodeType,
@@ -474,6 +477,7 @@ export const useFlattenSchema = () => {
 
 			acc = acc.concat(
 				flattenSchema({
+					isDataEmpty: item.isDataEmpty,
 					schema: item.schema,
 					depth: item.depth,
 					nodeType: item.node.type,

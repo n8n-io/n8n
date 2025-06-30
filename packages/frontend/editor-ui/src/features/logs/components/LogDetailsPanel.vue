@@ -12,11 +12,12 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
-import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
+import { isPlaceholderLog } from '@/features/logs/logs.utils';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -82,7 +83,7 @@ function handleResizeEnd() {
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<LogsViewExecutionSummary
-						v-if="isOpen"
+						v-if="isOpen && logEntry.runData !== undefined"
 						:class="$style.executionSummary"
 						:status="logEntry.runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
@@ -92,7 +93,7 @@ function handleResizeEnd() {
 				</div>
 			</template>
 			<template #actions>
-				<div v-if="isOpen && !isTriggerNode" :class="$style.actions">
+				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
 					<KeyboardShortcutTooltip
 						:label="locale.baseText('generic.shortcutHint')"
 						:shortcut="{ keys: ['i'] }"
@@ -124,36 +125,43 @@ function handleResizeEnd() {
 			</template>
 		</LogsPanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
-			<N8nResizeWrapper
-				v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
-				:class="{
-					[$style.inputResizer]: true,
-					[$style.collapsed]: resizer.isCollapsed.value,
-					[$style.full]: resizer.isFullSize.value,
-				}"
-				:width="resizer.size.value"
-				:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
-				:supported-directions="['right']"
-				:is-resizing-enabled="shouldResize"
-				:window="window"
-				@resize="resizer.onResize"
-				@resizeend="handleResizeEnd"
-			>
+			<div v-if="isPlaceholderLog(logEntry)" :class="$style.placeholder">
+				<N8nText color="text-base">
+					{{ locale.baseText('ndv.output.runNodeHint') }}
+				</N8nText>
+			</div>
+			<template v-else>
+				<N8nResizeWrapper
+					v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
+					:class="{
+						[$style.inputResizer]: true,
+						[$style.collapsed]: resizer.isCollapsed.value,
+						[$style.full]: resizer.isFullSize.value,
+					}"
+					:width="resizer.size.value"
+					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:supported-directions="['right']"
+					:is-resizing-enabled="shouldResize"
+					:window="window"
+					@resize="resizer.onResize"
+					@resizeend="handleResizeEnd"
+				>
+					<LogsViewRunData
+						data-test-id="log-details-input"
+						pane-type="input"
+						:title="locale.baseText('logs.details.header.actions.input')"
+						:log-entry="logEntry"
+					/>
+				</N8nResizeWrapper>
 				<LogsViewRunData
-					data-test-id="log-details-input"
-					pane-type="input"
-					:title="locale.baseText('logs.details.header.actions.input')"
+					v-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
+					data-test-id="log-details-output"
+					pane-type="output"
+					:class="$style.outputPanel"
+					:title="locale.baseText('logs.details.header.actions.output')"
 					:log-entry="logEntry"
 				/>
-			</N8nResizeWrapper>
-			<LogsViewRunData
-				v-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
-				data-test-id="log-details-output"
-				pane-type="output"
-				:class="$style.outputPanel"
-				:title="locale.baseText('logs.details.header.actions.output')"
-				:log-entry="logEntry"
-			/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -217,5 +225,12 @@ function handleResizeEnd() {
 	&:not(:is(:last-child, .collapsed, .full)) {
 		border-right: var(--border-base);
 	}
+}
+
+.placeholder {
+	flex-grow: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 </style>

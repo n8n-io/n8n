@@ -27,6 +27,7 @@ export class ScenarioDataImporter {
 		const existingWorkflows = this.findExistingWorkflows(opts.existingWorkflows, opts.workflow);
 		if (existingWorkflows.length > 0) {
 			for (const toDelete of existingWorkflows) {
+				await this.workflowApiClient.archiveWorkflow(toDelete.id);
 				await this.workflowApiClient.deleteWorkflow(toDelete.id);
 			}
 		}

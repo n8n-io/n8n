@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	INodeTypeDescription,
 	INodeParameters,
@@ -8,15 +8,7 @@ import type {
 	NodeParameterValue,
 	INodeCredentialDescription,
 } from 'n8n-workflow';
-import {
-	NodeHelpers,
-	NodeConnectionTypes,
-	deepCopy,
-	isINodePropertyCollectionList,
-	isINodePropertiesList,
-	isINodePropertyOptionsList,
-	displayParameter,
-} from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
@@ -26,15 +18,11 @@ import type {
 
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -51,8 +39,10 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
-import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import { useResizeObserver } from '@vueuse/core';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 
 const props = withDefaults(
 	defineProps<{
@@ -66,6 +56,8 @@ const props = withDefaults(
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
+		isEmbeddedInCanvas?: boolean;
+		noWheel?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -73,6 +65,9 @@ const props = withDefaults(
 		executable: true,
 		inputSize: 0,
 		blockUI: false,
+		activeNode: undefined,
+		isEmbeddedInCanvas: false,
+		noWheel: false,
 	},
 );
 
@@ -81,10 +76,16 @@ const emit = defineEmits<{
 	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex?: number,
+	];
 	activate: [];
 	execute: [];
 }>();
+
+const slots = defineSlots<{ actions?: {} }>();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -96,21 +97,22 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+const nodeSettingsParameters = useNodeSettingsParameters();
+const nodeValues = nodeSettingsParameters.nodeValues;
+
+const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
+const shouldShowStaticScrollbar = ref(false);
+
+if (props.isEmbeddedInCanvas) {
+	useResizeObserver(nodeParameterWrapper, () => {
+		shouldShowStaticScrollbar.value =
+			(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+			(nodeParameterWrapper.value?.offsetHeight ?? 0);
+	});
+}
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
-const nodeValues = ref<INodeParameters>({
-	color: '#ff0000',
-	alwaysOutputData: false,
-	executeOnce: false,
-	notesInFlow: false,
-	onError: 'stopWorkflow',
-	retryOnFail: false,
-	maxTries: 3,
-	waitBetweenTries: 1000,
-	notes: '',
-	parameters: {},
-});
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -207,10 +209,12 @@ const parameters = computed(() => {
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
-const parametersNoneSetting = computed(() =>
+const parametersNoneSetting = computed(() => {
 	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	parameters.value.filter((item) => !item.isNodeSetting),
-);
+	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
+
+	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
+});
 
 const isDisplayingCredentials = computed(
 	() =>
@@ -247,126 +251,6 @@ const credentialOwnerName = computed(() => {
 
 	return credentialsStore.getCredentialOwnerName(credential);
 });
-
-const setValue = (name: string, value: NodeParameterValue) => {
-	const nameParts = name.split('.');
-	let lastNamePart: string | undefined = nameParts.pop();
-
-	let isArray = false;
-	if (lastNamePart !== undefined && lastNamePart.includes('[')) {
-		// It includes an index so we have to extract it
-		const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
-		if (lastNameParts) {
-			nameParts.push(lastNameParts[1]);
-			lastNamePart = lastNameParts[2];
-			isArray = true;
-		}
-	}
-
-	// Set the value so that everything updates correctly in the UI
-	if (nameParts.length === 0) {
-		// Data is on top level
-		if (value === null) {
-			// Property should be deleted
-			if (lastNamePart) {
-				const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = nodeValues.value;
-				nodeValues.value = remainingNodeValues;
-			}
-		} else {
-			// Value should be set
-			nodeValues.value = {
-				...nodeValues.value,
-				[lastNamePart as string]: value,
-			};
-		}
-	} else {
-		// Data is on lower level
-		if (value === null) {
-			// Property should be deleted
-			let tempValue = get(nodeValues.value, nameParts.join('.')) as
-				| INodeParameters
-				| INodeParameters[];
-
-			if (lastNamePart && !Array.isArray(tempValue)) {
-				const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
-				tempValue = remainingNodeValues;
-			}
-
-			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
-				// If a value from an array got delete and no values are left
-				// delete also the parent
-				lastNamePart = nameParts.pop();
-				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
-				if (lastNamePart) {
-					const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } = tempValue;
-					tempValue = remainingArrayNodeValues;
-				}
-			}
-		} else {
-			// Value should be set
-			if (typeof value === 'object') {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					deepCopy(value),
-				);
-			} else {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					value,
-				);
-			}
-		}
-	}
-
-	nodeValues.value = { ...nodeValues.value };
-};
-
-/**
- * Removes node values that are not valid options for the given parameter.
- * This can happen when there are multiple node parameters with the same name
- * but different options and display conditions
- * @param nodeType The node type description
- * @param nodeParameterValues Current node parameter values
- * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
- */
-const removeMismatchedOptionValues = (
-	nodeType: INodeTypeDescription,
-	nodeParameterValues: INodeParameters | null,
-	updatedParameter: { name: string; value: NodeParameterValue },
-) => {
-	nodeType.properties.forEach((prop) => {
-		const displayOptions = prop.displayOptions;
-		// Not processing parameters that are not set or don't have options
-		if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
-			return;
-		}
-		// Only process the parameters that depend on the updated parameter
-		const showCondition = displayOptions.show?.[updatedParameter.name];
-		const hideCondition = displayOptions.hide?.[updatedParameter.name];
-		if (showCondition === undefined && hideCondition === undefined) {
-			return;
-		}
-
-		let hasValidOptions = true;
-
-		// Every value should be a possible option
-		if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
-			hasValidOptions = Object.keys(nodeParameterValues).every(
-				(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-			);
-		} else if (isINodePropertyOptionsList(prop.options)) {
-			hasValidOptions = !!prop.options.find(
-				(option) => option.value === nodeParameterValues[prop.name],
-			);
-		}
-
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
-			unset(nodeParameterValues as object, prop.name);
-		}
-	});
-};
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
@@ -430,37 +314,16 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		nodeParameters = deepCopy(nodeParameters);
 
 		if (parameterData.value && typeof parameterData.value === 'object') {
-			for (const parameterName of Object.keys(parameterData.value)) {
-				//@ts-ignore
-				newValue = parameterData.value[parameterName];
+			for (const [parameterName, parameterValue] of Object.entries(parameterData.value)) {
+				newValue = parameterValue;
 
-				// Remove the 'parameters.' from the beginning to just have the
-				// actual parameter name
-				const parameterPath = parameterName.split('.').slice(1).join('.');
-
-				// Check if the path is supposed to change an array and if so get
-				// the needed data like path and index
-				const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
-
-				// Apply the new value
-				//@ts-ignore
-				if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
-					// Delete array item
-					const path = parameterPathArray[1];
-					const index = parameterPathArray[2];
-					const data = get(nodeParameters, path);
-
-					if (Array.isArray(data)) {
-						data.splice(parseInt(index, 10), 1);
-						set(nodeParameters as object, path, data);
-					}
-				} else {
-					if (newValue === undefined) {
-						unset(nodeParameters as object, parameterPath);
-					} else {
-						set(nodeParameters as object, parameterPath, newValue);
-					}
-				}
+				const parameterPath = nodeSettingsParameters.updateParameterByPath(
+					parameterName,
+					newValue,
+					nodeParameters,
+					nodeType,
+					_node.typeVersion,
+				);
 
 				void externalHooks.run('nodeSettings.valueChanged', {
 					parameterPath,
@@ -483,8 +346,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
-			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
-				setValue(`parameters.${key}`, nodeParameters[key] as string);
+			if (nodeParameters?.[key] !== null && nodeParameters?.[key] !== undefined) {
+				nodeSettingsParameters.setValue(`parameters.${key}`, nodeParameters[key] as string);
 			}
 		}
 
@@ -499,118 +362,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
 		}
-	} else if (parameterData.name.startsWith('parameters.')) {
+	} else if (nodeSettingsParameters.nameIsParameter(parameterData)) {
 		// A node parameter changed
-
-		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
-		if (!nodeType) {
-			return;
-		}
-
-		// Get only the parameters which are different to the defaults
-		let nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			_node.parameters,
-			false,
-			false,
-			_node,
-			nodeType,
-		);
-
-		const oldNodeParameters = Object.assign({}, nodeParameters);
-
-		// Copy the data because it is the data of vuex so make sure that
-		// we do not edit it directly
-		nodeParameters = deepCopy(nodeParameters);
-
-		// Remove the 'parameters.' from the beginning to just have the
-		// actual parameter name
-		const parameterPath = parameterData.name.split('.').slice(1).join('.');
-
-		// Check if the path is supposed to change an array and if so get
-		// the needed data like path and index
-		const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
-
-		// Apply the new value
-		if (parameterData.value === undefined && parameterPathArray !== null) {
-			// Delete array item
-			const path = parameterPathArray[1];
-			const index = parameterPathArray[2];
-			const data = get(nodeParameters, path);
-
-			if (Array.isArray(data)) {
-				data.splice(parseInt(index, 10), 1);
-				set(nodeParameters as object, path, data);
-			}
-		} else {
-			if (newValue === undefined) {
-				unset(nodeParameters as object, parameterPath);
-			} else {
-				set(nodeParameters as object, parameterPath, newValue);
-			}
-			// If value is updated, remove parameter values that have invalid options
-			// so getNodeParameters checks don't fail
-			removeMismatchedOptionValues(nodeType, nodeParameters, {
-				name: parameterPath,
-				value: newValue,
-			});
-		}
-
-		// Get the parameters with the now new defaults according to the
-		// from the user actually defined parameters
-		nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			nodeParameters as INodeParameters,
-			true,
-			false,
-			_node,
-			nodeType,
-		);
-
-		if (isToolNode.value) {
-			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
-				props.nodeType,
-				nodeParameters,
-				node.value?.parameters,
-			);
-
-			if (updatedDescription && nodeParameters) {
-				nodeParameters.toolDescription = updatedDescription;
-			}
-		}
-
-		for (const key of Object.keys(nodeParameters as object)) {
-			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
-				setValue(`parameters.${key}`, nodeParameters[key] as string);
-			}
-		}
-
-		// Update the data in vuex
-		const updateInformation: IUpdateInformation = {
-			name: _node.name,
-			value: nodeParameters,
-		};
-
-		const connections = workflowsStore.allConnections;
-
-		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
-
-		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections, true);
-		}
-
-		workflowsStore.setNodeParameters(updateInformation);
-
-		void externalHooks.run('nodeSettings.valueChanged', {
-			parameterPath,
-			newValue,
-			parameters: parameters.value,
-			oldNodeParameters,
-		});
-
-		nodeHelpers.updateNodeParameterIssuesByName(_node.name);
-		nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
-		telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
+		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
 	} else {
 		// A property on the node itself changed
 
@@ -645,8 +399,12 @@ const onSwitchSelectedNode = (node: string) => {
 	emit('switchSelectedNode', node);
 };
 
-const onOpenConnectionNodeCreator = (nodeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeName, connectionType);
+const onOpenConnectionNodeCreator = (
+	nodeName: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) => {
+	emit('openConnectionNodeCreator', nodeName, connectionType, connectionIndex);
 };
 
 const populateHiddenIssuesSet = () => {
@@ -966,7 +724,9 @@ onMounted(() => {
 	populateSettings();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
-	nodeHelpers.updateNodeParameterIssues(node.value as INodeUi, props.nodeType);
+	if (node.value !== null) {
+		nodeHelpers.updateNodeParameterIssues(node.value, props.nodeType);
+	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
 });
@@ -988,6 +748,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
+
+function handleWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -995,6 +761,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		:class="{
 			'node-settings': true,
 			dragging: dragging,
+			embedded: props.isEmbeddedInCanvas,
 		}"
 		@keydown.stop
 	>
@@ -1007,10 +774,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:node-type="nodeType"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable">
+				/>
+				<template v-if="isExecutable || slots.actions">
 					<NodeExecuteButton
-						v-if="!blockUI && node && nodeValid"
+						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -1021,7 +788,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 						@stop-execution="onStopExecution"
 						@value-changed="valueChanged"
 					/>
-				</div>
+					<slot name="actions" />
+				</template>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -1073,7 +841,17 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				</template>
 			</i18n-t>
 		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
+		<div
+			v-if="node && nodeValid"
+			ref="nodeParameterWrapper"
+			:class="[
+				'node-parameters-wrapper',
+				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
+			]"
+			data-test-id="node-parameters"
+			@wheel="noWheel ? handleWheelEvent : undefined"
+		>
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -1094,11 +872,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
+					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
+						v-if="!isEmbeddedInCanvas"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -1163,7 +943,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node"
+			v-if="node && !props.isEmbeddedInCanvas"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -1213,6 +993,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		}
 	}
 
+	&.embedded .header-side-menu {
+		padding: var(--spacing-xs);
+	}
+
 	.node-is-not-valid {
 		height: 75%;
 		padding: 10px;
@@ -1228,6 +1012,28 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+	}
+
+	&.embedded .node-parameters-wrapper {
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+	}
+
+	&.embedded .node-parameters-wrapper.with-static-scrollbar {
+		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-2xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid white;
+			}
+		}
 	}
 
 	&.dragging {

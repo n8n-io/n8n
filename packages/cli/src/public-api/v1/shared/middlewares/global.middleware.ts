@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type { NextFunction } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
@@ -36,8 +37,16 @@ const buildScopeMiddleware = (
 				params.credentialId = req.params.id;
 			}
 		}
-		if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
-			return res.status(403).json({ message: 'Forbidden' });
+
+		try {
+			if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
+				return res.status(403).json({ message: 'Forbidden' });
+			}
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				return res.status(404).json({ message: error.message });
+			}
+			throw error;
 		}
 
 		return next();

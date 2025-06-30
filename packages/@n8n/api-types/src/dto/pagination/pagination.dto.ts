@@ -14,7 +14,7 @@ const skipValidator = z
 		message: 'Param `skip` must be a non-negative integer',
 	});
 
-export const createTakeValidator = (maxItems: number) =>
+export const createTakeValidator = (maxItems: number, allowInfinity: boolean = false) =>
 	z
 		.string()
 		.optional()
@@ -22,9 +22,15 @@ export const createTakeValidator = (maxItems: number) =>
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `take` must be a valid integer',
 		})
-		.refine((val) => val >= 0, {
-			message: 'Param `take` must be a non-negative integer',
-		})
+		.refine(
+			(val) => {
+				if (!allowInfinity) return val >= 0;
+				return true;
+			},
+			{
+				message: 'Param `take` must be a non-negative integer',
+			},
+		)
 		.transform((val) => Math.min(val, maxItems));
 
 export const paginationSchema = {

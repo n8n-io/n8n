@@ -1,10 +1,14 @@
+export * from './api';
 export * from './browser';
+export * from './community-nodes';
 export * from './instance';
+export * from './execution';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
 	SAML: 'feat:saml',
+	OIDC: 'feat:oidc',
 	LOG_STREAMING: 'feat:logStreaming',
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
@@ -97,3 +101,9 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
+
+export { Time } from './time';
+
+export const MIN_PASSWORD_CHAR_LENGTH = 8;
+
+export const MAX_PASSWORD_CHAR_LENGTH = 64;

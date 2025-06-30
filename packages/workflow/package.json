@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.94.0",
+  "version": "1.98.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -20,8 +20,8 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint src --quiet",
+    "lintfix": "eslint src --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"

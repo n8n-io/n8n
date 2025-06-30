@@ -102,6 +102,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
+	@Column({ type: 'date', nullable: true })
+	lastActiveAt?: Date | null;
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */

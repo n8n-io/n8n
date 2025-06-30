@@ -763,7 +763,7 @@ export function getConditions() {
 		number: [
 			'equals',
 			'does_not_equal',
-			'grater_than',
+			'greater_than',
 			'less_than',
 			'greater_than_or_equal_to',
 			'less_than_or_equal_to',

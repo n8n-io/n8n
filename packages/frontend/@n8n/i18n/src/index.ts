@@ -107,11 +107,9 @@ export class I18nClass {
 			remainingMs = remainingMs % minute;
 		}
 
-		if (!showMs) {
-			remainingMs -= remainingMs % second;
-		}
+		const remainingSec = showMs ? remainingMs / second : Math.floor(remainingMs / second);
 
-		parts.push(`${remainingMs / second}${this.baseText('genericHelpers.secShort')}`);
+		parts.push(`${remainingSec}${this.baseText('genericHelpers.secShort')}`);
 
 		return parts.join(' ');
 	}

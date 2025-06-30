@@ -1,9 +1,14 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
-import { computed, unref } from 'vue';
+import { computed, inject, unref } from 'vue';
+import { PiPWindowSymbol } from '@/constants';
 
-type KeyMap = Record<string, (event: KeyboardEvent) => void>;
+type KeyboardEventHandler =
+	| ((event: KeyboardEvent) => void)
+	| { disabled: () => boolean; run: (event: KeyboardEvent) => void };
+
+export type KeyMap = Partial<Record<string, KeyboardEventHandler>>;
 
 /**
  * Binds a `keydown` event to `document` and calls the approriate
@@ -25,7 +30,8 @@ export const useKeybindings = (
 		disabled: MaybeRef<boolean>;
 	},
 ) => {
-	const activeElement = useActiveElement();
+	const pipWindow = inject(PiPWindowSymbol);
+	const activeElement = useActiveElement({ window: pipWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const isDisabled = computed(() => unref(options?.disabled));
@@ -134,13 +140,15 @@ export const useKeybindings = (
 		// - Dvorak works correctly
 		// - Non-ansi layouts work correctly
 		const handler = normalizedKeymap.value[byKey] ?? normalizedKeymap.value[byCode];
+		const run =
+			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 
-		if (handler) {
+		if (run) {
 			event.preventDefault();
 			event.stopPropagation();
-			handler(event);
+			run(event);
 		}
 	}
 
-	useEventListener(document, 'keydown', onKeyDown);
+	useEventListener(pipWindow?.value?.document ?? document, 'keydown', onKeyDown);
 };

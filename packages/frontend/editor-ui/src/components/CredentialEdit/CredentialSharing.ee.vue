@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useSettingsStore } from '@/stores/settings.store';

@@ -321,7 +321,7 @@ export class LmChatAnthropic implements INodeType {
 
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey,
-			modelName,
+			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,

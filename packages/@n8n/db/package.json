@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "0.8.0",
+  "version": "0.12.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
@@ -21,9 +21,11 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/api-types": "workspace:^",
     "@n8n/backend-common": "workspace:^",
     "@n8n/config": "workspace:^",
     "@n8n/constants": "workspace:^",
+    "@n8n/decorators": "workspace:^",
     "@n8n/di": "workspace:^",
     "@n8n/permissions": "workspace:^",
     "@n8n/typeorm": "catalog:",
@@ -40,6 +42,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:"
+    "@types/lodash": "catalog:",
+    "express": "5.1.0"
   }
 }

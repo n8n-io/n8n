@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
@@ -60,6 +61,7 @@ import PCancelable from 'p-cancelable';
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -72,10 +74,8 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 	rewireGraph,
-	isTool,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
@@ -359,6 +359,7 @@ export class WorkflowExecute {
 			destinationNodeName,
 			'a destinationNodeName is required for the new partial execution flow',
 		);
+		const originalDestination = destinationNodeName;
 
 		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
@@ -368,8 +369,12 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
+		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+			destination.type,
+			destination.typeVersion,
+		);
 		// Partial execution of nodes as tools
-		if (isTool(destination, workflow.nodeTypes)) {
+		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
 			graph = rewireGraph(destination, graph, agentRequest);
 			workflow = graph.toWorkflow({ ...workflow });
 			// Rewire destination node to the virtual agent
@@ -419,9 +424,27 @@ export class WorkflowExecute {
 		}
 
 		// 1. Find the Trigger
-		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
+		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
 		if (trigger === undefined) {
-			throw new UserError('Connect a trigger to run this node');
+			// destination has parents but none of them are triggers, so find the closest
+			// parent node that has run data, and treat that parent as starting point
+
+			let startNode;
+
+			const parentNodes = workflow.getParentNodes(destinationNodeName);
+
+			for (const nodeName of parentNodes) {
+				if (runData[nodeName]) {
+					startNode = workflow.getNode(nodeName);
+					break;
+				}
+			}
+
+			if (!startNode) {
+				throw new UserError('Connect a trigger to run this node');
+			}
+
+			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
@@ -453,6 +476,7 @@ export class WorkflowExecute {
 		this.runExecutionData = {
 			startData: {
 				destinationNode: destinationNodeName,
+				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
@@ -468,7 +492,11 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		// Still passing the original workflow here, because the WorkflowDataProxy
+		// needs it to create more useful error messages, e.g. differentiate
+		// between a node not being connected to the node referencing it or a node
+		// not existing in the workflow.
+		return this.processRunExecutionData(workflow);
 	}
 
 	/**
@@ -1047,11 +1075,10 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (!node.parameters) return undefined;
+		if (!node.parameters && !node.forceCustomOperation) return undefined;
 
 		const { customOperations } = type;
-		const { resource, operation } = node.parameters;
+		const { resource, operation } = node.forceCustomOperation ?? node.parameters;
 
 		if (typeof resource !== 'string' || typeof operation !== 'string') return undefined;
 		if (!customOperations[resource] || !customOperations[resource][operation]) return undefined;
@@ -1183,6 +1210,27 @@ export class WorkflowExecute {
 					nodeType instanceof Node
 						? await nodeType.execute(context)
 						: await nodeType.execute.call(context);
+			}
+
+			// If data is not json compatible then log it as incorrect output
+			// Does not block the execution from continuing
+			const jsonCompatibleResult = isJsonCompatible(data);
+			if (!jsonCompatibleResult.isValid) {
+				Container.get(ErrorReporter).error(
+					new UnexpectedError('node execution output incorrect data'),
+					{
+						extra: {
+							nodeName: node.name,
+							nodeType: node.type,
+							nodeVersion: node.typeVersion,
+							workflowId: workflow.id,
+							workflowName: workflow.name ?? 'Unnamed workflow',
+							executionId: this.additionalData.executionId ?? 'unsaved-execution',
+							errorPath: jsonCompatibleResult.errorPath,
+							errorMessage: jsonCompatibleResult.errorMessage,
+						},
+					},
+				);
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(
@@ -1543,7 +1591,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
+								let didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1558,6 +1606,8 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
+									nodeSuccessData = runNodeData.data;
+									didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 									tryIndex++;
 								}
 
@@ -1668,6 +1718,11 @@ export class WorkflowExecute {
 					if (executionError !== undefined) {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
+
+						// Send error to the response if necessary
+						await hooks?.runHook('sendChunk', [
+							{ type: 'error', content: executionError.description },
+						]);
 
 						if (
 							executionData.node.continueOnFail === true ||

@@ -29,6 +29,7 @@ import type {
 } from 'n8n-workflow';
 
 import type {
+	AddedNode,
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -986,6 +987,21 @@ export function useNodeHelpers() {
 		return nodeIssues;
 	}
 
+	function getDefaultNodeName(node: AddedNode | INode) {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (nodeType === null) return null;
+		const parameters = NodeHelpers.getNodeParameters(
+			nodeType?.properties,
+			node.parameters ?? {},
+			true,
+			false,
+			node.typeVersion ? { typeVersion: node.typeVersion } : null,
+			nodeType,
+		);
+
+		return NodeHelpers.makeNodeName(parameters ?? {}, nodeType);
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1019,5 +1035,6 @@ export function useNodeHelpers() {
 		isSingleExecution,
 		getNodeHints,
 		nodeIssuesToString,
+		getDefaultNodeName,
 	};
 }

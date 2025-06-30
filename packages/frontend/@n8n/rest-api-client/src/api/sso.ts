@@ -1,4 +1,4 @@
-import type { SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import type { OidcConfigDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -38,4 +38,19 @@ export const toggleSamlConfig = async (
 
 export const testSamlConfig = async (context: IRestApiContext): Promise<string> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/saml/config/test');
+};
+
+export const getOidcConfig = async (context: IRestApiContext): Promise<OidcConfigDto> => {
+	return await makeRestApiRequest(context, 'GET', '/sso/oidc/config');
+};
+
+export const saveOidcConfig = async (
+	context: IRestApiContext,
+	data: OidcConfigDto,
+): Promise<OidcConfigDto> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/oidc/config', data);
+};
+
+export const initOidcLogin = async (context: IRestApiContext): Promise<string> => {
+	return await makeRestApiRequest(context, 'GET', '/sso/oidc/login');
 };

@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	IExecuteFunctions,
 	INodeExecutionData,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -21,6 +22,8 @@ import {
 } from '../utils/evaluationTriggerUtils';
 
 export const DEFAULT_STARTING_ROW = 2;
+
+const MAX_ROWS = 1000;
 
 export class EvaluationTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -108,10 +111,8 @@ export class EvaluationTrigger implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
 
-		const MAX_ROWS = 1000;
-
-		const maxRows = this.getNodeParameter('limitRows', 0)
-			? (this.getNodeParameter('maxRows', 0) as number) + 1
+		const maxRows = this.getNodeParameter('limitRows', 0, false)
+			? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 			: MAX_ROWS;
 
 		const previousRunRowNumber = inputData?.[0]?.json?.row_number;
@@ -132,21 +133,6 @@ export class EvaluationTrigger implements INodeType {
 		const googleSheet = await getSheet.call(this, googleSheetInstance);
 
 		const allRows = await getResults.call(this, [], googleSheetInstance, googleSheet, rangeOptions);
-
-		// This is for test runner which requires a different return format
-		if (inputData[0].json.requestDataset) {
-			const testRunnerResult = await getResults.call(
-				this,
-				[],
-				googleSheetInstance,
-				googleSheet,
-				{},
-			);
-
-			const result = testRunnerResult.slice(0, maxRows - 1);
-
-			return [result];
-		}
 
 		const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
 
@@ -188,4 +174,28 @@ export class EvaluationTrigger implements INodeType {
 			return [[currentRow]];
 		}
 	}
+
+	customOperations = {
+		dataset: {
+			async getRows(
+				this: IExecuteFunctions,
+			): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
+				try {
+					const maxRows = this.getNodeParameter('limitRows', 0, false)
+						? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
+						: MAX_ROWS;
+
+					const googleSheetInstance = getGoogleSheet.call(this);
+					const googleSheet = await getSheet.call(this, googleSheetInstance);
+
+					const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
+					const result = results.slice(0, maxRows - 1);
+
+					return [result];
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), error);
+				}
+			},
+		},
+	};
 }

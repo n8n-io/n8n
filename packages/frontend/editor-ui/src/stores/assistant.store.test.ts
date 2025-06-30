@@ -371,18 +371,12 @@ describe('AI Assistant store', () => {
 			source: 'error',
 			has_existing_session: true,
 		});
-		expect(track).toHaveBeenCalledWith(
-			'Assistant session started',
-			{
-				chat_session_id: 'test',
-				node_type: 'n8n-nodes-base.stopAndError',
-				task: 'error',
-				credential_type: undefined,
-			},
-			{
-				withPostHog: true,
-			},
-		);
+		expect(track).toHaveBeenCalledWith('Assistant session started', {
+			chat_session_id: 'test',
+			node_type: 'n8n-nodes-base.stopAndError',
+			task: 'error',
+			credential_type: undefined,
+		});
 
 		expect(track).toHaveBeenCalledWith('User opened assistant', {
 			chat_session_id: 'test',
