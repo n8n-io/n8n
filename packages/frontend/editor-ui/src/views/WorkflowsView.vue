@@ -24,7 +24,6 @@ import { useToast } from '@/composables/useToast';
 import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
-	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -39,7 +38,6 @@ import type {
 } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -101,7 +99,6 @@ const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
@@ -323,11 +320,8 @@ const statusFilterOptions = computed(() => [
 ]);
 
 const showEasyAIWorkflowCallout = computed(() => {
-	const isEasyAIWorkflowExperimentEnabled =
-		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
+	return !easyAIWorkflowOnboardingDone;
 });
 
 const projectPermissions = computed(() => {
