@@ -250,7 +250,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 					title: actionNode.properties.displayName,
 					nodeIcon: {
 						type: 'icon',
-						name: 'check-double',
+						name: 'check-check',
 					},
 					rootView: 'Regular',
 					mode: 'actions',

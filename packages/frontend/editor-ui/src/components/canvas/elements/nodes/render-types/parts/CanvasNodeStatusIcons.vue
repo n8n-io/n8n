@@ -40,7 +40,7 @@ const dirtiness = computed(() =>
 			<template #content>
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
-			<FontAwesomeIcon icon="exclamation-triangle" />
+			<N8nIcon icon="triangle-alert" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionWaiting || executionStatus === 'waiting'">
@@ -49,11 +49,11 @@ const dirtiness = computed(() =>
 				<template #content>
 					<div v-text="executionWaiting"></div>
 				</template>
-				<FontAwesomeIcon icon="clock" />
+				<N8nIcon icon="clock" />
 			</N8nTooltip>
 		</div>
 		<div :class="[$style.status, $style['node-waiting-spinner']]">
-			<FontAwesomeIcon icon="sync-alt" spin />
+			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -64,14 +64,14 @@ const dirtiness = computed(() =>
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>
-		<FontAwesomeIcon icon="sync-alt" spin />
+		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
 		data-test-id="canvas-node-status-pinned"
 		:class="[$style.status, $style.pinnedData]"
 	>
-		<FontAwesomeIcon icon="thumbtack" />
+		<N8nIcon icon="pin" />
 	</div>
 	<div v-else-if="dirtiness !== undefined">
 		<N8nTooltip :show-after="500" placement="bottom">
@@ -85,7 +85,7 @@ const dirtiness = computed(() =>
 				}}
 			</template>
 			<div data-test-id="canvas-node-status-warning" :class="[$style.status, $style.warning]">
-				<FontAwesomeIcon icon="triangle" />
+				<N8nIcon icon="triangle" />
 				<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 			</div>
 		</N8nTooltip>
@@ -95,7 +95,7 @@ const dirtiness = computed(() =>
 		data-test-id="canvas-node-status-success"
 		:class="[$style.status, $style.runData]"
 	>
-		<FontAwesomeIcon icon="check" />
+		<N8nIcon icon="check" />
 		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 	</div>
 </template>

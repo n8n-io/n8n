@@ -85,7 +85,7 @@ export default defineComponent({
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
 				>
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ groupLabelInfo(group.name) }}
 					</template>
@@ -100,7 +100,7 @@ export default defineComponent({
 			>
 				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>

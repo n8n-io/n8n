@@ -71,7 +71,7 @@ const headerText = computed(() => {
 					>
 				</div>
 			</template>
-			<font-awesome-icon icon="info-circle" class="ml-2xs" />
+			<n8n-icon icon="info" class="ml-2xs" />
 		</n8n-tooltip>
 	</div>
 </template>
