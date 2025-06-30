@@ -25,7 +25,6 @@ async function baseModelSearch(
 	};
 }
 
-// TODO: rename to `textModelSearch`?
 export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -33,9 +32,9 @@ export async function modelSearch(
 	return await baseModelSearch.call(
 		this,
 		(model) =>
-			// TODO: double check filter, filter out gemma as well?
 			!model.includes('embedding') &&
-			// !model.includes('image') &&
+			!model.includes('image') &&
+			!model.includes('vision') &&
 			!model.includes('veo') &&
 			!model.includes('audio') &&
 			!model.includes('tts'),
@@ -43,4 +42,50 @@ export async function modelSearch(
 	);
 }
 
-// TODO: models for audio, image, video and document processing
+export async function audioModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await baseModelSearch.call(
+		this,
+		(model) =>
+			!model.includes('embedding') &&
+			!model.includes('image') &&
+			!model.includes('vision') &&
+			!model.includes('veo') &&
+			!model.includes('tts'), // we don't have a tts operation
+		filter,
+	);
+}
+
+export async function imageModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await baseModelSearch.call(
+		this,
+		(model) =>
+			!model.includes('embedding') &&
+			!model.includes('vision') && // `vision` models are deprecated
+			!model.includes('veo') &&
+			!model.includes('audio') &&
+			!model.includes('tts'),
+		filter,
+	);
+}
+
+export async function videoModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await baseModelSearch.call(
+		this,
+		(model) =>
+			!model.includes('embedding') &&
+			!model.includes('image') &&
+			!model.includes('vision') &&
+			!model.includes('audio') &&
+			!model.includes('tts'),
+		filter,
+	);
+}

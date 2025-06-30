@@ -1,15 +1,26 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
+
+interface File {
+	name: string;
+	uri: string;
+	mimeType: string;
+	state: string;
+	error?: { message: string };
+}
 
 export async function downloadFile(
 	this: IExecuteFunctions,
 	url: string,
 	fallbackMimeType?: string,
+	qs?: IDataObject,
 ) {
 	const downloadResponse = (await this.helpers.httpRequest({
 		method: 'GET',
 		url,
+		qs,
 		returnFullResponse: true,
 		encoding: 'arraybuffer',
 	})) as { body: ArrayBuffer; headers: IDataObject };
@@ -48,7 +59,26 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 			'X-Goog-Upload-Command': 'upload, finalize',
 		},
 		body: fileContent,
-	})) as { file: { uri: string; mimeType: string } };
+	})) as { file: File };
+
+	while (uploadResponse.file.state !== 'ACTIVE' && uploadResponse.file.state !== 'FAILED') {
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+		uploadResponse.file = (await apiRequest.call(
+			this,
+			'GET',
+			`/v1beta/${uploadResponse.file.name}`,
+		)) as File;
+	}
+
+	if (uploadResponse.file.state === 'FAILED') {
+		throw new NodeOperationError(
+			this.getNode(),
+			uploadResponse.file.error?.message ?? 'Unknown error',
+			{
+				description: 'Error uploading file',
+			},
+		);
+	}
 
 	return { fileUri: uploadResponse.file.uri, mimeType: uploadResponse.file.mimeType };
 }

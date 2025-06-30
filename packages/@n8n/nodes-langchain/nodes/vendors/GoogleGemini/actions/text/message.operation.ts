@@ -93,7 +93,6 @@ const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. You are a helpful assistant',
 			},
-			// TODO: show only for models that support it?
 			{
 				displayName: 'Code Execution',
 				name: 'codeExecution',

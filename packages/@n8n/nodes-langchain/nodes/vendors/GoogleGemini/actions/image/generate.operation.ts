@@ -6,8 +6,7 @@ import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	// TODO: different models?
-	modelRLC('modelSearch'),
+	modelRLC('imageModelSearch'),
 	{
 		displayName: 'Prompt',
 		name: 'prompt',

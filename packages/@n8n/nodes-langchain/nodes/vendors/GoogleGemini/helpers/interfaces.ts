@@ -46,3 +46,20 @@ export interface ImagenResponse {
 		mimeType: string;
 	}>;
 }
+
+export interface VeoResponse {
+	name: string;
+	done: boolean;
+	error?: {
+		message: string;
+	};
+	response: {
+		generateVideoResponse: {
+			generatedSamples: Array<{
+				video: {
+					uri: string;
+				};
+			}>;
+		};
+	};
+}
