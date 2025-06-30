@@ -209,18 +209,18 @@ export const draftFields: INodeProperties[] = [
 				name: 'references',
 				type: 'string',
 				default: '',
-				placeholder: '<message-id-1@example.com>',
+				placeholder: '<message-1@example.com>',
 				description:
-					'The full chain of message IDs in the conversation thread to be used to reply to a thread with a thread ID.',
+					'The full chain of message IDs in the conversation thread to be used to reply to a thread with a thread ID',
 			},
 			{
 				displayName: 'In-Reply-To',
 				name: 'inReplyTo',
 				type: 'string',
 				default: '',
-				placeholder: '<message-id-1@example.com>',
+				placeholder: '<message-1@example.com>',
 				description:
-					'The specific message this email is directly replying to. To be used to reply to a thread with a thread ID.',
+					'The specific message this email is directly replying to. To be used to reply to a thread with a thread ID',
 			},
 		],
 	},
