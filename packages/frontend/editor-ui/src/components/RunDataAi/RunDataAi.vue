@@ -115,7 +115,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 							<button
 								v-if="data.children.length"
 								:class="$style.treeToggle"
-								@click="toggleTreeItem(currentNode.node)"
+								@click="toggleTreeItem(currentNode)"
 							>
 								<font-awesome-icon :icon="currentNode.expanded ? 'angle-down' : 'angle-right'" />
 							</button>
