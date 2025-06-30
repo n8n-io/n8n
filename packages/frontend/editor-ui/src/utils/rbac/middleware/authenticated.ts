@@ -23,7 +23,7 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	// If MFA is not enabled, and the instance enforces MFA, redirect to personal settings
 	const mfaNeeded = shouldEnableMfa(options);
 	if (mfaNeeded) {
-		if (to.path !== '/settings/personal') {
+		if (to.name !== VIEWS.PERSONAL_SETTINGS) {
 			return next({ name: VIEWS.PERSONAL_SETTINGS, query: { redirect } });
 		}
 		return;
