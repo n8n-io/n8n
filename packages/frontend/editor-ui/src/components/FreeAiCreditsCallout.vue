@@ -4,7 +4,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -26,7 +25,6 @@ const showSuccessCallout = ref(false);
 const claimingCredits = ref(false);
 
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
