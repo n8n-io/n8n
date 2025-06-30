@@ -83,7 +83,7 @@ export class CommandRegistry {
 				schemaDef = schemaDef.innerType._def as typeof schemaDef;
 			}
 			const alias = schemaDef._alias;
-			if (alias?.length && !(key in argv)) {
+			if (alias?.length && !(key in argv) && argv[alias]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				argv[key] = argv[alias];
 			}
