@@ -71,28 +71,6 @@ describe('ManualExecutionService', () => {
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode?.name).toEqual('node3');
 		});
-
-		it('should default to The manual trigger', () => {
-			const data = mock<IWorkflowExecutionDataProcess>();
-			const manualTrigger = mock<INode>({
-				type: 'n8n-nodes-base.manualTrigger',
-				name: 'When clicking ‘Execute workflow’',
-			});
-
-			const workflow = mock<Workflow>({
-				getTriggerNodes() {
-					return [
-						mock<INode>({
-							type: 'n8n-nodes-base.scheduleTrigger',
-							name: 'Wed 12:00',
-						}),
-						manualTrigger,
-					];
-				},
-			});
-			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
-			expect(executionStartNode?.name).toBe(manualTrigger.name);
-		});
 	});
 
 	describe('runManually', () => {
