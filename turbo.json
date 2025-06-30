@@ -31,6 +31,7 @@
 		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
@@ -52,6 +53,7 @@
 		},
 		"lint:frontend": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"@n8n/rest-api-client#lint",
 				"@n8n/api-types#lint",
@@ -71,6 +73,7 @@
 		},
 		"lint:nodes": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"n8n-nodes-base#lint",
 				"@n8n/n8n-nodes-langchain#lint",
@@ -78,7 +81,7 @@
 			]
 		},
 		"lint": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
 		"lintfix": {},
 		"test:backend": {

@@ -9,7 +9,7 @@ import type {
 import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
@@ -64,6 +64,7 @@ const LazyCollectionParameter = defineAsyncComponent(
 const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
+	node?: INodeUi;
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
 	path?: string;
@@ -120,6 +121,8 @@ const nodeType = computed(() => {
 	return null;
 });
 
+const node = computed(() => props.node ?? ndvStore.activeNode);
+
 const filteredParameters = computedWithControl(
 	[() => props.parameters, () => props.nodeValues] as WatchSource[],
 	() => {
@@ -127,22 +130,20 @@ const filteredParameters = computedWithControl(
 			displayNodeParameter(parameter),
 		);
 
-		const activeNode = ndvStore.activeNode;
-
-		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
-			return updateFormTriggerParameters(parameters, activeNode.name);
+		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, node.value.name);
 		}
 
-		if (activeNode && activeNode.type === FORM_NODE_TYPE) {
-			return updateFormParameters(parameters, activeNode.name);
+		if (node.value && node.value.type === FORM_NODE_TYPE) {
+			return updateFormParameters(parameters, node.value.name);
 		}
 
 		if (
-			activeNode &&
-			activeNode.type === WAIT_NODE_TYPE &&
-			activeNode.parameters.resume === 'form'
+			node.value &&
+			node.value.type === WAIT_NODE_TYPE &&
+			node.value.parameters.resume === 'form'
 		) {
-			return updateWaitParameters(parameters, activeNode.name);
+			return updateWaitParameters(parameters, node.value.name);
 		}
 
 		return parameters;
@@ -152,8 +153,6 @@ const filteredParameters = computedWithControl(
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
 });
-
-const node = computed(() => ndvStore.activeNode);
 
 const nodeAuthFields = computed(() => {
 	return getNodeAuthFields(nodeType.value);
