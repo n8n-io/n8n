@@ -188,15 +188,11 @@ export function useCanvasOperations() {
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track(
-			'User tidied up canvas',
-			{
-				source,
-				target,
-				nodes_count: result.nodes.length,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
 	}
 
 	function updateNodesPosition(

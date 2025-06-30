@@ -190,9 +190,8 @@ describe('telemetry', () => {
 
 			const event = 'testEvent';
 			const properties = { test: '1' };
-			const options = { withPostHog: false };
 
-			telemetry.track(event, properties, options);
+			telemetry.track(event, properties);
 
 			expect(trackFunction).toHaveBeenCalledTimes(1);
 			expect(trackFunction).toHaveBeenCalledWith(
