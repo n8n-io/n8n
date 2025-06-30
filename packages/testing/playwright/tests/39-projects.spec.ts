@@ -27,11 +27,12 @@ test.describe('Projects @db:reset', () => {
 		await api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
+
 	test('should not show project add button and projects to a member if not invited to any project @auth:member', async ({
 		n8n,
 	}) => {
-		await expect(n8n.page.getByTestId('add-project-menu-item')).toBeHidden();
-		await expect(n8n.page.locator('[data-test-id="project-menu-item"]')).toHaveCount(0);
+		await expect(n8n.sideBar.getAddFirstProjectButton()).toBeDisabled();
+		await expect(n8n.sideBar.getProjectMenuItems()).toHaveCount(0);
 	});
 
 	test('should filter credentials by project ID', async ({ n8n, api }) => {

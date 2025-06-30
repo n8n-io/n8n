@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
-import { execSync } from 'node:child_process';
 
-import type { N8NStack } from './n8n-test-container-creation';
+import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
+import { DockerImageNotFoundError } from './types';
 
 // ANSI colors for terminal output
 const colors = {
@@ -19,8 +19,8 @@ const colors = {
 const log = {
 	info: (msg: string) => console.log(`${colors.blue}ℹ${colors.reset} ${msg}`),
 	success: (msg: string) => console.log(`${colors.green}✓${colors.reset} ${msg}`),
-	error: (msg: string) => console.log(`${colors.red}✗${colors.reset} ${msg}`),
-	warn: (msg: string) => console.log(`${colors.yellow}⚠${colors.reset} ${msg}`),
+	error: (msg: string) => console.error(`${colors.red}✗${colors.reset} ${msg}`),
+	warn: (msg: string) => console.warn(`${colors.yellow}⚠${colors.reset} ${msg}`),
 	header: (msg: string) => console.log(`\n${colors.bright}${colors.cyan}${msg}${colors.reset}\n`),
 };
 
@@ -70,15 +70,6 @@ ${colors.yellow}Notes:${colors.reset}
 `);
 }
 
-function checkDockerImageExists(imageName: string): boolean {
-	try {
-		execSync(`docker image inspect ${imageName}`, { stdio: 'ignore' });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 async function main() {
 	const { values } = parseArgs({
 		args: process.argv.slice(2),
@@ -100,35 +91,16 @@ async function main() {
 		process.exit(0);
 	}
 
-	// Check Docker image availability
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
-
-	if (!checkDockerImageExists(dockerImage)) {
-		log.error(`Docker image '${dockerImage}' not found locally!`);
-		console.log('');
-		log.info('To fix this, you can either:');
-		console.log(
-			`  1. Build the image by running: ${colors.bright}pnpm build:docker${colors.reset} at the root`,
-		);
-		console.log(
-			`  2. Use a different image by setting: ${colors.bright}N8N_DOCKER_IMAGE=<image-tag>${colors.reset}`,
-		);
-		console.log('');
-		log.info('Example with different image:');
-		console.log(`  ${colors.bright}N8N_DOCKER_IMAGE=n8nio/n8n:latest npm run stack${colors.reset}`);
-		process.exit(1);
-	}
-
 	// Build configuration
-	const config: any = {
+	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
-		projectName: values.name,
+		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
 	// Handle queue mode
 	if (values.queue ?? values.mains ?? values.workers) {
-		const mains = parseInt(values.mains ?? '1');
-		const workers = parseInt(values.workers ?? '1');
+		const mains = parseInt(values.mains ?? '1', 10);
+		const workers = parseInt(values.workers ?? '1', 10);
 
 		if (isNaN(mains) || isNaN(workers) || mains < 1 || workers < 0) {
 			log.error('Invalid mains or workers count');
@@ -158,49 +130,34 @@ async function main() {
 		}
 	}
 
-	// Display configuration
 	log.header('Starting n8n Stack');
+	log.info(`Project name: ${config.projectName}`);
 	displayConfig(config);
 
-	// Start the stack
-	let stack: N8NStack | null = null;
+	let stack: N8NStack;
 
 	try {
 		log.info('Starting containers...');
-		stack = await createN8NStack(config);
+		try {
+			stack = await createN8NStack(config);
+		} catch (error) {
+			if (error instanceof DockerImageNotFoundError) {
+				log.error(error.message);
+				process.exit(1);
+			}
+			throw error;
+		}
 
 		log.success('All containers started successfully!');
 		console.log('');
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
-		console.log('');
-
-		// Handle shutdown gracefully
-		const shutdown = async () => {
-			console.log('\n');
-			log.info('Shutting down...');
-			if (stack) {
-				await stack.stop();
-				log.success('All containers stopped');
-			}
-			process.exit(0);
-		};
-
-		process.on('SIGINT', shutdown);
-		process.on('SIGTERM', shutdown);
-
-		// Keep process alive
-		await new Promise(() => {});
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
-		if (stack) {
-			await stack.stop();
-		}
 		process.exit(1);
 	}
 }
 
-function displayConfig(config: any) {
-	// Show Docker image being used
+function displayConfig(config: N8NConfig) {
 	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
 	log.info(`Docker image: ${dockerImage}`);
 
@@ -214,7 +171,7 @@ function displayConfig(config: any) {
 		if (!config.postgres) {
 			log.info('(PostgreSQL automatically enabled for queue mode)');
 		}
-		if (qm.mains > 1) {
+		if (qm.mains && qm.mains > 1) {
 			log.info('(nginx load balancer will be configured)');
 		}
 	} else {

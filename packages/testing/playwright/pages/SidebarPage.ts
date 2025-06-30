@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 export class SidebarPage {
 	readonly page: Page;
@@ -30,5 +30,13 @@ export class SidebarPage {
 		await this.universalAdd();
 		await this.page.getByTestId('universal-add').getByText('Credential').click();
 		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+	}
+
+	getProjectMenuItems(): Locator {
+		return this.page.getByTestId('project-menu-item');
+	}
+
+	getAddFirstProjectButton(): Locator {
+		return this.page.getByTestId('add-first-project-button');
 	}
 }

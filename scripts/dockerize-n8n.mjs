@@ -16,7 +16,7 @@ $.verbose = false;
 process.env.FORCE_COLOR = '1';
 process.env.DOCKER_BUILDKIT = '1';
 
-// ===== Helper Functions =====
+// #region ===== Helper Functions =====
 
 /**
  * Get Docker platform string based on host architecture
@@ -73,7 +73,7 @@ async function commandExists(command) {
 	}
 }
 
-// ===== Configuration =====
+// #endregion ===== Helper Functions =====
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,7 +91,7 @@ const config = {
 	},
 };
 
-// ===== Main Build Process =====
+// #region ===== Main Build Process =====
 
 const platform = getDockerPlatform();
 
@@ -162,7 +162,7 @@ function displaySummary({ imageName, platform, size, buildTime }) {
 	echo(chalk.green.bold('═'.repeat(54)));
 }
 
-// ===== Execute =====
+// #endregion ===== Main Build Process =====
 
 main().catch((error) => {
 	echo(chalk.red(`Unexpected error: ${error.message}`));

@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { TestError } from '../Types';
+
 /**
  * Finds the project root by searching upwards for a marker file.
  * @param marker The file that identifies the project root (e.g., 'playwright.config.ts' or 'package.json').
@@ -11,7 +13,7 @@ function findProjectRoot(marker: string): string {
 	while (!fs.existsSync(path.join(dir, marker))) {
 		const parentDir = path.dirname(dir);
 		if (parentDir === dir) {
-			throw new ApplicationError();
+			throw new TestError('Could not find project root');
 		}
 		dir = parentDir;
 	}

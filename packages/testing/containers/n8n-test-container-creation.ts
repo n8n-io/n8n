@@ -19,6 +19,7 @@ import {
 	setupPostgres,
 	setupRedis,
 } from './n8n-test-container-dependencies';
+import { DockerImageNotFoundError } from './types';
 
 // --- Constants ---
 
@@ -62,6 +63,7 @@ export interface N8NConfig {
 				workers?: number;
 		  };
 	env?: Record<string, string>;
+	projectName?: string;
 }
 
 export interface N8NStack {
@@ -93,10 +95,10 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const { postgres = false, queueMode = false, env = {} } = config;
+	const { postgres = false, queueMode = false, env = {}, projectName } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
-	const uniqueProjectName = `n8n-${Math.random().toString(36).substring(7)}`;
+	const uniqueProjectName = projectName ?? `n8n-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
 	let network: StartedNetwork | undefined;
 	let nginxContainer: StartedTestContainer | undefined;
@@ -181,45 +183,47 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	return {
 		baseUrl,
 		stop: async () => {
-			const errors: Error[] = [];
-			try {
-				const stopPromises = containers.reverse().map(async (container) => {
-					try {
-						await container.stop();
-					} catch (error) {
-						errors.push(
-							new Error(`Failed to stop container ${container.getId()}: ${error as string}`),
-						);
-					}
-				});
-				await Promise.allSettled(stopPromises);
-
-				if (network) {
-					try {
-						await network.stop();
-					} catch (error) {
-						errors.push(
-							new Error(`Failed to stop network ${network.getName()}: ${error as string}`),
-						);
-					}
-				}
-
-				if (errors.length > 0) {
-					console.warn(
-						`Some cleanup operations failed for stack ${uniqueProjectName}:`,
-						errors.map((e) => e.message).join(', '),
-					);
-				}
-			} catch (error) {
-				console.error(`Critical error during cleanup for stack ${uniqueProjectName}:`, error);
-				throw error;
-			}
+			await stopN8NStack(containers, network, uniqueProjectName);
 		},
 		containers,
 	};
 }
 
-// --- Helper Functions ---
+async function stopN8NStack(
+	containers: StartedTestContainer[],
+	network: StartedNetwork | undefined,
+	uniqueProjectName: string,
+): Promise<void> {
+	const errors: Error[] = [];
+	try {
+		const stopPromises = containers.reverse().map(async (container) => {
+			try {
+				await container.stop();
+			} catch (error) {
+				errors.push(new Error(`Failed to stop container ${container.getId()}: ${error as string}`));
+			}
+		});
+		await Promise.allSettled(stopPromises);
+
+		if (network) {
+			try {
+				await network.stop();
+			} catch (error) {
+				errors.push(new Error(`Failed to stop network ${network.getName()}: ${error as string}`));
+			}
+		}
+
+		if (errors.length > 0) {
+			console.warn(
+				`Some cleanup operations failed for stack ${uniqueProjectName}:`,
+				errors.map((e) => e.message).join(', '),
+			);
+		}
+	} catch (error) {
+		console.error(`Critical error during cleanup for stack ${uniqueProjectName}:`, error);
+		throw error;
+	}
+}
 
 function normalizeQueueConfig(
 	queueMode: boolean | { mains?: number; workers?: number },
@@ -299,7 +303,7 @@ async function createN8NContainer({
 	isWorker,
 	instanceNumber,
 	networkAlias,
-}: CreateContainerOptions): StartedTestContainer {
+}: CreateContainerOptions): Promise<StartedTestContainer> {
 	let container = new GenericContainer(N8N_IMAGE);
 
 	container = container
@@ -326,17 +330,11 @@ async function createN8NContainer({
 	}
 
 	try {
-		await container.start();
+		return await container.start();
 	} catch (error) {
 		if (error instanceof Error && error.message.includes('failed to resolve reference')) {
-			console.error(`Failed to start container ${name}:`, error);
-			console.error('This is likely because the image is not available locally.');
-			console.error('To fix this, you can either:');
-			console.error('1. Build the image by running: pnpm build:docker at the root');
-			console.error('2. Use a different image by setting: N8N_DOCKER_IMAGE=<image-tag>');
-			throw error;
+			throw new DockerImageNotFoundError(name, error);
 		}
 		throw error;
 	}
-	return container;
 }

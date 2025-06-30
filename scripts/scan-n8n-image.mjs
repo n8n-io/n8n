@@ -14,10 +14,10 @@ const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
-// --- Configuration ---
+// #region ===== Configuration =====
 const config = {
-	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8n-local',
-	imageTag: process.env.IMAGE_TAG || 'dev',
+	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
+	imageTag: process.env.IMAGE_TAG || 'local',
 	trivyImage: process.env.TRIVY_IMAGE || 'aquasec/trivy:latest',
 	severity: process.env.TRIVY_SEVERITY || 'CRITICAL,HIGH,MEDIUM,LOW',
 	outputFormat: process.env.TRIVY_FORMAT || 'table',
@@ -56,7 +56,9 @@ const printSummary = (status, time, message) => {
 	echo(chalk.blue.bold('========================'));
 };
 
-// --- Main Process ---
+// #endregion ===== Configuration =====
+
+// #region ===== Main Process =====
 (async () => {
 	printHeader('Trivy Security Scan for n8n Image');
 
@@ -150,3 +152,5 @@ const printSummary = (status, time, message) => {
 		}
 	}
 })();
+
+// #endregion ===== Main Process =====
