@@ -1,1 +1,1 @@
-export const authWhitelistedNodes = new Set<string>(['@n8n/n8n-nodes-langchain.chatTrigger']);
+export const authAllowlistedNodes = new Set(['@n8n/n8n-nodes-langchain.chatTrigger']);
