@@ -1,7 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import {
+	AgentExecutor,
+	AgentExecutorInput,
+	AgentRunnableSequence,
+	createToolCallingAgent,
+	RunnableAgent,
+} from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
@@ -26,6 +32,16 @@ import {
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
 
+class WrappedAgentExecutor extends AgentExecutor {
+	constructor(input: AgentExecutorInput) {
+		super(input);
+
+		this.agent = new RunnableAgent({
+			runnable: input.agent as AgentRunnableSequence,
+			streamRunnable: false,
+		});
+	}
+}
 /**
  * Creates an agent executor with the given configuration
  */
@@ -52,7 +68,7 @@ function createAgentExecutor(
 		fixEmptyContentMessage,
 	]);
 
-	return AgentExecutor.fromAgentAndTools({
+	return new WrappedAgentExecutor({
 		agent: runnableAgent,
 		memory,
 		tools,
