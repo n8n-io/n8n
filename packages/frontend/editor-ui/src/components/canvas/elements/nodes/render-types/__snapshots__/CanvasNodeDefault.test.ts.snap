@@ -4,12 +4,11 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
-    class="n8n-node-icon"
+    class="n8n-node-icon icon icon"
     shrink="false"
   >
     <div
@@ -27,7 +26,6 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     </div>
   </div>
   <!--v-if-->
-  <!--v-if-->
   <div
     class="description"
   >
@@ -43,7 +41,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
       Test Node Subtitle
     </div>
   </div>
-  
+  <!--v-if-->
 </div>
 `;
 
@@ -51,12 +49,11 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 75px; --node-icon-size: 30px;"
 >
-  
   <!--v-if-->
   <div
-    class="n8n-node-icon"
+    class="n8n-node-icon icon icon"
     shrink="false"
   >
     <div
@@ -74,7 +71,6 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
     </div>
   </div>
   <!--v-if-->
-  <!--v-if-->
   <div
     class="description"
   >
@@ -90,7 +86,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
       Test Node Subtitle
     </div>
   </div>
-  
+  <!--v-if-->
 </div>
 `;
 
@@ -98,12 +94,11 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
-  
   <!--v-if-->
   <div
-    class="n8n-node-icon"
+    class="n8n-node-icon icon icon"
     shrink="false"
   >
     <div
@@ -121,7 +116,6 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
     </div>
   </div>
   <!--v-if-->
-  <!--v-if-->
   <div
     class="description"
   >
@@ -137,7 +131,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
       Test Node Subtitle
     </div>
   </div>
-  
+  <!--v-if-->
 </div>
 `;
 
@@ -145,12 +139,11 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
-    class="n8n-node-icon"
+    class="n8n-node-icon icon icon"
     shrink="false"
   >
     <div
@@ -168,7 +161,6 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     </div>
   </div>
   <!--v-if-->
-  <!--v-if-->
   <div
     class="description"
   >
@@ -184,7 +176,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
       Test Node Subtitle
     </div>
   </div>
-  
+  <!--v-if-->
 </div>
 `;
 
@@ -192,12 +184,11 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
-  
   <!--v-if-->
   <div
-    class="n8n-node-icon"
+    class="n8n-node-icon icon icon"
     shrink="false"
   >
     <div
@@ -215,7 +206,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     </div>
   </div>
   <!--v-if-->
-  <!--v-if-->
   <div
     class="description"
   >
@@ -231,6 +221,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
       Test Node Subtitle
     </div>
   </div>
-  
+  <!--v-if-->
 </div>
 `;

@@ -557,6 +557,40 @@ function activatePane() {
 						</i18n-t>
 					</N8nText>
 				</template>
+				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
+					<template #content>
+						<div
+							v-n8n-html="
+								i18n.baseText('dataMapping.dragFromPreviousHint', {
+									interpolate: { name: focusedMappableInput },
+								})
+							"
+						></div>
+					</template>
+					<NodeExecuteButton
+						type="secondary"
+						hide-icon
+						:transparent="true"
+						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+						class="mt-m"
+						telemetry-source="inputs"
+						data-test-id="execute-previous-node"
+						@execute="onNodeExecute"
+					/>
+				</N8nTooltip>
+				<N8nText v-if="!readOnly" tag="div" size="small">
+					<i18n-t keypath="ndv.input.noOutputData.hint">
+						<template #info>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</template>
+					</i18n-t>
+				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">
 				<NDVEmptyState v-if="isNDVV2" :title="i18n.baseText('ndv.input.notConnected.v2.title')">

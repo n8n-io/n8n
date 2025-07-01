@@ -7,7 +7,7 @@ import type {
 	Resource,
 	SortingAndPaginationUpdates,
 	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+} from '@/Interface';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
@@ -24,7 +24,6 @@ import { useToast } from '@/composables/useToast';
 import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
-	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -33,14 +32,12 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
 	FolderListItem,
-	IUser,
 	UserAction,
 	WorkflowListItem,
 	WorkflowListResource,
 } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -60,11 +57,12 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nButton,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
@@ -102,7 +100,6 @@ const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
@@ -148,7 +145,7 @@ const showCardsBadge = ref(false);
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
 const folderActions = computed<
-	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+	Array<UserAction<IUser> & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
 >(() => [
 	{
 		label: i18n.baseText('generic.open'),
@@ -183,16 +180,18 @@ const folderActions = computed<
 	},
 ]);
 
-const folderCardActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
-	),
+const folderCardActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
+		),
 );
 
-const mainBreadcrumbsActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
-	),
+const mainBreadcrumbsActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
+		),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -322,11 +321,8 @@ const statusFilterOptions = computed(() => [
 ]);
 
 const showEasyAIWorkflowCallout = computed(() => {
-	const isEasyAIWorkflowExperimentEnabled =
-		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
+	return !easyAIWorkflowOnboardingDone;
 });
 
 const projectPermissions = computed(() => {
@@ -764,13 +760,9 @@ function isValidProjectId(projectId: string) {
 
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
-	telemetry.track(
-		'User clicked test AI workflow',
-		{
-			source,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User clicked test AI workflow', {
+		source,
+	});
 
 	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
@@ -1600,23 +1592,23 @@ const onNameSubmit = async (name: string) => {
 			<N8nCallout
 				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
-				icon="robot"
+				icon="bot"
 				:class="$style['easy-ai-workflow-callout']"
 			>
 				{{ i18n.baseText('workflows.list.easyAI') }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
-						<n8n-button
+						<N8nButton
 							data-test-id="easy-ai-button"
 							size="small"
 							type="secondary"
 							@click="openAIWorkflow('callout')"
 						>
 							{{ i18n.baseText('generic.tryNow') }}
-						</n8n-button>
+						</N8nButton>
 						<N8nIcon
 							size="small"
-							icon="times"
+							icon="x"
 							:title="i18n.baseText('generic.dismiss')"
 							class="clickable"
 							@click="dismissEasyAICallout"
@@ -1779,10 +1771,17 @@ const onNameSubmit = async (name: string) => {
 						data-test-id="new-workflow-card"
 						@click="addWorkflow"
 					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.startFromScratch') }}
-						</N8nText>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								icon="file"
+								color="foreground-dark"
+								:strokeWidth="1"
+							/>
+							<N8nText size="large" class="mt-xs">
+								{{ i18n.baseText('workflows.empty.startFromScratch') }}
+							</N8nText>
+						</div>
 					</N8nCard>
 					<N8nCard
 						v-if="showEasyAIWorkflowCallout"
@@ -1791,10 +1790,12 @@ const onNameSubmit = async (name: string) => {
 						data-test-id="easy-ai-workflow-card"
 						@click="openAIWorkflow('empty')"
 					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-						<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.easyAI') }}
-						</N8nText>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon :class="$style.emptyStateCardIcon" icon="bot" color="foreground-dark" />
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.easyAI') }}
+							</N8nText>
+						</div>
 					</N8nCard>
 				</div>
 			</div>
@@ -1859,7 +1860,7 @@ const onNameSubmit = async (name: string) => {
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
-				<n8n-action-box
+				<N8nActionBox
 					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
@@ -1878,7 +1879,7 @@ const onNameSubmit = async (name: string) => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></n8n-action-box
+					</template></N8nActionBox
 				>
 			</div>
 		</template>
@@ -1921,12 +1922,17 @@ const onNameSubmit = async (name: string) => {
 	}
 }
 
+.emptyStateCardContent {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
 .emptyStateCardIcon {
 	font-size: 48px;
 
 	svg {
-		width: 48px !important;
-		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
 }

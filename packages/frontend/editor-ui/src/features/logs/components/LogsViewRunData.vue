@@ -6,8 +6,10 @@ import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import { PiPWindowSymbol } from '@/constants';
+import { isSubNodeLog } from '../logs.utils';
 
 const { title, logEntry, paneType } = defineProps<{
 	title: string;
@@ -18,16 +20,20 @@ const { title, logEntry, paneType } = defineProps<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 
+const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
+
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
-const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
+const isMultipleInput = computed(
+	() => paneType === 'input' && (logEntry.runData?.source.length ?? 0) > 1,
+);
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
-	if (logEntry.depth > 0 || paneType === 'output') {
+	if (isSubNodeLog(logEntry) || paneType === 'output') {
 		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
-	const source = logEntry.runData.source[0];
+	const source = logEntry.runData?.source[0];
 	const node = source && logEntry.workflow.getNode(source.previousNode);
 
 	if (!source || !node) {
@@ -46,8 +52,8 @@ const runDataProps = computed<
 const isExecuting = computed(
 	() =>
 		paneType === 'output' &&
-		(logEntry.runData.executionStatus === 'running' ||
-			logEntry.runData.executionStatus === 'waiting'),
+		(logEntry.runData?.executionStatus === 'running' ||
+			logEntry.runData?.executionStatus === 'waiting'),
 );
 
 function handleClickOpenNdv() {
@@ -63,6 +69,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
+		:key="`run-data${pipWindow ? '-pip' : ''}`"
 		:workflow="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
@@ -75,7 +82,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-edit="true"
 		:disable-hover-highlight="true"
 		:display-mode="displayMode"
-		:disable-ai-content="logEntry.depth === 0"
+		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"
 		table-header-bg-color="light"
 		@display-mode-change="handleChangeDisplayMode"

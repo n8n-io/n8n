@@ -1,10 +1,9 @@
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import {
 	getAdminPanelLoginCode,
 	getCurrentPlan,
@@ -14,6 +13,7 @@ import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/utils/rbac/permissions';
+import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -25,11 +25,12 @@ const DEFAULT_STATE: CloudPlanState = {
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
+	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 
 	const reset = () => {
+		currentUserCloudInfo.value = null;
 		state.data = null;
 		state.usage = null;
 	};
@@ -58,11 +59,10 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
+		let cloudUser: Cloud.UserAccount | null = null;
 		try {
-			await usersStore.fetchUserCloudAccount();
-			if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
-				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
-			}
+			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
+			currentUserCloudInfo.value = cloudUser;
 		} catch (error) {
 			throw new Error(error.message);
 		}
@@ -80,14 +80,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			plan = await getCurrentPlan(rootStore.restApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
-
-			if (userIsTrialing.value) {
-				if (trialExpired.value) {
-					useUIStore().pushBannerToStack('TRIAL_OVER');
-				} else {
-					useUIStore().pushBannerToStack('TRIAL');
-				}
-			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);
@@ -194,6 +186,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		trialExpired,
 		allExecutionsUsed,
 		hasCloudPlan,
+		currentUserCloudInfo,
 		generateCloudDashboardAutoLoginLink,
 		initialize,
 		getOwnerCurrentPlan,

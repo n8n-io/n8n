@@ -472,3 +472,10 @@ export function createUtmCampaignLink(nodeType: string, instanceId?: string) {
 		nodeType,
 	)}${instanceId ? '_' + instanceId : ''}`;
 }
+
+export const removeTrailingSlash = (url: string) => {
+	if (url.endsWith('/')) {
+		return url.slice(0, -1);
+	}
+	return url;
+};

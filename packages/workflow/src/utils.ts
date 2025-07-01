@@ -1,14 +1,11 @@
-import {
-	parse as esprimaParse,
-	Syntax,
-	type Node as SyntaxNode,
-	type ExpressionStatement,
-} from 'esprima-next';
+import { parse as esprimaParse, Syntax } from 'esprima-next';
+import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
 import { ApplicationError } from './errors/application.error';
+import { ExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
@@ -197,6 +194,23 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export const sleep = async (ms: number): Promise<void> =>
 	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
+	});
+
+export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
+	await new Promise((resolve, reject) => {
+		if (abortSignal?.aborted) {
+			reject(new ExecutionCancelledError(''));
+			return;
+		}
+
+		const timeout = setTimeout(resolve, ms);
+
+		const abortHandler = () => {
+			clearTimeout(timeout);
+			reject(new ExecutionCancelledError(''));
+		};
+
+		abortSignal?.addEventListener('abort', abortHandler, { once: true });
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {

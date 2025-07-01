@@ -18,7 +18,7 @@ import type {
 	ICredentialsResponse,
 	IUsedCredential,
 } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';

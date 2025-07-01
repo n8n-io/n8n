@@ -241,8 +241,8 @@ export const arrayMethods: NativeDoc = {
 				name: 'includes',
 				description: 'Returns <code>true</code> if the array contains the specified element',
 				examples: [
-					{ example: "['Bob', 'Bill', 'Nat'].indexOf('Nat')", evaluated: 'true' },
-					{ example: "['Bob', 'Bill', 'Nat'].indexOf('Nathan')", evaluated: 'false' },
+					{ example: "['Bob', 'Bill', 'Nat'].includes('Nat')", evaluated: 'true' },
+					{ example: "['Bob', 'Bill', 'Nat'].includes('Nathan')", evaluated: 'false' },
 				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes',

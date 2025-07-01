@@ -10,16 +10,13 @@ import {
 	createTestWorkflow,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { mockedStore } from '@/__tests__/utils';
-import { useSettingsStore } from '@/stores/settings.store';
-import { type FrontendSettings } from '@n8n/api-types';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
-	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	const aiNode = createTestNode({ name: 'AI Agent' });
 	const workflowData = createTestWorkflow({
@@ -84,11 +81,6 @@ describe('LogDetailsPanel', () => {
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
-
-		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isEnterpriseFeatureEnabled = {} as FrontendSettings['enterprise'];
-
-		localStorage.clear();
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {
@@ -154,5 +146,30 @@ describe('LogDetailsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 1000, clientY: 0 }));
 
 		expect(rendered.emitted()).toEqual({ toggleOutputOpen: [[false]] });
+	});
+
+	it('should display correct message when input data is empty', async () => {
+		const nodeA = createTestNode({ name: 'A' });
+		const nodeB = createTestNode({ name: 'B' });
+		const runDataA = createTestTaskData({ data: { [NodeConnectionTypes.Main]: [[{ json: {} }]] } });
+		const runDataB = createTestTaskData({ source: [{ previousNode: 'A' }] });
+		const workflow = createTestWorkflowObject({ nodes: [nodeA, nodeB] });
+		const rendered = render({
+			isOpen: true,
+			logEntry: createLogEntry({
+				node: nodeB,
+				runIndex: 0,
+				runData: runDataB,
+				workflow,
+				execution: { resultData: { runData: { A: [runDataA], B: [runDataB] } } },
+			}),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+		});
+
+		expect(
+			await within(rendered.getByTestId('log-details-input')).findByText(
+				"No fields - item(s) exist, but they're empty",
+			),
+		).toBeInTheDocument();
 	});
 });

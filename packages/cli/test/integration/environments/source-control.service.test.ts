@@ -1,4 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { createTeamProject } from '@n8n/backend-test-utils';
+import { createWorkflow } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -30,18 +33,14 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
 import type { ExportableWorkflow } from '@/environments.ee/source-control/types/exportable-workflow';
-import type { ResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+import type { RemoteResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
-import { createTeamProject } from '@test-integration/db/projects';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../shared/test-db';
 
 jest.mock('fast-glob');
 
@@ -68,7 +67,7 @@ function toExportableCredential(
 	cred: CredentialsEntity,
 	owner: Project | User,
 ): ExportableCredential {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {
@@ -97,7 +96,7 @@ function toExportableWorkflow(
 	owner: Project | User,
 	versionId?: string,
 ): ExportableWorkflow {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {

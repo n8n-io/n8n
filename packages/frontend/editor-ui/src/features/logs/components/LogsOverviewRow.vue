@@ -4,11 +4,11 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
 import upperFirst from 'lodash/upperFirst';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
-import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
@@ -35,13 +35,18 @@ const locale = useI18n();
 const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
-const isSettled = computed(
-	() =>
-		props.data.runData.executionStatus &&
-		!['running', 'waiting'].includes(props.data.runData.executionStatus),
+const isRunning = computed(() => props.data.runData?.executionStatus === 'running');
+const isWaiting = computed(() => props.data.runData?.executionStatus === 'waiting');
+const isSettled = computed(() => !isRunning.value && !isWaiting.value);
+const isError = computed(() => !!props.data.runData?.error);
+const statusTextKeyPath = computed<BaseTextKey>(() =>
+	isSettled.value ? 'logs.overview.body.summaryText.in' : 'logs.overview.body.summaryText.for',
 );
-const isError = computed(() => !!props.data.runData.error);
 const startedAtText = computed(() => {
+	if (props.data.runData === undefined) {
+		return '—';
+	}
+
 	const time = new Date(props.data.runData.startTime);
 
 	return locale.baseText('logs.overview.body.started', {
@@ -50,41 +55,39 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(props.data.runData.executionStatus));
+const statusText = computed(() => upperFirst(props.data.runData?.executionStatus ?? ''));
 const timeText = computed(() =>
-	locale.displayTimer(
-		isSettled.value
-			? props.data.runData.executionTime
-			: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
-		true,
-	),
+	props.data.runData
+		? locale.displayTimer(
+				isSettled.value
+					? props.data.runData.executionTime
+					: Math.floor((now.value - props.data.runData.startTime) / 1000) * 1000,
+				true,
+			)
+		: undefined,
 );
 
 const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
 );
 
-const hasChildren = computed(
-	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
-);
+const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
 
-function isLastChild(level: number) {
-	let parent = props.data.parent;
-	let data: LogEntry | undefined = props.data;
+const indents = computed(() => {
+	const ret: Array<{ straight: boolean; curved: boolean }> = [];
 
-	for (let i = 0; i < props.data.depth - level; i++) {
-		data = parent;
-		parent = parent?.parent;
+	let data: LogEntry = props.data;
+
+	while (data.parent !== undefined) {
+		const siblings = data.parent?.children ?? [];
+		const lastSibling = siblings[siblings.length - 1];
+
+		ret.unshift({ straight: lastSibling?.id !== data.id, curved: data === props.data });
+		data = data.parent;
 	}
 
-	const siblings = parent?.children ?? [];
-	const lastSibling = siblings[siblings.length - 1];
-
-	return (
-		(data === undefined && lastSibling === undefined) ||
-		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
-	);
-}
+	return ret;
+});
 
 // Focus when selected: For scrolling into view and for keyboard navigation to work
 watch(
@@ -115,16 +118,16 @@ watch(
 		}"
 		@click.stop="emit('toggleSelected')"
 	>
-		<template v-for="level in props.data.depth" :key="level">
-			<div
-				:class="{
-					[$style.indent]: true,
-					[$style.connectorCurved]: level === props.data.depth,
-					[$style.connectorStraight]: !isLastChild(level),
-				}"
-			/>
-		</template>
-		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
+		<div
+			v-for="(indent, level) in indents"
+			:key="level"
+			:class="{
+				[$style.indent]: true,
+				[$style.connectorCurved]: indent.curved,
+				[$style.connectorStraight]: indent.straight,
+			}"
+		/>
+		<div :class="$style.background" :style="{ '--indent-depth': indents.length }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<LogsViewNodeName
 			:class="$style.name"
@@ -134,23 +137,18 @@ watch(
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
 		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
-			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText.in">
+			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath">
 				<template #status>
-					<N8nText v-if="isError" color="danger" :bold="true" size="small">
-						<N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />
+					<N8nText :color="isError ? 'danger' : undefined" :bold="isError" size="small">
+						<AnimatedSpinner v-if="isRunning" :class="$style.statusTextIcon" />
+						<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusTextIcon" />
+						<N8nIcon v-else-if="isError" icon="triangle-alert" :class="$style.statusTextIcon" />
 						{{ statusText }}
 					</N8nText>
-					<template v-else>{{ statusText }}</template>
 				</template>
 				<template #time>{{ timeText }}</template>
 			</I18nT>
-			<template v-else>
-				{{
-					locale.baseText('logs.overview.body.summaryText.for', {
-						interpolate: { status: statusText, time: timeText },
-					})
-				}}
-			</template>
+			<template v-else>—</template>
 		</N8nText>
 		<N8nText
 			v-if="!isCompact"
@@ -179,18 +177,17 @@ watch(
 			v-if="isError && isCompact"
 			size="medium"
 			color="danger"
-			icon="exclamation-triangle"
+			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
 			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
-			size="medium"
-			icon="edit"
-			style="color: var(--color-text-base)"
+			size="small"
+			icon="square-pen"
+			icon-size="medium"
 			:style="{
 				visibility: props.canOpenNdv ? '' : 'hidden',
-				color: 'var(--color-text-base)',
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -205,27 +202,29 @@ watch(
 			type="secondary"
 			size="small"
 			icon="play"
-			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
+			:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution')"
 		/>
+		<template v-if="isCompact && !hasChildren">
+			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
+			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
+		</template>
 		<N8nButton
 			v-if="!isCompact || hasChildren"
 			type="secondary"
 			size="small"
+			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
+			icon-size="medium"
 			:square="true"
 			:style="{
 				visibility: hasChildren ? '' : 'hidden',
-				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded')"
-		>
-			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
-		</N8nButton>
+		/>
 	</div>
 </template>
 
@@ -237,6 +236,8 @@ watch(
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
+	padding-inline-end: var(--spacing-5xs);
+	cursor: pointer;
 
 	& > * {
 		overflow: hidden;
@@ -264,7 +265,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--color-danger-tint-2);
+		background-color: var(--color-callout-danger-background);
 	}
 }
 
@@ -315,8 +316,8 @@ watch(
 	flex-shrink: 0;
 	width: 20%;
 
-	.errorIcon {
-		margin-right: var(--spacing-4xs);
+	.statusTextIcon {
+		margin-right: var(--spacing-5xs);
 		vertical-align: text-bottom;
 	}
 }
@@ -337,6 +338,10 @@ watch(
 .compactErrorIcon {
 	flex-grow: 0;
 	flex-shrink: 0;
+	width: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	.container:hover & {
 		display: none;
@@ -372,10 +377,6 @@ watch(
 	align-items: center;
 	justify-content: center;
 
-	&:last-child {
-		margin-inline-end: var(--spacing-5xs);
-	}
-
 	&:hover {
 		background: transparent;
 	}
@@ -387,5 +388,18 @@ watch(
 
 .toggleButton {
 	display: inline-flex;
+}
+
+.statusIcon {
+	color: var(--color-text-light);
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: 26px;
+	height: 26px;
+	padding: var(--spacing-3xs);
+
+	&.placeholder {
+		color: transparent;
+	}
 }
 </style>

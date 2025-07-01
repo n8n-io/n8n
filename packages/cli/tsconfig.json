@@ -22,7 +22,7 @@
 	"references": [
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../nodes-base/tsconfig.build.json" },
-		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../@n8n/api-types/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
@@ -30,7 +30,7 @@
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
 		{ "path": "../@n8n/db/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
-		{ "path": "../@n8n/integration-test-utils/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }

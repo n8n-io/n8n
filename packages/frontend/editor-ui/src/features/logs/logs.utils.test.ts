@@ -9,6 +9,7 @@ import {
 	createLogTree,
 	deepToRaw,
 	findSelectedLogEntry,
+	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
 	getTreeNodeData,
 	mergeStartData,
@@ -20,7 +21,12 @@ import {
 	type ExecutionError,
 	type ITaskStartedData,
 } from 'n8n-workflow';
-import { createTestLogTreeCreationContext } from './__test__/data';
+import {
+	aiAgentNode,
+	aiChatWorkflow,
+	aiModelNode,
+	createTestLogTreeCreationContext,
+} from './__test__/data';
 import type { LogEntrySelection } from './logs.types';
 import type { IExecutionResponse } from '@/Interface';
 import { isReactive, reactive } from 'vue';
@@ -29,10 +35,11 @@ import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
+		const nodeA = createTestNode({ name: 'A', id: 'test-node-id-a' });
 		const workflow = createTestWorkflowObject({
 			id: 'test-wf-id',
 			nodes: [
-				createTestNode({ name: 'A', id: 'test-node-id-a' }),
+				nodeA,
 				createTestNode({ name: 'B', id: 'test-node-id-b' }),
 				createTestNode({ name: 'C', id: 'test-node-id-c' }),
 			],
@@ -68,55 +75,48 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({ startTime: 1740528000004 }),
 			],
 		});
-		const logTree = getTreeNodeData('A', ctx.data.resultData.runData.A[0], undefined, ctx);
+		const logTree = getTreeNodeData(nodeA, ctx.data.resultData.runData.A[0], undefined, ctx);
 
 		expect(logTree.length).toBe(1);
 
-		expect(logTree[0].id).toBe('test-wf-id:A:test-execution-id:0');
-		expect(logTree[0].depth).toBe(0);
+		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0');
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
-		expect(logTree[0].runData.startTime).toBe(1740528000000);
+		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
-		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
-		expect(logTree[0].children[0].depth).toBe(1);
+		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
-		expect(logTree[0].children[0].runData.startTime).toBe(1740528000001);
+		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
 		expect(logTree[0].children[0].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
 
-		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:C:test-execution-id:0');
-		expect(logTree[0].children[0].children[0].depth).toBe(2);
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
-		expect(logTree[0].children[1].id).toBe('test-wf-id:B:test-execution-id:1');
-		expect(logTree[0].children[1].depth).toBe(1);
+		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
 		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
-		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:C:test-execution-id:1');
-		expect(logTree[0].children[1].children[0].depth).toBe(2);
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
 	});
 
 	it('should filter node executions based on source node', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
-			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
-				createTestNode({ name: 'SharedSubNode' }),
-			],
+			nodes: [rootNode1, rootNode2, createTestNode({ name: 'SharedSubNode' })],
 			connections: {
 				SharedSubNode: {
 					ai_tool: [
@@ -159,7 +159,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -170,7 +170,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -181,8 +181,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter node executions based on source run index', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -216,7 +217,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for run #1 of RootNode - should only show SubNode with source run index 0
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			0,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -227,7 +228,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for run #2 of RootNode - should only show SubNode with source run index 1
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[1],
 			1,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -238,8 +239,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes without source information', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -267,7 +269,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode - should still show SubNode even without source info
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -278,8 +280,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes with empty source array', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -307,7 +310,7 @@ describe(getTreeNodeData, () => {
 
 		// Test for RootNode - should still show SubNode even with empty source array
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -318,8 +321,9 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should include nodes with source array without previous node', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
 		const workflow = createTestWorkflowObject({
-			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			nodes: [rootNode, createTestNode({ name: 'SubNode' })],
 			connections: {
 				SubNode: {
 					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
@@ -334,7 +338,7 @@ describe(getTreeNodeData, () => {
 		};
 
 		const rootNodeTree = getTreeNodeData(
-			'RootNode',
+			rootNode,
 			runData.RootNode[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -345,10 +349,12 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter deeper nested nodes based on source', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
 			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
+				rootNode1,
+				rootNode2,
 				createTestNode({ name: 'SharedSubNode' }),
 				createTestNode({ name: 'DeepSubNode' }),
 			],
@@ -383,13 +389,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					executionIndex: 2,
-					source: [{ previousNode: 'RootNode1' }],
+					source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode1' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					executionIndex: 3,
-					source: [{ previousNode: 'RootNode2' }],
+					source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode2' } }]] },
 				}),
 			],
@@ -397,13 +403,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:04.000Z'),
 					executionIndex: 4,
-					source: [{ previousNode: 'SharedSubNode' }],
+					source: [{ previousNode: 'SharedSubNode', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SharedSubNode run 0' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:05.000Z'),
 					executionIndex: 5,
-					source: [{ previousNode: 'SharedSubNode' }],
+					source: [{ previousNode: 'SharedSubNode', previousNodeRun: 1 }],
 					data: { main: [[{ json: { result: 'from SharedSubNode run 1' } }]] },
 				}),
 			],
@@ -411,7 +417,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode1
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -425,7 +431,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode2
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -439,10 +445,12 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should handle complex tree with multiple branches and filters correctly', () => {
+		const rootNode1 = createTestNode({ name: 'RootNode1' });
+		const rootNode2 = createTestNode({ name: 'RootNode2' });
 		const workflow = createTestWorkflowObject({
 			nodes: [
-				createTestNode({ name: 'RootNode1' }),
-				createTestNode({ name: 'RootNode2' }),
+				rootNode1,
+				rootNode2,
 				createTestNode({ name: 'SubNodeA' }),
 				createTestNode({ name: 'SubNodeB' }),
 				createTestNode({ name: 'DeepNode' }),
@@ -481,7 +489,7 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					executionIndex: 2,
-					source: [{ previousNode: 'RootNode1' }],
+					source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode1' } }]] },
 				}),
 			],
@@ -489,7 +497,7 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					executionIndex: 3,
-					source: [{ previousNode: 'RootNode2' }],
+					source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode2' } }]] },
 				}),
 			],
@@ -497,13 +505,13 @@ describe(getTreeNodeData, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:04.000Z'),
 					executionIndex: 4,
-					source: [{ previousNode: 'SubNodeA' }],
+					source: [{ previousNode: 'SubNodeA', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SubNodeA' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:05.000Z'),
 					executionIndex: 5,
-					source: [{ previousNode: 'SubNodeB' }],
+					source: [{ previousNode: 'SubNodeB', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from SubNodeB' } }]] },
 				}),
 			],
@@ -511,7 +519,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode1 -> SubNodeA -> DeepNode
 		const rootNode1Tree = getTreeNodeData(
-			'RootNode1',
+			rootNode1,
 			runData.RootNode1[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -524,7 +532,7 @@ describe(getTreeNodeData, () => {
 
 		// Test filtering for RootNode2 -> SubNodeB -> DeepNode
 		const rootNode2Tree = getTreeNodeData(
-			'RootNode2',
+			rootNode2,
 			runData.RootNode2[0],
 			undefined,
 			createTestLogTreeCreationContext(workflow, runData),
@@ -541,14 +549,15 @@ describe(getTreeNodeData, () => {
 });
 
 describe(findSelectedLogEntry, () => {
-	function find(state: LogEntrySelection, response: IExecutionResponse) {
+	function find(state: LogEntrySelection, response: IExecutionResponse, isExecuting: boolean) {
 		return findSelectedLogEntry(
 			state,
 			createLogTree(createTestWorkflowObject(response.workflowData), response),
+			isExecuting,
 		);
 	}
 
-	describe('when log is not manually selected', () => {
+	describe('when execution is finished and log is not manually selected', () => {
 		it('should return undefined if no execution data exists', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
@@ -561,7 +570,7 @@ describe(findSelectedLogEntry, () => {
 				data: { resultData: { runData: {} } },
 			});
 
-			expect(find({ type: 'initial' }, response)).toBe(undefined);
+			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
 		});
 
 		it('should return first log entry with error', () => {
@@ -576,19 +585,27 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -612,19 +629,27 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -641,24 +666,55 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			);
 		});
 
-		it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+		it('should return first log entry with error when it appears after a log entry for AI agent', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
+							C: [
+								createTestTaskData({
+									executionStatus: 'success',
+									error: {} as ExecutionError,
+									startTime: 2,
+								}),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 0 }),
+			);
+		});
+
+		it('should return last log entry if there is no log entry with error nor executed AI agent node', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
 					nodes: [
@@ -670,47 +726,97 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
-				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 2 }),
 			);
 		});
 	});
 
 	describe('when log is manually selected', () => {
-		it('should return manually selected log', () => {
-			const response = createTestWorkflowExecutionResponse({
-				id: 'my-exec-id',
-				workflowData: createTestWorkflow({
-					id: 'test-wf-id',
-					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
-				}),
-				data: {
-					resultData: {
-						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
-						},
+		const nodeA = createTestNode({ name: 'A', id: 'a' });
+		const nodeB = createTestNode({ name: 'B', id: 'b' });
+		const workflowData = createTestWorkflow({
+			id: 'test-wf-id',
+			nodes: [nodeA, nodeB],
+		});
+		const response = createTestWorkflowExecutionResponse({
+			workflowData,
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+						],
+						B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
 					},
 				},
-			});
+			},
+		});
 
-			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
+		it('should return manually selected log', () => {
+			const result = find(
+				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0' }) },
+				response,
+				false,
+			);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			);
+		});
+
+		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				false,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
+			);
+		});
+
+		it('should not fallback to the closest run index while executing', () => {
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				true,
+			);
+
+			expect(result).toBe(undefined);
 		});
 	});
 });
@@ -896,28 +1002,24 @@ describe(createLogTree, () => {
 		expect(logs).toHaveLength(2);
 
 		expect(logs[0].node.name).toBe('A');
-		expect(logs[0].depth).toBe(0);
 		expect(logs[0].workflow).toBe(workflow);
 		expect(logs[0].execution).toBe(rootExecutionData.data);
 		expect(logs[0].executionId).toBe('root-exec-id');
 		expect(logs[0].children).toHaveLength(0);
 
 		expect(logs[1].node.name).toBe('B');
-		expect(logs[1].depth).toBe(0);
 		expect(logs[1].workflow).toBe(workflow);
 		expect(logs[1].execution).toBe(rootExecutionData.data);
 		expect(logs[1].executionId).toBe('root-exec-id');
 		expect(logs[1].children).toHaveLength(2);
 
 		expect(logs[1].children[0].node.name).toBe('C');
-		expect(logs[1].children[0].depth).toBe(1);
 		expect(logs[1].children[0].workflow).toBe(subWorkflow);
 		expect(logs[1].children[0].execution).toBe(subExecutionData);
 		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[0].children).toHaveLength(0);
 
 		expect(logs[1].children[1].node.name).toBe('C');
-		expect(logs[1].children[1].depth).toBe(1);
 		expect(logs[1].children[1].workflow).toBe(subWorkflow);
 		expect(logs[1].children[1].execution).toBe(subExecutionData);
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
@@ -985,6 +1087,88 @@ describe(createLogTree, () => {
 		expect(logs[0].children[1].children).toHaveLength(2);
 		expect(logs[0].children[1].children[0].node.name).toBe('C');
 		expect(logs[0].children[1].children[1].node.name).toBe('C');
+	});
+
+	it('should not include nodes without run data', () => {
+		const logs = createLogTree(
+			createTestWorkflowObject(aiChatWorkflow),
+			createTestWorkflowExecutionResponse({ data: { resultData: { runData: {} } } }),
+		);
+
+		expect(logs).toHaveLength(0);
+	});
+
+	it('should include sub node log without run data in its root node', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject(aiChatWorkflow),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe(aiAgentNode.name);
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should include sub node log with its root node disabled', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				...aiChatWorkflow,
+				nodes: [{ ...aiAgentNode, disabled: true }, aiModelNode],
+			}),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe(aiAgentNode.name);
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should not include duplicate sub node log when the node belongs to multiple root nodes with no run data', () => {
+		const taskData = createTestTaskData({
+			source: [{ previousNode: 'PartialExecutionToolExecutor' }],
+		});
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				nodes: [
+					{ ...aiAgentNode, name: 'Agent A' },
+					{ ...aiAgentNode, name: 'Agent B' },
+					aiModelNode,
+				],
+				connections: {
+					[aiModelNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[
+								{ node: 'Agent A', index: 0, type: NodeConnectionTypes.AiLanguageModel },
+								{ node: 'Agent B', index: 0, type: NodeConnectionTypes.AiLanguageModel },
+							],
+						],
+					},
+				},
+			}),
+			createTestWorkflowExecutionResponse({
+				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+			}),
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe('Agent B');
+		expect(logs[0].runData).toBe(undefined);
+		expect(logs[0].children).toHaveLength(1);
+		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
 	});
 });
 
@@ -1175,5 +1359,45 @@ describe(restoreChatHistory, () => {
 			{ id: expect.any(String), sender: 'user', text: 'test input' },
 			{ id: 'test-exec-id', sender: 'bot', text: 'test output' },
 		]);
+	});
+});
+
+describe(findSubExecutionLocator, () => {
+	it('should return undefined if given log entry has no related sub execution', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					metadata: {},
+				}),
+			}),
+		);
+
+		expect(found).toBe(undefined);
+	});
+
+	it('should find workflowId and executionId in metadata', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+			}),
+		);
+
+		expect(found).toEqual({ workflowId: 'w0', executionId: 'e0' });
+	});
+
+	it('should find workflowId and executionId in error object', () => {
+		const found = findSubExecutionLocator(
+			createTestLogEntry({
+				runData: createTestTaskData({
+					error: {
+						errorResponse: { workflowId: 'w1', executionId: 'e1' },
+					} as unknown as ExecutionError,
+				}),
+			}),
+		);
+
+		expect(found).toEqual({ workflowId: 'w1', executionId: 'e1' });
 	});
 });

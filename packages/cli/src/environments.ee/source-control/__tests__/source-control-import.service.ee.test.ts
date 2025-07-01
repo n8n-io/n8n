@@ -66,9 +66,14 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				owner: {
+					type: 'personal',
+					personalEmail: 'email@email.com',
+				},
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+			sourceControlScopedService.getAdminProjectsFromContext.mockResolvedValueOnce([]);
 
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });

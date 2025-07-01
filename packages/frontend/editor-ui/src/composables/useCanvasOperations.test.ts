@@ -7,18 +7,12 @@ import type {
 	INodeConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type {
-	ICredentialsResponse,
-	IExecutionResponse,
-	INodeUi,
-	IWorkflowDb,
-	IWorkflowTemplate,
-	IWorkflowTemplateNode,
-} from '@/Interface';
+import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -532,15 +526,11 @@ describe('useCanvasOperations', () => {
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
 
-			expect(useTelemetry().track).toHaveBeenCalledWith(
-				'User tidied up canvas',
-				{
-					nodes_count: 2,
-					source: 'canvas-button',
-					target: 'all',
-				},
-				{ withPostHog: true },
-			);
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'all',
+			});
 		});
 	});
 
@@ -1040,6 +1030,35 @@ describe('useCanvasOperations', () => {
 			await renameNode(oldName, oldName);
 
 			expect(ndvStore.activeNodeName).toBe(oldName);
+		});
+
+		it('should show error toast when renameNode throws an error', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const ndvStore = mockedStore(useNDVStore);
+			const toast = useToast();
+			const oldName = 'Old Node';
+			const newName = 'New Node';
+			const errorMessage = 'Node name already exists';
+			const errorDescription = 'Please choose a different name';
+
+			const workflowObject = createTestWorkflowObject();
+			workflowObject.renameNode = vi.fn().mockImplementation(() => {
+				const error = new UserError(errorMessage, { description: errorDescription });
+				throw error;
+			});
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			const { renameNode } = useCanvasOperations();
+			await renameNode(oldName, newName);
+
+			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: errorMessage,
+				message: errorDescription,
+			});
 		});
 	});
 

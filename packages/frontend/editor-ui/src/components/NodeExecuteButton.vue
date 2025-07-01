@@ -26,10 +26,12 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { type IUpdateInformation } from '@/Interface';
+import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
+import type { ButtonType } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -41,8 +43,8 @@ const props = withDefaults(
 		telemetrySource: string;
 		disabled?: boolean;
 		label?: string;
-		type?: string;
-		size?: string;
+		type?: ButtonType;
+		size?: ButtonSize;
 		transparent?: boolean;
 		hideIcon?: boolean;
 		tooltip?: string;
@@ -221,9 +223,9 @@ const isLoading = computed(
 		(isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value),
 );
 
-const buttonIcon = computed(() => {
+const buttonIcon = computed((): IconName | undefined => {
 	if (shouldGenerateCode.value) return 'terminal';
-	if (!isListeningForEvents.value && !props.hideIcon) return 'play';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'flask-conical';
 	return undefined;
 });
 

@@ -10,6 +10,7 @@ import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -246,18 +247,15 @@ export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 /**
  * Inserts spacers between endpoints to visually separate them
  */
-export function insertSpacersBetweenEndpoints<T>(
-	endpoints: T[],
-	requiredEndpointsCount = 0,
-	minEndpointsCount = 4,
-) {
+export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpointsCount = 0) {
 	const endpointsWithSpacers: Array<T | null> = [...endpoints];
 	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
-	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
+	const spacerCount =
+		NODE_MIN_INPUT_ITEMS_COUNT - requiredEndpointsCount - optionalNonMainInputsCount;
 
 	// Insert `null` in between required non-main inputs and non-required non-main inputs
-	// to separate them visually if there are less than 4 inputs in total
-	if (endpointsWithSpacers.length < minEndpointsCount) {
+	// to separate them visually if there are less than `minEndpointsCount` inputs in total
+	if (endpointsWithSpacers.length < NODE_MIN_INPUT_ITEMS_COUNT) {
 		for (let i = 0; i < spacerCount; i++) {
 			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
 		}

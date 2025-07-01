@@ -26,9 +26,9 @@ const emit = defineEmits<{
 			v-if="!isReadOnly"
 			type="tertiary"
 			:class="['n8n-input', $style.overrideCloseButton]"
-			outline="false"
-			icon="xmark"
-			size="xsmall"
+			:outline="false"
+			icon="x"
+			size="mini"
 			@click="emit('close')"
 		/>
 	</div>

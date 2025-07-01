@@ -17,36 +17,26 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
-function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeInputConfiguration> {
+function getInputs(
+	hasOutputParser?: boolean,
+	needsFallback?: boolean,
+): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
 		filter?: INodeInputFilter;
+		displayName: string;
 		required?: boolean;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
 	): Array<NodeConnectionType | INodeInputConfiguration> => {
-		const displayNames: { [key: string]: string } = {
-			ai_languageModel: 'Model',
-			ai_memory: 'Memory',
-			ai_tool: 'Tool',
-			ai_outputParser: 'Output Parser',
-		};
-
-		return inputs.map(({ type, filter }) => {
-			const isModelType = type === 'ai_languageModel';
-			let displayName = type in displayNames ? displayNames[type] : undefined;
-			if (isModelType) {
-				displayName = 'Chat Model';
-			}
+		return inputs.map(({ type, filter, displayName, required }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName,
-				required: isModelType,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				required,
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -62,38 +52,49 @@ function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeI
 	let specialInputs: SpecialInput[] = [
 		{
 			type: 'ai_languageModel',
+			displayName: 'Chat Model',
+			required: true,
 			filter: {
-				nodes: [
-					'@n8n/n8n-nodes-langchain.lmChatAnthropic',
-					'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-					'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
-					'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-					'@n8n/n8n-nodes-langchain.lmChatOllama',
-					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					'@n8n/n8n-nodes-langchain.lmChatGroq',
-					'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
-					'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-					'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
-					'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-					'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
-					'@n8n/n8n-nodes-langchain.code',
+				excludedNodes: [
+					'@n8n/n8n-nodes-langchain.lmCohere',
+					'@n8n/n8n-nodes-langchain.lmOllama',
+					'n8n/n8n-nodes-langchain.lmOpenAi',
+					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
 				],
 			},
 		},
 		{
+			type: 'ai_languageModel',
+			displayName: 'Fallback Model',
+			required: true,
+			filter: {
+				excludedNodes: [
+					'@n8n/n8n-nodes-langchain.lmCohere',
+					'@n8n/n8n-nodes-langchain.lmOllama',
+					'n8n/n8n-nodes-langchain.lmOpenAi',
+					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+				],
+			},
+		},
+		{
+			displayName: 'Memory',
 			type: 'ai_memory',
 		},
 		{
+			displayName: 'Tool',
 			type: 'ai_tool',
-			required: true,
 		},
 		{
+			displayName: 'Output Parser',
 			type: 'ai_outputParser',
 		},
 	];
 
 	if (hasOutputParser === false) {
 		specialInputs = specialInputs.filter((input) => input.type !== 'ai_outputParser');
+	}
+	if (needsFallback === false) {
+		specialInputs = specialInputs.filter((input) => input.displayName !== 'Fallback Model');
 	}
 	return ['main', ...getInputData(specialInputs)];
 }
@@ -110,18 +111,18 @@ export class AgentV2 implements INodeType {
 				color: '#404040',
 			},
 			inputs: `={{
-				((hasOutputParser) => {
+				((hasOutputParser, needsFallback) => {
 					${getInputs.toString()};
-					return getInputs(hasOutputParser)
-				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
+					return getInputs(hasOutputParser, needsFallback)
+				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'notice_tip',
-					type: 'notice',
+						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
+					name: 'aiAgentStarterCallout',
+					type: 'callout',
 					default: '',
 				},
 				promptTypeOptions,
@@ -156,6 +157,25 @@ export class AgentV2 implements INodeType {
 					displayOptions: {
 						show: {
 							hasOutputParser: [true],
+						},
+					},
+				},
+				{
+					displayName: 'Enable Fallback Model',
+					name: 'needsFallback',
+					type: 'boolean',
+					default: false,
+					noDataExpression: true,
+				},
+				{
+					displayName:
+						'Connect an additional language model on the canvas to use it as a fallback if the main model fails',
+					name: 'fallbackNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							needsFallback: [true],
 						},
 					},
 				},

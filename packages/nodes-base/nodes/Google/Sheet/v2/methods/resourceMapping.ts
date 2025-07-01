@@ -70,7 +70,7 @@ export async function getMappingColumns(
 			required: false,
 			defaultMatch: false,
 			display: true,
-			type: 'string',
+			type: 'number',
 			canBeUsedToMatch: true,
 			readOnly: true,
 			removed: true,

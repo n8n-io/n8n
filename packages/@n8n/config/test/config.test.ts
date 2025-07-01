@@ -33,6 +33,24 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 		},
+		defaultLocale: 'en',
+		hideUsagePage: false,
+		deployment: {
+			type: 'default',
+		},
+		mfa: {
+			enabled: true,
+		},
+		hiringBanner: {
+			enabled: true,
+		},
+		personalization: {
+			enabled: true,
+		},
+		proxy_hops: 0,
+		ssl_key: '',
+		ssl_cert: '',
+		editorBaseUrl: '',
 		database: {
 			logging: {
 				enabled: false,
@@ -103,6 +121,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-shared': '',
+					'project-shared': '',
 				},
 			},
 		},
@@ -143,6 +162,8 @@ describe('GlobalConfig', () => {
 		versionNotifications: {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',
+			whatsNewEnabled: true,
+			whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
 		workflows: {

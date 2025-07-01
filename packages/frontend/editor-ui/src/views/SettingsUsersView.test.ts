@@ -91,8 +91,7 @@ describe('SettingsUsersView', () => {
 
 	it('hides invite button visibility based on user permissions', async () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
-		const userStore = useUsersStore(pinia);
-		// @ts-expect-error: mocked getter
+		const userStore = mockedStore(useUsersStore);
 		userStore.currentUser = createUser({ isDefaultUser: true });
 
 		const { queryByTestId } = renderView({ pinia });
@@ -103,9 +102,8 @@ describe('SettingsUsersView', () => {
 	describe('Below quota', () => {
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 
-		const settingsStore = useSettingsStore(pinia);
-		// @ts-expect-error: mocked getter
-		settingsStore.isBelowUserQuota = false;
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.usersLimitNotReached = false;
 
 		it('disables the invite button', async () => {
 			const { getByTestId } = renderView({ pinia });
@@ -180,8 +178,7 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
+			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isSmtpSetup = true;
 
 			const userStore = useUsersStore();
@@ -236,9 +233,8 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
-			settingsStore.isSamlLoginEnabled = true;
+			const ssoStore = useSSOStore(pinia);
+			ssoStore.isSamlLoginEnabled = true;
 
 			const userStore = useUsersStore();
 
@@ -256,9 +252,8 @@ describe('SettingsUsersView', () => {
 
 			const pinia = createTestingPinia({ initialState: getInitialState() });
 
-			const settingsStore = useSettingsStore(pinia);
-			// @ts-expect-error: mocked getter
-			settingsStore.isSamlLoginEnabled = true;
+			const ssoStore = useSSOStore(pinia);
+			ssoStore.isSamlLoginEnabled = true;
 
 			const userStore = useUsersStore();
 

@@ -829,7 +829,8 @@ export type SSHCredentials = {
 );
 
 export interface SSHTunnelFunctions {
-	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
+	getSSHClient(credentials: SSHCredentials, abortController?: AbortController): Promise<SSHClient>;
+	updateLastUsed(client: SSHClient): void;
 }
 
 type CronUnit = number | '*' | `*/${number}`;
@@ -918,6 +919,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendChunk(type: ChunkType, content?: IDataObject | string): void;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -930,6 +932,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
+			sourceNodeRunIndex?: number,
 		): void;
 
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
@@ -1147,6 +1150,15 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
+
+	// forces the node to execute a particular custom operation
+	// based on resource and operation
+	// instead of calling default execute function
+	// used by evaluations test-runner
+	forceCustomOperation?: {
+		resource: string;
+		operation: string;
+	};
 }
 
 export interface IPinData {
@@ -1209,7 +1221,7 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	__rl: true;
 	mode: ResourceLocatorModes;
-	value: NodeParameterValue;
+	value: Exclude<NodeParameterValue, boolean>;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
 	__regex?: string;
@@ -1241,6 +1253,7 @@ export type NodePropertyTypes =
 	| 'fixedCollection'
 	| 'hidden'
 	| 'json'
+	| 'callout'
 	| 'notice'
 	| 'multiOptions'
 	| 'number'
@@ -1284,6 +1297,12 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
+export type CalloutActionType = 'openRagStarterTemplate';
+export interface CalloutAction {
+	type: CalloutActionType;
+	label: string;
+}
+
 export interface INodePropertyTypeOptions {
 	// Supported by: button
 	buttonConfig?: {
@@ -1316,6 +1335,7 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	calloutAction?: CalloutAction; // Supported by: callout
 	[key: string]: any;
 }
 
@@ -1888,7 +1908,8 @@ export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
-	nodes: string[]; // Allowed nodes
+	nodes?: string[]; // Allowed nodes
+	excludedNodes?: string[];
 }
 
 export interface INodeInputConfiguration {
@@ -2075,7 +2096,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
+export type WebhookResponseMode =
+	| 'onReceived'
+	| 'lastNode'
+	| 'responseNode'
+	| 'formPage'
+	| 'streaming';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2125,6 +2151,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to
@@ -2134,6 +2163,7 @@ export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		originalDestinationNode?: string;
 		runNodeFilter?: string[];
 	};
 	resultData: {
@@ -2302,6 +2332,8 @@ export interface IWorkflowExecutionDataProcess {
 		data?: ITaskData;
 	};
 	agentRequest?: AiAgentRequest;
+	httpResponse?: express.Response; // Used for streaming responses
+	streamingEnabled?: boolean;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2825,6 +2857,7 @@ export interface IUserSettings {
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
+	dismissedCallouts?: Record<string, boolean>;
 }
 
 export interface IProcessedDataConfig {
@@ -2892,3 +2925,14 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSource?: string | null;
 	reportedSourceOther?: string | null;
 };
+
+export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export interface StructuredChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		nodeId: string;
+		nodeName: string;
+		timestamp: number;
+	};
+}

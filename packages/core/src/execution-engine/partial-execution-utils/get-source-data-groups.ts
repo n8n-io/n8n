@@ -1,4 +1,4 @@
-import { type INode, type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { GraphConnection, DirectedGraph } from './directed-graph';
 
@@ -99,7 +99,7 @@ export function getSourceDataGroups(
 
 		if (hasData) {
 			sortedConnectionsWithData.push(connection);
-		} else {
+		} else if (connection.type === NodeConnectionTypes.Main) {
 			sortedConnectionsWithoutData.push(connection);
 		}
 	}

@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import type { Tool } from '@langchain/core/tools';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -6,6 +5,10 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 
+import type {
+	FlushingSSEServerTransport,
+	FlushingStreamableHTTPTransport,
+} from '../FlushingTransport';
 import type { McpServerManager } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
@@ -22,7 +25,7 @@ jest.mock('../McpServer', () => ({
 describe('McpTrigger Node', () => {
 	const sessionId = 'mock-session-id';
 	const mockContext = mock<IWebhookFunctions>();
-	const mockRequest = mock<Request>({ query: { sessionId }, path: '/custom-path/sse' });
+	const mockRequest = mock<Request>({ query: { sessionId }, path: '/custom-path' });
 	const mockResponse = mock<Response>();
 	let mcpTrigger: McpTrigger;
 
@@ -34,8 +37,9 @@ describe('McpTrigger Node', () => {
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
 		mockContext.getNode.mockReturnValue({
 			name: 'McpTrigger',
-			typeVersion: 1.1,
+			typeVersion: 2,
 		} as INode);
+		mockServerManager.transports = {};
 	});
 
 	describe('webhook method', () => {
@@ -47,9 +51,9 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that the connectTransport method was called with correct URL
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'McpTrigger',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
 
@@ -60,6 +64,10 @@ describe('McpTrigger Node', () => {
 		it('should handle default webhook for tool execution', async () => {
 			// Configure the context for default webhook (tool execution)
 			mockContext.getWebhookName.mockReturnValue('default');
+
+			// Mock the session ID retrieval and transport existence
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
 			// Mock that the server executes a tool and returns true
 			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
@@ -83,6 +91,10 @@ describe('McpTrigger Node', () => {
 			// Configure the context for default webhook
 			mockContext.getWebhookName.mockReturnValue('default');
 
+			// Mock the session ID retrieval and transport existence
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
+
 			// Mock that the server doesn't execute a tool and returns false
 			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);
 
@@ -100,14 +112,13 @@ describe('McpTrigger Node', () => {
 				typeVersion: 1.1,
 			} as INode);
 			mockContext.getWebhookName.mockReturnValue('setup');
-
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the sanitized server name
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
 		});
@@ -123,11 +134,38 @@ describe('McpTrigger Node', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			// Verify that connectTransport was called with the default server name
-			expect(mockServerManager.createServerAndTransport).toHaveBeenCalledWith(
+			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
-				'/custom-path/messages',
+				'/custom-path',
 				mockResponse,
 			);
+		});
+
+		it('should handle DELETE webhook for StreamableHTTP session termination', async () => {
+			// Configure the context for DELETE webhook
+			mockContext.getWebhookName.mockReturnValue('default');
+			const mockDeleteRequest = mock<Request>({
+				method: 'DELETE',
+				headers: { 'mcp-session-id': sessionId },
+				path: '/custom-path',
+			});
+			mockContext.getRequestObject.mockReturnValueOnce(mockDeleteRequest);
+
+			// Mock existing StreamableHTTP transport
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingStreamableHTTPTransport>({}));
+
+			// Call the webhook method
+			const result = await mcpTrigger.webhook(mockContext);
+
+			// Verify that handleDeleteRequest was called
+			expect(mockServerManager.handleDeleteRequest).toHaveBeenCalledWith(
+				mockDeleteRequest,
+				mockResponse,
+			);
+
+			// Verify the returned result
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

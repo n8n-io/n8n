@@ -38,6 +38,8 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
+import { setFilename } from './utils/binaryData';
+import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 function toText<T>(data: T) {
@@ -122,6 +124,8 @@ export class HttpRequestV3 implements INodeType {
 		let fullResponse = false;
 
 		let autoDetectResponseFormat = false;
+
+		let responseFileName: string | undefined;
 
 		// Can not be defined on a per item level
 		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
@@ -240,11 +244,18 @@ export class HttpRequestV3 implements INodeType {
 					allowUnauthorizedCerts: boolean;
 					queryParameterArrays: 'indices' | 'brackets' | 'repeat';
 					response: {
-						response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
+						response: {
+							neverError: boolean;
+							responseFormat: string;
+							fullResponse: boolean;
+							outputPropertyName: string;
+						};
 					};
 					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 					lowercaseHeaders: boolean;
 				};
+
+				responseFileName = response?.response?.outputPropertyName;
 
 				const url = this.getNodeParameter('url', itemIndex) as string;
 
@@ -904,17 +915,14 @@ export class HttpRequestV3 implements INodeType {
 					const preparedBinaryData = await this.helpers.prepareBinaryData(
 						binaryData,
 						undefined,
-						responseContentType || undefined,
+						mimeTypeFromResponse(responseContentType),
 					);
 
-					if (
-						!preparedBinaryData.fileName &&
-						preparedBinaryData.fileExtension &&
-						typeof requestOptions.uri === 'string' &&
-						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
-					) {
-						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
-					}
+					preparedBinaryData.fileName = setFilename(
+						preparedBinaryData,
+						requestOptions,
+						responseFileName,
+					);
 
 					newItem.binary![outputPropertyName] = preparedBinaryData;
 
@@ -992,7 +1000,6 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						if (Array.isArray(response)) {
-							// eslint-disable-next-line @typescript-eslint/no-loop-func
 							response.forEach((item) =>
 								returnItems.push({
 									json: item,

@@ -256,14 +256,9 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const preventPrototypeManipulation =
-					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
-
-				const taskResult = runInContext(
-					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-					context,
-					{ timeout: this.taskTimeout * 1000 },
-				) as Promise<TaskResultData['result']>;
+				const taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+					timeout: this.taskTimeout * 1000,
+				}) as Promise<TaskResultData['result']>;
 
 				void taskResult
 					.then(resolve)
@@ -324,11 +319,9 @@ export class JsTaskRunner extends TaskRunner {
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInContext(
-						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-						context,
-						{ timeout: this.taskTimeout * 1000 },
-					) as Promise<INodeExecutionData>;
+					const taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+						timeout: this.taskTimeout * 1000,
+					}) as Promise<INodeExecutionData>;
 
 					void taskResult
 						.then(resolve)
@@ -541,5 +534,21 @@ export class JsTaskRunner extends TaskRunner {
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
 		});
+	}
+
+	private createVmExecutableCode(code: string) {
+		return [
+			// shim for `global` compatibility
+			'globalThis.global = globalThis',
+
+			// prevent prototype manipulation
+			'Object.getPrototypeOf = () => ({})',
+			'Reflect.getPrototypeOf = () => ({})',
+			'Object.setPrototypeOf = () => false',
+			'Reflect.setPrototypeOf = () => false',
+
+			// wrap user code
+			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
+		].join('; ');
 	}
 }

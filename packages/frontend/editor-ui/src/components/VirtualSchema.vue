@@ -193,7 +193,8 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const fields: Renders[] = flattenSchema({ schema, depth: 1 }).flatMap((renderItem) => {
+	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
 
@@ -320,7 +321,14 @@ const flattenedNodes = computed(() =>
 );
 
 const flattenNodeSchema = computed(() =>
-	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
+	nodeSchema.value
+		? flattenSchema({
+				schema: nodeSchema.value,
+				depth: 0,
+				level: -1,
+				isDataEmpty: props.data.length === 0,
+			})
+		: [],
 );
 
 /**
@@ -399,7 +407,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
+		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 250); // ensure dest data gets set if drop
 };
 </script>
@@ -465,7 +473,7 @@ const onDragEnd = (el: HTMLElement) => {
 						</VirtualSchemaItem>
 
 						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
-							<N8nIcon :size="14" :icon="item.icon" class="icon" />
+							<N8nIcon size="small" :icon="item.icon" class="icon" />
 						</N8nTooltip>
 
 						<div
