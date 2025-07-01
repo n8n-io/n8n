@@ -1,3 +1,4 @@
+import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getHttpProxyAgent } from '../httpProxyAgent';
 
@@ -8,6 +9,7 @@ jest.mock('https-proxy-agent', () => ({
 
 describe('getHttpProxyAgent', () => {
 	const defaultBaseURL = 'https://api.openai.com/v1/chat/completions';
+	const defaultHttpBaseURL = 'http://www.testurl.com/v1/chat/completions';
 	// Store original environment variables
 	const originalEnv = { ...process.env };
 
@@ -32,6 +34,24 @@ describe('getHttpProxyAgent', () => {
 		const agent = getHttpProxyAgent();
 		expect(agent).toBeUndefined();
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
+	});
+
+	it('should create HttpProxyAgent when HTTP_PROXY is set', () => {
+		const proxyUrl = 'http://proxy.example.com:8080';
+		process.env.HTTP_PROXY = proxyUrl;
+
+		const agent = getHttpProxyAgent(defaultHttpBaseURL);
+
+		expect(agent).toBeInstanceOf(HttpProxyAgent);
+	});
+
+	it('should create HttpProxyAgent when http_proxy is set', () => {
+		const proxyUrl = 'http://proxy.example.com:8080';
+		process.env.http_proxy = proxyUrl;
+
+		const agent = getHttpProxyAgent(defaultHttpBaseURL);
+
+		expect(agent).toBeInstanceOf(HttpProxyAgent);
 	});
 
 	it('should create HttpsProxyAgent when HTTPS_PROXY is set', () => {
