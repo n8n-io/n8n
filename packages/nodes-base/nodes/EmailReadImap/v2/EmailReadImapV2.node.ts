@@ -28,7 +28,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:inbox',
 	iconColor: 'green',
 	group: ['trigger'],
-	version: 2,
+	version: [2, 2.1],
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
@@ -169,6 +169,22 @@ const versionDescription: INodeTypeDescription = {
 					type: 'number',
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
+				},
+				{
+					displayName: 'Message Limit',
+					name: 'messageLimit',
+					type: 'number',
+					default: 0,
+					description:
+						'Maximum number of messages to fetch (0 for unlimited). Fetches the most recent messages first.',
+					typeOptions: {
+						minValue: 0,
+					},
+					displayOptions: {
+						hide: {
+							'@version': [2],
+						},
+					},
 				},
 			],
 		},
@@ -383,6 +399,7 @@ export class EmailReadImapV2 implements INodeType {
 								postProcessAction,
 								getText,
 								getAttachment,
+								(options.messageLimit as number) ?? 0,
 							);
 							if (returnData.length) {
 								this.emit([returnData]);

@@ -58,6 +58,7 @@ export async function getNewEmails(
 		parts: MessagePart[],
 		message: Message,
 	) => Promise<IBinaryData[]>,
+	messageLimit?: number,
 ): Promise<INodeExecutionData[]> {
 	const format = this.getNodeParameter('format', 0) as string;
 
@@ -77,12 +78,34 @@ export async function getNewEmails(
 		};
 	}
 
-	const results = await imapConnection.search(searchCriteria, fetchOptions);
+	let results: Message[];
+
+	// If messageLimit is specified and greater than 0, use sort to get the most recent messages
+	if (messageLimit && messageLimit > 0) {
+		try {
+			// Use ARRIVAL for efficiency - it's based on internal date
+			// '-ARRIVAL' means descending order (newest first)
+			results = await imapConnection.sort(['-ARRIVAL'], searchCriteria, fetchOptions, messageLimit);
+		} catch (error) {
+			// Fallback to regular search if sort is not supported
+			this.logger.debug(
+				'IMAP SORT extension not supported, falling back to regular search with limit',
+				{ error },
+			);
+			results = await imapConnection.search(searchCriteria, fetchOptions, messageLimit);
+			// When using regular search with limit, we get the newest messages but in ascending order
+			// Reverse them to show newest first
+			results = results.reverse();
+		}
+	} else {
+		results = await imapConnection.search(searchCriteria, fetchOptions);
+	}
 
 	const newEmails: INodeExecutionData[] = [];
 	let newEmail: INodeExecutionData;
 	let attachments: IBinaryData[];
 	let propertyName: string;
+	let maxUid = 0;
 
 	// All properties get by default moved to metadata except the ones
 	// which are defined here which get set on the top level.
@@ -100,11 +123,9 @@ export async function getNewEmails(
 			) {
 				continue;
 			}
-			if (
-				staticData.lastMessageUid === undefined ||
-				(staticData.lastMessageUid as number) < message.attributes.uid
-			) {
-				staticData.lastMessageUid = message.attributes.uid;
+			// Track the maximum UID to update staticData later
+			if (message.attributes.uid > maxUid) {
+				maxUid = message.attributes.uid;
 			}
 			const part = find(message.parts, { which: '' });
 
@@ -140,11 +161,9 @@ export async function getNewEmails(
 			) {
 				continue;
 			}
-			if (
-				staticData.lastMessageUid === undefined ||
-				(staticData.lastMessageUid as number) < message.attributes.uid
-			) {
-				staticData.lastMessageUid = message.attributes.uid;
+			// Track the maximum UID to update staticData later
+			if (message.attributes.uid > maxUid) {
+				maxUid = message.attributes.uid;
 			}
 			const parts = getParts(message.attributes.struct as IDataObject[]);
 
@@ -193,11 +212,9 @@ export async function getNewEmails(
 			) {
 				continue;
 			}
-			if (
-				staticData.lastMessageUid === undefined ||
-				(staticData.lastMessageUid as number) < message.attributes.uid
-			) {
-				staticData.lastMessageUid = message.attributes.uid;
+			// Track the maximum UID to update staticData later
+			if (message.attributes.uid > maxUid) {
+				maxUid = message.attributes.uid;
 			}
 			const part = find(message.parts, { which: 'TEXT' });
 
@@ -222,5 +239,10 @@ export async function getNewEmails(
 			await imapConnection.addFlags(uidList, '\\SEEN');
 		}
 	}
+	// Update lastMessageUid after processing all messages
+	if (maxUid > 0) {
+		staticData.lastMessageUid = maxUid;
+	}
+
 	return newEmails;
 }
