@@ -22,12 +22,20 @@
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
-		"utils/**/*.ts"
+		"utils/**/*.ts",
+		"../core/nodes-testing/**/*.ts"
 	],
 	"exclude": ["node_modules"],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../core/tsconfig.build.json" }
-	]
+	],
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
 }

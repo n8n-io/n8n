@@ -4,6 +4,8 @@ import {
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
 	type INodeTypes,
+	type IGetNodeParameterOptions,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
@@ -46,7 +48,12 @@ describe('Test Evaluation', () => {
 
 		test('should throw error if output values is empty', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				(
+					key: string,
+					_: number,
+					fallbackValue?: string | number | boolean | object,
+					options?: IGetNodeParameterOptions,
+				) => {
 					const mockParams: { [key: string]: unknown } = {
 						'outputs.values': [],
 						documentId: {
@@ -57,7 +64,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -72,7 +79,12 @@ describe('Test Evaluation', () => {
 
 		test('should update rows and return input data for existing headers', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				(
+					key: string,
+					_: number,
+					fallbackValue?: string | number | boolean | object,
+					options?: IGetNodeParameterOptions,
+				) => {
 					const mockParams: { [key: string]: unknown } = {
 						'outputs.values': [{ outputName: 'foo', outputValue: 'clam' }],
 						documentId: {
@@ -83,7 +95,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -109,7 +121,12 @@ describe('Test Evaluation', () => {
 
 		test('should return empty when there is no parent evaluation trigger', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				(
+					key: string,
+					_: number,
+					fallbackValue?: string | number | boolean | object,
+					options?: IGetNodeParameterOptions,
+				) => {
 					const mockParams: { [key: string]: unknown } = {
 						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
 						documentId: {
@@ -120,7 +137,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 			mockExecuteFunctions.getParentNodes.mockReturnValue([]);
@@ -136,7 +153,12 @@ describe('Test Evaluation', () => {
 
 		test('should update rows and return input data for new headers', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				(
+					key: string,
+					_: number,
+					fallbackValue?: string | number | boolean | object,
+					options?: IGetNodeParameterOptions,
+				) => {
 					const mockParams: { [key: string]: unknown } = {
 						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
 						documentId: {
@@ -147,7 +169,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -290,11 +312,16 @@ describe('Test Evaluation', () => {
 			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				(
+					key: string,
+					_: number,
+					fallbackValue?: string | number | boolean | object,
+					options?: IGetNodeParameterOptions,
+				) => {
 					const mockParams: { [key: string]: unknown } = {
 						operation: 'checkIfEvaluating',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 		});

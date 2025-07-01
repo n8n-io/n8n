@@ -329,6 +329,7 @@ export class NodeTestHarness {
 			});
 
 			const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+			// @ts-expect-error
 			expect(resultData, msg).toEqual(output.nodeData[nodeName]);
 		});
 
