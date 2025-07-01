@@ -170,7 +170,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value) {
+	if (!nodeType.value || nodeType.value.hidden) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
