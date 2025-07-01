@@ -94,7 +94,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--canvas-node--width: 64px; --canvas-node--height: 64px; --node-icon-size: 30px;"
+  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
   <!--v-if-->
   <div
@@ -139,7 +139,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--canvas-node--width: 100px; --canvas-node--height: 96px; --node-icon-size: 40px;"
+  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
   <!--v-if-->
   <div
@@ -184,7 +184,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--canvas-node--width: 100px; --canvas-node--height: 96px; --node-icon-size: 40px;"
+  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
   <!--v-if-->
   <div
