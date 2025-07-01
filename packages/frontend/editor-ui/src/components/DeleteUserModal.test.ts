@@ -9,7 +9,7 @@ import { STORES } from '@n8n/stores';
 import { ProjectTypes } from '@/types/projects.types';
 import userEvent from '@testing-library/user-event';
 import { useUsersStore } from '@/stores/users.store';
-import { ROLE, UsersList, User } from '@n8n/api-types';
+import { ROLE, type UsersList, type User } from '@n8n/api-types';
 
 const ModalStub = {
 	template: `
