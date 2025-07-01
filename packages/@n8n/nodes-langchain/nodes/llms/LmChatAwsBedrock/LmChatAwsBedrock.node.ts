@@ -149,7 +149,8 @@ export class LmChatAwsBedrock implements INodeType {
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			clientConfig: {
-				httpAgent: getHttpProxyAgent(undefined),
+				// Proxy decoy target url to force getting proxy if set.
+				httpAgent: getHttpProxyAgent('https://bedrock-runtime.aws-region.amazonaws.com'),
 			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,

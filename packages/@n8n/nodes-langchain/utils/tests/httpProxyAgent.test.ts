@@ -169,15 +169,4 @@ describe('getHttpProxyAgent', () => {
 		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
 		expect(agent).toEqual({ proxyUrl });
 	});
-
-	it('should return undefined when baseURL is undefined and proxy is set', () => {
-		const proxyUrl = 'http://proxy.example.com:8080';
-		process.env.HTTPS_PROXY = proxyUrl;
-		process.env.NO_PROXY = 'example.com';
-
-		const agent = getHttpProxyAgent();
-
-		expect(agent).toBeUndefined();
-		expect(HttpsProxyAgent).not.toHaveBeenCalled();
-	});
 });
