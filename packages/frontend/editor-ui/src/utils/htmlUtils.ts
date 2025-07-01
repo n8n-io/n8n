@@ -73,3 +73,26 @@ export function isOutsideSelected(el: HTMLElement | null) {
 			selection.anchorOffset !== selection.focusOffset)
 	);
 }
+
+let scrollbarWidth: number | undefined;
+
+export function getScrollbarWidth() {
+	if (scrollbarWidth !== undefined) {
+		return scrollbarWidth;
+	}
+
+	const outer = document.createElement('div');
+	const inner = document.createElement('div');
+
+	outer.style.visibility = 'hidden';
+	outer.style.overflow = 'scroll';
+	document.body.appendChild(outer);
+
+	outer.appendChild(inner);
+
+	scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+
+	outer.parentElement?.removeChild(outer);
+
+	return scrollbarWidth;
+}
