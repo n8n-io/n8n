@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
@@ -15,9 +13,9 @@ import {
 import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { searchModels } from './methods/searchModels';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { searchModels } from './methods/searchModels';
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -82,7 +80,7 @@ export class LmChatAnthropic implements INodeType {
 
 	description: INodeTypeDescription = {
 		displayName: 'Anthropic Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
@@ -107,9 +105,9 @@ export class LmChatAnthropic implements INodeType {
 			},
 			alias: ['claude', 'sonnet', 'opus'],
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [

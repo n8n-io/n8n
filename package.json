@@ -17,6 +17,7 @@
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
+    "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && pnpm --filter=n8n-playwright run test:standard",
     "typecheck": "turbo typecheck",
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
     "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
@@ -101,7 +102,9 @@
       "ws": ">=8.17.1",
       "zod": "3.25.67",
       "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.2"
+      "brace-expansion@2": "2.0.2",
+      "date-fns": "2.30.0",
+      "date-fns-tz": "2.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
