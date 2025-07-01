@@ -117,7 +117,7 @@ export async function getNewEmails(
 				dataPropertyAttachmentsPrefixName,
 			);
 
-			(parsedEmail.json as IDataObject).attributes = {
+			parsedEmail.json.attributes = {
 				uid: message.attributes.uid,
 			};
 

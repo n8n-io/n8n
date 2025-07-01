@@ -48,7 +48,7 @@ export async function taigaApiRequest(
 	resource: string,
 	body = {},
 	query = {},
-	uri?: string | undefined,
+	uri?: string,
 	option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('taigaApi');
