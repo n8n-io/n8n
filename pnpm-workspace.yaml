@@ -4,6 +4,7 @@ packages:
   - packages/frontend/**
   - packages/extensions/**
   - cypress
+  - packages/testing/**
 
 catalog:
   '@n8n/typeorm': 0.3.20-12

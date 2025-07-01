@@ -20,14 +20,14 @@ describe('Azure Storage Node', () => {
 						value: 'mycontainer',
 					} as INodeParameterResourceLocator;
 				}
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+
 				throw new Error('Unknown parameter');
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'azureStorageSharedKeyApi') {
 					return credentials.azureStorageSharedKeyApi;
 				}
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+
 				throw new Error('Unknown credentials');
 			});
 			const mockContext = {
@@ -70,14 +70,14 @@ describe('Azure Storage Node', () => {
 				if (parameterName === 'authentication') {
 					return 'sharedKey';
 				}
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+
 				throw new Error('Unknown parameter');
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'azureStorageSharedKeyApi') {
 					return credentials.azureStorageSharedKeyApi;
 				}
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+
 				throw new Error('Unknown credentials');
 			});
 			const mockContext = {
