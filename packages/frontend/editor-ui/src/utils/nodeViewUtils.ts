@@ -622,8 +622,8 @@ export function calculateNodeSize(
 	}
 
 	if (isConfiguration) {
-		return { width: GRID_SIZE * 4, height: GRID_SIZE * 4 };
+		return { width: GRID_SIZE * 5, height: GRID_SIZE * 5 };
 	}
 
-	return { width: 100, height };
+	return { width: DEFAULT_NODE_SIZE[0], height };
 }

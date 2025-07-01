@@ -40,12 +40,12 @@ export type CanvasLayoutEvent = {
 
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
-const NODE_X_SPACING = GRID_SIZE * 6;
-const NODE_Y_SPACING = GRID_SIZE * 5;
+const NODE_X_SPACING = GRID_SIZE * 8;
+const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
-const AI_X_SPACING = GRID_SIZE * 2;
-const AI_Y_SPACING = GRID_SIZE * 6;
-const STICKY_BOTTOM_PADDING = GRID_SIZE * 3;
+const AI_X_SPACING = GRID_SIZE * 3;
+const AI_Y_SPACING = GRID_SIZE * 8;
+const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 
 export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	const {
