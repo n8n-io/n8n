@@ -332,7 +332,7 @@ async function createN8NContainer({
 	try {
 		return await container.start();
 	} catch (error) {
-		if (error instanceof Error && error.message.includes('failed to resolve reference')) {
+		if (error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
 			throw new DockerImageNotFoundError(name, error);
 		}
 		throw error;
