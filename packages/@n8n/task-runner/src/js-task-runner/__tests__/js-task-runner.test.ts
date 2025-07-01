@@ -26,6 +26,7 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
+import { ReservedKeyFoundError } from '../result-validation';
 
 jest.mock('ws');
 
@@ -804,6 +805,15 @@ describe('JsTaskRunner', () => {
 						inputItems: [{ a: 1 }],
 					}),
 				).rejects.toThrow(ValidationError);
+			});
+
+			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
+				await expect(
+					executeForAllItems({
+						code: 'return [{json: {b: 1}, objectId: "123"}]',
+						inputItems: [{ a: 1 }],
+					}),
+				).rejects.toThrow(ReservedKeyFoundError);
 			});
 		});
 
