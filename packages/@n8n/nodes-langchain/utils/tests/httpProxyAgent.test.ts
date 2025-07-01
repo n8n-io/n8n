@@ -31,7 +31,7 @@ describe('getHttpProxyAgent', () => {
 	});
 
 	it('should return undefined when no proxy environment variables are set', () => {
-		const agent = getHttpProxyAgent();
+		const agent = getHttpProxyAgent(defaultHttpBaseURL);
 		expect(agent).toBeUndefined();
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
 	});

@@ -143,14 +143,15 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
+		const awsRegion = credentials.region as string;
 		const model = new ChatBedrockConverse({
-			region: credentials.region as string,
+			region: awsRegion,
 			model: modelName,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			clientConfig: {
-				// Proxy decoy target url to force getting proxy if set.
-				httpAgent: getHttpProxyAgent('https://bedrock-runtime.aws-region.amazonaws.com'),
+				// Proxy target url to force getting proxy if set.
+				httpAgent: getHttpProxyAgent(`https://bedrock-runtime.${awsRegion}.amazonaws.com`),
 			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
