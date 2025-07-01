@@ -60,6 +60,30 @@ const properties: INodeProperties[] = [
 		default: true,
 		description: 'Whether to simplify the response or not',
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		options: [
+			{
+				displayName: 'Start Time',
+				name: 'startTime',
+				type: 'string',
+				default: '',
+				description: 'The start time of the audio in MM:SS or HH:MM:SS format',
+				placeholder: 'e.g. 00:15',
+			},
+			{
+				displayName: 'End Time',
+				name: 'endTime',
+				type: 'string',
+				default: '',
+				description: 'The end time of the audio in MM:SS or HH:MM:SS format',
+				placeholder: 'e.g. 02:15',
+			},
+		],
+	},
 ];
 
 const displayOptions = {
@@ -75,6 +99,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
+	const options = this.getNodeParameter('options', i, {});
 
 	let contents: Content[];
 	if (inputType === 'url') {
@@ -120,7 +145,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	contents[0].parts.push({ text: 'Generate a transcript of the speech.' });
+	const text = `Generate a transcript of the speech${options.startTime ? ` from ${options.startTime}` : ''}${options.endTime ? ` to ${options.endTime}` : ''}`;
+	contents[0].parts.push({ text });
 
 	const body = {
 		contents,

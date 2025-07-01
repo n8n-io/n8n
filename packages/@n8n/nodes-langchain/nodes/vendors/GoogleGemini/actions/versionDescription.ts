@@ -18,9 +18,7 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Gemini',
 	},
-	// TODO: there are issues with binary data and using a node as a tool
-	// need to come back to this later
-	// usableAsTool: true,
+	usableAsTool: true,
 	codex: {
 		alias: ['LangChain', 'video', 'document', 'audio', 'transcribe', 'assistant'],
 		categories: ['AI'],
