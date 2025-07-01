@@ -464,7 +464,7 @@ async function onAskAssistantClick() {
 						<N8nIconButton
 							icon="files"
 							type="secondary"
-							size="mini"
+							size="small"
 							:text="true"
 							transparent-background="transparent"
 							@click="copyErrorDetails"
