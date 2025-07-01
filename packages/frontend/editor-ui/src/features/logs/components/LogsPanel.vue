@@ -58,7 +58,7 @@ const {
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData();
-const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
 	entries,
@@ -171,7 +171,6 @@ function handleOpenNdv(treeNode: LogEntry) {
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
-								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
@@ -186,7 +185,6 @@ function handleOpenNdv(treeNode: LogEntry) {
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
 								@open-ndv="handleOpenNdv"
-								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
 									<LogsPanelActions
