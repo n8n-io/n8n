@@ -36,9 +36,7 @@ function getInputs(
 				type,
 				displayName,
 				required,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};

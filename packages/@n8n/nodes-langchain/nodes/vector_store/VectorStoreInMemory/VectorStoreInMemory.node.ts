@@ -165,7 +165,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 					this.logger,
 				);
 
-				const memoryKey = !!name ? (name as string) : DEFAULT_MEMORY_KEY;
+				const memoryKey = name ? (name as string) : DEFAULT_MEMORY_KEY;
 				await vectorStoreSingleton.getVectorStore(memoryKey);
 
 				return memoryKey;
