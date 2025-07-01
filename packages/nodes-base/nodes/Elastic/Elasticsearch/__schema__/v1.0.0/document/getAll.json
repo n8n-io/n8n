@@ -3,7 +3,142 @@
     "properties": {
         "_id": {
             "type": "string"
+        },
+        "battery_capacity": {
+            "type": "integer"
+        },
+        "battery_infos": {
+            "type": "object",
+            "properties": {
+                "battery_health": {
+                    "type": "string"
+                },
+                "charging_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "codepush_version": {
+            "type": "string"
+        },
+        "company_id": {
+            "type": "integer"
+        },
+        "company_name": {
+            "type": "string"
+        },
+        "device_app_version": {
+            "type": "string"
+        },
+        "device_serial": {
+            "type": "string"
+        },
+        "endpoint": {
+            "type": "string"
+        },
+        "error_log": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "error_name": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "error_title": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "event_type": {
+            "type": "string"
+        },
+        "installation_area_id": {
+            "type": "integer"
+        },
+        "installation_area_name": {
+            "type": "string"
+        },
+        "is_charging": {
+            "type": "boolean"
+        },
+        "nut_residual_infos": {
+            "type": "object",
+            "properties": {
+                "MG": {
+                    "type": "integer"
+                },
+                "MT": {
+                    "type": "integer"
+                },
+                "O3": {
+                    "type": "integer"
+                },
+                "RT": {
+                    "type": "integer"
+                },
+                "VB": {
+                    "type": "integer"
+                },
+                "VC": {
+                    "type": "integer"
+                },
+                "VD": {
+                    "type": "integer"
+                },
+                "ZM": {
+                    "type": "integer"
+                }
+            }
+        },
+        "slot_infos": {
+            "type": "object",
+            "properties": {
+                "nutrient_group_name": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "residual_quantities": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "slot_number": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "tablet_imei": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "integer"
+        },
+        "workplace_id": {
+            "type": "integer"
+        },
+        "workplace_name": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
