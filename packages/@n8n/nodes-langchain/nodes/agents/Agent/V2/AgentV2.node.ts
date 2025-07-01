@@ -107,7 +107,7 @@ export class AgentV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'AI Agent',
 				color: '#404040',
@@ -152,7 +152,7 @@ export class AgentV2 implements INodeType {
 					noDataExpression: true,
 					displayOptions: {
 						show: {
-							'@version': [2.1],
+							'@version': [{ _cnd: { gte: 2.1 } }],
 						},
 					},
 				},
@@ -175,7 +175,7 @@ export class AgentV2 implements INodeType {
 					noDataExpression: true,
 					displayOptions: {
 						show: {
-							'@version': [{ _cnd: { gte: '2.1' } }],
+							'@version': [{ _cnd: { gte: 2.1 } }],
 						},
 					},
 				},
@@ -198,20 +198,23 @@ export class AgentV2 implements INodeType {
 					default: false,
 					description:
 						'Whether this agent will stream the response in real-time as it generates text',
-				},
-				{
-					displayName:
-						'Make sure to set the response mode to "Streaming Response" on the connected trigger node to use streaming.',
-					name: 'streamingNotice',
-					type: 'notice',
-					default: '',
 					displayOptions: {
-						show: {
-							enableStreaming: [true],
+						hide: {
+							'@version': [{ _cnd: { lt: 2.2 } }],
 						},
 					},
 				},
 				...toolsAgentProperties,
+			],
+			hints: [
+				{
+					message:
+						'You are using streaming responses. Make sure to set the response mode to "Streaming Response" on the connected trigger node.',
+					type: 'warning',
+					location: 'outputPane',
+					whenToDisplay: 'afterExecution',
+					displayCondition: '={{ $parameter["enableStreaming"] === true }}',
+				},
 			],
 		};
 	}

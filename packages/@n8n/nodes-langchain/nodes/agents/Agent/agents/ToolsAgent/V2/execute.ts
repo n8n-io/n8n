@@ -26,6 +26,8 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
+import { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 
 /**
  * Creates an agent executor with the given configuration
@@ -60,6 +62,44 @@ function createAgentExecutor(
 		returnIntermediateSteps: options.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 	});
+}
+
+async function processEventStream(
+	ctx: IExecuteFunctions,
+	eventStream: IterableReadableStream<StreamEvent>,
+): Promise<{ output: string }> {
+	const agentResult = {
+		output: '',
+	};
+
+	ctx.sendChunk('begin');
+	for await (const event of eventStream) {
+		// Stream chat model tokens as they come in
+		switch (event.event) {
+			case 'on_chat_model_stream':
+				const chunk = event.data?.chunk as AIMessageChunk;
+				if (chunk?.content) {
+					const chunkContent = chunk.content;
+					let chunkText = '';
+					if (Array.isArray(chunkContent)) {
+						for (const message of chunkContent) {
+							chunkText += (message as MessageContentText)?.text;
+						}
+					} else if (typeof chunkContent === 'string') {
+						chunkText = chunkContent;
+					}
+					ctx.sendChunk('item', chunkText);
+
+					agentResult.output += chunkText;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	ctx.sendChunk('end');
+
+	return agentResult;
 }
 
 /* -----------------------------------------------------------
@@ -154,70 +194,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			if (enableStreaming) {
 				const eventStream = executor.streamEvents(invokeParams, {
 					version: 'v2',
-					...executeOptions
+					...executeOptions,
 				});
 
-				const agentResult: any = {
-					output: '',
-				};
-
-				// Initialize intermediate steps array if needed
-				if (options.returnIntermediateSteps) {
-					agentResult.intermediateSteps = [];
-				}
-
-				this.sendChunk('begin');
-				for await (const event of eventStream) {
-					// Stream chat model tokens as they come in
-					switch (event.event) {
-						case 'on_chat_model_stream':
-							const chunk = event.data?.chunk as AIMessageChunk;
-							if (chunk?.content) {
-								const chunkContent = chunk.content;
-								let chunkText = '';
-								if (Array.isArray(chunkContent)) {
-									for (const message of chunkContent) {
-										chunkText += (message as MessageContentText)?.text;
-									}
-								} else if (typeof chunkContent === 'string') {
-									chunkText = chunkContent;
-								}
-								this.sendChunk('item', chunkText);
-
-								agentResult.output += chunkText;
-							}
-							break;
-						case 'on_agent_action':
-							// Capture intermediate steps when agent performs actions
-							if (options.returnIntermediateSteps && event.data?.output) {
-								const action = event.data.output;
-								// Store the action step - this will be paired with observation later
-								if (action.tool && action.toolInput) {
-									agentResult.intermediateSteps.push([action, null]); // null will be replaced with observation
-								}
-							}
-							break;
-						case 'on_tool_end':
-							// Capture tool execution results (observations)
-							if (options.returnIntermediateSteps && event.data?.output && agentResult.intermediateSteps.length > 0) {
-								const lastStepIndex = agentResult.intermediateSteps.length - 1;
-								const lastStep = agentResult.intermediateSteps[lastStepIndex];
-								if (lastStep && lastStep[1] === null) {
-									// Update the observation for the last action
-									agentResult.intermediateSteps[lastStepIndex] = [lastStep[0], event.data.output];
-								}
-							}
-							break;
-					}
-				}
-				this.sendChunk('end');
-				return agentResult;
+				return await processEventStream(this, eventStream);
 			} else {
 				// Handle regular execution
-				return await executor.invoke(
-					invokeParams,
-					executeOptions,
-				);
+				return await executor.invoke(invokeParams, executeOptions);
 			}
 		});
 
