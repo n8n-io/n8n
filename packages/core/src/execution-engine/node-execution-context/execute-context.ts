@@ -139,9 +139,11 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			timestamp: Date.now(),
 		};
 
+		const parsedContent: string = typeof content === 'string' ? content : JSON.stringify(content);
+
 		const message: StructuredChunk = {
 			type,
-			content: content ? JSON.stringify(content) : undefined,
+			content: parsedContent ?? undefined,
 			metadata,
 		};
 
