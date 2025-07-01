@@ -71,7 +71,7 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 		<div :class="$style.wrapper">
 			<div :class="$style.content">
 				<RunsSection
-					v-model:selectedMetric="selectedMetric"
+					v-model:selected-metric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
 					:workflow-id="props.name"

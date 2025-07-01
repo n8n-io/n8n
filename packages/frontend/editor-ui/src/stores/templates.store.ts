@@ -146,7 +146,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			const searchKey = getSearchKey(query);
 			const search = workflowSearches.value[searchKey];
 
-			return Boolean(search && search.loadingMore);
+			return Boolean(search?.loadingMore);
 		};
 	});
 
