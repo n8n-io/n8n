@@ -139,7 +139,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">
-				<div class="pt-s pb-s">
+				<div class="pt-xs pb-xs">
 					<N8nUserInfo v-bind="value as UsersInfoProps" />
 				</div>
 			</template>

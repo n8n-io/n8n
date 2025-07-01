@@ -34,10 +34,10 @@ const onActionSelect = (role: string) => {
 			@select="onActionSelect"
 		>
 			<template #activator>
-				<span>
+				<button :class="$style.roleLabel" type="button">
 					<N8nText color="text-dark">{{ roleLabel }}</N8nText>
-					<N8nIcon class="ml-2xs" icon="chevron-down" size="small" />
-				</span>
+					<N8nIcon color="text-dark" icon="chevron-down" size="large" />
+				</button>
 			</template>
 			<template #menuItem="item">
 				<N8nText v-if="item.id === 'delete'" color="text-dark" :class="$style.removeUser">{{
@@ -63,6 +63,16 @@ const onActionSelect = (role: string) => {
 </template>
 
 <style lang="scss" module>
+.roleLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	background: transparent;
+	padding: 0;
+	border: none;
+	cursor: pointer;
+}
+
 .radioLabel {
 	max-width: 268px;
 	display: inline-flex;
