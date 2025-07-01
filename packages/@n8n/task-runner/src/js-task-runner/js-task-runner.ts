@@ -256,7 +256,7 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const taskResult = runInContext(this.vmCodeWrapper(settings.code), context, {
+				const taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
 					timeout: this.taskTimeout * 1000,
 				}) as Promise<TaskResultData['result']>;
 
@@ -319,7 +319,7 @@ export class JsTaskRunner extends TaskRunner {
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInContext(this.vmCodeWrapper(settings.code), context, {
+					const taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
 						timeout: this.taskTimeout * 1000,
 					}) as Promise<INodeExecutionData>;
 
@@ -536,10 +536,18 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
-	private vmCodeWrapper(code: string) {
+	private createVmExecutableCode(code: string) {
 		return [
+			// shim for `global` compatibility
 			'globalThis.global = globalThis',
-			'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false',
+
+			// prevent prototype manipulation
+			'Object.getPrototypeOf = () => ({})',
+			'Reflect.getPrototypeOf = () => ({})',
+			'Object.setPrototypeOf = () => false',
+			'Reflect.setPrototypeOf = () => false',
+
+			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
 		].join('; ');
 	}
