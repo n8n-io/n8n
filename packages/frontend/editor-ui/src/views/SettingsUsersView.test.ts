@@ -178,7 +178,12 @@ describe('SettingsUsersView', () => {
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
 		await user.click(inviteButton);
 
-		expect(uiStore.openModal).toHaveBeenCalledWith(INVITE_USER_MODAL_KEY);
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: INVITE_USER_MODAL_KEY,
+			data: {
+				afterInvite: expect.any(Function),
+			},
+		});
 	});
 
 	it('should disable invite button when SSO is enabled', () => {

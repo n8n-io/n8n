@@ -135,7 +135,14 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 	}
 }
 function onInvite() {
-	uiStore.openModal(INVITE_USER_MODAL_KEY);
+	uiStore.openModalWithData({
+		name: INVITE_USER_MODAL_KEY,
+		data: {
+			afterInvite: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
 }
 async function onDelete(userId: string) {
 	uiStore.openModalWithData({

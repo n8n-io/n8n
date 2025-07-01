@@ -163,7 +163,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		</ModalRoot>
 
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">
-			<InviteUsersModal />
+			<template #default="{ modalName, data }">
+				<InviteUsersModal :modal-name="modalName" :data="data" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
