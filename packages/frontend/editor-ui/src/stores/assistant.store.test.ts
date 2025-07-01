@@ -43,11 +43,12 @@ const setAssistantEnabled = (enabled: boolean) => {
 };
 
 let currentRouteName = ENABLED_VIEWS[0];
+let currentRouteParams = {};
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() =>
 		reactive({
 			path: '/',
-			params: {},
+			params: currentRouteParams,
 			name: currentRouteName,
 		}),
 	),
@@ -58,6 +59,7 @@ vi.mock('vue-router', () => ({
 describe('AI Assistant store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		currentRouteParams = {};
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
@@ -305,7 +307,7 @@ describe('AI Assistant store', () => {
 
 	[VIEWS.PROJECTS_CREDENTIALS, VIEWS.TEMPLATE_SETUP, VIEWS.CREDENTIALS].forEach((view) => {
 		it(`should show assistant if on ${view} page`, () => {
-			currentRouteName = VIEWS.PROJECTS_CREDENTIALS;
+			currentRouteName = view;
 			const assistantStore = useAssistantStore();
 
 			setAssistantEnabled(true);
@@ -313,6 +315,31 @@ describe('AI Assistant store', () => {
 			expect(assistantStore.canShowAssistant).toBe(true);
 			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(false);
 		});
+	});
+
+	[
+		{ view: VIEWS.WORKFLOW, nodeId: 'nodeId' },
+		{ view: VIEWS.NEW_WORKFLOW },
+		{ view: VIEWS.EXECUTION_DEBUG },
+	].forEach(({ view, nodeId }) => {
+		it(`should show ai assistant floating button if on ${view} page`, () => {
+			currentRouteName = view;
+			currentRouteParams = nodeId ? { nodeId } : {};
+			const assistantStore = useAssistantStore();
+
+			setAssistantEnabled(true);
+			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
+			expect(assistantStore.hideAssistantFloatingButton).toBe(false);
+		});
+	});
+
+	it('should hide ai assistant floating button if on workflow canvas page', () => {
+		currentRouteName = VIEWS.WORKFLOW;
+		const assistantStore = useAssistantStore();
+
+		setAssistantEnabled(true);
+		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
+		expect(assistantStore.hideAssistantFloatingButton).toBe(true);
 	});
 
 	it('should initialize assistant chat session on node error', async () => {

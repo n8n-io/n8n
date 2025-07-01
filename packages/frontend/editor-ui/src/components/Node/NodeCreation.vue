@@ -19,8 +19,10 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useExperimentalNdvStore } from '../canvas/experimental/experimentalNdv.store';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -45,6 +47,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+const assistantStore = useAssistantStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 
 const { getAddedNodesAndConnections } = useActions();
@@ -83,6 +86,17 @@ function closeNodeCreator(hasAddedNodes = false) {
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
+}
+
+function onAskAssistantButtonClick() {
+	if (!assistantStore.chatWindowOpen)
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
+
+	assistantStore.toggleChatOpen();
 }
 </script>
 
@@ -140,6 +154,13 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			size="large"
 			icon="minimize-2"
 			@click="experimentalNdvStore.collapseAllNodes"
+		/>
+		<AskAssistantButton
+			v-if="
+				assistantStore.canShowAssistantButtonsOnCanvas && assistantStore.hideAssistantFloatingButton
+			"
+			:unread-count="assistantStore.unreadCount"
+			@click="onAskAssistantButtonClick"
 		/>
 	</div>
 	<Suspense>

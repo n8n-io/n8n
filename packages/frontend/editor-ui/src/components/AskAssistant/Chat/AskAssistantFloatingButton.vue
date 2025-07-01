@@ -38,7 +38,11 @@ const onClick = () => {
 
 <template>
 	<div
-		v-if="assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.isAssistantOpen"
+		v-if="
+			assistantStore.canShowAssistantButtonsOnCanvas &&
+			!assistantStore.isAssistantOpen &&
+			!assistantStore.hideAssistantFloatingButton
+		"
 		:class="$style.container"
 		data-test-id="ask-assistant-floating-button"
 		:style="{ '--canvas-panel-height-offset': `${logsStore.height}px` }"
