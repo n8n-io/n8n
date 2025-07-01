@@ -30,7 +30,7 @@ const projectsStore = useProjectsStore();
 const userToDelete = computed(() => {
 	if (!props.data?.userId) return null;
 
-	return usersStore.usersById[props.data.userId];
+	return usersStore.usersList.state.items.find((user) => user.id === props.data.userId);
 });
 
 const isPending = computed(() => {
@@ -38,7 +38,10 @@ const isPending = computed(() => {
 });
 
 const title = computed(() => {
-	const user = userToDelete.value?.fullName ?? userToDelete.value?.email ?? '';
+	const user =
+		userToDelete.value?.firstName && userToDelete.value.lastName
+			? `${userToDelete.value.firstName} ${userToDelete.value.lastName}`
+			: (userToDelete.value?.email ?? '');
 
 	return i18n.baseText('settings.users.deleteUser', { interpolate: { user } });
 });
@@ -55,11 +58,7 @@ const enabled = computed(() => {
 		return true;
 	}
 
-	if (operation.value === 'transfer' && selectedProject.value) {
-		return true;
-	}
-
-	return false;
+	return !!(operation.value === 'transfer' && selectedProject.value);
 });
 
 const projects = computed(() => {
