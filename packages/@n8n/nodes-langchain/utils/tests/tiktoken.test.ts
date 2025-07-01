@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-var-requires */
+
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { TiktokenEncoding } from 'js-tiktoken/lite';
 import { Tiktoken } from 'js-tiktoken/lite';
@@ -86,7 +86,6 @@ describe('tiktoken utils', () => {
 			const mockTiktoken = {};
 			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const result = await getEncoding('unknown_encoding' as unknown as TiktokenEncoding);
 
 			expect(Tiktoken).toHaveBeenCalledWith({ mockCl100kBase: 'data' });
