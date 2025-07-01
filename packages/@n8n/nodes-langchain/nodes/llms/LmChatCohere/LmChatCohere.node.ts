@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
 import type {
@@ -14,32 +12,31 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
-// export function tokensUsageParser(llmOutput: LLMResult['llmOutput']): {
-// 	completionTokens: number;
-// 	promptTokens: number;
-// 	totalTokens: number;
-// } {
-// 	let totalInputTokens = 0;
-// 	let totalOutputTokens = 0;
+export function tokensUsageParser(llmOutput: LLMResult): {
+	completionTokens: number;
+	promptTokens: number;
+	totalTokens: number;
+} {
+	let totalInputTokens = 0;
+	let totalOutputTokens = 0;
 
-// 	llmOutput.generations?.forEach((generationArray) => {
-// 		generationArray.forEach((gen) => {
-// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-// 			const inputTokens = gen.generationInfo?.meta?.tokens?.inputTokens ?? 0;
-// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-// 			const outputTokens = gen.generationInfo?.meta?.tokens?.outputTokens ?? 0;
+	llmOutput.generations?.forEach((generationArray) => {
+		generationArray.forEach((gen) => {
+			const inputTokens = gen.generationInfo?.meta?.tokens?.inputTokens ?? 0;
+			const outputTokens = gen.generationInfo?.meta?.tokens?.outputTokens ?? 0;
 
-// 			totalInputTokens += inputTokens;
-// 			totalOutputTokens += outputTokens;
-// 		});
-// 	});
+			totalInputTokens += inputTokens;
+			totalOutputTokens += outputTokens;
+		});
+	});
 
-// 	return {
-// 		completionTokens: totalOutputTokens,
-// 		promptTokens: totalInputTokens,
-// 		totalTokens: totalInputTokens + totalOutputTokens,
-// 	};
-// }
+	return {
+		completionTokens: totalOutputTokens,
+		promptTokens: totalInputTokens,
+		totalTokens: totalInputTokens + totalOutputTokens,
+	};
+}
+
 export class LmChatCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Chat Model',
@@ -66,9 +63,7 @@ export class LmChatCohere implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['ai_languageModel'],
 		outputNames: ['Model'],
 		credentials: [
@@ -172,7 +167,7 @@ export class LmChatCohere implements INodeType {
 			model: modelName,
 			temperature: options.temperature,
 			maxRetries: options.maxRetries ?? 2,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

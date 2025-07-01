@@ -3,10 +3,8 @@ import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import {
 	AgentExecutor,
-	AgentExecutorInput,
-	AgentRunnableSequence,
+	type AgentRunnableSequence,
 	createToolCallingAgent,
-	RunnableAgent,
 } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
