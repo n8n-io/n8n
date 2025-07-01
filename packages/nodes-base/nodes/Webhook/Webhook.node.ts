@@ -47,6 +47,7 @@ export class Webhook extends Node {
 		name: 'webhook',
 		group: ['trigger'],
 		version: [1, 1.1, 2, 2.1],
+		// Keep the default version as 2 to avoid releasing streaming in broken state
 		defaultVersion: 2,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',

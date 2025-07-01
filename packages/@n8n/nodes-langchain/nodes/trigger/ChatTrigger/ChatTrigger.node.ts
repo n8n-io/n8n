@@ -210,6 +210,7 @@ export class ChatTrigger extends Node {
 		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2],
+		// Keep the default version as 1.1 to avoid releasing streaming in broken state
 		defaultVersion: 1.1,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
@@ -590,7 +591,6 @@ export class ChatTrigger extends Node {
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
-					//	enableStreaming,
 				});
 
 				res.status(200).send(page).end();
