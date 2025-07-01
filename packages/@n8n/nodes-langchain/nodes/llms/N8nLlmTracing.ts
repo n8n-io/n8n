@@ -188,11 +188,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.promptTokensEstimate = estimatedTokens;
 	}
 
-	async handleLLMError(
-		error: IDataObject | Error,
-		runId: string,
-		parentRunId?: string | undefined,
-	) {
+	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		// Filter out non-x- headers to avoid leaking sensitive information in logs

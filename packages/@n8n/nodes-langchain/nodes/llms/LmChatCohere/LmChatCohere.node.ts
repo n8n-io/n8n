@@ -40,7 +40,6 @@ export function tokensUsageParser(llmOutput: LLMResult): {
 export class LmChatCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatCohere',
 		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],

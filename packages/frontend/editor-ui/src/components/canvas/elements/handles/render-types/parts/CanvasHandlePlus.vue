@@ -25,6 +25,7 @@ const emit = defineEmits<{
 const style = useCssModule();
 
 const classes = computed(() => [
+	'canvas-handle-plus-wrapper',
 	style.wrapper,
 	style[props.position],
 	style[props.type],

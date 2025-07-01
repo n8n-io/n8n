@@ -24,6 +24,7 @@ import type {
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -88,6 +89,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
