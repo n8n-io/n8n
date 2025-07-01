@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util';
 
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
-import { DockerImageNotFoundError } from './types';
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
 // ANSI colors for terminal output
 const colors = {

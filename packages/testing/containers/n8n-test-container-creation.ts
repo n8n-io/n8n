@@ -19,7 +19,7 @@ import {
 	setupPostgres,
 	setupRedis,
 } from './n8n-test-container-dependencies';
-import { DockerImageNotFoundError } from './types';
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
 // --- Constants ---
 
