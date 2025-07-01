@@ -1274,9 +1274,6 @@ importers:
       '@n8n_io/license-sdk':
         specifier: 2.22.0
         version: 2.22.0
-      '@oclif/core':
-        specifier: 4.0.7
-        version: 4.0.7
       '@rudderstack/rudder-sdk-node':
         specifier: 2.1.4
         version: 2.1.4(tslib@2.8.1)
@@ -1496,6 +1493,9 @@ importers:
       yamljs:
         specifier: 0.3.0
         version: 0.3.0
+      yargs-parser:
+        specifier: 21.1.1
+        version: 21.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1575,6 +1575,9 @@ importers:
       '@types/yamljs':
         specifier: ^0.2.31
         version: 0.2.31
+      '@types/yargs-parser':
+        specifier: 21.0.0
+        version: 21.0.0
       '@vvo/tzdb':
         specifier: ^6.141.0
         version: 6.141.0
