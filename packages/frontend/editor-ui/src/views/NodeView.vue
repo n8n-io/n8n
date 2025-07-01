@@ -27,8 +27,6 @@ import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
-	IWorkflowDataUpdate,
-	IUpdateInformation,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
 	NodeFilterType,
@@ -73,7 +71,6 @@ import {
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	NodeConnectionTypes,
