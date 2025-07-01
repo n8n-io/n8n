@@ -29,7 +29,7 @@ const removeCookiesFromHeader = (req: Request) => {
  * Removes a cookie with the given name from the parsed cookies object
  */
 const removeCookiesFromParsedCookies = (req: Request) => {
-	if (req.cookies && typeof req.cookies === 'object') {
+	if (req.cookies !== null && typeof req.cookies === 'object') {
 		for (const cookieName of DISALLOWED_COOKIES) {
 			delete req.cookies[cookieName];
 		}
