@@ -110,9 +110,9 @@ describe('CanvasNode', () => {
 
 			const inputHandles = getAllByTestId('canvas-node-input-handle');
 
-			expect(inputHandles[1]).toHaveStyle('left: 32px');
-			expect(inputHandles[2]).toHaveStyle('left: 160px');
-			expect(inputHandles[3]).toHaveStyle('left: 224px');
+			expect(inputHandles[1]).toHaveStyle('left: 40px');
+			expect(inputHandles[2]).toHaveStyle('left: 168px');
+			expect(inputHandles[3]).toHaveStyle('left: 232px');
 		});
 	});
 

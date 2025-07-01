@@ -48,6 +48,10 @@ export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	yMax: Infinity,
 };
 
+// The top-center of the configuration node is not a multiple of GRID_SIZE,
+// therefore we need to offset non-main inputs to align with the nodes top-center
+export const CONFIGURATION_NODE_OFFSET = (CONFIGURATION_NODE_SIZE[0] / 2) % GRID_SIZE;
+
 /**
  * Utility functions for returning nodes found at the edges of a group
  */
@@ -616,13 +620,15 @@ export function calculateNodeSize(
 
 	if (isConfigurable) {
 		return {
-			width: Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount) * 2 * GRID_SIZE * 2,
+			width:
+				Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount) * GRID_SIZE * 4 +
+				CONFIGURATION_NODE_OFFSET * 2,
 			height: isConfiguration ? CONFIGURATION_NODE_SIZE[1] : height,
 		};
 	}
 
 	if (isConfiguration) {
-		return { width: GRID_SIZE * 5, height: GRID_SIZE * 5 };
+		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0], height };

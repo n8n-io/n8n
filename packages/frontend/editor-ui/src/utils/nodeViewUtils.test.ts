@@ -483,21 +483,21 @@ describe('calculateNodeSize', () => {
 		const nonMainInputCount = 5;
 		const mainInputCount = 3;
 		const mainOutputCount = 2;
-		// width = max(4, 5) * 2 * 16 * 2 = 5 * 2 * 16 * 2 = 320
+		// width = max(4, 5) * 2 * 16 * 2 = 5 * 2 * 16 * 2 + offset = 336
 		// height = DEFAULT_NODE_SIZE[1] + max(0, max(3,2,1) - 2) * 16 * 2
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
 		expect(
 			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount),
-		).toEqual({ width: 320, height: 128 });
+		).toEqual({ width: 336, height: 128 });
 	});
 
 	it('should return configurable configuration node size when both isConfigurable and isConfiguration are true', () => {
 		const nonMainInputCount = 2;
-		// width = max(4, 2) * 2 * 16 * 2 = 4 * 2 * 16 * 2 = 256
+		// width = max(4, 2) * 2 * 16 * 2 = 4 * 2 * 16 * 2 + offset = 272
 		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
 		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount)).toEqual({
-			width: 256,
+			width: 272,
 			height: 80,
 		});
 	});
@@ -524,12 +524,12 @@ describe('calculateNodeSize', () => {
 
 	it('should respect the minimum width for configurable nodes', () => {
 		const nonMainInputCount = 2; // less than NODE_MIN_INPUT_ITEMS_COUNT
-		// width = 4 * 2 * 16 * 2 = 256
+		// width = 4 * 2 * 16 * 2 + offset = 272
 		// height = default path, mainInputCount = 1, mainOutputCount = 1
 		// maxVerticalHandles = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
 		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount)).toEqual({
-			width: 256,
+			width: 272,
 			height: 96,
 		});
 	});
