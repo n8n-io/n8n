@@ -1091,7 +1091,7 @@ onMounted(() => {
 
 	void externalHooks.run('parameterInput.mount', {
 		parameter: props.parameter,
-		inputFieldRef: inputField.value,
+		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
 	});
 });
 
