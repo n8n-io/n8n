@@ -451,7 +451,7 @@ describe('LogsPanel', () => {
 		).toBeInTheDocument();
 		expect(within(rendered.getByRole('tree')).getByText('AI Model')).toBeInTheDocument();
 
-		canvasOperations.renameNode('AI Model', 'Renamed!!');
+		await canvasOperations.renameNode('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
 			expect(
@@ -516,7 +516,7 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
 
-		it('should automatically select log for a renamed node', async () => {
+		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
 			const canvasOperations = useCanvasOperations();
 
 			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
@@ -528,7 +528,7 @@ describe('LogsPanel', () => {
 
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 
-			canvasOperations.renameNode('AI Agent', 'Renamed Agent');
+			await canvasOperations.renameNode('AI Agent', 'Renamed Agent');
 			uiStore.lastSelectedNode = 'Renamed Agent';
 
 			await rerender({});
