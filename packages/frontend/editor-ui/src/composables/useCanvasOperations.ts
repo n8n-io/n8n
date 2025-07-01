@@ -1029,7 +1029,7 @@ export function useCanvasOperations() {
 
 		const nodeSize =
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
-		let pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
+		const pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
 		let position: XYPosition | undefined = node.position;
 		if (position) {
