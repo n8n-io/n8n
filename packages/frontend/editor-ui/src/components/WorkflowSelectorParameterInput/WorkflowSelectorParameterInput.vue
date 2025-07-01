@@ -171,7 +171,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 }
 
 function onListItemSelected(value: NodeParameterValue) {
-	telemetry.track('User chose sub-workflow', {}, { withPostHog: true });
+	telemetry.track('User chose sub-workflow', {});
 	onInputChange(value);
 	hideDropdown();
 }
@@ -258,7 +258,7 @@ const onAddResourceClicked = async () => {
 	if (projectId) {
 		workflow.projectId = projectId;
 	}
-	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
+	telemetry.track('User clicked create new sub-workflow button', {});
 
 	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 	const { href } = router.resolve({
@@ -415,7 +415,7 @@ const onAddResourceClicked = async () => {
 						data-test-id="rlc-open-resource-link"
 					>
 						<n8n-link theme="text" @click.stop="openWorkflow()">
-							<font-awesome-icon icon="external-link-alt" :title="'Open resource link'" />
+							<n8n-icon icon="external-link" :title="'Open resource link'" />
 						</n8n-link>
 					</div>
 				</div>

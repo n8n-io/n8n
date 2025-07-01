@@ -205,6 +205,7 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
+// this can be removed once nodes stop using FA icons
 export const FontAwesomePlugin: Plugin = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
@@ -413,7 +414,3 @@ type LibraryWithDefinitions = Library & {
 };
 
 export const iconLibrary = library as LibraryWithDefinitions;
-
-export const getAllIconNames = () => {
-	return Object.keys(iconLibrary.definitions.fas);
-};

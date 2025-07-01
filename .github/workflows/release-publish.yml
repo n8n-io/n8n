@@ -139,7 +139,7 @@ jobs:
         with:
           projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
           version: n8n@${{ needs.publish-to-npm.outputs.release }}
-          sourcemaps: packages/core/dist packages/workflow/dist packages/@n8n/task-runner/dist
+          sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
 
   trigger-release-note:
     name: Trigger a release note

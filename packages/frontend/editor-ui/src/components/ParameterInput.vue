@@ -1399,7 +1399,7 @@ onUpdated(async () => {
 						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1420,7 +1420,7 @@ onUpdated(async () => {
 					<template #suffix>
 						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1439,7 +1439,7 @@ onUpdated(async () => {
 					<template #suffix>
 						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1459,7 +1459,7 @@ onUpdated(async () => {
 					<template #suffix>
 						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1480,7 +1480,7 @@ onUpdated(async () => {
 						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1499,7 +1499,7 @@ onUpdated(async () => {
 					<template #suffix>
 						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="textarea-modal-opener"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1545,7 +1545,7 @@ onUpdated(async () => {
 					<template #suffix>
 						<N8nIcon
 							v-if="!isReadOnly && !isSecretParameter"
-							icon="external-link-alt"
+							icon="external-link"
 							size="xsmall"
 							class="edit-window-button textarea-modal-opener"
 							:class="{
