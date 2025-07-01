@@ -15,6 +15,7 @@
     "build:frontend": "turbo run build:frontend",
     "build:nodes": "turbo run build:nodes",
     "build:n8n": "node scripts/build-n8n.mjs",
+    "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && pnpm --filter=n8n-playwright run test:standard",
