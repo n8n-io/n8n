@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/dot-notation */ // Disabled to allow access to private methods
+// Disabled to allow access to private methods
 import { DynamicTool } from '@langchain/core/tools';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import type {

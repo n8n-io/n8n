@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -20,7 +18,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatXAiGrok implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'xAI Grok Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatXAiGrok',
 		icon: { light: 'file:logo.dark.svg', dark: 'file:logo.svg' },
 		group: ['transform'],
@@ -43,9 +41,9 @@ export class LmChatXAiGrok implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
