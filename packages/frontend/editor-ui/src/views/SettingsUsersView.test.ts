@@ -137,13 +137,6 @@ describe('SettingsUsersView', () => {
 		ssoStore = mockedStore(useSSOStore);
 
 		// Setup default store states
-		usersStore.usersById = mockUsersList.items.reduce(
-			(acc, user) => {
-				acc[user.id] = user;
-				return acc;
-			},
-			{} as Record<string, (typeof mockUsersList.items)[0]>,
-		);
 		usersStore.usersLimitNotReached = true;
 		usersStore.usersList = {
 			state: mockUsersList,
@@ -344,7 +337,7 @@ describe('SettingsUsersView', () => {
 
 		it('should handle disallow SSO manual login action', async () => {
 			// Set user to have SSO manual login enabled
-			usersStore.usersById['2'].settings = { allowSSOManualLogin: true };
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
 			const user = userEvent.setup();
 			renderComponent();

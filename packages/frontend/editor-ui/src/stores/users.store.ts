@@ -304,13 +304,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const updateOtherUserSettings = async (userId: string, settings: SettingsUpdateRequestDto) => {
-		const updatedSettings = await usersApi.updateOtherUserSettings(
-			rootStore.restApiContext,
-			userId,
-			settings,
-		);
-		usersById.value[userId].settings = updatedSettings;
-		addUsers([usersById.value[userId]]);
+		await usersApi.updateOtherUserSettings(rootStore.restApiContext, userId, settings);
 	};
 
 	const updateCurrentUserPassword = async (params: PasswordUpdateRequestDto) => {

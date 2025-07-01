@@ -5,6 +5,7 @@ import {
 	ROLE,
 	type Role,
 	type UsersListSortOptions,
+	type User,
 	USERS_LIST_SORT_OPTIONS,
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
@@ -148,7 +149,7 @@ async function onDelete(userId: string) {
 	});
 }
 async function onReinvite(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.email && user?.role) {
 		if (!['global:admin', 'global:member'].includes(user.role)) {
 			throw new Error('Invalid role name on reinvite');
@@ -171,7 +172,7 @@ async function onReinvite(userId: string) {
 	}
 }
 async function onCopyInviteLink(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.inviteAcceptUrl) {
 		void clipboard.copy(user.inviteAcceptUrl);
 
@@ -183,7 +184,7 @@ async function onCopyInviteLink(userId: string) {
 	}
 }
 async function onCopyPasswordResetLink(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user) {
 		const url = await usersStore.getUserPasswordResetLink(user);
 		void clipboard.copy(url.link);
@@ -196,13 +197,14 @@ async function onCopyPasswordResetLink(userId: string) {
 	}
 }
 async function onAllowSSOManualLogin(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user) {
 		if (!user.settings) {
 			user.settings = {};
 		}
 		user.settings.allowSSOManualLogin = true;
 		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
 
 		showToast({
 			type: 'success',
@@ -212,10 +214,12 @@ async function onAllowSSOManualLogin(userId: string) {
 	}
 }
 async function onDisallowSSOManualLogin(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.settings) {
 		user.settings.allowSSOManualLogin = false;
 		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
+
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.users.disallowSSOManualLogin'),
@@ -231,7 +235,7 @@ function goToUpgradeAdvancedPermissions() {
 }
 
 const onUpdateRole = async (payload: { userId: string; role: Role }) => {
-	const user = usersStore.usersById[payload.userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
 	if (!user) {
 		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
 		return;
@@ -240,7 +244,7 @@ const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 	await onRoleChange(user, payload.role);
 };
 
-async function onRoleChange(user: IUser, newRoleName: Role) {
+async function onRoleChange(user: User, newRoleName: Role) {
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
 
@@ -251,7 +255,10 @@ async function onRoleChange(user: IUser, newRoleName: Role) {
 			title: i18n.baseText('settings.users.userRoleUpdated'),
 			message: i18n.baseText('settings.users.userRoleUpdated.message', {
 				interpolate: {
-					user: user.fullName ?? '',
+					user:
+						user.firstName && user.lastName
+							? `${user.firstName} ${user.lastName}`
+							: (user.email ?? ''),
 					role,
 				},
 			}),
