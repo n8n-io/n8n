@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -10,6 +10,7 @@ import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } fr
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { OwnershipService } from '@/services/ownership.service';
@@ -35,9 +36,81 @@ interface ISkipList {
 	ticketReference: string;
 }
 
-export class ExecuteBatch extends BaseCommand {
-	static description = '\nExecutes multiple workflows once';
+const flagsSchema = z.object({
+	debug: z
+		.boolean()
+		.describe('Toggles on displaying all errors and debug messages.')
+		.default(false),
+	ids: z
+		.string()
+		.describe(
+			'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
+		)
+		.optional(),
+	concurrency: z
+		.number()
+		.int()
+		.default(1)
+		.describe('How many workflows can run in parallel. Defaults to 1 which means no concurrency.'),
+	output: z
+		.string()
+		.describe(
+			'Enable execution saving, You must inform an existing folder to save execution via this param',
+		)
+		.optional(),
+	snapshot: z
+		.string()
+		.describe(
+			'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
+		)
+		.optional(),
+	compare: z
+		.string()
+		.describe(
+			'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
+		)
+		.optional(),
+	shallow: z
+		.boolean()
+		.describe(
+			'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
+		)
+		.optional(),
+	githubWorkflow: z
+		.boolean()
+		.describe(
+			'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
+		)
+		.optional(),
+	skipList: z
+		.string()
+		.describe('File containing a comma separated list of workflow IDs to skip.')
+		.optional(),
+	retries: z
+		.number()
+		.int()
+		.default(1)
+		.describe('Retries failed workflows up to N tries. Default is 1. Set 0 to disable.'),
+	shortOutput: z
+		.boolean()
+		.describe('Omits the full execution information from output, displaying only summary.')
+		.optional(),
+});
 
+@Command({
+	name: 'execute-batch',
+	description: 'Executes multiple workflows once',
+	examples: [
+		'',
+		'--concurrency=10 --skipList=/data/skipList.json',
+		'--debug --output=/data/output.json',
+		'--ids=10,13,15 --shortOutput',
+		'--snapshot=/data/snapshots --shallow',
+		'--compare=/data/previousExecutionData --retries=2',
+	],
+	flagsSchema,
+})
+export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 	static cancelled = false;
 
 	static workflowExecutionsProgress: IWorkflowExecutionProgress[][];
@@ -57,63 +130,6 @@ export class ExecuteBatch extends BaseCommand {
 	static executionTimeout = 3 * 60 * 1000;
 
 	static instanceOwner: User;
-
-	static examples = [
-		'$ n8n executeBatch',
-		'$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.json',
-		'$ n8n executeBatch --debug --output=/data/output.json',
-		'$ n8n executeBatch --ids=10,13,15 --shortOutput',
-		'$ n8n executeBatch --snapshot=/data/snapshots --shallow',
-		'$ n8n executeBatch --compare=/data/previousExecutionData --retries=2',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		debug: Flags.boolean({
-			description: 'Toggles on displaying all errors and debug messages.',
-		}),
-		ids: Flags.string({
-			description:
-				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
-		}),
-		concurrency: Flags.integer({
-			default: 1,
-			description:
-				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
-		}),
-		output: Flags.string({
-			description:
-				'Enable execution saving, You must inform an existing folder to save execution via this param',
-		}),
-		snapshot: Flags.string({
-			description:
-				'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
-		}),
-		compare: Flags.string({
-			description:
-				'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
-		}),
-		shallow: Flags.boolean({
-			description:
-				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
-		}),
-
-		githubWorkflow: Flags.boolean({
-			description:
-				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
-		}),
-
-		skipList: Flags.string({
-			description: 'File containing a comma separated list of workflow IDs to skip.',
-		}),
-		retries: Flags.integer({
-			description: 'Retries failed workflows up to N tries. Default is 1. Set 0 to disable.',
-			default: 1,
-		}),
-		shortOutput: Flags.boolean({
-			description: 'Omits the full execution information from output, displaying only summary.',
-		}),
-	};
 
 	static aliases = ['executeBatch'];
 
@@ -182,7 +198,7 @@ export class ExecuteBatch extends BaseCommand {
 
 	// eslint-disable-next-line complexity
 	async run() {
-		const { flags } = await this.parse(ExecuteBatch);
+		const { flags } = this;
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
@@ -345,7 +361,7 @@ export class ExecuteBatch extends BaseCommand {
 		await this.stopProcess(true);
 
 		if (results.summary.failedExecutions > 0) {
-			this.exit(1);
+			process.exit(1);
 		}
 	}
 
