@@ -5,7 +5,7 @@ export const NoConstructorInBackendModuleRule = ESLintUtils.RuleCreator.withoutD
 		type: 'problem',
 		docs: {
 			description:
-				'A class decorated with `@BackendModule` must not have a constructor. This ensures that module dependencies is loaded only when the module is used.',
+				'A class decorated with `@BackendModule` must not have a constructor. This ensures that module dependencies are loaded only when the module is used.',
 		},
 		messages: {
 			noConstructorInBackendModule:
