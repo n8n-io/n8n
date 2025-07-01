@@ -136,7 +136,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -931,7 +931,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		telemetry.track('User set node operation or mode', {
 			workflow_id: workflowsStore.workflowId,
 			node_type: node.value?.type,
-			resource: node.value && node.value.parameters.resource,
+			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
@@ -1091,7 +1091,7 @@ onMounted(() => {
 
 	void externalHooks.run('parameterInput.mount', {
 		parameter: props.parameter,
-		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
+		inputFieldRef: inputField.value,
 	});
 });
 
@@ -1399,10 +1399,10 @@ onUpdated(async () => {
 						<span
 							v-if="!editorIsReadOnly"
 							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
 						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1421,9 +1421,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<span class="textarea-modal-opener" @click="displayEditDialog()">
+						<span
+							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
+							@click="displayEditDialog()"
+						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1440,9 +1443,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<span class="textarea-modal-opener" @click="displayEditDialog()">
+						<span
+							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
+							@click="displayEditDialog()"
+						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1460,9 +1466,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<span class="textarea-modal-opener" @click="displayEditDialog()">
+						<span
+							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
+							@click="displayEditDialog()"
+						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1483,10 +1492,10 @@ onUpdated(async () => {
 						<span
 							v-if="!editorIsReadOnly"
 							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
 						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
@@ -1503,9 +1512,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<span class="textarea-modal-opener" @click="displayEditDialog()">
+						<span
+							class="textarea-modal-opener"
+							data-test-id="code-editor-fullscreen-button"
+							@click="displayEditDialog()"
+						>
 							<N8nIcon
-								data-test-id="code-editor-fullscreen-button"
 								icon="external-link"
 								size="xsmall"
 								:title="i18n.baseText('parameterInput.openEditWindow')"
