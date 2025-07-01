@@ -1137,7 +1137,7 @@ export function useCanvasOperations() {
 				 */
 				const CUSTOM_Y_OFFSETS: Record<string, number> = {
 					[NodeConnectionTypes.AiLanguageModel]: nodeSize[0] * 2,
-					[NodeConnectionTypes.AiMemory]: nodeSize[1],
+					[NodeConnectionTypes.AiMemory]: nodeSize[0],
 				};
 
 				const customOffset: number = CUSTOM_Y_OFFSETS[connectionType as string] ?? 0;
