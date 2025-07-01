@@ -78,6 +78,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:executing="executing"
 				v-bind="$attrs"
 			/>
 		</div>
