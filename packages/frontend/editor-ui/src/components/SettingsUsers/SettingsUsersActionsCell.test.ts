@@ -23,9 +23,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
         <div>
           <button
             v-for="action in actions"
-            :key="action.id"
-            :data-test-id="'action-' + action.id"
-            @click="$emit('action', action.id)">
+            :key="action.value"
+            :data-test-id="'action-' + action.value"
+            @click="$emit('action', action.value)">
             {{ action.label }}
           </button>
         </div>
@@ -48,8 +48,8 @@ const baseUser: UsersList['items'][number] = {
 };
 
 const mockActions: Array<UserAction<IUser>> = [
-	{ id: 'delete', label: 'Delete', icon: 'trash' },
-	{ id: 'reinvite', label: 'Reinvite', icon: 'email' },
+	{ value: 'delete', label: 'Delete' },
+	{ value: 'reinvite', label: 'Reinvite' },
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;

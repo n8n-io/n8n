@@ -49,7 +49,7 @@ vi.mock('@/components/SettingsUsers/SettingsUsersActionsCell.vue', () => ({
 		emits: ['action'],
 		template: `
 		  <div :data-test-id="'actions-cell-' + data.id" :data-actions-count="actions.length">
-			<button v-if="actions.length > 0" :data-test-id="'action-button-' + data.id" @click="$emit('action', { action: actions[0].id, userId: data.id })">
+			<button v-if="actions.length > 0" :data-test-id="'action-button-' + data.id" @click="$emit('action', { action: actions[0].value, userId: data.id })">
 				Perform Action
 			</button>
 		  </div>
@@ -158,14 +158,12 @@ const mockUsersList: UsersList = {
 
 const mockActions: Array<UserAction<IUser>> = [
 	{
-		id: 'delete',
+		value: 'delete',
 		label: 'Delete',
-		icon: 'trash',
 	},
 	{
-		id: 'reinvite',
+		value: 'reinvite',
 		label: 'Reinvite',
-		icon: 'email',
 		guard: (user) => user.isPendingUser,
 	},
 ];
