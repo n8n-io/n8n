@@ -120,7 +120,7 @@ export class LmChatCohere implements INodeType {
 						},
 					},
 				},
-				default: 'command',
+				default: 'command-a-03-2025',
 			},
 			{
 				displayName: 'Options',
@@ -152,7 +152,7 @@ export class LmChatCohere implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('cohereApi');
+		const credentials = await this.getCredentials<{ url?: string; apiKey?: string }>('cohereApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -162,7 +162,7 @@ export class LmChatCohere implements INodeType {
 		};
 
 		const model = new ChatCohere({
-			apiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey,
 			model: modelName,
 			temperature: options.temperature,
 			maxRetries: options.maxRetries ?? 2,

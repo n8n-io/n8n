@@ -59,7 +59,7 @@ function createAgentExecutor(
 	runnableAgent.singleAction = false;
 	runnableAgent.streamRunnable = false;
 
-	return new AgentExecutor({
+	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
 		memory,
 		tools,
