@@ -22,7 +22,7 @@ const { t } = useI18n();
 	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
 		<div :class="$style.error" data-test-id="chat-message-system">
 			<p :class="$style.errorText">
-				<N8nIcon icon="exclamation-triangle" size="small" :class="$style.errorIcon" />
+				<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				{{ message.content }}
 			</p>
 			<N8nButton

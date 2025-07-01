@@ -15,7 +15,7 @@ const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 </script>
 
 <template>
-	<BaseBanner custom-icon="info-circle" theme="warning" name="V1" :class="$style.v1container">
+	<BaseBanner custom-icon="info" theme="warning" name="V1" :class="$style.v1container">
 		<template #mainContent>
 			<span v-n8n-html="locale.baseText('banners.v1.message')"></span>
 			<a

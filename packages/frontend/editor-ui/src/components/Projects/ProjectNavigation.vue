@@ -28,7 +28,7 @@ const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEna
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
 	label: locale.baseText('projects.menu.overview'),
-	icon: 'home',
+	icon: 'house',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
 	},

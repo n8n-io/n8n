@@ -9,7 +9,7 @@ import type {
 import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
@@ -64,6 +64,7 @@ const LazyCollectionParameter = defineAsyncComponent(
 const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
+	node?: INodeUi;
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
 	path?: string;
@@ -120,6 +121,8 @@ const nodeType = computed(() => {
 	return null;
 });
 
+const node = computed(() => props.node ?? ndvStore.activeNode);
+
 const filteredParameters = computedWithControl(
 	[() => props.parameters, () => props.nodeValues] as WatchSource[],
 	() => {
@@ -127,22 +130,20 @@ const filteredParameters = computedWithControl(
 			displayNodeParameter(parameter),
 		);
 
-		const activeNode = ndvStore.activeNode;
-
-		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
-			return updateFormTriggerParameters(parameters, activeNode.name);
+		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, node.value.name);
 		}
 
-		if (activeNode && activeNode.type === FORM_NODE_TYPE) {
-			return updateFormParameters(parameters, activeNode.name);
+		if (node.value && node.value.type === FORM_NODE_TYPE) {
+			return updateFormParameters(parameters, node.value.name);
 		}
 
 		if (
-			activeNode &&
-			activeNode.type === WAIT_NODE_TYPE &&
-			activeNode.parameters.resume === 'form'
+			node.value &&
+			node.value.type === WAIT_NODE_TYPE &&
+			node.value.parameters.resume === 'form'
 		) {
-			return updateWaitParameters(parameters, activeNode.name);
+			return updateWaitParameters(parameters, node.value.name);
 		}
 
 		return parameters;
@@ -152,8 +153,6 @@ const filteredParameters = computedWithControl(
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
 });
-
-const node = computed(() => ndvStore.activeNode);
 
 const nodeAuthFields = computed(() => {
 	return getNodeAuthFields(nodeType.value);
@@ -648,7 +647,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 
 					<template #trailingContent>
 						<N8nIcon
-							icon="times"
+							icon="x"
 							title="Dismiss"
 							size="medium"
 							type="secondary"
@@ -695,7 +694,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 									issue
 								}}</span>
 							</template>
-							<N8nIcon icon="exclamation-triangle" size="small" color="danger" />
+							<N8nIcon icon="triangle-alert" size="small" color="danger" />
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
@@ -722,13 +721,13 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					</template>
 					<template #fallback>
 						<N8nText size="small" class="async-notice">
-							<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+							<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 							{{ i18n.baseText('parameterInputList.loadingFields') }}
 						</N8nText>
 					</template>
 				</Suspense>
 				<N8nText v-else size="small" color="danger" class="async-notice">
-					<N8nIcon icon="exclamation-triangle" size="xsmall" />
+					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
@@ -736,7 +735,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					type="tertiary"
 					text
 					size="mini"
-					icon="trash"
+					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
@@ -779,7 +778,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					type="tertiary"
 					text
 					size="mini"
-					icon="trash"
+					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"

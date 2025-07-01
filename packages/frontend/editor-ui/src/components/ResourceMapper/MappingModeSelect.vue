@@ -138,7 +138,7 @@ defineExpose({
 			</div>
 			<div class="mt-5xs">
 				<N8nText v-if="loading" size="small">
-					<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+					<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 					{{
 						locale.baseText('resourceMapper.fetchingFields.message', {
 							interpolate: {
@@ -148,7 +148,7 @@ defineExpose({
 					}}
 				</N8nText>
 				<N8nText v-else-if="errorMessage !== ''" size="small" color="danger">
-					<N8nIcon icon="exclamation-triangle" size="xsmall" />
+					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ errorMessage }}
 					<N8nLink size="small" theme="danger" :underline="true" @click="onRetryClick">
 						{{ locale.baseText('generic.retry') }}

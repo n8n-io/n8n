@@ -424,9 +424,27 @@ export class WorkflowExecute {
 		}
 
 		// 1. Find the Trigger
-		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
+		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
 		if (trigger === undefined) {
-			throw new UserError('Connect a trigger to run this node');
+			// destination has parents but none of them are triggers, so find the closest
+			// parent node that has run data, and treat that parent as starting point
+
+			let startNode;
+
+			const parentNodes = workflow.getParentNodes(destinationNodeName);
+
+			for (const nodeName of parentNodes) {
+				if (runData[nodeName]) {
+					startNode = workflow.getNode(nodeName);
+					break;
+				}
+			}
+
+			if (!startNode) {
+				throw new UserError('Connect a trigger to run this node');
+			}
+
+			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
