@@ -19,7 +19,7 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-import { authWhitelistedNodes } from './constants';
+import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
@@ -128,7 +128,7 @@ export class LiveWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		if (!authWhitelistedNodes.has(workflowStartNode.type)) {
+		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
 			sanitizeWebhookRequest(request);
 		}
 

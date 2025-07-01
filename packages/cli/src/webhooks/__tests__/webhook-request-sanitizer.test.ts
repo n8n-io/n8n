@@ -32,7 +32,7 @@ describe('webhookRequestSanitizer', () => {
 
 			sanitizeWebhookRequest(mockRequest);
 
-			expect(mockRequest.headers.cookie).toBe('other-cookie=value;another-cookie=test');
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value; another-cookie=test');
 		});
 
 		it('should remove cookie when it is the only cookie', () => {
@@ -62,7 +62,7 @@ describe('webhookRequestSanitizer', () => {
 
 			sanitizeWebhookRequest(mockRequest);
 
-			expect(mockRequest.headers.cookie).toBe('first-cookie=value1;last-cookie=value2');
+			expect(mockRequest.headers.cookie).toBe('first-cookie=value1; last-cookie=value2');
 		});
 
 		it('should handle multiple n8n-auth cookies', () => {
@@ -213,7 +213,7 @@ describe('webhookRequestSanitizer', () => {
 
 			sanitizeWebhookRequest(mockRequest);
 
-			expect(mockRequest.headers.cookie).toBe('n8n-auth; other-cookie=value');
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
 		});
 	});
 
