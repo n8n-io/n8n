@@ -137,7 +137,7 @@ const onBlur = (): void => {
 			type="tertiary"
 			text
 			size="mini"
-			icon="trash"
+			icon="trash-2"
 			data-test-id="assignment-remove"
 			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"

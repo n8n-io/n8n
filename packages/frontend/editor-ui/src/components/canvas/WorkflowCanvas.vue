@@ -10,7 +10,7 @@ import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
-import ExperimentalNodeDetailsDrawer from './components/ExperimentalNodeDetailsDrawer.vue';
+import ExperimentalNodeDetailsDrawer from './experimental/components/ExperimentalNodeDetailsDrawer.vue';
 
 defineOptions({
 	inheritAttrs: false,

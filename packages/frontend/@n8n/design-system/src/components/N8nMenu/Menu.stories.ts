@@ -48,7 +48,7 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 				</template>
 				<template #footer>
 					<div class="p-m hideme">
-						<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
+						<n8n-icon icon="circle-user-round" size="xlarge"/>&nbsp;&nbsp;
 						<n8n-text>John Smithson</n8n-text>
 					</div>
 				</template>
@@ -82,7 +82,7 @@ const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
 				</template>
 				<template #footer>
 					<div class="p-m hideme">
-						<n8n-icon icon="user-circle" size="xlarge"/>&nbsp;&nbsp;
+						<n8n-icon icon="circle-user-round" size="xlarge"/>&nbsp;&nbsp;
 						<n8n-text>John Smithson</n8n-text>
 					</div>
 				</template>
@@ -95,7 +95,7 @@ const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
 const menuItems = [
 	{
 		id: 'workflows',
-		icon: 'network-wired',
+		icon: 'network',
 		label: 'Workflows',
 		position: 'top',
 	},
@@ -107,7 +107,7 @@ const menuItems = [
 	},
 	{
 		id: 'disabled-item',
-		icon: 'times',
+		icon: 'x',
 		label: 'Not Available',
 		available: false,
 		position: 'top',
@@ -132,7 +132,7 @@ const menuItems = [
 			{ icon: 'book', label: 'Documentation', id: 'docs' },
 			{
 				id: 'disabled-submenu-item',
-				icon: 'times',
+				icon: 'x',
 				label: 'Not Available',
 				available: false,
 				position: 'top',

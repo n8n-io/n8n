@@ -149,7 +149,7 @@ Text.args = {
 export const WithIcon = AllSizesTemplate.bind({});
 WithIcon.args = {
 	label: 'Button',
-	icon: 'plus-circle',
+	icon: 'circle-plus',
 };
 
 export const Square = AllColorsAndSizesTemplate.bind({});

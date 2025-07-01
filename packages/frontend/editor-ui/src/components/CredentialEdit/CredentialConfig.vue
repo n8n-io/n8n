@@ -225,7 +225,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<n8n-callout v-if="isManaged" theme="warning" icon="exclamation-triangle">
+	<n8n-callout v-if="isManaged" theme="warning" icon="triangle-alert">
 		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
 	</n8n-callout>
 	<div v-else>

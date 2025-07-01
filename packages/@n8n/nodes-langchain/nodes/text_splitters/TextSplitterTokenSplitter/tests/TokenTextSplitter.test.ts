@@ -1,7 +1,13 @@
+import { OperationalError } from 'n8n-workflow';
+
+import * as helpers from '../../../../utils/helpers';
 import * as tiktokenUtils from '../../../../utils/tokenizer/tiktoken';
+import * as tokenEstimator from '../../../../utils/tokenizer/token-estimator';
 import { TokenTextSplitter } from '../TokenTextSplitter';
 
 jest.mock('../../../../utils/tokenizer/tiktoken');
+jest.mock('../../../../utils/helpers');
+jest.mock('../../../../utils/tokenizer/token-estimator');
 
 describe('TokenTextSplitter', () => {
 	let mockTokenizer: jest.Mocked<{
@@ -15,6 +21,8 @@ describe('TokenTextSplitter', () => {
 			decode: jest.fn(),
 		};
 		(tiktokenUtils.getEncoding as jest.Mock).mockResolvedValue(mockTokenizer);
+		// Default mock for hasLongSequentialRepeat - no repetition
+		(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -160,6 +168,176 @@ describe('TokenTextSplitter', () => {
 			const result = await splitter.splitText(inputText);
 
 			expect(result).toEqual(['One two', 'two three', 'three four', 'four five', 'five six']);
+		});
+
+		describe('repetitive content handling', () => {
+			it('should use character-based estimation for repetitive content', async () => {
+				const splitter = new TokenTextSplitter({
+					chunkSize: 100,
+					chunkOverlap: 10,
+				});
+
+				const repetitiveText = 'a'.repeat(1000);
+				const estimatedChunks = ['chunk1', 'chunk2', 'chunk3'];
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+
+				const result = await splitter.splitText(repetitiveText);
+
+				// Should not call tiktoken
+				expect(tiktokenUtils.getEncoding).not.toHaveBeenCalled();
+				expect(mockTokenizer.encode).not.toHaveBeenCalled();
+
+				// Should use estimation
+				expect(helpers.hasLongSequentialRepeat).toHaveBeenCalledWith(repetitiveText);
+				expect(tokenEstimator.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					repetitiveText,
+					100,
+					10,
+					'cl100k_base',
+				);
+
+				expect(result).toEqual(estimatedChunks);
+			});
+
+			it('should use tiktoken for non-repetitive content', async () => {
+				const splitter = new TokenTextSplitter({
+					chunkSize: 3,
+					chunkOverlap: 0,
+				});
+
+				const normalText = 'This is normal text without repetition';
+				const mockTokenIds = [1, 2, 3, 4, 5, 6];
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				mockTokenizer.encode.mockReturnValue(mockTokenIds);
+				mockTokenizer.decode.mockImplementation(() => 'chunk');
+
+				await splitter.splitText(normalText);
+
+				// Should check for repetition
+				expect(helpers.hasLongSequentialRepeat).toHaveBeenCalledWith(normalText);
+
+				// Should use tiktoken
+				expect(tiktokenUtils.getEncoding).toHaveBeenCalled();
+				expect(mockTokenizer.encode).toHaveBeenCalled();
+
+				// Should not use estimation
+				expect(tokenEstimator.estimateTextSplitsByTokens).not.toHaveBeenCalled();
+			});
+
+			it('should handle repetitive content with different encodings', async () => {
+				const splitter = new TokenTextSplitter({
+					encodingName: 'o200k_base',
+					chunkSize: 50,
+					chunkOverlap: 5,
+				});
+
+				const repetitiveText = '.'.repeat(500);
+				const estimatedChunks = ['estimated chunk 1', 'estimated chunk 2'];
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+
+				const result = await splitter.splitText(repetitiveText);
+
+				expect(tokenEstimator.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					repetitiveText,
+					50,
+					5,
+					'o200k_base',
+				);
+				expect(result).toEqual(estimatedChunks);
+			});
+
+			it('should handle edge case with exactly 100 repeating characters', async () => {
+				const splitter = new TokenTextSplitter();
+				const edgeText = 'x'.repeat(100);
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['single chunk']);
+
+				const result = await splitter.splitText(edgeText);
+
+				expect(helpers.hasLongSequentialRepeat).toHaveBeenCalledWith(edgeText);
+				expect(result).toEqual(['single chunk']);
+			});
+
+			it('should handle mixed content with repetitive sections', async () => {
+				const splitter = new TokenTextSplitter();
+				const mixedText = 'Normal text ' + 'z'.repeat(200) + ' more normal text';
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue([
+					'chunk1',
+					'chunk2',
+				]);
+
+				const result = await splitter.splitText(mixedText);
+
+				expect(helpers.hasLongSequentialRepeat).toHaveBeenCalledWith(mixedText);
+				expect(tokenEstimator.estimateTextSplitsByTokens).toHaveBeenCalled();
+				expect(result).toEqual(['chunk1', 'chunk2']);
+			});
+		});
+
+		describe('error handling', () => {
+			it('should return empty array for null input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(null as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should return empty array for undefined input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(undefined as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should return empty array for non-string input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(123 as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should fall back to estimation if tiktoken fails', async () => {
+				const splitter = new TokenTextSplitter();
+				const text = 'This will cause tiktoken to fail';
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				(tiktokenUtils.getEncoding as jest.Mock).mockRejectedValue(new Error('Tiktoken error'));
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue([
+					'fallback chunk',
+				]);
+
+				const result = await splitter.splitText(text);
+
+				expect(result).toEqual(['fallback chunk']);
+				expect(tokenEstimator.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					text,
+					splitter.chunkSize,
+					splitter.chunkOverlap,
+					splitter.encodingName,
+				);
+			});
+
+			it('should fall back to estimation if encode fails', async () => {
+				const splitter = new TokenTextSplitter();
+				const text = 'This will cause encode to fail';
+
+				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				mockTokenizer.encode.mockImplementation(() => {
+					throw new OperationalError('Encode error');
+				});
+				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue([
+					'fallback chunk',
+				]);
+
+				const result = await splitter.splitText(text);
+
+				expect(result).toEqual(['fallback chunk']);
+			});
 		});
 	});
 });

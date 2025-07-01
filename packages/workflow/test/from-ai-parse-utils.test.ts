@@ -3,7 +3,7 @@ import {
 	traverseNodeParameters,
 	type FromAIArgument,
 	generateZodSchema,
-} from '@/from-ai-parse-utils';
+} from '../src/from-ai-parse-utils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
 

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	NodeConnectionTypes,
@@ -8,8 +8,8 @@ import {
 	type INodeTypes,
 	type IVersionedNodeType,
 	type LoadedClass,
-} from '@/interfaces';
-import * as NodeHelpers from '@/node-helpers';
+} from '../src/interfaces';
+import * as NodeHelpers from '../src/node-helpers';
 
 const stickyNode: LoadedClass<INodeType> = {
 	type: {
