@@ -46,7 +46,6 @@ const mockUser: UsersList['items'][number] = {
 	isPending: false,
 	mfaEnabled: false,
 	settings: {},
-	inviteAcceptUrl: null,
 };
 
 const mockRoles = {

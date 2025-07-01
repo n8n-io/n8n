@@ -126,7 +126,6 @@ const mockUsersList: UsersList = {
 			isPending: false,
 			mfaEnabled: true,
 			settings: {},
-			inviteAcceptUrl: null,
 		},
 		{
 			id: '2',
@@ -138,7 +137,6 @@ const mockUsersList: UsersList = {
 			isPending: false,
 			mfaEnabled: false,
 			settings: {},
-			inviteAcceptUrl: null,
 		},
 		{
 			id: '3',

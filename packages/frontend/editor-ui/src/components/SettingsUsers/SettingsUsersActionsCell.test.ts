@@ -44,7 +44,6 @@ const baseUser: UsersList['items'][number] = {
 	isPending: false,
 	mfaEnabled: false,
 	settings: {},
-	inviteAcceptUrl: null,
 };
 
 const mockActions: Array<UserAction<IUser>> = [

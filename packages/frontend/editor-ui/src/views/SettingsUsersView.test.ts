@@ -90,7 +90,6 @@ const mockUsersList: UsersList = {
 			isOwner: true,
 			isPending: false,
 			settings: {},
-			inviteAcceptUrl: null,
 		},
 		{
 			id: '2',
@@ -101,7 +100,6 @@ const mockUsersList: UsersList = {
 			isOwner: false,
 			isPending: false,
 			settings: {},
-			inviteAcceptUrl: null,
 		},
 		{
 			id: '3',
