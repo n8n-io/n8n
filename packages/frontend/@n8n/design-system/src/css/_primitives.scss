@@ -4,27 +4,29 @@
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
-	--h-gray: 220;
+	--h-gray: 250;
 
 	// Gray
-	--p-gray-820: hsl(220, 1%, 18%);
-	--p-gray-800: hsl(220, 1%, 20%);
-	--p-gray-780: hsl(220, 1%, 22%);
-	--p-gray-740: hsl(220, 2%, 26%);
-	--p-gray-710: hsl(220, 2%, 29%);
-	--p-gray-670: hsl(220, 2%, 33%);
-	--p-gray-540: hsl(220, 4%, 46%);
-	--p-gray-490: hsl(220, 4%, 51%);
-	--p-gray-420: hsl(220, 4%, 58%);
-	--p-gray-320: hsl(220, 10%, 68%);
-	--p-gray-200: hsl(220, 18%, 80%);
-	--p-gray-120: hsl(220, 25%, 88%);
-	--p-gray-070: hsl(220, 32%, 93%);
-	--p-gray-040: hsl(220, 40%, 96%);
-	--p-gray-030: hsl(220, 43%, 97%);
-	--p-gray-025: hsl(220, 50%, 97.5%);
-	--p-gray-010: hsl(220, 50%, 99%);
-	--p-white: hsl(220, 50%, 100%);
+	--p-gray-900: hsl(250, 1%, 10%);
+	--p-gray-850: hsl(250, 1%, 15%);
+	--p-gray-820: hsl(250, 1%, 18%);
+	--p-gray-800: hsl(250, 2%, 20%);
+	--p-gray-780: hsl(250, 2%, 22%);
+	--p-gray-740: hsl(250, 3%, 26%);
+	--p-gray-710: hsl(250, 3%, 29%);
+	--p-gray-670: hsl(250, 4%, 33%);
+	--p-gray-540: hsl(250, 6%, 46%);
+	--p-gray-490: hsl(250, 7%, 51%);
+	--p-gray-420: hsl(250, 8%, 58%);
+	--p-gray-320: hsl(250, 10%, 68%);
+	--p-gray-200: hsl(250, 18%, 80%);
+	--p-gray-120: hsl(250, 25%, 88%);
+	--p-gray-070: hsl(250, 32%, 93%);
+	--p-gray-040: hsl(250, 40%, 96%);
+	--p-gray-030: hsl(250, 43%, 97%);
+	--p-gray-025: hsl(250, 50%, 97.5%);
+	--p-gray-010: hsl(250, 50%, 99%);
+	--p-white: hsl(250, 50%, 100%);
 
 	// Gray alpha
 	--p-gray-320-a-010: hsla(220, 10%, 68%, 0.1);
