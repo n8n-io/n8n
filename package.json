@@ -76,7 +76,7 @@
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
     "turbo": "2.5.4",
-    "typescript": "*",
+    "typescript": "^5.4.0",
     "zx": "^8.1.4"
   },
   "pnpm": {
