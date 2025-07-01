@@ -180,7 +180,7 @@ return []
 				{ code: 400, message: 'Code generation failed due to an unknown reason' },
 				{ code: 413, message: 'Your workflow data is too large for AI to process' },
 				{ code: 429, message: "We've hit our rate limit with our AI partner" },
-				{ code: 500, message: 'Code generation failed due to an unknown reason' },
+				{ code: 500, message: 'Request failed with status code 500' },
 			];
 
 			handledCodes.forEach(({ code, message }) => {
