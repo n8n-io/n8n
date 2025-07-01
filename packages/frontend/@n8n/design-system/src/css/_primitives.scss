@@ -4,164 +4,137 @@
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
-	// Gray
 	--h-gray: 220;
 
-	--p-gray-820: hsl(var(--h-gray), 1%, 18%);
-	--p-gray-800: hsl(var(--h-gray), 1%, 20%);
-	--p-gray-780: hsl(var(--h-gray), 1%, 22%);
-	--p-gray-740: hsl(var(--h-gray), 2%, 26%);
-	--p-gray-710: hsl(var(--h-gray), 2%, 29%);
-	--p-gray-670: hsl(var(--h-gray), 2%, 33%);
-	--p-gray-540: hsl(var(--h-gray), 4%, 46%);
-	--p-gray-490: hsl(var(--h-gray), 4%, 51%);
-	--p-gray-420: hsl(var(--h-gray), 4%, 58%);
-	--p-gray-320: hsl(var(--h-gray), 10%, 68%);
-	--p-gray-200: hsl(var(--h-gray), 18%, 80%);
-	--p-gray-120: hsl(var(--h-gray), 25%, 88%);
-	--p-gray-070: hsl(var(--h-gray), 32%, 93%);
-	--p-gray-040: hsl(var(--h-gray), 40%, 96%);
-	--p-gray-030: hsl(var(--h-gray), 43%, 97%);
-	--p-gray-025: hsl(var(--h-gray), 50%, 97.5%);
-	--p-gray-010: hsl(var(--h-gray), 50%, 99%);
-	--p-white: hsl(var(--h-gray), 50%, 100%);
+	// Gray
+	--p-gray-820: hsl(220, 1%, 18%);
+	--p-gray-800: hsl(220, 1%, 20%);
+	--p-gray-780: hsl(220, 1%, 22%);
+	--p-gray-740: hsl(220, 2%, 26%);
+	--p-gray-710: hsl(220, 2%, 29%);
+	--p-gray-670: hsl(220, 2%, 33%);
+	--p-gray-540: hsl(220, 4%, 46%);
+	--p-gray-490: hsl(220, 4%, 51%);
+	--p-gray-420: hsl(220, 4%, 58%);
+	--p-gray-320: hsl(220, 10%, 68%);
+	--p-gray-200: hsl(220, 18%, 80%);
+	--p-gray-120: hsl(220, 25%, 88%);
+	--p-gray-070: hsl(220, 32%, 93%);
+	--p-gray-040: hsl(220, 40%, 96%);
+	--p-gray-030: hsl(220, 43%, 97%);
+	--p-gray-025: hsl(220, 50%, 97.5%);
+	--p-gray-010: hsl(220, 50%, 99%);
+	--p-white: hsl(220, 50%, 100%);
 
 	// Gray alpha
-	--p-gray-320-a-010: hsla(var(--prim-gray-h), 10%, 68%, 0.1);
-	--p-gray-70-a-010: hsla(var(--prim-gray-h), 32%, 93%, 0.1);
+	--p-gray-320-a-010: hsla(220, 10%, 68%, 0.1);
+	--p-gray-70-a-010: hsla(220, 32%, 93%, 0.1);
 
 	// White alpha
-	--p-white-a-075: hsla(var(--h-gray), 50%, 100%, 0.75);
-	--p-white-a-030: hsla(var(--h-gray), 50%, 100%, 0.3);
-	--p-white-a-025: hsla(var(--h-gray), 50%, 100%, 0.25);
-	--p-white-a-010: hsla(var(--h-gray), 50%, 100%, 0.1);
+	--p-white-a-075: hsla(220, 50%, 100%, 0.75);
+	--p-white-a-030: hsla(220, 50%, 100%, 0.3);
+	--p-white-a-025: hsla(220, 50%, 100%, 0.25);
+	--p-white-a-010: hsla(220, 50%, 100%, 0.1);
 
 	// Primary color
 	--h-primary: 7;
 	--s-primary: 100%;
+	--l-primary: 68%;
 
-	--p-color-primary-420: hsl(var(--h-primary), calc(var(--s-primary) - 15%), 58%); // sh 100
-	--p-color-primary-320: hsl(var(--h-primary), var(--s-primary), 68%); // Base
-	--p-color-primary-220: hsl(var(--h-primary), var(--s-primary), 78%); // tn 100
-	--p-color-primary-120: hsl(var(--h-primary), var(--s-primary), 88%); // tn 200
-	--p-color-primary-070: hsl(var(--h-primary), var(--s-primary), 93%); // tn 250
-	--p-color-primary-050: hsl(var(--h-primary), var(--s-primary), 95%); // tn 270
-	--p-color-primary-030: hsl(var(--h-primary), var(--s-primary), 98%); // tn 300
+	--p-color-primary-420: hsl(7, 85%, 58%); // sh 100
+	--p-color-primary-320: hsl(7, 100%, 68%); // Base
+	--p-color-primary-220: hsl(7, 100%, 78%); // tn 100
+	--p-color-primary-120: hsl(7, 100%, 88%); // tn 200
+	--p-color-primary-070: hsl(7, 100%, 93%); // tn 250
+	--p-color-primary-050: hsl(7, 100%, 95%); // tn 270
+	--p-color-primary-030: hsl(7, 100%, 98%); // tn 300
 
 	// Primary color alpha
-	--p-color-primary-320-a-010: hsla(var(--h-primary), var(--s-primary), 68%, 0.1);
-	--p-color-primary-320-a-035: hsla(var(--h-primary), var(--s-primary), 68%, 0.35);
-	--p-color-primary-320-a-050: hsla(var(--h-primary), var(--s-primary), 68%, 0.5);
+	--p-color-primary-320-a-010: hsla(7, 100%, 68%, 0.1);
+	--p-color-primary-320-a-035: hsla(7, 100%, 68%, 0.35);
+	--p-color-primary-320-a-050: hsla(7, 100%, 68%, 0.5);
 
 	// Secondary color
-	--h-secondary: 247;
-	--s-secondary: 49%;
-
-	--p-color-secondary-720: hsl(var(--h-secondary), calc(var(--s-secondary)- 25%), 28%); // sh 250
-	--p-color-secondary-570: hsl(var(--h-secondary), var(--s-secondary), 43%); // sh 100
-	--p-color-secondary-470: hsl(var(--h-secondary), var(--s-secondary), 53%); // Base
-	--p-color-secondary-370: hsl(var(--h-secondary), var(--s-secondary), 63%); // tn 100
-	--p-color-secondary-270: hsl(var(--h-secondary), var(--s-secondary), 73%); // tn 200
-	--p-color-secondary-170: hsl(var(--h-secondary), var(--s-secondary), 83%); // tn 300
-	--p-color-secondary-070: hsl(var(--h-secondary), var(--s-secondary), 93%); // tn 400
+	--p-color-secondary-720: hsl(247, 24%, 28%); // sh 250
+	--p-color-secondary-570: hsl(247, 49%, 43%); // sh 100
+	--p-color-secondary-470: hsl(247, 49%, 53%); // Base
+	--p-color-secondary-370: hsl(247, 49%, 63%); // tn 100
+	--p-color-secondary-270: hsl(247, 49%, 73%); // tn 200
+	--p-color-secondary-170: hsl(247, 49%, 83%); // tn 300
+	--p-color-secondary-070: hsl(247, 49%, 93%); // tn 400
 
 	// Secondary color alpha
-	--p-color-secondary-370-a-010: hsla(var(--h-secondary), var(--s-secondary), 53%, 0.1);
-	--p-color-secondary-370-a-025: hsla(var(--h-secondary), var(--s-secondary), 53%, 0.25);
+	--p-color-secondary-370-a-010: hsla(247, 49%, 53%, 0.1);
+	--p-color-secondary-370-a-025: hsla(247, 49%, 53%, 0.25);
 
 	// Color Alternate A
-	--h-color-alt-a: 150;
-	--s-color-alt-a: 60%;
-
-	--p-color-alt-a-800: hsl(var(--h-color-alt-a), calc(var(--s-color-alt-a)- 15%), 20%); // sh 200
-	--p-color-alt-a-700: hsl(var(--h-color-alt-a), calc(var(--s-color-alt-a)- 15%), 30%); // sh 100
-	--p-color-alt-a-600: hsl(var(--h-color-alt-a), var(--s-color-alt-a), 40%); // Base
-	--p-color-alt-a-300: hsl(var(--h-color-alt-a), var(--s-color-alt-a), 70%); // tn 300
-	--p-color-alt-a-200: hsl(var(--h-color-alt-a), var(--s-color-alt-a), 80%); // tn 400
-	--p-color-alt-a-100: hsl(var(--h-color-alt-a), var(--s-color-alt-a), 90%); // tn 500
-	--p-color-alt-a-150: hsl(var(--h-color-alt-a), var(--s-color-alt-a), 95%); // tn 550
+	--p-color-alt-a-800: hsl(150, 45%, 20%); // sh 200
+	--p-color-alt-a-700: hsl(150, 53%, 30%); // sh 100
+	--p-color-alt-a-600: hsl(150, 60%, 40%); // Base
+	--p-color-alt-a-300: hsl(150, 60%, 70%); // tn 300
+	--p-color-alt-a-200: hsl(150, 60%, 80%); // tn 400
+	--p-color-alt-a-100: hsl(150, 60%, 90%); // tn 500
+	--p-color-alt-a-150: hsl(150, 60%, 95%); // tn 550
 
 	// Color Alternate A alpha
-	--p-color-alt-a-600-a-015: hsla(var(--h-color-alt-a), var(--s-color-alt-a), 40%, 0.15);
-	--p-color-alt-a-600-a-025: hsla(var(--h-color-alt-a), var(--s-color-alt-a), 40%, 0.25);
+	--p-color-alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
+	--p-color-alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
 
 	// Color Alternate B
-	--h-color-alt-b: 36;
-	--s-color-alt-b: 77%;
-
-	--p-color-alt-b-780: hsl(var(--h-color-alt-b), calc(var(--s-color-alt-b) - 35%), 22%); // sh 350
-	--p-color-alt-b-680: hsl(var(--h-color-alt-b), calc(var(--s-color-alt-b) - 35%), 32%); // sh 250
-	--p-color-alt-b-530: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 47%); // sh 100
-	--p-color-alt-b-430: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 57%); // Base
-	--p-color-alt-b-280: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 72%); // tn 150
-	--p-color-alt-b-180: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 82%); // tn 250
-	--p-color-alt-b-130: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 87%); // tn 300
-	--p-color-alt-b-030: hsl(var(--h-color-alt-b), var(--s-color-alt-b), 97%); // tn 400
+	--p-color-alt-b-780: hsl(36, 42%, 22%); // sh 350
+	--p-color-alt-b-680: hsl(36, 42%, 32%); // sh 250
+	--p-color-alt-b-530: hsl(36, 77%, 47%); // sh 100
+	--p-color-alt-b-430: hsl(36, 77%, 57%); // Base
+	--p-color-alt-b-280: hsl(36, 77%, 72%); // tn 150
+	--p-color-alt-b-180: hsl(36, 77%, 82%); // tn 250
+	--p-color-alt-b-130: hsl(36, 77%, 87%); // tn 300
+	--p-color-alt-b-030: hsl(36, 77%, 97%); // tn 400
 
 	// Color Alternate B alpha
-	--p-color-alt-b-430-a-020: hsla(var(--h-color-alt-b), var(--s-color-alt-b), 57%, 0.2);
+	--p-color-alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
 
 	// Color Alternate C
-	--h-color-alt-c: 355;
-	--s-color-alt-c: 83%;
-
-	--p-color-alt-c-730: hsl(var(--h-color-alt-c), calc(var(--s-color-alt-c) - 40%), 27%); // sh 250
-	--p-color-alt-c-630: hsl(var(--h-color-alt-c), calc(var(--s-color-alt-c) - 40%), 37%); // sh 150
-	--p-color-alt-c-580: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 42%); // sh 100
-	--p-color-alt-c-480: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 52%); // Base
-	--p-color-alt-c-330: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 67%); // tn 150
-	--p-color-alt-c-230: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 77%); // tn 250
-	--p-color-alt-c-180: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 82%); // tn 300
-	--p-color-alt-c-080: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 92%); // tn 400
-	--p-color-alt-c-030: hsl(var(--h-color-alt-c), var(--s-color-alt-c), 97%); // tn 450
+	--p-color-alt-c-730: hsl(355, 43%, 27%); // sh 250
+	--p-color-alt-c-630: hsl(355, 53%, 37%); // sh 150
+	--p-color-alt-c-580: hsl(355, 83%, 42%); // sh 100
+	--p-color-alt-c-480: hsl(355, 83%, 52%); // Base
+	--p-color-alt-c-330: hsl(355, 83%, 67%); // tn 150
+	--p-color-alt-c-230: hsl(355, 83%, 77%); // tn 250
+	--p-color-alt-c-180: hsl(355, 83%, 82%); // tn 300
+	--p-color-alt-c-080: hsl(355, 83%, 92%); // tn 400
+	--p-color-alt-c-030: hsl(355, 83%, 97%); // tn 450
 
 	// Color Alternate C alpha
-	--p-color-alt-c-480-a-020: hsla(var(--h-color-alt-c), var(--s-color-alt-c), 52%, 0.2);
+	--p-color-alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
 
 	// Color Alternate D
-	--h-color-alt-d: 46;
-	--s-color-alt-d: 100%;
-
-	--p-color-alt-d-780: hsl(var(--h-color-alt-d), calc(var(--s-color-alt-d) - 55%), 22%); // sh 700
-	--p-color-alt-d-680: hsl(var(--h-color-alt-d), calc(var(--s-color-alt-d) - 55%), 32%); // sh 600
-	--p-color-alt-d-230: hsl(var(--h-color-alt-d), var(--s-color-alt-d), 77%); // sh 150
-	--p-color-alt-d-080: hsl(var(--h-color-alt-d), var(--s-color-alt-d), 92%); // Base
+	--p-color-alt-d-780: hsl(46, 45%, 22%); // sh 700
+	--p-color-alt-d-680: hsl(46, 45%, 32%); // sh 600
+	--p-color-alt-d-230: hsl(46, 100%, 77%); // sh 150
+	--p-color-alt-d-080: hsl(46, 100%, 92%); // Base
 
 	// Color Alternate E
-	--h-color-alt-e: 210;
-	--s-color-alt-e: 67%;
-
-	--p-color-alt-e-780: hsl(var(--h-color-alt-e), calc(var(--s-color-alt-e) - 20%), 22%); // sh350
-	--p-color-alt-e-680: hsl(var(--h-color-alt-e), calc(var(--s-color-alt-e) - 20%), 32%); // sh250
-	--p-color-alt-e-580: hsl(var(--h-color-alt-e), var(--s-color-alt-e), 42%); // sh 150
-	--p-color-alt-e-530: hsl(var(--h-color-alt-e), var(--s-color-alt-e), 47%); // sh 100
-	--p-color-alt-e-430: hsl(var(--h-color-alt-e), var(--s-color-alt-e), 57%); // Base
-	--p-color-alt-e-180: hsl(var(--h-color-alt-e), var(--s-color-alt-e), 82%); // tn 250
-	--p-color-alt-e-080: hsl(var(--h-color-alt-e), var(--s-color-alt-e), 92%); // tn 350
+	--p-color-alt-e-780: hsl(210, 47%, 22%); // sh350
+	--p-color-alt-e-680: hsl(210, 57%, 32%); // sh250
+	--p-color-alt-e-580: hsl(210, 67%, 42%); // sh 150
+	--p-color-alt-e-530: hsl(210, 67%, 47%); // sh 100
+	--p-color-alt-e-430: hsl(210, 67%, 57%); // Base
+	--p-color-alt-e-180: hsl(210, 67%, 82%); // tn 250
+	--p-color-alt-e-080: hsl(210, 67%, 92%); // tn 350
 
 	// Color Alternate F
-	--h-color-alt-f: 147;
-	--s-color-alt-f: 83%;
-
-	--p-color-alt-f-560: hsl(var(--h-color-alt-f), var(--s-color-alt-f), 44%); // Base
+	--p-color-alt-f-560: hsl(147, 83%, 44%); // Base
 
 	// Color Alternate G
-	--h-color-alt-g: 247;
-	--s-color-alt-g: 10%;
-
-	--p-color-alt-g-700: hsl(var(--h-color-alt-g), var(--s-color-alt-g), 30%); // Base
+	--p-color-alt-g-700: hsl(247, 10%, 30%); // Base
 
 	// Color Alternate G alpha
-	--p-color-alt-g-700-a-075: hsla(var(--h-color-alt-g), var(--s-color-alt-g), 30%, 0.75);
+	--p-color-alt-g-700-a-075: hsla(247, 10%, 30%, 0.75);
 
 	// Color Alternate H - Used for errors in dark mode
-	--h-color-alt-h: 355;
-	--s-color-alt-h: 100%;
-
-	--p-color-alt-h-310: hsl(var(--h-color-alt-h), var(--s-color-alt-h), 69%); // Base
+	--p-color-alt-h-310: hsl(355, 100%, 69%); // Base
 
 	// Experiments
-
 	// Primary color (oklch)
 	/* --c-oklch-primary: 0.1819;
 	--h-oklch-primary: 29.74;
