@@ -1109,7 +1109,7 @@ export function useCanvasOperations() {
 				if (lastInteractedWithNodeMainOutputs.length > 1) {
 					const yOffsetValues = generateOffsets(
 						lastInteractedWithNodeMainOutputs.length,
-						NODE_SIZE,
+						DEFAULT_NODE_SIZE[1],
 						GRID_SIZE,
 					);
 
