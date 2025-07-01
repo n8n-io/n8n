@@ -33,9 +33,7 @@ const userToDelete = computed(() => {
 	return usersStore.usersList.state.items.find((user) => user.id === props.data.userId);
 });
 
-const isPending = computed(() => {
-	return userToDelete.value ? !userToDelete.value.firstName : false;
-});
+const isPending = computed(() => !userToDelete.value?.firstName);
 
 const title = computed(() => {
 	const user =

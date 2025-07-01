@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import DeleteUserModal from './DeleteUserModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { getDropdownItems } from '@/__tests__/utils';
@@ -10,6 +11,7 @@ import { STORES } from '@n8n/stores';
 import { ProjectTypes } from '@/types/projects.types';
 import userEvent from '@testing-library/user-event';
 import { useUsersStore } from '@/stores/users.store';
+import { ROLE, UsersList, User } from '@n8n/api-types';
 
 const ModalStub = {
 	template: `
@@ -22,9 +24,42 @@ const ModalStub = {
 	`,
 };
 
-const loggedInUser = createUser();
-const invitedUser = createUser({ firstName: undefined });
-const user = createUser();
+const loggedInUser: User = {
+	id: '1',
+	email: 'admin@example.com',
+	firstName: 'Admin',
+	lastName: 'User',
+	role: ROLE.Admin,
+	isOwner: true,
+	isPending: false,
+	settings: {},
+};
+const invitedUser: User = {
+	id: '3',
+	email: 'pending@example.com',
+	firstName: '',
+	lastName: '',
+	role: ROLE.Member,
+	isOwner: false,
+	isPending: true,
+	settings: {},
+	inviteAcceptUrl: 'https://example.com/invite/123',
+};
+const user: User = {
+	id: '2',
+	email: 'member@example.com',
+	firstName: 'Member',
+	lastName: 'User',
+	role: ROLE.Member,
+	isOwner: false,
+	isPending: false,
+	settings: {},
+};
+
+const mockUsersList: UsersList = {
+	items: [loggedInUser, user, invitedUser],
+	count: 3,
+};
 
 const initialState = {
 	[STORES.UI]: {
@@ -43,13 +78,6 @@ const initialState = {
 			ProjectTypes.Team,
 		].map(createProjectListItem),
 	},
-	[STORES.USERS]: {
-		usersById: {
-			[loggedInUser.id]: loggedInUser,
-			[user.id]: user,
-			[invitedUser.id]: invitedUser,
-		},
-	},
 };
 
 const global = {
@@ -60,10 +88,21 @@ const global = {
 
 const renderModal = createComponentRenderer(DeleteUserModal);
 let pinia: ReturnType<typeof createTestingPinia>;
+let usersStore: MockedStore<typeof useUsersStore>;
 
 describe('DeleteUserModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({ initialState });
+		usersStore = mockedStore(useUsersStore);
+
+		usersStore.usersList = {
+			state: mockUsersList,
+			isLoading: false,
+			execute: vi.fn(),
+			isReady: true,
+			error: null,
+			then: vi.fn(),
+		};
 	});
 
 	it('should delete invited users', async () => {
@@ -78,11 +117,9 @@ describe('DeleteUserModal', () => {
 			pinia,
 		});
 
-		const userStore = useUsersStore();
-
 		await userEvent.click(getByTestId('confirm-delete-user-button'));
 
-		expect(userStore.deleteUser).toHaveBeenCalledWith({ id: invitedUser.id });
+		expect(usersStore.deleteUser).toHaveBeenCalledWith({ id: invitedUser.id });
 	});
 
 	it('should delete user and transfer workflows and credentials', async () => {
@@ -108,12 +145,10 @@ describe('DeleteUserModal', () => {
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		await userEvent.click(projectSelectDropdownItems[0]);
 
-		const userStore = useUsersStore();
-
 		expect(confirmButton).toBeEnabled();
 		await userEvent.click(confirmButton);
 
-		expect(userStore.deleteUser).toHaveBeenCalledWith({
+		expect(usersStore.deleteUser).toHaveBeenCalledWith({
 			id: user.id,
 			transferId: expect.any(String),
 		});
@@ -131,8 +166,6 @@ describe('DeleteUserModal', () => {
 			pinia,
 		});
 
-		const userStore = useUsersStore();
-
 		const confirmButton = getByTestId('confirm-delete-user-button');
 		expect(confirmButton).toBeDisabled();
 
@@ -147,7 +180,7 @@ describe('DeleteUserModal', () => {
 		expect(confirmButton).toBeEnabled();
 
 		await userEvent.click(confirmButton);
-		expect(userStore.deleteUser).toHaveBeenCalledWith({
+		expect(usersStore.deleteUser).toHaveBeenCalledWith({
 			id: user.id,
 		});
 	});
