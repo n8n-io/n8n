@@ -86,7 +86,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
@@ -95,7 +95,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
@@ -114,7 +114,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 	{
 		id: 'insights',
-		icon: 'chart-bar',
+		icon: 'chart-column-decreasing',
 		label: 'Insights',
 		customIconSize: 'medium',
 		position: 'bottom',
@@ -125,7 +125,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 	{
 		id: 'help',
-		icon: 'question',
+		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
@@ -206,7 +206,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			),
 			{
 				id: 'full-changelog',
-				icon: 'external-link-alt',
+				icon: 'external-link',
 				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 				link: {
 					href: RELEASE_NOTES_URL,

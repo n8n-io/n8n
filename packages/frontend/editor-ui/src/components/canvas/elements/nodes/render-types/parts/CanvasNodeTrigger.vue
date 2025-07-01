@@ -56,7 +56,7 @@ async function handleClickExecute() {
 	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div :class="$style.bolt">
-				<FontAwesomeIcon icon="bolt" size="lg" />
+				<N8nIcon icon="zap" size="large" />
 			</div>
 
 			<template v-if="!readOnly">
@@ -64,7 +64,7 @@ async function handleClickExecute() {
 					<N8nButton
 						v-if="isChatOpen"
 						type="secondary"
-						icon="comment"
+						icon="message-circle"
 						size="large"
 						:disabled="isExecuting"
 						:data-test-id="testId"
@@ -78,7 +78,7 @@ async function handleClickExecute() {
 					>
 						<N8nButton
 							type="primary"
-							icon="comment"
+							icon="message-circle"
 							size="large"
 							:disabled="isExecuting"
 							:data-test-id="testId"
@@ -90,7 +90,7 @@ async function handleClickExecute() {
 				<N8nButton
 					v-else
 					type="primary"
-					icon="flask"
+					icon="flask-conical"
 					size="large"
 					:disabled="isExecuting"
 					:data-test-id="testId"

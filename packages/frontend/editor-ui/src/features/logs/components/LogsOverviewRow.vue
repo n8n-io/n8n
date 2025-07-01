@@ -141,7 +141,7 @@ watch(
 			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText.in">
 				<template #status>
 					<N8nText v-if="isError" color="danger" :bold="true" size="small">
-						<N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />
+						<N8nIcon icon="triangle-alert" :class="$style.errorIcon" />
 						{{ statusText }}
 					</N8nText>
 					<template v-else>{{ statusText }}</template>
@@ -184,14 +184,14 @@ watch(
 			v-if="isError && isCompact"
 			size="medium"
 			color="danger"
-			icon="exclamation-triangle"
+			icon="triangle-alert"
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
 			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
 			size="small"
-			icon="edit"
+			icon="square-pen"
 			icon-size="medium"
 			style="color: var(--color-text-base)"
 			:style="{
