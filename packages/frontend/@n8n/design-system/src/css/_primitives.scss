@@ -49,7 +49,6 @@
 	--p-color-primary-050: hsl(7, 100%, 95%); // tn 270
 	--p-color-primary-030: hsl(7, 100%, 98%); // tn 300
 
-	// Primary color alpha
 	--p-color-primary-320-a-010: hsla(7, 100%, 68%, 0.1);
 	--p-color-primary-320-a-035: hsla(7, 100%, 68%, 0.35);
 	--p-color-primary-320-a-050: hsla(7, 100%, 68%, 0.5);
@@ -63,7 +62,6 @@
 	--p-color-secondary-170: hsl(247, 49%, 83%); // tn 300
 	--p-color-secondary-070: hsl(247, 49%, 93%); // tn 400
 
-	// Secondary color alpha
 	--p-color-secondary-370-a-010: hsla(247, 49%, 53%, 0.1);
 	--p-color-secondary-370-a-025: hsla(247, 49%, 53%, 0.25);
 
@@ -76,7 +74,6 @@
 	--p-color-alt-a-100: hsl(150, 60%, 90%); // tn 500
 	--p-color-alt-a-150: hsl(150, 60%, 95%); // tn 550
 
-	// Color Alternate A alpha
 	--p-color-alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
 	--p-color-alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
 
@@ -90,7 +87,6 @@
 	--p-color-alt-b-130: hsl(36, 77%, 87%); // tn 300
 	--p-color-alt-b-030: hsl(36, 77%, 97%); // tn 400
 
-	// Color Alternate B alpha
 	--p-color-alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
 
 	// Color Alternate C
@@ -104,7 +100,6 @@
 	--p-color-alt-c-080: hsl(355, 83%, 92%); // tn 400
 	--p-color-alt-c-030: hsl(355, 83%, 97%); // tn 450
 
-	// Color Alternate C alpha
 	--p-color-alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
 
 	// Color Alternate D
@@ -128,11 +123,16 @@
 	// Color Alternate G
 	--p-color-alt-g-700: hsl(247, 10%, 30%); // Base
 
-	// Color Alternate G alpha
 	--p-color-alt-g-700-a-075: hsla(247, 10%, 30%, 0.75);
 
 	// Color Alternate H - Used for errors in dark mode
 	--p-color-alt-h-310: hsl(355, 100%, 69%); // Base
+
+	// Color Alternate I - Used for AI nodes
+	--p-color-alt-i-800: hsl(235, 18%, 20%);
+	--p-color-alt-i-600: hsl(235, 28%, 40%);
+	--p-color-alt-i-400: hsl(235, 28%, 60%);
+	--p-color-alt-i-050: hsl(235, 28%, 95%);
 
 	// Experiments
 	// Primary color (oklch)
