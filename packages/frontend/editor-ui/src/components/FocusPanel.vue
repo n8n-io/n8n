@@ -4,16 +4,32 @@ import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({ name: 'FocusPanel' });
 
-const locale = useI18n();
+const props = defineProps<{
+	executable: boolean;
+}>();
 
+const locale = useI18n();
+const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowStore = useWorkflowsStore();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
+
+const _node = computed(() => workflowStore.getNodeByName(focusedNodeParameter.value.nodeName));
+
+const isExecutable = computed(() => {
+	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
+		_node.value?.credentials,
+	);
+	return nodeHelpers.isNodeExecutable(_node.value, props.executable, foreignCredentials);
+});
 
 const expressionModeEnabled = computed(
 	() =>
@@ -27,10 +43,6 @@ function optionSelected() {
 
 function valueChanged() {
 	// TODO: Update parameter value
-}
-
-function executeFocusedNode() {
-	// TODO: Implement execution of the focused node
 }
 </script>
 
@@ -47,24 +59,22 @@ function executeFocusedNode() {
 		<div v-if="focusedNodeParameter" :class="$style.content">
 			<div :class="$style.tabHeader">
 				<div :class="$style.tabHeaderText">
-					<N8nText color="text-dark" size="small">{{
-						focusedNodeParameter.parameter.displayName
-					}}</N8nText>
+					<N8nText color="text-dark" size="small">
+						{{ focusedNodeParameter.parameter.displayName }}
+					</N8nText>
 					<N8nText color="text-base" size="xsmall">{{ focusedNodeParameter.nodeName }}</N8nText>
 				</div>
-				<N8nTooltip>
-					<n8n-button
-						v-bind="{ icon: 'play', square: true }"
-						size="small"
-						type="primary"
-						@click="executeFocusedNode"
-					/>
-					<template #content>
-						<N8nText size="small">
-							{{ locale.baseText('nodeView.focusPanel.executeButtonTooltip') }}
-						</N8nText>
-					</template>
-				</N8nTooltip>
+				<NodeExecuteButton
+					data-test-id="node-execute-button"
+					:node-name="focusedNodeParameter.nodeName"
+					:tooltip="`Execute ${focusedNodeParameter.nodeName}`"
+					:disabled="!isExecutable"
+					size="small"
+					icon="play"
+					:square="true"
+					:hide-label="true"
+					telemetry-source="focus"
+				></NodeExecuteButton>
 			</div>
 			<div :class="$style.parameterDetailsWrapper">
 				<div :class="$style.parameterOptionsWrapper">
