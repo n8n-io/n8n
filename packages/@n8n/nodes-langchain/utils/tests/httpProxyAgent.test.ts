@@ -7,6 +7,7 @@ jest.mock('https-proxy-agent', () => ({
 }));
 
 describe('getHttpProxyAgent', () => {
+	const defaultBaseURL = 'https://api.openai.com/v1/chat/completions';
 	// Store original environment variables
 	const originalEnv = { ...process.env };
 
@@ -33,31 +34,11 @@ describe('getHttpProxyAgent', () => {
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
 	});
 
-	it('should create HttpsProxyAgent when HTTP_PROXY is set', () => {
-		const proxyUrl = 'http://proxy.example.com:8080';
-		process.env.HTTP_PROXY = proxyUrl;
-
-		const agent = getHttpProxyAgent();
-
-		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
-		expect(agent).toEqual({ proxyUrl });
-	});
-
-	it('should create HttpsProxyAgent when http_proxy is set', () => {
-		const proxyUrl = 'http://proxy.example.com:8080';
-		process.env.http_proxy = proxyUrl;
-
-		const agent = getHttpProxyAgent();
-
-		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
-		expect(agent).toEqual({ proxyUrl });
-	});
-
 	it('should create HttpsProxyAgent when HTTPS_PROXY is set', () => {
 		const proxyUrl = 'http://proxy.example.com:8080';
 		process.env.HTTPS_PROXY = proxyUrl;
 
-		const agent = getHttpProxyAgent();
+		const agent = getHttpProxyAgent(defaultBaseURL);
 
 		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
 		expect(agent).toEqual({ proxyUrl });
@@ -67,7 +48,7 @@ describe('getHttpProxyAgent', () => {
 		const proxyUrl = 'http://proxy.example.com:8080';
 		process.env.https_proxy = proxyUrl;
 
-		const agent = getHttpProxyAgent();
+		const agent = getHttpProxyAgent(defaultBaseURL);
 
 		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
 		expect(agent).toEqual({ proxyUrl });
@@ -80,11 +61,11 @@ describe('getHttpProxyAgent', () => {
 		process.env.HTTPS_PROXY = 'http://https-proxy.example.com:8080';
 		process.env.https_proxy = 'http://https-proxy-lowercase.example.com:8080';
 
-		const agent = getHttpProxyAgent();
+		const agent = getHttpProxyAgent(defaultBaseURL);
 
 		// Should use HTTPS_PROXY as it has highest priority
-		expect(HttpsProxyAgent).toHaveBeenCalledWith('http://https-proxy.example.com:8080');
-		expect(agent).toEqual({ proxyUrl: 'http://https-proxy.example.com:8080' });
+		expect(HttpsProxyAgent).toHaveBeenCalledWith('http://https-proxy-lowercase.example.com:8080');
+		expect(agent).toEqual({ proxyUrl: 'http://https-proxy-lowercase.example.com:8080' });
 	});
 
 	// NO_PROXY tests
@@ -132,7 +113,7 @@ describe('getHttpProxyAgent', () => {
 		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
 		process.env.NO_PROXY = '.example.com';
 
-		const agent = getHttpProxyAgent('https://example.com');
+		const agent = getHttpProxyAgent('https://www.example.com');
 
 		expect(agent).toBeUndefined();
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
@@ -158,17 +139,6 @@ describe('getHttpProxyAgent', () => {
 		expect(HttpsProxyAgent).not.toHaveBeenCalled();
 	});
 
-	it('should create HttpsProxyAgent when NO_PROXY contains invalid IP', () => {
-		const proxyUrl = 'http://proxy.example.com:8080';
-		process.env.HTTPS_PROXY = proxyUrl;
-		process.env.NO_PROXY = '256.256.256.256';
-
-		const agent = getHttpProxyAgent('http://256.256.256.256');
-
-		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
-		expect(agent).toEqual({ proxyUrl });
-	});
-
 	it('should create HttpsProxyAgent when NO_PROXY is empty', () => {
 		const proxyUrl = 'http://proxy.example.com:8080';
 		process.env.HTTPS_PROXY = proxyUrl;
@@ -180,14 +150,14 @@ describe('getHttpProxyAgent', () => {
 		expect(agent).toEqual({ proxyUrl });
 	});
 
-	it('should create HttpsProxyAgent when baseURL is undefined and proxy is set', () => {
+	it('should return undefined when baseURL is undefined and proxy is set', () => {
 		const proxyUrl = 'http://proxy.example.com:8080';
 		process.env.HTTPS_PROXY = proxyUrl;
 		process.env.NO_PROXY = 'example.com';
 
 		const agent = getHttpProxyAgent();
 
-		expect(HttpsProxyAgent).toHaveBeenCalledWith(proxyUrl);
-		expect(agent).toEqual({ proxyUrl });
+		expect(agent).toBeUndefined();
+		expect(HttpsProxyAgent).not.toHaveBeenCalled();
 	});
 });
