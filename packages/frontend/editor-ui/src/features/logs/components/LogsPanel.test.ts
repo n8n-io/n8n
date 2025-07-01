@@ -515,6 +515,25 @@ describe('LogsPanel', () => {
 			await rerender({});
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
+
+		it('should automatically select log for a renamed node', async () => {
+			const canvasOperations = useCanvasOperations();
+
+			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+			workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+
+			canvasOperations.renameNode('AI Agent', 'Renamed Agent');
+			uiStore.lastSelectedNode = 'Renamed Agent';
+
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/Renamed Agent/);
+		});
 	});
 
 	describe('chat', () => {
