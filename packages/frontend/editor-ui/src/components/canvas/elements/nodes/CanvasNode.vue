@@ -186,7 +186,7 @@ const createEndpointMappingFn =
 			connectingHandle.value?.handleId === handleId;
 		const offsetValue =
 			position === Position.Bottom
-				? `${GRID_SIZE * (2 + index * 2)}px`
+				? `${GRID_SIZE * 2 * (1 + index * 2)}px`
 				: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
 
 		return {

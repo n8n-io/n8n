@@ -7,8 +7,8 @@ import {
 	generateOffsets,
 	getGenericHints,
 	getNewNodePosition,
-	NODE_SIZE,
 	updateViewportToContainNodes,
+	DEFAULT_NODE_SIZE,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -379,15 +379,15 @@ describe('getBottomMostNode', () => {
 describe('getNodesGroupSize', () => {
 	it('calculates the group size correctly', () => {
 		const [width, height] = getNodesGroupSize(testNodes);
-		expect(width).toBe(Math.abs(100 - -20) + NODE_SIZE);
-		expect(height).toBe(Math.abs(-10 - 100) + NODE_SIZE);
+		expect(width).toBe(Math.abs(100 - -20) + DEFAULT_NODE_SIZE[0]);
+		expect(height).toBe(Math.abs(-10 - 100) + DEFAULT_NODE_SIZE[1]);
 	});
 
 	it('should handle a single node', () => {
 		const single = [testNodes[0]];
 		const [w, h] = getNodesGroupSize(single);
-		expect(w).toBe(NODE_SIZE);
-		expect(h).toBe(NODE_SIZE);
+		expect(w).toBe(DEFAULT_NODE_SIZE[0]);
+		expect(h).toBe(DEFAULT_NODE_SIZE[1]);
 	});
 
 	it('should handle nodes with equal positions', () => {
@@ -396,8 +396,8 @@ describe('getNodesGroupSize', () => {
 			createTestNode({ id: 'y', position: [10, 20] }),
 		];
 		const [we, he] = getNodesGroupSize(equalNodes);
-		expect(we).toBe(NODE_SIZE);
-		expect(he).toBe(NODE_SIZE);
+		expect(we).toBe(DEFAULT_NODE_SIZE[0]);
+		expect(he).toBe(DEFAULT_NODE_SIZE[1]);
 	});
 });
 

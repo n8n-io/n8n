@@ -9,7 +9,7 @@ import {
 	type CanvasNodeData,
 } from '../types';
 import { isPresent } from '../utils/typesUtils';
-import { GRID_SIZE, NODE_SIZE } from '../utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '../utils/nodeViewUtils';
 
 export type CanvasLayoutOptions = { id?: string };
 export type CanvasLayoutTarget = 'selection' | 'all';
@@ -113,7 +113,10 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	function createDagreSubGraph({
 		nodeIds,
 		parent,
-	}: { nodeIds: string[]; parent: dagre.graphlib.Graph }) {
+	}: {
+		nodeIds: string[];
+		parent: dagre.graphlib.Graph;
+	}) {
 		const subGraph = new dagre.graphlib.Graph();
 		subGraph.setGraph({
 			rankdir: 'LR',
@@ -165,7 +168,10 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	function createAiSubGraph({
 		parent,
 		nodeIds,
-	}: { parent: dagre.graphlib.Graph; nodeIds: string[] }) {
+	}: {
+		parent: dagre.graphlib.Graph;
+		nodeIds: string[];
+	}) {
 		const subGraph = new dagre.graphlib.Graph();
 		subGraph.setGraph({
 			rankdir: 'TB',
@@ -449,7 +455,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 				const aiGraphBoundingBox = compositeBoundingBox(
 					aiNodes.map((nodeId) => boundingBoxByNodeId[nodeId]).filter(isPresent),
 				);
-				const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - NODE_SIZE / 2;
+				const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - DEFAULT_NODE_SIZE[0] / 2;
 				aiGraphBoundingBox.y += aiNodeVerticalCorrection;
 
 				const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
