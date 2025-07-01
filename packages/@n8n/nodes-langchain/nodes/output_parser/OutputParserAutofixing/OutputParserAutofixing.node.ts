@@ -42,7 +42,7 @@ export class OutputParserAutofixing implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
@@ -57,7 +57,7 @@ export class OutputParserAutofixing implements INodeType {
 				type: NodeConnectionTypes.AiOutputParser,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
