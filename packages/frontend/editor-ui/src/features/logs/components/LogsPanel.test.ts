@@ -433,6 +433,34 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
 	});
 
+	it('should show new name when a node is renamed', async () => {
+		const canvasOperations = useCanvasOperations();
+
+		logsStore.toggleOpen(true);
+
+		// Create deep copy so that renaming doesn't affect other test cases
+		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+
+		const rendered = render();
+
+		await nextTick();
+
+		expect(
+			within(rendered.getByTestId('log-details-header')).getByText('AI Model'),
+		).toBeInTheDocument();
+		expect(within(rendered.getByRole('tree')).getByText('AI Model')).toBeInTheDocument();
+
+		canvasOperations.renameNode('AI Model', 'Renamed!!');
+
+		await waitFor(() => {
+			expect(
+				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
+			).toBeInTheDocument();
+			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
+		});
+	});
+
 	describe('selection', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
