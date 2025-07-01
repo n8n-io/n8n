@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "Emails": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
