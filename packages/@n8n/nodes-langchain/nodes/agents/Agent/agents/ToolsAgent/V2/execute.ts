@@ -32,16 +32,6 @@ import {
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
 
-class WrappedAgentExecutor extends AgentExecutor {
-	constructor(input: AgentExecutorInput) {
-		super(input);
-
-		this.agent = new RunnableAgent({
-			runnable: input.agent as AgentRunnableSequence,
-			streamRunnable: false,
-		});
-	}
-}
 /**
  * Creates an agent executor with the given configuration
  */
@@ -66,9 +56,12 @@ function createAgentExecutor(
 		agent,
 		getAgentStepsParser(outputParser, memory),
 		fixEmptyContentMessage,
-	]);
+	]) as AgentRunnableSequence;
 
-	return new WrappedAgentExecutor({
+	runnableAgent.singleAction = false;
+	runnableAgent.streamRunnable = false;
+
+	return new AgentExecutor({
 		agent: runnableAgent,
 		memory,
 		tools,
