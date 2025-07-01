@@ -28,7 +28,7 @@ export class PrometheusMetricsService {
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
-	) { }
+	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
@@ -318,17 +318,21 @@ export class PrometheusMetricsService {
 			case EventMessageTypeNames.audit:
 				if (eventName.startsWith('n8n.audit.user.credentials')) {
 					return this.includes.labels.credentialsType
-						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
+						? {
+								credential_type: String(
+									(event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
+								),
+							}
 						: {};
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
 					const labels: Record<string, string> = {};
 					if (this.includes.labels.workflowId) {
-						labels.workflow_id = payload.workflowId ?? 'unknown';
+						labels.workflow_id = String(payload.workflowId ?? 'unknown');
 					}
 					if (this.includes.labels.workflowName) {
-						labels.workflow_name = payload.workflowName ?? 'unknown';
+						labels.workflow_name = String(payload.workflowName ?? 'unknown');
 					}
 					return labels;
 				}
@@ -337,25 +341,25 @@ export class PrometheusMetricsService {
 			case EventMessageTypeNames.node:
 				const nodeLabels: Record<string, string> = {};
 				if (this.includes.labels.nodeType) {
-					nodeLabels.node_type = (payload.nodeType ?? 'unknown')
-						.replace('n8n-nodes-', '')
-						.replace(/\./g, '_');
+					nodeLabels.node_type = String(
+						(payload.nodeType ?? 'unknown').replace('n8n-nodes-', '').replace(/\./g, '_'),
+					);
 				}
 				if (this.includes.labels.workflowId) {
-					nodeLabels.workflow_id = payload.workflowId ?? 'unknown';
+					nodeLabels.workflow_id = String(payload.workflowId ?? 'unknown');
 				}
 				if (this.includes.labels.workflowName) {
-					nodeLabels.workflow_name = payload.workflowName ?? 'unknown';
+					nodeLabels.workflow_name = String(payload.workflowName ?? 'unknown');
 				}
 				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
 				const workflowLabels: Record<string, string> = {};
 				if (this.includes.labels.workflowId) {
-					workflowLabels.workflow_id = payload.workflowId ?? 'unknown';
+					workflowLabels.workflow_id = String(payload.workflowId ?? 'unknown');
 				}
 				if (this.includes.labels.workflowName) {
-					workflowLabels.workflow_name = payload.workflowName ?? 'unknown';
+					workflowLabels.workflow_name = String(payload.workflowName ?? 'unknown');
 				}
 				return workflowLabels;
 		}
