@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "1.87.0",
+  "version": "1.88.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -39,8 +39,8 @@
     "postcss": "^8.4.38",
     "sass": "^1.64.1",
     "tailwindcss": "^3.4.3",
-    "unplugin-icons": "^0.19.0",
-    "unplugin-vue-components": "^0.27.2",
+    "unplugin-icons": "catalog:frontend",
+    "unplugin-vue-components": "catalog:frontend",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

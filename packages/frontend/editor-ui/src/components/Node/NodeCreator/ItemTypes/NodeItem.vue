@@ -212,7 +212,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="cube" />
+				<n8n-icon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>

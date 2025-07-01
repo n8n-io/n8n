@@ -109,7 +109,7 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			<n8n-icon-button
 				size="large"
 				type="tertiary"
-				:icon="['far', 'note-sticky']"
+				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
@@ -131,14 +131,14 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			v-if="experimentalNdvStore.isEnabled"
 			type="tertiary"
 			size="large"
-			icon="expand"
+			icon="maximize-2"
 			@click="experimentalNdvStore.expandAllNodes"
 		/>
 		<n8n-icon-button
 			v-if="experimentalNdvStore.isEnabled"
 			type="tertiary"
 			size="large"
-			icon="compress"
+			icon="minimize-2"
 			@click="experimentalNdvStore.collapseAllNodes"
 		/>
 	</div>

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",

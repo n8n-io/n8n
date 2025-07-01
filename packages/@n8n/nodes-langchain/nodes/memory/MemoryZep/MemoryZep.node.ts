@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
@@ -56,9 +55,9 @@ export class MemoryZep implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [

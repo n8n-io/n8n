@@ -59,13 +59,9 @@ export async function executionFinished(
 		const easyAiWorkflowJson = getEasyAiWorkflowJson();
 		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 		if (isEasyAIWorkflow) {
-			telemetry.track(
-				'User executed test AI workflow',
-				{
-					status: data.status,
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('User executed test AI workflow', {
+				status: data.status,
+			});
 		}
 	}
 
@@ -313,9 +309,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				}
 			}
 
-			telemetry.track('Instance FE emitted paired item error', eventData, {
-				withPostHog: true,
-			});
+			telemetry.track('Instance FE emitted paired item error', eventData);
 		});
 	}
 

@@ -647,7 +647,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 
 					<template #trailingContent>
 						<N8nIcon
-							icon="times"
+							icon="x"
 							title="Dismiss"
 							size="medium"
 							type="secondary"
@@ -694,7 +694,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 									issue
 								}}</span>
 							</template>
-							<N8nIcon icon="exclamation-triangle" size="small" color="danger" />
+							<N8nIcon icon="triangle-alert" size="small" color="danger" />
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
@@ -721,21 +721,21 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					</template>
 					<template #fallback>
 						<N8nText size="small" class="async-notice">
-							<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+							<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 							{{ i18n.baseText('parameterInputList.loadingFields') }}
 						</N8nText>
 					</template>
 				</Suspense>
 				<N8nText v-else size="small" color="danger" class="async-notice">
-					<N8nIcon icon="exclamation-triangle" size="xsmall" />
+					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
-					icon="trash"
+					size="small"
+					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
@@ -777,8 +777,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
-					icon="trash"
+					size="small"
+					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
