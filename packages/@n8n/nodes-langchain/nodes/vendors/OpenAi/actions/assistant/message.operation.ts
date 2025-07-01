@@ -52,7 +52,6 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: 'Use memory connector',
 				value: 'connector',
 				description: 'Connect one of the supported memory nodes',
