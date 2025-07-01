@@ -51,8 +51,6 @@ const usersTableState = ref<TableOptions>({
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
-const allUsers = computed(() => usersStore.allUsers);
-
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
@@ -95,9 +93,9 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 		},
 	];
 });
-const isAdvancedPermissionsEnabled = computed((): boolean => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
-});
+const isAdvancedPermissionsEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
+);
 
 const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
@@ -286,7 +284,7 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 		})
 		.filter(isValidSortKey);
 
-	await usersStore.usersList.execute(page, {
+	await usersStore.usersList.execute(0, {
 		skip,
 		take,
 		sortBy: transformedSortBy,
@@ -309,7 +307,7 @@ const onSearch = (value: string) => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-heading size="2xlarge">
+		<n8n-heading tag="h1" size="2xlarge">
 			{{ i18n.baseText('settings.users') }}
 		</n8n-heading>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
@@ -357,7 +355,11 @@ const onSearch = (value: string) => {
 		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
 			<i18n-t keypath="settings.users.advancedPermissions.warning">
 				<template #link>
-					<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+					<n8n-link
+						data-test-id="upgrade-permissions-link"
+						size="small"
+						@click="goToUpgradeAdvancedPermissions"
+					>
 						{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 					</n8n-link>
 				</template>
@@ -366,10 +368,11 @@ const onSearch = (value: string) => {
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			v-if="usersStore.usersLimitNotReached || allUsers.length > 1"
+			v-if="usersStore.usersLimitNotReached || usersStore.usersList.state.count > 1"
 			:class="$style.usersContainer"
 		>
 			<SettingsUsersTable
+				data-test-id="settings-users-table"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"
