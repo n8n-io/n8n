@@ -734,7 +734,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
+					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
@@ -777,7 +777,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
+					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
