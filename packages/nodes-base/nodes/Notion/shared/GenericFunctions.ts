@@ -271,7 +271,6 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-expect-error any
 						[text.mentionType]: { id: text[text.mentionType] as string },
 					},
 					annotations: text.annotationUi,

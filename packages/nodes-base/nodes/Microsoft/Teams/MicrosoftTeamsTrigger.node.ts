@@ -8,6 +8,7 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -388,7 +389,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			workflowData: eventNotifications.map((event) => [
 				{
 					json: (event.resourceData as IDataObject) ?? event,
-				},
+				} as INodeExecutionData,
 			]),
 		};
 

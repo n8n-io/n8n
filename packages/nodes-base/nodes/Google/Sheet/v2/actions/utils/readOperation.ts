@@ -33,7 +33,8 @@ export async function readSheet(
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 	}
 
-	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
+	const range =
+		rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions as RangeDetectionOptions);
 
 	const valueRenderMode = (outputFormattingOption.general ||
 		'UNFORMATTED_VALUE') as ValueRenderOption;
@@ -53,7 +54,7 @@ export async function readSheet(
 		data,
 		headerRow: keyRowIndex,
 		firstDataRow: dataStartRowIndex,
-	} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
+	} = prepareSheetData(sheetData, dataLocationOnSheetOptions as RangeDetectionOptions);
 
 	let responseData = [];
 
