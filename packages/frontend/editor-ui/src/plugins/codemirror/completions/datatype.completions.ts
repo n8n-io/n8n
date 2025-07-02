@@ -1234,7 +1234,7 @@ const createLuxonAutocompleteOption = ({
 	const label = isFunction ? name + '()' : name;
 
 	let doc: DocMetadata | undefined;
-	if (docs.properties && docs.properties.hasOwnProperty(name)) {
+	if (docs.properties?.hasOwnProperty(name)) {
 		doc = docs.properties[name].doc;
 	} else if (docs.functions.hasOwnProperty(name)) {
 		doc = docs.functions[name].doc;

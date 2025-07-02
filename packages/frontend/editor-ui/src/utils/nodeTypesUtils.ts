@@ -281,9 +281,8 @@ export const getNodeCredentialForSelectedAuthType = (
 	const authField = getMainAuthField(nodeType);
 	const authFieldName = authField ? authField.name : '';
 	return (
-		nodeType.credentials?.find(
-			(cred) =>
-				cred.displayOptions?.show && cred.displayOptions.show[authFieldName]?.includes(authType),
+		nodeType.credentials?.find((cred) =>
+			cred.displayOptions?.show?.[authFieldName]?.includes(authType),
 		) || null
 	);
 };
@@ -297,10 +296,8 @@ export const getAuthTypeForNodeCredential = (
 		const authFieldName = authField ? authField.name : '';
 		const nodeAuthOptions = getNodeAuthOptions(nodeType);
 		return (
-			nodeAuthOptions.find(
-				(option) =>
-					credentialType.displayOptions?.show &&
-					credentialType.displayOptions?.show[authFieldName]?.includes(option.value),
+			nodeAuthOptions.find((option) =>
+				credentialType.displayOptions?.show?.[authFieldName]?.includes(option.value),
 			) || null
 		);
 	}

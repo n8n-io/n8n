@@ -28,7 +28,7 @@ const emit = defineEmits<{
 			:class="['n8n-input', $style.overrideCloseButton]"
 			:outline="false"
 			icon="x"
-			size="mini"
+			size="small"
 			@click="emit('close')"
 		/>
 	</div>

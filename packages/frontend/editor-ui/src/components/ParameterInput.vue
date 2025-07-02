@@ -136,7 +136,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -931,7 +931,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		telemetry.track('User set node operation or mode', {
 			workflow_id: workflowsStore.workflowId,
 			node_type: node.value?.type,
-			resource: node.value && node.value.parameters.resource,
+			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
