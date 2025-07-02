@@ -1,4 +1,12 @@
-import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
+import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
+import { isCredentialsDataImap } from '@credentials/Imap.credentials';
+import type {
+	ImapSimple,
+	ImapSimpleOptions,
+	Message,
+	MessagePart,
+	SearchCriteria,
+} from '@n8n/imap';
 import { connect as imapConnect } from '@n8n/imap';
 import isEmpty from 'lodash/isEmpty';
 import type {
@@ -16,9 +24,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
-
-import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
-import { isCredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { getNewEmails } from './utils';
 
@@ -181,8 +186,8 @@ const versionDescription: INodeTypeDescription = {
 						minValue: 0,
 					},
 					displayOptions: {
-						hide: {
-							'@version': [2],
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
 						},
 					},
 				},
@@ -349,12 +354,10 @@ export class EmailReadImapV2 implements INodeType {
 		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
-			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
+			let searchCriteria: SearchCriteria[] = ['UNSEEN'];
 			if (options.customEmailConfig !== undefined) {
 				try {
-					searchCriteria = JSON.parse(options.customEmailConfig as string) as Array<
-						string | string[]
-					>;
+					searchCriteria = JSON.parse(options.customEmailConfig as string) as SearchCriteria[];
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
@@ -416,7 +419,7 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 				},
-				onUpdate: async (seqNo: number, info) => {
+				onUpdate: (seqNo: number, info) => {
 					this.logger.debug(`Email Read Imap:update ${seqNo}`, info);
 				},
 			};
@@ -437,8 +440,8 @@ export class EmailReadImapV2 implements INodeType {
 
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
-			return await imapConnect(config).then(async (conn) => {
-				conn.on('close', async (_hadError: boolean) => {
+			return await imapConnect(config).then((conn) => {
+				conn.on('close', (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
 						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');
 					} else if (closeFunctionWasCalled) {
@@ -448,7 +451,7 @@ export class EmailReadImapV2 implements INodeType {
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
 				});
-				conn.on('error', async (error) => {
+				conn.on('error', (error) => {
 					const errorCode = ((error as JsonObject).code as string).toUpperCase();
 					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,

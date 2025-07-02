@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
-import { type ImapMessage } from 'imap';
+import { type ImapMessage, type SortCriteria } from 'imap';
 
 import { getMessage } from './helpers/get-message';
 import { PartData } from './part-data';
-import type { Message, MessagePart } from './types';
+import type { Message, MessagePart, SearchCriteria } from './types';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
@@ -64,8 +63,7 @@ export class ImapSimple extends EventEmitter {
 	 */
 	async search(
 		/** Criteria to use to search. Passed to node-imap's .search() 1:1 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		searchCriteria: any[],
+		searchCriteria: SearchCriteria[],
 		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
 		fetchOptions: Imap.FetchOptions,
 		/** Optional limit to restrict the number of messages fetched */
@@ -131,17 +129,16 @@ export class ImapSimple extends EventEmitter {
 	 */
 	async sort(
 		/** Sort criteria like ['-ARRIVAL'] or ['DATE']. Prefix with '-' for descending order */
-		sortCriteria: string[],
+		sortCriteria: SortCriteria[],
 		/** Search criteria to use. Passed to node-imap's .sort() 1:1 */
-		searchCriteria: any[],
+		searchCriteria: SearchCriteria[],
 		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
 		fetchOptions: Imap.FetchOptions,
 		/** Optional limit to restrict the number of messages fetched */
 		limit?: number,
 	) {
 		return await new Promise<Message[]>((resolve, reject) => {
-			// @ts-expect-error - sort method exists but may not be in the type definitions
-			this.imap.sort(sortCriteria, searchCriteria, (e: Error | null, uids: number[]) => {
+			this.imap.sort(sortCriteria, searchCriteria, (e, uids) => {
 				if (e) {
 					reject(e);
 					return;

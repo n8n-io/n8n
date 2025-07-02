@@ -1,4 +1,10 @@
-import { getParts, type ImapSimple, type Message, type MessagePart } from '@n8n/imap';
+import {
+	getParts,
+	type ImapSimple,
+	type Message,
+	type MessagePart,
+	type SearchCriteria,
+} from '@n8n/imap';
 import find from 'lodash/find';
 import { simpleParser, type Source as ParserSource } from 'mailparser';
 import {
@@ -49,7 +55,7 @@ async function parseRawEmail(
 export async function getNewEmails(
 	this: ITriggerFunctions,
 	imapConnection: ImapSimple,
-	searchCriteria: Array<string | string[]>,
+	searchCriteria: SearchCriteria[],
 	staticData: IDataObject,
 	postProcessAction: string,
 	getText: (parts: MessagePart[], message: Message, subtype: string) => Promise<string>,
@@ -138,7 +144,7 @@ export async function getNewEmails(
 				dataPropertyAttachmentsPrefixName,
 			);
 
-			(parsedEmail.json as IDataObject).attributes = {
+			parsedEmail.json.attributes = {
 				uid: message.attributes.uid,
 			};
 
