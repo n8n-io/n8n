@@ -2,6 +2,9 @@ import { computed, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useVueFlow } from '@vue-flow/core';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { calculateNodeSize } from '@/utils/nodeViewUtils';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
@@ -14,13 +17,14 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const maxCanvasZoom = computed(() =>
 		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
 	);
+	const canvasOperations = useCanvasOperations();
 
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
 			...collapsedNodes.value,
-			[nodeId]: isExpanded ?? !collapsedNodes.value[nodeId],
+			[nodeId]: isExpanded === undefined ? !collapsedNodes.value[nodeId] : !isExpanded,
 		};
 	}
 
@@ -42,6 +46,39 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
 	}
 
+	function focusNode(nodeId: string) {
+		// Call useVueFlow() here because having it in setup fn scope seem to cause initialization problem
+		const vueFlow = useVueFlow(canvasOperations.editableWorkflow.value.id);
+		const nodeToFocus = workflowStore.getNodeById(nodeId);
+
+		if (!nodeToFocus) {
+			return;
+		}
+
+		collapsedNodes.value = workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>(
+			(acc, node) => {
+				acc[node.id] = node.id !== nodeId;
+				return acc;
+			},
+			{},
+		);
+
+		const workflow = workflowStore.getCurrentWorkflow();
+		const nodeSize = calculateNodeSize(
+			workflow.getChildNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
+			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
+			workflow.getParentNodes(nodeToFocus.name, 'main').length,
+			workflow.getChildNodes(nodeToFocus.name, 'main').length,
+			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length,
+		);
+
+		void vueFlow.setCenter(
+			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
+			nodeToFocus.position[1] + 80,
+			{ duration: 200, zoom: maxCanvasZoom.value },
+		);
+	}
+
 	return {
 		isEnabled,
 		maxCanvasZoom,
@@ -50,5 +87,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
+		focusNode,
 	};
 });

@@ -62,6 +62,7 @@ import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
+import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
@@ -263,6 +264,7 @@ export const deprecatedIconSet = {
 	'cloud-download-alt': IconLucideCloudDownload,
 	compress: IconLucideChevronsUpDown,
 	copy: IconLucideFiles,
+	crosshair: IconLucideCrosshair,
 	cube: IconLucideBox,
 	cut: IconLucideScissors,
 	database: IconLucideDatabase,
