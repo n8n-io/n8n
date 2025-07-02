@@ -9,6 +9,7 @@ import type {
 } from '@n8n/imap';
 import { connect as imapConnect } from '@n8n/imap';
 import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -270,6 +271,7 @@ export class EmailReadImapV2 implements INodeType {
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const node = this.getNode();
+		const activatedAt = DateTime.now();
 
 		const staticData = this.getWorkflowStaticData('node');
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
@@ -375,8 +377,15 @@ export class EmailReadImapV2 implements INodeType {
 				},
 				onMail: async () => {
 					if (connection) {
+						/**
+						 * Only process new emails:
+						 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
+						 * - Otherwise, fetch emails received since the workflow activation date.
+						 *
+						 * Note: IMAP 'SINCE' only filters by date (not time),
+						 * so it may include emails from earlier on the activation day.
+						 */
 						if (staticData.lastMessageUid !== undefined) {
-							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
 							/**
 							 * A short explanation about UIDs and how they work
 							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
@@ -389,10 +398,14 @@ export class EmailReadImapV2 implements INodeType {
 							 * - You can check if UIDs changed in the above example
 							 * by checking UIDValidity.
 							 */
-							this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-								searchCriteria,
-							});
+							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+						} else {
+							searchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 						}
+
+						this.logger.debug('Querying for new messages on node "EmailReadImap"', {
+							searchCriteria,
+						});
 
 						try {
 							const limit = node.typeVersion >= 2.1 ? ((options.messageLimit as number) ?? 50) : 0;
