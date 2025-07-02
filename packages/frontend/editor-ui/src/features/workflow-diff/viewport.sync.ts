@@ -1,4 +1,5 @@
 import { createInjectionState, createEventHook } from '@vueuse/core';
+import { ref } from 'vue';
 
 type Viewport = {
 	x: number;
@@ -13,6 +14,8 @@ type ViewportUpdate = {
 
 const [useProvideViewportSync, useInject] = createInjectionState(() => {
 	const onViewportChange = createEventHook<ViewportUpdate>();
+
+	const selectedDetailId = ref<string>();
 
 	/**
 	 * Batches viewport sync using requestAnimationFrame to avoid flooding listeners
@@ -39,6 +42,7 @@ const [useProvideViewportSync, useInject] = createInjectionState(() => {
 	return {
 		onViewportChange: onViewportChange.on,
 		triggerViewportChange,
+		selectedDetailId,
 	};
 });
 

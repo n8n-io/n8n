@@ -142,6 +142,7 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		v-bind="$attrs"
 	>
 		<BaseEdge
 			v-for="(segment, index) in segments"
@@ -172,7 +173,9 @@ function onEdgeLabelMouseLeave() {
 				@add="onAdd"
 				@delete="onDelete"
 			/>
-			<div v-else :style="edgeLabelStyle" :class="$style.edgeLabel">{{ label }}</div>
+			<div v-else :style="edgeLabelStyle" :class="$style.edgeLabel">
+				{{ label }}
+			</div>
 		</div>
 	</EdgeLabelRenderer>
 </template>

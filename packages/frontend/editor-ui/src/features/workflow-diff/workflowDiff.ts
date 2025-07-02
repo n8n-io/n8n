@@ -27,7 +27,7 @@ export function compareNodes<T extends { id: string }>(
 	return _isEqual(baseNode, targetNode);
 }
 
-export function compareWorkflows<T extends { id: string }>(
+export function compareWorkflowsNodes<T extends { id: string }>(
 	base: T[],
 	target: T[],
 	nodesEqual: (base: T | undefined, target: T | undefined) => boolean = compareNodes,

@@ -1,4 +1,30 @@
 <script lang="ts" setup>
+import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
+import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
+import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
+import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
+import { useCanvas } from '@/composables/useCanvas';
+import { useContextMenu } from '@/composables/useContextMenu';
+import { useNodeConnections } from '@/composables/useNodeConnections';
+import { CanvasNodeKey } from '@/constants';
+import type {
+	CanvasConnectionPort,
+	CanvasElementPortWithRenderData,
+	CanvasEventBusEvents,
+	CanvasNodeData,
+	CanvasNodeEventBusEvents,
+} from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import {
+	createCanvasConnectionHandleString,
+	insertSpacersBetweenEndpoints,
+} from '@/utils/canvasUtils';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { NodeProps, XYPosition } from '@vue-flow/core';
+import { Position } from '@vue-flow/core';
+import isEqual from 'lodash/isEqual';
 import {
 	computed,
 	onBeforeUnmount,
@@ -9,32 +35,6 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import type {
-	CanvasConnectionPort,
-	CanvasElementPortWithRenderData,
-	CanvasNodeData,
-	CanvasNodeEventBusEvents,
-	CanvasEventBusEvents,
-} from '@/types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
-import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
-import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
-import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasNodeKey } from '@/constants';
-import { useContextMenu } from '@/composables/useContextMenu';
-import type { NodeProps, XYPosition } from '@vue-flow/core';
-import { Position } from '@vue-flow/core';
-import { useCanvas } from '@/composables/useCanvas';
-import {
-	createCanvasConnectionHandleString,
-	insertSpacersBetweenEndpoints,
-} from '@/utils/canvasUtils';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
-import isEqual from 'lodash/isEqual';
-import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -338,6 +338,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
+		v-bind="$attrs"
 		:class="classes"
 		:data-test-id="dataTestId"
 		:data-node-name="data.name"
