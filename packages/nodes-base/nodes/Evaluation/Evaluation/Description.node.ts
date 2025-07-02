@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
+import { CORRECTNESS_PROMPT, CORRECTNESS_INPUT_PROMPT } from './CannedMetricPrompts.ee';
 
 export const setOutputProperties: INodeProperties[] = [
 	{
@@ -80,6 +81,130 @@ export const setCheckIfEvaluatingProperties: INodeProperties[] = [
 	},
 ];
 
+const expectedAnswerFields: INodeProperties[] = [
+	{
+		displayName: 'Expected answer',
+		name: 'expectedAnswer',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['correctness', 'stringSimilarity', 'accuracy'],
+			},
+		},
+	},
+	{
+		displayName: 'Actual answer',
+		name: 'actualAnswer',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['correctness', 'stringSimilarity', 'accuracy'],
+			},
+		},
+	},
+];
+
+function promptFieldForMetric(metric: string, prompt: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Prompt',
+			name: 'prompt',
+			type: 'string',
+			default: prompt,
+			typeOptions: {
+				rows: 4,
+			},
+			displayOptions: {
+				show: {
+					operation: ['setMetrics'],
+					metric: [metric],
+				},
+			},
+		},
+	];
+}
+
+function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
+	return [
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			default: {},
+			placeholder: 'Add Option',
+			options: [
+				{
+					displayName: 'Input prompt',
+					name: 'inputPrompt',
+					type: 'string',
+					default: prompt[0],
+					typeOptions: {
+						rows: 4,
+					},
+					hint: prompt[1],
+				},
+			],
+			displayOptions: {
+				show: {
+					operation: ['setMetrics'],
+					metric: [metric],
+				},
+			},
+		},
+	];
+}
+
+const toolsUsedFields: INodeProperties[] = [
+	{
+		displayName: 'Expected tools',
+		name: 'expectedTools',
+		type: 'fixedCollection',
+		placeholder: 'Add tool to expect',
+		typeOptions: {
+			multipleValues: true,
+		},
+		options: [
+			{
+				name: 'tools',
+				displayName: 'Tools',
+				values: [
+					{
+						displayName: 'Tool',
+						name: 'tool',
+						type: 'string',
+						default: '',
+						description: 'Tool to expect',
+						required: true,
+					},
+				],
+			},
+		],
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['toolsUsed'],
+			},
+		},
+	},
+	{
+		displayName: 'Intermediate steps',
+		name: 'intermediateSteps',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['toolsUsed'],
+			},
+		},
+	},
+];
+
 export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
@@ -93,6 +218,42 @@ export const setMetricsProperties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Metric',
+		name: 'metric',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Correctness',
+				value: 'correctness',
+			},
+			{
+				name: 'Helpfulness',
+				value: 'helpfulness',
+			},
+			{
+				name: 'String similarity',
+				value: 'stringSimilarity',
+			},
+			{
+				name: 'Accuracy',
+				value: 'accuracy',
+			},
+			{
+				name: 'Tools used',
+				value: 'toolsUsed',
+			},
+			{
+				name: 'Custom metrics',
+				value: 'customMetrics',
+			},
+		],
+		default: 'correctness',
+	},
+	...expectedAnswerFields,
+	...toolsUsedFields,
+	...promptFieldForMetric('correctness', CORRECTNESS_PROMPT),
 	{
 		displayName: 'Metrics to Return',
 		name: 'metrics',
@@ -115,7 +276,9 @@ export const setMetricsProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
+				metric: ['customMetrics'],
 			},
 		},
 	},
+	...optionsForMetric('correctness', CORRECTNESS_INPUT_PROMPT),
 ];

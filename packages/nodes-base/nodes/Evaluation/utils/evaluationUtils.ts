@@ -91,18 +91,11 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	return [this.getInputData()];
 }
 
-export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = this.getInputData();
-	const metrics: INodeExecutionData[] = [];
-
-	for (let i = 0; i < items.length; i++) {
+const metricHandlers = {
+	customMetric(this: IExecuteFunctions, i: number): IDataObject {
 		const dataToSave = this.getNodeParameter('metrics', i, {}) as AssignmentCollectionValue;
 
-		const newItem: INodeExecutionData = {
-			json: {},
-			pairedItem: { item: i },
-		};
-		const newData = Object.fromEntries(
+		return Object.fromEntries(
 			(dataToSave?.assignments ?? []).map((assignment) => {
 				const assignmentValue =
 					typeof assignment.value === 'number' ? assignment.value : Number(assignment.value);
@@ -136,6 +129,43 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 				return [name, value];
 			}),
 		);
+	},
+
+	toolsUsed(this: IExecuteFunctions, i: number): IDataObject {
+		const expectedTools: string[] = (
+			this.getNodeParameter('expectedTools', i, {}) as { tools: { tool: string }[] }
+		)?.tools?.map((t) => t?.tool);
+
+		const intermediateSteps = this.getNodeParameter('intermediateSteps', i, {}) as {
+			action: { tool: string };
+		}[];
+
+		return Object.fromEntries(
+			expectedTools.map((tool) => {
+				return [
+					`${tool} used`,
+					intermediateSteps.filter((step) => step.action.tool === tool).length >= 1 ? 1 : 0,
+				];
+			}),
+		);
+	},
+};
+
+export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
+	const metrics: INodeExecutionData[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		const metric = this.getNodeParameter('metric', i, {}) as keyof typeof metricHandlers;
+		if (!metricHandlers.hasOwnProperty(metric)) {
+			throw new NodeOperationError(this.getNode(), 'Unknown metric');
+		}
+		const newData = metricHandlers[metric].call(this, i);
+
+		const newItem: INodeExecutionData = {
+			json: {},
+			pairedItem: { item: i },
+		};
 
 		const returnItem = composeReturnItem.call(
 			this,
@@ -175,6 +205,20 @@ export function setOutputs(parameters: INodeParameters) {
 		return [
 			{ type: 'main', displayName: 'Evaluation' },
 			{ type: 'main', displayName: 'Normal' },
+		];
+	}
+
+	return [{ type: 'main' }];
+}
+
+export function setInputs(parameters: INodeParameters) {
+	if (
+		parameters.operation === 'setMetrics' &&
+		['correctness', 'helpfulness'].includes(parameters.metric as string)
+	) {
+		return [
+			{ type: 'main' },
+			{ type: 'ai_languageModel', displayName: 'Model', maxConnections: 1 },
 		];
 	}
 
