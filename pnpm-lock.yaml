@@ -685,6 +685,16 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/errors:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/eslint-config:
     dependencies:
       eslint:
@@ -1253,6 +1263,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../@n8n/errors
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0
