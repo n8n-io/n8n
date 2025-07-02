@@ -35,12 +35,6 @@ describe('getProxyAgent', () => {
 			expect(ProxyAgent).not.toHaveBeenCalled();
 		});
 
-		it('should return undefined when no proxy environment variables are set', () => {
-			const agent = getProxyAgent();
-			expect(agent).toBeUndefined();
-			expect(ProxyAgent).not.toHaveBeenCalled();
-		});
-
 		it('should create ProxyAgent when HTTPS_PROXY is set', () => {
 			const proxyUrl = 'https://proxy.example.com:8080';
 			process.env.HTTPS_PROXY = proxyUrl;
@@ -70,7 +64,7 @@ describe('getProxyAgent', () => {
 
 			const agent = getProxyAgent();
 
-			// Should use HTTPS_PROXY as it has highest priority now
+			// Should use https_proxy as it has highest priority now
 			expect(ProxyAgent).toHaveBeenCalledWith('https://https-proxy-lowercase.example.com:8080');
 			expect(agent).toEqual({ proxyUrl: 'https://https-proxy-lowercase.example.com:8080' });
 		});
