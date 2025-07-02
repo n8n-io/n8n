@@ -14,19 +14,23 @@ export async function getMessage(
 	/** an ImapMessage from the node-imap library */
 	message: ImapMessage,
 ): Promise<Message> {
+	console.log('===getmessage');
 	return await new Promise((resolve) => {
 		let attributes: ImapMessageAttributes;
 		const parts: MessageBodyPart[] = [];
 
 		const messageOnBody = (stream: NodeJS.ReadableStream, info: ImapMessageBodyInfo) => {
+			console.log('===onbody');
 			let body: string = '';
 
 			const streamOnData = (chunk: Buffer) => {
+				console.log('data');
 				body += chunk.toString('utf8');
 			};
 
 			stream.on('data', streamOnData);
 			stream.once('end', () => {
+				console.log('stream end');
 				stream.removeListener('data', streamOnData);
 
 				parts.push({
@@ -38,10 +42,12 @@ export async function getMessage(
 		};
 
 		const messageOnAttributes = (attrs: ImapMessageAttributes) => {
+			console.log('===onattr');
 			attributes = attrs;
 		};
 
 		const messageOnEnd = () => {
+			console.log('===onend');
 			message.removeListener('body', messageOnBody);
 			message.removeListener('attributes', messageOnAttributes);
 			resolve({ attributes, parts });

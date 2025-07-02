@@ -23,6 +23,8 @@ export const baseConfig = tseslint.config(
 		'tsup.config.ts',
 		'jest.config.js',
 		'cypress.config.js',
+		'vite.config.ts',
+		'vitest.config.ts',
 	]),
 	eslint.configs.recommended,
 	tseslint.configs.recommended,
