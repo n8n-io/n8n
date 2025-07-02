@@ -11,7 +11,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Authentication',
 		name: 'authentication',
 		type: 'options',
-		default: AuthenticationType.ApiKey,
+		default: AuthenticationType.ClientApi,
 		options: [
 			{
 				name: 'API Key',
@@ -20,6 +20,10 @@ export const properties: INodeProperties[] = [
 			{
 				name: 'Azure Entra ID (OAuth2)',
 				value: AuthenticationType.EntraOAuth2,
+			},
+			{
+				name: 'Client API Key',
+				value: AuthenticationType.ClientApi,
 			},
 		],
 	},
@@ -37,12 +41,20 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Model (Deployment) Name',
+		displayName: 'AI Model (Deployment) Name',
 		name: 'model',
 		type: 'string',
 		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
 		required: true,
 		default: '',
+	},
+	{
+		displayName: 'Application Key',
+		name: 'appKey',
+		type: 'string',
+		default: '',
+		description:
+			'The application key to identify the application. This will be used as json object in request headers.',
 	},
 	{
 		displayName: 'Options',

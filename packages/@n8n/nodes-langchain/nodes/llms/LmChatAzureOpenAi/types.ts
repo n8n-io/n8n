@@ -62,6 +62,7 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
  * Authentication types supported by Azure OpenAI node
  */
 export const enum AuthenticationType {
+	ClientApi = 'azureOpenAiClientApi',
 	ApiKey = 'azureOpenAiApi',
 	EntraOAuth2 = 'azureEntraCognitiveServicesOAuth2Api',
 }

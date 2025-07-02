@@ -10,7 +10,7 @@ import {
 
 import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 
-import { setupApiKeyAuthentication } from './credentials/api-key';
+import { setupApiKeyAuthentication, setupClientApiKeyAuthentication } from './credentials/api-key';
 import { setupOAuth2Authentication } from './credentials/oauth2';
 import { properties } from './properties';
 import { AuthenticationType } from './types';
@@ -55,6 +55,15 @@ export class LmChatAzureOpenAi implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
+				name: 'azureOpenAiClientApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [AuthenticationType.ClientApi],
+					},
+				},
+			},
+			{
 				name: 'azureOpenAiApi',
 				required: true,
 				displayOptions: {
@@ -84,6 +93,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			) as AuthenticationType;
 			const modelName = this.getNodeParameter('model', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
+			const appKey = this.getNodeParameter('appKey', itemIndex, '') as string;
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
@@ -96,6 +106,9 @@ export class LmChatAzureOpenAi implements INodeType {
 						this,
 						'azureEntraCognitiveServicesOAuth2Api',
 					);
+					break;
+				case AuthenticationType.ClientApi:
+					modelConfig = await setupClientApiKeyAuthentication.call(this, 'azureOpenAiClientApi');
 					break;
 				default:
 					throw new NodeOperationError(this.getNode(), 'Invalid authentication method');
@@ -121,6 +134,10 @@ export class LmChatAzureOpenAi implements INodeType {
 					: undefined,
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			});
+			if (appKey !== '') {
+				model.user = JSON.stringify({ appkey: appKey });
+				this.logger.info(`Using appKey for Azure OpenAI: ${appKey}`);
+			}
 
 			this.logger.info(`Azure OpenAI client initialized for deployment: ${modelName}`);
 

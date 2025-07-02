@@ -26,6 +26,7 @@
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
+      "dist/credentials/AzureOpenAiClientApi.credentials.js",
       "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
