@@ -1,17 +1,12 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type { IBinaryData } from 'n8n-workflow';
-import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
+import {
+	type IBinaryData,
+	setGlobalState,
+	type CodeExecutionMode,
+	type IDataObject,
+} from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
-
-import {
-	newDataRequestResponse,
-	newTaskParamsWithSettings,
-	newTaskState,
-	withPairedItem,
-	wrapIntoJson,
-} from './test-data';
-import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
@@ -27,6 +22,15 @@ import {
 	type InputDataChunkDefinition,
 } from '@/runner-types';
 import type { TaskParams } from '@/task-runner';
+
+import {
+	newDataRequestResponse,
+	newTaskParamsWithSettings,
+	newTaskState,
+	withPairedItem,
+	wrapIntoJson,
+} from './test-data';
+import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
