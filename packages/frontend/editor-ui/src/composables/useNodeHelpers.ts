@@ -46,7 +46,6 @@ import { isObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import get from 'lodash/get';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
@@ -161,10 +160,6 @@ export function useNodeHelpers() {
 			.map(({ id }) => id)
 			.filter((id) => id !== null)
 			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
-	}
-
-	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
-		return get(nodeValues, path ? path + '.' + parameterName : parameterName);
 	}
 
 	// Returns if the given parameter should be displayed or not
@@ -1078,7 +1073,6 @@ export function useNodeHelpers() {
 		isCustomApiCallSelected,
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
-		getParameterValue,
 		displayParameter,
 		getNodeIssues,
 		updateNodesInputIssues,

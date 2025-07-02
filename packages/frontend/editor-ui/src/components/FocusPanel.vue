@@ -5,7 +5,6 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -16,25 +15,33 @@ const props = defineProps<{
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
-const workflowStore = useWorkflowsStore();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
+const resolvedParameter = computed(() =>
+	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
+		? focusedNodeParameter.value
+		: undefined,
+);
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 
-const _node = computed(() => workflowStore.getNodeByName(focusedNodeParameter.value.nodeName));
-
 const isExecutable = computed(() => {
+	if (!resolvedParameter.value) return false;
+
 	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
-		_node.value?.credentials,
+		resolvedParameter.value.node.credentials,
 	);
-	return nodeHelpers.isNodeExecutable(_node.value, props.executable, foreignCredentials);
+	return nodeHelpers.isNodeExecutable(
+		resolvedParameter.value.node,
+		props.executable,
+		foreignCredentials,
+	);
 });
 
 const expressionModeEnabled = computed(
 	() =>
-		focusedNodeParameter.value &&
-		isValueExpression(focusedNodeParameter.value.parameter, focusedNodeParameter.value.value),
+		resolvedParameter.value &&
+		isValueExpression(resolvedParameter.value.parameter, resolvedParameter.value.value),
 );
 
 function optionSelected() {
@@ -56,18 +63,18 @@ function valueChanged() {
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
-		<div v-if="focusedNodeParameter" :class="$style.content">
+		<div v-if="resolvedParameter" :class="$style.content">
 			<div :class="$style.tabHeader">
 				<div :class="$style.tabHeaderText">
 					<N8nText color="text-dark" size="small">
-						{{ focusedNodeParameter.parameter.displayName }}
+						{{ resolvedParameter.parameter.displayName }}
 					</N8nText>
-					<N8nText color="text-base" size="xsmall">{{ focusedNodeParameter.nodeName }}</N8nText>
+					<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 				</div>
 				<NodeExecuteButton
 					data-test-id="node-execute-button"
-					:node-name="focusedNodeParameter.nodeName"
-					:tooltip="`Execute ${focusedNodeParameter.nodeName}`"
+					:node-name="resolvedParameter.node.name"
+					:tooltip="`Execute ${resolvedParameter.node.name}`"
 					:disabled="!isExecutable"
 					size="small"
 					icon="play"
@@ -80,29 +87,29 @@ function valueChanged() {
 				<div :class="$style.parameterOptionsWrapper">
 					<div></div>
 					<ParameterOptions
-						:parameter="focusedNodeParameter.parameter"
-						:value="focusedNodeParameter.value"
+						:parameter="resolvedParameter.parameter"
+						:value="resolvedParameter.value"
 						:is-read-only="false"
 						@update:model-value="optionSelected"
 					/>
 				</div>
-				<div :class="$style.editorContainer">
+				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
 					<ExpressionEditorModalInput
 						v-if="expressionModeEnabled"
-						:model-value="focusedNodeParameter.value"
+						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						:is-read-only="false"
-						:path="focusedNodeParameter.parameterPath"
+						:path="resolvedParameter.parameterPath"
 						data-test-id="expression-modal-input"
 						:target-node-parameter-context="{
-							nodeName: focusedNodeParameter.nodeName,
-							parameterPath: focusedNodeParameter.parameterPath,
+							nodeName: resolvedParameter.node.name,
+							parameterPath: resolvedParameter.parameterPath,
 						}"
 						@change="valueChanged"
 					/>
 					<N8nInput
 						v-else
-						v-model="focusedNodeParameter.value"
+						v-model="resolvedParameter.value"
 						:class="$style.editor"
 						type="textarea"
 						resize="none"
