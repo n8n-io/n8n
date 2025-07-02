@@ -377,6 +377,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					if (displayNode && filter?.nodes?.length) {
 						return filter.nodes.includes(i.key);
 					}
+					if (displayNode && filter?.excludedNodes?.length) {
+						return !filter.excludedNodes.includes(i.key);
+					}
 
 					return displayNode;
 				},

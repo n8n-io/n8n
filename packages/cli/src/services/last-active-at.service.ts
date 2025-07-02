@@ -1,10 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { DateTime } from 'luxon';
-
-import type { AuthenticatedRequest } from '@/requests';
 
 @Service()
 export class LastActiveAtService {

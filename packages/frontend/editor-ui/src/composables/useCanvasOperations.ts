@@ -188,15 +188,11 @@ export function useCanvasOperations() {
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track(
-			'User tidied up canvas',
-			{
-				source,
-				target,
-				nodes_count: result.nodes.length,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
 	}
 
 	function updateNodesPosition(
@@ -1531,7 +1527,10 @@ export function useCanvasOperations() {
 			if (inputType !== targetConnection.type) return false;
 
 			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
-			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
+			if (
+				(filter?.nodes?.length && !filter.nodes?.includes(sourceNode.type)) ||
+				(filter?.excludedNodes?.length && filter.excludedNodes?.includes(sourceNode.type))
+			) {
 				toast.showToast({
 					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {

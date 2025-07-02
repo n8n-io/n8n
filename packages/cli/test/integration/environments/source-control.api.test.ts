@@ -1,11 +1,11 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';

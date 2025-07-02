@@ -1,3 +1,5 @@
+import { testDb } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,10 +12,8 @@ import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { retryUntil } from '@test-integration/retry-until';
-import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
 import { LastActiveAtService } from '../last-active-at.service';

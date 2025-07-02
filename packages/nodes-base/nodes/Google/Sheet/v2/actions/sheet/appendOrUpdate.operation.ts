@@ -364,7 +364,7 @@ export async function execute(
 						"At least one value has to be added under 'Values to Send'",
 					);
 				}
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 				const fields = valuesToSend.reduce((acc, entry) => {
 					if (entry.column === 'newColumn') {
 						const columnName = entry.columnName as string;

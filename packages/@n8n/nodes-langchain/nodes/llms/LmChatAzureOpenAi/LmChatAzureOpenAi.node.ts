@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { AzureChatOpenAI } from '@langchain/openai';
 import {
 	NodeOperationError,
@@ -27,7 +25,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Azure OpenAI Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
 		group: ['transform'],
@@ -50,9 +48,9 @@ export class LmChatAzureOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [

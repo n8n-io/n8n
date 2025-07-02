@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -6,7 +7,6 @@ import { v4 as uuid } from 'uuid';
 
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

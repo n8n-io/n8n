@@ -15,7 +15,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import type { IUpdateInformation, NotificationOptions } from '@/Interface';
+import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
@@ -173,7 +173,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect);
+			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -305,7 +305,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
-	): Promise<boolean> {
+	): Promise<IWorkflowDb['id'] | null> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
@@ -353,7 +353,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
-				return true;
+				return workflowData.id;
 			}
 
 			// workflow should not be active if there is live webhook with the same path
@@ -411,7 +411,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			getCurrentWorkflow(true); // refresh cache
-			return true;
+			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
 
@@ -421,7 +421,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				type: 'error',
 			});
 
-			return false;
+			return null;
 		}
 	}
 

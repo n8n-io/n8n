@@ -17,8 +17,8 @@ import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
-import get from 'lodash-es/get';
-import isEmpty from 'lodash-es/isEmpty';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
@@ -54,8 +54,9 @@ function createNode(
 	return {
 		parent: context.parent,
 		node,
-		id: `${context.workflow.id}:${node.name}:${context.executionId}:${runIndex}`,
-		depth: context.depth,
+		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
+		// makes it possible to identify the same log across different executions
+		id: `${context.workflow.id}:${node.id}:${[...context.ancestorRunIndexes, runIndex].join(':')}`,
 		runIndex,
 		runData,
 		children,
@@ -85,7 +86,7 @@ function getChildNodes(
 		return createLogTreeRec({
 			...context,
 			parent: treeNode,
-			depth: context.depth + 1,
+			ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 			workflow,
 			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
@@ -121,7 +122,7 @@ function getChildNodes(
 			return subNode
 				? getTreeNodeData(subNode, t, index, {
 						...context,
-						depth: context.depth + 1,
+						ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 						parent: treeNode,
 					})
 				: [];
@@ -171,28 +172,25 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
-function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {
-	for (const entry of subTree) {
-		if (entry.runData?.error) {
-			return entry;
-		}
+function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
+	const entryWithError = findLogEntryRec((e) => !!e.runData?.error, subTree);
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children, depth + 1);
-
-		if (childAutoSelect) {
-			return childAutoSelect;
-		}
-
-		if (entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			if (isPlaceholderLog(entry) && entry.children.length > 0) {
-				return entry.children[0];
-			}
-
-			return entry;
-		}
+	if (entryWithError) {
+		return entryWithError;
 	}
 
-	return depth === 0 ? subTree[0] : undefined;
+	const entryForAiAgent = findLogEntryRec(
+		(entry) =>
+			entry.node.type === AGENT_LANGCHAIN_NODE_TYPE ||
+			(entry.parent?.node.type === AGENT_LANGCHAIN_NODE_TYPE && isPlaceholderLog(entry.parent)),
+		subTree,
+	);
+
+	if (entryForAiAgent) {
+		return entryForAiAgent;
+	}
+
+	return subTree[subTree.length - 1];
 }
 
 export function createLogTree(
@@ -203,7 +201,7 @@ export function createLogTree(
 ) {
 	return createLogTreeRec({
 		parent: undefined,
-		depth: 0,
+		ancestorRunIndexes: [],
 		executionId: response.id,
 		workflow,
 		workflows,
@@ -283,20 +281,33 @@ export function findLogEntryRec(
 export function findSelectedLogEntry(
 	selection: LogEntrySelection,
 	entries: LogEntry[],
+	isExecuting: boolean,
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return isExecuting ? undefined : findLogEntryToAutoSelect(entries);
 		case 'none':
 			return undefined;
 		case 'selected': {
-			const entry = findLogEntryRec((e) => e.id === selection.id, entries);
+			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
 
-			if (entry) {
-				return entry;
+			if (found === undefined && !isExecuting) {
+				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
+					const fallback = findLogEntryRec(
+						(e) =>
+							e.workflow.id === selection.entry.workflow.id &&
+							e.node.id === selection.entry.node.id &&
+							e.runIndex === runIndex,
+						entries,
+					);
+
+					if (fallback !== undefined) {
+						return fallback;
+					}
+				}
 			}
 
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return found;
 		}
 	}
 }

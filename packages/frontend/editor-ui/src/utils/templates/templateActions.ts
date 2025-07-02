@@ -70,7 +70,7 @@ async function openTemplateCredentialSetup(opts: {
 }) {
 	const { router, templateId, inNewBrowserTab = false, telemetry, source } = opts;
 
-	telemetry.track('User opened cred setup', { source }, { withPostHog: true });
+	telemetry.track('User opened cred setup', { source });
 
 	const routeLocation: RouteLocationRaw = {
 		name: VIEWS.TEMPLATE_SETUP,

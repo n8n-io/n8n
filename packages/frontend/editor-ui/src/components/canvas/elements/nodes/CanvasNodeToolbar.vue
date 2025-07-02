@@ -125,7 +125,7 @@ function onMouseLeave() {
 				type="tertiary"
 				text
 				size="small"
-				icon="power-off"
+				icon="power"
 				:title="nodeDisabledTitle"
 				@click="onToggleNode"
 			/>
@@ -135,7 +135,7 @@ function onMouseLeave() {
 				type="tertiary"
 				size="small"
 				text
-				icon="trash"
+				icon="trash-2"
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
 			/>
@@ -149,7 +149,7 @@ function onMouseLeave() {
 				type="tertiary"
 				size="small"
 				text
-				icon="ellipsis-h"
+				icon="ellipsis"
 				@click="onOpenContextMenu"
 			/>
 		</div>

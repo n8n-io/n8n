@@ -1,13 +1,13 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
     "test": "echo \"Error: no test specified\" && exit 1",

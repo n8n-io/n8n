@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
@@ -13,7 +14,6 @@ import {
 import type { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
-import { mockInstance } from '@test/mocking';
 
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker';
 
