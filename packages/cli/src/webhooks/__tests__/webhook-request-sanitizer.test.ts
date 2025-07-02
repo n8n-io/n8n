@@ -2,9 +2,20 @@ import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
+import { GlobalConfig } from '@n8n/config';
+import { mockInstance } from '@n8n/backend-test-utils';
 
 describe('webhookRequestSanitizer', () => {
 	let mockRequest: Request;
+	beforeAll(() => {
+		mockInstance(GlobalConfig, {
+			auth: {
+				cookie: {
+					name: 'n8n-auth',
+				},
+			},
+		});
+	});
 
 	beforeEach(() => {
 		mockRequest = mock<Request>();

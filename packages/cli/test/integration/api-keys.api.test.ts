@@ -22,6 +22,7 @@ import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
+let globalConfig: GlobalConfig;
 const license = mock<License>();
 
 beforeAll(() => {
@@ -30,6 +31,8 @@ beforeAll(() => {
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
+	globalConfig = Container.get(GlobalConfig);
+	globalConfig.publicApi.disabled = false;
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
@@ -41,7 +44,7 @@ describe('When public API is disabled', () => {
 		owner = await createOwnerWithApiKey();
 
 		authAgent = testServer.authAgentFor(owner);
-		mockInstance(GlobalConfig, { publicApi: { disabled: true } });
+		globalConfig.publicApi.disabled = true;
 	});
 
 	test('POST /api-keys should 404', async () => {

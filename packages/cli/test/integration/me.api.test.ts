@@ -1,7 +1,5 @@
 import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -18,7 +16,6 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
 describe('Owner shell', () => {
