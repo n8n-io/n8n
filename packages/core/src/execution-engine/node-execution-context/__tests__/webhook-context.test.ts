@@ -160,10 +160,17 @@ describe('WebhookContext', () => {
 	});
 
 	describe('getWorkflowDataProxy', () => {
-		it('should return the workflow data proxy', () => {
+		it('should return the workflow data proxy correctly', () => {
 			const workflowDataProxy = webhookContext.getWorkflowDataProxy(0);
-			expect(workflowDataProxy).toBeDefined();
-			expect(workflowDataProxy.$execution.customData.getAll()).toEqual({});
+			expect(workflowDataProxy.isProxy).toBe(true);
+			expect(Object.keys(workflowDataProxy.$input)).toEqual([
+				'all',
+				'context',
+				'first',
+				'item',
+				'last',
+				'params',
+			]);
 		});
 
 		it('should return the workflow data proxy with custom data', () => {
