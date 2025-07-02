@@ -290,6 +290,9 @@
 	--color-button-node-creator-hover-border: var(--p-color-primary-320);
 	--color-button-node-creator-background: var(--p-white);
 
+	// Input fields
+	--input-background-color: var(--p-white);
+
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
 
@@ -416,6 +419,11 @@
 	--node-type-ai_vectorStore-color: var(--p-color-alt-i-400);
 	--node-type-ai_vectorStore-background: var(--p-color-alt-i-050);
 
+	// Menu
+	--color-menu-background: var(--p-white);
+	--color-menu-hover-background: var(--p-gray-120);
+	--color-menu-active-background: var(--p-gray-120);
+
 	// Various
 	--color-avatar-accent-1: var(--p-gray-120);
 	--color-avatar-accent-2: var(--p-color-alt-e-530);
@@ -428,11 +436,6 @@
 	--color-configurable-node-name: var(--color-text-dark);
 	--color-secondary-link: var(--color-secondary);
 	--color-secondary-link-hover: var(--color-secondary-shade-1);
-
-	// Menu
-	--color-menu-background: var(--p-white);
-	--color-menu-hover-background: var(--p-gray-120);
-	--color-menu-active-background: var(--p-gray-120);
 
 	// Shadows
 	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
