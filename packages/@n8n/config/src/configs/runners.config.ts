@@ -62,4 +62,13 @@ export class TaskRunnersConfig {
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
+
+	/**
+	 * Whether to disable all security measures in the task runner: prototype
+	 * freezing, runtime safeguards for the prototype API, Node.js security flags,
+	 * and `runInContext` from `node:vm`. **DISCOURAGED FOR PRODUCTION USE.**
+	 * Set to `true` for compatibility with modules that rely on insecure JS features.
+	 */
+	@Env('N8N_RUNNERS_INSECURE_MODE')
+	insecureMode: boolean = false;
 }
