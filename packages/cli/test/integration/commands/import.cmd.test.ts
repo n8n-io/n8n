@@ -3,6 +3,7 @@ import { getPersonalProject } from '@n8n/backend-test-utils';
 import { getAllSharedWorkflows, getAllWorkflows } from '@n8n/backend-test-utils';
 import { nanoid } from 'nanoid';
 
+import '@/zod-alias-support';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';

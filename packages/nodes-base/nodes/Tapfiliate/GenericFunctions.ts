@@ -16,7 +16,7 @@ export async function tapfiliateApiRequest(
 
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string | undefined,
+	uri?: string,
 	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('tapfiliateApi');

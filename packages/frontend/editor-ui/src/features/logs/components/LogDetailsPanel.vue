@@ -15,9 +15,8 @@ import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, isPlaceholderLog } from '@/features/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
-import { isPlaceholderLog } from '@/features/logs/logs.utils';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -78,8 +77,7 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<LogsViewNodeName
-						:latest-name="latestInfo?.name ?? logEntry.node.name"
-						:name="logEntry.node.name"
+						:name="latestInfo?.name ?? logEntry.node.name"
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<LogsViewExecutionSummary

@@ -74,7 +74,7 @@ export class ModuleRegistry {
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
-			const entities = Container.get(ModuleClass).entities?.();
+			const entities = await Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
 

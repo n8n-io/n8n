@@ -12,7 +12,10 @@
         },
         "_updateTime": {
             "type": "string"
+        },
+        "name": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

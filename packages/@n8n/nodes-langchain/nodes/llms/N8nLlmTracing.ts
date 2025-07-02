@@ -13,7 +13,7 @@ import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
-import { encodingForModel } from '@utils/tokenizer/tiktoken';
+import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
@@ -84,13 +84,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	async estimateTokensFromStringList(list: string[]) {
 		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-		const encoder = await encodingForModel(embeddingModel);
-
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => encoder.encode(text).length),
-		);
-
-		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
+		return await estimateTokensFromStringList(list, embeddingModel);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
@@ -194,11 +188,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.promptTokensEstimate = estimatedTokens;
 	}
 
-	async handleLLMError(
-		error: IDataObject | Error,
-		runId: string,
-		parentRunId?: string | undefined,
-	) {
+	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		// Filter out non-x- headers to avoid leaking sensitive information in logs

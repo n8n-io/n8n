@@ -49,7 +49,7 @@ function onDelete() {
 			class="canvas-edge-toolbar-button"
 			type="tertiary"
 			size="small"
-			icon="trash"
+			icon="trash-2"
 			:title="i18n.baseText('node.delete')"
 			@click="onDelete"
 		/>

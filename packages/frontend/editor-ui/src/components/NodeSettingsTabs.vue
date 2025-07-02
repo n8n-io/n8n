@@ -57,7 +57,7 @@ const documentationUrl = computed(() => {
 		return '';
 	}
 
-	if (nodeType.documentationUrl && nodeType.documentationUrl.startsWith('http')) {
+	if (nodeType.documentationUrl?.startsWith('http')) {
 		return nodeType.documentationUrl;
 	}
 
@@ -95,7 +95,7 @@ const options = computed<ITab[]>(() => {
 
 	if (isCommunityNode.value) {
 		options.push({
-			icon: 'cube',
+			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
 			tooltip: i18n.baseText('generic.communityNode.tooltip', {

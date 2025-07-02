@@ -78,7 +78,12 @@ import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
-import { unflattenExecutionData } from '@/utils/executionUtils';
+import {
+	unflattenExecutionData,
+	clearPopupWindowState,
+	findTriggerNodeToAutoSelect,
+	openFormPopupWindow,
+} from '@/utils/executionUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
@@ -91,11 +96,6 @@ import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
-import {
-	clearPopupWindowState,
-	findTriggerNodeToAutoSelect,
-	openFormPopupWindow,
-} from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
@@ -1373,7 +1373,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
-		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
+		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
 			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
 			workflow.value = {
 				...workflow.value,
@@ -1511,25 +1511,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (pushData.data.error) {
 			const node = getNodeByName(nodeName);
-			telemetry.track(
-				'Manual exec errored',
-				{
-					error_title: pushData.data.error.message,
-					node_type: node?.type,
-					node_type_version: node?.typeVersion,
-					node_id: node?.id,
-					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(
-							await workflowHelpers.getWorkflowDataToSave(),
-							workflowHelpers.getNodeTypes(),
-							{
-								isCloudDeployment: settingsStore.isCloudDeployment,
-							},
-						).nodeGraph,
-					),
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('Manual exec errored', {
+				error_title: pushData.data.error.message,
+				node_type: node?.type,
+				node_type_version: node?.typeVersion,
+				node_id: node?.id,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						await workflowHelpers.getWorkflowDataToSave(),
+						workflowHelpers.getNodeTypes(),
+						{
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				),
+			});
 		}
 	}
 

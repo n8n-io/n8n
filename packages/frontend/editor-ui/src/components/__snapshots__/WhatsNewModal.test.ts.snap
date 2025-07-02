@@ -3,7 +3,7 @@
 exports[`WhatsNewModal > should render with update button disabled 1`] = `
 <div
   class="article"
-  data-test-id="whats-new-article-1"
+  data-test-id="whats-new-item-1"
 >
   <h2
     class="n8n-heading size-xlarge bold"

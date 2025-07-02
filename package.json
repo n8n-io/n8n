@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.100.0",
+  "version": "1.101.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -17,6 +17,7 @@
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
+    "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && pnpm --filter=n8n-playwright run test:standard",
     "typecheck": "turbo typecheck",
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
     "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
@@ -57,6 +58,7 @@
     "babel-plugin-transform-import-meta": "^2.3.2",
     "bundlemon": "^3.1.0",
     "cross-env": "^7.0.3",
+    "eslint": "catalog:",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
     "jest-expect-message": "^1.1.3",
@@ -94,13 +96,15 @@
       "tar-fs": "2.1.3",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.8.2",
+      "typescript": "catalog:",
       "vue-tsc": "^2.2.8",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
       "zod": "3.25.67",
       "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.2"
+      "brace-expansion@2": "2.0.2",
+      "date-fns": "2.30.0",
+      "date-fns-tz": "2.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -110,8 +114,8 @@
       "@types/ws@8.18.1": "patches/@types__ws@8.18.1.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
-      "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch",
-      "element-plus@2.4.3": "patches/element-plus@2.4.3.patch"
+      "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
+      "js-base64": "patches/js-base64.patch"
     }
   }
 }

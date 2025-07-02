@@ -4,18 +4,19 @@ import { computed, useCssModule } from 'vue';
 import type { IconSize, CalloutTheme } from '@n8n/design-system/types';
 
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 
-const CALLOUT_DEFAULT_ICONS: Record<string, string> = {
-	info: 'info-circle',
-	success: 'check-circle',
-	warning: 'exclamation-triangle',
-	danger: 'exclamation-triangle',
+const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
+	info: 'info',
+	success: 'circle-check',
+	warning: 'triangle-alert',
+	danger: 'triangle-alert',
 };
 
 interface CalloutProps {
 	theme: CalloutTheme;
-	icon?: string;
+	icon?: IconName;
 	iconSize?: IconSize;
 	iconless?: boolean;
 	slim?: boolean;

@@ -149,6 +149,7 @@ export declare namespace UserRequest {
 // ----------------------------------
 
 export declare namespace MFA {
+	type Enforce = AuthenticatedRequest<{}, {}, { enforce: boolean }, {}>;
 	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;
@@ -202,7 +203,11 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, { name?: string; verify?: boolean; version?: string }>;
+	type Post = AuthenticatedRequest<
+		{},
+		{},
+		{ name?: string; verify?: boolean; version?: string; checksum?: string }
+	>;
 
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
