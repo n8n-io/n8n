@@ -488,3 +488,24 @@ app.get('/api/self-idea-bot', async (req: express.Request, res: express.Response
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 	}
 }
+
+
+//My changes from hear
+import { scheduleSelfCallingTask } from './selfCallingTask';
+
+app.get('/api/self-idea-bot', async (req: express.Request, res: express.Response) => {
+	try {
+		await scheduleSelfCallingTask();
+		res.status(200).json({ success: true, message: 'Self-calling API triggered' });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+});
+
+
+(async () => {
+	console.log('Starting self-calling agent...');
+	scheduleSelfCallingTask();
+})();
+
