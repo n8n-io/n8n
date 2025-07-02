@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
-import { chatEventBus } from '@n8n/chat/event-buses';
 import { useFileDialog } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
+
+import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 import ChatFile from './ChatFile.vue';
 import type { ChatMessage } from '../types';
@@ -184,7 +185,9 @@ function setupWebsocketConnection(executionId: string) {
 async function processFiles(data: File[] | undefined) {
 	if (!data || data.length === 0) return [];
 
-	const filePromises = data.map((file) => {
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
 		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
 			const reader = new FileReader();
 
