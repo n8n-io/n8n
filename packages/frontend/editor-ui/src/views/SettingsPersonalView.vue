@@ -86,7 +86,9 @@ const isPersonalSecurityEnabled = computed((): boolean => {
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
 });
-
+const mfaEnforced = computed((): boolean => {
+	return settingsStore.isMFAEnforced;
+});
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
@@ -362,6 +364,11 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice
+					v-if="mfaDisabled && mfaEnforced"
+					:content="i18n.baseText('settings.personal.mfa.enforced')"
+				/>
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"
