@@ -317,7 +317,7 @@ export class GoogleSheet {
 	 * Returns the given sheet data in a structured way
 	 */
 	convertSheetDataArrayToObjectArray(
-		data: SheetRangeData,
+		sheet: SheetRangeData,
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
@@ -325,16 +325,16 @@ export class GoogleSheet {
 	): IDataObject[] {
 		const returnData = [];
 
-		for (let rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+		for (let rowIndex = startRow; rowIndex < sheet.length; rowIndex++) {
 			const item: IDataObject = {};
 
-			const rowCount = data[rowIndex].length;
+			const rowCount = sheet[rowIndex].length;
 			const columnCount = includeHeadersWithEmptyCells ? columnKeys.length : rowCount;
 
 			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
 				if (key) {
-					item[key] = data[rowIndex][columnIndex] || '';
+					item[key] = sheet[rowIndex][columnIndex] || '';
 				}
 			}
 
