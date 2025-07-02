@@ -627,8 +627,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 				>
 					<N8nText size="small">
 						<N8nText
-							size="small"
 							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+							size="small"
 						/>
 						<template v-if="parameter.typeOptions?.calloutAction">
 							{{ ' ' }}

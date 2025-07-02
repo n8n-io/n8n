@@ -113,7 +113,7 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
@@ -183,7 +183,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

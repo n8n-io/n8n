@@ -200,7 +200,7 @@ function handleOpenNdv(treeNode: LogEntry) {
 							:is-open="isOpen"
 							:log-entry="selected"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selected.id]"
+							:latest-info="latestNodeNameById[selected.node.id]"
 							:panels="logsStore.detailsState"
 							@click-header="onToggleOpen(true)"
 							@toggle-input-open="logsStore.toggleInputOpen"
