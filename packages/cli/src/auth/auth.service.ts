@@ -70,7 +70,7 @@ export class AuthService {
 
 	createAuthMiddleware(allowSkipMFA: boolean) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			const token = req.cookies[AUTH_COOKIE_NAME];
+			const token = req.cookies[this.globalConfig.auth.cookie.name];
 			if (token) {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
@@ -141,8 +141,8 @@ export class AuthService {
 		}
 
 		const token = this.issueJWT(user, usedMfa, browserId);
-		const { samesite, secure } = this.globalConfig.auth.cookie;
-		res.cookie(AUTH_COOKIE_NAME, token, {
+		const { name, samesite, secure } = this.globalConfig.auth.cookie;
+		res.cookie(name, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: samesite,
