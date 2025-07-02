@@ -300,8 +300,8 @@
 	--color-table-header-background: var(--color-background-base);
 	--color-table-row-background: var(--color-background-xlight);
 	--color-table-row-even-background: var(--color-background-light);
-	--color-table-row-hover-background: var(--color-primary-tint-3);
-	--color-table-row-highlight-background: var(--color-warning-tint-1);
+	--color-table-row-hover-background: var(--color-background-light);
+	--color-table-border: var(--color-foreground-base);
 
 	// Execution
 	--execution-card-border-new: var(--p-gray-200);

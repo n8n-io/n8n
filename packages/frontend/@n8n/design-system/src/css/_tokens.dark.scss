@@ -223,11 +223,11 @@
 	--input-background-color: var(--p-gray-850);
 
 	// Table
-	--color-table-header-background: var(--p-gray-740);
-	--color-table-row-background: var(--p-gray-820);
-	--color-table-row-even-background: var(--p-gray-800);
-	--color-table-row-hover-background: var(--p-gray-740);
-	--color-table-row-highlight-background: var(--color-warning-tint-1);
+	--color-table-header-background: var(--p-gray-800);
+	--color-table-row-background: var(--color-background-xlight);
+	--color-table-row-even-background: var(--color-background-light);
+	--color-table-row-hover-background: var(--p-gray-850);
+	--color-table-border: var(--color-foreground-base);
 
 	// Notification
 	--color-notification-background: var(--p-gray-740);
