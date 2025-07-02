@@ -131,6 +131,21 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
+	isStreaming(): boolean {
+		// Check if we have chunk handlers
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+
+		// Check if streaming was explicitly enabled for this execution
+		const streamingExplicitlyEnabled = this.additionalData.streamingEnabled === true;
+
+		// Only enable streaming in modes where it's meaningful (real-time consumption)
+		const streamingModes = ['manual', 'webhook'];
+		const isStreamingMode = streamingModes.includes(this.mode);
+
+		return hasHandlers && isStreamingMode && streamingExplicitlyEnabled;
+	}
+
 	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
 		const node = this.getNode();
 		const metadata = {

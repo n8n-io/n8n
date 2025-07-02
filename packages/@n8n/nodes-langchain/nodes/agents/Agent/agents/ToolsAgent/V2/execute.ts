@@ -67,10 +67,15 @@ function createAgentExecutor(
 async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
-): Promise<{ output: string }> {
-	const agentResult = {
+	returnIntermediateSteps: boolean = false,
+): Promise<{ output: string; intermediateSteps?: any[] }> {
+	const agentResult: { output: string; intermediateSteps?: any[] } = {
 		output: '',
 	};
+
+	if (returnIntermediateSteps) {
+		agentResult.intermediateSteps = [];
+	}
 
 	ctx.sendChunk('begin');
 	for await (const event of eventStream) {
@@ -91,6 +96,43 @@ async function processEventStream(
 					ctx.sendChunk('item', chunkText);
 
 					agentResult.output += chunkText;
+				}
+				break;
+			case 'on_agent_action':
+				// Capture tool calls/actions for intermediate steps
+				if (returnIntermediateSteps && event.data) {
+					const actionData = event.data as any;
+					agentResult.intermediateSteps!.push({
+						action: {
+							tool: actionData.tool,
+							toolInput: actionData.toolInput,
+							log: actionData.log,
+						},
+					});
+				}
+				break;
+			case 'on_agent_finish':
+				// Capture the final result
+				if (returnIntermediateSteps && event.data) {
+					const finishData = event.data as any;
+					// Update the last intermediate step with observation if it exists
+					if (agentResult.intermediateSteps!.length > 0) {
+						const lastStep =
+							agentResult.intermediateSteps![agentResult.intermediateSteps!.length - 1];
+						if (!lastStep.observation) {
+							lastStep.observation = finishData.output || finishData.returnValues?.output;
+						}
+					}
+				}
+				break;
+			case 'on_tool_end':
+				// Capture tool execution results
+				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+					const lastStep =
+						agentResult.intermediateSteps![agentResult.intermediateSteps!.length - 1];
+					if (!lastStep.observation) {
+						lastStep.observation = (event.data as any).output;
+					}
 				}
 				break;
 			default:
@@ -139,7 +181,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	}
 
 	// Check if streaming is enabled
-	const enableStreaming = this.getNodeParameter('enableStreaming', 0, false) as boolean;
+	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -191,13 +233,16 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
-			if (enableStreaming) {
+			// Check if streaming is actually available
+			const isStreamingAvailable = this.isStreaming();
+
+			if (enableStreaming && isStreamingAvailable) {
 				const eventStream = executor.streamEvents(invokeParams, {
 					version: 'v2',
 					...executeOptions,
 				});
 
-				return await processEventStream(this, eventStream);
+				return await processEventStream(this, eventStream, options.returnIntermediateSteps);
 			} else {
 				// Handle regular execution
 				return await executor.invoke(invokeParams, executeOptions);

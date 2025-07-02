@@ -189,19 +189,6 @@ export class AgentV2 implements INodeType {
 						},
 					},
 				},
-				{
-					displayName: 'Enable Streaming',
-					name: 'enableStreaming',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether this agent will stream the response in real-time as it generates text',
-					displayOptions: {
-						hide: {
-							'@version': [{ _cnd: { lt: 2.2 } }],
-						},
-					},
-				},
 				...toolsAgentProperties,
 			],
 			hints: [
