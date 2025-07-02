@@ -11,11 +11,7 @@ export const isAuthenticated: RBACPermissionCheck<AuthenticatedPermissionOptions
 	return !!usersStore.currentUser;
 };
 
-export const shouldEnableMfa: RBACPermissionCheck<AuthenticatedPermissionOptions> = (options) => {
-	if (options?.bypass?.()) {
-		return true;
-	}
-
+export const shouldEnableMfa: RBACPermissionCheck<AuthenticatedPermissionOptions> = () => {
 	// Had user got MFA enabled?
 	const usersStore = useUsersStore();
 	const hasUserEnabledMfa = usersStore.currentUser?.mfaAuthenticated ?? false;
