@@ -96,7 +96,6 @@ export class ImapSimple extends EventEmitter {
 					const msg: Message = await getMessage(message);
 					msg.seqNo = seqNo;
 					messages.push(msg);
-					console.log('push', msg);
 
 					messagesRetrieved++;
 					if (messagesRetrieved === uidsToFetch.length) {
