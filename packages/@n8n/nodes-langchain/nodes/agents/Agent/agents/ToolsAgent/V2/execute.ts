@@ -98,40 +98,41 @@ async function processEventStream(
 					agentResult.output += chunkText;
 				}
 				break;
-			case 'on_agent_action':
-				// Capture tool calls/actions for intermediate steps
+			case 'on_chat_model_end':
+				// Capture full LLM response with tool calls for intermediate steps
 				if (returnIntermediateSteps && event.data) {
-					const actionData = event.data as any;
-					agentResult.intermediateSteps!.push({
-						action: {
-							tool: actionData.tool,
-							toolInput: actionData.toolInput,
-							log: actionData.log,
-						},
-					});
-				}
-				break;
-			case 'on_agent_finish':
-				// Capture the final result
-				if (returnIntermediateSteps && event.data) {
-					const finishData = event.data as any;
-					// Update the last intermediate step with observation if it exists
-					if (agentResult.intermediateSteps!.length > 0) {
-						const lastStep =
-							agentResult.intermediateSteps![agentResult.intermediateSteps!.length - 1];
-						if (!lastStep.observation) {
-							lastStep.observation = finishData.output || finishData.returnValues?.output;
+					const chatModelData = event.data as any;
+					const output = chatModelData.output;
+
+					// Check if this LLM response contains tool calls
+					if (output && output.tool_calls && output.tool_calls.length > 0) {
+						for (const toolCall of output.tool_calls) {
+							agentResult.intermediateSteps!.push({
+								action: {
+									tool: toolCall.name,
+									toolInput: toolCall.args,
+									log:
+										output.content ||
+										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+									messageLog: [output], // Include the full LLM response
+									toolCallId: toolCall.id,
+									type: toolCall.type,
+								},
+							});
 						}
 					}
 				}
 				break;
 			case 'on_tool_end':
-				// Capture tool execution results
+				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const lastStep =
-						agentResult.intermediateSteps![agentResult.intermediateSteps!.length - 1];
-					if (!lastStep.observation) {
-						lastStep.observation = (event.data as any).output;
+					const toolData = event.data as any;
+					// Find the matching intermediate step for this tool call
+					const matchingStep = agentResult.intermediateSteps!.find(
+						(step) => !step.observation && step.action.tool === event.name,
+					);
+					if (matchingStep) {
+						matchingStep.observation = toolData.output;
 					}
 				}
 				break;
