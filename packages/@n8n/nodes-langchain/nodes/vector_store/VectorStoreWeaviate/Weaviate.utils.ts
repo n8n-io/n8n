@@ -128,7 +128,7 @@ function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 
 export function parseCompositeFilter(
 	filter: WeaviateCompositeFilter | WeaviateFilterUnit,
-): unknown {
+): FilterValue {
 	// Handle composite filters (AND/OR)
 	if (typeof filter === 'object' && ('AND' in filter || 'OR' in filter)) {
 		if ('AND' in filter) {
