@@ -237,7 +237,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			// Check if streaming is actually available
 			const isStreamingAvailable = this.isStreaming();
 
-			if (enableStreaming && isStreamingAvailable) {
+			if (enableStreaming && isStreamingAvailable && this.getNode().typeVersion >= 2.2) {
 				const eventStream = executor.streamEvents(invokeParams, {
 					version: 'v2',
 					...executeOptions,
