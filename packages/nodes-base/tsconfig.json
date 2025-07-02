@@ -13,16 +13,8 @@
 		"experimentalDecorators": true,
 
 		// TODO: remove all options below this line
-		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false,
-
-		"removeComments": true,
-		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": true,
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"strictNullChecks": true,
-		"preserveConstEnums": true,
 		"noUncheckedIndexedAccess": false,
 		"noImplicitOverride": false
 	},
