@@ -71,6 +71,7 @@ import {
 } from '@/utils/canvasUtils';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import {
+	GRID_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -692,7 +693,7 @@ export function useCanvasOperations() {
 
 			// When we're adding multiple nodes, increment the X position for the next one
 			insertPosition = [
-				lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
+				lastAddedNode.position[0] + DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE,
 				lastAddedNode.position[1],
 			];
 		}
@@ -1108,8 +1109,8 @@ export function useCanvasOperations() {
 				if (lastInteractedWithNodeMainOutputs.length > 1) {
 					const yOffsetValues = generateOffsets(
 						lastInteractedWithNodeMainOutputs.length,
-						NodeViewUtils.NODE_SIZE,
-						NodeViewUtils.GRID_SIZE,
+						DEFAULT_NODE_SIZE[1],
+						GRID_SIZE,
 					);
 
 					yOffset = yOffsetValues[connectionIndex];

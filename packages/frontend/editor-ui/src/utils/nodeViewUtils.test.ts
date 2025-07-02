@@ -7,8 +7,11 @@ import {
 	generateOffsets,
 	getGenericHints,
 	getNewNodePosition,
-	NODE_SIZE,
 	updateViewportToContainNodes,
+	DEFAULT_NODE_SIZE,
+	snapPositionToGrid,
+	calculateNodeSize,
+	GRID_SIZE,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -203,96 +206,112 @@ describe('getGenericHints', () => {
 
 describe('generateOffsets', () => {
 	it('should return correct offsets for 0 nodes', () => {
-		const result = generateOffsets(0, 100, 20);
+		const result = generateOffsets(0, 96, GRID_SIZE);
 		expect(result).toEqual([]);
 	});
 
 	it('should return correct offsets for 1 node', () => {
-		const result = generateOffsets(1, 100, 20);
+		const result = generateOffsets(1, 96, GRID_SIZE);
 		expect(result).toEqual([0]);
 	});
 
 	it('should return correct offsets for 2 nodes', () => {
-		const result = generateOffsets(2, 100, 20);
-		expect(result).toEqual([-100, 100]);
+		const result = generateOffsets(2, 96, GRID_SIZE);
+		expect(result).toEqual([-96, 96]);
 	});
 
 	it('should return correct offsets for 3 nodes', () => {
-		const result = generateOffsets(3, 100, 20);
-		expect(result).toEqual([-120, 0, 120]);
+		const result = generateOffsets(3, 96, GRID_SIZE);
+		expect(result).toEqual([-112, 0, 112]);
 	});
 
 	it('should return correct offsets for 4 nodes', () => {
-		const result = generateOffsets(4, 100, 20);
-		expect(result).toEqual([-220, -100, 100, 220]);
+		const result = generateOffsets(4, 96, GRID_SIZE);
+		expect(result).toEqual([-208, -96, 96, 208]);
 	});
 
 	it('should return correct offsets for large node count', () => {
-		const result = generateOffsets(10, 100, 20);
-		expect(result).toEqual([-580, -460, -340, -220, -100, 100, 220, 340, 460, 580]);
+		const result = generateOffsets(10, 96, GRID_SIZE);
+		expect(result).toEqual([-544, -432, -320, -208, -96, 96, 208, 320, 432, 544]);
+	});
+});
+
+describe('snapPositionToGrid', () => {
+	it('should snap position to grid', () => {
+		const position: XYPosition = [105, 115];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([112, 128]);
+	});
+
+	it('should not change position if already on grid', () => {
+		const position: XYPosition = [96, 96];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([96, 96]);
+	});
+
+	it('should handle negative positions', () => {
+		const position: XYPosition = [-15, -25];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([-16, -32]);
 	});
 });
 
 describe('getNewNodePosition', () => {
 	it('should return the new position when there are no conflicts', () => {
 		const nodes: INodeUi[] = [];
-		const newPosition: XYPosition = [100, 100];
+		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([100, 100]);
+		expect(result).toEqual([96, 96]);
 	});
 
 	it('should adjust the position to the closest grid size', () => {
 		const nodes: INodeUi[] = [];
 		const newPosition: XYPosition = [105, 115];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([120, 120]);
+		expect(result).toEqual([112, 128]);
 	});
 
 	it('should move the position to avoid conflicts', () => {
-		const nodes: INodeUi[] = [
-			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
-		];
-		const newPosition: XYPosition = [100, 100];
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE })];
+		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([220, 220]);
+		expect(result).toEqual([240, 240]);
 	});
 
 	it('should skip nodes in the conflict allowlist', () => {
 		const nodes: INodeUi[] = [
-			createTestNode({ id: '1', position: [100, 100], type: STICKY_NODE_TYPE }),
+			createTestNode({ id: '1', position: [96, 96], type: STICKY_NODE_TYPE }),
 		];
-		const newPosition: XYPosition = [100, 100];
+		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([100, 100]);
+		expect(result).toEqual([96, 96]);
 	});
 
 	it('should use the provided move position to resolve conflicts', () => {
-		const nodes: INodeUi[] = [
-			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
-		];
-		const newPosition: XYPosition = [100, 100];
-		const movePosition: XYPosition = [50, 50];
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE })];
+		const newPosition: XYPosition = [96, 96];
+		const movePosition: XYPosition = [48, 48];
 		const result = getNewNodePosition(nodes, newPosition, {
 			offset: movePosition,
 		});
-		expect(result).toEqual([220, 220]);
+		expect(result).toEqual([240, 240]);
 	});
 
 	it('should handle multiple conflicts correctly', () => {
 		const nodes: INodeUi[] = [
-			createTestNode({ id: '1', position: [100, 100], type: SET_NODE_TYPE }),
-			createTestNode({ id: '2', position: [140, 140], type: SET_NODE_TYPE }),
+			createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [144, 144], type: SET_NODE_TYPE }),
 		];
-		const newPosition: XYPosition = [100, 100];
+		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([280, 280]);
+		expect(result).toEqual([288, 288]);
 	});
 });
 
 const testNodes: INode[] = [
 	createTestNode({ id: 'a', position: [0, 0] }),
-	createTestNode({ id: 'b', position: [100, 50] }),
-	createTestNode({ id: 'c', position: [50, 100] }),
+	createTestNode({ id: 'b', position: [96, 50] }),
+	createTestNode({ id: 'c', position: [50, 96] }),
 	createTestNode({ id: 'd', position: [-20, -10] }),
 ];
 
@@ -379,15 +398,15 @@ describe('getBottomMostNode', () => {
 describe('getNodesGroupSize', () => {
 	it('calculates the group size correctly', () => {
 		const [width, height] = getNodesGroupSize(testNodes);
-		expect(width).toBe(Math.abs(100 - -20) + NODE_SIZE);
-		expect(height).toBe(Math.abs(-10 - 100) + NODE_SIZE);
+		expect(width).toBe(Math.abs(96 - -20) + DEFAULT_NODE_SIZE[0]);
+		expect(height).toBe(Math.abs(-10 - 96) + DEFAULT_NODE_SIZE[1]);
 	});
 
 	it('should handle a single node', () => {
 		const single = [testNodes[0]];
 		const [w, h] = getNodesGroupSize(single);
-		expect(w).toBe(NODE_SIZE);
-		expect(h).toBe(NODE_SIZE);
+		expect(w).toBe(DEFAULT_NODE_SIZE[0]);
+		expect(h).toBe(DEFAULT_NODE_SIZE[1]);
 	});
 
 	it('should handle nodes with equal positions', () => {
@@ -396,12 +415,12 @@ describe('getNodesGroupSize', () => {
 			createTestNode({ id: 'y', position: [10, 20] }),
 		];
 		const [we, he] = getNodesGroupSize(equalNodes);
-		expect(we).toBe(NODE_SIZE);
-		expect(he).toBe(NODE_SIZE);
+		expect(we).toBe(DEFAULT_NODE_SIZE[0]);
+		expect(he).toBe(DEFAULT_NODE_SIZE[1]);
 	});
 });
 
-describe(updateViewportToContainNodes, () => {
+describe('updateViewportToContainNodes', () => {
 	it('should return the same viewport if given node is already in the viewport', () => {
 		const result = updateViewportToContainNodes(
 			{ x: 0, y: 0, zoom: 2 },
@@ -443,6 +462,82 @@ describe(updateViewportToContainNodes, () => {
 		);
 
 		expect(result).toEqual({ x: -72, y: -72, zoom: 2 });
+	});
+});
+
+describe('calculateNodeSize', () => {
+	it('should return configuration node size when isConfiguration is true and isConfigurable is false', () => {
+		const result = calculateNodeSize(
+			true, // isConfiguration
+			false, // isConfigurable
+			1,
+			1,
+			0,
+		);
+		// width = GRID_SIZE * 5 = 16 * 5 = 80
+		// height = GRID_SIZE * 5 = 16 * 5 = 80
+		expect(result).toEqual({ width: 80, height: 80 });
+	});
+
+	it('should return configurable node size when isConfigurable is true and isConfiguration is false', () => {
+		const nonMainInputCount = 5;
+		const mainInputCount = 3;
+		const mainOutputCount = 2;
+		// width = max(4, 5) * 2 * 16 * 2 = 5 * 2 * 16 * 2 + offset = 336
+		// height = DEFAULT_NODE_SIZE[1] + max(0, max(3,2,1) - 2) * 16 * 2
+		// maxVerticalHandles = 3
+		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
+		expect(
+			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount),
+		).toEqual({ width: 336, height: 128 });
+	});
+
+	it('should return configurable configuration node size when both isConfigurable and isConfiguration are true', () => {
+		const nonMainInputCount = 2;
+		// width = max(4, 2) * 2 * 16 * 2 = 4 * 2 * 16 * 2 + offset = 272
+		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
+		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount)).toEqual({
+			width: 272,
+			height: 80,
+		});
+	});
+
+	it('should return default node size when neither isConfigurable nor isConfiguration are true', () => {
+		const mainInputCount = 3;
+		const mainOutputCount = 2;
+		// width = 96
+		// maxVerticalHandles = 3
+		// height = 96 + (3 - 2) * 32 = 128
+		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0)).toEqual({
+			width: 96,
+			height: 128,
+		});
+	});
+
+	it('should calculate height based on the max of mainInputCount and mainOutputCount', () => {
+		const mainInputCount = 6;
+		const mainOutputCount = 4;
+		// maxVerticalHandles = 6
+		// height = 96 + (6 - 2) * 32 = 96 + 128 = 224
+		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0).height).toBe(224);
+	});
+
+	it('should respect the minimum width for configurable nodes', () => {
+		const nonMainInputCount = 2; // less than NODE_MIN_INPUT_ITEMS_COUNT
+		// width = 4 * 2 * 16 * 2 + offset = 272
+		// height = default path, mainInputCount = 1, mainOutputCount = 1
+		// maxVerticalHandles = 1
+		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
+		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount)).toEqual({
+			width: 272,
+			height: 96,
+		});
+	});
+
+	it('should handle edge case when mainInputCount and mainOutputCount are 0', () => {
+		// maxVerticalHandles = max(0,0,1) = 1
+		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
+		expect(calculateNodeSize(false, false, 0, 0, 0).height).toBe(96);
 	});
 });
 
