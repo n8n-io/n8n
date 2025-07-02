@@ -1,3 +1,4 @@
+import { ControllerRegistry } from '@/controller.registry';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
@@ -7,6 +8,7 @@ export class OidcInitializationService {
 	constructor(
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
+		private readonly controllerRegistry: ControllerRegistry,
 	) {}
 
 	private loadOidcModule() {
@@ -19,6 +21,7 @@ export class OidcInitializationService {
 				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
 				await Container.get(OidcService).init();
 				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
+				await this.controllerRegistry.activate();
 			} catch (error) {
 				this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
 			}

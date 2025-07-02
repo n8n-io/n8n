@@ -133,6 +133,9 @@ export class License implements LicenseProvider {
 	}
 
 	private notifyOnChange() {
+		this.logger.debug('License state changed, notifying callbacks', {
+			cbs: this.onChangeCallbacks,
+		});
 		this.onChangeCallbacks.forEach((notifier) => {
 			try {
 				notifier();
@@ -191,6 +194,7 @@ export class License implements LicenseProvider {
 		}
 
 		await this.manager.activate(activationKey);
+		this.notifyOnChange();
 		this.logger.debug('License activated');
 	}
 

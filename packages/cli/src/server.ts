@@ -187,6 +187,8 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		Container.get(ControllerRegistry).setApplication(this.app);
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
@@ -248,7 +250,7 @@ export class Server extends AbstractServer {
 		await this.registerAdditionalControllers();
 
 		// register all known controllers
-		Container.get(ControllerRegistry).activate(app);
+		Container.get(ControllerRegistry).activate();
 
 		// ----------------------------------------
 		// Options

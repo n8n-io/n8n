@@ -23,6 +23,8 @@ import { LastActiveAtService } from './services/last-active-at.service';
 
 @Service()
 export class ControllerRegistry {
+	private app: Application;
+
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
@@ -31,14 +33,23 @@ export class ControllerRegistry {
 		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
-	activate(app: Application) {
+	setApplication(app: Application) {
+		this.app = app;
+	}
+
+	activate() {
 		for (const controllerClass of this.metadata.controllerClasses) {
-			this.activateController(app, controllerClass);
+			this.activateController(this.app, controllerClass);
 		}
 	}
 
 	private activateController(app: Application, controllerClass: Controller) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
+
+		if (metadata.registered) {
+			return; // Controller already registered
+		}
+		metadata.registered = true;
 
 		const router = Router({ mergeParams: true });
 		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`

@@ -13,6 +13,7 @@ export class ControllerRegistryMetadata {
 				basePath: '/',
 				middlewares: [],
 				routes: new Map(),
+				registered: false,
 			};
 			this.registry.set(controllerClass, metadata);
 		}

@@ -44,6 +44,7 @@ export interface ControllerMetadata {
 	basePath: `/${string}`;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
+	registered: boolean;
 }
 
 export type Controller = Constructable<object> &

@@ -3,6 +3,7 @@ import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { Logger } from './logging';
 import type { FeatureChangedCallback, FeatureReturnType, LicenseProvider } from './types';
 
 class ProviderNotSetError extends UnexpectedError {
@@ -18,6 +19,8 @@ export class LicenseState {
 
 	onChangeCallbacks: FeatureChangedCallback[] = [];
 
+	constructor(private readonly logger: Logger) {}
+
 	setLicenseProvider(provider: LicenseProvider) {
 		if (this.cleanup !== null) {
 			this.cleanup();
@@ -25,6 +28,9 @@ export class LicenseState {
 		}
 		this.licenseProvider = provider;
 		this.cleanup = this.licenseProvider.addOnChangeCallback(() => {
+			this.logger.debug('License state changed, License state notified', {
+				cbs: this.onChangeCallbacks,
+			});
 			this.notifyOnChange();
 		});
 	}
@@ -45,6 +51,9 @@ export class LicenseState {
 	}
 
 	private notifyOnChange() {
+		this.logger.debug('License state changed, notifying callbacks, in license state', {
+			cbs: this.onChangeCallbacks,
+		});
 		this.onChangeCallbacks.forEach((notifier) => {
 			try {
 				notifier();
