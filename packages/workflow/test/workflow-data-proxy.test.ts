@@ -1,7 +1,8 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ensureError } from '@/errors/ensure-error';
-import { ExpressionError } from '@/errors/expression.error';
+import * as Helpers from './helpers';
+import { ensureError } from '../src/errors/ensure-error';
+import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
@@ -11,11 +12,9 @@ import {
 	type IRun,
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
-} from '@/interfaces';
-import { Workflow } from '@/workflow';
-import { WorkflowDataProxy } from '@/workflow-data-proxy';
-
-import * as Helpers from './helpers';
+} from '../src/interfaces';
+import { Workflow } from '../src/workflow';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
 const loadFixture = (fixture: string) => {
 	const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
@@ -225,7 +224,7 @@ describe('WorkflowDataProxy', () => {
 	describe('Errors', () => {
 		const fixture = loadFixture('errors');
 
-		test('$("NodeName").item, Node does not exist', (done) => {
+		test('$("NodeName").item, Node does not exist', () => {
 			const proxy = getProxyFromFixture(
 				fixture.workflow,
 				fixture.run,
@@ -233,30 +232,26 @@ describe('WorkflowDataProxy', () => {
 			);
 			try {
 				proxy.$('does not exist').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual("Referenced node doesn't exist");
-				done();
 			}
 		});
 
-		test('$("NodeName").item, node has no connection to referenced node', (done) => {
+		test('$("NodeName").item, node has no connection to referenced node', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'NoPathBack');
 			try {
 				proxy.$('Customer Datastore (n8n training)').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('Invalid expression');
 				expect(exprError.context.type).toEqual('paired_item_no_connection');
-				done();
 			}
 		});
 
-		test('$("NodeName").first(), node has no connection to referenced node', (done) => {
+		test('$("NodeName").first(), node has no connection to referenced node', () => {
 			const proxy = getProxyFromFixture(
 				fixture.workflow,
 				fixture.run,
@@ -264,77 +259,66 @@ describe('WorkflowDataProxy', () => {
 			);
 			try {
 				proxy.$('Impossible').first().json.name;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('Referenced node is unexecuted');
 				expect(exprError.context.type).toEqual('no_node_execution_data');
-				done();
 			}
 		});
 
-		test('$json, Node has no connections', (done) => {
+		test('$json, Node has no connections', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'NoInputConnection');
 			try {
 				proxy.$json.email;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('No execution data available');
 				expect(exprError.context.type).toEqual('no_input_connection');
-				done();
 			}
 		});
 
-		test('$("NodeName").item, Node has not run', (done) => {
+		test('$("NodeName").item, Node has not run', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Impossible');
 			try {
 				proxy.$('Impossible if').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('Referenced node is unexecuted');
 				expect(exprError.context.type).toEqual('no_node_execution_data');
-				done();
 			}
 		});
 
-		test('$json, Node has not run', (done) => {
+		test('$json, Node has not run', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Impossible');
 			try {
 				proxy.$json.email;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('No execution data available');
 				expect(exprError.context.type).toEqual('no_execution_data');
-				done();
 			}
 		});
 
-		test('$("NodeName").item, paired item error: more than 1 matching item', (done) => {
+		test('$("NodeName").item, paired item error: more than 1 matching item', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'PairedItemMultipleMatches');
 			try {
 				proxy.$('Edit Fields').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('Multiple matches found');
 				expect(exprError.context.type).toEqual('paired_item_multiple_matches');
-				done();
 			}
 		});
 
-		test('$("NodeName").item, paired item error: missing paired item', (done) => {
+		test('$("NodeName").item, paired item error: missing paired item', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'PairedItemInfoMissing');
 			try {
 				proxy.$('Edit Fields').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
@@ -342,21 +326,18 @@ describe('WorkflowDataProxy', () => {
 					"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 				);
 				expect(exprError.context.type).toEqual('paired_item_no_info');
-				done();
 			}
 		});
 
-		test('$("NodeName").item, paired item error: invalid paired item', (done) => {
+		test('$("NodeName").item, paired item error: invalid paired item', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'IncorrectPairedItem');
 			try {
 				proxy.$('Edit Fields').item;
-				done('should throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual("Can't get data for expression");
 				expect(exprError.context.type).toEqual('paired_item_invalid_info');
-				done();
 			}
 		});
 	});
@@ -430,7 +411,7 @@ describe('WorkflowDataProxy', () => {
 			async ({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
-					fail('should throw');
+					throw new Error('should throw');
 				} catch (e) {
 					const error = ensureError(e);
 					expect(error.message).toEqual(
@@ -456,7 +437,7 @@ describe('WorkflowDataProxy', () => {
 		test('item should throw when it cannot find a paired item', async () => {
 			try {
 				proxy.$('DebugHelper').item;
-				fail('should throw');
+				throw new Error('should throw');
 			} catch (e) {
 				const error = ensureError(e);
 				expect(error.message).toEqual(

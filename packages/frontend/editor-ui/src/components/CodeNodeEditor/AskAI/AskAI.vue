@@ -256,7 +256,7 @@ onMounted(() => {
 					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
-					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
+					<n8n-icon icon="circle-help" color="text-light" size="large" />{{
 						i18n.baseText('codeNodeEditor.askAi.help')
 					}}
 				</a>

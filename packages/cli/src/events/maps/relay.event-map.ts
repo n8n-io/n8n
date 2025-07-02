@@ -238,7 +238,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -274,7 +275,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 

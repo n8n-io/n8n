@@ -188,15 +188,11 @@ export function useCanvasOperations() {
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track(
-			'User tidied up canvas',
-			{
-				source,
-				target,
-				nodes_count: result.nodes.length,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
 	}
 
 	function updateNodesPosition(
@@ -1033,7 +1029,7 @@ export function useCanvasOperations() {
 
 		const nodeSize =
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
-		let pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
+		const pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
 		let position: XYPosition | undefined = node.position;
 		if (position) {
@@ -1134,7 +1130,17 @@ export function useCanvasOperations() {
 				} catch (e) {}
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				pushOffsets = [100, 0];
+				/**
+				 * Custom Y offsets for specific connection types when adding them using the plus button:
+				 * - AI Language Model: Moved left by 2 node widths
+				 * - AI Memory: Moved left by 1 node width
+				 */
+				const CUSTOM_Y_OFFSETS: Record<string, number> = {
+					[NodeConnectionTypes.AiLanguageModel]: nodeSize[0] * 2,
+					[NodeConnectionTypes.AiMemory]: nodeSize[0],
+				};
+
+				const customOffset: number = CUSTOM_Y_OFFSETS[connectionType as string] ?? 0;
 
 				if (
 					outputTypes.length > 0 &&
@@ -1156,7 +1162,8 @@ export function useCanvasOperations() {
 						lastInteractedWithNode.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
 								(scopedConnectionIndex + 1) -
-							nodeSize[0] / 2,
+							nodeSize[0] / 2 -
+							customOffset,
 						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
@@ -1531,7 +1538,10 @@ export function useCanvasOperations() {
 			if (inputType !== targetConnection.type) return false;
 
 			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
-			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
+			if (
+				(filter?.nodes?.length && !filter.nodes?.includes(sourceNode.type)) ||
+				(filter?.excludedNodes?.length && filter.excludedNodes?.includes(sourceNode.type))
+			) {
 				toast.showToast({
 					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {

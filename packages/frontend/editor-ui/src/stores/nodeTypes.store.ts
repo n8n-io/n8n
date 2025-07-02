@@ -155,7 +155,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 				return outputTypes.includes(NodeConnectionTypes.AiTool);
 			} else {
-				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool) ?? false;
 			}
 		};
 	});
@@ -366,7 +366,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
 			return;
 		}
 		try {

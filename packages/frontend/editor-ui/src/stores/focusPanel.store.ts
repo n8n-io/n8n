@@ -27,10 +27,15 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusPanelActive.value = false;
 	};
 
+	const toggleFocusPanel = () => {
+		focusPanelActive.value = !focusPanelActive.value;
+	};
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
 		setFocusedNodeParameter,
 		closeFocusPanel,
+		toggleFocusPanel,
 	};
 });

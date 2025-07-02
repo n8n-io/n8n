@@ -78,8 +78,7 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<LogsViewNodeName
-						:latest-name="latestInfo?.name ?? logEntry.node.name"
-						:name="logEntry.node.name"
+						:name="latestInfo?.name ?? logEntry.node.name"
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<LogsViewExecutionSummary

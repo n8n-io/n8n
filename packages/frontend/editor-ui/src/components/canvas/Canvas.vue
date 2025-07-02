@@ -55,6 +55,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
+import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 
@@ -102,6 +103,7 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
@@ -172,6 +174,8 @@ const {
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
 const { layout } = useCanvasLayout({ id: props.id });
+
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const isPaneReady = ref(false);
 
@@ -315,6 +319,7 @@ const keyMap = computed(() => {
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 		tab: () => emit('create:node', 'tab'),
 		shift_s: () => emit('create:sticky'),
+		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
@@ -852,7 +857,7 @@ provide(CanvasKey, {
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
-		:max-zoom="4"
+		:max-zoom="experimentalNdvStore.isEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"

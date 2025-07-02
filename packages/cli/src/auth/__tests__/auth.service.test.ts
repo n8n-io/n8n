@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { InvalidAuthTokenRepository } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
@@ -10,7 +11,6 @@ import jwt from 'jsonwebtoken';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 

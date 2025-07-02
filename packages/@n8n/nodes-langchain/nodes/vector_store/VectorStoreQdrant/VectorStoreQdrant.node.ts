@@ -22,12 +22,7 @@ class ExtendedQdrantVectorStore extends QdrantVectorStore {
 		return await super.fromExistingCollection(embeddings, args);
 	}
 
-	async similaritySearch(
-		query: string,
-		k: number,
-		filter?: IDataObject,
-		callbacks?: Callbacks | undefined,
-	) {
+	async similaritySearch(query: string, k: number, filter?: IDataObject, callbacks?: Callbacks) {
 		const mergedFilter = { ...ExtendedQdrantVectorStore.defaultFilter, ...filter };
 		return await super.similaritySearch(query, k, mergedFilter, callbacks);
 	}

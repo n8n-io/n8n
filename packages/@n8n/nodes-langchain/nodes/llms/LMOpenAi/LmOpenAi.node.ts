@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -28,7 +27,7 @@ type LmOpenAiOptions = {
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOpenAi',
 		hidden: true,
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
@@ -52,9 +51,9 @@ export class LmOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
