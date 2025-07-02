@@ -1,6 +1,5 @@
 import { NodeApiError } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from './node/helpers';
 import { ERROR_MESSAGES, SESSION_STATUS } from '../constants';
 import {
 	createSession,
@@ -18,6 +17,7 @@ import {
 	convertScreenshotToBinary,
 } from '../GenericFunctions';
 import type * as transport from '../transport';
+import { createMockExecuteFunction } from './node/helpers';
 
 const mockCreatedSession = {
 	data: { id: 'new-session-123', status: SESSION_STATUS.RUNNING },

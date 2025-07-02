@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryObj } from '@storybook/vue3';
 import { onMounted } from 'vue';
 

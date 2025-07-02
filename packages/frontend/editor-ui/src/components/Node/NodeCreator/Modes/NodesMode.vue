@@ -329,8 +329,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 
@@ -339,8 +339,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="moreFromCommunity.length > 0"
 			:elements="moreFromCommunity"
 			:category="i18n.baseText('nodeCreator.categoryNames.moreFromCommunity')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 	</span>

@@ -149,6 +149,7 @@ export declare namespace UserRequest {
 // ----------------------------------
 
 export declare namespace MFA {
+	type Enforce = AuthenticatedRequest<{}, {}, { enforce: boolean }, {}>;
 	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;

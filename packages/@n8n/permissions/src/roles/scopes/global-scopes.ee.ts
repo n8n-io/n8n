@@ -56,6 +56,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'user:list',
 	'user:resetPassword',
 	'user:changeRole',
+	'user:enforceMfa',
 	'variable:create',
 	'variable:read',
 	'variable:update',
