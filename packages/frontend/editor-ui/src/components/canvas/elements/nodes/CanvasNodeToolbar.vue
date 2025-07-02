@@ -61,6 +61,8 @@ const isDisableNodeVisible = computed(() => {
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
+const isFocusNodeVisible = computed(() => experimentalNdvStore.isEnabled && node.value !== null);
+
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
 );
@@ -93,6 +95,12 @@ function onMouseEnter() {
 
 function onMouseLeave() {
 	isHovered.value = false;
+}
+
+function onFocusNode() {
+	if (node.value) {
+		experimentalNdvStore.focusNode(node.value.id);
+	}
 }
 </script>
 
@@ -142,12 +150,12 @@ function onMouseLeave() {
 				@click="onDeleteNode"
 			/>
 			<N8nIconButton
-				v-if="experimentalNdvStore.isEnabled"
+				v-if="isFocusNodeVisible"
 				type="tertiary"
 				size="small"
 				text
 				icon="crosshair"
-				@click="node && experimentalNdvStore.focusNode(node.id)"
+				@click="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
 				v-if="isStickyNoteChangeColorVisible"
