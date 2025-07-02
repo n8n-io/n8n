@@ -153,7 +153,9 @@ describe('SettingsUsersView', () => {
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
 
 		settingsStore.isSmtpSetup = true;
-		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
+		settingsStore.settings.enterprise = {
+			mfaEnforcement: true,
+		} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
 	});
@@ -164,50 +166,26 @@ describe('SettingsUsersView', () => {
 	});
 
 	it('turn enforcing mfa on', async () => {
-		const pinia = createTestingPinia({
-			initialState: getInitialState({
-				settings: {
-					settings: {
-						enterprise: {
-							mfaEnforcement: true,
-						},
-					},
-				},
-			}),
-		});
-
-		const { getByTestId } = renderView({ pinia });
+		const { getByTestId } = renderComponent();
 
 		const actionSwitch = getByTestId('enable-force-mfa');
 		expect(actionSwitch).toBeInTheDocument();
 
 		await userEvent.click(actionSwitch);
 
-		expect(userStore.updateEnforceMfa).toHaveBeenCalledWith(true);
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
 	});
 
 	it('turn enforcing mfa off', async () => {
-		const pinia = createTestingPinia({
-			initialState: getInitialState({
-				settings: {
-					settings: {
-						enterprise: {
-							mfaEnforcement: true,
-						},
-					},
-				},
-			}),
-		});
-
 		settingsStore.isMFAEnforced = true;
-		const { getByTestId } = renderView({ pinia });
+		const { getByTestId } = renderComponent();
 
 		const actionSwitch = getByTestId('enable-force-mfa');
 		expect(actionSwitch).toBeInTheDocument();
 
 		await userEvent.click(actionSwitch);
 
-		expect(userStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
 	});
 
 	it('should render correctly with users list', () => {
