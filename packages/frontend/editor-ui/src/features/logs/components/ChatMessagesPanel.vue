@@ -255,7 +255,7 @@ async function copySessionId() {
 .chat {
 	--chat--spacing: var(--spacing-xs);
 	--chat--message--padding: var(--spacing-2xs);
-	--chat--message--font-size: var(--font-size-xs);
+	--chat--message--font-size: var(--font-size-2xs);
 	--chat--input--font-size: var(--font-size-s);
 	--chat--input--placeholder--font-size: var(--font-size-xs);
 	--chat--message--bot--background: transparent;
@@ -269,7 +269,10 @@ async function copySessionId() {
 	--chat--color-typing: var(--color-text-light);
 	--chat--textarea--max-height: calc(var(--panel-height) * 0.3);
 	--chat--message--pre--background: var(--color-foreground-light);
-	--chat--textarea--height: 2.5rem;
+	--chat--textarea--height: calc(
+		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
+			var(--chat--input--line-height)
+	);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -380,5 +383,13 @@ async function copySessionId() {
 	&:focus-within {
 		--input-border-color: #4538a3;
 	}
+}
+
+.messagesHistory {
+	height: var(--chat--textarea--height);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 </style>

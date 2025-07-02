@@ -6,6 +6,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
+import { useCanvas } from '@/composables/useCanvas';
 
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
@@ -23,11 +24,20 @@ const {
 	isDisabled,
 	render,
 } = useCanvasNode();
+const { isExecuting } = useCanvas();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
+
+const isNodeExecuting = computed(() => {
+	if (!isExecuting.value) return false;
+
+	return (
+		executionRunning.value || executionWaitingForNext.value || executionStatus.value === 'running' // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
+	);
+});
 </script>
 
 <template>
@@ -60,7 +70,7 @@ const dirtiness = computed(() =>
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
-		v-else-if="executionRunning || executionWaitingForNext || executionStatus === 'running'"
+		v-else-if="isNodeExecuting"
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>

@@ -1601,10 +1601,12 @@ defineExpose({ enterEditMode });
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div
 				v-if="isExecuting && !isWaitNodeWaiting"
-				:class="$style.center"
+				:class="[$style.center, $style.executingMessage]"
 				data-test-id="ndv-executing"
 			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
@@ -2299,6 +2301,12 @@ defineExpose({ enterEditMode });
 
 	.compact:hover & {
 		opacity: 1;
+	}
+}
+
+.executingMessage {
+	.compact & {
+		color: var(--color-text-light);
 	}
 }
 

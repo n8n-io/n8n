@@ -1,8 +1,9 @@
 import { WorkflowRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { OwnershipService } from '@/services/ownership.service';
@@ -12,21 +13,20 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { BaseCommand } from './base-command';
 import config from '../config';
 
-export class Execute extends BaseCommand {
-	static description = '\nExecutes a given workflow';
+const flagsSchema = z.object({
+	id: z.string().describe('id of the workflow to execute').optional(),
+	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text').optional(),
+	/**@deprecated */
+	file: z.string().describe('DEPRECATED: Please use --id instead').optional(),
+});
 
-	static examples = ['$ n8n execute --id=5'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		id: Flags.string({
-			description: 'id of the workflow to execute',
-		}),
-		rawOutput: Flags.boolean({
-			description: 'Outputs only JSON data, with no other text',
-		}),
-	};
-
+@Command({
+	name: 'execute',
+	description: 'Executes a given workflow',
+	examples: ['--id=5'],
+	flagsSchema,
+})
+export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsCommunityPackages = true;
 
 	override needsTaskRunner = true;
@@ -39,7 +39,7 @@ export class Execute extends BaseCommand {
 	}
 
 	async run() {
-		const { flags } = await this.parse(Execute);
+		const { flags } = this;
 
 		if (!flags.id) {
 			this.logger.info('"--id" has to be set!');

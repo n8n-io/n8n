@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
