@@ -10,6 +10,7 @@ describe('GoogleGemini -> utils', () => {
 	const apiRequestMock = transport.apiRequest as jest.Mock;
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.useFakeTimers({ advanceTimers: true });
 	});
 
 	describe('downloadFile', () => {
@@ -165,7 +166,9 @@ describe('GoogleGemini -> utils', () => {
 				state: 'ACTIVE',
 			});
 
-			const file = await uploadFile.call(mockExecuteFunctions, fileContent, mimeType);
+			const promise = uploadFile.call(mockExecuteFunctions, fileContent, mimeType);
+			await jest.advanceTimersByTimeAsync(1000);
+			const file = await promise;
 
 			expect(file).toEqual({
 				fileUri: 'https://google.com/files/test123',
