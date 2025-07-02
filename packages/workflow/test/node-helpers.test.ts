@@ -5657,5 +5657,21 @@ describe('NodeHelpers', () => {
 
 			expect(result).toBe('workflow-123/testnode/test-path');
 		});
+
+		it('should return node.id when restartWebhook is true and path is empty', () => {
+			const node = mock<INode>({ name: 'TestNode', id: 'node-123' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, '', false, true);
+
+			expect(result).toBe('node-123');
+		});
+
+		it('should return path when restartWebhook is true and path is not empty', () => {
+			const node = mock<INode>({ name: 'TestNode', id: 'node-123' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, 'some-path', false, true);
+
+			expect(result).toBe('some-path');
+		});
 	});
 });
