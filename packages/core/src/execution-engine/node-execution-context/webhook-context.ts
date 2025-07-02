@@ -11,12 +11,13 @@ import type {
 	ITaskDataConnections,
 	IWebhookData,
 	IWebhookFunctions,
+	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, WorkflowDataProxy } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -42,8 +43,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		let connectionInputData: INodeExecutionData[] = [];
 		let executionData: IExecuteData | undefined;
 
-		if (runExecutionData?.executionData !== undefined) {
-			executionData = runExecutionData.executionData.nodeExecutionStack[0];
+		const initializedRunExecutionData: IRunExecutionData = runExecutionData ?? {
+			resultData: {
+				runData: {},
+			},
+		};
+
+		if (initializedRunExecutionData?.executionData !== undefined) {
+			executionData = initializedRunExecutionData.executionData.nodeExecutionStack[0];
 			if (executionData !== undefined) {
 				connectionInputData = executionData.data.main[0]!;
 			}
@@ -54,7 +61,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			node,
 			additionalData,
 			mode,
-			runExecutionData,
+			initializedRunExecutionData,
 			0,
 			connectionInputData,
 			executionData,
@@ -85,6 +92,21 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getBodyData() {
 		return this.assertHttpRequest().body as IDataObject;
+	}
+
+	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
+		return new WorkflowDataProxy(
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			itemIndex,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			this.additionalKeys,
+			this.executeData,
+		).getDataProxy();
 	}
 
 	getHeaderData() {
@@ -144,11 +166,6 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData: IRunExecutionData = this.runExecutionData ?? {
-			resultData: {
-				runData: {},
-			},
-		};
 		const executeData: IExecuteData = {
 			data: {
 				main: [connectionInputData],
@@ -160,7 +177,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await getInputConnectionData.call(
 			this,
 			this.workflow,
-			runExecutionData,
+			this.runExecutionData!,
 			this.runIndex,
 			connectionInputData,
 			{} as ITaskDataConnections,
