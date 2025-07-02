@@ -7,7 +7,6 @@ import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/ch
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const ChatPlugin: Plugin<ChatOptions> = {
 	install(app, options) {
 		app.provide(ChatOptionsSymbol, options);

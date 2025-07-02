@@ -652,6 +652,7 @@ export const EnterpriseEditionFeature: Record<
 	Variables: 'variables',
 	Saml: 'saml',
 	Oidc: 'oidc',
+	EnforceMFA: 'mfaEnforcement',
 	SourceControl: 'sourceControl',
 	ExternalSecrets: 'externalSecrets',
 	AuditLogs: 'auditLogs',

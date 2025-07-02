@@ -7,6 +7,10 @@ import type {
 	Resource,
 	SortingAndPaginationUpdates,
 	WorkflowResource,
+	FolderListItem,
+	UserAction,
+	WorkflowListItem,
+	WorkflowListResource,
 } from '@/Interface';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
@@ -30,12 +34,6 @@ import {
 } from '@/constants';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import type {
-	FolderListItem,
-	UserAction,
-	WorkflowListItem,
-	WorkflowListResource,
-} from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -1776,7 +1774,7 @@ const onNameSubmit = async (name: string) => {
 								:class="$style.emptyStateCardIcon"
 								icon="file"
 								color="foreground-dark"
-								:strokeWidth="1"
+								:stroke-width="1"
 							/>
 							<N8nText size="large" class="mt-xs">
 								{{ i18n.baseText('workflows.empty.startFromScratch') }}

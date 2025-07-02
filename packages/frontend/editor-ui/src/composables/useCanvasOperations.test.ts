@@ -388,6 +388,144 @@ describe('useCanvasOperations', () => {
 
 			expect(position).toEqual([0, 0]);
 		});
+
+		it('should apply custom Y offset for AI Language Model connection type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = createTestNode({
+				position: [100, 100],
+				type: 'test',
+				typeVersion: 1,
+			});
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiLanguageModel}/0`;
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
+
+			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
+				{ type: NodeConnectionTypes.AiLanguageModel },
+			]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes')
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([NodeConnectionTypes.AiLanguageModel]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// Configuration node size is [200, 80], so customOffset = 200 * 2 = 400
+			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 220] = [-200, 320]
+			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
+			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+		});
+
+		it('should apply custom Y offset for AI Memory connection type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = createTestNode({
+				position: [100, 100],
+				type: 'test',
+				typeVersion: 1,
+			});
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiMemory}/0`;
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
+
+			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
+				{ type: NodeConnectionTypes.AiMemory },
+			]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes')
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([NodeConnectionTypes.AiMemory]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
+			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+		});
+
+		it('should not apply custom offset for regular connection types', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = createTestNode({
+				position: [100, 100],
+				type: 'test',
+				typeVersion: 1,
+			});
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
+
+			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
+				{ type: NodeConnectionTypes.AiTool },
+			]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes')
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([NodeConnectionTypes.AiTool]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// No custom offset applied
+			expect(position).toEqual([60, 320]);
+		});
+
+		it('should handle missing connection type gracefully', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = createTestNode({
+				position: [100, 100],
+				type: 'test',
+				typeVersion: 1,
+			});
+			// No lastInteractedWithNodeHandle set
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(node);
+
+			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
+				{ type: NodeConnectionTypes.AiTool },
+			]);
+			vi.spyOn(NodeHelpers, 'getConnectionTypes')
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([])
+				.mockReturnValueOnce([NodeConnectionTypes.AiTool]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// No custom offset applied
+			expect(position).toEqual([60, 320]);
+		});
 	});
 
 	describe('updateNodesPosition', () => {

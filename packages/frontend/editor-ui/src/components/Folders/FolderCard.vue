@@ -130,7 +130,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						:class="$style['folder-icon']"
 						icon="folder"
 						size="xlarge"
-						:strokeWidth="1"
+						:stroke-width="1"
 					/>
 				</template>
 				<template #header>

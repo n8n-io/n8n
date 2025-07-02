@@ -312,7 +312,6 @@ export function findSelectedLogEntry(
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deepToRaw<T>(sourceObj: T): T {
 	const seen = new WeakMap();
 

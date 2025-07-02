@@ -62,7 +62,10 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+
 import { ChatServer } from './chat/chat-server';
+
+import { MfaService } from './mfa/mfa.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -126,6 +129,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (isMfaFeatureEnabled()) {
+			await Container.get(MfaService).init();
 			await import('@/controllers/mfa.controller');
 		}
 
