@@ -28,8 +28,15 @@ export async function baseAnalyze(
 			.map((url) => url.trim())
 			.filter((url) => url)
 			.map(async (url) => {
-				const { fileContent, mimeType } = await downloadFile.call(this, url, fallbackMimeType);
-				return await uploadFile.call(this, fileContent, mimeType);
+				if (url.startsWith('https://generativelanguage.googleapis.com')) {
+					const { mimeType } = (await apiRequest.call(this, 'GET', '', {
+						option: { uri: url },
+					})) as { mimeType: string };
+					return { fileUri: url, mimeType };
+				} else {
+					const { fileContent, mimeType } = await downloadFile.call(this, url, fallbackMimeType);
+					return await uploadFile.call(this, fileContent, mimeType);
+				}
 			});
 
 		const filesData = await Promise.all(filesDataPromises);

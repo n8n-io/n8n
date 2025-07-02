@@ -3,6 +3,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as audio from './audio';
 import * as document from './document';
+import * as file from './file';
 import * as image from './image';
 import * as text from './text';
 import * as video from './video';
@@ -67,6 +68,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'document',
 				},
 				{
+					name: 'File',
+					value: 'file',
+				},
+				{
 					name: 'Image',
 					value: 'image',
 				},
@@ -83,6 +88,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		...audio.description,
 		...document.description,
+		...file.description,
 		...image.description,
 		...text.description,
 		...video.description,

@@ -6,6 +6,7 @@ type NodeMap = {
 	video: 'analyze' | 'generate';
 	audio: 'transcribe' | 'analyze';
 	document: 'analyze';
+	file: 'upload';
 };
 
 export type GoogleGeminiType = AllEntities<NodeMap>;

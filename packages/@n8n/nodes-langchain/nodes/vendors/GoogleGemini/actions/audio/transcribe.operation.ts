@@ -109,8 +109,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.map((url) => url.trim())
 			.filter((url) => url)
 			.map(async (url) => {
-				const { fileContent, mimeType } = await downloadFile.call(this, url, 'audio/mpeg');
-				return await uploadFile.call(this, fileContent, mimeType);
+				if (url.startsWith('https://generativelanguage.googleapis.com')) {
+					const { mimeType } = (await apiRequest.call(this, 'GET', '', {
+						option: { uri: url },
+					})) as { mimeType: string };
+					return { fileUri: url, mimeType };
+				} else {
+					const { fileContent, mimeType } = await downloadFile.call(this, url, 'audio/mpeg');
+					return await uploadFile.call(this, fileContent, mimeType);
+				}
 			});
 
 		const filesData = await Promise.all(filesDataPromises);
@@ -145,7 +152,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	const text = `Generate a transcript of the speech${options.startTime ? ` from ${options.startTime}` : ''}${options.endTime ? ` to ${options.endTime}` : ''}`;
+	const text = `Generate a transcript of the speech${
+		options.startTime ? ` from ${options.startTime as string}` : ''
+	}${options.endTime ? ` to ${options.endTime as string}` : ''}`;
 	contents[0].parts.push({ text });
 
 	const body = {

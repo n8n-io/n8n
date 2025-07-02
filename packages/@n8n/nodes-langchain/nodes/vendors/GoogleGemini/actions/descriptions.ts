@@ -20,7 +20,7 @@ export const modelRLC = (searchListMethod: string): INodeProperties => ({
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. gemini-2.5-flash',
+			placeholder: 'e.g. models/gemini-2.5-flash',
 		},
 	],
 });
