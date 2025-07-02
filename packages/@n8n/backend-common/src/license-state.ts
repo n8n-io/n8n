@@ -3,7 +3,7 @@ import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { FeatureReturnType, LicenseProvider } from './types';
+import type { FeatureChangedCallback, FeatureReturnType, LicenseProvider } from './types';
 
 class ProviderNotSetError extends UnexpectedError {
 	constructor() {
@@ -14,13 +14,44 @@ class ProviderNotSetError extends UnexpectedError {
 @Service()
 export class LicenseState {
 	licenseProvider: LicenseProvider | null = null;
+	cleanup: (() => void) | null = null;
+
+	onChangeCallbacks: FeatureChangedCallback[] = [];
 
 	setLicenseProvider(provider: LicenseProvider) {
+		if (this.cleanup !== null) {
+			this.cleanup();
+			this.cleanup = null;
+		}
 		this.licenseProvider = provider;
+		this.cleanup = this.licenseProvider.addOnChangeCallback(() => {
+			this.notifyOnChange();
+		});
 	}
 
 	private assertProvider(): asserts this is { licenseProvider: LicenseProvider } {
 		if (!this.licenseProvider) throw new ProviderNotSetError();
+	}
+
+	// --------------------
+	// Callback system
+	// --------------------
+
+	addOnChangeCallback(notifier: FeatureChangedCallback): () => void {
+		this.onChangeCallbacks.push(notifier);
+		return () => {
+			this.onChangeCallbacks = this.onChangeCallbacks.filter((c) => c !== notifier);
+		};
+	}
+
+	private notifyOnChange() {
+		this.onChangeCallbacks.forEach((notifier) => {
+			try {
+				notifier();
+			} catch (error) {
+				console.error('Error in license state change callback:', error);
+			}
+		});
 	}
 
 	// --------------------

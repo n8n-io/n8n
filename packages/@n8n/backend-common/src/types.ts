@@ -6,7 +6,13 @@ export type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
-export interface LicenseProvider {
+export type FeatureChangedCallback = () => void;
+
+export interface LicenseFeatureChanged {
+	addOnChangeCallback(notifier: FeatureChangedCallback): () => void;
+}
+
+export interface LicenseProvider extends LicenseFeatureChanged {
 	/** Returns whether a feature is included in the user's license plan. */
 	isLicensed(feature: BooleanLicenseFeature): boolean;
 
