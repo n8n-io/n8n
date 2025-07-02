@@ -31,8 +31,7 @@ describe('ChatServer', () => {
 
 		chatServer = new ChatServer(mockChatService);
 
-		// @ts-ignore override private readonly
-		chatServer.wsServer = mockWsServer;
+		(chatServer as any).wsServer = mockWsServer;
 	});
 
 	it('attaches upgrade listener to HTTP server', () => {

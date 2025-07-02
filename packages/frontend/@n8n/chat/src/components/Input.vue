@@ -185,8 +185,7 @@ function setupWebsocketConnection(executionId: string) {
 async function processFiles(data: File[] | undefined) {
 	if (!data || data.length === 0) return [];
 
-	const filePromises = data.map(async (file) => {
-		// eslint-disable-next-line @typescript-eslint/return-await
+	const filePromises = data.map((file) => {
 		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
 			const reader = new FileReader();
 
@@ -197,7 +196,8 @@ async function processFiles(data: File[] | undefined) {
 					data: reader.result as string,
 				});
 
-			reader.onerror = (error) => reject(error);
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
 
 			reader.readAsDataURL(file);
 		});

@@ -9,6 +9,10 @@ import { Server as WebSocketServer } from 'ws';
 import { ChatService } from './chat-service';
 import type { ChatRequest } from './chat-service.types';
 
+interface ExpressApplication extends Application {
+	handle: (req: any, res: any) => void;
+}
+
 @Service()
 export class ChatServer {
 	private readonly wsServer = new WebSocketServer({ noServer: true });
@@ -19,7 +23,7 @@ export class ChatServer {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
 			if (parseUrl(req.url).pathname?.startsWith('/chat')) {
 				this.wsServer.handleUpgrade(req, socket, head, (ws) => {
-					this.attachToApp(req, ws, app);
+					this.attachToApp(req, ws, app as ExpressApplication);
 				});
 			}
 		});
@@ -29,7 +33,7 @@ export class ChatServer {
 		});
 	}
 
-	private attachToApp(req: ChatRequest, ws: WebSocket, app: Application) {
+	private attachToApp(req: ChatRequest, ws: WebSocket, app: ExpressApplication) {
 		req.ws = ws;
 		const res = new ServerResponse(req);
 		res.writeHead = (statusCode) => {
@@ -37,8 +41,6 @@ export class ChatServer {
 			return res;
 		};
 
-		// @ts-ignore
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		app.handle(req, res);
 	}
 }

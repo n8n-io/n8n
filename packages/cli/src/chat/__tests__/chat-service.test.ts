@@ -73,8 +73,8 @@ describe('ChatService', () => {
 
 		it('should start a session and store it in sessions map', async () => {
 			const mockWs = mock<WebSocket>();
-			// @ts-ignore override private readonly
-			mockWs.readyState = WebSocket.OPEN;
+
+			(mockWs as any).readyState = WebSocket.OPEN;
 
 			const req = {
 				ws: mockWs,
@@ -111,12 +111,11 @@ describe('ChatService', () => {
 			} as unknown as ChatRequest;
 
 			const previousConnection = mock<WebSocket>();
-			// @ts-ignore
-			previousConnection.readyState = WebSocket.OPEN;
+
+			(previousConnection as any).readyState = WebSocket.OPEN;
 			const dummyInterval = setInterval(() => {}, 9999);
 			const sessionKey = 'abc|123|integrated';
 
-			// @ts-ignore
 			(chatService as any).sessions.set(sessionKey, {
 				connection: previousConnection,
 				executionId: '123',
