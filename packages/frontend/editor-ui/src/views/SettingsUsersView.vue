@@ -340,37 +340,9 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 <template>
 	<div :class="$style.container">
-		<n8n-heading tag="h1" size="2xlarge">
+		<n8n-heading tag="h1" size="2xlarge" class="mb-xl">
 			{{ i18n.baseText('settings.users') }}
 		</n8n-heading>
-		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
-			<n8n-input
-				:class="$style.search"
-				:model-value="search"
-				:placeholder="i18n.baseText('settings.users.search.placeholder')"
-				clearable
-				data-test-id="users-list-search"
-				@update:model-value="onSearch"
-			>
-				<template #prefix>
-					<n8n-icon icon="search" />
-				</template>
-			</n8n-input>
-			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
-				<template #content>
-					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
-				</template>
-				<div>
-					<n8n-button
-						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
-						:label="i18n.baseText('settings.users.invite')"
-						size="large"
-						data-test-id="settings-users-invite-button"
-						@click="onInvite"
-					/>
-				</div>
-			</n8n-tooltip>
-		</div>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
@@ -435,7 +407,34 @@ async function onUpdateMfaEnforced(value: boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
-
+		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
+			<n8n-input
+				:class="$style.search"
+				:model-value="search"
+				:placeholder="i18n.baseText('settings.users.search.placeholder')"
+				clearable
+				data-test-id="users-list-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
+			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+				<template #content>
+					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
+				</template>
+				<div>
+					<n8n-button
+						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
+						:label="i18n.baseText('settings.users.invite')"
+						size="large"
+						data-test-id="settings-users-invite-button"
+						@click="onInvite"
+					/>
+				</div>
+			</n8n-tooltip>
+		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
@@ -460,7 +459,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 	display: flex;
 	justify-content: space-between;
 	gap: var(--spacing-s);
-	margin: var(--spacing-2xl) 0 var(--spacing-s);
+	margin: 0 0 var(--spacing-s);
 }
 
 .search {
@@ -474,7 +473,8 @@ async function onUpdateMfaEnforced(value: boolean) {
 .settingsContainer {
 	display: flex;
 	align-items: center;
-	padding-left: 16px;
+	padding-left: var(--spacing-s);
+	margin-bottom: var(--spacing-l);
 	justify-content: space-between;
 	flex-shrink: 0;
 
