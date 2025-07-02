@@ -602,7 +602,9 @@ export function restoreChatHistory(
 export async function processFiles(data: File[] | undefined) {
 	if (!data || data.length === 0) return [];
 
-	const filePromises = data.map((file) => {
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
 		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
 			const reader = new FileReader();
 
