@@ -1172,7 +1172,7 @@ export function useCanvasOperations() {
 
 					let pushOffset = PUSH_NODES_OFFSET;
 					if (
-						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
+						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
@@ -1363,7 +1363,7 @@ export function useCanvasOperations() {
 									target: connectionDataNode.id,
 									targetHandle: createCanvasConnectionHandleString({
 										mode: CanvasConnectionMode.Input,
-										type: connectionData.type as NodeConnectionType,
+										type: connectionData.type,
 										index: connectionData.index,
 									}),
 								},
