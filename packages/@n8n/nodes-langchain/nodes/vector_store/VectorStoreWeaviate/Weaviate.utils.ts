@@ -73,8 +73,6 @@ function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 		case 'equal':
 			if (filter.valueString !== undefined) return property.equal(filter.valueString);
 			if (filter.valueNumber !== undefined) return property.equal(filter.valueNumber);
-			// if valueBoolean is provided, treat it as a boolean equality check the proper way
-			if (filter.valueBoolean !== undefined) return property.isNull(filter.valueBoolean);
 			break;
 
 		case 'like':
