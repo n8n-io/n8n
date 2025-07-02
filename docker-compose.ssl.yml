@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - n8n
+    restart: unless-stopped
+    networks:
+      - n8n-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot:rw
+      - ./certbot/conf:/etc/letsencrypt:rw
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - n8n-network
+
+  n8n:
+    image: ghcr.io/n8n-io/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - N8N_HOST=0.0.0.0
+      - N8N_EDITOR_BASE_URL=https://172.16.0.59:8443
+      - WEBHOOK_URL=https://172.16.0.59:8443
+      - N8N_SECURE_COOKIE=false
+      - N8N_PROXY_HOPS=1
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./custom-certificates:/opt/custom-certificates:ro
+    networks:
+      - n8n-network
+    expose:
+      - "5678"
+
+volumes:
+  n8n_data:
+
+networks:
+  n8n-network:
+    driver: bridge

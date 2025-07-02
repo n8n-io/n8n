@@ -30,3 +30,5 @@ compiled_app_output
 trivy_report*
 compiled
 jest.config.js
+ssl/
+certbot/
