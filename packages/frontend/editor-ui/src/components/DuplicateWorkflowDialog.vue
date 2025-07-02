@@ -115,7 +115,7 @@ const save = async (): Promise<void> => {
 			parentFolderId,
 		});
 
-		if (!!workflowId) {
+		if (workflowId) {
 			closeDialog();
 			telemetry.track('User duplicated workflow', {
 				old_workflow_id: currentWorkflowId,

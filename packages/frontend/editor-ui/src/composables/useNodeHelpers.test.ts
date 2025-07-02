@@ -1,11 +1,12 @@
 import { setActivePinia } from 'pinia';
-import {
-	NodeConnectionTypes,
-	NodeHelpers,
-	type INode,
-	type INodeTypeDescription,
-	type Workflow,
+import type {
+	ExecutionStatus,
+	IRunData,
+	INode,
+	INodeTypeDescription,
+	Workflow,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { createTestNode, createMockEnterpriseSettings } from '@/__tests__/mocks';
@@ -14,7 +15,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
-import type { ExecutionStatus, IRunData } from 'n8n-workflow';
 import { faker } from '@faker-js/faker';
 import type { INodeUi, IUsedCredential } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

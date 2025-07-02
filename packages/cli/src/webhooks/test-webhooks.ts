@@ -32,6 +32,8 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
  * Service for handling the execution of webhooks of manual executions
@@ -112,6 +114,10 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
+		}
+
+		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+			sanitizeWebhookRequest(request);
 		}
 
 		return await new Promise(async (resolve, reject) => {

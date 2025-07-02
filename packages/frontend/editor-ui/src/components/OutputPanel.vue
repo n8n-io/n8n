@@ -173,7 +173,7 @@ const runTaskData = computed(() => {
 
 	const runData = workflowRunData.value;
 
-	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+	if (!runData?.hasOwnProperty(node.value.name)) {
 		return null;
 	}
 

@@ -22,7 +22,7 @@ const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
-// --- Configuration ---
+// #region ===== Configuration =====
 const config = {
 	compiledAppDir: process.env.BUILD_OUTPUT_DIR || path.join(rootDir, 'compiled'),
 	rootDir: rootDir,
@@ -31,7 +31,9 @@ const config = {
 // Define backend patches to keep during deployment
 const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull'];
 
-// --- Helper Functions ---
+// #endregion ===== Configuration =====
+
+// #region ===== Helper Functions =====
 const timers = new Map();
 
 function startTimer(name) {
@@ -63,7 +65,9 @@ function printDivider() {
 	echo(chalk.gray('-----------------------------------------------'));
 }
 
-// --- Main Build Process ---
+// #endregion ===== Helper Functions =====
+
+// #region ===== Main Build Process =====
 printHeader('n8n Build & Production Preparation');
 echo(`INFO: Output Directory: ${config.compiledAppDir}`);
 printDivider();
@@ -196,7 +200,9 @@ printDivider();
 // Calculate total time
 const totalBuildTime = getElapsedTime('total_build');
 
-// --- Final Output ---
+// #endregion ===== Main Build Process =====
+
+// #region ===== Final Output =====
 echo('');
 echo(chalk.green.bold('================ BUILD SUMMARY ================'));
 echo(chalk.green(`✅ n8n built successfully!`));
@@ -214,6 +220,8 @@ echo('');
 echo(chalk.blue('📋 Build Manifest:'));
 echo(`   ${path.resolve(config.compiledAppDir)}/build-manifest.json`);
 echo(chalk.green.bold('=============================================='));
+
+// #endregion ===== Final Output =====
 
 // Exit with success
 process.exit(0);

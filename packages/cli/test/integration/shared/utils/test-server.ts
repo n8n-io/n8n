@@ -58,7 +58,11 @@ function createAgent(
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(options.user, browserId);
+		const token = Container.get(AuthService).issueJWT(
+			options.user,
+			options.user.mfaEnabled,
+			browserId,
+		);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;

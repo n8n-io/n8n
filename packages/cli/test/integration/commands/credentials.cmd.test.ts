@@ -2,6 +2,7 @@ import { getPersonalProject, mockInstance } from '@n8n/backend-test-utils';
 import { testDb } from '@n8n/backend-test-utils';
 import { nanoid } from 'nanoid';
 
+import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';

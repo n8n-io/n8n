@@ -359,7 +359,7 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
 			},
 		}),
 		method: addNewResourceOptions.method,
@@ -600,12 +600,7 @@ function onModeSelected(value: string): void {
 			mode: value,
 			value: props.modelValue.cachedResultUrl,
 		});
-	} else if (
-		value === 'id' &&
-		selectedMode.value === 'list' &&
-		props.modelValue &&
-		props.modelValue.value
-	) {
+	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
 		emit('update:modelValue', { __rl: true, mode: value, value: '' });

@@ -33,7 +33,7 @@ export function mapLegacyConnectionsToCanvasConnections(
 				toPorts?.forEach((toPort) => {
 					const toNodeName = toPort.node;
 					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
-					const toConnectionType = toPort.type as NodeConnectionType;
+					const toConnectionType = toPort.type;
 					const toIndex = toPort.index;
 
 					const sourceHandle = createCanvasConnectionHandleString({
