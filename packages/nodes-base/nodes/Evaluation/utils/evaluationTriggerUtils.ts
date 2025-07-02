@@ -104,7 +104,7 @@ export async function getResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		rangeOptions,
+		{ ...rangeOptions, includeEmptyColumns: true },
 	);
 
 	return operationResult;
