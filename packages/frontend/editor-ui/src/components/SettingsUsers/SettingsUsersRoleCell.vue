@@ -31,6 +31,7 @@ const onActionSelect = (role: string) => {
 			v-if="isEditable"
 			placement="bottom-start"
 			:items="props.actions"
+			data-test-id="user-role-dropdown"
 			@select="onActionSelect"
 		>
 			<template #activator>
