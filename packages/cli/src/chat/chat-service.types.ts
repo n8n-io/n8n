@@ -1,4 +1,3 @@
-// import type { Request } from 'express';
 import type { IncomingMessage } from 'http';
 import type { WebSocket } from 'ws';
 

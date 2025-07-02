@@ -22,7 +22,6 @@ type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;
 };
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 const ChatSymbol = 'Chat' as unknown as InjectionKey<IntegratedChat>;
 
 interface ChatState {
