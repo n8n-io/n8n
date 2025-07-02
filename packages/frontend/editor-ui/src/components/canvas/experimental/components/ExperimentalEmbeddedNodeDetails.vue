@@ -9,7 +9,7 @@ import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 
-const { nodeId } = defineProps<{ nodeId: string }>();
+const { nodeId, isReadOnly } = defineProps<{ nodeId: string; isReadOnly?: boolean }>();
 
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
@@ -22,7 +22,7 @@ const nodeType = computed(() => {
 	}
 	return null;
 });
-const vf = useVueFlow(workflowsStore.workflowId);
+const vf = useVueFlow();
 
 const isMoving = ref(false);
 
@@ -75,6 +75,7 @@ function handleToggleExpand() {
 				:no-wheel="
 					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
 				"
+				:is-read-only="isReadOnly"
 			>
 				<template #actions>
 					<N8nIconButton
