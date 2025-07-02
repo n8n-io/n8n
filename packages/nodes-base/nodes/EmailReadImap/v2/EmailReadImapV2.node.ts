@@ -179,7 +179,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Message Limit',
 					name: 'messageLimit',
 					type: 'number',
-					default: 0,
+					default: 50,
 					description:
 						'Maximum number of messages to fetch (0 for unlimited). Fetches the most recent messages first.',
 					typeOptions: {
@@ -269,6 +269,7 @@ export class EmailReadImapV2 implements INodeType {
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const node = this.getNode();
 
 		const staticData = this.getWorkflowStaticData('node');
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
@@ -394,6 +395,7 @@ export class EmailReadImapV2 implements INodeType {
 						}
 
 						try {
+							const limit = node.typeVersion >= 2.1 ? ((options.messageLimit as number) ?? 50) : 0;
 							const returnData = await getNewEmails.call(
 								this,
 								connection,
@@ -402,7 +404,7 @@ export class EmailReadImapV2 implements INodeType {
 								postProcessAction,
 								getText,
 								getAttachment,
-								(options.messageLimit as number) ?? 0,
+								limit,
 							);
 							if (returnData.length) {
 								this.emit([returnData]);
