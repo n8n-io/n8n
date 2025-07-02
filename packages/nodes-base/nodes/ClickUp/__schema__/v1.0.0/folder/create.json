@@ -4,6 +4,9 @@
         "archived": {
             "type": "boolean"
         },
+        "deleted": {
+            "type": "boolean"
+        },
         "hidden": {
             "type": "boolean"
         },
@@ -40,5 +43,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -45,6 +45,9 @@
         "$layout_id": {
             "type": "object",
             "properties": {
+                "display_label": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -157,5 +160,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

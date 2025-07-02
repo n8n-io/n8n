@@ -66,7 +66,7 @@ describe('OwnerController', () => {
 				authIdentities: [],
 			});
 			const browserId = 'test-browser-id';
-			const req = mock<AuthenticatedRequest>({ user, browserId });
+			const req = mock<AuthenticatedRequest>({ user, browserId, authInfo: { usedMfa: false } });
 			const res = mock<Response>();
 			const payload = mock<OwnerSetupRequestDto>({
 				email: 'valid@email.com',
@@ -85,7 +85,7 @@ describe('OwnerController', () => {
 				where: { role: 'global:owner' },
 			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, false, browserId);
 			expect(settingsRepository.update).toHaveBeenCalledWith(
 				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },

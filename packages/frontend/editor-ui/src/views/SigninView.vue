@@ -142,6 +142,11 @@ const login = async (form: LoginRequestDto) => {
 
 		toast.clearAllStickyNotifications();
 
+		if (settingsStore.isMFAEnforced && !usersStore.currentUser?.mfaAuthenticated) {
+			await router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			return;
+		}
+
 		telemetry.track('User attempted to login', {
 			result: showMfaView.value ? 'mfa_success' : 'success',
 		});

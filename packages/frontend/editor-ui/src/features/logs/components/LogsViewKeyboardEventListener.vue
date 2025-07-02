@@ -2,10 +2,10 @@
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import { PiPWindowSymbol } from '@/constants';
 import { useActiveElement } from '@vueuse/core';
-import { computed, toRef, inject } from 'vue';
+import { ref, computed, toRef, inject } from 'vue';
 
 const { container, keyMap } = defineProps<{ keyMap: KeyMap; container: HTMLElement | null }>();
-const pipWindow = inject(PiPWindowSymbol);
+const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 
 const activeElement = useActiveElement({ window: pipWindow?.value });
 const isBlurred = computed(() => {
@@ -25,3 +25,7 @@ useKeybindings(
 	{ disabled: isBlurred },
 );
 </script>
+
+<template>
+	<div />
+</template>

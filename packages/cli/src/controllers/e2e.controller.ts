@@ -106,6 +106,7 @@ export class E2EController {
 		[LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA]: false,
 		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
 		[LICENSE_FEATURES.OIDC]: false,
+		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -229,14 +230,20 @@ export class E2EController {
 	}
 
 	private async truncateAll() {
+		const { connection } = this.settingsRepo.manager;
+		const dbType = connection.options.type;
 		for (const table of tablesToTruncate) {
 			try {
-				const { connection } = this.settingsRepo.manager;
-				await connection.query(
-					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
-				);
+				if (dbType === 'postgres') {
+					await connection.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE;`);
+				} else {
+					await connection.query(`DELETE FROM "${table}";`);
+					if (dbType === 'sqlite') {
+						await connection.query(`DELETE FROM sqlite_sequence WHERE name = '${table}';`);
+					}
+				}
 			} catch (error) {
-				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+				Container.get(Logger).warn(`Dropping Table "${table}" for E2E Reset error`, {
 					error: error as Error,
 				});
 			}

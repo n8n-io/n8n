@@ -13,7 +13,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
-import { i18n as locale } from '@n8n/i18n';
+import { i18n as locale, useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import {
 	fieldCannotBeDeleted,
@@ -29,7 +29,6 @@ import {
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	parameter: INodeProperties;
@@ -358,7 +357,7 @@ defineExpose({
 		>
 			<div
 				v-if="resourceMapperMode === 'add' && field.required"
-				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
+				:class="['delete-option', 'mt-2xs', $style.parameterTooltipIcon]"
 			>
 				<N8nTooltip placement="top">
 					<template #content>
@@ -384,7 +383,7 @@ defineExpose({
 				<N8nIconButton
 					type="tertiary"
 					text
-					size="mini"
+					size="small"
 					icon="trash-2"
 					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					:title="
@@ -470,7 +469,10 @@ defineExpose({
 }
 
 .parameterTooltipIcon {
+	font-size: var(--font-size-2xs);
 	color: var(--color-text-light) !important;
+	width: 26px; // match trash button size
+	text-align: center;
 }
 
 .addOption {

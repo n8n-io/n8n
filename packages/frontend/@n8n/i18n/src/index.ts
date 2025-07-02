@@ -378,7 +378,7 @@ const loadedLanguages = ['en'];
 
 async function setLanguage(language: string) {
 	i18nInstance.global.locale = language as 'en';
-	document!.querySelector('html')!.setAttribute('lang', language);
+	document.querySelector('html')!.setAttribute('lang', language);
 
 	return language;
 }

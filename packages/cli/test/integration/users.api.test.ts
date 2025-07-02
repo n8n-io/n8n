@@ -561,6 +561,55 @@ describe('GET /users', () => {
 			});
 		});
 
+		describe('inviteAcceptUrl', () => {
+			test('should include inviteAcceptUrl for pending users', async () => {
+				// Create a pending user
+				const pendingUser = await createUser({
+					role: 'global:member',
+					email: 'pending@n8n.io',
+					firstName: 'PendingFirstName',
+					lastName: 'PendingLastName',
+				});
+
+				await userRepository.update(
+					{ id: pendingUser.id },
+					{
+						password: null as unknown as string,
+					},
+				);
+
+				try {
+					const response = await ownerAgent.get('/users').expect(200);
+
+					expect(response.body.data).toHaveProperty('count');
+					expect(response.body.data).toHaveProperty('items');
+
+					// Find the pending user in the response
+					const pendingUserInResponse = response.body.data.items.find(
+						(user: any) => user.id === pendingUser.id,
+					);
+
+					expect(pendingUserInResponse).toBeDefined();
+					expect(pendingUserInResponse.inviteAcceptUrl).toBeDefined();
+					expect(pendingUserInResponse.inviteAcceptUrl).toMatch(
+						new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
+					);
+
+					// Verify that non-pending users don't have inviteAcceptUrl
+					const nonPendingUser = response.body.data.items.find(
+						(user: any) => user.id === member1.id,
+					);
+
+					expect(nonPendingUser).toBeDefined();
+					expect(nonPendingUser.isPending).toBe(false);
+					expect(nonPendingUser.inviteAcceptUrl).toBeUndefined();
+				} finally {
+					// Clean up
+					await userRepository.delete({ id: pendingUser.id });
+				}
+			});
+		});
+
 		describe('sortBy', () => {
 			test('should sort by role:asc', async () => {
 				const response = await ownerAgent.get('/users').query('sortBy[]=role:asc').expect(200);

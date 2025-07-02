@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
-	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
@@ -49,7 +48,6 @@ const props = withDefaults(
 		eventBus: EventBus;
 		dragging: boolean;
 		pushRef: string;
-		nodeType: INodeTypeDescription | null;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
@@ -134,31 +132,17 @@ const isReadOnly = computed(
 );
 const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
+const nodeType = computed(() =>
+	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+);
+
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
-const isExecutable = computed(() => {
-	if (props.nodeType && node.value) {
-		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
-		const inputs = NodeHelpers.getNodeInputs(
-			currentWorkflowInstance.value,
-			workflowNode!,
-			props.nodeType,
-		);
-		const inputNames = NodeHelpers.getConnectionTypes(inputs);
-
-		if (
-			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!isToolNode.value &&
-			!isTriggerNode.value
-		) {
-			return false;
-		}
-	}
-
-	return props.executable || props.foreignCredentials.length > 0;
-});
+const isExecutable = computed(() =>
+	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
+);
 
 const nodeTypeVersions = computed(() => {
 	if (!node.value) return [];
@@ -186,7 +170,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!props.nodeType || props.nodeType.hidden) {
+	if (!nodeType.value || nodeType.value.hidden) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -200,11 +184,11 @@ const nodeVersionTag = computed(() => {
 });
 
 const parameters = computed(() => {
-	if (props.nodeType === null) {
+	if (nodeType.value === null) {
 		return [];
 	}
 
-	return props.nodeType?.properties ?? [];
+	return nodeType.value?.properties ?? [];
 });
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
@@ -219,7 +203,7 @@ const parametersNoneSetting = computed(() => {
 const isDisplayingCredentials = computed(
 	() =>
 		credentialsStore
-			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.getCredentialTypesNodeDescriptions('', nodeType.value)
 			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
 		0,
 );
@@ -292,19 +276,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		};
 		emit('valueChanged', sendData);
 	} else if (parameterData.name === 'parameters') {
-		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
-		if (!nodeType) {
+		const _nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
+		if (!_nodeType) {
 			return;
 		}
 
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			_node.parameters,
 			false,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -321,7 +305,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					parameterName,
 					newValue,
 					nodeParameters,
-					nodeType,
+					_nodeType,
 					_node.typeVersion,
 				);
 
@@ -337,12 +321,12 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters
 		nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			nodeParameters as INodeParameters,
 			true,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -581,7 +565,7 @@ const setNodeValues = () => {
 		return;
 	}
 
-	if (props.nodeType !== null) {
+	if (nodeType.value !== null) {
 		nodeValid.value = true;
 
 		const foundNodeSettings = [];
@@ -725,7 +709,7 @@ onMounted(() => {
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
-		nodeHelpers.updateNodeParameterIssues(node.value, props.nodeType);
+		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);

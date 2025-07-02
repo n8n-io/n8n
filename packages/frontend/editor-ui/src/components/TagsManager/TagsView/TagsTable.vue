@@ -118,7 +118,7 @@ const focusOnCreate = (): void => {
 watch(
 	() => props.rows,
 	(newValue: ITagRow[] | undefined) => {
-		if (newValue?.[0] && newValue[0].create) {
+		if (newValue?.[0]?.create) {
 			focusOnCreate();
 		}
 	},

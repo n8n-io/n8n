@@ -359,7 +359,7 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
 			},
 		}),
 		method: addNewResourceOptions.method,
@@ -600,12 +600,7 @@ function onModeSelected(value: string): void {
 			mode: value,
 			value: props.modelValue.cachedResultUrl,
 		});
-	} else if (
-		value === 'id' &&
-		selectedMode.value === 'list' &&
-		props.modelValue &&
-		props.modelValue.value
-	) {
+	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
 		emit('update:modelValue', { __rl: true, mode: value, value: '' });
@@ -656,9 +651,13 @@ function loadResourcesDebounced() {
 }
 
 function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>) {
+	// Force reactivity by creating a completely new cached responses object
+	const existingResponse = cachedResponses.value[paramsKey] || {};
+	const newResponse = { ...existingResponse, ...response };
+
 	cachedResponses.value = {
 		...cachedResponses.value,
-		[paramsKey]: { ...cachedResponses.value[paramsKey], ...response },
+		[paramsKey]: newResponse,
 	};
 }
 
@@ -729,19 +728,28 @@ async function loadResources() {
 
 		const response = await nodeTypesStore.getResourceLocatorResults(requestParams);
 
-		setResponse(paramsKey, {
+		const responseData = {
 			results: (cachedResponse?.results ?? []).concat(response.results),
 			nextPageToken: response.paginationToken ?? null,
 			loading: false,
 			error: false,
-		});
+		};
+
+		// Store response under the original key to prevent cache pollution
+		setResponse(paramsKey, responseData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, responseData);
+		}
 
 		if (params.filter && !hasCompletedASearch.value) {
 			hasCompletedASearch.value = true;
 			trackEvent('User searched resource locator list');
 		}
 	} catch (e) {
-		setResponse(paramsKey, {
+		const errorData = {
 			loading: false,
 			error: true,
 			errorDetails: {
@@ -750,7 +758,16 @@ async function loadResources() {
 				httpCode: e.httpCode,
 				stackTrace: e.stacktrace,
 			},
-		});
+		};
+
+		// Store error under the original key
+		setResponse(paramsKey, errorData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, errorData);
+		}
 	}
 }
 

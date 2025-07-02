@@ -19,6 +19,13 @@ const getBrowserId = () => {
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
+export class MfaRequiredError extends ApplicationError {
+	constructor() {
+		super('MFA is required to access this resource. Please set up MFA in your user settings.');
+		this.name = 'MfaRequiredError';
+	}
+}
+
 export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
@@ -114,6 +121,9 @@ export async function request(config: {
 		}
 
 		const errorResponseData = error.response?.data;
+		if (errorResponseData?.mfaRequired === true) {
+			throw new MfaRequiredError();
+		}
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
