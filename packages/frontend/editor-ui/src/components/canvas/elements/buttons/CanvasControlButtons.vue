@@ -4,6 +4,7 @@ import TidyUpIcon from '@/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
+import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -25,6 +26,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
@@ -109,6 +112,20 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<N8nIconButton
+			v-if="experimentalNdvStore.isActive(props.zoom)"
+			type="tertiary"
+			size="large"
+			icon="maximize-2"
+			@click="experimentalNdvStore.expandAllNodes"
+		/>
+		<N8nIconButton
+			v-if="experimentalNdvStore.isActive(props.zoom)"
+			type="tertiary"
+			size="large"
+			icon="minimize-2"
+			@click="experimentalNdvStore.collapseAllNodes"
+		/>
 	</Controls>
 </template>
 
