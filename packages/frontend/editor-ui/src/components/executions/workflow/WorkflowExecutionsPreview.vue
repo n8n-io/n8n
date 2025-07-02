@@ -229,7 +229,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						| ID#{{ execution.id }}
 					</N8nText>
 				</div>
-				<div :class="$style.executionDetailsRetry" v-if="execution.mode === 'retry'">
+				<div v-if="execution.mode === 'retry'" :class="$style.executionDetailsRetry">
 					<N8nText color="text-base" size="small">
 						{{ locale.baseText('executionDetails.retry') }}
 						<RouterLink
@@ -306,8 +306,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				</ElDropdown>
 
 				<WorkflowExecutionAnnotationPanel
-					:execution="activeExecution"
 					v-if="isAnnotationEnabled && activeExecution"
+					:execution="activeExecution"
 				/>
 
 				<N8nIconButton

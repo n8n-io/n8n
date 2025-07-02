@@ -114,6 +114,7 @@ export interface PublicUser {
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
+	mfaAuthenticated?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -367,6 +368,10 @@ export type APIRequest<
 	browserId?: string;
 };
 
+export type AuthenticationInformation = {
+	usedMfa: boolean;
+};
+
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
@@ -374,6 +379,7 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
+	authInfo?: AuthenticationInformation;
 	cookies: Record<string, string | undefined>;
 	headers: express.Request['headers'] & {
 		'push-ref': string;

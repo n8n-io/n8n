@@ -252,7 +252,7 @@ export function useNodeHelpers() {
 	function hasNodeExecutionIssues(node: INodeUi): boolean {
 		const workflowResultData = workflowsStore.getWorkflowRunData;
 
-		if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
+		if (!workflowResultData?.hasOwnProperty(node.name)) {
 			return false;
 		}
 

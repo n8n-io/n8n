@@ -131,8 +131,7 @@ watch(
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<LogsViewNodeName
 			:class="$style.name"
-			:latest-name="latestInfo?.name ?? props.data.node.name"
-			:name="props.data.node.name"
+			:name="latestInfo?.name ?? props.data.node.name"
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
