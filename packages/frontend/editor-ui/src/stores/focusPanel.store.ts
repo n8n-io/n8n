@@ -33,7 +33,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 				return {
 					...x,
 					node,
-					value: get(node?.parameters, x.parameter.name),
+					value: get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, '')),
 				} satisfies RichFocusedNodeParameter;
 			}),
 	);
