@@ -230,8 +230,8 @@ onMounted(async () => {
 					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
 				<n8n-notice
-					data-test-id="communityPackageManageConfirmModal-warning"
 					v-if="!isLatestPackageVerified"
+					data-test-id="communityPackageManageConfirmModal-warning"
 					:content="getModalContent.warning"
 				/>
 			</div>

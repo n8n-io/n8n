@@ -1,5 +1,4 @@
-import type { OidcConfigDto } from '@n8n/api-types';
-import { type SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';

@@ -433,6 +433,34 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
 	});
 
+	it('should show new name when a node is renamed', async () => {
+		const canvasOperations = useCanvasOperations();
+
+		logsStore.toggleOpen(true);
+
+		// Create deep copy so that renaming doesn't affect other test cases
+		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+
+		const rendered = render();
+
+		await nextTick();
+
+		expect(
+			within(rendered.getByTestId('log-details-header')).getByText('AI Model'),
+		).toBeInTheDocument();
+		expect(within(rendered.getByRole('tree')).getByText('AI Model')).toBeInTheDocument();
+
+		await canvasOperations.renameNode('AI Model', 'Renamed!!');
+
+		await waitFor(() => {
+			expect(
+				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
+			).toBeInTheDocument();
+			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
+		});
+	});
+
 	describe('selection', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
@@ -486,6 +514,25 @@ describe('LogsPanel', () => {
 			uiStore.lastSelectedNode = 'AI Model';
 			await rerender({});
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
+			const canvasOperations = useCanvasOperations();
+
+			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+			workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole } = render();
+
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+
+			await canvasOperations.renameNode('AI Agent', 'Renamed Agent');
+			uiStore.lastSelectedNode = 'Renamed Agent';
+
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/Renamed Agent/);
 		});
 	});
 
