@@ -64,9 +64,7 @@ export class TaskRunnersConfig {
 	heartbeatInterval: number = 30;
 
 	/**
-	 * Whether to disable all security measures in the task runner: prototype
-	 * freezing, runtime safeguards for the prototype API, Node.js security flags,
-	 * and `runInContext` from `node:vm`. **DISCOURAGED FOR PRODUCTION USE.**
+	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
 	 * Set to `true` for compatibility with modules that rely on insecure JS features.
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
