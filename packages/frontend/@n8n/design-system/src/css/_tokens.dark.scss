@@ -5,27 +5,27 @@
 	--color-danger: var(--p-color-alt-h-310);
 
 	// Text
-	--color-text-dark: var(--p-gray-040);
-	--color-text-base: var(--p-gray-200);
+	--color-text-dark: var(--p-white);
+	--color-text-base: var(--p-gray-070);
 	--color-text-light: var(--p-gray-320);
 	--color-text-lighter: var(--p-gray-740);
-	--color-text-xlight: var(--p-gray-820);
+	--color-text-xlight: var(--p-gray-850);
 	--color-text-danger: var(--p-color-alt-c-330);
 
 	// Foreground
 	--color-foreground-xdark: var(--p-gray-200);
 	--color-foreground-dark: var(--p-gray-420);
-	--color-foreground-base: var(--p-gray-670);
-	--color-foreground-light: var(--p-gray-740);
-	--color-foreground-xlight: var(--p-gray-820);
+	--color-foreground-base: var(--p-gray-800);
+	--color-foreground-light: var(--p-gray-850);
+	--color-foreground-xlight: var(--p-gray-950);
 
 	// Background
-	--color-background-dark: var(--p-gray-070);
+	--color-background-dark: var(--p-white);
 	--color-background-medium: var(--p-gray-540);
 	--color-background-base: var(--p-gray-670);
-	--color-background-light-base: var(--p-gray-780);
-	--color-background-light: var(--p-gray-820);
-	--color-background-xlight: var(--p-gray-740);
+	--color-background-light-base: var(--p-gray-800);
+	--color-background-light: var(--p-gray-950);
+	--color-background-xlight: var(--p-gray-890);
 
 	// Components' tokens
 
@@ -64,8 +64,8 @@
 	--color-canvas-background-h: var(--h-gray); // Used for connectors labels background
 	--color-canvas-background-s: 1%;
 	--color-canvas-background-l: 18%;
-	--color-canvas-dot: var(--p-gray-670);
-	--color-canvas-read-only-line: var(--p-gray-800);
+	--color-canvas-dot: var(--p-gray-490);
+	--color-canvas-read-only-line: var(--p-gray-890);
 	--color-canvas-selected: var(--p-white-a-025);
 	--color-canvas-selected-transparent: var(--color-canvas-selected);
 	--color-canvas-label-background: hsla(
@@ -76,7 +76,7 @@
 	);
 
 	// Nodes
-	--color-node-background: var(--p-gray-740);
+	--color-node-background: var(--p-gray-850);
 	--color-node-executing-background: var(--p-gray-670);
 	--color-node-executing-other-background: var(--p-gray-670);
 	--color-node-pinned-border: var(--p-color-secondary-370);
@@ -230,8 +230,8 @@
 	--color-notification-background: var(--p-gray-740);
 
 	// Execution
-	--execution-card-background: var(--color-foreground-light);
-	--execution-card-background-hover: var(--color-foreground-base);
+	--execution-card-background: var(--p-gray-850);
+	--execution-card-background-hover: var(red);
 	--execution-selector-background: var(--p-gray-740);
 	--execution-selector-text: var(--color-text-base);
 	--execution-select-all-text: var(--color-text-base);
@@ -280,8 +280,8 @@
 	--color-nps-survey-font: var(--p-white);
 
 	// Switch (Activation, boolean)
-	--color-switch-background: var(--p-gray-820);
-	--color-switch-border-color: var(--p-gray-670);
+	--color-switch-background: var(--p-gray-950);
+	--color-switch-border-color: var(--p-gray-740);
 	--color-switch-toggle: var(--p-gray-040);
 
 	// Action Dropdown
