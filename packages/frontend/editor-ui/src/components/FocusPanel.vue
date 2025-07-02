@@ -4,21 +4,44 @@ import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 defineOptions({ name: 'FocusPanel' });
 
-const locale = useI18n();
+const props = defineProps<{
+	executable: boolean;
+}>();
 
+const locale = useI18n();
+const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
+const resolvedParameter = computed(() =>
+	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
+		? focusedNodeParameter.value
+		: undefined,
+);
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 
+const isExecutable = computed(() => {
+	if (!resolvedParameter.value) return false;
+
+	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
+		resolvedParameter.value.node.credentials,
+	);
+	return nodeHelpers.isNodeExecutable(
+		resolvedParameter.value.node,
+		props.executable,
+		foreignCredentials,
+	);
+});
+
 const expressionModeEnabled = computed(
 	() =>
-		focusedNodeParameter.value &&
-		isValueExpression(focusedNodeParameter.value.parameter, focusedNodeParameter.value.value),
+		resolvedParameter.value &&
+		isValueExpression(resolvedParameter.value.parameter, resolvedParameter.value.value),
 );
 
 function optionSelected() {
@@ -27,10 +50,6 @@ function optionSelected() {
 
 function valueChanged() {
 	// TODO: Update parameter value
-}
-
-function executeFocusedNode() {
-	// TODO: Implement execution of the focused node
 }
 </script>
 
@@ -44,55 +63,53 @@ function executeFocusedNode() {
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
-		<div v-if="focusedNodeParameter" :class="$style.content">
+		<div v-if="resolvedParameter" :class="$style.content">
 			<div :class="$style.tabHeader">
 				<div :class="$style.tabHeaderText">
-					<N8nText color="text-dark" size="small">{{
-						focusedNodeParameter.parameter.displayName
-					}}</N8nText>
-					<N8nText color="text-base" size="xsmall">{{ focusedNodeParameter.nodeName }}</N8nText>
+					<N8nText color="text-dark" size="small">
+						{{ resolvedParameter.parameter.displayName }}
+					</N8nText>
+					<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 				</div>
-				<N8nTooltip>
-					<n8n-button
-						v-bind="{ icon: 'play', square: true }"
-						size="small"
-						type="primary"
-						@click="executeFocusedNode"
-					/>
-					<template #content>
-						<N8nText size="small">
-							{{ locale.baseText('nodeView.focusPanel.executeButtonTooltip') }}
-						</N8nText>
-					</template>
-				</N8nTooltip>
+				<NodeExecuteButton
+					data-test-id="node-execute-button"
+					:node-name="resolvedParameter.node.name"
+					:tooltip="`Execute ${resolvedParameter.node.name}`"
+					:disabled="!isExecutable"
+					size="small"
+					icon="play"
+					:square="true"
+					:hide-label="true"
+					telemetry-source="focus"
+				></NodeExecuteButton>
 			</div>
 			<div :class="$style.parameterDetailsWrapper">
 				<div :class="$style.parameterOptionsWrapper">
 					<div></div>
 					<ParameterOptions
-						:parameter="focusedNodeParameter.parameter"
-						:value="focusedNodeParameter.value"
+						:parameter="resolvedParameter.parameter"
+						:value="resolvedParameter.value"
 						:is-read-only="false"
 						@update:model-value="optionSelected"
 					/>
 				</div>
-				<div :class="$style.editorContainer">
+				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
 					<ExpressionEditorModalInput
 						v-if="expressionModeEnabled"
-						:model-value="focusedNodeParameter.value"
+						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						:is-read-only="false"
-						:path="focusedNodeParameter.parameterPath"
+						:path="resolvedParameter.parameterPath"
 						data-test-id="expression-modal-input"
 						:target-node-parameter-context="{
-							nodeName: focusedNodeParameter.nodeName,
-							parameterPath: focusedNodeParameter.parameterPath,
+							nodeName: resolvedParameter.node.name,
+							parameterPath: resolvedParameter.parameterPath,
 						}"
 						@change="valueChanged"
 					/>
 					<N8nInput
 						v-else
-						v-model="focusedNodeParameter.value"
+						v-model="resolvedParameter.value"
 						:class="$style.editor"
 						type="textarea"
 						resize="none"
@@ -117,6 +134,7 @@ function executeFocusedNode() {
 	width: 528px;
 	border-left: 1px solid var(--color-foreground-base);
 	background: var(--color-background-base);
+	overflow-y: hidden;
 }
 
 .closeButton:hover {
@@ -182,12 +200,17 @@ function executeFocusedNode() {
 		.editorContainer {
 			display: flex;
 			height: 100%;
+			overflow-y: auto;
 
 			.editor {
 				display: flex;
 				height: 100%;
 				width: 100%;
 				font-size: var(--font-size-xs);
+
+				:global(.cm-editor) {
+					width: 100%;
+				}
 			}
 		}
 	}
