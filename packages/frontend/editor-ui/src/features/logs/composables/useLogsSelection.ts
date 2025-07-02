@@ -41,8 +41,12 @@ export function useLogsSelection(
 			return;
 		}
 
-		experimentalNdvStore.setNodeExpanded(value.node.id, true);
-		canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: true });
+		if (experimentalNdvStore.isEnabled) {
+			canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: false });
+			experimentalNdvStore.focusNode(value.node.id);
+		} else {
+			canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: true });
+		}
 	}
 
 	function select(value: LogEntry | undefined) {
