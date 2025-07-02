@@ -56,13 +56,6 @@ const classes = computed(
 			</div>
 			<div>
 				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
-				<N8nText color="text-light"> | </N8nText>
-				<N8nText
-					data-test-id="user-mfa-state"
-					size="small"
-					:color="mfaEnabled ? 'text-light' : 'warning'"
-					>{{ mfaEnabled ? '2FA Enabled' : '2FA Disabled' }}</N8nText
-				>
 			</div>
 		</div>
 	</div>
