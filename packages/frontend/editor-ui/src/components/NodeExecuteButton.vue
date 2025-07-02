@@ -45,13 +45,17 @@ const props = withDefaults(
 		label?: string;
 		type?: ButtonType;
 		size?: ButtonSize;
+		icon?: IconName;
+		square?: boolean;
 		transparent?: boolean;
 		hideIcon?: boolean;
+		hideLabel?: boolean;
 		tooltip?: string;
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
+		square: false,
 	},
 );
 
@@ -189,6 +193,10 @@ const tooltipText = computed(() => {
 });
 
 const buttonLabel = computed(() => {
+	if (props.hideLabel) {
+		return '';
+	}
+
 	if (isListeningForEvents.value || isListeningForWorkflowEvents.value) {
 		return i18n.baseText('ndv.execute.stopListening');
 	}
@@ -223,6 +231,7 @@ const isLoading = computed(
 );
 
 const buttonIcon = computed((): IconName | undefined => {
+	if (props.icon) return props.icon;
 	if (shouldGenerateCode.value) return 'terminal';
 	if (!isListeningForEvents.value && !props.hideIcon) return 'flask-conical';
 	return undefined;
@@ -387,6 +396,7 @@ async function onClick() {
 			:type="type"
 			:size="size"
 			:icon="buttonIcon"
+			:square="square"
 			:transparent-background="transparent"
 			:title="
 				!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''
