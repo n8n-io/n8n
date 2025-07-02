@@ -1,6 +1,7 @@
 import { normalizeItems } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 
+import { ReservedKeyFoundError } from './errors/reserved-key-not-found.error';
 import { ValidationError } from './errors/validation-error';
 import { isObject } from './obj-utils';
 
@@ -38,16 +39,6 @@ function validateTopLevelKeys(item: INodeExecutionData, itemIndex: number) {
 		throw new ValidationError({
 			message: `Unknown top-level item key: ${unknownKeys[0]}`,
 			description: 'Access the properties of an item under `.json`, e.g. `item.json`',
-			itemIndex,
-		});
-	}
-}
-
-export class ReservedKeyFoundError extends ValidationError {
-	constructor(reservedKey: string, itemIndex: number) {
-		super({
-			message: 'Invalid output format',
-			description: `An output item contains the reserved key <code>${reservedKey}</code>. To get around this, please wrap each item in an object, under a key called <code>json</code>. <a href="https://docs.n8n.io/data/data-structure/#data-structure" target="_blank">Example</a>`,
 			itemIndex,
 		});
 	}

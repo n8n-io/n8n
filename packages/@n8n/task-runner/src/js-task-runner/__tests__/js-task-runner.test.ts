@@ -4,6 +4,15 @@ import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-wo
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import {
+	newDataRequestResponse,
+	newTaskParamsWithSettings,
+	newTaskState,
+	withPairedItem,
+	wrapIntoJson,
+} from './test-data';
+import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
+
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
@@ -18,15 +27,6 @@ import {
 	type InputDataChunkDefinition,
 } from '@/runner-types';
 import type { TaskParams } from '@/task-runner';
-
-import {
-	newDataRequestResponse,
-	newTaskParamsWithSettings,
-	newTaskState,
-	withPairedItem,
-	wrapIntoJson,
-} from './test-data';
-import { ReservedKeyFoundError } from '../result-validation';
 
 jest.mock('ws');
 
