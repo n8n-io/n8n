@@ -309,11 +309,11 @@ describe('GoogleGemini Node', () => {
 				}
 			});
 
-			apiRequestMock.mockImplementation((method: string) => {
+			apiRequestMock.mockImplementation(async (method: string) => {
 				if (method === 'GET') {
-					return Promise.resolve({ mimeType: 'audio/mp3' });
+					return { mimeType: 'audio/mp3' };
 				}
-				return Promise.resolve({
+				return {
 					candidates: [
 						{
 							content: {
@@ -322,7 +322,7 @@ describe('GoogleGemini Node', () => {
 							},
 						},
 					],
-				});
+				};
 			});
 
 			const result = await audio.analyze.execute.call(executeFunctionsMock, 0);
@@ -558,11 +558,11 @@ describe('GoogleGemini Node', () => {
 				}
 			});
 
-			apiRequestMock.mockImplementation((method: string) => {
+			apiRequestMock.mockImplementation(async (method: string) => {
 				if (method === 'GET') {
-					return Promise.resolve({ mimeType: 'audio/mp3' });
+					return { mimeType: 'audio/mp3' };
 				}
-				return Promise.resolve({
+				return {
 					candidates: [
 						{
 							content: {
@@ -571,7 +571,7 @@ describe('GoogleGemini Node', () => {
 							},
 						},
 					],
-				});
+				};
 			});
 
 			const result = await audio.transcribe.execute.call(executeFunctionsMock, 0);
@@ -919,35 +919,32 @@ describe('GoogleGemini Node', () => {
 			});
 			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
 			let pollCount = 0;
-			apiRequestMock.mockImplementation((_method: string, path: string) => {
+			apiRequestMock.mockImplementation(async (_method: string, path: string) => {
 				if (path.includes(':predictLongRunning')) {
-					return Promise.resolve({
+					return {
 						name: 'operations/123',
 						done: false,
-					});
+					};
 				}
-				if (path.includes('operations/123')) {
-					pollCount++;
-					return Promise.resolve({
-						name: 'operations/123',
-						done: pollCount > 1,
-						response:
-							pollCount > 1
-								? {
-										generateVideoResponse: {
-											generatedSamples: [
-												{
-													video: {
-														uri: 'https://example.com/video.mp4',
-													},
+				pollCount++;
+				return {
+					name: 'operations/123',
+					done: pollCount > 1,
+					response:
+						pollCount > 1
+							? {
+									generateVideoResponse: {
+										generatedSamples: [
+											{
+												video: {
+													uri: 'https://example.com/video.mp4',
 												},
-											],
-										},
-									}
-								: undefined,
-					});
-				}
-				return Promise.resolve({});
+											},
+										],
+									},
+								}
+							: undefined,
+				};
 			});
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('abcdefgh'),
@@ -1023,15 +1020,15 @@ describe('GoogleGemini Node', () => {
 				}
 			});
 			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
-			apiRequestMock.mockImplementationOnce(() =>
-				Promise.resolve({
+			apiRequestMock.mockImplementationOnce(async () => {
+				return {
 					name: 'operations/123',
 					done: true,
 					error: {
 						message: 'Failed to generate video',
 					},
-				}),
-			);
+				};
+			});
 			executeFunctionsMock.getNode.mockReturnValue({ name: 'Google Gemini' } as INode);
 
 			await expect(video.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
