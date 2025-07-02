@@ -28,6 +28,7 @@
 		border-collapse: separate;
 		border-spacing: 0;
 		white-space: nowrap;
+		background-color: var(--color-table-row-background);
 
 		> thead {
 			position: sticky;
