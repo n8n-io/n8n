@@ -134,6 +134,7 @@ function valueChanged() {
 	width: 528px;
 	border-left: 1px solid var(--color-foreground-base);
 	background: var(--color-background-base);
+	overflow-y: hidden;
 }
 
 .closeButton:hover {
@@ -199,12 +200,17 @@ function valueChanged() {
 		.editorContainer {
 			display: flex;
 			height: 100%;
+			overflow-y: auto;
 
 			.editor {
 				display: flex;
 				height: 100%;
 				width: 100%;
 				font-size: var(--font-size-xs);
+
+				:global(.cm-editor) {
+					width: 100%;
+				}
 			}
 		}
 	}
