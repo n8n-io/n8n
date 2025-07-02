@@ -1,4 +1,3 @@
-/* eslint-disable n8n-local-rules/no-unneeded-backticks */
 import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
