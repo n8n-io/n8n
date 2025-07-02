@@ -241,9 +241,7 @@ const credentialProperties = computed(() => {
 		if (!displayCredentialParameter(propertyData)) {
 			return false;
 		}
-		return (
-			!type.__overwrittenProperties || !type.__overwrittenProperties.includes(propertyData.name)
-		);
+		return !type.__overwrittenProperties?.includes(propertyData.name);
 	});
 
 	/**

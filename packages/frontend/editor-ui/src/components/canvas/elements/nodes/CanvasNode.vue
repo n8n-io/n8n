@@ -34,7 +34,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { CONFIGURATION_NODE_OFFSET, GRID_SIZE } from '@/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -186,7 +186,7 @@ const createEndpointMappingFn =
 			connectingHandle.value?.handleId === handleId;
 		const offsetValue =
 			position === Position.Bottom
-				? `${GRID_SIZE * (2 + index * 2)}px`
+				? `${GRID_SIZE * 2 * (1 + index * 2) + CONFIGURATION_NODE_OFFSET}px`
 				: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
 
 		return {

@@ -35,13 +35,12 @@ describe('CanvasNodeDefault', () => {
 
 	describe('inputs and outputs', () => {
 		it.each([
-			[1, 1, '100px'],
-			[3, 1, '100px'],
-			[4, 1, '140px'],
-			[1, 1, '100px'],
-			[1, 3, '100px'],
-			[1, 4, '140px'],
-			[4, 4, '140px'],
+			[1, 1, '96px'],
+			[1, 3, '128px'],
+			[1, 4, '160px'],
+			[3, 1, '128px'],
+			[4, 1, '160px'],
+			[4, 4, '160px'],
 		])(
 			'should adjust height css variable based on the number of inputs and outputs (%i inputs, %i outputs)',
 			(inputCount, outputCount, expected) => {
@@ -205,7 +204,7 @@ describe('CanvasNodeDefault', () => {
 				[
 					'1 required',
 					[{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true }],
-					'240px',
+					'272px',
 				],
 				[
 					'2 required, 1 optional',
@@ -214,7 +213,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
 						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
 					],
-					'240px',
+					'272px',
 				],
 				[
 					'2 required, 2 optional',
@@ -224,7 +223,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
 						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
 					],
-					'240px',
+					'272px',
 				],
 				[
 					'1 required, 4 optional',
@@ -235,7 +234,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
-					'280px',
+					'336px',
 				],
 			])(
 				'should adjust width css variable based on the number of non-main inputs (%s)',
