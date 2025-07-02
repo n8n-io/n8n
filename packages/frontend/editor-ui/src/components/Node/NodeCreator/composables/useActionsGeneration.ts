@@ -77,7 +77,7 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 }
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
-	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
 
 	const matchedProperty = nodeTypeDescription.properties.find(
 		(property) => property.name?.toLowerCase() === 'operation',

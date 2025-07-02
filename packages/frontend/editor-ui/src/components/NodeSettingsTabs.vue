@@ -57,7 +57,7 @@ const documentationUrl = computed(() => {
 		return '';
 	}
 
-	if (nodeType.documentationUrl && nodeType.documentationUrl.startsWith('http')) {
+	if (nodeType.documentationUrl?.startsWith('http')) {
 		return nodeType.documentationUrl;
 	}
 

@@ -87,13 +87,14 @@ describe('AuthController', () => {
 				body.password,
 			);
 
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, browserId);
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user: member,
 				authenticationMethod: 'ldap',
 			});
 
 			expect(userService.toPublic).toHaveBeenCalledWith(member, {
+				mfaAuthenticated: false,
 				posthog: postHog,
 				withScopes: true,
 			});

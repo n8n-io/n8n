@@ -133,7 +133,7 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</n8n-text>
 			</div>
-			<div :class="$style.deprecationWarning" v-if="provider.name === 'infisical'">
+			<div v-if="provider.name === 'infisical'" :class="$style.deprecationWarning">
 				<n8n-icon :class="$style['warningTriangle']" icon="triangle-alert" />
 				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
 					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
