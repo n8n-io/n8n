@@ -185,8 +185,8 @@ export abstract class Sandbox extends EventEmitter {
 	}
 
 	private validateTopLevelKeys(item: INodeExecutionData, itemIndex: number) {
-		let foundReservedKey = null;
-		const unknownKeys = [];
+		let foundReservedKey: string | null = null;
+		const unknownKeys: string[] = [];
 
 		for (const key in item) {
 			if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
