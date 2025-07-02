@@ -33,7 +33,8 @@ export async function readSheet(
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 	}
 
-	const includeEmptyColumns = (additionalOptions?.includeEmptyColumns as boolean) ?? false;
+	const includeHeadersWithEmptyCells =
+		(additionalOptions?.includeHeadersWithEmptyCells as boolean) ?? false;
 
 	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
 
@@ -101,7 +102,7 @@ export async function readSheet(
 			inputData,
 			keyRowIndex,
 			dataStartRowIndex,
-			includeEmptyColumns,
+			includeHeadersWithEmptyCells,
 		);
 	}
 

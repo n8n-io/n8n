@@ -321,7 +321,7 @@ export class GoogleSheet {
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
-		includeEmptyColumns?: boolean,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const returnData = [];
 
@@ -329,7 +329,7 @@ export class GoogleSheet {
 			const item: IDataObject = {};
 
 			const rowCount = data[rowIndex].length;
-			const columnCount = includeEmptyColumns ? columnKeys.length : rowCount;
+			const columnCount = includeHeadersWithEmptyCells ? columnKeys.length : rowCount;
 
 			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
@@ -354,7 +354,7 @@ export class GoogleSheet {
 		inputData: string[][],
 		keyRow: number,
 		dataStartRow: number,
-		includeEmptyColumns?: boolean,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const keys: string[] = [];
 
@@ -373,7 +373,7 @@ export class GoogleSheet {
 			dataStartRow,
 			keys,
 			false,
-			includeEmptyColumns,
+			includeHeadersWithEmptyCells,
 		);
 	}
 
