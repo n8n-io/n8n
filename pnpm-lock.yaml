@@ -215,6 +215,9 @@ patchedDependencies:
   element-plus@2.4.3:
     hash: 3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661
     path: patches/element-plus@2.4.3.patch
+  ics:
+    hash: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
+    path: patches/ics.patch
   js-base64:
     hash: bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500
     path: patches/js-base64.patch
@@ -2631,7 +2634,7 @@ importers:
         version: 0.6.3
       ics:
         specifier: 2.40.0
-        version: 2.40.0
+        version: 2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d)
       isbot:
         specifier: 3.6.13
         version: 3.6.13
@@ -14810,6 +14813,9 @@ packages:
   vue-component-type-helpers@2.2.10:
     resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
+  vue-component-type-helpers@3.0.1:
+    resolution: {integrity: sha512-j23mCB5iEbGsyIhnVdXdWUOg+UdwmVxpKnYYf2j+4ppCt5VSFXKjwu9YFt0QYxUaf5G99PuHsVfRScjHCRSsGQ==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -20105,7 +20111,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.3)
-      vue-component-type-helpers: 2.2.10
+      vue-component-type-helpers: 3.0.1
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.0))':
     dependencies:
@@ -24703,7 +24709,7 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  ics@2.40.0:
+  ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
       nanoid: 3.3.8
       yup: 0.32.11
@@ -30062,6 +30068,8 @@ snapshots:
   vue-component-type-helpers@2.1.10: {}
 
   vue-component-type-helpers@2.2.10: {}
+
+  vue-component-type-helpers@3.0.1: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.3)):
     dependencies:

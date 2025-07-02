@@ -271,7 +271,7 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						[text.mentionType]: { id: text[text.mentionType] as string },
+						[text.mentionType]: { id: text[text.mentionType as keyof TextData] as string },
 					},
 					annotations: text.annotationUi,
 				});

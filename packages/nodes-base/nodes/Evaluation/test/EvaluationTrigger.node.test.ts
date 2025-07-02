@@ -1,9 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	IGetNodeParameterOptions,
-	NodeParameterValueType,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { EvaluationTrigger } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
@@ -59,12 +55,7 @@ describe('Evaluation Trigger Node', () => {
 
 			test('should return a single row from google sheet', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(
-						key: string,
-						_: number,
-						fallbackValue?: string | number | boolean | object,
-						options?: IGetNodeParameterOptions,
-					) => {
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
 							options: {},
 							'filtersUI.values': [],
@@ -115,12 +106,7 @@ describe('Evaluation Trigger Node', () => {
 					},
 				]);
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(
-						key: string,
-						_: number,
-						fallbackValue?: string | number | boolean | object,
-						options?: IGetNodeParameterOptions,
-					) => {
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
 							options: {},
 							'filtersUI.values': [],
@@ -171,12 +157,7 @@ describe('Evaluation Trigger Node', () => {
 					},
 				]);
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(
-						key: string,
-						_: number,
-						fallbackValue?: string | number | boolean | object,
-						options?: IGetNodeParameterOptions,
-					) => {
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
 							options: {},
 							'filtersUI.values': [],
@@ -213,12 +194,7 @@ describe('Evaluation Trigger Node', () => {
 
 			test('should return a single row from google sheet with limit', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(
-						key: string,
-						_: number,
-						fallbackValue?: string | number | boolean | object,
-						options?: IGetNodeParameterOptions,
-					) => {
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
 							options: {},
 							'filtersUI.values': [],
@@ -287,12 +263,7 @@ describe('Evaluation Trigger Node', () => {
 					]);
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(
-						key: string,
-						_: number,
-						fallbackValue?: string | number | boolean | object,
-						options?: IGetNodeParameterOptions,
-					) => {
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
 							limitRows: true,
 							maxRows: 2,
@@ -374,12 +345,7 @@ describe('Evaluation Trigger Node', () => {
 
 		test('should return the sheet with limits applied, without filters', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(
-					key: string,
-					_: number,
-					fallbackValue?: string | number | boolean | object,
-					options?: IGetNodeParameterOptions,
-				) => {
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
 						options: {},
 						'filtersUI.values': [],
@@ -448,12 +414,7 @@ describe('Evaluation Trigger Node', () => {
 				]);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(
-					key: string,
-					_: number,
-					fallbackValue?: string | number | boolean | object,
-					options?: IGetNodeParameterOptions,
-				) => {
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
 						'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
 						options: {},
