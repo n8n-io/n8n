@@ -33,6 +33,8 @@ export async function readSheet(
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 	}
 
+	const includeEmptyColumns = (additionalOptions?.includeEmptyColumns as boolean) ?? false;
+
 	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
 
 	const valueRenderMode = (outputFormattingOption.general ||
@@ -95,7 +97,12 @@ export async function readSheet(
 			combineFilters,
 		});
 	} else {
-		responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
+		responseData = sheet.structureArrayDataByColumn(
+			inputData,
+			keyRowIndex,
+			dataStartRowIndex,
+			includeEmptyColumns,
+		);
 	}
 
 	returnData.push(

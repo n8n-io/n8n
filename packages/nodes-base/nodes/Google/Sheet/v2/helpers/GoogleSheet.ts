@@ -321,17 +321,23 @@ export class GoogleSheet {
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
+		includeEmptyColumns?: boolean,
 	): IDataObject[] {
 		const returnData = [];
 
 		for (let rowIndex = startRow; rowIndex < data.length; rowIndex++) {
 			const item: IDataObject = {};
-			for (let columnIndex = 0; columnIndex < data[rowIndex].length; columnIndex++) {
+
+			const rowCount = data[rowIndex].length;
+			const columnCount = includeEmptyColumns ? columnKeys.length : rowCount;
+
+			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
 				if (key) {
-					item[key] = data[rowIndex][columnIndex];
+					item[key] = data[rowIndex][columnIndex] || '';
 				}
 			}
+
 			if (Object.keys(item).length || addEmpty === true) {
 				returnData.push(item);
 			}
@@ -348,6 +354,7 @@ export class GoogleSheet {
 		inputData: string[][],
 		keyRow: number,
 		dataStartRow: number,
+		includeEmptyColumns?: boolean,
 	): IDataObject[] {
 		const keys: string[] = [];
 
@@ -361,7 +368,13 @@ export class GoogleSheet {
 			keys.push(inputData[keyRow][columnIndex] || `col_${columnIndex}`);
 		}
 
-		return this.convertSheetDataArrayToObjectArray(inputData, dataStartRow, keys);
+		return this.convertSheetDataArrayToObjectArray(
+			inputData,
+			dataStartRow,
+			keys,
+			false,
+			includeEmptyColumns,
+		);
 	}
 
 	testFilter(inputData: string[][], keyRow: number, dataStartRow: number): string[] {
