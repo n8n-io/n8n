@@ -71,7 +71,13 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 		[413]: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
 		[400]: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 		[429]: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
-		[500]: message ?? i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		[500]: message
+			? i18n.baseText('codeNodeEditor.askAi.generationFailedWithReason', {
+					interpolate: {
+						error: message,
+					},
+				})
+			: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
 
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
