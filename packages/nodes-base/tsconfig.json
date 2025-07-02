@@ -23,7 +23,8 @@
 		"test/**/*.ts",
 		"types/**/*.ts",
 		"utils/**/*.ts",
-		"../core/nodes-testing/**/*.ts"
+		"../core/nodes-testing/**/*.ts",
+		"../../node_modules/jest-expect-message/types/index.d.ts"
 	],
 	"exclude": ["node_modules"],
 	"references": [
