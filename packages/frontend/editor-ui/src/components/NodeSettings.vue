@@ -723,6 +723,7 @@ const onTabSelect = (tab: Tab) => {
 };
 
 const onFeatureRequestClick = () => {
+	window.open(featureRequestUrl.value, '_blank');
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,

@@ -344,7 +344,7 @@ const isDraggable = computed(() => !isTriggerNode.value);
 
 const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
 
-const supportedResizeDirections = computed(() =>
+const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
 
@@ -364,7 +364,7 @@ const currentNodePaneType = computed((): MainPanelType => {
 const defaultPanelSize = computed(() => {
 	switch (currentNodePaneType.value) {
 		case 'inputless': {
-			const main = pixelsToPercentage(420);
+			const main = pixelsToPercentage(480);
 			return { left: 0, main, right: 100 - main };
 		}
 		case 'wide': {
@@ -376,7 +376,7 @@ const defaultPanelSize = computed(() => {
 		case 'unknown':
 		case 'regular':
 		default: {
-			const main = pixelsToPercentage(380);
+			const main = pixelsToPercentage(420);
 			const panels = (100 - main) / 2;
 			return { left: panels, main, right: panels };
 		}
