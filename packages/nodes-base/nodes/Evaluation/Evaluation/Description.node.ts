@@ -83,7 +83,7 @@ export const setCheckIfEvaluatingProperties: INodeProperties[] = [
 
 const expectedAnswerFields: INodeProperties[] = [
 	{
-		displayName: 'Expected answer',
+		displayName: 'Expected Answer',
 		name: 'expectedAnswer',
 		type: 'string',
 		default: '',
@@ -95,7 +95,7 @@ const expectedAnswerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Actual answer',
+		displayName: 'Actual Answer',
 		name: 'actualAnswer',
 		type: 'string',
 		default: '',
@@ -138,10 +138,10 @@ function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
 			placeholder: 'Add Option',
 			options: [
 				{
-					displayName: 'Input prompt',
+					displayName: 'Input Prompt',
 					name: 'inputPrompt',
 					type: 'string',
-					default: prompt[0],
+					default: prompt[0] ?? '',
 					typeOptions: {
 						rows: 4,
 					},
@@ -183,7 +183,7 @@ const toolsUsedFields: INodeProperties[] = [
 				],
 			},
 		],
-		default: '',
+		default: {},
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
