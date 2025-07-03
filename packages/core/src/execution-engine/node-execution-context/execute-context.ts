@@ -132,18 +132,18 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	isStreaming(): boolean {
-		// Check if we have chunk handlers
+		// Check if we have sendChunk handlers
 		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
 		const hasHandlers = handlers !== undefined && handlers > 0;
 
-		// Check if streaming was explicitly enabled for this execution
-		const streamingExplicitlyEnabled = this.additionalData.streamingEnabled === true;
+		// Check if streaming was enabled for this execution
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
 
-		// Only enable streaming in modes where it's meaningful (real-time consumption)
-		const streamingModes = ['manual', 'webhook'];
-		const isStreamingMode = streamingModes.includes(this.mode);
+		// Check current execution mode supports streaming
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
 
-		return hasHandlers && isStreamingMode && streamingExplicitlyEnabled;
+		return hasHandlers && isStreamingMode && streamingEnabled;
 	}
 
 	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
