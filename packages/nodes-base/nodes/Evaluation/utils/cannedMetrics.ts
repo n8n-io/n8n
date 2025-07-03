@@ -72,7 +72,7 @@ export const metricHandlers = {
 			action: { tool: string };
 		}>;
 
-		if (!expectedTools || expectedTools.find((t) => t.trim() === '')?.length > 0) {
+		if (!expectedTools || expectedTools.some((t) => t.trim() === '')) {
 			throw new NodeOperationError(this.getNode(), 'Expected tool name missing', {
 				description:
 					'Make sure you add at least one expected tool and fill in the name for each expected tool',
@@ -107,7 +107,7 @@ export const metricHandlers = {
 			});
 		}
 
-		const metricName = this.getNodeParameter('metricName', i, 'Accuracy') as string;
+		const metricName = this.getNodeParameter('options.metricName', i, 'Accuracy') as string;
 
 		return {
 			[metricName]: expectedAnswer === actualAnswer ? 1 : 0,
@@ -131,7 +131,11 @@ export const metricHandlers = {
 			});
 		}
 
-		const metricName = this.getNodeParameter('metricName', i, 'String similarity') as string;
+		const metricName = this.getNodeParameter(
+			'options.metricName',
+			i,
+			'String similarity',
+		) as string;
 
 		return {
 			[metricName]: distance(expectedAnswer, actualAnswer),
@@ -211,7 +215,7 @@ export const metricHandlers = {
 				format_instructions: formatInstructions,
 			});
 
-			const metricName = this.getNodeParameter('metricName', i, 'Helpfulness') as string;
+			const metricName = this.getNodeParameter('options.metricName', i, 'Helpfulness') as string;
 
 			// Return the score as the main metric
 			return {
@@ -299,7 +303,7 @@ export const metricHandlers = {
 				format_instructions: formatInstructions,
 			});
 
-			const metricName = this.getNodeParameter('metricName', i, 'Correctness') as string;
+			const metricName = this.getNodeParameter('options.metricName', i, 'Correctness') as string;
 
 			// Return the score as the main metric
 			return {

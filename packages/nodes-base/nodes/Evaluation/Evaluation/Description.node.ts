@@ -160,7 +160,11 @@ function promptFieldForMetric(metric: string, prompt: string): INodeProperties[]
 	];
 }
 
-function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
+function optionsForMetric(
+	metric: string,
+	prompt: string[],
+	defaultName: string,
+): INodeProperties[] {
 	return [
 		{
 			displayName: 'Options',
@@ -169,6 +173,12 @@ function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
 			default: {},
 			placeholder: 'Add Option',
 			options: [
+				{
+					displayName: 'Metric Name',
+					name: 'metricName',
+					type: 'string',
+					default: defaultName,
+				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Input Prompt',
@@ -179,6 +189,32 @@ function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
 						rows: 4,
 					},
 					hint: prompt[1],
+				},
+			],
+			displayOptions: {
+				show: {
+					operation: ['setMetrics'],
+					metric: [metric],
+				},
+			},
+		},
+	];
+}
+
+function optionsForMetricBasic(metric: string, defaultName: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			default: {},
+			placeholder: 'Add Option',
+			options: [
+				{
+					displayName: 'Metric Name',
+					name: 'metricName',
+					type: 'string',
+					default: defaultName,
 				},
 			],
 			displayOptions: {
@@ -239,26 +275,6 @@ const toolsUsedFields: INodeProperties[] = [
 	},
 ];
 
-const namesForMetrics = [
-	['accuracy', 'Accuracy'],
-	['stringSimilarity', 'String similarity'],
-	['helpfulness', 'Helpfulness'],
-	['correctness', 'Correctness'],
-].map(([metric, name]) => {
-	return {
-		displayName: 'Metric Name',
-		name: 'metricName',
-		type: 'string',
-		default: name,
-		displayOptions: {
-			show: {
-				operation: ['setMetrics'],
-				metric: [metric],
-			},
-		},
-	};
-});
-
 export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
@@ -311,7 +327,6 @@ export const setMetricsProperties: INodeProperties[] = [
 			},
 		},
 	},
-	...namesForMetrics,
 	...correctnessFields,
 	...helpfulnessFields,
 	...toolsUsedFields,
@@ -343,6 +358,8 @@ export const setMetricsProperties: INodeProperties[] = [
 			},
 		},
 	},
-	...optionsForMetric('correctness', CORRECTNESS_INPUT_PROMPT),
-	...optionsForMetric('helpfulness', HELPFULNESS_INPUT_PROMPT),
+	...optionsForMetric('correctness', CORRECTNESS_INPUT_PROMPT, 'Correctness'),
+	...optionsForMetric('helpfulness', HELPFULNESS_INPUT_PROMPT, 'Helpfulness'),
+	...optionsForMetricBasic('accuracy', 'Accuracy'),
+	...optionsForMetricBasic('stringSimilarity', 'String similarity'),
 ];
