@@ -188,11 +188,10 @@ describe('SettingsUsersView', () => {
 	});
 
 	it('should open invite modal when invite button is clicked', async () => {
-		const user = userEvent.setup();
 		renderComponent();
 
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
-		await user.click(inviteButton);
+		await userEvent.click(inviteButton);
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: INVITE_USER_MODAL_KEY,
@@ -221,11 +220,10 @@ describe('SettingsUsersView', () => {
 	});
 
 	it('should handle search input with debouncing', async () => {
-		const user = userEvent.setup();
 		renderComponent();
 
 		const searchInput = screen.getByTestId('users-list-search');
-		await user.type(searchInput, 'test search');
+		await userEvent.type(searchInput, 'test search');
 
 		await waitFor(() => {
 			expect(usersStore.usersList.execute).toHaveBeenCalled();

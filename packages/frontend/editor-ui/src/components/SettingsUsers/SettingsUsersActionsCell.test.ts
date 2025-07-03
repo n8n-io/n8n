@@ -8,32 +8,6 @@ import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersAc
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IUser } from '@/Interface';
 
-// Mock N8nActionToggle
-vi.mock('@n8n/design-system', async (importOriginal) => {
-	const original = await importOriginal<object>();
-	return {
-		...original,
-		N8nActionToggle: {
-			name: 'N8nActionToggle',
-			props: {
-				actions: { type: Array, required: true },
-			},
-			emits: ['action'],
-			template: `
-        <div>
-          <button
-            v-for="action in actions"
-            :key="action.value"
-            :data-test-id="'action-' + action.value"
-            @click="$emit('action', action.value)">
-            {{ action.label }}
-          </button>
-        </div>
-      `,
-		},
-	};
-});
-
 const baseUser: UsersList['items'][number] = {
 	id: '1',
 	email: 'member@example.com',
@@ -47,8 +21,8 @@ const baseUser: UsersList['items'][number] = {
 };
 
 const mockActions: Array<UserAction<IUser>> = [
-	{ value: 'delete', label: 'Delete' },
-	{ value: 'reinvite', label: 'Reinvite' },
+	{ value: 'copyInviteLink', label: 'Copy invite link' },
+	{ value: 'copyPasswordResetLink', label: 'Copy password reset link' },
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -80,8 +54,8 @@ describe('SettingsUsersActionsCell', () => {
 		const props = { data: baseUser, actions: mockActions };
 		renderComponent({ props });
 
-		expect(screen.getByTestId('action-delete')).toBeInTheDocument();
-		expect(screen.getByTestId('action-reinvite')).toBeInTheDocument();
+		expect(screen.getByTestId('action-copyInviteLink')).toBeInTheDocument();
+		expect(screen.getByTestId('action-copyPasswordResetLink')).toBeInTheDocument();
 	});
 
 	it('should emit "action" with correct payload when an action is clicked', async () => {
@@ -89,9 +63,9 @@ describe('SettingsUsersActionsCell', () => {
 		const { emitted } = renderComponent({ props });
 		const user = userEvent.setup();
 
-		await user.click(screen.getByTestId('action-delete'));
+		await user.click(screen.getByTestId('action-copyInviteLink'));
 
 		expect(emitted()).toHaveProperty('action');
-		expect(emitted().action[0]).toEqual([{ action: 'delete', userId: '1' }]);
+		expect(emitted().action[0]).toEqual([{ action: 'copyInviteLink', userId: '1' }]);
 	});
 });
