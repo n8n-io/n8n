@@ -88,6 +88,8 @@ export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'search_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'running',
 				updates: [
 					{
@@ -106,6 +108,8 @@ export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 				config.writer?.({
 					type: 'tool',
 					toolName: 'search_nodes',
+					// @ts-ignore
+					toolCallId: config.toolCall?.id,
 					status: 'running',
 					updates: [
 						{
@@ -153,6 +157,8 @@ export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'search_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'completed',
 				updates: [
 					{

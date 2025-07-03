@@ -130,7 +130,7 @@ function onUpdateWorkflow(code: string) {
 }
 
 function onNewWorkflow() {
-	builderStore.resetBuilderChat();
+	// Don't reset chat to preserve conversation history
 	workflowGenerated.value = false;
 	helpful.value = false;
 	generationStartTime.value = new Date().getTime();

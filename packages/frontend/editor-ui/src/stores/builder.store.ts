@@ -121,7 +121,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// console.log("🚀 ~ addAssistantMessages ~ newMessages:", newMessages)
 		const read = true; // Always mark as read in builder
 		const messages = [...chatMessages.value];
-		assistantThinkingMessage.value = undefined;
+
+		// Clear thinking message when we get any response (text or tool)
+		const hasResponse = newMessages.some((msg) => msg.type === 'message' || msg.type === 'tool');
+		if (hasResponse) {
+			assistantThinkingMessage.value = undefined;
+		}
 
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
@@ -194,36 +199,78 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					read,
 				});
 			} else if (msg.type === 'tool' && 'toolName' in msg) {
-				// Check if we have an existing tool message to update
-				const existingToolMessageIndex = messages.findIndex(
-					(m) =>
-						m.type === 'tool' &&
-						m.id === id &&
-						m.toolName === msg.toolName &&
-						m.status === 'running',
+				console.log(
+					'Processing tool message:',
+					msg.toolName,
+					'status:',
+					msg.status,
+					'toolCallId:',
+					msg.toolCallId,
 				);
 
-				if (existingToolMessageIndex > -1 && msg.status === 'completed') {
-					// Update existing running tool message with completion
-					messages[existingToolMessageIndex] = {
-						...messages[existingToolMessageIndex],
-						status: msg.status,
-						updates: [
-							...(messages[existingToolMessageIndex] as ChatUI.ToolMessage).updates,
-							...msg.updates,
-						],
-					};
+				if (msg.status === 'running') {
+					// Check if this is a progress update for an existing running tool
+					const existingRunningToolIndex = messages.findIndex(
+						(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+					);
+
+					if (existingRunningToolIndex > -1) {
+						// This is a progress update - append updates to existing message
+						console.log('Updating existing running tool with progress');
+						messages[existingRunningToolIndex] = {
+							...messages[existingRunningToolIndex],
+							updates: [
+								...(messages[existingRunningToolIndex] as ChatUI.ToolMessage).updates,
+								...msg.updates,
+							],
+						};
+					} else {
+						// This is a new tool execution
+						console.log('Adding new running tool message');
+						messages.push({
+							id,
+							type: 'tool',
+							role: 'assistant',
+							toolName: msg.toolName,
+							toolCallId: msg.toolCallId,
+							status: msg.status,
+							updates: msg.updates,
+							read,
+						});
+					}
 				} else {
-					// Add new tool message
-					messages.push({
-						id,
-						type: 'tool',
-						role: 'assistant',
-						toolName: msg.toolName,
-						status: msg.status,
-						updates: msg.updates,
-						read,
-					});
+					// For completed/error status, find and update the matching running message
+					const existingToolMessageIndex = messages.findIndex(
+						(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+					);
+
+					console.log('Found existing tool at index:', existingToolMessageIndex);
+
+					if (existingToolMessageIndex > -1) {
+						// Update existing running tool message with completion or error
+						console.log('Updating existing tool message to status:', msg.status);
+						messages[existingToolMessageIndex] = {
+							...messages[existingToolMessageIndex],
+							status: msg.status,
+							updates: [
+								...(messages[existingToolMessageIndex] as ChatUI.ToolMessage).updates,
+								...msg.updates,
+							],
+						};
+					} else {
+						// If no matching running message found, add as new (shouldn't happen normally)
+						console.warn('No matching running tool message found for completion, adding as new');
+						messages.push({
+							id,
+							type: 'tool',
+							role: 'assistant',
+							toolName: msg.toolName,
+							toolCallId: msg.toolCallId,
+							status: msg.status,
+							updates: msg.updates,
+							read,
+						});
+					}
 				}
 			}
 		});
@@ -295,7 +342,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			source,
 			prompt: userMessage,
 		});
-		resetBuilderChat();
+		// Don't reset chat to preserve conversation history
 		const id = getRandomId();
 
 		addUserMessage(userMessage, id);
@@ -374,9 +421,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			handleServiceError(e, id, retry);
 		}
 	}
-	// Reset on route change
-	watch(route, () => {
-		resetBuilderChat();
+	// Reset on route change (but only if actually leaving the workflow view)
+	watch(route, (newRoute, oldRoute) => {
+		// Only reset if we're actually navigating away from the workflow
+		if (newRoute.name !== oldRoute?.name) {
+			resetBuilderChat();
+		}
 	});
 
 	// Public API

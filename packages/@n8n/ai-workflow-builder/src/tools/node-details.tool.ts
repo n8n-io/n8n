@@ -37,11 +37,28 @@ export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'get_node_details',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'running',
 				updates: [
 					{
 						type: 'input',
 						data: input,
+					},
+				],
+			});
+
+			// Emit progress update
+			config.writer?.({
+				type: 'tool',
+				toolName: 'get_node_details',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
+				status: 'running',
+				updates: [
+					{
+						type: 'progress',
+						data: `Looking up details for ${nodeName}...`,
 					},
 				],
 			});
@@ -53,6 +70,8 @@ export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
 				config.writer?.({
 					type: 'tool',
 					toolName: 'get_node_details',
+					// @ts-ignore
+					toolCallId: config.toolCall?.id,
 					status: 'error',
 					updates: [
 						{
@@ -89,6 +108,8 @@ export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'get_node_details',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'completed',
 				updates: [
 					{

@@ -29,6 +29,8 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'add_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'running',
 				updates: [
 					{
@@ -46,6 +48,21 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 			for (let i = 0; i < nodes.length; i++) {
 				const nodeInput = nodes[i];
 				const { nodeType, name } = nodeInput;
+
+				// Emit progress update
+				config.writer?.({
+					type: 'tool',
+					toolName: 'add_nodes',
+					// @ts-ignore
+					toolCallId: config.toolCall?.id,
+					status: 'running',
+					updates: [
+						{
+							type: 'progress',
+							data: `Processing node ${i + 1} of ${nodes.length}: ${name}`,
+						},
+					],
+				});
 
 				// Find the node type
 				const nodeTypeDesc = nodeTypes.find((nt) => nt.name === nodeType);
@@ -75,6 +92,8 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 				config.writer?.({
 					type: 'tool',
 					toolName: 'add_nodes',
+					// @ts-ignore
+					toolCallId: config.toolCall?.id,
 					status: 'error',
 					updates: [
 						{
@@ -123,6 +142,8 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'add_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'completed',
 				updates: [
 					{

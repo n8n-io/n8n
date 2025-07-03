@@ -122,6 +122,7 @@ export namespace ChatUI {
 		role: 'assistant';
 		type: 'tool';
 		toolName: string;
+		toolCallId?: string;
 		status: 'running' | 'completed' | 'error';
 		updates: Array<{
 			type: 'input' | 'output' | 'progress' | 'error';

@@ -53,11 +53,28 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'connect_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'running',
 				updates: [
 					{
 						type: 'input',
 						data: input,
+					},
+				],
+			});
+
+			// Emit progress update
+			config.writer?.({
+				type: 'tool',
+				toolName: 'connect_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
+				status: 'running',
+				updates: [
+					{
+						type: 'progress',
+						data: `Finding nodes to connect...`,
 					},
 				],
 			});
@@ -72,6 +89,8 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 				config.writer?.({
 					type: 'tool',
 					toolName: 'connect_nodes',
+					// @ts-ignore
+					toolCallId: config.toolCall?.id,
 					status: 'error',
 					updates: [
 						{
@@ -100,6 +119,21 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 
 			console.log('Matched source node:', matchedSourceNode.name);
 			console.log('Matched target node:', matchedTargetNode.name);
+
+			// Emit progress update
+			config.writer?.({
+				type: 'tool',
+				toolName: 'connect_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
+				status: 'running',
+				updates: [
+					{
+						type: 'progress',
+						data: `Connecting ${matchedSourceNode.name} to ${matchedTargetNode.name}...`,
+					},
+				],
+			});
 
 			const sourceNodeType = nodeTypes.find((nt) => nt.name === matchedSourceNode.type);
 			const targetNodeType = nodeTypes.find((nt) => nt.name === matchedTargetNode.type);
@@ -191,6 +225,8 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 			config.writer?.({
 				type: 'tool',
 				toolName: 'connect_nodes',
+				// @ts-ignore
+				toolCallId: config.toolCall?.id,
 				status: 'completed',
 				updates: [
 					{
