@@ -28,7 +28,7 @@ const categoryName = computed(() => {
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
 			<span :class="$style.name">
 				<span v-text="categoryName" />
-				<n8n-icon v-if="isTrigger" icon="zap" size="xsmall" :class="$style.triggerIcon" />
+				<n8n-icon v-if="isTrigger" icon="bolt-filled" size="xsmall" :class="$style.triggerIcon" />
 				<slot />
 			</span>
 			<n8n-icon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
