@@ -171,16 +171,14 @@ export class Server extends AbstractServer {
 		// Source Control
 		// ----------------------------------------
 
-		if (this.licenseState.isSourceControlLicensed()) {
-			try {
-				const { SourceControlService } = await import(
-					'@/environments.ee/source-control/source-control.service.ee'
-				);
-				await Container.get(SourceControlService).init();
-				await import('@/environments.ee/source-control/source-control.controller.ee');
-			} catch (error) {
-				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-			}
+		try {
+			const { SourceControlService } = await import(
+				'@/environments.ee/source-control/source-control.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
 		}
 
 		try {
