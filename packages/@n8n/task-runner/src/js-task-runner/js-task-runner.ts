@@ -564,13 +564,13 @@ export class JsTaskRunner extends TaskRunner {
 		].join('; ');
 	}
 
-	private runDirectly<T>(code: string, context: Context) {
+	private async runDirectly<T>(code: string, context: Context): Promise<T> {
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const fn = new Function(
 			'context',
 			`with(context) { return (async function() {${code}\n})(); }`,
 		);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		return Promise.resolve(fn(context)) as Promise<T>;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
+		return await fn(context);
 	}
 }
