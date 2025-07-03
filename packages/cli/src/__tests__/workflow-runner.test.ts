@@ -5,7 +5,7 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
-import type {
+import {
 	IExecuteData,
 	INode,
 	IRun,
@@ -17,7 +17,7 @@ import type {
 	StartNodeData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
-	type ExecutionError,
+	ExecutionError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
