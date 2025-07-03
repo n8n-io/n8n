@@ -49,7 +49,7 @@ describe('sanitizeResponseData', () => {
 		const result = sanitizeResponseData(src);
 
 		expect(result).toContain('<iframe');
-		expect(result).toContain(`src="${src}"`);
+		expect(result).toContain(`srcdoc="${src}"`);
 		expect(result).toContain('width: 100%');
 		expect(result).toContain('height: 100%');
 		expect(result).toContain('allowtransparency="true"');
