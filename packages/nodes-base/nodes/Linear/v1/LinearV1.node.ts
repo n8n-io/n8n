@@ -1,27 +1,17 @@
 import {
 	type IExecuteFunctions,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
 	type IDataObject,
 	type ILoadOptionsFunctions,
-	type INodeCredentialTestResult,
 	type INodeExecutionData,
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	type JsonObject,
 	NodeConnectionTypes,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import { commentFields, commentOperations } from '../shared/CommentDescription';
-import {
-	linearApiRequest,
-	linearApiRequestAllItems,
-	sort,
-	validateCredentials,
-} from '../shared/GenericFunctions';
+import { linearApiRequest, linearApiRequestAllItems, sort } from '../shared/GenericFunctions';
 import { issueFields, issueOperations } from '../shared/IssueDescription';
 import { query } from '../shared/Queries';
 interface IGraphqlBody {
@@ -51,7 +41,6 @@ export class LinearV1 implements INodeType {
 				{
 					name: 'linearApi',
 					required: true,
-					testedBy: 'linearApiTest',
 					displayOptions: {
 						show: {
 							authentication: ['apiToken'],
@@ -111,33 +100,6 @@ export class LinearV1 implements INodeType {
 	}
 
 	methods = {
-		credentialTest: {
-			async linearApiTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					const { error: err } = error as JsonObject;
-					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];
-					const authenticationError = Boolean(
-						errors.filter((e) => e.extensions.code === 'AUTHENTICATION_ERROR').length,
-					);
-					if (authenticationError) {
-						return {
-							status: 'Error',
-							message: 'The security token included in the request is invalid',
-						};
-					}
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 		loadOptions: {
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

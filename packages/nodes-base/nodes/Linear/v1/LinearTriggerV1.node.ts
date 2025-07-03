@@ -34,7 +34,6 @@ export class LinearTriggerV1 implements INodeType {
 				{
 					name: 'linearApi',
 					required: true,
-					testedBy: 'linearApiTest',
 					displayOptions: {
 						show: {
 							authentication: ['apiToken'],

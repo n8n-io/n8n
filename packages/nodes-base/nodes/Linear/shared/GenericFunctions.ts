@@ -1,7 +1,5 @@
 import get from 'lodash/get';
 import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -10,8 +8,6 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { query } from './Queries';
 
 export async function linearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -95,31 +91,6 @@ export async function linearApiRequestAllItems(
 	} while (get(responseData, hasNextPagePath));
 
 	return returnData;
-}
-
-export async function validateCredentials(
-	this: ICredentialTestFunctions,
-	decryptedCredentials: ICredentialDataDecryptedObject,
-): Promise<any> {
-	const credentials = decryptedCredentials;
-
-	const options: IHttpRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: credentials.apiKey,
-		},
-		method: 'POST',
-		body: {
-			query: query.getIssues(),
-			variables: {
-				first: 1,
-			},
-		},
-		url: 'https://api.linear.app/graphql',
-		json: true,
-	};
-
-	return await this.helpers.request(options);
 }
 
 //@ts-ignore
