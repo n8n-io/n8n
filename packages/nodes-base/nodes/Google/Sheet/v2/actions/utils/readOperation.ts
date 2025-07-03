@@ -33,8 +33,10 @@ export async function readSheet(
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 	}
 
-	const range =
-		rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions as RangeDetectionOptions);
+	const includeHeadersWithEmptyCells =
+		(additionalOptions?.includeHeadersWithEmptyCells as boolean) ?? false;
+
+	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
 
 	const valueRenderMode = (outputFormattingOption.general ||
 		'UNFORMATTED_VALUE') as ValueRenderOption;
@@ -96,7 +98,12 @@ export async function readSheet(
 			combineFilters,
 		});
 	} else {
-		responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
+		responseData = sheet.structureArrayDataByColumn(
+			inputData,
+			keyRowIndex,
+			dataStartRowIndex,
+			includeHeadersWithEmptyCells,
+		);
 	}
 
 	returnData.push(
