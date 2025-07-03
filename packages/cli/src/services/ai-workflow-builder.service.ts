@@ -33,7 +33,10 @@ export class WorkflowBuilderService {
 		return this.service;
 	}
 
-	async *chat(payload: { question: string; currentWorkflowJSON: string }, user: IUser) {
+	async *chat(
+		payload: { question: string; currentWorkflowJSON: string; workflowId?: string },
+		user: IUser,
+	) {
 		const service = this.getService();
 		yield* service.chat(payload, user);
 	}

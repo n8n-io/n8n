@@ -5,7 +5,11 @@ export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
 		question: z.string(),
 		workflowContext: z.object({
-			currentWorkflow: z.record(z.string(), z.any()),
+			currentWorkflow: z
+				.object({
+					id: z.string().optional(),
+				})
+				.passthrough(), // Allow other properties from IWorkflowBase
 		}),
 	}),
 }) {}

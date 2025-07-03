@@ -349,7 +349,7 @@ export class AiWorkflowBuilderService {
 		return workflowGraph;
 	}
 
-	async *chat(payload: { question: string }, user: IUser) {
+	async *chat(payload: { question: string; workflowId?: string }, user: IUser) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}

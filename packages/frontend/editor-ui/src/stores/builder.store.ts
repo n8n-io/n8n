@@ -291,7 +291,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			},
 			question: userMessage,
 			workflowContext: {
-				currentWorkflow: assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
+				currentWorkflow: {
+					...assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
+					id: workflowsStore.workflowId,
+				},
 			},
 		};
 		console.log('Payload: ', payload);

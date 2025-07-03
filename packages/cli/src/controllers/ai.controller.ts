@@ -40,12 +40,15 @@ export class AiController {
 	) {
 		console.log('🚀 ~ AiController ~ payload:', payload);
 		try {
+			const workflowId = payload.payload.workflowContext?.currentWorkflow?.id;
+
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					question: payload.payload.question ?? '',
 					currentWorkflowJSON: JSON.stringify(
 						payload.payload.workflowContext?.currentWorkflow ?? {},
 					),
+					workflowId,
 				},
 				req.user,
 			);

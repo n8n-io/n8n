@@ -1,7 +1,7 @@
 import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { StateGraph, END, START } from '@langchain/langgraph';
+import { StateGraph, END, START, MemorySaver } from '@langchain/langgraph';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -33,6 +33,8 @@ export class AiWorkflowBuilderService {
 	private llmComplexTask: BaseChatModel | undefined;
 
 	private client: AiAssistantClient | undefined;
+
+	private checkpointer = new MemorySaver();
 
 	constructor(
 		private readonly licenseService: ILicenseService,
@@ -163,12 +165,27 @@ export class AiWorkflowBuilderService {
 		return workflow;
 	}
 
-	async *chat(payload: { question: string; currentWorkflowJSON?: string }, user: IUser) {
+	async *chat(
+		payload: { question: string; currentWorkflowJSON?: string; workflowId?: string },
+		user: IUser,
+	) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}
 
-		const agent = this.getAgent().compile();
+		const agent = this.getAgent().compile({ checkpointer: this.checkpointer });
+
+		// Generate thread ID from workflowId and userId
+		const threadId = payload.workflowId
+			? `workflow-${payload.workflowId}-user-${user.id}`
+			: `user-${user.id}-default`;
+
+		// Configure thread
+		const threadConfig = {
+			configurable: {
+				thread_id: threadId,
+			},
+		};
 
 		const initialState: typeof WorkflowState.State = {
 			messages: [
@@ -232,6 +249,7 @@ export class AiWorkflowBuilderService {
 		};
 
 		const stream = agent.streamEvents(initialState, {
+			...threadConfig,
 			// streamMode: 'custom',
 			recursionLimit: 30,
 			version: 'v2',
