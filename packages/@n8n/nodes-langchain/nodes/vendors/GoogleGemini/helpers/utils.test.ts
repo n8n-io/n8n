@@ -8,6 +8,7 @@ describe('GoogleGemini -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 	(transport as any).apiRequest = jest.fn();
 	const apiRequestMock = transport.apiRequest as jest.Mock;
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers({ advanceTimers: true });
