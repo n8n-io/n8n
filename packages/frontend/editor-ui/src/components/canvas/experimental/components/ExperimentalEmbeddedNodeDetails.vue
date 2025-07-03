@@ -9,7 +9,11 @@ import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 
-const { nodeId, isReadOnly } = defineProps<{ nodeId: string; isReadOnly?: boolean }>();
+const { nodeId, isReadOnly, isConfigurable } = defineProps<{
+	nodeId: string;
+	isReadOnly?: boolean;
+	isConfigurable: boolean;
+}>();
 
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
@@ -65,7 +69,10 @@ function handleToggleExpand() {
 	<div
 		ref="container"
 		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
-		:style="{ '--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}` }"
+		:style="{
+			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
+			'--node-width-scaler': isConfigurable ? 1 : 1.5,
+		}"
 	>
 		<template v-if="isOnceVisible">
 			<ExperimentalCanvasNodeSettings
@@ -108,20 +115,17 @@ function handleToggleExpand() {
 	position: relative;
 	align-items: flex-start;
 	justify-content: stretch;
-	overflow: visible;
-	border-width: 0 !important;
-	outline: none;
-	box-shadow: none !important;
-	background-color: transparent;
-	width: calc(var(--canvas-node--width) * 1.5);
+	overflow: hidden;
+	border-width: 1px !important;
+	border-radius: var(--border-radius-base) !important;
+	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
 
 	&.expanded {
 		cursor: default;
+		height: auto;
 	}
-
 	&.collapsed {
-		height: 50px;
-		margin-block: calc(var(--canvas-node--width) * 0.25);
+		height: calc(16px * 4);
 	}
 }
 
@@ -135,28 +139,16 @@ function handleToggleExpand() {
 
 :root .collapsedContent,
 :root .settingsView {
-	border-radius: var(--border-radius-base);
-	border: 1px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	z-index: 1000;
-	position: absolute;
-	left: 0;
 	width: 100%;
 
-	:global(.selected) & {
-		box-shadow: 0 0 0 4px var(--color-canvas-selected-transparent);
-		z-index: 1001;
-	}
+	height: auto;
+	max-height: min(calc(var(--canvas-node--height) * 2), 300px);
+	min-height: calc(16px * 4);
 
 	& > * {
 		zoom: var(--zoom);
 	}
-}
-
-:root .settingsView {
-	height: auto;
-	max-height: min(200%, 300px);
-	top: -10%;
-	min-height: 120%;
 }
 
 .collapsedContent {

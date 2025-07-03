@@ -138,6 +138,7 @@ function onActivate(event: MouseEvent) {
 		:class="classes"
 		:style="styles"
 		:is-read-only="isReadOnly"
+		:is-configurable="renderOptions.configurable ?? false"
 	/>
 	<div
 		v-else
