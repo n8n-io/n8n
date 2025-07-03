@@ -14,6 +14,7 @@ import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createNodeSearchTool } from './tools/node-search.tool';
+import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { WorkflowState } from './workflow-state';
 
 @Service()
@@ -116,6 +117,7 @@ export class AiWorkflowBuilderService {
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
+			createUpdateNodeParametersTool(this.parsedNodeTypes).withLlm(this.llmSimpleTask!),
 		];
 		const callModel = async (state: typeof WorkflowState.State) => {
 			assert(this.llmSimpleTask, 'LLM not setup');

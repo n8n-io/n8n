@@ -11,6 +11,7 @@ export function createMockNodeTypesForRefactoredTools(): INodeTypeDescription[] 
 		TEST_NODE_TYPES.httpRequest,
 		TEST_NODE_TYPES.set,
 		TEST_NODE_TYPES.code,
+		TEST_NODE_TYPES.if,
 		TEST_NODE_TYPES.aiAgent,
 		TEST_NODE_TYPES.basicLlmChain,
 		TEST_NODE_TYPES.calculatorTool,

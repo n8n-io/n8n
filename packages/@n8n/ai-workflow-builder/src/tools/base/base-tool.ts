@@ -2,6 +2,7 @@ import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { z } from 'zod';
 
 import { ProgressReporter } from './progress-reporter';
@@ -20,8 +21,19 @@ export abstract class BaseWorkflowBuilderTool<
 	protected abstract readonly schema: TInput;
 	protected abstract readonly name: string;
 	protected abstract readonly description: string;
+	protected llm?: BaseChatModel;
 
 	constructor(protected readonly nodeTypes: INodeTypeDescription[]) {}
+
+	/**
+	 * Set the LLM for tools that require it
+	 * @param llm - The language model to use
+	 * @returns This instance for chaining
+	 */
+	withLlm(llm: BaseChatModel): this {
+		this.llm = llm;
+		return this;
+	}
 
 	/**
 	 * Main execution method that must be implemented by derived classes
@@ -58,6 +70,7 @@ export abstract class BaseWorkflowBuilderTool<
 						nodeTypes: this.nodeTypes,
 						config,
 						getCurrentTaskInput,
+						llm: this.llm,
 					};
 
 					// Execute the tool logic

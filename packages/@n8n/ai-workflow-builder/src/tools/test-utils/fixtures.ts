@@ -69,6 +69,23 @@ export const TEST_NODE_TYPES = {
 		group: ['transform'],
 	}),
 
+	if: createMockNodeType({
+		displayName: 'IF',
+		name: 'n8n-nodes-base.if',
+		description: 'Route items based on conditions',
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main', 'main'],
+		properties: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				type: 'fixedCollection',
+				default: {},
+			},
+		],
+	}),
+
 	// AI main nodes
 	aiAgent: createMockNodeType({
 		displayName: 'AI Agent',

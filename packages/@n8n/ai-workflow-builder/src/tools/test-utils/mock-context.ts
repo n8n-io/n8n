@@ -1,5 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolContext } from '../base/types';
 
 /**
@@ -9,6 +10,7 @@ export function createMockToolContext(
 	nodeTypes: INodeTypeDescription[],
 	getCurrentTaskInput: () => unknown = () => ({}),
 	config: Partial<LangGraphRunnableConfig> = {},
+	llm?: BaseChatModel,
 ): ToolContext {
 	const mockReporter = {
 		start: jest.fn(),
@@ -36,5 +38,6 @@ export function createMockToolContext(
 		responseBuilder: mockResponseBuilder as any,
 		config: config as LangGraphRunnableConfig,
 		getCurrentTaskInput,
+		llm,
 	};
 }
