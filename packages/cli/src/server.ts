@@ -1,4 +1,4 @@
-import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest } from '@n8n/db';
@@ -77,7 +77,6 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly licenseState: LicenseState,
 	) {
 		super();
 
