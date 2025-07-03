@@ -44,6 +44,11 @@ describe('Test Evaluation', () => {
 			return { sheetId: 1, title: sheetName };
 		});
 
+		test('credential test for googleApi should be in methods', async () => {
+			const evaluationNode = new Evaluation();
+			expect(evaluationNode.methods.credentialTest.googleApiCredentialTest).toBeDefined();
+		});
+
 		test('should throw error if output values is empty', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {

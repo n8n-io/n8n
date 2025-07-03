@@ -41,6 +41,7 @@
       "dist/credentials/QdrantApi.credentials.js",
       "dist/credentials/SearXngApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
+      "dist/credentials/WeaviateApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
@@ -133,6 +134,7 @@
       "dist/nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
@@ -178,6 +180,7 @@
     "@langchain/qdrant": "0.1.2",
     "@langchain/redis": "0.1.1",
     "@langchain/textsplitters": "0.1.0",
+    "@langchain/weaviate": "0.2.0",
     "@modelcontextprotocol/sdk": "1.12.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
@@ -216,6 +219,7 @@
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
+    "weaviate-client": "3.6.2",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }
