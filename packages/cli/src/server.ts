@@ -157,11 +157,12 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		try {
-			if (this.licenseState.isOidcLicensed()) {
-				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-				await Container.get(OidcService).init();
-				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-			}
+			// in the short term, we load the OIDC module here to ensure it is initialized
+			// ideally we want to migrate this to a module and be able to load it dynamically
+			// when the license changes, but that requires some refactoring
+			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+			await Container.get(OidcService).init();
+			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
 		} catch (error) {
 			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
 		}
@@ -170,16 +171,14 @@ export class Server extends AbstractServer {
 		// Source Control
 		// ----------------------------------------
 
-		if (this.licenseState.isSourceControlLicensed()) {
-			try {
-				const { SourceControlService } = await import(
-					'@/environments.ee/source-control/source-control.service.ee'
-				);
-				await Container.get(SourceControlService).init();
-				await import('@/environments.ee/source-control/source-control.controller.ee');
-			} catch (error) {
-				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-			}
+		try {
+			const { SourceControlService } = await import(
+				'@/environments.ee/source-control/source-control.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
 		}
 
 		try {
