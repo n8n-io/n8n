@@ -56,7 +56,7 @@ async function handleClickExecute() {
 	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div :class="$style.bolt">
-				<N8nIcon icon="zap" size="large" />
+				<N8nIcon icon="bolt-filled" size="large" />
 			</div>
 
 			<template v-if="!readOnly">
