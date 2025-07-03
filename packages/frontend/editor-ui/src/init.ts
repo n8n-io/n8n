@@ -157,7 +157,7 @@ export async function initializeAuthenticatedFeatures(
 				} else {
 					uiStore.pushBannerToStack('TRIAL');
 				}
-			} else if (!cloudPlanStore.currentUserCloudInfo?.confirmed) {
+			} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
 			}
 		} catch (e) {
