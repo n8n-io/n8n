@@ -5,7 +5,6 @@ import type {
 	INodeTypeDescription,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	setCheckIfEvaluatingProperties,

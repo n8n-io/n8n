@@ -1,12 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 import {
 	CORRECTNESS_PROMPT,
 	CORRECTNESS_INPUT_PROMPT,
 	HELPFULNESS_PROMPT,
 	HELPFULNESS_INPUT_PROMPT,
 } from './CannedMetricPrompts.ee';
+import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 
 export const setOutputProperties: INodeProperties[] = [
 	{
@@ -169,6 +169,7 @@ function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
 			default: {},
 			placeholder: 'Add Option',
 			options: [
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
 					displayName: 'Input Prompt',
 					name: 'inputPrompt',
@@ -192,7 +193,7 @@ function optionsForMetric(metric: string, prompt: string[]): INodeProperties[] {
 
 const toolsUsedFields: INodeProperties[] = [
 	{
-		displayName: 'Expected tools',
+		displayName: 'Expected Tools',
 		name: 'expectedTools',
 		type: 'fixedCollection',
 		placeholder: 'Add tool to expect',
@@ -224,7 +225,7 @@ const toolsUsedFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Intermediate steps',
+		displayName: 'Intermediate Steps',
 		name: 'intermediateSteps',
 		type: 'string',
 		default: '',
@@ -245,7 +246,7 @@ const namesForMetrics = [
 	['correctness', 'Correctness'],
 ].map(([metric, name]) => {
 	return {
-		displayName: 'Metric name',
+		displayName: 'Metric Name',
 		name: 'metricName',
 		type: 'string',
 		default: name,
@@ -276,6 +277,7 @@ export const setMetricsProperties: INodeProperties[] = [
 		name: 'metric',
 		type: 'options',
 		noDataExpression: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Correctness',
@@ -286,7 +288,7 @@ export const setMetricsProperties: INodeProperties[] = [
 				value: 'helpfulness',
 			},
 			{
-				name: 'String similarity',
+				name: 'String Similarity',
 				value: 'stringSimilarity',
 			},
 			{
@@ -294,11 +296,11 @@ export const setMetricsProperties: INodeProperties[] = [
 				value: 'accuracy',
 			},
 			{
-				name: 'Tools used',
+				name: 'Tools Used',
 				value: 'toolsUsed',
 			},
 			{
-				name: 'Custom metrics',
+				name: 'Custom Metrics',
 				value: 'customMetrics',
 			},
 		],
