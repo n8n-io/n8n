@@ -40,6 +40,9 @@
                 }
             }
         },
+        "bot_id": {
+            "type": "string"
+        },
         "client_msg_id": {
             "type": "string"
         },
@@ -59,5 +62,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

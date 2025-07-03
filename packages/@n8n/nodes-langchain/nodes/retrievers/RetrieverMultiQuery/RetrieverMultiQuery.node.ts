@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
@@ -39,7 +37,7 @@ export class RetrieverMultiQuery implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',

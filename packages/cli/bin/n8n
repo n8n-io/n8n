@@ -13,11 +13,6 @@ if (versionFlags.includes(process.argv.slice(-1)[0])) {
 	process.exit(0);
 }
 
-if (process.argv.length === 2) {
-	// When no command is given choose by default start
-	process.argv.push('start');
-}
-
 const satisfies = require('semver/functions/satisfies');
 const nodeVersion = process.versions.node;
 const {
@@ -63,10 +58,7 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
-	// Collect DB entities from modules _before_ `DbConnectionOptions` is instantiated.
-	const { BaseCommand } = await import('../dist/commands/base-command.js');
-	await new BaseCommand([], { root: __dirname }).loadModules();
-
-	const oclif = await import('@oclif/core');
-	await oclif.execute({ dir: __dirname });
+	const { Container } = await import('@n8n/di');
+	const { CommandRegistry } = await import('../dist/command-registry.js');
+	await Container.get(CommandRegistry).execute();
 })();

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { DynamicTool } from 'langchain/tools';
 import {
 	NodeConnectionTypes,

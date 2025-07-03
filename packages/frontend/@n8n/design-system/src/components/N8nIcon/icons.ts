@@ -1,4 +1,5 @@
 import Binary from './custom/binary.svg';
+import BoltFilled from './custom/bolt-filled.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Json from './custom/json.svg';
 import PopOut from './custom/pop-out.svg';
@@ -385,6 +386,8 @@ export const deprecatedIconSet = {
 
 export const updatedIconSet = {
 	// custom icons
+	// NOTE: ensure to replace any colors with "currentColor" in SVG
+	'bolt-filled': BoltFilled,
 	'grip-lines-vertical': GripLinesVertical,
 	variable: IconLucideVariable,
 	'pop-out': PopOut,

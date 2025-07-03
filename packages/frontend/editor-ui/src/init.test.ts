@@ -280,6 +280,22 @@ describe('Init', () => {
 				expect(cloudStoreSpy).toHaveBeenCalled();
 				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('EMAIL_CONFIRMATION');
 			});
+
+			it('should not push EMAIL_CONFIRMATION banner if user cloud account does not exist', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = false;
+				cloudPlanStore.currentUserCloudInfo = null;
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(uiStore.pushBannerToStack).not.toHaveBeenCalledWith('EMAIL_CONFIRMATION');
+			});
 		});
 	});
 });

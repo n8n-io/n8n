@@ -79,6 +79,11 @@
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
+
+	// Bump z-index for unconnected nodes
+	&:has(.canvas-handle-plus-wrapper):hover {
+		z-index: 2 !important;
+	}
 }
 
 .vue-flow__nodes:has(.bring-to-front) {

@@ -4,11 +4,6 @@
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
-  "oclif": {
-    "commands": "./dist/commands",
-    "helpClass": "./dist/help",
-    "bin": "n8n"
-  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -77,6 +72,7 @@
     "@types/ws": "^8.18.1",
     "@types/xml2js": "catalog:",
     "@types/yamljs": "^0.2.31",
+    "@types/yargs-parser": "21.0.0",
     "@vvo/tzdb": "^6.141.0",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
@@ -98,6 +94,7 @@
     "@n8n/db": "workspace:^",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/backend-test-utils": "workspace:^",
     "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
@@ -106,7 +103,6 @@
     "@n8n/typeorm": "catalog:",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "2.22.0",
-    "@oclif/core": "4.0.7",
     "@rudderstack/rudder-sdk-node": "2.1.4",
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
@@ -180,6 +176,7 @@
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",
     "yamljs": "0.3.0",
+    "yargs-parser": "21.1.1",
     "zod": "catalog:"
   }
 }
