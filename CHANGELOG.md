@@ -1,3 +1,15 @@
+## [1.101.1](https://github.com/n8n-io/n8n/compare/n8n@1.101.0...n8n@1.101.1) (2025-07-03)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Fix tool-usage with fallback mechanism ([#16898](https://github.com/n8n-io/n8n/issues/16898)) ([fbebfac](https://github.com/n8n-io/n8n/commit/fbebfac53114ce27f6201e2c3c8d6a0693261c77))
+* **core:** Remove unneeded cookies from webhook requests ([#16736](https://github.com/n8n-io/n8n/issues/16736)) ([34768f1](https://github.com/n8n-io/n8n/commit/34768f1d93e9a76a0c41f4837962d37a8691f8d1))
+* **editor:** Only do new versions & what's new check after login ([#16844](https://github.com/n8n-io/n8n/issues/16844)) ([ba1ccb9](https://github.com/n8n-io/n8n/commit/ba1ccb985b69375bd351f57f0c9a28432e256272))
+* **Google Sheets Node:** Include all headers ([#16928](https://github.com/n8n-io/n8n/issues/16928)) ([ac9c811](https://github.com/n8n-io/n8n/commit/ac9c811f4d3f91308870bbe022e47c09377e2404))
+
+
+
 # [1.101.0](https://github.com/n8n-io/n8n/compare/n8n@1.100.0...n8n@1.101.0) (2025-06-30)
 
 
