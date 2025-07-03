@@ -912,6 +912,9 @@ importers:
       '@langchain/textsplitters':
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))
+      '@langchain/weaviate':
+        specifier: 0.2.0
+        version: 0.2.0(@langchain/core@0.3.59(openai@4.103.0(encoding@0.1.13)(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@modelcontextprotocol/sdk':
         specifier: 1.12.0
         version: 1.12.0
@@ -1026,6 +1029,9 @@ importers:
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
+      weaviate-client:
+        specifier: 3.6.2
+        version: 3.6.2(encoding@0.1.13)
       zod:
         specifier: 3.25.67
         version: 3.25.67
