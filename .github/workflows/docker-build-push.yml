@@ -5,6 +5,9 @@
 
 name: 'Docker: Build and Push'
 
+env:
+  NODE_OPTIONS: '--max-old-space-size=8192'
+
 on:
   schedule:
     - cron: '0 0 * * *'
