@@ -6,7 +6,7 @@
 
 	// Text
 	--color-text-dark: var(--p-white);
-	--color-text-base: var(--p-gray-070);
+	--color-text-base: var(--p-gray-200);
 	--color-text-light: var(--p-gray-320);
 	--color-text-lighter: var(--p-gray-740);
 	--color-text-xlight: var(--p-gray-850);
@@ -249,8 +249,8 @@
 	--color-notification-background: var(--p-gray-740);
 
 	// Execution
-	--execution-card-background: var(--p-gray-850);
-	--execution-card-background-hover: var(red);
+	--execution-card-background: transparent;
+	--execution-card-background-hover: var(--color-background-light-base);
 	--execution-selector-background: var(--p-gray-740);
 	--execution-selector-text: var(--color-text-base);
 	--execution-select-all-text: var(--color-text-base);
@@ -273,9 +273,10 @@
 	--color-notice-font: var(--p-white);
 
 	// Callout
-	--color-callout-info-border: var(--p-gray-670);
-	--color-callout-info-background: var(--p-gray-740);
+	--color-callout-info-border: var(--p-gray-740);
+	--color-callout-info-background: var(--p-gray-820);
 	--color-callout-info-font: var(--p-white);
+	--color-callout-info-icon: var(--p-white);
 	--color-callout-success-border: var(--color-success);
 	--color-callout-success-background: var(--p-color-alt-a-800);
 	--color-callout-success-font: var(--p-white);

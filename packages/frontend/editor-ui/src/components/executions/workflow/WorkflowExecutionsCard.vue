@@ -140,7 +140,13 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
-				<div v-if="isAnnotationEnabled" :class="$style.annotation">
+				<div
+					v-if="
+						isAnnotationEnabled &&
+						(execution.annotation?.vote || executionUIDetails.tags.length > 0)
+					"
+					:class="$style.annotation"
+				>
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />
 						<N8nIcon v-else :class="$style.down" icon="thumbs-down" />
@@ -270,7 +276,7 @@ function onRetryMenuItemSelect(action: string): void {
 		flex-direction: row;
 		gap: var(--spacing-3xs);
 		align-items: center;
-		margin: var(--spacing-4xs) 0 0;
+		margin: var(--spacing-2xs) 0 0;
 
 		.ratingIcon {
 			.up {
