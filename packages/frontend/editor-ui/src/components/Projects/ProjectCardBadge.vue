@@ -202,8 +202,8 @@ const projectLocation = computed(() => {
 
 .badge {
 	padding: var(--spacing-4xs) var(--spacing-2xs);
-	background-color: var(--color-background-xlight);
-	border-color: var(--color-foreground-base);
+	background-color: var(--color-project-card-badge-background);
+	border-color: var(--color-project-card-badge-border);
 
 	z-index: 1;
 	position: relative;
