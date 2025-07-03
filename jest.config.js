@@ -11,6 +11,8 @@ const tsJestOptions = {
 	},
 };
 
+console.log(tsJestOptions);
+
 const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
 
 const esmDependencies = [

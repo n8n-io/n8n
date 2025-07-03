@@ -1,5 +1,8 @@
 {
-	"extends": ["@n8n/typescript-config/modern/tsconfig.json"],
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
 	"compilerOptions": {
 		"paths": {
 			"@credentials/*": ["./credentials/*"],
@@ -13,10 +16,8 @@
 		"experimentalDecorators": true,
 
 		// TODO: remove all options below this line
-		"useUnknownInCatchVariables": false,
-		"noImplicitAny": true,
-		"noUncheckedIndexedAccess": false,
-		"noImplicitOverride": false
+		"noImplicitReturns": false,
+		"useUnknownInCatchVariables": false
 	},
 	"include": [
 		"shims.d.ts",
@@ -26,63 +27,13 @@
 		"test/**/*.ts",
 		"types/**/*.ts",
 		"utils/**/*.ts",
+		"types/**/*.ts",
 		"../core/nodes-testing/**/*.ts",
 		"../../node_modules/jest-expect-message/types/index.d.ts"
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
-		{ "path": "../workflow/tsconfig.build.esm.json" },
+		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
 	]
 }
-
-//{
-//	"compilerOptions": {
-//		"emitDecoratorMetadata": true,
-//		"experimentalDecorators": true,
-//		"paths": {
-//			"@credentials/*": ["./credentials/*"],
-//			"@test/*": ["./test/*"],
-//			"@utils/*": ["./utils/*"],
-//			"@nodes-testing/*": ["../core/nodes-testing/*"]
-//		},
-//		// TODO: Fix and remove all options below this line to comply with the parent config
-//		"removeComments": true,
-//		"useUnknownInCatchVariables": true,
-//		"forceConsistentCasingInFileNames": true,
-//		"noImplicitAny": true,
-//		"noImplicitReturns": true,
-//		"noUnusedLocals": true,
-//		"noUnusedParameters": true,
-//		"strictNullChecks": true,
-//		"preserveConstEnums": true,
-//		"esModuleInterop": true,
-//		"resolveJsonModule": true,
-//		"incremental": true,
-//		"sourceMap": true,
-//		"skipLibCheck": true
-//	},
-//	"include": [
-//		"credentials/**/*.ts",
-//		"nodes/**/*.ts",
-//		"nodes/**/*.json",
-//		"test/**/*.ts",
-//		"types/**/*.ts",
-//		"utils/**/*.ts",
-//		"../core/nodes-testing/**/*.ts",
-//		"../../node_modules/jest-expect-message/types/index.d.ts"
-//	],
-//	"exclude": ["node_modules"],
-//	"references": [
-//		{ "path": "../@n8n/imap/tsconfig.build.json" },
-//		{ "path": "../workflow/tsconfig.build.esm.json" },
-//		{ "path": "../core/tsconfig.build.json" }
-//	],
-//	"tsc-alias": {
-//		"replacers": {
-//			"base-url": {
-//				"enabled": false
-//			}
-//		}
-//	}
-//}
