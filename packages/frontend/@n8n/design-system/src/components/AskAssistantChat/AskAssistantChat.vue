@@ -6,6 +6,7 @@ import CodeDiffMessage from './messages/CodeDiffMessage.vue';
 import ErrorMessage from './messages/ErrorMessage.vue';
 import EventMessage from './messages/EventMessage.vue';
 import TextMessage from './messages/TextMessage.vue';
+import ToolMessage from './messages/ToolMessage.vue';
 import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
 import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
@@ -179,6 +180,12 @@ function onSubmitFeedback(feedback: string) {
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 						/>
+						<ToolMessage
+							v-else-if="message.type === 'tool'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
 						<WorkflowStepsMessage
 							v-else-if="message.type === 'workflow-step'"
 							:message="message"
@@ -203,12 +210,12 @@ function onSubmitFeedback(feedback: string) {
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
 						/>
-						<WorkflowUpdatedMessage
+						<!-- <WorkflowUpdatedMessage
 							v-else-if="message.type === 'workflow-updated'"
 							:message="message"
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
-						/>
+						/> -->
 						<RateWorkflowMessage
 							v-else-if="message.type === 'rate-workflow'"
 							:message="message"

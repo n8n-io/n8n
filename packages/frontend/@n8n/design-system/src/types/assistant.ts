@@ -118,6 +118,18 @@ export namespace ChatUI {
 		content: string;
 	}
 
+	export interface ToolMessage {
+		role: 'assistant';
+		type: 'tool';
+		toolName: string;
+		status: 'running' | 'completed' | 'error';
+		updates: Array<{
+			type: 'input' | 'output' | 'progress' | 'error';
+			data: any;
+			timestamp?: string;
+		}>;
+	}
+
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
@@ -140,6 +152,7 @@ export namespace ChatUI {
 		| WorkflowGeneratedMessage
 		| RateWorkflowMessage
 		| WorkflowUpdatedMessage
+		| ToolMessage
 	) & {
 		id: string;
 		read: boolean;

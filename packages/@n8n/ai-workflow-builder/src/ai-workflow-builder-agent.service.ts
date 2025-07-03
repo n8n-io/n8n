@@ -231,47 +231,47 @@ export class AiWorkflowBuilderService {
 			next: 'PLAN',
 		};
 
-		const stream = agent.streamEvents(initialState, {
+		const stream = await agent.stream(initialState, {
 			...threadConfig,
-			// streamMode: 'custom',
+			streamMode: ['updates', 'custom'],
 			recursionLimit: 30,
-			version: 'v2',
 		});
 
-		for await (const chunk of stream) {
-			if (chunk.event === 'on_tool_end' && ['connect_nodes', 'add_nodes'].includes(chunk.name)) {
-				console.log('Updating WF');
-				yield {
-					messages: [
-						{
+		for await (const [streamMode, chunk] of stream) {
+			if (streamMode === 'updates') {
+				// Handle final messages
+				if ((chunk?.agent?.messages ?? [])?.length > 0) {
+					const lastMessage = chunk.agent.messages[chunk.agent.messages.length - 1];
+					if (lastMessage.content) {
+						const messageChunk = {
 							role: 'assistant',
-							type: 'workflow-updated',
-							codeSnippet: JSON.stringify(chunk.data.output.update.workflowJSON, null, 2),
-						},
-					],
-				};
-			} else if (chunk.event === 'on_chain_end' && chunk.name === 'LangGraph') {
-				const lastAiMessage = (chunk.data.output.messages ?? [])[
-					chunk.data.output.messages.length - 1
-				].content;
-				// let messageChunk: MessageResponse;
-				const messageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: lastAiMessage,
-					step: chunk.name,
-				};
-
-				yield { messages: [messageChunk] };
-				// if (chunk.event === 'on_custom_event') {
-				// 	if (this.isWorkflowEvent(chunk.name)) {
-				// 		messageChunk = chunk.data as MessageResponse;
-				// 	} else {
-				// 	}
-				// }
+							type: 'message',
+							text: lastMessage.content,
+						};
+						yield { messages: [messageChunk] };
+					}
+				}
+			} else if (streamMode === 'custom') {
+				// Handle custom tool updates
+				if (chunk?.type === 'tool') {
+					yield {
+						messages: [chunk],
+					};
+					if (['add_nodes', 'connect_nodes'].includes(chunk.toolName)) {
+						const currentState = await agent.getState(threadConfig);
+						console.log('Updating WF', currentState);
+						yield {
+							messages: [
+								{
+									role: 'assistant',
+									type: 'workflow-updated',
+									codeSnippet: JSON.stringify(currentState.values.workflowJSON, null, 2),
+								},
+							],
+						};
+					}
+				}
 			}
-
-			// console.log('chunk.event:', chunk.event, JSON.stringify(chunk, null, 2))
 		}
 	}
 }

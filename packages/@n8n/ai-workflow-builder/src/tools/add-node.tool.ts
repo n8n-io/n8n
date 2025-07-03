@@ -1,6 +1,6 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { Command, getCurrentTaskInput } from '@langchain/langgraph';
+import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -21,16 +21,30 @@ const addNodesSchema = z.object({
 
 export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 	return tool(
-		async (input, config) => {
+		async (input, config: LangGraphRunnableConfig) => {
 			const { nodes } = input;
 			const state = getCurrentTaskInput() as typeof WorkflowState.State;
+
+			// Emit tool start with input
+			config.writer?.({
+				type: 'tool',
+				toolName: 'add_nodes',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
 
 			const addedNodes: INode[] = [];
 			const errors: string[] = [];
 			let currentNodes = [...state.workflowJSON.nodes];
 
 			// Process each node in the array
-			for (const nodeInput of nodes) {
+			for (let i = 0; i < nodes.length; i++) {
+				const nodeInput = nodes[i];
 				const { nodeType, name } = nodeInput;
 
 				// Find the node type
@@ -57,11 +71,28 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 
 			// If all nodes failed to add, return error
 			if (addedNodes.length === 0 && errors.length > 0) {
+				// Emit error completion
+				config.writer?.({
+					type: 'tool',
+					toolName: 'add_nodes',
+					status: 'error',
+					updates: [
+						{
+							type: 'error',
+							data: {
+								message: `Failed to add nodes: ${errors.join(', ')}`,
+								errors,
+							},
+						},
+					],
+				});
+
 				return new Command({
 					update: {
 						messages: [
 							new ToolMessage({
 								content: `Failed to add nodes: ${errors.join(', ')}. Please search for available nodes first.`,
+								// @ts-ignore
 								tool_call_id: config.toolCall?.id,
 							}),
 						],
@@ -88,6 +119,27 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 				responseMessage += `\n\nErrors:\n${errors.join('\n')}`;
 			}
 
+			// Emit success completion
+			config.writer?.({
+				type: 'tool',
+				toolName: 'add_nodes',
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							addedNodes: addedNodes.map((node) => ({
+								id: node.id,
+								name: node.name,
+								type: node.type,
+							})),
+							errors: errors.length > 0 ? errors : undefined,
+							message: responseMessage,
+						},
+					},
+				],
+			});
+
 			// Return Command with state update
 			return new Command({
 				update: {
@@ -95,6 +147,7 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 					messages: [
 						new ToolMessage({
 							content: responseMessage,
+							// @ts-ignore
 							tool_call_id: config.toolCall?.id,
 						}),
 					],

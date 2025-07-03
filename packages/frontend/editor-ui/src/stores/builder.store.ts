@@ -193,6 +193,38 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					content: msg.content,
 					read,
 				});
+			} else if (msg.type === 'tool' && 'toolName' in msg) {
+				// Check if we have an existing tool message to update
+				const existingToolMessageIndex = messages.findIndex(
+					(m) =>
+						m.type === 'tool' &&
+						m.id === id &&
+						m.toolName === msg.toolName &&
+						m.status === 'running',
+				);
+
+				if (existingToolMessageIndex > -1 && msg.status === 'completed') {
+					// Update existing running tool message with completion
+					messages[existingToolMessageIndex] = {
+						...messages[existingToolMessageIndex],
+						status: msg.status,
+						updates: [
+							...(messages[existingToolMessageIndex] as ChatUI.ToolMessage).updates,
+							...msg.updates,
+						],
+					};
+				} else {
+					// Add new tool message
+					messages.push({
+						id,
+						type: 'tool',
+						role: 'assistant',
+						toolName: msg.toolName,
+						status: msg.status,
+						updates: msg.updates,
+						read,
+					});
+				}
 			}
 		});
 		console.log('🚀 ~ addAssistantMessages ~ messages:', messages);

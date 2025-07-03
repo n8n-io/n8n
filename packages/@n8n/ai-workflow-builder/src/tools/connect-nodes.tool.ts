@@ -1,6 +1,6 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { Command, getCurrentTaskInput } from '@langchain/langgraph';
+import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -45,20 +45,52 @@ const nodesConnectionsSchema = z.object({
 
 export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 	return tool(
-		async (input, config) => {
+		async (input, config: LangGraphRunnableConfig) => {
 			const currentState = getCurrentTaskInput() as typeof WorkflowState.State;
 			const workflowJSON = currentState.workflowJSON;
+
+			// Emit tool start with input
+			config.writer?.({
+				type: 'tool',
+				toolName: 'connect_nodes',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
 
 			const matchedSourceNode = workflowJSON?.nodes.find((node) => node.id === input.sourceNodeId);
 			const matchedTargetNode = workflowJSON?.nodes.find((node) => node.id === input.targetNodeId);
 
 			if (!matchedSourceNode || !matchedTargetNode) {
 				console.log('No matched source node or target node');
+
+				// Emit error completion
+				config.writer?.({
+					type: 'tool',
+					toolName: 'connect_nodes',
+					status: 'error',
+					updates: [
+						{
+							type: 'error',
+							data: {
+								message: `Source node "${input.sourceNodeId}" or target node "${input.targetNodeId}" not found`,
+								sourceNodeId: input.sourceNodeId,
+								targetNodeId: input.targetNodeId,
+							},
+						},
+					],
+				});
+
 				return new Command({
 					update: {
 						messages: [
 							new ToolMessage({
 								content: `Source node "${input.sourceNodeId}" or target node "${input.targetNodeId}" not found. Please check the node names and try again.`,
+								// @ts-ignore
 								tool_call_id: config.toolCall?.id,
 							}),
 						],
@@ -94,11 +126,30 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 				// If source is not a sub-node but target might be, check if we should swap
 				else if (!sourceNodeTypeIsSubNode && !targetNodeTypeIsSubNode) {
 					// Both are main nodes - this is an error case we can't auto-fix
+					// Emit error completion
+					config.writer?.({
+						type: 'tool',
+						toolName: 'connect_nodes',
+						status: 'error',
+						updates: [
+							{
+								type: 'error',
+								data: {
+									message: `Connection type "${input.connectionType}" requires a sub-node, but both nodes are main nodes`,
+									connectionType: input.connectionType,
+									sourceNode: actualSourceNode.name,
+									targetNode: actualTargetNode.name,
+								},
+							},
+						],
+					});
+
 					return new Command({
 						update: {
 							messages: [
 								new ToolMessage({
 									content: `Error: Connection type "${input.connectionType}" requires a sub-node, but both nodes are main nodes. Please add an appropriate sub-node first (e.g., OpenAI Chat Model for ai_languageModel).`,
+									// @ts-ignore
 									tool_call_id: config.toolCall?.id,
 								}),
 							],
@@ -136,11 +187,31 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 				successMessage = `Connected: ${actualSourceNode.name} → ${actualTargetNode.name} (${input.connectionType})`;
 			}
 
+			// Emit success completion
+			config.writer?.({
+				type: 'tool',
+				toolName: 'connect_nodes',
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							sourceNode: actualSourceNode.name,
+							targetNode: actualTargetNode.name,
+							connectionType: input.connectionType,
+							swapped,
+							message: successMessage,
+						},
+					},
+				],
+			});
+
 			return new Command({
 				update: {
 					messages: [
 						new ToolMessage({
 							content: successMessage,
+							// @ts-ignore
 							tool_call_id: config.toolCall?.id,
 						}),
 					],
