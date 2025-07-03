@@ -9,6 +9,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const emit = defineEmits<{
 	close: [];
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const workflowStore = useWorkflowsStore();
 const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
@@ -76,6 +78,7 @@ function fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): Workflow
 }
 
 function onInsertWorkflow(code: string) {
+	console.log('Insert new workflow');
 	let workflowData: WorkflowDataUpdate;
 	try {
 		workflowData = JSON.parse(code);
@@ -105,6 +108,25 @@ function onInsertWorkflow(code: string) {
 		],
 		uuid(),
 	);
+}
+function onUpdateWorkflow(code: string) {
+	console.log('Update workflow');
+	let workflowData: WorkflowDataUpdate;
+	try {
+		workflowData = JSON.parse(code);
+	} catch (error) {
+		console.error('Error parsing workflow data', error);
+		return;
+	}
+
+	workflowStore.removeAllConnections({ setStateDirty: false });
+	workflowStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+	console.log('🚀 ~ onUpdateWorkflow ~ workflowData:', workflowData);
+	nodeViewEventBus.emit('importWorkflowData', {
+		data: workflowData,
+		tidyUp: false,
+	});
 }
 
 function onNewWorkflow() {
@@ -149,6 +171,12 @@ watch(
 		const workflowGeneratedMessage = messages.find((msg) => msg.type === 'workflow-generated');
 		if (workflowGeneratedMessage) {
 			onInsertWorkflow(workflowGeneratedMessage.codeSnippet);
+		}
+		const workflowUpdatedMessage = messages.findLast((msg) => msg.type === 'workflow-updated');
+		console.log('🚀 ~ workflowUpdatedMessage:', workflowUpdatedMessage);
+		if (workflowUpdatedMessage) {
+			// @ts-ignore
+			onUpdateWorkflow(workflowUpdatedMessage.codeSnippet);
 		}
 	},
 	{ deep: true },

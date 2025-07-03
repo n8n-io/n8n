@@ -21,6 +21,7 @@ import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssis
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
+import WorkflowUpdatedMessage from './messages/workflow/WorkflowUpdatedMessage.vue';
 
 const { t } = useI18n();
 
@@ -198,6 +199,12 @@ function onSubmitFeedback(feedback: string) {
 						/>
 						<WorkflowGeneratedMessage
 							v-else-if="message.type === 'workflow-generated'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<WorkflowUpdatedMessage
+							v-else-if="message.type === 'workflow-updated'"
 							:message="message"
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"

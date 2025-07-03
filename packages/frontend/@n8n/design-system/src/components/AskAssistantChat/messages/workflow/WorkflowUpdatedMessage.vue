@@ -22,8 +22,7 @@ const { t } = useI18n();
 
 <template>
 	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<p>{{ t('assistantChat.builder.workflowGenerated1') }}</p>
-		<p>{{ t('assistantChat.builder.workflowGenerated2') }}</p>
+		Workflow Updated
 	</BaseWorkflowMessage>
 </template>
 

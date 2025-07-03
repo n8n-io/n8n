@@ -38,10 +38,14 @@ export class AiController {
 		res: FlushableResponse,
 		@Body payload: AiBuilderChatRequestDto,
 	) {
+		console.log('🚀 ~ AiController ~ payload:', payload);
 		try {
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					question: payload.payload.question ?? '',
+					currentWorkflowJSON: JSON.stringify(
+						payload.payload.workflowContext?.currentWorkflow ?? {},
+					),
 				},
 				req.user,
 			);

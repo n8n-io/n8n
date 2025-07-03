@@ -29,10 +29,23 @@ export const gpt41mini = async (config: LLMConfig) => {
 	});
 };
 
-export const anthropicClaude37Sonnet = async (config: LLMConfig) => {
+export const gpt41 = async (config: LLMConfig) => {
+	const { ChatOpenAI } = await import('@langchain/openai');
+	return new ChatOpenAI({
+		model: 'gpt-4.1-2025-04-14',
+		apiKey: config.apiKey,
+		temperature: 0,
+		configuration: {
+			baseURL: config.baseUrl,
+			defaultHeaders: config.headers,
+		},
+	});
+};
+
+export const anthropicClaudeSonnet4 = async (config: LLMConfig) => {
 	const { ChatAnthropic } = await import('@langchain/anthropic');
 	return new ChatAnthropic({
-		model: 'claude-3-7-sonnet-20250219',
+		model: 'claude-sonnet-4-20250514',
 		apiKey: config.apiKey,
 		temperature: 0,
 		maxTokens: 16000,

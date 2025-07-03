@@ -21,6 +21,8 @@ import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import { useWorkflowsStore } from './workflows.store';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -37,12 +39,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
+	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
 	const nodeTypesStore = useNodeTypesStore();
+	const assistantHelpers = useAIAssistantHelpers();
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
@@ -116,10 +120,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Message handling functions
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
+		// console.log("🚀 ~ addAssistantMessages ~ newMessages:", newMessages)
 		const read = true; // Always mark as read in builder
-		const messages = [...chatMessages.value].filter(
-			(msg) => !(msg.id === id && msg.role === 'assistant'),
-		);
+		const messages = [...chatMessages.value];
 		assistantThinkingMessage.value = undefined;
 
 		newMessages.forEach((msg) => {
@@ -176,6 +179,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					codeSnippet: msg.codeSnippet,
 					read,
 				});
+			} else if (msg.type === 'workflow-updated' && 'codeSnippet' in msg) {
+				messages.push({
+					id,
+					type: 'workflow-updated',
+					role: 'assistant',
+					codeSnippet: msg.codeSnippet,
+					read,
+				});
 			} else if (msg.type === 'rate-workflow') {
 				messages.push({
 					id,
@@ -186,6 +197,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				});
 			}
 		});
+		console.log('🚀 ~ addAssistantMessages ~ messages:', messages);
 		chatMessages.value = messages;
 	}
 
@@ -278,8 +290,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			question: userMessage,
+			workflowContext: {
+				currentWorkflow: assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
+			},
 		};
-
+		console.log('Payload: ', payload);
 		chatWithBuilder(
 			rootStore.restApiContext,
 			{

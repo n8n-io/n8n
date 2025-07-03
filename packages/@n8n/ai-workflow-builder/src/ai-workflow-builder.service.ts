@@ -14,7 +14,7 @@ import { nodesComposerChain } from './chains/nodes-composer';
 import { plannerChain } from './chains/planner';
 import { validatorChain } from './chains/validator';
 import { ILicenseService } from './interfaces';
-import { anthropicClaude37Sonnet, gpt41mini } from './llm-config';
+import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import type { MessageResponse } from './types';
 import { WorkflowState } from './workflow-state';
 
@@ -68,7 +68,7 @@ export class AiWorkflowBuilderService {
 					Authorization: authHeaders.apiKey,
 				},
 			});
-			this.llmComplexTask = await anthropicClaude37Sonnet({
+			this.llmComplexTask = await anthropicClaudeSonnet4({
 				baseUrl: baseUrl + '/v1/api-proxy/anthropic',
 				apiKey: '-',
 				headers: {
@@ -81,7 +81,7 @@ export class AiWorkflowBuilderService {
 		this.llmSimpleTask = await gpt41mini({
 			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 		});
-		this.llmComplexTask = await anthropicClaude37Sonnet({
+		this.llmComplexTask = await anthropicClaudeSonnet4({
 			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 		});
 	}
