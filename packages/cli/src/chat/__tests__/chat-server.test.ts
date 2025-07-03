@@ -42,7 +42,10 @@ describe('ChatServer', () => {
 	it('handles WebSocket upgrade for /chat path', () => {
 		chatServer.setup(mockHttpServer, mockApp);
 
-		const req = { url: 'http://localhost:5678/chat?sessionId=123&executionId=456' } as ChatRequest;
+		const req = {
+			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',
+			socket: { remoteAddress: '127.0.0.1' },
+		} as ChatRequest;
 		const socket = {} as any;
 		const head = {} as any;
 
@@ -60,7 +63,10 @@ describe('ChatServer', () => {
 	it('calls attachToApp after WebSocket upgrade', () => {
 		chatServer.setup(mockHttpServer, mockApp);
 
-		const req = { url: 'http://localhost:5678/chat?sessionId=123&executionId=456' } as ChatRequest;
+		const req = {
+			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',
+			socket: { remoteAddress: '127.0.0.1' },
+		} as ChatRequest;
 		const socket = {} as any;
 		const head = {} as any;
 		const ws = {} as WebSocket;

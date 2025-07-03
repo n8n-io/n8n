@@ -54,6 +54,9 @@ export class ChatExecutionManager {
 			unflattenData: true,
 		});
 	}
+	async checkExecutionExists(executionId: string) {
+		return await this.executionRepository.findSingleExecution(executionId);
+	}
 
 	private getWorkflow(execution: IExecutionResponse) {
 		const { workflowData } = execution;
@@ -76,47 +79,47 @@ export class ChatExecutionManager {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
 
-		if (node && executionData) {
-			const inputData = executionData.data;
-			const connectionInputData = executionData.data.main[0];
-			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const context = new ExecuteContext(
-				workflow,
-				node,
-				additionalData,
-				'manual',
-				execution.data,
-				0,
-				connectionInputData ?? [],
-				inputData,
-				executionData,
-				[],
-			);
+		if (!node || !executionData) return null;
 
-			const { sessionId, action, chatInput, files } = message;
-			const binary: IBinaryKeyData = {};
+		const inputData = executionData.data;
+		const connectionInputData = executionData.data.main[0];
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const context = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			'manual',
+			execution.data,
+			0,
+			connectionInputData ?? [],
+			inputData,
+			executionData,
+			[],
+		);
 
-			if (files) {
-				for (const [index, file] of files.entries()) {
-					const base64 = file.data;
-					const buffer = Buffer.from(base64, BINARY_ENCODING);
-					const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
+		const { sessionId, action, chatInput, files } = message;
+		const binary: IBinaryKeyData = {};
 
-					binary[`data_${index}`] = binaryData;
-				}
+		if (files) {
+			for (const [index, file] of files.entries()) {
+				const base64 = file.data;
+				const buffer = Buffer.from(base64, BINARY_ENCODING);
+				const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
+
+				binary[`data_${index}`] = binaryData;
 			}
-
-			const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
-			if (Object.keys(binary).length > 0) {
-				nodeExecutionData.binary = binary;
-			}
-
-			if (nodeType.onMessage) {
-				return await nodeType.onMessage(context, nodeExecutionData);
-			}
-
-			return [[nodeExecutionData]];
 		}
+
+		const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
+		if (Object.keys(binary).length > 0) {
+			nodeExecutionData.binary = binary;
+		}
+
+		if (nodeType.onMessage) {
+			return await nodeType.onMessage(context, nodeExecutionData);
+		}
+
+		return [[nodeExecutionData]];
 
 		return null;
 	}

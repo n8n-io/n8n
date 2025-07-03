@@ -85,7 +85,7 @@ describe('ChatService', () => {
 				},
 			} as unknown as ChatRequest;
 
-			mockExecutionManager.findExecution.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.checkExecutionExists.mockResolvedValue({ id: '123' } as any);
 
 			await chatService.startSession(req);
 
@@ -125,7 +125,7 @@ describe('ChatService', () => {
 				isPublic: false,
 			});
 
-			mockExecutionManager.findExecution.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.checkExecutionExists.mockResolvedValue({ id: '123' } as any);
 
 			await chatService.startSession(req);
 
@@ -236,6 +236,7 @@ describe('ChatService', () => {
 			const data = JSON.stringify({ action: 'user', chatInput: 'hello', sessionId: 'abc' });
 			mockExecutionManager.findExecution.mockResolvedValue({
 				id: '123',
+				status: 'waiting',
 				data: { resultData: {} },
 			} as any);
 

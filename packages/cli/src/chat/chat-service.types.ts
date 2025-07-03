@@ -17,14 +17,26 @@ export type Session = {
 	sessionId: string;
 	intervalId: NodeJS.Timeout;
 	waitingNodeName?: string;
-	isPublic?: boolean;
-	isProcessing?: boolean;
+	isPublic: boolean;
+	isProcessing: boolean;
 	lastHeartbeat?: number;
 };
 
+/**
+ *  Message sent by the chat frontends
+ *
+ *  sessionId - Session ID
+ *
+ *  action - 'sendMessage';
+ *
+ *  chatInput - User message
+ *
+ *  files - Optional files
+ *
+ * */
 export type ChatMessage = {
 	sessionId: string;
-	action: string;
+	action: 'sendMessage';
 	chatInput: string;
 	files?: Array<{
 		name: string;

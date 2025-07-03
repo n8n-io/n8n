@@ -1622,6 +1622,9 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	/**
+	 * On message from chat do additional processing on the data
+	 */
 	onMessage?(context: IExecuteFunctions, data: INodeExecutionData): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -2109,6 +2112,22 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
+
+/**
+ * Defines how and when response should be sent:
+ *
+ * onReceived: Response is sent immidiatly after node done executing
+ *
+ * lastNode: Response is sent after the last node finishes executing
+ *
+ * responseNode: Response is sent from the Responde to Webhook node
+ *
+ * formPage: Special response with executionId sent to the form trigger node
+ *
+ * hostedChat: Special response with executionId sent to the hosted chat trigger node
+ *
+ * streaming: Response added to ruData to httpResponse and streamingEnabled set to true
+ */
 export type WebhookResponseMode =
 	| 'onReceived'
 	| 'lastNode'

@@ -28,7 +28,7 @@ describe('ChatExecutionManager', () => {
 
 	it('should handle errors from getRunData gracefully', async () => {
 		const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
-		const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+		const message = { sessionId: '123', action: 'sendMessage', chatInput: 'input' } as ChatMessage;
 
 		jest
 			.spyOn(chatExecutionManager as any, 'getRunData')
@@ -42,7 +42,11 @@ describe('ChatExecutionManager', () => {
 	describe('runWorkflow', () => {
 		it('should call WorkflowRunner.run with correct parameters', async () => {
 			const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
-			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+			const message = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+			} as ChatMessage;
 			const runData = { executionMode: 'manual', executionData: {}, workflowData: {} } as any;
 
 			jest.spyOn(chatExecutionManager as any, 'getRunData').mockResolvedValue(runData);
@@ -143,7 +147,11 @@ describe('ChatExecutionManager', () => {
 				},
 				mode: 'manual',
 			} as any;
-			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+			const message = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+			} as ChatMessage;
 			const project = { id: 'projectId' };
 			const nodeExecutionData = [[{ json: message }]];
 
@@ -180,7 +188,11 @@ describe('ChatExecutionManager', () => {
 				},
 				mode: 'manual',
 			} as any;
-			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+			const message = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+			} as ChatMessage;
 
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 			const workflow = { getNode: jest.fn().mockReturnValue(null) };
@@ -201,7 +213,11 @@ describe('ChatExecutionManager', () => {
 				},
 				mode: 'manual',
 			} as any;
-			const message = { sessionId: '123', action: 'test', chatInput: 'input' } as ChatMessage;
+			const message = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+			} as ChatMessage;
 
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 			const workflow = { getNode: jest.fn().mockReturnValue({}) };
@@ -224,7 +240,7 @@ describe('ChatExecutionManager', () => {
 			} as any;
 			const message = {
 				sessionId: '123',
-				action: 'test',
+				action: 'sendMessage',
 				chatInput: 'input',
 				files: [],
 			} as ChatMessage;
@@ -256,7 +272,7 @@ describe('ChatExecutionManager', () => {
 			} as any;
 			const message = {
 				sessionId: '123',
-				action: 'test',
+				action: 'sendMessage',
 				chatInput: 'input',
 			} as ChatMessage;
 			const node = { type: 'testType', typeVersion: 1 };

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, ensureError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 
 import { ChatExecutionManager } from './chat-execution-manager';
@@ -60,7 +60,7 @@ export class ChatService {
 			return;
 		}
 
-		const execution = await this.executionManager.findExecution(executionId);
+		const execution = await this.executionManager.checkExecutionExists(executionId);
 
 		if (!execution) {
 			ws.send(`Execution with id "${executionId}" does not exist`);
@@ -83,7 +83,7 @@ export class ChatService {
 
 		const intervalId = setInterval(async () => await respondToChat(), CHECK_FOR_RESPONSE_INTERVAL);
 
-		ws.once('close', async () => {
+		ws.once('close', () => {
 			ws.off('message', onMessage);
 			clearInterval(intervalId);
 			this.sessions.delete(key);
@@ -96,7 +96,8 @@ export class ChatService {
 			executionId,
 			sessionId,
 			intervalId,
-			isPublic,
+			isPublic: isPublic ?? false,
+			isProcessing: false,
 			lastHeartbeat: Date.now(),
 		};
 
@@ -124,7 +125,7 @@ export class ChatService {
 					return;
 				}
 
-				const execution = await this.getExecution(executionId, sessionKey);
+				const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
 
 				if (!execution) {
 					session.isProcessing = false;
@@ -152,7 +153,7 @@ export class ChatService {
 
 						if (lastNode && shouldResumeImmediately(lastNode)) {
 							connection.send('n8n|continue');
-							const data = { action: 'user', chatInput: '', sessionId };
+							const data: ChatMessage = { action: 'sendMessage', chatInput: '', sessionId };
 							await this.resumeExecution(executionId, data, sessionKey);
 							session.waitingNodeName = undefined;
 						} else {
@@ -185,10 +186,11 @@ export class ChatService {
 				}
 
 				session.isProcessing = false;
-			} catch (error) {
+			} catch (e) {
+				const error = ensureError(e);
 				if (session) session.isProcessing = false;
 				this.logger.error(
-					`Error sending message to chat in session ${sessionKey}: ${(error as Error).message}`,
+					`Error sending message to chat in session ${sessionKey}: ${error.message}`,
 				);
 			}
 		};
@@ -201,7 +203,7 @@ export class ChatService {
 
 				if (!session) return;
 
-				const message = data.toString();
+				const message = this.stringifyRawData(data);
 
 				if (message === 'n8n|heartbeat-ack') {
 					session.lastHeartbeat = Date.now();
@@ -210,23 +212,24 @@ export class ChatService {
 
 				const executionId = session.executionId;
 
-				await this.resumeExecution(executionId, this.processIncomingData(data), sessionKey);
+				await this.resumeExecution(executionId, this.prepareChatMessage(message), sessionKey);
 				session.waitingNodeName = undefined;
-			} catch (error) {
+			} catch (e) {
+				const error = ensureError(e);
 				this.logger.error(
-					`Error processing message from chat in session ${sessionKey}: ${(error as Error).message}`,
+					`Error processing message from chat in session ${sessionKey}: ${error.message}`,
 				);
 			}
 		};
 	}
 
 	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
-		const execution = await this.getExecution(executionId, sessionKey);
-		if (!execution) return;
+		const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
+		if (!execution || execution.status !== 'waiting') return;
 		await this.executionManager.runWorkflow(execution, message);
 	}
 
-	private async getExecution(executionId: string, sessionKey: string) {
+	private async getExecutionOrCleanupSession(executionId: string, sessionKey: string) {
 		const execution = await this.executionManager.findExecution(executionId);
 
 		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
@@ -234,8 +237,7 @@ export class ChatService {
 
 			if (!session) return null;
 
-			session.connection.terminate();
-			clearInterval(session.intervalId);
+			this.cleanupSession(session);
 			this.sessions.delete(sessionKey);
 			return null;
 		}
@@ -245,21 +247,30 @@ export class ChatService {
 		return execution;
 	}
 
-	private processIncomingData(data: RawData) {
+	private stringifyRawData(data: RawData) {
 		const buffer = Array.isArray(data)
 			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
 			: Buffer.from(data);
 
-		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
+		return buffer.toString('utf8');
+	}
 
-		if (message.files) {
-			message.files = message.files.map((file) => ({
+	private cleanupSession(session: Session) {
+		session.connection.terminate();
+		clearInterval(session.intervalId);
+	}
+
+	private prepareChatMessage(message: string) {
+		const chatMessage = jsonParse<ChatMessage>(message);
+
+		if (chatMessage.files) {
+			chatMessage.files = chatMessage.files.map((file) => ({
 				...file,
 				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
 			}));
 		}
 
-		return message;
+		return chatMessage;
 	}
 
 	private async checkHeartbeats() {
@@ -268,31 +279,32 @@ export class ChatService {
 			const disconnected: string[] = [];
 
 			for (const [key, session] of this.sessions.entries()) {
-				if (!session) continue;
-
-				const timeSinceLastHeartbeat = now - (session.lastHeartbeat || 0);
+				const timeSinceLastHeartbeat = now - (session.lastHeartbeat ?? 0);
 
 				if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
 					await this.executionManager.cancelExecution(session.executionId);
-					session.connection.terminate();
-					clearInterval(session.intervalId);
+					this.cleanupSession(session);
 					disconnected.push(key);
 				} else {
 					try {
 						session.connection.send('n8n|heartbeat');
-					} catch (error) {
+					} catch (e) {
+						this.cleanupSession(session);
 						disconnected.push(key);
+						const error = ensureError(e);
+						this.logger.error(`Error sending heartbeat to session ${key}: ${error.message}`);
 					}
 				}
 			}
 
-			if (disconnected.length > 0) {
+			if (disconnected.length) {
 				for (const key of disconnected) {
 					this.sessions.delete(key);
 				}
 			}
-		} catch (error) {
-			this.logger.error(`Error checking heartbeats: ${(error as Error).message}`);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Error checking heartbeats: ${error.message}`);
 		}
 	}
 }

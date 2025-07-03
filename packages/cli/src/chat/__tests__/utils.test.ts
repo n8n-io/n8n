@@ -20,11 +20,11 @@ const createMockExecution = (
 	firstExecutionData?: IDataObject,
 	nodeData?: IDataObject[],
 ): IExecutionResponse => {
-	const firstItem = firstExecutionData || {
+	const firstItem = firstExecutionData ?? {
 		json: { test: 'data' },
 		sendMessage: 'Test message',
 	};
-	const nodeRunData = nodeData || [
+	const nodeRunData = nodeData ?? [
 		{
 			data: {
 				main: [[firstItem]],
