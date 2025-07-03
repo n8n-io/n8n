@@ -6,8 +6,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
+	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
-	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from '../shared/GenericFunctions';
@@ -98,12 +98,8 @@ export class LinearTriggerV2 implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Issue Attachment',
-							value: 'attachment',
-						},
-						{
-							name: 'Issue Comment',
-							value: 'comment',
+							name: 'Comment Reaction',
+							value: 'reaction',
 						},
 						{
 							name: 'Cycle',
@@ -114,16 +110,20 @@ export class LinearTriggerV2 implements INodeType {
 							value: 'issue',
 						},
 						{
+							name: 'Issue Attachment',
+							value: 'attachment',
+						},
+						{
+							name: 'Issue Comment',
+							value: 'comment',
+						},
+						{
 							name: 'Issue Label',
 							value: 'issueLabel',
 						},
 						{
 							name: 'Project',
 							value: 'project',
-						},
-						{
-							name: 'Comment Reaction',
-							value: 'reaction',
 						},
 					],
 					default: [],
