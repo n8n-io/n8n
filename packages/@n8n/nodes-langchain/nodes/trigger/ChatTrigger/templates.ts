@@ -62,7 +62,7 @@ export function createPage({
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="http://localhost:6006/chat.css" rel="stylesheet" />
+			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 			<style>
 				html,
 				body,
