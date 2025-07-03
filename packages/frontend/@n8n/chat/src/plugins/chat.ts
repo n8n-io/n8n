@@ -5,7 +5,13 @@ import { computed, nextTick, ref } from 'vue';
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
+import type { ChatMessage, ChatOptions, ChatMessageText } from '@n8n/chat/types';
+import { StreamingMessageManager, createBotMessage } from '@n8n/chat/utils/streaming';
+import {
+	handleStreamingChunk,
+	handleNodeStart,
+	handleNodeComplete,
+} from '@n8n/chat/utils/streamingHandlers';
 
 export const ChatPlugin: Plugin<ChatOptions> = {
 	install(app, options) {
@@ -24,6 +30,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		);
 
 		async function sendMessage(text: string, files: File[] = []) {
+			console.log('Chat sendMessage called with:', text, files);
 			const sentMessage: ChatMessage = {
 				id: uuidv4(),
 				text,
@@ -38,7 +45,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				chatEventBus.emit('scrollToBottom');
 			});
 
-			let receivedMessage: ChatMessage | null = null;
+			const receivedMessage = ref<ChatMessageText | null>(null);
+			const streamingManager = new StreamingMessageManager();
 
 			try {
 				if (options?.enableStreaming) {
@@ -47,51 +55,27 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						files,
 						currentSessionId.value as string,
 						options,
-						(chunk: string) => {
-							if (receivedMessage) {
-								messages.value.splice(messages.value.length - 1, 1);
-							}
-							receivedMessage = {
-								id: uuidv4(),
-								type: 'text',
-								text: receivedMessage?.text ?? '',
-								sender: 'bot',
-							};
-
-							if (receivedMessage && 'text' in receivedMessage) {
-								receivedMessage.text += chunk;
-							}
-
-							messages.value.push(receivedMessage);
-
-							void nextTick(() => {
-								chatEventBus.emit('scrollToBottom');
-							});
+						(chunk: string, nodeId?: string) => {
+							handleStreamingChunk(chunk, nodeId, streamingManager, receivedMessage, messages);
 						},
-						() => {
-							receivedMessage = {
-								id: uuidv4(),
-								type: 'text',
-								text: ' ',
-								sender: 'bot',
-							};
-							messages.value.push(receivedMessage);
-
-							void nextTick(() => {
-								chatEventBus.emit('scrollToBottom');
-							});
+						(nodeId: string) => {
+							handleNodeStart(nodeId, streamingManager, receivedMessage, messages);
 						},
-						() => {
-							// Message end - no additional action needed
+						(nodeId: string) => {
+							handleNodeComplete(
+								nodeId,
+								streamingManager,
+								receivedMessage,
+								messages,
+								waitingForResponse,
+							);
 						},
 					);
+
+					// Mark streaming as complete after the function finishes
+					waitingForResponse.value = false;
 				} else {
-					receivedMessage = {
-						id: uuidv4(),
-						type: 'text',
-						text: '',
-						sender: 'bot',
-					};
+					receivedMessage.value = createBotMessage();
 
 					const sendMessageResponse = await api.sendMessage(
 						text,
@@ -110,21 +94,16 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						}
 					}
 
-					receivedMessage.text = textMessage;
-					messages.value.push(receivedMessage);
+					receivedMessage.value.text = textMessage;
+					messages.value.push(receivedMessage.value);
 				}
 			} catch (error) {
-				if (!receivedMessage) {
-					receivedMessage = {
-						id: uuidv4(),
-						type: 'text',
-						text: '',
-						sender: 'bot',
-					};
-					messages.value.push(receivedMessage);
+				if (!receivedMessage.value) {
+					receivedMessage.value = createBotMessage();
+					messages.value.push(receivedMessage.value);
 				}
-				if (receivedMessage && 'text' in receivedMessage) {
-					receivedMessage.text = 'Error: Failed to receive response';
+				if (receivedMessage.value && 'text' in receivedMessage.value) {
+					receivedMessage.value.text = 'Error: Failed to receive response';
 				}
 				console.error('Chat API error:', error);
 			} finally {

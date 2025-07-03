@@ -17,7 +17,13 @@ export const createSendMessageResponse = (
 	output,
 });
 
-export function createStreamingFetchResponse(chunks: Array<{ type: string; output?: string }>) {
+export function createStreamingFetchResponse(
+	chunks: Array<{
+		type: string;
+		content?: string;
+		metadata?: { nodeId: string; nodeName: string; timestamp: number };
+	}>,
+) {
 	return async () => {
 		const encoder = new TextEncoder();
 		const stream = new ReadableStream({
@@ -34,6 +40,7 @@ export function createStreamingFetchResponse(chunks: Array<{ type: string; outpu
 			ok: true,
 			status: 200,
 			body: stream,
+			headers: new Headers(),
 		} as Response;
 	};
 }

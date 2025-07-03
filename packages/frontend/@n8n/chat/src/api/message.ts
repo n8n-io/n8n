@@ -3,6 +3,7 @@ import type {
 	ChatOptions,
 	LoadPreviousSessionResponse,
 	SendMessageResponse,
+	StructuredChunk,
 } from '@n8n/chat/types';
 
 export async function loadPreviousSession(sessionId: string, options: ChatOptions) {
@@ -61,9 +62,9 @@ export async function sendMessageStreaming(
 	files: File[],
 	sessionId: string,
 	options: ChatOptions,
-	onChunk: (chunk: string) => void,
-	onBeginMessage: () => void,
-	onEndMessage: () => void,
+	onChunk: (chunk: string, nodeId?: string) => void,
+	onBeginMessage: (nodeId: string) => void,
+	onEndMessage: (nodeId: string) => void,
 ): Promise<void> {
 	if (files.length > 0) {
 		throw new Error('File uploads are not supported with streaming responses');
@@ -80,13 +81,16 @@ export async function sendMessageStreaming(
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
+			Accept: 'text/plain',
 			...options.webhookConfig?.headers,
 		},
 		body: JSON.stringify(body),
 	});
 
 	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`);
+		const errorText = await response.text();
+		console.error('HTTP error response:', errorText);
+		throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
 	}
 
 	const reader = response.body?.getReader();
@@ -95,6 +99,7 @@ export async function sendMessageStreaming(
 	}
 
 	const decoder = new TextDecoder();
+	let buffer = '';
 
 	try {
 		while (true) {
@@ -104,18 +109,54 @@ export async function sendMessageStreaming(
 			}
 
 			const chunk = decoder.decode(value, { stream: true });
+			buffer += chunk;
 
-			if (chunk.includes('\n')) {
-				const decoded = JSON.parse(chunk.substring(0, chunk.indexOf('\n')));
-				if (decoded?.type === 'begin') {
-					onBeginMessage();
+			// Process all complete lines in the buffer
+			let newlineIndex;
+			while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+				const line = buffer.substring(0, newlineIndex);
+				buffer = buffer.substring(newlineIndex + 1);
+
+				if (line.trim()) {
+					try {
+						const decoded: StructuredChunk = JSON.parse(line);
+						const nodeId = decoded.metadata?.nodeId || 'unknown';
+
+						if (decoded?.type === 'begin') {
+							onBeginMessage(nodeId);
+						}
+						if (decoded?.type === 'item') {
+							onChunk(decoded?.content ?? '', nodeId);
+						}
+						if (decoded?.type === 'end') {
+							onEndMessage(nodeId);
+						}
+						if (decoded?.type === 'error') {
+							onChunk(`Error: ${decoded.content ?? 'Unknown error'}`, nodeId);
+						}
+					} catch (error) {
+						console.warn('Failed to parse JSON line:', line, error);
+						// Fallback: treat as plain text chunk without nodeId
+						onChunk(line, undefined);
+					}
 				}
-				if (decoded?.type === 'progress') {
-					onChunk(decoded?.output);
+			}
+		}
+
+		// Process any remaining buffer content
+		if (buffer.trim()) {
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Processing remaining buffer:', buffer);
+			}
+			try {
+				const decoded: StructuredChunk = JSON.parse(buffer);
+				const nodeId = decoded.metadata?.nodeId || 'unknown';
+				if (decoded?.type === 'item') {
+					onChunk(decoded?.content ?? '', nodeId);
 				}
-				if (decoded?.type === 'end') {
-					onEndMessage();
-				}
+			} catch (error) {
+				console.warn('Failed to parse remaining buffer as JSON, treating as plain text:', buffer);
+				onChunk(buffer, undefined);
 			}
 		}
 	} finally {

@@ -222,11 +222,29 @@ describe('createChat()', () => {
 		it('should handle streaming responses when enableStreaming is true', async () => {
 			const input = 'Tell me a story!';
 			const chunks = [
-				{ type: 'begin' },
-				{ type: 'progress', output: 'Once upon ' },
-				{ type: 'progress', output: 'a time, ' },
-				{ type: 'progress', output: 'there was a test.' },
-				{ type: 'end' },
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'item',
+					content: 'Once upon ',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'item',
+					content: 'a time, ',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'item',
+					content: 'there was a test.',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'end',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
 			];
 
 			const fetchSpy = vi.spyOn(window, 'fetch');
@@ -259,6 +277,7 @@ describe('createChat()', () => {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
+						Accept: 'text/plain',
 					},
 					body: expect.stringMatching(/"action":"sendMessage"/) as unknown,
 				}),

@@ -26,10 +26,21 @@ describe('sendMessageStreaming', () => {
 
 	it('should call the webhook URL with correct parameters', async () => {
 		const chunks = [
-			{ type: 'begin' },
-			{ type: 'progress', output: 'Hello ' },
-			{ type: 'progress', output: 'World!' },
-			{ type: 'end' },
+			{
+				type: 'begin',
+				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+			},
+			{
+				type: 'item',
+				content: 'Hello ',
+				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+			},
+			{
+				type: 'item',
+				content: 'World!',
+				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+			},
+			{ type: 'end', metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() } },
 		];
 
 		const encoder = new TextEncoder();
@@ -47,6 +58,7 @@ describe('sendMessageStreaming', () => {
 			ok: true,
 			status: 200,
 			body: stream,
+			headers: new Headers(),
 		} as Response;
 
 		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
@@ -69,6 +81,7 @@ describe('sendMessageStreaming', () => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
+				Accept: 'text/plain',
 			},
 			body: JSON.stringify({
 				action: 'sendMessage',
@@ -78,10 +91,12 @@ describe('sendMessageStreaming', () => {
 		});
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(1);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1');
 		expect(onChunk).toHaveBeenCalledTimes(2);
-		expect(onChunk).toHaveBeenCalledWith('Hello ');
-		expect(onChunk).toHaveBeenCalledWith('World!');
+		expect(onChunk).toHaveBeenCalledWith('Hello ', 'node-1');
+		expect(onChunk).toHaveBeenCalledWith('World!', 'node-1');
 		expect(onEndMessage).toHaveBeenCalledTimes(1);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1');
 	});
 
 	it('should reject file uploads', async () => {
@@ -104,6 +119,8 @@ describe('sendMessageStreaming', () => {
 		const mockResponse = {
 			ok: false,
 			status: 500,
+			headers: new Headers(),
+			text: () => Promise.resolve('Internal Server Error'),
 		} as Response;
 
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
@@ -126,6 +143,7 @@ describe('sendMessageStreaming', () => {
 			ok: true,
 			status: 200,
 			body: null,
+			headers: new Headers(),
 		} as Response;
 
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
@@ -154,7 +172,13 @@ describe('sendMessageStreaming', () => {
 			},
 		};
 
-		const chunks = [{ type: 'begin' }, { type: 'end' }];
+		const chunks = [
+			{
+				type: 'begin',
+				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+			},
+			{ type: 'end', metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() } },
+		];
 		const encoder = new TextEncoder();
 		const stream = new ReadableStream({
 			start(controller) {
@@ -170,6 +194,7 @@ describe('sendMessageStreaming', () => {
 			ok: true,
 			status: 200,
 			body: stream,
+			headers: new Headers(),
 		} as Response;
 
 		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
@@ -188,6 +213,7 @@ describe('sendMessageStreaming', () => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
+				Accept: 'text/plain',
 				Authorization: 'Bearer token',
 				'X-Custom-Header': 'value',
 			},
@@ -208,7 +234,13 @@ describe('sendMessageStreaming', () => {
 			},
 		};
 
-		const chunks = [{ type: 'begin' }, { type: 'end' }];
+		const chunks = [
+			{
+				type: 'begin',
+				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+			},
+			{ type: 'end', metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() } },
+		];
 		const encoder = new TextEncoder();
 		const stream = new ReadableStream({
 			start(controller) {
@@ -224,6 +256,7 @@ describe('sendMessageStreaming', () => {
 			ok: true,
 			status: 200,
 			body: stream,
+			headers: new Headers(),
 		} as Response;
 
 		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
@@ -242,6 +275,7 @@ describe('sendMessageStreaming', () => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
+				Accept: 'text/plain',
 			},
 			body: JSON.stringify({
 				action: 'sendMessage',
