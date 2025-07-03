@@ -69,9 +69,9 @@ defineSlots<{ default?: {} }>();
 .button {
 	display: flex;
 	align-items: center;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--border-radius-small);
 	font-weight: var(--font-weight-medium);
-	color: var(--color-text-base);
+	color: var(--color-radio-button-text);
 	transition: background-color 0.2s ease;
 	cursor: pointer;
 	user-select: none;
@@ -121,7 +121,7 @@ defineSlots<{ default?: {} }>();
 }
 
 .active {
-	background-color: var(--color-foreground-xlight);
-	color: var(--color-text-dark);
+	background-color: var(--color-radio-button-selected-background);
+	color: var(--color-radio-button-selected-text);
 }
 </style>

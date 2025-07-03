@@ -293,6 +293,14 @@
 	// Input fields
 	--input-background-color: var(--p-white);
 
+	// Radio buttons
+	--color-radio-buttons-background: var(--color-foreground-base);
+
+	// Radio button
+	--color-radio-button-text: var(--color-text-base);
+	--color-radio-button-selected-text: var(--color-text-dark);
+	--color-radio-button-selected-background: var(--color-foreground-xlight);
+
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
 
@@ -449,6 +457,7 @@
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;
 	--border-radius-small: 2px;
+
 	--border-color-base: var(--color-foreground-base);
 	--border-color-light: var(--color-foreground-light);
 	--border-style-base: solid;

@@ -25,7 +25,7 @@
 	--color-background-base: var(--p-gray-670);
 	--color-background-light-base: var(--p-gray-800);
 	--color-background-light: var(--p-gray-950);
-	--color-background-xlight: var(--p-gray-890);
+	--color-background-xlight: var(--p-gray-900);
 
 	// Components' tokens
 
@@ -221,6 +221,14 @@
 
 	// Input fields
 	--input-background-color: var(--p-gray-850);
+
+	// Radio buttons
+	--color-radio-buttons-background: var(--p-gray-850);
+
+	// Radio button
+	--color-radio-button-selected-background: var(--p-gray-740);
+	--color-radio-button-text: var(--color-text-base);
+	--color-radio-button-selected-text: var(--color-text-dark);
 
 	// Table
 	--color-table-header-background: var(--p-gray-800);
