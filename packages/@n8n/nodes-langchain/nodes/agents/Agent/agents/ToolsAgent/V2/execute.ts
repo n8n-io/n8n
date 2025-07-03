@@ -1,7 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import {
+	AgentExecutor,
+	type AgentRunnableSequence,
+	createToolCallingAgent,
+} from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
@@ -38,16 +42,24 @@ function createAgentExecutor(
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
 ) {
-	const modelWithFallback = fallbackModel ? model.withFallbacks([fallbackModel]) : model;
 	const agent = createToolCallingAgent({
-		llm: modelWithFallback,
+		llm: model,
 		tools,
 		prompt,
 		streamRunnable: false,
 	});
 
+	let fallbackAgent: AgentRunnableSequence | undefined;
+	if (fallbackModel) {
+		fallbackAgent = createToolCallingAgent({
+			llm: fallbackModel,
+			tools,
+			prompt,
+			streamRunnable: false,
+		});
+	}
 	const runnableAgent = RunnableSequence.from([
-		agent,
+		fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
 		getAgentStepsParser(outputParser, memory),
 		fixEmptyContentMessage,
 	]);
