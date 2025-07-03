@@ -123,6 +123,7 @@ const emit = defineEmits<{
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	margin-left: auto;
+	white-space: nowrap;
 }
 
 .notice {
