@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { z, BaseWorkflowBuilderTool, type ToolContext, type ToolResult } from './base';
+import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
 import type { WorkflowState } from '../workflow-state';
 import { nodeConnectionSchema, type ConnectionResult } from './types/node.types';
 import {

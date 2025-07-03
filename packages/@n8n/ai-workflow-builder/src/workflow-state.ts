@@ -10,9 +10,6 @@ export const WorkflowState = Annotation.Root({
 	// The original prompt from the user.
 	prompt: Annotation<string>({ reducer: (x, y) => y ?? x ?? '' }),
 	// The list of logically derived workflow steps.
-	steps: Annotation<string[]>({ reducer: (x, y) => y ?? x ?? [] }),
-	// The list of candidate or selected n8n node names.
-	nodes: Annotation<string[]>({ reducer: (x, y) => y ?? x ?? [] }),
 	// The JSON representation of the workflow being built.
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x ?? { nodes: [], connections: {} },

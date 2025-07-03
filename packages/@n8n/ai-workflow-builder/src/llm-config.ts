@@ -22,6 +22,7 @@ export const gpt41mini = async (config: LLMConfig) => {
 		model: 'gpt-4.1-mini-2025-04-14',
 		apiKey: config.apiKey,
 		temperature: 0,
+		maxTokens: -1,
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,
@@ -34,7 +35,8 @@ export const gpt41 = async (config: LLMConfig) => {
 	return new ChatOpenAI({
 		model: 'gpt-4.1-2025-04-14',
 		apiKey: config.apiKey,
-		temperature: 0,
+		temperature: 1,
+		maxTokens: -1,
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,

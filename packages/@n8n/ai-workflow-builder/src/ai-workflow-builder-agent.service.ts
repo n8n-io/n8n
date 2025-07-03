@@ -9,7 +9,7 @@ import { assert, INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { ILicenseService } from './interfaces';
-import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
+import { anthropicClaudeSonnet4, gpt41, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
@@ -82,6 +82,10 @@ export class AiWorkflowBuilderService {
 		this.llmSimpleTask = await gpt41mini({
 			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 		});
+
+		// this.llmComplexTask = await gpt41({
+		// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+		// });
 		this.llmComplexTask = await anthropicClaudeSonnet4({
 			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 		});
@@ -111,20 +115,25 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private getAgent() {
+	private async getAgent(user: IUser) {
+		if (!this.llmComplexTask || !this.llmSimpleTask) {
+			await this.setupModels(user);
+		}
+
 		const tools = [
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
-			createUpdateNodeParametersTool(this.parsedNodeTypes).withLlm(this.llmSimpleTask!),
+			createUpdateNodeParametersTool(this.parsedNodeTypes)
+				.withLlm(this.llmComplexTask!)
+				.createLangChainTool(),
 		];
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmSimpleTask, 'LLM not setup');
-			assert(this.llmSimpleTask.bindTools, 'LLM does not support tools');
+			assert(this.llmComplexTask, 'LLM not setup');
+			assert(this.llmComplexTask.bindTools, 'LLM does not support tools');
 
-			// @ts-ignore
-			const response = await this.llmSimpleTask.bindTools(tools).invoke(state.messages);
+			const response = await this.llmComplexTask.bindTools(tools).invoke(state.messages);
 
 			return { messages: [response] };
 		};
@@ -153,11 +162,7 @@ export class AiWorkflowBuilderService {
 		payload: { question: string; currentWorkflowJSON?: string; workflowId?: string },
 		user: IUser,
 	) {
-		if (!this.llmComplexTask || !this.llmSimpleTask) {
-			await this.setupModels(user);
-		}
-
-		const agent = this.getAgent().compile({ checkpointer: this.checkpointer });
+		const agent = (await this.getAgent(user)).compile({ checkpointer: this.checkpointer });
 
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
@@ -224,8 +229,6 @@ export class AiWorkflowBuilderService {
 				new HumanMessage({ content: payload.question }),
 			],
 			prompt: payload.question,
-			steps: [],
-			nodes: [],
 			workflowJSON: payload.currentWorkflowJSON
 				? JSON.parse(payload.currentWorkflowJSON)
 				: { nodes: [], connections: {} },
@@ -236,7 +239,7 @@ export class AiWorkflowBuilderService {
 		const stream = await agent.stream(initialState, {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			recursionLimit: 30,
+			recursionLimit: 80,
 		});
 
 		for await (const [streamMode, chunk] of stream) {
@@ -259,7 +262,7 @@ export class AiWorkflowBuilderService {
 					yield {
 						messages: [chunk],
 					};
-					if (['add_nodes', 'connect_nodes'].includes(chunk.toolName)) {
+					if (['add_nodes', 'connect_nodes', 'update_node_parameters'].includes(chunk.toolName)) {
 						const currentState = await agent.getState(threadConfig);
 						console.log('Updating WF', currentState);
 						yield {

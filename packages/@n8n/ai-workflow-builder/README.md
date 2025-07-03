@@ -18,11 +18,14 @@ graph TB
     Tools --> NodeDetails[Node Details Tool]
     Tools --> AddNodes[Add Nodes Tool]
     Tools --> ConnectNodes[Connect Nodes Tool]
+    Tools --> UpdateParams[Update Node Parameters Tool]
     
     NodeSearch --> SearchEngine[Node Search Engine]
     AddNodes --> NodeCreation[Node Creation Utils]
     AddNodes --> NodePositioning[Node Positioning Utils]
     ConnectNodes --> ConnectionUtils[Connection Utils]
+    UpdateParams --> ParamChain[Parameter Updater Chain]
+    ParamChain --> LLM[Language Model]
     
     Agent --> State[Workflow State]
     State --> Output[Updated Workflow]
@@ -61,6 +64,9 @@ src/
 ├── workflow-state.ts                      # State management for workflow manipulation
 ├── llm-config.ts                         # LLM model configurations
 ├── interfaces.ts                         # Core interfaces
+├── chains/                               # LangChain chains for complex operations
+│   ├── nodes-composer.ts                # Chain for composing node configurations
+│   └── parameter-updater.ts            # Chain for updating node parameters
 ├── tools/                                # Tool implementations
 │   ├── base/                            # Base infrastructure for tools
 │   │   ├── base-tool.ts                # Abstract base class for all tools
@@ -75,7 +81,8 @@ src/
 │   ├── utils/                           # Utility functions
 │   │   ├── node-creation.utils.ts      # Node creation helpers
 │   │   ├── node-positioning.utils.ts   # Node positioning algorithms
-│   │   └── connection.utils.ts         # Connection validation and creation
+│   │   ├── connection.utils.ts         # Connection validation and creation
+│   │   └── parameter-update.utils.ts   # Parameter update helpers
 │   ├── test-utils/                      # Testing utilities
 │   │   ├── fixtures.ts                 # Test node type fixtures
 │   │   ├── mock-context.ts             # Mock context creation
@@ -83,7 +90,8 @@ src/
 │   ├── node-search.tool.ts             # Search for n8n nodes
 │   ├── node-details.tool.ts            # Get detailed node information
 │   ├── add-node.tool.ts                # Add nodes to workflow
-│   └── connect-nodes.tool.ts           # Connect nodes in workflow
+│   ├── connect-nodes.tool.ts           # Connect nodes in workflow
+│   └── update-node-parameters.tool.ts  # Update node parameters with AI
 └── utils/                               # General utilities
     └── node-helpers.ts                  # Node type checking utilities
 ```
@@ -167,6 +175,29 @@ Creates connections between nodes with automatic validation and correction.
   connectionType: "main",
   sourceOutputIndex: 0,
   targetOutputIndex: 0
+}
+```
+
+### 5. Update Node Parameters Tool (`update_node_parameters`)
+
+Updates the parameters of an existing node using natural language instructions, powered by an LLM.
+
+**Features:**
+- Natural language parameter updates
+- Preserves unmodified parameters
+- Intelligent expression formatting
+- Support for complex nested parameters
+- Validation of updated parameters
+
+**Example:**
+```typescript
+{
+  nodeId: "node_123",
+  changes: [
+    "Set the URL to call the weather API for London",
+    "Add an API key header with value from credentials",
+    "Change method to POST"
+  ]
 }
 ```
 

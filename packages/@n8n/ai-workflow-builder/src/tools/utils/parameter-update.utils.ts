@@ -22,16 +22,24 @@ export function mergeParameters(
 /**
  * Deep merge two objects
  */
-function deepMerge(target: any, source: any): any {
+function deepMerge(target: INodeParameters, source: INodeParameters): INodeParameters {
+	// Handle null/undefined cases
+	if (!target) {
+		return source || {};
+	}
+	if (!source) {
+		return target;
+	}
+
 	const output = { ...target };
 
 	if (isObject(target) && isObject(source)) {
 		Object.keys(source).forEach((key) => {
-			if (isObject(source[key])) {
-				if (!(key in target)) {
+			if (isObject(source[key] as INodeParameters)) {
+				if (!target || !(key in target) || !target[key]) {
 					Object.assign(output, { [key]: source[key] });
 				} else {
-					output[key] = deepMerge(target[key], source[key]);
+					output[key] = deepMerge(target[key] as INodeParameters, source[key] as INodeParameters);
 				}
 			} else {
 				Object.assign(output, { [key]: source[key] });
@@ -45,8 +53,8 @@ function deepMerge(target: any, source: any): any {
 /**
  * Check if value is an object (not array or null)
  */
-function isObject(item: any): boolean {
-	return item && typeof item === 'object' && !Array.isArray(item);
+function isObject(item: unknown): item is Record<string, unknown> {
+	return item !== null && typeof item === 'object' && !Array.isArray(item);
 }
 
 /**
@@ -105,7 +113,7 @@ export function formatNodeDefinition(nodeType: INodeTypeDescription): string {
 			}
 			if (prop.options && Array.isArray(prop.options)) {
 				lines.push(
-					`  Options: ${prop.options.map((opt: any) => opt.value || opt.name).join(', ')}`,
+					`  Options: ${prop.options.map((opt) => (opt as { value?: string; name?: string }).value ?? (opt as { value?: string; name?: string }).name).join(', ')}`,
 				);
 			}
 			lines.push('');

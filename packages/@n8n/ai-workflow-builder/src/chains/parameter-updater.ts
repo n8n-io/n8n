@@ -10,7 +10,7 @@ import { z } from 'zod';
 const systemPrompt = new SystemMessage(`You are an expert n8n workflow architect who updates node parameters based on natural language instructions.
 
 ## Your Task
-Update the parameters of an existing n8n node based on the requested changes. Only modify the parameters that are explicitly mentioned in the changes, preserving all other existing parameters.
+Update the parameters of an existing n8n node based on the requested changes. Return the COMPLETE parameters object with both modified and unmodified parameters. Only modify the parameters that are explicitly mentioned in the changes, preserving all other existing parameters exactly as they are.
 
 ## Reference Information
 You will receive:
@@ -21,11 +21,14 @@ You will receive:
 5. Natural language changes to apply
 
 ## Parameter Update Guidelines
-1. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes
-2. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type
-3. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes
-4. VALIDATE TYPES: Ensure parameter values match their expected types
-5. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
+1. START WITH CURRENT: If current parameters is empty {}, start with an empty object and add the requested parameters
+2. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes
+3. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type
+4. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes
+5. VALIDATE TYPES: Ensure parameter values match their expected types
+6. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
+7. SIMPLE VALUES: For simple parameter updates like "Set X to Y", directly set the parameter without unnecessary nesting
+8. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like "id-1", "id-2", etc.
 
 ## CRITICAL: Correctly Formatting n8n Expressions
 When using expressions to reference data from other nodes:
@@ -115,8 +118,154 @@ Updated parameters: {
   }
 }
 
+## Common Node Parameter Structures
+
+### Set Node Structure
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "unique-id-1",
+        "name": "property_name",
+        "value": "property_value",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+
+### HTTP Request Node Structures
+
+#### GET Request
+{
+  "url": "https://example.com",
+  "authentication": "none",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "Authorization",
+        "value": "Bearer {{ $('Credentials').item.json.token }}"
+      }
+    ]
+  },
+  "options": {}
+}
+
+#### POST Request with Body
+{
+  "method": "POST",
+  "url": "https://api.example.com/endpoint",
+  "authentication": "none",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      }
+    ]
+  },
+  "sendBody": true,
+  "contentType": "json",
+  "bodyParameters": {
+    "parameters": [
+      {
+        "name": "userId",
+        "value": "={{ $('Previous Node').item.json.id }}"
+      },
+      {
+        "name": "status",
+        "value": "active"
+      }
+    ]
+  },
+  "options": {}
+}
+
+## Parameter Update Examples
+
+### Example 1: Simple Property Updates
+Current Parameters:
+{}
+
+Requested Changes:
+- Set resource to users
+- Set operation to create
+
+Expected Output:
+{
+  "resource": "users",
+  "operation": "create"
+}
+
+### Example 2: HTTP Request Node (Adding Headers)
+Current Parameters:
+{
+  "method": "GET",
+  "url": "https://api.example.com/data"
+}
+
+Requested Changes:
+- Add API key header
+
+Expected Output:
+{
+  "method": "GET",
+  "url": "https://api.example.com/data",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "X-API-Key",
+        "value": "={{ $credentials.apiKey }}"
+      }
+    ]
+  }
+}
+
+### Example 3: Set Node (Modifying Assignments)
+Current Parameters:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "abc123",
+        "name": "status",
+        "value": "pending",
+        "type": "string"
+      }
+    ]
+  }
+}
+
+Requested Changes:
+- Change status to completed
+- Add processedAt field with current timestamp
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "abc123",
+        "name": "status",
+        "value": "completed",
+        "type": "string"
+      },
+      {
+        "id": "def456",
+        "name": "processedAt",
+        "value": "={{ $now.toISO() }}",
+        "type": "string"
+      }
+    ]
+  }
+}
+
 ## Output Format
-Return the complete updated parameters object that can replace the node's current parameters. Include ALL parameters, both modified and unmodified.`);
+Return ONLY the complete updated parameters object that matches the node's parameter structure. Include ALL parameters, both modified and unmodified.`);
 
 const humanTemplate = `
 <user_workflow_prompt>
@@ -134,13 +283,16 @@ Type: {node_type}
 Current Parameters: {current_parameters}
 </selected_node>
 
-<node_type_definition>
+<node_properties_definition>
+The node accepts these properties (JSON array of property definitions):
 {node_definition}
-</node_type_definition>
+</node_properties_definition>
 
 <requested_changes>
 {changes}
 </requested_changes>
+
+Based on the requested changes and the node's property definitions, return the complete updated parameters object.
 `;
 
 export const parameterUpdaterPrompt = ChatPromptTemplate.fromMessages([
@@ -152,7 +304,7 @@ const parametersSchema = z.object({
 	parameters: z
 		.record(z.string(), z.any())
 		.describe(
-			'The complete updated parameters object for the node. Must include all parameters (both modified and unmodified). For expressions referencing other nodes, use the format: "={{ $(\'Node Name\').item.json.field }}"',
+			'The complete updated parameters object for the node. This should be a JSON object that matches the node\'s parameter structure. Include ALL existing parameters plus the requested changes. For example: {"method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "Content-Type", "value": "application/json"}]}}',
 		),
 });
 
@@ -179,6 +331,13 @@ export const parameterUpdaterChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			return (toolCall?.args as z.infer<typeof parametersSchema>).parameters;
+			if (!toolCall || !toolCall.args) {
+				throw new Error('No tool call found in LLM response');
+			}
+			const args = toolCall.args as z.infer<typeof parametersSchema>;
+			if (!args.parameters) {
+				throw new Error('No parameters found in tool call arguments');
+			}
+			return args.parameters;
 		});
 };

@@ -1,14 +1,15 @@
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, INodeParameters } from 'n8n-workflow';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
 import { parameterUpdaterChain } from '../chains/parameter-updater';
 import type { WorkflowState } from '../workflow-state';
 import {
 	extractNodeParameters,
-	formatNodeDefinition,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
 	validateParameters,
+	mergeParameters,
 } from './utils/parameter-update.utils';
 
 /**
@@ -36,7 +37,7 @@ interface UpdateNodeParametersOutput {
 	nodeId: string;
 	nodeName: string;
 	nodeType: string;
-	updatedParameters: Record<string, any>;
+	updatedParameters: INodeParameters;
 	appliedChanges: string[];
 	message: string;
 }
@@ -113,20 +114,31 @@ export class UpdateNodeParametersTool extends BaseWorkflowBuilderTool<
 			const currentParameters = extractNodeParameters(node);
 
 			// Format inputs for the chain
-			const nodeDefinition = formatNodeDefinition(nodeType);
 			const formattedChanges = formatChangesForPrompt(changes);
 
+			// Get the node's properties definition as JSON
+			const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+
 			// Call the parameter updater chain
-			const updatedParameters = await parameterUpdaterChain(context.llm).invoke({
+			const parametersChain = parameterUpdaterChain(context.llm);
+			const newParameters = await parametersChain.invoke({
 				user_workflow_prompt: state.prompt,
 				workflow_json: JSON.stringify(state.workflowJSON, null, 2),
 				node_id: nodeId,
 				node_name: node.name,
 				node_type: node.type,
 				current_parameters: JSON.stringify(currentParameters, null, 2),
-				node_definition: nodeDefinition,
+				node_definition: nodePropertiesJson,
 				changes: formattedChanges,
 			});
+
+			// Ensure newParameters is a valid object
+			if (!newParameters || typeof newParameters !== 'object') {
+				throw new Error('Invalid parameters returned from LLM');
+			}
+
+			// Merge the new parameters with existing ones
+			const updatedParameters = mergeParameters(currentParameters, newParameters);
 
 			// Validate the updated parameters
 			const validation = validateParameters(updatedParameters, nodeType);

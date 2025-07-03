@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, INode } from 'n8n-workflow';
 
 import type { WorkflowState } from '../../workflow-state';
 import { createMockToolContext } from '../test-utils/mock-context';
@@ -213,9 +213,12 @@ describe('UpdateNodeParametersTool', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.nodeType).toBe('n8n-nodes-base.set');
-				expect(result.data.updatedParameters.assignments.assignments).toHaveLength(2);
-				expect(result.data.updatedParameters.assignments.assignments[0].value).toBe('completed');
-				expect(result.data.updatedParameters.assignments.assignments[1].name).toBe('timestamp');
+				const assignments = result.data.updatedParameters.assignments as {
+					assignments: Array<{ id: string; name: string; value: string; type: string }>;
+				};
+				expect(assignments.assignments).toHaveLength(2);
+				expect(assignments.assignments[0].value).toBe('completed');
+				expect(assignments.assignments[1].name).toBe('timestamp');
 			}
 		});
 
@@ -256,11 +259,16 @@ describe('UpdateNodeParametersTool', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.nodeType).toBe('n8n-nodes-base.if');
-				expect(result.data.updatedParameters.conditions.conditions).toHaveLength(1);
-				expect(result.data.updatedParameters.conditions.conditions[0].rightValue).toBe(25);
-				expect(result.data.updatedParameters.conditions.conditions[0].operator.operation).toBe(
-					'gt',
-				);
+				const conditions = result.data.updatedParameters.conditions as {
+					conditions: Array<{
+						leftValue: string;
+						rightValue: number;
+						operator: { type: string; operation: string };
+					}>;
+				};
+				expect(conditions.conditions).toHaveLength(1);
+				expect(conditions.conditions[0].rightValue).toBe(25);
+				expect(conditions.conditions[0].operator.operation).toBe('gt');
 			}
 		});
 
@@ -305,9 +313,12 @@ describe('UpdateNodeParametersTool', () => {
 
 			expect(result.success).toBe(true);
 			if (result.success && result.stateUpdates) {
-				const updates = result.stateUpdates;
+				const updates =
+					typeof result.stateUpdates === 'function'
+						? result.stateUpdates(mockState)
+						: result.stateUpdates;
 				expect(updates.workflowJSON?.nodes).toHaveLength(3);
-				const updatedNode = updates.workflowJSON?.nodes.find((n) => n.id === 'node_1');
+				const updatedNode = updates.workflowJSON?.nodes.find((n: INode) => n.id === 'node_1');
 				expect(updatedNode?.parameters.url).toBe('https://new-api.com');
 				expect(updatedNode?.parameters.method).toBe('POST');
 			}
