@@ -1,8 +1,5 @@
 {
-	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
-	],
+	"extends": ["@n8n/typescript-config/modern/tsconfig.json"],
 	"compilerOptions": {
 		"paths": {
 			"@credentials/*": ["./credentials/*"],
@@ -15,9 +12,23 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 
-		// TODO: remove all options below this line
+		// TODO: remove all options below this line to align with the modern config
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2021",
+		"lib": ["es2021", "dom", "dom.iterable"],
 		"noImplicitReturns": false,
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"isolatedModules": false,
+		"verbatimModuleSyntax": false,
+		"noUncheckedIndexedAccess": false,
+		"noImplicitOverride": false,
+
+		"noImplicitAny": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strictNullChecks": true,
+		"preserveConstEnums": true
 	},
 	"include": [
 		"shims.d.ts",
