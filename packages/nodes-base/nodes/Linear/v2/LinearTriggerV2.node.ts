@@ -98,24 +98,20 @@ export class LinearTriggerV2 implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Comment Reaction',
-							value: 'reaction',
+							name: 'Issue Attachment',
+							value: 'attachment',
+						},
+						{
+							name: 'Issue Comment',
+							value: 'comment',
 						},
 						{
 							name: 'Cycle',
 							value: 'cycle',
 						},
 						{
-							name: 'Issue Attachment',
-							value: 'attachment',
-						},
-						{
 							name: 'Issue',
 							value: 'issue',
-						},
-						{
-							name: 'Issue Comment',
-							value: 'comment',
 						},
 						{
 							name: 'Issue Label',
@@ -124,6 +120,10 @@ export class LinearTriggerV2 implements INodeType {
 						{
 							name: 'Project',
 							value: 'project',
+						},
+						{
+							name: 'Comment Reaction',
+							value: 'reaction',
 						},
 					],
 					default: [],

@@ -6,8 +6,8 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
-	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import { commentFields, commentOperations } from '../shared/CommentDescription';

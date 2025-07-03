@@ -6,8 +6,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
+	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
-	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from '../shared/GenericFunctions';
