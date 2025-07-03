@@ -1,6 +1,6 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { Command } from '@langchain/langgraph';
+import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import { NodeConnectionTypes, type INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -80,13 +80,40 @@ const nodeMapper = (node: NodeSearchResult) => {
  */
 export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 	return tool(
-		async (input, config) => {
+		async (input, config: LangGraphRunnableConfig) => {
 			const { queries } = input;
 			const allResults: { query: string; results: NodeSearchResult[] }[] = [];
 
+			// Emit tool start with input
+			config.writer?.({
+				type: 'tool',
+				toolName: 'search_nodes',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
+
 			// Process each query
-			for (const searchQuery of queries) {
+			for (let i = 0; i < queries.length; i++) {
+				const searchQuery = queries[i];
 				const { query, queryType = 'name', connectionType } = searchQuery;
+
+				// Emit progress update
+				config.writer?.({
+					type: 'tool',
+					toolName: 'search_nodes',
+					status: 'running',
+					updates: [
+						{
+							type: 'progress',
+							data: `Searching query ${i + 1} of ${queries.length}: ${query || connectionType || 'unknown'}`,
+						},
+					],
+				});
 
 				let searchResults: NodeSearchResult[] = [];
 				let searchIdentifier = '';
@@ -122,11 +149,29 @@ export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 				}
 			}
 
+			// Emit success completion
+			config.writer?.({
+				type: 'tool',
+				toolName: 'search_nodes',
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							results: allResults,
+							totalResults: allResults.reduce((sum, r) => sum + r.results.length, 0),
+							message: responseContent,
+						},
+					},
+				],
+			});
+
 			return new Command({
 				update: {
 					messages: [
 						new ToolMessage({
 							content: responseContent,
+							// @ts-ignore
 							tool_call_id: config.toolCall?.id,
 						}),
 					],

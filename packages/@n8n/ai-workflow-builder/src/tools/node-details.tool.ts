@@ -1,6 +1,6 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { Command } from '@langchain/langgraph';
+import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -30,16 +30,47 @@ const nodeDetailsSchema = z.object({
 
 export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
 	return tool(
-		async (input, config) => {
+		async (input, config: LangGraphRunnableConfig) => {
 			const { nodeName } = input;
+
+			// Emit tool start with input
+			config.writer?.({
+				type: 'tool',
+				toolName: 'get_node_details',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
+
 			const nodeType = nodeTypes.find((nt) => nt.name === nodeName);
 
 			if (!nodeType) {
+				// Emit error completion
+				config.writer?.({
+					type: 'tool',
+					toolName: 'get_node_details',
+					status: 'error',
+					updates: [
+						{
+							type: 'error',
+							data: {
+								message: `Node type "${nodeName}" not found`,
+								nodeName,
+							},
+						},
+					],
+				});
+
 				return new Command({
 					update: {
 						messages: [
 							new ToolMessage({
 								content: `Node type "${nodeName}" not found. Please search for available nodes first.`,
+								// @ts-ignore
 								tool_call_id: config.toolCall?.id,
 							}),
 						],
@@ -54,11 +85,28 @@ export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
 				input.withConnections,
 			);
 
+			// Emit success completion
+			config.writer?.({
+				type: 'tool',
+				toolName: 'get_node_details',
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							details,
+							message: detailsMessage,
+						},
+					},
+				],
+			});
+
 			return new Command({
 				update: {
 					messages: [
 						new ToolMessage({
 							content: detailsMessage,
+							// @ts-ignore
 							tool_call_id: config.toolCall?.id,
 						}),
 					],
