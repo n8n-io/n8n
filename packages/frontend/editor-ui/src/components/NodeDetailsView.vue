@@ -758,8 +758,8 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
-				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
-				<n8n-text color="text-xlight" size="medium" :bold="true">
+				<n8n-icon icon="arrow-left" color="text-xlight-all-modes" size="large" />
+				<n8n-text color="text-xlight-all-modes" size="medium" :bold="true">
 					{{ i18n.baseText('ndv.backToCanvas') }}
 				</n8n-text>
 			</div>
@@ -933,6 +933,8 @@ $main-panel-width: 360px;
 	position: fixed;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
+	display: flex;
+	align-items: center;
 
 	span {
 		color: var(--color-ndv-back-font);

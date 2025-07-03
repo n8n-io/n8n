@@ -955,7 +955,8 @@ function handleWheelEvent(event: WheelEvent) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color-background-base);
+	background-color: var(--color-ndv-header-background);
+	border-bottom: var(--color-ndv-header-bottom-border);
 }
 
 .warningIcon {
@@ -974,7 +975,7 @@ function handleWheelEvent(event: WheelEvent) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-xlight);
+	background-color: var(--color-ndv-params-panel-background);
 	height: 100%;
 	width: 100%;
 

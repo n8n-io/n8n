@@ -10,6 +10,7 @@
 	--color-text-light: var(--p-gray-320);
 	--color-text-lighter: var(--p-gray-740);
 	--color-text-xlight: var(--p-gray-850);
+	--color-text-xlight-all-modes: var(--p-white);
 	--color-text-danger: var(--p-color-alt-c-330);
 
 	// Foreground
@@ -249,7 +250,11 @@
 	--execution-card-text-waiting: var(--p-color-secondary-370);
 
 	// NDV
-	--color-run-data-background: var(--p-gray-800);
+	--color-ndv-header-background: var(--p-gray-950);
+	--color-ndv-header-bottom-border: 1px solid var(--color-foreground-base);
+	--color-ndv-params-panel-background: var(--p-gray-900);
+	--color-ndv-params-panel-shadow: 0 4px 12px hsla(0, 0%, 0%, 0.18);
+	--color-ndv-input-output-panels-background: var(--p-gray-950);
 	--color-ndv-droppable-parameter: var(--p-color-primary-320);
 	--color-ndv-droppable-parameter-background: var(--p-color-primary-320-a-010);
 	--color-ndv-droppable-parameter-active-background: var(--p-color-alt-a-600-a-015);

@@ -100,7 +100,7 @@ function closeWindow() {
 	z-index: 10;
 	width: 100%;
 	height: calc(100% - 50px);
-	background-color: var(--color-run-data-background);
+	background-color: var(--color-ndv-input-output-panels-background);
 	overflow: hidden;
 	text-align: center;
 

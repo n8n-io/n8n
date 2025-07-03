@@ -48,6 +48,7 @@
 	--color-text-light: var(--p-gray-420);
 	--color-text-lighter: var(--p-gray-120);
 	--color-text-xlight: var(--p-white);
+	--color-text-xlight-all-modes: var(--p-white);
 	--color-text-danger: var(--p-color-alt-c-480);
 
 	// Foreground
@@ -328,7 +329,11 @@
 	--execution-table-row-error-hover-background: var(--p-color-alt-c-480-a-020);
 
 	// NDV
-	--color-run-data-background: var(--color-background-base);
+	--color-ndv-header-background: var(--color-background-base);
+	--color-ndv-header-bottom-border: 0;
+	--color-ndv-params-panel-background: var(--color-background-xlight);
+	--color-ndv-params-panel-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	--color-ndv-input-output-panels-background: var(--color-background-base);
 	--color-ndv-droppable-parameter: var(--color-secondary);
 	--color-ndv-droppable-parameter-background: var(--p-color-secondary-370-a-010);
 	--color-ndv-droppable-parameter-active-background: var(--p-color-alt-a-600-a-015);
