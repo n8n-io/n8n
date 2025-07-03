@@ -36,7 +36,7 @@ const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
 
 // TODO: Flip this flag in v2
 // https://linear.app/n8n/issue/CAT-329
-export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK !== 'true';
+export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK !== 'false';
 
 @Service()
 export abstract class AbstractOAuthController {
