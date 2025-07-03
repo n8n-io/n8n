@@ -175,7 +175,7 @@ function displayConfig(config: N8NConfig) {
 			log.info('(PostgreSQL automatically enabled for queue mode)');
 		}
 		if (qm.mains && qm.mains > 1) {
-			log.info('(nginx load balancer will be configured)');
+			log.info('(load balancer will be configured)');
 		}
 	} else {
 		log.info('Queue mode: disabled');

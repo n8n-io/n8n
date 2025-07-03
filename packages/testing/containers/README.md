@@ -133,7 +133,7 @@ await stack.stop();
 ### Multi-Main with Load Balancer
 ```
                     ┌──────────────┐
-                ────│    nginx     │ ← Entry point
+                ────│              │ ← Entry point
                /    │ Load Balancer│
 ┌─────────────┐     └──────────────┘
 │ n8n-main-1  │────┐

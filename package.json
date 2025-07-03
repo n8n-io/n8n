@@ -46,6 +46,7 @@
     "test:backend": "turbo run test:backend --concurrency=1",
     "test:frontend": "turbo run test:frontend --concurrency=1",
     "test:nodes": "turbo run test:nodes --concurrency=1",
+    "test:docker": "pnpm --filter=n8n-playwright run test:standard",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
