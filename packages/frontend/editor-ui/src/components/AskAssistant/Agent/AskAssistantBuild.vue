@@ -200,7 +200,6 @@ onBeforeUnmount(() => {
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
-			:session-id="builderStore.currentSessionId"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"

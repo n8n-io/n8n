@@ -207,7 +207,6 @@ describe('AI Builder store', () => {
 
 		builderStore.resetBuilderChat();
 		expect(builderStore.chatMessages).toEqual([]);
-		expect(builderStore.currentSessionId).toBeUndefined();
 	});
 
 	it('should not show builder if disabled in settings', () => {
@@ -262,7 +261,6 @@ describe('AI Builder store', () => {
 		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
 
 		expect(apiSpy).toHaveBeenCalled();
-		expect(builderStore.currentSessionId).toEqual(mockSessionId);
 		expect(builderStore.chatMessages.length).toBe(2); // user message + assistant response
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].role).toBe('assistant');

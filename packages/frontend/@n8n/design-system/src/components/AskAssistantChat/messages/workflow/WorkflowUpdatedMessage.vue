@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
 
@@ -17,7 +15,6 @@ interface Props {
 }
 
 defineProps<Props>();
-const { t } = useI18n();
 </script>
 
 <template>

@@ -32,7 +32,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
-	const currentSessionId = ref<string | undefined>();
 	const assistantThinkingMessage = ref<string | undefined>();
 
 	// Store dependencies
@@ -81,7 +80,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Chat management functions
 	function resetBuilderChat() {
 		clearMessages();
-		currentSessionId.value = undefined;
 		assistantThinkingMessage.value = undefined;
 	}
 
@@ -252,16 +250,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
-		if (response.sessionId && !currentSessionId.value) {
-			currentSessionId.value = response.sessionId;
-			telemetry.track('Assistant session started', {
-				chat_session_id: currentSessionId.value,
-				task: 'workflow-generation',
-			});
-		} else if (currentSessionId.value !== response.sessionId) {
-			// Ignore messages from other sessions
-			return;
-		}
 		addAssistantMessages(response.messages, id);
 	}
 
@@ -328,25 +316,29 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 
 			streaming.value = true;
-			assert(currentSessionId.value);
 
 			chatWithBuilder(
 				rootStore.restApiContext,
 				{
+					sessionId: '', //TODO: remove this
 					payload: {
 						role: 'user',
 						type: 'message',
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
+						workflowContext: {
+							currentWorkflow: {
+								...assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
+								id: workflowsStore.workflowId,
+							},
+						},
 					},
-					sessionId: currentSessionId.value,
 				},
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(),
 				(e) => handleServiceError(e, id, retry),
 			);
 		} catch (e: unknown) {
-			// in case of assert
 			handleServiceError(e, id, retry);
 		}
 	}
@@ -366,7 +358,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
-		currentSessionId,
 		assistantThinkingMessage,
 		chatWindowOpen,
 		isAIBuilderEnabled,

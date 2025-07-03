@@ -1,21 +1,13 @@
-import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { RunnableConfig } from '@langchain/core/runnables';
-import { StateGraph, END, START, MemorySaver } from '@langchain/langgraph';
+import { StateGraph, MemorySaver } from '@langchain/langgraph';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { OperationalError, assert, INodeTypes } from 'n8n-workflow';
-import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
+import { assert, INodeTypes } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
-import { connectionComposerChain } from './chains/connection-composer';
-import { nodesSelectionChain } from './chains/node-selector';
-import { nodesComposerChain } from './chains/nodes-composer';
-import { plannerChain } from './chains/planner';
-import { validatorChain } from './chains/validator';
 import { ILicenseService } from './interfaces';
-import { anthropicClaudeSonnet4, gpt41, gpt41mini } from './llm-config';
-import type { MessageResponse } from './types';
+import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { WorkflowState } from './workflow-state';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
@@ -102,7 +94,7 @@ export class AiWorkflowBuilderService {
 				return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
 			})
 			.filter((nodeType) => nodeType.hidden !== true)
-			.map((nodeType, index, nodeTypes: INodeTypeDescription[]) => {
+			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
 				const isTool = nodeType.name.endsWith('Tool');
 				if (!isTool) return nodeType;
 
@@ -118,16 +110,6 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private isWorkflowEvent(eventName: string): boolean {
-		return [
-			'prompt_validation',
-			'generated_steps',
-			'generated_nodes',
-			'composed_nodes',
-			'composed_connections',
-			'generated_workflow_json',
-		].includes(eventName);
-	}
 	private getAgent() {
 		const tools = [
 			createNodeSearchTool(this.parsedNodeTypes),
@@ -176,6 +158,7 @@ export class AiWorkflowBuilderService {
 		const agent = this.getAgent().compile({ checkpointer: this.checkpointer });
 
 		// Generate thread ID from workflowId and userId
+		// This ensures one session per workflow per user
 		const threadId = payload.workflowId
 			? `workflow-${payload.workflowId}-user-${user.id}`
 			: `user-${user.id}-default`;
