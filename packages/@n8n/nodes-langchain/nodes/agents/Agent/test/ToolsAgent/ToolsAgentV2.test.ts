@@ -432,7 +432,11 @@ describe('toolsAgentExecute', () => {
 			mockModel = mock<BaseChatModel>();
 			mockModel.bindTools = jest.fn();
 			mockModel.lc_namespace = ['chat_models'];
-			mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+			mockContext.getInputConnectionData.mockImplementation((type, _index) => {
+				if (type === 'ai_languageModel') return Promise.resolve(mockModel);
+				if (type === 'ai_memory') return Promise.resolve(undefined);
+				return Promise.resolve(undefined);
+			});
 
 			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 				if (param === 'enableStreaming') return true;
