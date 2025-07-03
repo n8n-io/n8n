@@ -893,7 +893,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1001,7 +1001,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
-		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		logAiEvent(eventName: AiEvent, msg?: string): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1550,7 +1550,7 @@ export interface INodePropertyValueExtractorFunction {
 	(
 		this: IExecuteSingleFunctions,
 		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	): Promise<string | NodeParameterValue> | string;
 }
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 

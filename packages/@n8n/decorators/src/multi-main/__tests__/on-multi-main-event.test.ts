@@ -1,10 +1,12 @@
-import { Container } from '@n8n/di';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { EventEmitter } from 'node:events';
 
 import { NonMethodError } from '../../errors';
-import { MultiMainMetadata } from '../multi-main-metadata';
-import { LEADER_TAKEOVER_EVENT_NAME, LEADER_STEPDOWN_EVENT_NAME } from '../multi-main-metadata';
+import {
+	MultiMainMetadata,
+	LEADER_TAKEOVER_EVENT_NAME,
+	LEADER_STEPDOWN_EVENT_NAME,
+} from '../multi-main-metadata';
 import { OnLeaderStepdown, OnLeaderTakeover } from '../on-multi-main-event';
 
 class MockMultiMainSetup extends EventEmitter {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-use-before-define */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable prefer-spread */
@@ -840,7 +840,6 @@ export function getNodeParameters(
 						itemName
 					] as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties.options!.find(
-							// eslint-disable-next-line @typescript-eslint/no-shadow
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
 
@@ -875,7 +874,7 @@ export function getNodeParameters(
 					tempNodeParameters = {};
 
 					// Get the options of the current item
-					// eslint-disable-next-line @typescript-eslint/no-shadow
+
 					const nodePropertyOptions = nodeProperties.options!.find(
 						(data) => data.name === itemName,
 					);

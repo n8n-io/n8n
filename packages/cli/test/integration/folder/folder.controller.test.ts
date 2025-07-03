@@ -1,14 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { createWorkflow, getWorkflowSharing } from '@n8n/backend-test-utils';
-import { randomCredentialPayload } from '@n8n/backend-test-utils';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, ProjectRole } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	createWorkflow,
+	getWorkflowSharing,
+	randomCredentialPayload,
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { Project, ProjectRole, User } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
@@ -676,7 +678,7 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Verify initial state
-		let folder = await folderRepository.findOne({
+		const folder = await folderRepository.findOne({
 			where: { id: folderToMove.id },
 			relations: ['parentFolder'],
 		});

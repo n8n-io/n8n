@@ -12,9 +12,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { InstanceSettings } from '@/instance-settings';
-
 import { NodeExecutionContext } from '../node-execution-context';
+
+import { InstanceSettings } from '@/instance-settings';
 
 class TestContext extends NodeExecutionContext {}
 
@@ -34,7 +34,7 @@ describe('NodeExecutionContext', () => {
 		timezone: 'UTC',
 		expression,
 	});
-	let additionalData = mock<IWorkflowExecuteAdditionalData>({
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
 	});
 

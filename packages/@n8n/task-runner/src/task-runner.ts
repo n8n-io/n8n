@@ -4,14 +4,14 @@ import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
+import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
+
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import type { TaskResultData } from '@/runner-types';
 import { TaskState } from '@/task-state';
-
-import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
 
 export interface TaskOffer {
 	offerId: string;
@@ -394,7 +394,6 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}

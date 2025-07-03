@@ -17,11 +17,11 @@ import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
 
+import { parseIncomingMessage } from './parse-incoming-message';
+
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
 import { binaryToBuffer } from '@/binary-data/utils';
-
-import { parseIncomingMessage } from './parse-incoming-message';
 
 export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
@@ -187,7 +187,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
-// eslint-disable-next-line complexity
+
 export async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,

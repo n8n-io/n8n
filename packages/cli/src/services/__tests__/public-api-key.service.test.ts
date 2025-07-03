@@ -1,7 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';

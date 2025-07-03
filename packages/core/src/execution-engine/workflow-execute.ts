@@ -58,11 +58,6 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
-
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
 	DirectedGraph,
@@ -78,6 +73,11 @@ import {
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -113,7 +113,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
+
 	run(
 		workflow: Workflow,
 		startNode?: INode,
@@ -189,7 +189,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
+	// eslint-disable-next-line complexity
 	runPartialWorkflow(
 		workflow: Workflow,
 		runData: IRunData,
@@ -344,7 +344,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
+
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
@@ -1178,7 +1178,6 @@ export class WorkflowExecute {
 			const newInputData: ITaskDataConnections = {};
 			for (const connectionType of Object.keys(inputData)) {
 				newInputData[connectionType] = inputData[connectionType].map((input) => {
-					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
 			}
@@ -1337,7 +1336,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
+
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
@@ -1558,7 +1557,7 @@ export class WorkflowExecute {
 								if (waitBetweenTries !== 0) {
 									// TODO: Improve that in the future and check if other nodes can
 									//       be executed in the meantime
-									// eslint-disable-next-line @typescript-eslint/no-shadow
+
 									await new Promise((resolve) => {
 										setTimeout(() => {
 											resolve(undefined);
@@ -1767,14 +1766,11 @@ export class WorkflowExecute {
 								lineResult.json.$error !== undefined &&
 								lineResult.json.$json !== undefined
 							) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {
-									// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
 								};
 							} else if (lineResult.error !== undefined) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.json = { error: lineResult.error.message };
 							}
 						}
@@ -1986,7 +1982,7 @@ export class WorkflowExecute {
 							const parentNodes = workflow.getParentNodes(nodeName);
 
 							// Check if input nodes (of same run) got already executed
-							// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 							const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
 							if (parentIsWaiting) {
 								// Execute node later as one of its dependencies is still outstanding
@@ -2127,12 +2123,11 @@ export class WorkflowExecute {
 
 					this.moveNodeMetadata();
 
-					await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
-						// eslint-disable-next-line @typescript-eslint/no-shadow
-						(error) => {
+					await hooks
+						.runHook('workflowExecuteAfter', [fullRunData, newStaticData])
+						.catch((error) => {
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
-						},
-					);
+						});
 
 					if (closeFunction) {
 						try {

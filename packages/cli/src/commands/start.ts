@@ -34,7 +34,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
 
 const flagsSchema = z.object({

@@ -1,5 +1,4 @@
-import { mockLogger } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
@@ -74,7 +73,7 @@ describe('LdapService', () => {
 		searchTimeout: 6,
 	};
 
-	let settingsRepository = mockInstance(SettingsRepository);
+	const settingsRepository = mockInstance(SettingsRepository);
 
 	beforeAll(() => {
 		// Need fake timers to avoid setInterval
