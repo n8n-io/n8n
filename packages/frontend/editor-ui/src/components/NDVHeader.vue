@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { NodeIconSource } from '@/utils/nodeIcon';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
-import { nextTick, ref } from 'vue';
+import { N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { onClickOutside } from '@vueuse/core';
 
 const props = defineProps<{
 	nodeName: string;
@@ -12,54 +10,28 @@ const props = defineProps<{
 	readOnly?: boolean;
 }>();
 
-const isRenaming = ref(false);
-const text = ref('');
-const inputRef = ref<HTMLInputElement>();
 const i18n = useI18n();
 
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
 
-async function onEdit() {
-	isRenaming.value = true;
-	text.value = props.nodeName;
-
-	await nextTick(() => {
-		inputRef.value?.focus();
-		inputRef.value?.select();
-	});
+function onRename(newNodeName: string) {
+	emit('rename', newNodeName || props.nodeTypeName);
 }
-
-function onSave() {
-	emit('rename', text.value || props.nodeTypeName);
-
-	isRenaming.value = false;
-}
-
-function onCancel(event: KeyboardEvent) {
-	event.stopPropagation();
-	isRenaming.value = false;
-	text.value = props.nodeName;
-}
-
-onClickOutside(inputRef, onSave);
 </script>
 
 <template>
 	<header :class="[$style.ndvHeader, { [$style.editable]: !readOnly }]">
 		<div :class="$style.content">
 			<NodeIcon v-if="icon" :class="$style.icon" :size="20" :icon-source="icon" />
-			<div v-if="!isRenaming" :class="$style.title" @click="onEdit">{{ nodeName }}</div>
-			<N8nInput
-				v-else
-				ref="inputRef"
-				v-model.lazy="text"
-				:class="$style.titleInput"
-				size="small"
-				autosize
-				@keydown.enter="onSave"
-				@keydown.esc="onCancel"
-			/>
-			<p v-if="nodeName !== nodeTypeName && !isRenaming" :class="$style.subtitle">
+			<div :class="$style.title">
+				<N8nInlineTextEdit
+					:model-value="nodeName"
+					:read-only="readOnly"
+					@update:model-value="onRename"
+				/>
+			</div>
+
+			<p v-if="nodeName !== nodeTypeName" :class="$style.subtitle">
 				{{ nodeTypeName }}
 			</p>
 		</div>
@@ -68,7 +40,7 @@ onClickOutside(inputRef, onSave);
 			<template #content>
 				{{ i18n.baseText('ndv.close.tooltip') }}
 			</template>
-			<N8nIconButton icon="times" type="tertiary" @click="emit('close')" />
+			<N8nIconButton icon="x" type="tertiary" @click="emit('close')" />
 		</N8nTooltip>
 	</header>
 </template>
@@ -86,7 +58,7 @@ onClickOutside(inputRef, onSave);
 
 .content {
 	display: flex;
-	align-items: baseline;
+	align-items: flex-end;
 	gap: var(--spacing-2xs);
 	margin-left: var(--spacing-2xs);
 }
@@ -94,7 +66,6 @@ onClickOutside(inputRef, onSave);
 .title {
 	color: var(--color-text-dark);
 	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
 }
 
 .titleInput input {
@@ -118,7 +89,6 @@ onClickOutside(inputRef, onSave);
 .subtitle {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
 	font-weight: var(--font-weight-bold);
 	margin: 0;
 }
