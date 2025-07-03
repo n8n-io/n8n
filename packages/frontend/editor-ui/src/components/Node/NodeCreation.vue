@@ -20,7 +20,6 @@ import type {
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
-import { useExperimentalNdvStore } from '../canvas/experimental/experimentalNdv.store';
 
 type Props = {
 	nodeViewScale: number;
