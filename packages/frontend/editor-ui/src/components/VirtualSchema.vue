@@ -345,7 +345,7 @@ const items = computed(() => {
 });
 
 const noSearchResults = computed(() => {
-	return Boolean(props.search.trim()) && !Boolean(items.value.length);
+	return Boolean(props.search.trim()) && !items.value.length;
 });
 
 watch(

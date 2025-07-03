@@ -369,7 +369,7 @@ const maxOutputIndex = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+	if (!runData?.hasOwnProperty(node.value.name)) {
 		return 0;
 	}
 
@@ -394,7 +394,7 @@ const maxRunIndex = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+	if (!runData?.hasOwnProperty(node.value.name)) {
 		return 0;
 	}
 

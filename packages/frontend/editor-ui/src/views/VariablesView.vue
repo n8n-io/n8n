@@ -15,11 +15,16 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import type { BaseFilters, Resource, VariableResource } from '@/Interface';
+import type {
+	BaseFilters,
+	Resource,
+	VariableResource,
+	DatatableColumn,
+	EnvironmentVariable,
+} from '@/Interface';
 
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nActionBox,
