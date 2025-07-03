@@ -101,7 +101,7 @@ const onDragStart = () => {
 
 .arrow {
 	position: absolute;
-	color: var(--color-background-xlight);
+	color: var(--color-text-xlight-all-modes);
 	font-size: var(--font-size-3xs);
 	visibility: hidden;
 	top: 0;
