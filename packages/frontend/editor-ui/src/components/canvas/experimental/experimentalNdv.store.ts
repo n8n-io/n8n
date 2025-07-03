@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVueFlow } from '@vue-flow/core';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
@@ -17,7 +16,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const maxCanvasZoom = computed(() =>
 		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
 	);
-	const canvasOperations = useCanvasOperations();
 
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 
