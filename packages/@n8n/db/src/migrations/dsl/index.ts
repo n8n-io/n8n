@@ -15,6 +15,7 @@ import {
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
 	column: (name: string) => new Column(name),
+	/* eslint-disable @typescript-eslint/promise-function-async */
 
 	// NOTE: Do not add `async` to these functions, as that messes up the lazy-evaluation of LazyPromise
 	createTable: (tableName: string) => new CreateTable(tableName, tablePrefix, queryRunner),
@@ -76,4 +77,5 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),
 	dropNotNull: (tableName: string, columnName: string) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
+	/* eslint-enable */
 });
