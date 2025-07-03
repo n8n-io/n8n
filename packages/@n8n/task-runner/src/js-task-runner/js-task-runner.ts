@@ -28,18 +28,6 @@ import type {
 import * as a from 'node:assert';
 import { type Context, createContext, runInContext } from 'node:vm';
 
-import type { MainConfig } from '@/config/main-config';
-import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import type {
-	DataRequestResponse,
-	InputDataChunkDefinition,
-	PartialAdditionalData,
-	TaskResultData,
-} from '@/runner-types';
-import type { TaskParams } from '@/task-runner';
-import { noOp, TaskRunner } from '@/task-runner';
-
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
@@ -50,6 +38,18 @@ import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+
+import type { MainConfig } from '@/config/main-config';
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import type {
+	DataRequestResponse,
+	InputDataChunkDefinition,
+	PartialAdditionalData,
+	TaskResultData,
+} from '@/runner-types';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
+import { noOp, TaskRunner } from '@/task-runner';
+import type { TaskParams } from '@/task-runner';
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
@@ -263,11 +263,7 @@ export class JsTaskRunner extends TaskRunner {
 						timeout: this.taskTimeout * 1000,
 					}) as Promise<TaskResultData['result']>;
 				} else {
-					const code = this.createDirectlyExecutableCode(settings.code);
-					// eslint-disable-next-line @typescript-eslint/no-implied-eval
-					const fn = new Function('context', `with(context) { return ${code}; }`);
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					taskResult = Promise.resolve(fn(context)) as Promise<TaskResultData['result']>;
+					taskResult = this.runDirectly<TaskResultData['result']>(settings.code, context);
 				}
 
 				void taskResult
@@ -336,11 +332,7 @@ export class JsTaskRunner extends TaskRunner {
 							timeout: this.taskTimeout * 1000,
 						}) as Promise<INodeExecutionData>;
 					} else {
-						const code = this.createDirectlyExecutableCode(settings.code);
-						// eslint-disable-next-line @typescript-eslint/no-implied-eval
-						const fn = new Function('context', `with(context) { return ${code}; }`);
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-						taskResult = Promise.resolve(fn(context)) as Promise<INodeExecutionData>;
+						taskResult = this.runDirectly<INodeExecutionData>(settings.code, context);
 					}
 
 					void taskResult
@@ -556,10 +548,6 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
-	private createDirectlyExecutableCode(code: string) {
-		return `(async function() {${code}\n})()`;
-	}
-
 	private createVmExecutableCode(code: string) {
 		return [
 			// shim for `global` compatibility
@@ -574,5 +562,15 @@ export class JsTaskRunner extends TaskRunner {
 			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
 		].join('; ');
+	}
+
+	private runDirectly<T>(code: string, context: Context) {
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const fn = new Function(
+			'context',
+			`with(context) { return (async function() {${code}\n})(); }`,
+		);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		return Promise.resolve(fn(context)) as Promise<T>;
 	}
 }
