@@ -327,14 +327,7 @@ export class PrometheusMetricsService {
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
-					const labels: Record<string, string> = {};
-					if (this.includes.labels.workflowId) {
-						labels.workflow_id = String(payload.workflowId ?? 'unknown');
-					}
-					if (this.includes.labels.workflowName) {
-						labels.workflow_name = String(payload.workflowName ?? 'unknown');
-					}
-					return labels;
+					return this.buildWorkflowLabels(payload);
 				}
 				break;
 
@@ -354,16 +347,20 @@ export class PrometheusMetricsService {
 				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
-				const workflowLabels: Record<string, string> = {};
-				if (this.includes.labels.workflowId) {
-					workflowLabels.workflow_id = String(payload.workflowId ?? 'unknown');
-				}
-				if (this.includes.labels.workflowName) {
-					workflowLabels.workflow_name = String(payload.workflowName ?? 'unknown');
-				}
-				return workflowLabels;
+				return this.buildWorkflowLabels(payload);
 		}
 
 		return {};
+	}
+
+	private buildWorkflowLabels(payload: any): Record<string, string> {
+		const labels: Record<string, string> = {};
+		if (this.includes.labels.workflowId) {
+			labels.workflow_id = String(payload.workflowId ?? 'unknown');
+		}
+		if (this.includes.labels.workflowName) {
+			labels.workflow_name = String(payload.workflowName ?? 'unknown');
+		}
+		return labels;
 	}
 }
