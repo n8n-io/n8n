@@ -1,13 +1,18 @@
+import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, within } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import { type UserAction } from '@n8n/design-system';
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useEmitters } from '@/__tests__/utils';
 import type { IUser } from '@/Interface';
 import type { PermissionType, PermissionTypeOptions } from '@/types/rbac';
+
+const { emitters, addEmitter } = useEmitters<
+	'settingsUsersRoleCell' | 'settingsUsersActionsCell' | 'n8nDataTableServer'
+>();
 
 // Mock child components and composables
 const hasPermission = vi.fn(
@@ -22,95 +27,56 @@ vi.mock('@/utils/rbac/permissions', () => ({
 }));
 
 vi.mock('@/components/SettingsUsers/SettingsUsersRoleCell.vue', () => ({
-	default: {
-		name: 'SettingsUsersRoleCell',
-		props: {
-			data: { type: Object, required: true },
-			roles: { type: Object, required: true },
-			actions: { type: Array, required: true },
+	default: defineComponent({
+		setup(_, { emit }) {
+			addEmitter('settingsUsersRoleCell', emit);
 		},
-		emits: ['update:role'],
-		template: `
-		  <div>
-			<button :data-test-id="'update-role-' + data.id" @click="$emit('update:role', { role: 'global:admin', userId: data.id })">Update Role</button>
-			<button :data-test-id="'delete-user-' + data.id" @click="$emit('update:role', { role: 'delete', userId: data.id })">Delete User</button>
-		  </div>
-		`,
-	},
+		template: '<div data-test-id="user-role" />',
+	}),
 }));
 
 vi.mock('@/components/SettingsUsers/SettingsUsersActionsCell.vue', () => ({
-	default: {
-		name: 'SettingsUsersActionsCell',
+	default: defineComponent({
 		props: {
 			data: { type: Object, required: true },
 			actions: { type: Array, required: true },
 		},
-		emits: ['action'],
-		template: `
-		  <div :data-test-id="'actions-cell-' + data.id" :data-actions-count="actions.length">
-			<button v-if="actions.length > 0" :data-test-id="'action-button-' + data.id" @click="$emit('action', { action: actions[0].value, userId: data.id })">
-				Perform Action
-			</button>
-		  </div>
-		`,
-	},
-}));
-
-vi.mock('@/components/SettingsUsers/SettingsUsersProjectsCell.vue', () => ({
-	default: {
-		name: 'SettingsUsersProjectsCell',
-		props: {
-			data: { type: Object, required: true },
+		setup(_, { emit }) {
+			addEmitter('settingsUsersActionsCell', emit);
 		},
-		template: '<div data-test-id="projects-cell">Projects</div>',
-	},
+		template:
+			'<div :data-test-id="\'actions-cell-\' + data.id" :data-actions-count="actions.length" />',
+	}),
 }));
 
-// Mock N8nDataTableServer to render slots and emit events
+// Mock N8nDataTableServer to emit events
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
 		...original,
-		N8nDataTableServer: {
-			name: 'N8nDataTableServer',
+		N8nDataTableServer: defineComponent({
 			props: {
 				headers: { type: Array, required: true },
 				items: { type: Array, required: true },
 				itemsLength: { type: Number, required: true },
 			},
-			emits: ['update:options'],
-			template: `
-			  <div>
-				  <button data-test-id="emit-options-update" @click="$emit('update:options', { page: 1, itemsPerPage: 20 })">Update Options</button>
-				  <ul>
-					<li v-for="item in items" :key="item.id" :data-test-id="'user-row-' + item.id">
-					  <div v-for="header in headers" :key="header.key">
-						<slot :name="'item.' + header.key" :item="item" :value="header.value ? header.value(item) : item[header.key]">
-							<!-- Fallback content -->
-							<span v-if="header.value">{{ header.value(item) }}</span>
-							<span v-else>{{ item[header.key] }}</span>
-						</slot>
-					  </div>
-					</li>
-				  </ul>
-			  </div>
-			`,
-		},
-		N8nUserInfo: {
-			name: 'N8nUserInfo',
-			props: {
-				firstName: String,
-				lastName: String,
-				email: String,
-				isPendingUser: Boolean,
+			setup(_, { emit }) {
+				addEmitter('n8nDataTableServer', emit);
 			},
 			template: `
-			  <div data-test-id="user-info">
-			  	{{ firstName }} {{ lastName }} <small>{{ email }}</small>
-			  </div>
-			`,
-		},
+				<ul>
+					<li v-for="item in items" :key="item.id" :data-test-id="'user-row-' + item.id">
+						<div v-for="header in headers" :key="header.key">
+							<slot :name="'item.' + header.key" :item="item"
+										:value="header.value ? header.value(item) : item[header.key]">
+								<!-- Fallback content -->
+								<span v-if="header.value">{{ header.value(item) }}</span>
+								<span v-else>{{ item[header.key] }}</span>
+							</slot>
+						</div>
+					</li>
+				</ul>`,
+		}),
 	};
 });
 
@@ -201,11 +167,9 @@ describe('SettingsUsersTable', () => {
 		expect(within(memberRow).getByText('Disabled')).toBeInTheDocument(); // 2FA
 	});
 
-	it('should delegate update:options event from N8nDataTableServer', async () => {
+	it('should delegate update:options event from N8nDataTableServer', () => {
 		const { emitted } = renderComponent();
-		const user = userEvent.setup();
-
-		await user.click(screen.getByTestId('emit-options-update'));
+		emitters.n8nDataTableServer.emit('update:options', { page: 1, itemsPerPage: 20 });
 
 		expect(emitted()).toHaveProperty('update:options');
 		expect(emitted()['update:options'][0]).toEqual([{ page: 1, itemsPerPage: 20 }]);
@@ -215,26 +179,22 @@ describe('SettingsUsersTable', () => {
 		it('should render role update component when user has permission', () => {
 			hasPermission.mockReturnValue(true);
 			renderComponent();
-
-			const memberRow = screen.getByTestId('user-row-2');
-			expect(within(memberRow).getByTestId('update-role-2')).toBeInTheDocument();
+			screen.getAllByTestId('user-role').forEach((roleCell) => {
+				expect(roleCell).toBeVisible();
+			});
 		});
 
-		it('should emit "update:role" when a new role is selected', async () => {
+		it('should emit "update:role" when a new role is selected', () => {
 			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			await user.click(screen.getByTestId('update-role-2'));
+			emitters.settingsUsersRoleCell.emit('update:role', { role: 'global:admin', userId: '2' });
 
 			expect(emitted()).toHaveProperty('update:role');
 			expect(emitted()['update:role'][0]).toEqual([{ role: 'global:admin', userId: '2' }]);
 		});
 
-		it('should emit "action" with "delete" payload when delete is selected from role change', async () => {
+		it('should emit "action" with "delete" payload when delete is selected from role change', () => {
 			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			await user.click(screen.getByTestId('delete-user-2'));
+			emitters.settingsUsersRoleCell.emit('update:role', { role: 'delete', userId: '2' });
 
 			// It should not emit 'update:role'
 			expect(emitted()).not.toHaveProperty('update:role');
@@ -249,7 +209,7 @@ describe('SettingsUsersTable', () => {
 			renderComponent();
 
 			const memberRow = screen.getByTestId('user-row-2');
-			expect(within(memberRow).queryByTestId('update-role-2')).not.toBeInTheDocument();
+			expect(within(memberRow).queryByTestId('user-role')).not.toBeInTheDocument();
 			expect(within(memberRow).getByText('Member')).toBeInTheDocument();
 		});
 	});
@@ -275,10 +235,7 @@ describe('SettingsUsersTable', () => {
 
 		it('should delegate action events from SettingsUsersActionsCell', async () => {
 			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			// The mock action cell will emit the first available action, which is 'delete' for user 2
-			await user.click(screen.getByTestId('action-button-2'));
+			emitters.settingsUsersActionsCell.emit('action', { action: 'delete', userId: '2' });
 
 			expect(emitted()).toHaveProperty('action');
 			expect(emitted().action[0]).toEqual([{ action: 'delete', userId: '2' }]);

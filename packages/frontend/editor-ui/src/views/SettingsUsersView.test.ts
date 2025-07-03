@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -10,6 +11,7 @@ import {
 } from '@/constants';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useEmitters } from '@/__tests__/utils';
 import {
 	cleanupAppModals,
 	createAppModals,
@@ -21,27 +23,16 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
 
+const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
+
 // Mock the SettingsUsersTable component to emit events when clicked
 vi.mock('@/components/SettingsUsers/SettingsUsersTable.vue', () => ({
-	default: {
-		name: 'SettingsUsersTable',
-		props: ['data', 'loading', 'actions'],
-		emits: ['update:options', 'update:role', 'action'],
-		template: `
-			<div data-test-id="settings-users-table">
-				<button data-test-id="emit-delete" @click="$emit('action', { action: 'delete', userId: '2' })">Delete</button>
-				<button data-test-id="emit-reinvite" @click="$emit('action', { action: 'reinvite', userId: '3' })">Reinvite</button>
-				<button data-test-id="emit-copy-invite" @click="$emit('action', { action: 'copyInviteLink', userId: '3' })">Copy Invite</button>
-				<button data-test-id="emit-copy-reset" @click="$emit('action', { action: 'copyPasswordResetLink', userId: '2' })">Copy Reset</button>
-				<button data-test-id="emit-allow-sso" @click="$emit('action', { action: 'allowSSOManualLogin', userId: '2' })">Allow SSO</button>
-				<button data-test-id="emit-disallow-sso" @click="$emit('action', { action: 'disallowSSOManualLogin', userId: '2' })">Disallow SSO</button>
-				<button data-test-id="emit-role-update" @click="$emit('update:role', { userId: '2', role: 'global:admin' })">Update Role</button>
-				<button data-test-id="emit-options-update" @click="$emit('update:options', { page: 1, itemsPerPage: 20, sortBy: [{ id: 'role', desc: true }] })">Update Options</button>
-				<button data-test-id="emit-name-sort" @click="$emit('update:options', { page: 0, itemsPerPage: 10, sortBy: [{ id: 'name', desc: false }] })">Name Sort</button>
-				<button data-test-id="emit-invalid-sort" @click="$emit('update:options', { page: 0, itemsPerPage: 10, sortBy: [{ id: 'invalidKey', desc: false }] })">Invalid Sort</button>
-			</div>
-		`,
-	},
+	default: defineComponent({
+		setup(_, { emit }) {
+			addEmitter('settingsUsersTable', emit);
+		},
+		template: '<div />',
+	}),
 }));
 
 const mockToast = {
@@ -287,10 +278,9 @@ describe('SettingsUsersView', () => {
 
 	describe('user actions', () => {
 		it('should handle delete user action', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-delete'));
+			emitters.settingsUsersTable.emit('action', { action: 'delete', userId: '2' });
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: DELETE_USER_MODAL_KEY,
@@ -302,64 +292,68 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should handle reinvite user action', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-reinvite'));
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
 			expect(usersStore.reinviteUser).toHaveBeenCalledWith({
 				email: 'pending@example.com',
 				role: ROLE.Member,
 			});
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
 		it('should handle copy invite link action', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-copy-invite'));
+			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
 
 			expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/invite/123');
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
 		it('should handle copy password reset link action', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-copy-reset'));
+			emitters.settingsUsersTable.emit('action', { action: 'copyPasswordResetLink', userId: '2' });
 
 			expect(usersStore.getUserPasswordResetLink).toHaveBeenCalledWith(mockUsersList.items[1]);
-			expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/reset/123');
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/reset/123');
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
 		it('should handle allow SSO manual login action', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-allow-sso'));
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
 
 			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
 				allowSSOManualLogin: true,
 			});
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
@@ -367,69 +361,75 @@ describe('SettingsUsersView', () => {
 			// Set user to have SSO manual login enabled
 			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-disallow-sso'));
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
 
 			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
 				allowSSOManualLogin: false,
 			});
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
 		it('should handle reinvite user error', async () => {
 			usersStore.reinviteUser = vi.fn().mockRejectedValue(new Error('Failed to reinvite'));
 
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-reinvite'));
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
-			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
 		});
 	});
 
 	describe('role updates', () => {
 		it('should handle role update', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-role-update'));
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
 
 			expect(usersStore.updateGlobalRole).toHaveBeenCalledWith({
 				id: '2',
 				newRoleName: ROLE.Admin,
 			});
-			expect(mockToast.showToast).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-				message: expect.any(String),
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
 			});
 		});
 
 		it('should handle role update error', async () => {
 			usersStore.updateGlobalRole = vi.fn().mockRejectedValue(new Error('Failed to update role'));
 
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-role-update'));
-
-			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
 		});
 	});
 
 	describe('table functionality', () => {
 		it('should handle table options update', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-options-update'));
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 20,
+				sortBy: [{ id: 'role', desc: true }],
+			});
 
 			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
 				skip: 20,
@@ -443,10 +443,13 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should transform name sort to firstName, lastName, email', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-name-sort'));
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'name', desc: false }],
+			});
 
 			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
@@ -460,10 +463,13 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should filter out invalid sort keys', async () => {
-			const user = userEvent.setup();
 			renderComponent();
 
-			await user.click(screen.getByTestId('emit-invalid-sort'));
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'invalidKey', desc: false }],
+			});
 
 			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
 				skip: 0,
