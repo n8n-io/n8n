@@ -13,6 +13,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 import { BaseCommand } from './base-command';
 
@@ -126,6 +127,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 */
 	async initOrchestration() {
 		Container.get(Publisher);
+
+		Container.get(WorkerStatusService);
 
 		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
