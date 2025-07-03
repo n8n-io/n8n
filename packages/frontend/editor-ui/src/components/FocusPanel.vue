@@ -71,7 +71,7 @@ function valueChanged(value: string) {
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.container">
+	<div v-if="focusPanelActive" :class="$style.container" @keydown.stop>
 		<div :class="$style.header">
 			<N8nText size="small" :bold="true">
 				{{ locale.baseText('nodeView.focusPanel.title') }}
