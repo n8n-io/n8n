@@ -105,7 +105,7 @@ describe('GoogleGemini -> utils', () => {
 					'Content-Type': 'application/json',
 				},
 				option: {
-					resolveWithFullResponse: true,
+					returnFullResponse: true,
 				},
 			});
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({

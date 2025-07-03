@@ -23,10 +23,10 @@ export async function apiRequest(
 
 	const credentials = await this.getCredentials('googlePalmApi');
 
-	let uri = `https://generativelanguage.googleapis.com${endpoint}`;
+	let url = `https://generativelanguage.googleapis.com${endpoint}`;
 
 	if (credentials.url) {
-		uri = `${credentials?.url as string}${endpoint}`;
+		url = `${credentials?.url as string}${endpoint}`;
 	}
 
 	const options = {
@@ -34,7 +34,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs,
-		uri,
+		url,
 		json: true,
 	};
 
@@ -42,5 +42,5 @@ export async function apiRequest(
 		Object.assign(options, option);
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'googlePalmApi', options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'googlePalmApi', options);
 }

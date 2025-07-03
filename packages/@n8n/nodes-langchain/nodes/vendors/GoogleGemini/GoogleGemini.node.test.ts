@@ -342,7 +342,7 @@ describe('GoogleGemini Node', () => {
 			expect(downloadFileMock).not.toHaveBeenCalled();
 			expect(uploadFileMock).not.toHaveBeenCalled();
 			expect(apiRequestMock).toHaveBeenCalledWith('GET', '', {
-				option: { uri: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
+				option: { url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
 			});
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
@@ -591,7 +591,7 @@ describe('GoogleGemini Node', () => {
 			expect(downloadFileMock).not.toHaveBeenCalled();
 			expect(uploadFileMock).not.toHaveBeenCalled();
 			expect(apiRequestMock).toHaveBeenCalledWith('GET', '', {
-				option: { uri: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
+				option: { url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
 			});
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',

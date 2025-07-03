@@ -30,7 +30,7 @@ export async function baseAnalyze(
 			.map(async (url) => {
 				if (url.startsWith('https://generativelanguage.googleapis.com')) {
 					const { mimeType } = (await apiRequest.call(this, 'GET', '', {
-						option: { uri: url },
+						option: { url },
 					})) as { mimeType: string };
 					return { fileUri: url, mimeType };
 				} else {

@@ -45,7 +45,7 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 			'Content-Type': 'application/json',
 		},
 		option: {
-			resolveWithFullResponse: true,
+			returnFullResponse: true,
 		},
 	})) as { headers: IDataObject };
 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
