@@ -67,10 +67,10 @@ import proxyFromEnv from 'proxy-from-env';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
+import type { IResponseError } from '@/interfaces';
+
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
-
-import type { IResponseError } from '@/interfaces';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
