@@ -432,10 +432,10 @@ describe('toolsAgentExecute', () => {
 			mockModel = mock<BaseChatModel>();
 			mockModel.bindTools = jest.fn();
 			mockModel.lc_namespace = ['chat_models'];
-			mockContext.getInputConnectionData.mockImplementation((type, _index) => {
-				if (type === 'ai_languageModel') return Promise.resolve(mockModel);
-				if (type === 'ai_memory') return Promise.resolve(undefined);
-				return Promise.resolve(undefined);
+			mockContext.getInputConnectionData.mockImplementation(async (type, _index) => {
+				if (type === 'ai_languageModel') return mockModel;
+				if (type === 'ai_memory') return undefined;
+				return undefined;
 			});
 
 			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {

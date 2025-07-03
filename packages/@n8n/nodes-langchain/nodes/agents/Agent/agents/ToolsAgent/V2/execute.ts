@@ -105,7 +105,7 @@ async function processEventStream(
 					const output = chatModelData.output;
 
 					// Check if this LLM response contains tool calls
-					if (output && output.tool_calls && output.tool_calls.length > 0) {
+					if (output?.tool_calls && output.tool_calls.length > 0) {
 						for (const toolCall of output.tool_calls) {
 							agentResult.intermediateSteps!.push({
 								action: {
