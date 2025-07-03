@@ -269,7 +269,7 @@ $select-option-disabled-color: var(--color-text-lighter);
 $select-option-disabled-background: var(--color-background-xlight);
 /// height||Other|4
 $select-option-height: 34px;
-$select-option-hover-background: $background-color-base;
+$select-option-hover-background: var(--select-option-hover-background);
 /// color||Color|0
 $select-option-selected-font-color: var(--color-primary);
 $select-option-selected-hover: $background-color-base;

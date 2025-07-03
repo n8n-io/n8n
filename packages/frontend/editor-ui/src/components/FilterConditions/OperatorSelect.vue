@@ -146,7 +146,7 @@ function onGroupSelect(group: string) {
 	}
 
 	&:hover {
-		background: var(--color-background-base);
+		background: var(--select-option-hover-background);
 	}
 }
 
