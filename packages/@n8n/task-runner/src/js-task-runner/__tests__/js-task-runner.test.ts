@@ -1,6 +1,10 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type { IBinaryData } from 'n8n-workflow';
-import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
+import {
+	type IBinaryData,
+	setGlobalState,
+	type CodeExecutionMode,
+	type IDataObject,
+} from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -26,6 +30,7 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
+import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
@@ -804,6 +809,15 @@ describe('JsTaskRunner', () => {
 						inputItems: [{ a: 1 }],
 					}),
 				).rejects.toThrow(ValidationError);
+			});
+
+			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
+				await expect(
+					executeForAllItems({
+						code: 'return [{json: {b: 1}, objectId: "123"}]',
+						inputItems: [{ a: 1 }],
+					}),
+				).rejects.toThrow(ReservedKeyFoundError);
 			});
 		});
 
