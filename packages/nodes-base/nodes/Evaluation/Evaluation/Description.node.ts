@@ -1,7 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
-import { CORRECTNESS_PROMPT, CORRECTNESS_INPUT_PROMPT } from './CannedMetricPrompts.ee';
+import {
+	CORRECTNESS_PROMPT,
+	CORRECTNESS_INPUT_PROMPT,
+	HELPFULNESS_PROMPT,
+	HELPFULNESS_INPUT_PROMPT,
+} from './CannedMetricPrompts.ee';
 
 export const setOutputProperties: INodeProperties[] = [
 	{
@@ -81,7 +86,7 @@ export const setCheckIfEvaluatingProperties: INodeProperties[] = [
 	},
 ];
 
-const expectedAnswerFields: INodeProperties[] = [
+const correctnessFields: INodeProperties[] = [
 	{
 		displayName: 'Expected Answer',
 		name: 'expectedAnswer',
@@ -103,6 +108,33 @@ const expectedAnswerFields: INodeProperties[] = [
 			show: {
 				operation: ['setMetrics'],
 				metric: ['correctness', 'stringSimilarity', 'accuracy'],
+			},
+		},
+	},
+];
+
+const helpfulnessFields: INodeProperties[] = [
+	{
+		displayName: 'User Query',
+		name: 'userQuery',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['helpfulness'],
+			},
+		},
+	},
+	{
+		displayName: 'Response',
+		name: 'actualAnswer',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: ['helpfulness'],
 			},
 		},
 	},
@@ -278,9 +310,11 @@ export const setMetricsProperties: INodeProperties[] = [
 		},
 	},
 	...namesForMetrics,
-	...expectedAnswerFields,
+	...correctnessFields,
+	...helpfulnessFields,
 	...toolsUsedFields,
 	...promptFieldForMetric('correctness', CORRECTNESS_PROMPT),
+	...promptFieldForMetric('helpfulness', HELPFULNESS_PROMPT),
 	{
 		displayName: 'Metrics to Return',
 		name: 'metrics',
@@ -308,4 +342,5 @@ export const setMetricsProperties: INodeProperties[] = [
 		},
 	},
 	...optionsForMetric('correctness', CORRECTNESS_INPUT_PROMPT),
+	...optionsForMetric('helpfulness', HELPFULNESS_INPUT_PROMPT),
 ];

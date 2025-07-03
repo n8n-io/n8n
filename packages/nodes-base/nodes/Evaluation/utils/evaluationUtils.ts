@@ -19,7 +19,12 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { composeReturnItem, validateEntry } from '../../Set/v2/helpers/utils';
-import { CORRECTNESS_PROMPT, CORRECTNESS_INPUT_PROMPT } from '../Evaluation/CannedMetricPrompts.ee';
+import {
+	CORRECTNESS_PROMPT,
+	CORRECTNESS_INPUT_PROMPT,
+	HELPFULNESS_PROMPT,
+	HELPFULNESS_INPUT_PROMPT,
+} from '../Evaluation/CannedMetricPrompts.ee';
 
 export async function setOutput(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
@@ -217,7 +222,89 @@ const metricHandlers = {
 	},
 
 	async helpfulness(this: IExecuteFunctions, i: number): Promise<IDataObject> {
-		return {};
+		const userQuery = (this.getNodeParameter('userQuery', i, '') as string).toString().trim();
+		const actualAnswer = (this.getNodeParameter('actualAnswer', i, '') as string).toString().trim();
+
+		if (!userQuery) {
+			throw new NodeOperationError(this.getNode(), 'User query is missing', {
+				description: 'Make sure to fill in the user query in the User Query field',
+			});
+		}
+		if (!actualAnswer) {
+			throw new NodeOperationError(this.getNode(), 'Response is missing', {
+				description: 'Make sure to fill in the response to evaluate in the Response field',
+			});
+		}
+
+		// Get the connected LLM model
+		const llm = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
+
+		if (!llm) {
+			throw new NodeOperationError(this.getNode(), 'No language model connected', {
+				description: 'Connect a language model to the Model input to use the helpfulness metric',
+			});
+		}
+
+		// Get the system prompt and input prompt template, using defaults if not provided
+		const systemPrompt = this.getNodeParameter('prompt', i, HELPFULNESS_PROMPT) as string;
+		const inputPromptTemplate = this.getNodeParameter(
+			'options.inputPrompt',
+			i,
+			HELPFULNESS_INPUT_PROMPT[0],
+		) as string;
+
+		// Define the expected response schema
+		const responseSchema = z.object({
+			extended_reasoning: z
+				.string()
+				.describe('detailed step-by-step analysis of the response helpfulness'),
+			reasoning_summary: z.string().describe('one sentence summary of the response helpfulness'),
+			score: z
+				.number()
+				.int()
+				.min(1)
+				.max(5)
+				.describe('integer from 1 to 5 representing the helpfulness score'),
+		});
+
+		// Create structured output parser
+		const parser = StructuredOutputParser.fromZodSchema(responseSchema);
+
+		// Create LangChain prompt templates with format instructions
+		const formatInstructions = parser.getFormatInstructions();
+		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate(
+			'{systemPrompt}\n\n{format_instructions}',
+		);
+		const humanMessageTemplate = HumanMessagePromptTemplate.fromTemplate(inputPromptTemplate);
+
+		// Create the chat prompt template
+		const chatPrompt = ChatPromptTemplate.fromMessages([
+			systemMessageTemplate,
+			humanMessageTemplate,
+		]);
+
+		// Create and execute the chain
+		const chain = chatPrompt.pipe(llm).pipe(parser);
+
+		try {
+			const response = await chain.invoke({
+				systemPrompt,
+				user_query: userQuery,
+				actual_answer: actualAnswer,
+				format_instructions: formatInstructions,
+			});
+
+			const metricName = this.getNodeParameter('metricName', i, 'Helpfulness') as string;
+
+			// Return the score as the main metric
+			return {
+				[metricName]: response.score,
+			};
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'Failed to evaluate helpfulness', {
+				description: `Error from language model: ${error instanceof Error ? error.message : String(error)}`,
+			});
+		}
 	},
 
 	async correctness(this: IExecuteFunctions, i: number): Promise<IDataObject> {
@@ -274,7 +361,7 @@ const metricHandlers = {
 		// Create LangChain prompt templates with format instructions
 		const formatInstructions = parser.getFormatInstructions();
 		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate(
-			`{systemPrompt}\n\n{format_instructions}`,
+			'{systemPrompt}\n\n{format_instructions}',
 		);
 		const humanMessageTemplate = HumanMessagePromptTemplate.fromTemplate(inputPromptTemplate);
 
