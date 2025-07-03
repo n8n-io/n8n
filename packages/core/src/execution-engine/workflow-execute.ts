@@ -113,7 +113,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	run(
 		workflow: Workflow,
 		startNode?: INode,
@@ -189,7 +189,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line complexity
+	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
 	runPartialWorkflow(
 		workflow: Workflow,
 		runData: IRunData,
@@ -344,7 +344,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
@@ -1336,7 +1336,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
