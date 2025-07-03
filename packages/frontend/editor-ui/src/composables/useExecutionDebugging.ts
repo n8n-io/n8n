@@ -98,6 +98,7 @@ export const useExecutionDebugging = () => {
 		}
 
 		// Set execution data
+		workflowsStore.resetAllNodesIssues();
 		workflowsStore.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node

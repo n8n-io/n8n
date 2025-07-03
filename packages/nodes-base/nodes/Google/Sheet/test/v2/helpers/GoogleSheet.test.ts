@@ -100,6 +100,28 @@ describe('GoogleSheet', () => {
 				{ name: 'Jane', age: '25' },
 			]);
 		});
+
+		it('should handle empty columns when includeHeadersWithEmptyCells is true', () => {
+			const data = [
+				['name', 'age'],
+				['John', '30'],
+				['MARY', ''],
+				['Jane', '25'],
+			];
+			const result = googleSheet.convertSheetDataArrayToObjectArray(
+				data,
+				1,
+				['name', 'age'],
+				false,
+				true,
+			);
+
+			expect(result).toEqual([
+				{ name: 'John', age: '30' },
+				{ name: 'MARY', age: '' },
+				{ name: 'Jane', age: '25' },
+			]);
+		});
 	});
 
 	describe('lookupValues', () => {
