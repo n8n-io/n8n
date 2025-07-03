@@ -1,6 +1,6 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
+import type { z, BaseWorkflowBuilderTool, type ToolContext, type ToolResult } from './base';
 import type { WorkflowState } from '../workflow-state';
 import { addNodesSchema, type AddedNode } from './types/node.types';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
@@ -30,7 +30,7 @@ export class AddNodesTool extends BaseWorkflowBuilderTool<typeof addNodesSchema,
 	protected readonly schema = addNodesSchema;
 	protected readonly name = 'add_nodes' as const;
 	protected readonly description =
-		`Add one or more nodes to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what each node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.`;
+		'Add one or more nodes to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what each node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.';
 
 	/**
 	 * Execute the add nodes tool
@@ -77,7 +77,7 @@ export class AddNodesTool extends BaseWorkflowBuilderTool<typeof addNodesSchema,
 				name: newNode.name,
 				type: newNode.type,
 				displayName: nodeTypeDesc.displayName,
-				position: newNode.position as [number, number],
+				position: newNode.position,
 			});
 			currentNodes.push(newNode);
 		}

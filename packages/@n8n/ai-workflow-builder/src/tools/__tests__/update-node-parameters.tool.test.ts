@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import type { INodeTypeDescription, INode } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { UpdateNodeParametersTool } from '../update-node-parameters.tool';
-import { createMockNodeTypes } from '../test-utils/node-mocks';
-import { createMockToolContext } from '../test-utils/mock-context';
 import type { WorkflowState } from '../../workflow-state';
+import { createMockToolContext } from '../test-utils/mock-context';
+import { createMockNodeTypes } from '../test-utils/node-mocks';
+import { UpdateNodeParametersTool } from '../update-node-parameters.tool';
 
 // Mock the parameter updater chain
 jest.mock('../../chains/parameter-updater', () => ({

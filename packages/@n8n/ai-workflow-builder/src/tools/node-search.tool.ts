@@ -1,4 +1,4 @@
-import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 
 import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
 import { NodeSearchEngine, type NodeSearchResult } from './engines/node-search-engine';

@@ -2,8 +2,9 @@
 export { getAllTestNodeTypes as createMockNodeTypes } from './fixtures';
 
 // Import the specific nodes we need
-import { TEST_NODE_TYPES } from './fixtures';
 import type { INodeTypeDescription } from 'n8n-workflow';
+
+import { TEST_NODE_TYPES } from './fixtures';
 
 // Create a custom function that includes the nodes we need for the refactored tests
 export function createMockNodeTypesForRefactoredTools(): INodeTypeDescription[] {

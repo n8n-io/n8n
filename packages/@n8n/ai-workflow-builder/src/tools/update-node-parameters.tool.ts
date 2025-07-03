@@ -1,8 +1,8 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
 import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
-import type { WorkflowState } from '../workflow-state';
 import { parameterUpdaterChain } from '../chains/parameter-updater';
+import type { WorkflowState } from '../workflow-state';
 import {
 	extractNodeParameters,
 	formatNodeDefinition,

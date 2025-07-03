@@ -1,6 +1,7 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
 import type { ToolContext } from '../base/types';
 
 /**

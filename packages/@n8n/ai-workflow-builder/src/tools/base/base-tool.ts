@@ -1,8 +1,8 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { z } from 'zod';
 
 import { ProgressReporter } from './progress-reporter';

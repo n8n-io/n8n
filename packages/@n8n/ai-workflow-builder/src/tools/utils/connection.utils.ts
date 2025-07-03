@@ -1,4 +1,5 @@
 import type { INode, INodeTypeDescription, IConnections, IConnection } from 'n8n-workflow';
+
 import { isSubNode } from '../../utils/node-helpers';
 
 /**
@@ -176,12 +177,12 @@ export function createConnection(
 	}
 
 	// Check if connection already exists
-	const existingConnection = connectionArray[sourceOutputIndex]!.find(
+	const existingConnection = connectionArray[sourceOutputIndex].find(
 		(conn) => conn.node === targetNodeName && conn.index === targetInputIndex,
 	);
 
 	if (!existingConnection) {
-		connectionArray[sourceOutputIndex]!.push(newConnection);
+		connectionArray[sourceOutputIndex].push(newConnection);
 	}
 
 	return connections;
@@ -214,7 +215,7 @@ export function removeConnection(
 	// If indices are specified, remove specific connection
 	if (sourceOutputIndex !== undefined) {
 		if (connectionArray[sourceOutputIndex]) {
-			connectionArray[sourceOutputIndex] = connectionArray[sourceOutputIndex]!.filter(
+			connectionArray[sourceOutputIndex] = connectionArray[sourceOutputIndex].filter(
 				(conn) =>
 					conn.node !== targetNodeName ||
 					(targetInputIndex !== undefined && conn.index !== targetInputIndex),

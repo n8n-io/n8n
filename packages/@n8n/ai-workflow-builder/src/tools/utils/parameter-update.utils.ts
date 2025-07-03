@@ -98,7 +98,7 @@ export function formatNodeDefinition(nodeType: INodeTypeDescription): string {
 				lines.push(`  Description: ${prop.description}`);
 			}
 			if (prop.required) {
-				lines.push(`  Required: true`);
+				lines.push('  Required: true');
 			}
 			if (prop.default !== undefined) {
 				lines.push(`  Default: ${JSON.stringify(prop.default)}`);

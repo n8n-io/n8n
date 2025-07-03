@@ -1,10 +1,10 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
 import { describe, it, expect, beforeEach } from '@jest/globals';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { NodeDetailsTool } from '../node-details.tool';
-import { createMockNodeTypes } from '../test-utils/node-mocks';
 import { createMockToolContext } from '../test-utils/mock-context';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { createMockNodeTypes } from '../test-utils/node-mocks';
 
 describe('NodeDetailsTool', () => {
 	let nodeTypes: INodeTypeDescription[];
