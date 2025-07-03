@@ -5,6 +5,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { WorkflowState } from '../workflow-state';
+import { isSubNode } from '../utils/node-helpers';
 
 const nodeSchema = z.object({
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
@@ -123,10 +124,10 @@ function createNode(
 	const name = generateUniqueName(baseName, state.workflowJSON.nodes);
 
 	// Check if this is a sub-node
-	const isSubNode = nodeType.inputs?.length === 0;
+	const isSubNodeType = isSubNode(nodeType);
 
 	// Calculate position
-	const position = calculateNodePosition(state.workflowJSON.nodes, isSubNode, nodeTypes);
+	const position = calculateNodePosition(state.workflowJSON.nodes, isSubNodeType, nodeTypes);
 
 	// Get latest version
 	const typeVersion = getLatestVersion(nodeType);
@@ -164,7 +165,7 @@ function generateUniqueName(baseName: string, existingNodes: INode[]): string {
 
 function calculateNodePosition(
 	existingNodes: INode[],
-	isSubNode: boolean,
+	isSubNodeType: boolean,
 	nodeTypes: INodeTypeDescription[],
 ): [number, number] {
 	const HORIZONTAL_GAP = 280; // Gap between columns of nodes
@@ -174,24 +175,24 @@ function calculateNodePosition(
 
 	if (existingNodes.length === 0) {
 		// First node - position based on whether it's a sub-node or main node
-		return [250, isSubNode ? SUB_NODE_Y : MAIN_NODE_Y];
+		return [250, isSubNodeType ? SUB_NODE_Y : MAIN_NODE_Y];
 	}
 
 	// Separate existing nodes into main and sub-nodes
 	const existingMainNodes = existingNodes.filter((node) => {
 		const nodeType = nodeTypes.find((nt) => nt.name === node.type);
-		return nodeType && nodeType.inputs?.length !== 0;
+		return nodeType && !isSubNode(nodeType);
 	});
 
 	const existingSubNodes = existingNodes.filter((node) => {
 		const nodeType = nodeTypes.find((nt) => nt.name === node.type);
-		return nodeType && nodeType.inputs?.length === 0;
+		return nodeType && isSubNode(nodeType);
 	});
 
 	// Find the rightmost X position for the relevant node type
 	let targetX;
 
-	if (isSubNode) {
+	if (isSubNodeType) {
 		// For sub-nodes, we want to position them under their related main nodes
 		// If there are main nodes, position sub-nodes starting from the first main node's X
 		if (existingMainNodes.length > 0) {
@@ -216,7 +217,7 @@ function calculateNodePosition(
 	}
 
 	// For the new node, determine its base Y position
-	const baseY = isSubNode ? SUB_NODE_Y : MAIN_NODE_Y;
+	const baseY = isSubNodeType ? SUB_NODE_Y : MAIN_NODE_Y;
 
 	// Check how many nodes are already at the target X position
 	const nodesAtTargetX = existingNodes.filter((n) => Math.abs(n.position[0] - targetX) < 50);

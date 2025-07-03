@@ -5,6 +5,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { WorkflowState } from '../workflow-state';
+import { isSubNode } from '../utils/node-helpers';
 
 export interface NodeDetails {
 	name: string;
@@ -70,9 +71,11 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 
 			const sourceNodeType = nodeTypes.find((nt) => nt.name === matchedSourceNode.type);
 			const targetNodeType = nodeTypes.find((nt) => nt.name === matchedTargetNode.type);
-			const sourceNodeTypeIsSubNode = sourceNodeType?.inputs?.length === 0;
-			const targetNodeTypeIsSubNode = targetNodeType?.inputs?.length === 0;
+			const sourceNodeTypeIsSubNode = sourceNodeType ? isSubNode(sourceNodeType) : false;
+			const targetNodeTypeIsSubNode = targetNodeType ? isSubNode(targetNodeType) : false;
 
+			console.log('Source node type is sub-node:', sourceNodeTypeIsSubNode, sourceNodeType?.name);
+			console.log('Target node type is sub-node:', targetNodeTypeIsSubNode, targetNodeType?.name);
 			// Auto-swap nodes if they're in the wrong order for ai_* connections
 			let actualSourceNode = matchedSourceNode;
 			let actualTargetNode = matchedTargetNode;
@@ -147,20 +150,25 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 		},
 		{
 			name: 'connect_nodes',
-			description: `Connect two nodes in the workflow. The tool will automatically ensure correct connection direction for sub-nodes.
+			description: `Connect two nodes in the workflow.
 
-For ai_* connections (ai_languageModel, ai_tool, ai_memory, ai_embedding):
-- The tool will AUTO-CORRECT if nodes are in wrong order
-- Sub-nodes will always be used as the source
-- Main nodes will always be used as the target
+UNDERSTANDING CONNECTIONS:
+- SOURCE NODE: The node whose output connects to another node (appears as the key in connections object)
+- TARGET NODE: The node that receives the connection (appears in the connection array)
+- In the workflow JSON: connections[SOURCE_NODE] points to TARGET_NODE
 
-EXAMPLES:
-- OpenAI Chat Model → AI Agent (ai_languageModel)
-- Calculator Tool → AI Agent (ai_tool)
-- Simple Memory → Basic LLM Chain (ai_memory)
-- HTTP Request → Set (main)
+For ai_* connections (ai_languageModel, ai_tool, ai_memory, ai_embedding, etc.):
+- Sub-nodes are ALWAYS the source (they provide capabilities)
+- Main nodes or other sub-nodes are the target (they consume capabilities)
 
-Note: If you specify nodes in the wrong order for ai_* connections, they will be automatically swapped to ensure correctness.`,
+CORRECT CONNECTION EXAMPLES:
+- OpenAI Chat Model (SOURCE) → AI Agent (TARGET) [ai_languageModel]
+- Calculator Tool (SOURCE) → AI Agent (TARGET) [ai_tool]
+- Window Buffer Memory (SOURCE) → AI Agent (TARGET) [ai_memory]
+- Token Splitter (SOURCE) → Default Data Loader (TARGET) [ai_textSplitter]
+- Default Data Loader (SOURCE) → Vector Store (TARGET) [ai_document]
+- Embeddings OpenAI (SOURCE) → Vector Store (TARGET) [ai_embedding]
+- HTTP Request (SOURCE) → Set (TARGET) [main]`,
 			schema: nodesConnectionsSchema,
 		},
 	);
