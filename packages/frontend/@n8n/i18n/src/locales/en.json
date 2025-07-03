@@ -1478,7 +1478,6 @@
 	"nodeView.couldntImportWorkflow": "Could not import workflow",
 	"nodeView.couldntLoadWorkflow.invalidWorkflowObject": "Invalid workflow object",
 	"nodeView.deletesTheCurrentExecutionData": "Deletes the current execution data",
-	"nodeView.focusPanel.executeButtonTooltip": "Execute AI Agent",
 	"nodeView.focusPanel.title": "Focus",
 	"nodeView.focusPanel.noParameters": "No parameters focused. Focus a parameter by clicking on the action dropdown in the node detail view.",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
