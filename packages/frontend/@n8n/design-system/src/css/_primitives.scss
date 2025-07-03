@@ -4,43 +4,43 @@
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
-	--h-gray: 260;
+	--h-gray: 235;
 
 	// Gray
-	--p-gray-950: hsl(250, 20%, 5%);
-	--p-gray-900: hsl(250, 10%, 10%);
-	--p-gray-890: hsl(250, 10%, 11%);
-	--p-gray-850: hsl(250, 8%, 15%);
-	--p-gray-820: hsl(250, 7%, 18%);
-	--p-gray-800: hsl(250, 7%, 20%);
-	--p-gray-780: hsl(250, 7%, 22%);
-	--p-gray-740: hsl(250, 7%, 26%);
-	--p-gray-710: hsl(250, 7%, 29%);
-	--p-gray-670: hsl(250, 7%, 33%);
-	--p-gray-600: hsl(250, 7%, 40%);
-	--p-gray-540: hsl(250, 8%, 46%);
-	--p-gray-490: hsl(250, 8%, 51%);
-	--p-gray-420: hsl(250, 8%, 58%);
-	--p-gray-320: hsl(250, 10%, 68%);
-	--p-gray-200: hsl(250, 10%, 80%);
-	--p-gray-120: hsl(250, 15%, 88%);
-	--p-gray-070: hsl(250, 32%, 93%);
-	--p-gray-040: hsl(250, 40%, 96%);
-	--p-gray-030: hsl(250, 43%, 97%);
-	--p-gray-025: hsl(250, 50%, 97.5%);
-	--p-gray-010: hsl(250, 50%, 99%);
-	--p-white: hsl(250, 50%, 100%);
+	--p-gray-950: hsl(var(--h-gray), 20%, 5%);
+	--p-gray-900: hsl(var(--h-gray), 10%, 10%);
+	--p-gray-890: hsl(var(--h-gray), 10%, 11%);
+	--p-gray-850: hsl(var(--h-gray), 8%, 15%);
+	--p-gray-820: hsl(var(--h-gray), 7%, 18%);
+	--p-gray-800: hsl(var(--h-gray), 7%, 20%);
+	--p-gray-780: hsl(var(--h-gray), 7%, 22%);
+	--p-gray-740: hsl(var(--h-gray), 7%, 26%);
+	--p-gray-710: hsl(var(--h-gray), 7%, 29%);
+	--p-gray-670: hsl(var(--h-gray), 7%, 33%);
+	--p-gray-600: hsl(var(--h-gray), 7%, 40%);
+	--p-gray-540: hsl(var(--h-gray), 8%, 46%);
+	--p-gray-490: hsl(var(--h-gray), 8%, 51%);
+	--p-gray-420: hsl(var(--h-gray), 8%, 58%);
+	--p-gray-320: hsl(var(--h-gray), 10%, 68%);
+	--p-gray-200: hsl(var(--h-gray), 10%, 80%);
+	--p-gray-120: hsl(var(--h-gray), 15%, 88%);
+	--p-gray-070: hsl(var(--h-gray), 32%, 93%);
+	--p-gray-040: hsl(var(--h-gray), 40%, 96%);
+	--p-gray-030: hsl(var(--h-gray), 43%, 97%);
+	--p-gray-025: hsl(var(--h-gray), 50%, 97.5%);
+	--p-gray-010: hsl(var(--h-gray), 50%, 99%);
+	--p-white: hsl(var(--h-gray), 50%, 100%);
 
 	// Gray alpha
-	--p-gray-320-a-010: hsla(220, 10%, 68%, 0.1);
-	--p-gray-70-a-010: hsla(220, 32%, 93%, 0.1);
+	--p-gray-320-a-010: hsla(var(--h-gray), 10%, 68%, 0.1);
+	--p-gray-70-a-010: hsla(var(--h-gray), 32%, 93%, 0.1);
 
 	// White alpha
-	--p-white-a-075: hsla(220, 50%, 100%, 0.75);
-	--p-white-a-030: hsla(220, 50%, 100%, 0.3);
-	--p-white-a-025: hsla(220, 50%, 100%, 0.25);
-	--p-white-a-020: hsla(220, 50%, 100%, 0.2);
-	--p-white-a-010: hsla(220, 50%, 100%, 0.1);
+	--p-white-a-075: hsla(var(--h-gray), 50%, 100%, 0.75);
+	--p-white-a-030: hsla(var(--h-gray), 50%, 100%, 0.3);
+	--p-white-a-025: hsla(var(--h-gray), 50%, 100%, 0.25);
+	--p-white-a-020: hsla(var(--h-gray), 50%, 100%, 0.2);
+	--p-white-a-010: hsla(var(--h-gray), 50%, 100%, 0.1);
 
 	// Primary color
 	--h-primary: 7;
