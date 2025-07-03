@@ -116,7 +116,7 @@ export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expres
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 
-export const NODE_MIN_INPUT_ITEMS_COUNT = 5;
+export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -482,7 +482,7 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
-export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION';
+export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLED';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
@@ -651,6 +651,7 @@ export const EnterpriseEditionFeature: Record<
 	Variables: 'variables',
 	Saml: 'saml',
 	Oidc: 'oidc',
+	EnforceMFA: 'mfaEnforcement',
 	SourceControl: 'sourceControl',
 	ExternalSecrets: 'externalSecrets',
 	AuditLogs: 'auditLogs',

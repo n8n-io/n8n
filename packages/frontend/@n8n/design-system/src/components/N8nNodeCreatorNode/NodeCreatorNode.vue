@@ -46,7 +46,7 @@ const { t } = useI18n();
 				</ElTag>
 				<N8nIcon
 					v-if="isTrigger"
-					icon="zap"
+					icon="bolt-filled"
 					size="xsmall"
 					:title="t('nodeCreator.nodeItem.triggerIconTitle')"
 					:class="$style.triggerIcon"

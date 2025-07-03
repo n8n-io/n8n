@@ -5,6 +5,9 @@
 
 name: 'Docker: Build and Push'
 
+env:
+  NODE_OPTIONS: '--max-old-space-size=8192'
+
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -73,7 +76,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     outputs:
-      image_ref: ${{ steps.determine-tags.outputs.primary_tag }}
+      image_ref: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
       push_enabled_status: ${{ steps.context.outputs.push_enabled }}
       release_type: ${{ steps.context.outputs.release_type }}
@@ -108,14 +111,14 @@ jobs:
       - name: Determine build context values
         id: context
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "release_type=nightly" >> $GITHUB_OUTPUT
-            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+          if [[ -n "${{ inputs.release_type }}" ]]; then
             echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
             echo "n8n_version=${{ inputs.n8n_version }}" >> $GITHUB_OUTPUT
             echo "push_enabled=${{ inputs.push_enabled }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "release_type=nightly" >> $GITHUB_OUTPUT
+            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${{ inputs.release_type }}" == "branch" ]]; then
               BRANCH_NAME="${{ github.ref_name }}"

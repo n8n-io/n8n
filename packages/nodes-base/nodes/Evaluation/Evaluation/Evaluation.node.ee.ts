@@ -12,7 +12,7 @@ import {
 	setOutputProperties,
 } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
-import { listSearch, loadOptions } from '../methods';
+import { listSearch, loadOptions, credentialTest } from '../methods';
 import {
 	checkIfEvaluating,
 	setMetrics,
@@ -92,7 +92,7 @@ export class Evaluation implements INodeType {
 		],
 	};
 
-	methods = { loadOptions, listSearch };
+	methods = { loadOptions, listSearch, credentialTest };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const operation = this.getNodeParameter('operation', 0);

@@ -7,6 +7,55 @@
         "fields": {
             "type": "object",
             "properties": {
+                "issuetype": {
+                    "type": "object",
+                    "properties": {
+                        "avatarId": {
+                            "type": "integer"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "entityId": {
+                            "type": "string"
+                        },
+                        "hierarchyLevel": {
+                            "type": "integer"
+                        },
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "subtask": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "priority": {
+                    "type": "object",
+                    "properties": {
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "status": {
                     "type": "object",
                     "properties": {
@@ -62,5 +111,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

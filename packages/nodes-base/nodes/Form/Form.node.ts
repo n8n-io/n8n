@@ -297,7 +297,6 @@ export class Form extends Node {
 		],
 		properties: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'An n8n Form Trigger node must be set up before this node',
 				name: 'triggerNotice',
 				type: 'notice',

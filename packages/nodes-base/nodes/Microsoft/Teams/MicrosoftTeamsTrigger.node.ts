@@ -311,7 +311,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
+				if (!webhookUrl?.startsWith('https://')) {
 					throw new NodeApiError(this.getNode(), {
 						message: 'Invalid Notification URL',
 						description: `The webhook URL "${webhookUrl}" is invalid. Microsoft Graph requires an HTTPS URL.`,
