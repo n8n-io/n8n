@@ -29,7 +29,7 @@ export const configuredOutputs = (
  */
 export const sanitizeResponseData = (responseBody: string) => {
 	return `
-		<iframe srcdoc="${responseBody}"
+		<iframe srcdoc='${responseBody}'
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true">
 		</iframe>`;
