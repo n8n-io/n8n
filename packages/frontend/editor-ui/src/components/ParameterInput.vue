@@ -1395,15 +1395,18 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
+						<span
 							v-if="!editorIsReadOnly"
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</CodeNodeEditor>
 
@@ -1417,14 +1420,17 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
+						<span
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</HtmlEditor>
 
@@ -1436,14 +1442,17 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
+						<span
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</CssEditor>
 
@@ -1456,14 +1465,17 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
+						<span
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</SqlEditor>
 
@@ -1476,15 +1488,18 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
+						<span
 							v-if="!editorIsReadOnly"
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</JsEditor>
 
@@ -1496,14 +1511,17 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<N8nIcon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link"
-							size="xsmall"
+						<span
 							class="textarea-modal-opener"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
+							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</JsonEditor>
 
@@ -1542,19 +1560,23 @@ onUpdated(async () => {
 					@paste="onPaste"
 				>
 					<template #suffix>
-						<N8nIcon
+						<span
 							v-if="!isReadOnly && !isSecretParameter"
-							icon="external-link"
-							size="xsmall"
-							class="edit-window-button textarea-modal-opener"
 							:class="{
+								'textarea-modal-opener': true,
+								'edit-window-button': true,
 								focused: isFocused,
 								invalid: !isFocused && getIssues.length > 0 && !isModelValueExpression,
 							}"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 							@focus="setFocus"
-						/>
+						>
+							<N8nIcon
+								icon="external-link"
+								size="xsmall"
+								:title="i18n.baseText('parameterInput.openEditWindow')"
+							/>
+						</span>
 					</template>
 				</N8nInput>
 			</div>

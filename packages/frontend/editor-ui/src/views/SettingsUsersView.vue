@@ -1,8 +1,21 @@
 <script lang="ts" setup>
-import { ROLE, type Role } from '@n8n/api-types';
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY } from '@/constants';
-import type { InvitableRoleName, IUser } from '@/Interface';
+import { ref, computed, onMounted } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
+import {
+	ROLE,
+	type Role,
+	type UsersListSortOptions,
+	type User,
+	USERS_LIST_SORT_OPTIONS,
+} from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import {
+	DELETE_USER_MODAL_KEY,
+	EnterpriseEditionFeature,
+	INVITE_USER_MODAL_KEY,
+} from '@/constants';
+import type { InvitableRoleName, IUser } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -10,11 +23,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
-import type { UpdateGlobalRolePayload } from '@/api/users';
-import { computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -30,17 +42,23 @@ const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 
 const i18n = useI18n();
 
-const showUMSetupWarning = computed(() => {
-	return hasPermission(['defaultUser']);
+const search = ref('');
+const usersTableState = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
 });
-
-const allUsers = computed(() => usersStore.allUsers);
+const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
-		await usersStore.fetchUsers();
+		await updateUsersTableData(usersTableState.value);
 	}
 });
 
@@ -56,13 +74,6 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			value: 'reinvite',
 			guard: (user) =>
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
-		},
-		{
-			label: i18n.baseText('settings.users.actions.delete'),
-			value: 'delete',
-			guard: (user) =>
-				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
-				user.id !== usersStore.currentUserId,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
@@ -85,9 +96,9 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 		},
 	];
 });
-const isAdvancedPermissionsEnabled = computed((): boolean => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
-});
+const isAdvancedPermissionsEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
+);
 
 const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
 	return [
@@ -101,10 +112,6 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},
 	];
-});
-
-const canUpdateRole = computed((): boolean => {
-	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
 });
 
 async function onUsersListAction({ action, userId }: { action: string; userId: string }) {
@@ -130,16 +137,28 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 	}
 }
 function onInvite() {
-	uiStore.openModal(INVITE_USER_MODAL_KEY);
+	uiStore.openModalWithData({
+		name: INVITE_USER_MODAL_KEY,
+		data: {
+			afterInvite: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
 }
 async function onDelete(userId: string) {
-	const user = usersStore.usersById[userId];
-	if (user) {
-		uiStore.openDeleteUserModal(userId);
-	}
+	uiStore.openModalWithData({
+		name: DELETE_USER_MODAL_KEY,
+		data: {
+			userId,
+			afterDelete: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
 }
 async function onReinvite(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.email && user?.role) {
 		if (!['global:admin', 'global:member'].includes(user.role)) {
 			throw new Error('Invalid role name on reinvite');
@@ -162,7 +181,7 @@ async function onReinvite(userId: string) {
 	}
 }
 async function onCopyInviteLink(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.inviteAcceptUrl) {
 		void clipboard.copy(user.inviteAcceptUrl);
 
@@ -174,7 +193,7 @@ async function onCopyInviteLink(userId: string) {
 	}
 }
 async function onCopyPasswordResetLink(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user) {
 		const url = await usersStore.getUserPasswordResetLink(user);
 		void clipboard.copy(url.link);
@@ -187,13 +206,14 @@ async function onCopyPasswordResetLink(userId: string) {
 	}
 }
 async function onAllowSSOManualLogin(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user) {
 		if (!user.settings) {
 			user.settings = {};
 		}
 		user.settings.allowSSOManualLogin = true;
 		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
 
 		showToast({
 			type: 'success',
@@ -203,10 +223,12 @@ async function onAllowSSOManualLogin(userId: string) {
 	}
 }
 async function onDisallowSSOManualLogin(userId: string) {
-	const user = usersStore.usersById[userId];
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 	if (user?.settings) {
 		user.settings.allowSSOManualLogin = false;
 		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
+
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.users.disallowSSOManualLogin'),
@@ -220,7 +242,18 @@ function goToUpgrade() {
 function goToUpgradeAdvancedPermissions() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
-async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
+
+const onUpdateRole = async (payload: { userId: string; role: Role }) => {
+	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
+	if (!user) {
+		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
+		return;
+	}
+
+	await onRoleChange(user, payload.role);
+};
+
+async function onRoleChange(user: User, newRoleName: Role) {
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
 
@@ -231,7 +264,10 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 			title: i18n.baseText('settings.users.userRoleUpdated'),
 			message: i18n.baseText('settings.users.userRoleUpdated.message', {
 				interpolate: {
-					user: user.fullName ?? '',
+					user:
+						user.firstName && user.lastName
+							? `${user.firstName} ${user.lastName}`
+							: (user.email ?? ''),
 					role,
 				},
 			}),
@@ -240,6 +276,49 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+const isValidSortKey = (key: string): key is UsersListSortOptions =>
+	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
+
+const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
+	usersTableState.value = {
+		page,
+		itemsPerPage,
+		sortBy,
+	};
+
+	const skip = page * itemsPerPage;
+	const take = itemsPerPage;
+
+	const transformedSortBy = sortBy
+		.flatMap(({ id, desc }) => {
+			const dir = desc ? 'desc' : 'asc';
+			if (id === 'name') {
+				return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+			}
+			return `${id}:${dir}`;
+		})
+		.filter(isValidSortKey);
+
+	await usersStore.usersList.execute(0, {
+		skip,
+		take,
+		sortBy: transformedSortBy,
+		expand: ['projectRelations'],
+		filter: {
+			fullText: search.value.trim(),
+		},
+	});
+};
+
+const debouncedUpdateUsersTableData = useDebounceFn(() => {
+	void updateUsersTableData(usersTableState.value);
+}, 300);
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedUpdateUsersTableData();
+};
 
 async function onUpdateMfaEnforced(value: boolean) {
 	try {
@@ -261,25 +340,9 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 <template>
 	<div :class="$style.container">
-		<div>
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.users') }}</n8n-heading>
-			<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
-				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
-					<template #content>
-						<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
-					</template>
-					<div>
-						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
-							:label="i18n.baseText('settings.users.invite')"
-							size="large"
-							data-test-id="settings-users-invite-button"
-							@click="onInvite"
-						/>
-					</div>
-				</n8n-tooltip>
-			</div>
-		</div>
+		<n8n-heading tag="h1" size="2xlarge" class="mb-xl">
+			{{ i18n.baseText('settings.users') }}
+		</n8n-heading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
@@ -297,7 +360,11 @@ async function onUpdateMfaEnforced(value: boolean) {
 		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
 			<i18n-t keypath="settings.users.advancedPermissions.warning">
 				<template #link>
-					<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+					<n8n-link
+						data-test-id="upgrade-permissions-link"
+						size="small"
+						@click="goToUpgradeAdvancedPermissions"
+					>
 						{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 					</n8n-link>
 				</template>
@@ -340,76 +407,74 @@ async function onUpdateMfaEnforced(value: boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
-
+		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
+			<n8n-input
+				:class="$style.search"
+				:model-value="search"
+				:placeholder="i18n.baseText('settings.users.search.placeholder')"
+				clearable
+				data-test-id="users-list-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
+			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+				<template #content>
+					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
+				</template>
+				<div>
+					<n8n-button
+						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
+						:label="i18n.baseText('settings.users.invite')"
+						size="large"
+						data-test-id="settings-users-invite-button"
+						@click="onInvite"
+					/>
+				</div>
+			</n8n-tooltip>
+		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
-			v-if="usersStore.usersLimitNotReached || allUsers.length > 1"
+			v-if="usersStore.usersLimitNotReached || usersStore.usersList.state.count > 1"
 			:class="$style.usersContainer"
 		>
-			<n8n-users-list
+			<SettingsUsersTable
+				data-test-id="settings-users-table"
+				:data="usersStore.usersList.state"
+				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"
-				:users="allUsers"
-				:current-user-id="usersStore.currentUserId"
-				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
+				@update:options="updateUsersTableData"
+				@update:role="onUpdateRole"
 				@action="onUsersListAction"
-			>
-				<template #actions="{ user }">
-					<n8n-select
-						v-if="user.id !== usersStore.currentUserId"
-						:model-value="user?.role || 'global:member'"
-						:disabled="!canUpdateRole"
-						data-test-id="user-role-select"
-						@update:model-value="onRoleChange(user, $event)"
-					>
-						<n8n-option
-							v-for="role in userRoles"
-							:key="role.value"
-							:value="role.value"
-							:label="role.label"
-							:disabled="role.disabled"
-						/>
-					</n8n-select>
-				</template>
-			</n8n-users-list>
+			/>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	height: 100%;
-	padding-right: var(--spacing-2xs);
-
-	> * {
-		margin-bottom: var(--spacing-2xl);
-	}
-}
-
-.usersContainer {
-	> * {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
 .buttonContainer {
-	display: inline-block;
-	float: right;
-	margin-bottom: var(--spacing-l);
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing-s);
+	margin: 0 0 var(--spacing-s);
+}
+
+.search {
+	max-width: 300px;
 }
 
 .setupInfoContainer {
 	max-width: 728px;
 }
 
-.alert {
-	left: calc(50% + 100px);
-}
-
 .settingsContainer {
 	display: flex;
 	align-items: center;
-	padding-left: 16px;
+	padding-left: var(--spacing-s);
+	margin-bottom: var(--spacing-l);
 	justify-content: space-between;
 	flex-shrink: 0;
 

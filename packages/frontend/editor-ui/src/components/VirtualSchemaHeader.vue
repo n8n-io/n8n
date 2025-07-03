@@ -40,7 +40,7 @@ const emit = defineEmits<{
 				{{ title }}
 				<span v-if="info" class="info">{{ info }}</span>
 			</div>
-			<N8nIcon v-if="isTrigger" class="trigger-icon" icon="zap" size="xsmall" />
+			<N8nIcon v-if="isTrigger" class="trigger-icon" icon="bolt-filled" size="xsmall" />
 			<div v-if="itemCount" class="extra-info" data-test-id="run-data-schema-node-item-count">
 				{{ i18n.baseText('ndv.output.items', { interpolate: { count: itemCount } }) }}
 			</div>
@@ -123,6 +123,7 @@ const emit = defineEmits<{
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	margin-left: auto;
+	white-space: nowrap;
 }
 
 .notice {
