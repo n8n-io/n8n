@@ -1,3 +1,4 @@
+import { TaskRunnerNodeTypes } from '@/node-types';
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -9,7 +10,6 @@ import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
-import { TaskRunnerNodeTypes } from '@/node-types';
 import type { TaskResultData } from '@/runner-types';
 import { TaskState } from '@/task-state';
 

@@ -41,15 +41,15 @@ import { DataRequestResponseReconstruct } from '../data-request/data-request-res
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import { noOp, TaskRunner } from '@/task-runner';
 import type { TaskParams } from '@/task-runner';
+import { noOp, TaskRunner } from '@/task-runner';
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
