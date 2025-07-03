@@ -1,3 +1,4 @@
+import { distance } from 'fastest-levenshtein';
 import { NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	FieldType,
@@ -92,7 +93,7 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 }
 
 const metricHandlers = {
-	customMetric(this: IExecuteFunctions, i: number): IDataObject {
+	customMetrics(this: IExecuteFunctions, i: number): IDataObject {
 		const dataToSave = this.getNodeParameter('metrics', i, {}) as AssignmentCollectionValue;
 
 		return Object.fromEntries(
@@ -140,6 +141,14 @@ const metricHandlers = {
 			action: { tool: string };
 		}[];
 
+		if (!expectedTools || expectedTools.find((t) => t.trim() === '').length > 0) {
+			throw new NodeOperationError(this.getNode(), 'Expected tool name missing', {
+				description:
+					'Make sure you add at least one expected tool and fill in the name for each expected tool',
+			});
+		}
+		// TODO add proper check for intermediate steps!
+
 		return Object.fromEntries(
 			expectedTools.map((tool) => {
 				return [
@@ -148,6 +157,61 @@ const metricHandlers = {
 				];
 			}),
 		);
+	},
+
+	accuracy(this: IExecuteFunctions, i: number): IDataObject {
+		const expectedAnswer = (this.getNodeParameter('expectedAnswer', i, '') as string)
+			.toString()
+			.trim();
+		const actualAnswer = (this.getNodeParameter('actualAnswer', i, '') as string).toString().trim();
+
+		if (!expectedAnswer) {
+			throw new NodeOperationError(this.getNode(), 'Expected answer is missing', {
+				description: 'Make sure to fill in an expected answer',
+			});
+		}
+		if (!actualAnswer) {
+			throw new NodeOperationError(this.getNode(), 'Actual answer is missing', {
+				description: 'Make sure to fill in an actual answer',
+			});
+		}
+
+		return {
+			[this.getNodeParameter('metricName', i, 'Accuracy')]: expectedAnswer === actualAnswer ? 1 : 0,
+		};
+	},
+
+	stringSimilarity(this: IExecuteFunctions, i: number): IDataObject {
+		const expectedAnswer = (this.getNodeParameter('expectedAnswer', i, '') as string)
+			.toString()
+			.trim();
+		const actualAnswer = (this.getNodeParameter('actualAnswer', i, '') as string).toString().trim();
+
+		if (!expectedAnswer) {
+			throw new NodeOperationError(this.getNode(), 'Expected answer is missing', {
+				description: 'Make sure to fill in an expected answer',
+			});
+		}
+		if (!actualAnswer) {
+			throw new NodeOperationError(this.getNode(), 'Actual answer is missing', {
+				description: 'Make sure to fill in an actual answer',
+			});
+		}
+
+		return {
+			[this.getNodeParameter('metricName', i, 'String similarity')]: distance(
+				expectedAnswer,
+				actualAnswer,
+			),
+		};
+	},
+
+	helpfulness(this: IExecuteFunctions, i: number): IDataObject {
+		return {};
+	},
+
+	correctness(this: IExecuteFunctions, i: number): IDataObject {
+		return {};
 	},
 };
 

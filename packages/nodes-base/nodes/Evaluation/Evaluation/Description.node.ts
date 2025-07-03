@@ -196,6 +196,7 @@ const toolsUsedFields: INodeProperties[] = [
 		name: 'intermediateSteps',
 		type: 'string',
 		default: '',
+		hint: "Enable returning intermediate steps in your agent node's options, then map them in here",
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
@@ -204,6 +205,26 @@ const toolsUsedFields: INodeProperties[] = [
 		},
 	},
 ];
+
+const namesForMetrics = [
+	['accuracy', 'Accuracy'],
+	['stringSimilarity', 'String similarity'],
+	['helpfulness', 'Helpfulness'],
+	['correctness', 'Correctness'],
+].map(([metric, name]) => {
+	return {
+		displayName: 'Metric name',
+		name: 'metricName',
+		type: 'string',
+		default: name,
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				metric: [metric],
+			},
+		},
+	};
+});
 
 export const setMetricsProperties: INodeProperties[] = [
 	{
@@ -250,7 +271,13 @@ export const setMetricsProperties: INodeProperties[] = [
 			},
 		],
 		default: 'correctness',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+			},
+		},
 	},
+	...namesForMetrics,
 	...expectedAnswerFields,
 	...toolsUsedFields,
 	...promptFieldForMetric('correctness', CORRECTNESS_PROMPT),
