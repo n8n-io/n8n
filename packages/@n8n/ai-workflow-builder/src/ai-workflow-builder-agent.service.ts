@@ -13,7 +13,7 @@ import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool.refactored';
+import { createNodeSearchTool } from './tools/node-search.tool';
 import { WorkflowState } from './workflow-state';
 
 @Service()

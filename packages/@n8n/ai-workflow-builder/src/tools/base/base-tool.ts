@@ -1,6 +1,6 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
+import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -56,6 +56,8 @@ export abstract class BaseWorkflowBuilderTool<
 						reporter,
 						responseBuilder: new ResponseBuilder(config),
 						nodeTypes: this.nodeTypes,
+						config,
+						getCurrentTaskInput,
 					};
 
 					// Execute the tool logic

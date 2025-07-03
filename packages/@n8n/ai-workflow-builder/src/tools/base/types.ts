@@ -1,5 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { z } from 'zod';
+import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 
 import type { ProgressReporter } from './progress-reporter';
 import type { ResponseBuilder, StateUpdater } from './response-builder';
@@ -44,6 +45,8 @@ export interface ToolContext {
 	reporter: ProgressReporter;
 	responseBuilder: ResponseBuilder;
 	nodeTypes: INodeTypeDescription[];
+	config: LangGraphRunnableConfig;
+	getCurrentTaskInput: () => unknown;
 }
 
 /**

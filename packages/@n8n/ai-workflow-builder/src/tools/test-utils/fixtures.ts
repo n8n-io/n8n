@@ -33,6 +33,26 @@ export const TEST_NODE_TYPES = {
 		name: 'n8n-nodes-base.httpRequest',
 		description: 'Makes HTTP requests and returns the response',
 		group: ['input'],
+		properties: [
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'The URL to make the request to',
+			},
+			{
+				displayName: 'Method',
+				name: 'method',
+				type: 'options',
+				options: [
+					{ name: 'GET', value: 'GET' },
+					{ name: 'POST', value: 'POST' },
+				],
+				default: 'GET',
+			},
+		],
 	}),
 
 	set: createMockNodeType({
@@ -149,7 +169,16 @@ export const TEST_NODE_TYPES = {
  * Get all test node types as an array
  */
 export function getAllTestNodeTypes(): INodeTypeDescription[] {
-	return Object.values(TEST_NODE_TYPES);
+	// Get all nodes but filter out duplicates by node name
+	const nodes = Object.values(TEST_NODE_TYPES);
+	const seen = new Set<string>();
+	return nodes.filter((node) => {
+		if (seen.has(node.name)) {
+			return false;
+		}
+		seen.add(node.name);
+		return true;
+	});
 }
 
 /**

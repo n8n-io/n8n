@@ -1,19 +1,11 @@
-import { ToolMessage } from '@langchain/core/messages';
-import { tool } from '@langchain/core/tools';
-import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { z } from 'zod';
 
-export interface NodeDetails {
-	name: string;
-	displayName: string;
-	description: string;
-	properties: any[];
-	subtitle?: string;
-	inputs: INodeTypeDescription['inputs'];
-	outputs: INodeTypeDescription['outputs'];
-}
+import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
+import { type NodeDetails, extractNodeDetails } from './types/node.types';
 
+/**
+ * Schema for node details tool input
+ */
 const nodeDetailsSchema = z.object({
 	nodeName: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
 	withParameters: z
@@ -24,165 +16,186 @@ const nodeDetailsSchema = z.object({
 	withConnections: z
 		.boolean()
 		.optional()
-		.default(false)
+		.default(true)
 		.describe('Whether to include node supported connections in the output'),
 });
 
-export const createNodeDetailsTool = (nodeTypes: INodeTypeDescription[]) => {
-	return tool(
-		async (input, config: LangGraphRunnableConfig) => {
-			const { nodeName } = input;
+/**
+ * Inferred type from schema
+ */
+type NodeDetailsInput = z.infer<typeof nodeDetailsSchema>;
 
-			// Emit tool start with input
-			config.writer?.({
-				type: 'tool',
-				toolName: 'get_node_details',
-				// @ts-ignore
-				toolCallId: config.toolCall?.id,
-				status: 'running',
-				updates: [
-					{
-						type: 'input',
-						data: input,
-					},
-				],
-			});
-
-			// Emit progress update
-			config.writer?.({
-				type: 'tool',
-				toolName: 'get_node_details',
-				// @ts-ignore
-				toolCallId: config.toolCall?.id,
-				status: 'running',
-				updates: [
-					{
-						type: 'progress',
-						data: `Looking up details for ${nodeName}...`,
-					},
-				],
-			});
-
-			const nodeType = nodeTypes.find((nt) => nt.name === nodeName);
-
-			if (!nodeType) {
-				// Emit error completion
-				config.writer?.({
-					type: 'tool',
-					toolName: 'get_node_details',
-					// @ts-ignore
-					toolCallId: config.toolCall?.id,
-					status: 'error',
-					updates: [
-						{
-							type: 'error',
-							data: {
-								message: `Node type "${nodeName}" not found`,
-								nodeName,
-							},
-						},
-					],
-				});
-
-				return new Command({
-					update: {
-						messages: [
-							new ToolMessage({
-								content: `Node type "${nodeName}" not found. Please search for available nodes first.`,
-								// @ts-ignore
-								tool_call_id: config.toolCall?.id,
-							}),
-						],
-					},
-				});
-			}
-
-			const details = extractNodeDetails(nodeType);
-			const detailsMessage = formatNodeDetails(
-				details,
-				input.withParameters,
-				input.withConnections,
-			);
-
-			// Emit success completion
-			config.writer?.({
-				type: 'tool',
-				toolName: 'get_node_details',
-				// @ts-ignore
-				toolCallId: config.toolCall?.id,
-				status: 'completed',
-				updates: [
-					{
-						type: 'output',
-						data: {
-							details,
-							message: detailsMessage,
-						},
-					},
-				],
-			});
-
-			return new Command({
-				update: {
-					messages: [
-						new ToolMessage({
-							content: detailsMessage,
-							// @ts-ignore
-							tool_call_id: config.toolCall?.id,
-						}),
-					],
-				},
-			});
-		},
-		{
-			name: 'get_node_details',
-			description:
-				'Get detailed information about a specific n8n node type including properties and available connections',
-			schema: nodeDetailsSchema,
-		},
-	);
-};
-
-function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
-	// Extract connection types from inputs/outputs
-	// const connectionTypes = extractConnectionTypes(nodeType);
-
-	return {
-		name: nodeType.name,
-		displayName: nodeType.displayName,
-		description: nodeType.description,
-		inputs: nodeType.inputs,
-		outputs: nodeType.outputs,
-		properties: nodeType.properties,
-		// connectionTypes,
-	};
+/**
+ * Output type for the node details tool
+ */
+interface NodeDetailsOutput {
+	details: NodeDetails;
+	found: boolean;
+	message: string;
 }
 
-function formatNodeDetails(
-	details: NodeDetails,
-	withParameters = false,
-	withConnections = false,
-): string {
-	let output = `
-		<name>${details.name}</name>
-		<display_name>${details.displayName}</display_name>
-		<description>${details.description}</description>
-	`;
+/**
+ * Node details tool implementation using the base infrastructure
+ */
+export class NodeDetailsTool extends BaseWorkflowBuilderTool<
+	typeof nodeDetailsSchema,
+	NodeDetailsOutput
+> {
+	protected readonly schema = nodeDetailsSchema;
+	protected readonly name = 'get_node_details' as const;
+	protected readonly description =
+		'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.';
 
-	if (withParameters) {
-		output += `\n<properties>${details.properties.map((prop) => `<property>${JSON.stringify(prop)}</property>`).join('')}</properties>`;
+	/**
+	 * Execute the node details tool
+	 */
+	protected async execute(
+		input: NodeDetailsInput,
+		context: ToolContext,
+	): Promise<ToolResult<NodeDetailsOutput>> {
+		const { nodeName, withParameters, withConnections } = input;
+
+		// Report progress
+		context.reporter.progress(`Looking up details for ${nodeName}...`);
+
+		// Find the node type
+		const nodeType = context.nodeTypes.find((nt) => nt.name === nodeName);
+
+		if (!nodeType) {
+			return {
+				success: false,
+				error: {
+					message: `Node type "${nodeName}" not found`,
+					code: 'NODE_NOT_FOUND',
+					details: { nodeName },
+				},
+			};
+		}
+
+		// Extract node details
+		const details = extractNodeDetails(nodeType);
+
+		// Format the output message
+		const message = this.formatNodeDetails(details, withParameters, withConnections);
+
+		return {
+			success: true,
+			data: {
+				details,
+				found: true,
+				message,
+			},
+		};
 	}
 
-	if (withConnections) {
-		output += `
-		<inputs>${details.inputs}</inputs>
-		<outputs>${details.outputs}</outputs>
-		`;
+	/**
+	 * Format node details into a structured message
+	 */
+	private formatNodeDetails(
+		details: NodeDetails,
+		withParameters: boolean = false,
+		withConnections: boolean = true,
+	): string {
+		const parts: string[] = [];
+
+		// Basic details
+		parts.push('<node_details>');
+		parts.push(`  <name>${details.name}</name>`);
+		parts.push(`  <display_name>${details.displayName}</display_name>`);
+		parts.push(`  <description>${details.description}</description>`);
+
+		if (details.subtitle) {
+			parts.push(`  <subtitle>${details.subtitle}</subtitle>`);
+		}
+
+		// Parameters
+		if (withParameters && details.properties.length > 0) {
+			parts.push('  <properties>');
+			for (const prop of details.properties) {
+				parts.push(`    <property>${JSON.stringify(prop)}</property>`);
+			}
+			parts.push('  </properties>');
+		}
+
+		// Connections
+		if (withConnections) {
+			parts.push('  <connections>');
+			parts.push(this.formatInputs(details.inputs));
+			parts.push(this.formatOutputs(details.outputs));
+			parts.push('  </connections>');
+		}
+
+		parts.push('</node_details>');
+
+		return parts.join('\n');
 	}
 
-	return `
-	<node_details>
-		${output}
-	</node_details>
-	`;
+	/**
+	 * Format node inputs
+	 */
+	private formatInputs(inputs: INodeTypeDescription['inputs']): string {
+		if (!inputs || inputs.length === 0) {
+			return '    <inputs>none</inputs>';
+		}
+
+		const parts: string[] = ['    <inputs>'];
+		for (const input of inputs) {
+			if (typeof input === 'string') {
+				parts.push(`      <input type="${input}" />`);
+			} else {
+				const attrs = [
+					`type="${input.type}"`,
+					input.displayName && `displayName="${input.displayName}"`,
+					input.required !== undefined && `required="${input.required}"`,
+				]
+					.filter(Boolean)
+					.join(' ');
+				parts.push(`      <input ${attrs} />`);
+			}
+		}
+		parts.push('    </inputs>');
+		return parts.join('\n');
+	}
+
+	/**
+	 * Format node outputs
+	 */
+	private formatOutputs(outputs: INodeTypeDescription['outputs']): string {
+		if (!outputs || outputs.length === 0) {
+			return '    <outputs>none</outputs>';
+		}
+
+		const parts: string[] = ['    <outputs>'];
+		for (const output of outputs) {
+			if (typeof output === 'string') {
+				parts.push(`      <output type="${output}" />`);
+			} else {
+				const attrs = [
+					`type="${output.type}"`,
+					output.displayName && `displayName="${output.displayName}"`,
+				]
+					.filter(Boolean)
+					.join(' ');
+				parts.push(`      <output ${attrs} />`);
+			}
+		}
+		parts.push('    </outputs>');
+		return parts.join('\n');
+	}
+
+	/**
+	 * Override to provide custom success message
+	 */
+	protected formatSuccessMessage(output: NodeDetailsOutput): string {
+		return output.message;
+	}
+}
+
+/**
+ * Factory function to create the node details tool
+ * Maintains backward compatibility with existing code
+ */
+export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
+	const tool = new NodeDetailsTool(nodeTypes);
+	return tool.createLangChainTool();
 }

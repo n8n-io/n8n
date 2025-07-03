@@ -11,3 +11,6 @@ export {
 	getRegularNodes,
 	createMockWorkflowState,
 } from './fixtures';
+
+// Alias for backward compatibility
+export { getAllTestNodeTypes as createMockNodeTypes } from './fixtures';
