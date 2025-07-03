@@ -182,12 +182,9 @@ const getListItemName = (path: string) => {
 					/>
 				</template>
 				<template #renderNodeValue="{ node }">
-					<span v-if="typeof node.content === 'string'">
-						{{ JSON.stringify(node.content) }}
-					</span>
 					<TextWithHighlights
-						v-else-if="isNaN(node.index)"
-						:content="getContent(node.content)"
+						v-if="isNaN(node.index)"
+						:content="JSON.stringify(node.content)"
 						:search="search"
 					/>
 					<TextWithHighlights
