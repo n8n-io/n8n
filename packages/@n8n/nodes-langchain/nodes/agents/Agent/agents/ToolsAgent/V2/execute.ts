@@ -237,11 +237,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			// Check if streaming is actually available
 			const isStreamingAvailable = this.isStreaming();
 
-			if (enableStreaming && isStreamingAvailable && this.getNode().typeVersion >= 2.2) {
-				const eventStream = executor.streamEvents(invokeParams, {
-					version: 'v2',
-					...executeOptions,
-				});
+			if (enableStreaming && isStreamingAvailable && this.getNode().typeVersion >= 2.1) {
+				const chatHistory = await memory?.chatHistory.getMessages();
+				const eventStream = executor.streamEvents(
+					{
+						...invokeParams,
+						chat_history: chatHistory ?? undefined,
+					},
+					{
+						version: 'v2',
+						...executeOptions,
+					},
+				);
 
 				return await processEventStream(this, eventStream, options.returnIntermediateSteps);
 			} else {
