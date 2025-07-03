@@ -1,3 +1,4 @@
+import { useAsyncState } from '@vueuse/core';
 import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
@@ -5,6 +6,7 @@ import {
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
+	type UsersListFilterDto,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
@@ -302,13 +304,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const updateOtherUserSettings = async (userId: string, settings: SettingsUpdateRequestDto) => {
-		const updatedSettings = await usersApi.updateOtherUserSettings(
-			rootStore.restApiContext,
-			userId,
-			settings,
-		);
-		usersById.value[userId].settings = updatedSettings;
-		addUsers([usersById.value[userId]]);
+		await usersApi.updateOtherUserSettings(rootStore.restApiContext, userId, settings);
 	};
 
 	const updateCurrentUserPassword = async (params: PasswordUpdateRequestDto) => {
@@ -426,6 +422,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const usersList = useAsyncState(
+		async (filter?: UsersListFilterDto) =>
+			await usersApi.getUsers(rootStore.restApiContext, filter),
+		{
+			count: 0,
+			items: [],
+		},
+		{ immediate: false, resetOnExecute: false },
+	);
+
 	return {
 		initialized,
 		currentUserId,
@@ -480,5 +486,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setCalloutDismissed,
 		submitContactEmail,
 		submitContactInfo,
+		usersList,
 	};
 });
