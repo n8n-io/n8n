@@ -15,8 +15,6 @@
 		// TODO: remove all options below this line to align with the modern config
 		"module": "commonjs",
 		"moduleResolution": "node",
-		"target": "es2021",
-		"lib": ["es2021", "dom", "dom.iterable"],
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false,
 		"isolatedModules": false,
