@@ -9,7 +9,6 @@ type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string;
 	qs?: IDataObject;
-	uri?: string;
 	option?: IDataObject;
 };
 
