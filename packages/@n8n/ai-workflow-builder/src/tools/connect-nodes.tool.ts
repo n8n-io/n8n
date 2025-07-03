@@ -31,7 +31,7 @@ const nodesConnectionsSchema = z.object({
 	connectionType: z
 		.nativeEnum(NodeConnectionTypes)
 		.describe(
-			'The type of connection: "main" for regular data flow, or sub-node types like "ai_languageModel" (for LLM models), "ai_tool" (for agent tools), "ai_memory" (for chat memory), "ai_embedding" (for embeddings)',
+			'The type of connection: "main" for regular data flow, or sub-node types like "ai_languageModel" (for LLM models), "ai_tool" (for agent tools), "ai_memory" (for chat memory) etc.',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -150,25 +150,27 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 		},
 		{
 			name: 'connect_nodes',
-			description: `Connect two nodes in the workflow.
+			description: `Connect two nodes in the workflow. The tool will automatically ensure correct connection direction.
 
 UNDERSTANDING CONNECTIONS:
-- SOURCE NODE: The node whose output connects to another node (appears as the key in connections object)
-- TARGET NODE: The node that receives the connection (appears in the connection array)
-- In the workflow JSON: connections[SOURCE_NODE] points to TARGET_NODE
+- SOURCE NODE: The node that PRODUCES output/provides capability
+- TARGET NODE: The node that RECEIVES input/uses capability
+- Flow direction: Source → Target
 
 For ai_* connections (ai_languageModel, ai_tool, ai_memory, ai_embedding, etc.):
 - Sub-nodes are ALWAYS the source (they provide capabilities)
-- Main nodes or other sub-nodes are the target (they consume capabilities)
+- Main nodes are ALWAYS the target (they use capabilities)
+- The tool will AUTO-CORRECT if you specify them backwards
 
 CORRECT CONNECTION EXAMPLES:
 - OpenAI Chat Model (SOURCE) → AI Agent (TARGET) [ai_languageModel]
 - Calculator Tool (SOURCE) → AI Agent (TARGET) [ai_tool]
-- Window Buffer Memory (SOURCE) → AI Agent (TARGET) [ai_memory]
-- Token Splitter (SOURCE) → Default Data Loader (TARGET) [ai_textSplitter]
-- Default Data Loader (SOURCE) → Vector Store (TARGET) [ai_document]
+- Simple Memory (SOURCE) → Basic LLM Chain (TARGET) [ai_memory]
 - Embeddings OpenAI (SOURCE) → Vector Store (TARGET) [ai_embedding]
-- HTTP Request (SOURCE) → Set (TARGET) [main]`,
+- Document Loader (SOURCE) → Embeddings OpenAI (TARGET) [ai_document]
+- HTTP Request (SOURCE) → Set (TARGET) [main]
+
+Note: If you specify nodes in the wrong order for ai_* connections, they will be automatically swapped to ensure correctness.`,
 			schema: nodesConnectionsSchema,
 		},
 	);
