@@ -8,7 +8,7 @@ packages:
 
 catalog:
   '@n8n/typeorm': 0.3.20-12
-  '@n8n_io/ai-assistant-sdk': 1.14.0
+  '@n8n_io/ai-assistant-sdk': 1.14.1
   '@langchain/core': 0.3.59
   '@langchain/openai': 0.5.13
   '@langchain/anthropic': 0.3.22

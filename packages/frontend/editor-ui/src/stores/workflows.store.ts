@@ -78,7 +78,12 @@ import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
-import { unflattenExecutionData } from '@/utils/executionUtils';
+import {
+	unflattenExecutionData,
+	clearPopupWindowState,
+	findTriggerNodeToAutoSelect,
+	openFormPopupWindow,
+} from '@/utils/executionUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
@@ -91,17 +96,13 @@ import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
-import {
-	clearPopupWindowState,
-	findTriggerNodeToAutoSelect,
-	openFormPopupWindow,
-} from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
+import { snapPositionToGrid } from '@/utils/nodeViewUtils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1290,6 +1291,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
 			}
 
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
+			}
+
 			if (!nodeMetadata.value[node.name]) {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
@@ -1373,7 +1378,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
-		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
+		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
 			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
 			workflow.value = {
 				...workflow.value,

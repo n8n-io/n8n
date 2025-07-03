@@ -9,12 +9,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath } from '@/constants';
+import { nonExistingJsonPath, PiPWindowSymbol } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { computed } from 'vue';
+import { inject, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { N8nIconButton } from '@n8n/design-system';
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 
 type JsonPathData = {
 	path: string;
@@ -36,6 +38,10 @@ const props = withDefaults(
 		selectedJsonPath: nonExistingJsonPath,
 	},
 );
+
+const pipWindow = inject(PiPWindowSymbol);
+const isInPiPWindow = computed(() => pipWindow?.value !== undefined);
+
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
@@ -177,7 +183,7 @@ function handleCopyClick(commandData: { command: string }) {
 
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
-		<n8n-icon-button
+		<N8nIconButton
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
@@ -185,9 +191,16 @@ function handleCopyClick(commandData: { command: string }) {
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
-		<el-dropdown v-else trigger="click" @command="handleCopyClick">
+		<ElDropdown
+			v-else
+			trigger="click"
+			:teleported="
+				!isInPiPWindow // disabling teleport ensures the menu is rendered in PiP window
+			"
+			@command="handleCopyClick"
+		>
 			<span class="el-dropdown-link">
-				<n8n-icon-button
+				<N8nIconButton
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
 					type="tertiary"
@@ -195,32 +208,30 @@ function handleCopyClick(commandData: { command: string }) {
 				/>
 			</span>
 			<template #dropdown>
-				<el-dropdown-menu>
-					<el-dropdown-item :command="{ command: 'value' }">
+				<ElDropdownMenu>
+					<ElDropdownItem :command="{ command: 'value' }">
 						{{ i18n.baseText('runData.copyValue') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
+					</ElDropdownItem>
+					<ElDropdownItem :command="{ command: 'itemPath' }" divided>
 						{{ i18n.baseText('runData.copyItemPath') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{ command: 'parameterPath' }">
+					</ElDropdownItem>
+					<ElDropdownItem :command="{ command: 'parameterPath' }">
 						{{ i18n.baseText('runData.copyParameterPath') }}
-					</el-dropdown-item>
-				</el-dropdown-menu>
+					</ElDropdownItem>
+				</ElDropdownMenu>
 			</template>
-		</el-dropdown>
+		</ElDropdown>
 	</div>
 </template>
 
 <style lang="scss" module>
 .actionsGroup {
-	position: sticky;
-	height: 0;
-	overflow: visible;
+	position: absolute;
 	z-index: 10;
 	top: 0;
+	right: 0;
 	padding-right: var(--spacing-s);
 	opacity: 0;
 	transition: opacity 0.3s ease;
-	text-align: right;
 }
 </style>
