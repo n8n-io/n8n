@@ -4,8 +4,8 @@ import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@lan
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { WorkflowState } from '../workflow-state';
 import { isSubNode } from '../utils/node-helpers';
+import { WorkflowState } from '@/workflow-state';
 
 export interface NodeDetails {
 	name: string;
@@ -74,7 +74,7 @@ export const createConnectNodesTool = (nodeTypes: INodeTypeDescription[]) => {
 				updates: [
 					{
 						type: 'progress',
-						data: `Finding nodes to connect...`,
+						data: 'Finding nodes to connect...',
 					},
 				],
 			});

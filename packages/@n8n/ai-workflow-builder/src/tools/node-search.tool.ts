@@ -1,7 +1,7 @@
 import { ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
-import { NodeConnectionTypes, type INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, NodeConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface NodeSearchResult {
@@ -82,7 +82,7 @@ export const createNodeSearchTool = (nodeTypes: INodeTypeDescription[]) => {
 	return tool(
 		async (input, config: LangGraphRunnableConfig) => {
 			const { queries } = input;
-			const allResults: { query: string; results: NodeSearchResult[] }[] = [];
+			const allResults: Array<{ query: string; results: NodeSearchResult[] }> = [];
 
 			// Emit tool start with input
 			config.writer?.({

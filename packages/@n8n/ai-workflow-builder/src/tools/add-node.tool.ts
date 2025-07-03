@@ -4,8 +4,8 @@ import { Command, getCurrentTaskInput, type LangGraphRunnableConfig } from '@lan
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { WorkflowState } from '../workflow-state';
 import { isSubNode } from '../utils/node-helpers';
+import type { WorkflowState } from '../workflow-state';
 
 const nodeSchema = z.object({
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
@@ -42,7 +42,7 @@ export const createAddNodeTool = (nodeTypes: INodeTypeDescription[]) => {
 
 			const addedNodes: INode[] = [];
 			const errors: string[] = [];
-			let currentNodes = [...state.workflowJSON.nodes];
+			const currentNodes = [...state.workflowJSON.nodes];
 
 			// Process each node in the array
 			for (let i = 0; i < nodes.length; i++) {

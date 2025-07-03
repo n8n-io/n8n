@@ -1,5 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver } from '@langchain/langgraph';
+import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -8,13 +10,11 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { ILicenseService } from './interfaces';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
-import { WorkflowState } from './workflow-state';
-import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { ToolNode } from '@langchain/langgraph/prebuilt';
-import { createNodeSearchTool } from './tools/node-search.tool';
 import { createAddNodeTool } from './tools/add-node.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
+import { createNodeDetailsTool } from './tools/node-details.tool';
+import { createNodeSearchTool } from './tools/node-search.tool.refactored';
+import { WorkflowState } from './workflow-state';
 
 @Service()
 export class AiWorkflowBuilderService {
