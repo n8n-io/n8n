@@ -1,4 +1,4 @@
-import type { LicenseProvider } from '@n8n/backend-common';
+import type { FeatureChangedCallback, LicenseProvider } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -33,6 +33,7 @@ export type FeatureReturnType = Partial<
 @Service()
 export class License implements LicenseProvider {
 	private manager: LicenseManager | undefined;
+	private onChangeCallbacks: FeatureChangedCallback[] = [];
 
 	private isShuttingDown = false;
 
@@ -124,6 +125,26 @@ export class License implements LicenseProvider {
 		}
 	}
 
+	addOnChangeCallback(notifier: FeatureChangedCallback): () => void {
+		this.onChangeCallbacks.push(notifier);
+		return () => {
+			this.onChangeCallbacks = this.onChangeCallbacks.filter((c) => c !== notifier);
+		};
+	}
+
+	private notifyOnChange() {
+		this.logger.debug('License state changed, notifying callbacks', {
+			cbs: this.onChangeCallbacks,
+		});
+		this.onChangeCallbacks.forEach((notifier) => {
+			try {
+				notifier();
+			} catch (error) {
+				console.error('Error in license state change callback:', error);
+			}
+		});
+	}
+
 	async loadCertStr(): Promise<TLicenseBlock> {
 		// if we have an ephemeral license, we don't want to load it from the database
 		const ephemeralLicense = this.globalConfig.license.cert;
@@ -173,6 +194,7 @@ export class License implements LicenseProvider {
 		}
 
 		await this.manager.activate(activationKey);
+		this.notifyOnChange();
 		this.logger.debug('License activated');
 	}
 
@@ -191,6 +213,7 @@ export class License implements LicenseProvider {
 		}
 
 		await this.manager.renew();
+		this.notifyOnChange();
 		this.logger.debug('License renewed');
 	}
 

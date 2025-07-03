@@ -63,6 +63,7 @@ import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 import { MfaService } from './mfa/mfa.service';
+import { OidcInitializationService } from './sso.ee/oidc/init.service.ee';
 
 @Service()
 export class Server extends AbstractServer {
@@ -156,15 +157,11 @@ export class Server extends AbstractServer {
 		// OIDC
 		// ----------------------------------------
 
-		try {
-			if (this.licenseState.isOidcLicensed()) {
-				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-				await Container.get(OidcService).init();
-				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-			}
-		} catch (error) {
-			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
-		}
+		Container.get(OidcInitializationService)
+			.init()
+			.catch((error) => {
+				this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
+			});
 
 		// ----------------------------------------
 		// Source Control
@@ -190,6 +187,8 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		Container.get(ControllerRegistry).setApplication(this.app);
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
@@ -251,7 +250,7 @@ export class Server extends AbstractServer {
 		await this.registerAdditionalControllers();
 
 		// register all known controllers
-		Container.get(ControllerRegistry).activate(app);
+		Container.get(ControllerRegistry).activate();
 
 		// ----------------------------------------
 		// Options
