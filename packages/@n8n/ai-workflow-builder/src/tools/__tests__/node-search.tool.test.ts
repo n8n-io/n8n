@@ -1,8 +1,8 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { NodeSearchEngine, type NodeSearchResult } from '../engines/node-search-engine';
-import { createNodeSearchTool } from '../node-search.tool';
-import { getAllTestNodeTypes } from '../test-utils';
+import { createNodeSearchTool } from './node-search.tool';
+import { getAllTestNodeTypes } from './test-utils';
 
 describe('NodeSearchTool', () => {
 	let tool: ReturnType<typeof createNodeSearchTool>;

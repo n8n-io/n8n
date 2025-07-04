@@ -2,7 +2,7 @@ import type { INode } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
 import { RemoveNodeTool } from '../remove-node.tool';
-import { ToolTestHarness } from '../test-utils';
+import { ToolTestHarness } from './test-utils';
 
 describe('RemoveNodeTool', () => {
 	let harness: ToolTestHarness;

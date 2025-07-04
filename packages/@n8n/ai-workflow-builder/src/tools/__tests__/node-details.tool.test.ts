@@ -3,8 +3,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { NodeDetailsTool } from '../node-details.tool';
-import { createMockToolContext } from '../test-utils/mock-context';
-import { createMockNodeTypes } from '../test-utils/node-mocks';
+import { createMockToolContext } from './test-utils/mock-context';
+import { createMockNodeTypes } from './test-utils/node-mocks';
 
 describe('NodeDetailsTool', () => {
 	let nodeTypes: INodeTypeDescription[];
@@ -152,13 +152,13 @@ describe('NodeDetailsTool', () => {
 
 			const formatted = tool['formatNodeDetails'](details, false, true);
 
-			expect(formatted).toContain('<input type="main" />');
+			expect(formatted).toContain('<input>main</input>');
 			expect(formatted).toContain(
 				`<input type="${NodeConnectionTypes.AiTool}" displayName="Tools" required="false" />`,
 			);
-			expect(formatted).toContain('<output type="main" />');
+			expect(formatted).toContain('<output>main</<input type>');
 			expect(formatted).toContain(
-				`<output type="${NodeConnectionTypes.AiLanguageModel}" displayName="Language Model" />`,
+				`<output>{type="${NodeConnectionTypes.AiLanguageModel}" displayName="Language Model" required=false}/>`,
 			);
 		});
 	});
