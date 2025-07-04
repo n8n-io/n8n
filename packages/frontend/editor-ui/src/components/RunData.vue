@@ -43,6 +43,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
+	RUN_DATA_DEFAULT_PAGE_SIZE,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -216,7 +217,7 @@ const outputIndex = ref(0);
 const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
-const pageSize = ref(10);
+const pageSize = ref(RUN_DATA_DEFAULT_PAGE_SIZE);
 
 const pinDataDiscoveryTooltipVisible = ref(false);
 const isControlledPinDataTooltip = ref(false);

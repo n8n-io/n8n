@@ -1,52 +1,51 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IRunDataDisplayMode,
 	IUpdateInformation,
 	MainPanelType,
 	NodePanelType,
-	ResizeData,
 	TargetItem,
-	XYPosition,
 } from '@/Interface';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 
-import OutputPanel from './OutputPanel.vue';
-import InputPanel from './InputPanel.vue';
-import TriggerPanel from './TriggerPanel.vue';
-import PanelDragButtonV2 from './PanelDragButtonV2.vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useKeybindings } from '@/composables/useKeybindings';
+import { useMessage } from '@/composables/useMessage';
+import { useNdvLayout } from '@/composables/useNdvLayout';
+import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useStyles } from '@/composables/useStyles';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import {
+	APP_MODALS_ELEMENT_ID,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	APP_MODALS_ELEMENT_ID,
 } from '@/constants';
-import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getNodeIconSource } from '@/utils/nodeIcon';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useMessage } from '@/composables/useMessage';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { usePinnedData } from '@/composables/usePinnedData';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { useStyles } from '@/composables/useStyles';
-import { getNodeIconSource } from '@/utils/nodeIcon';
-import { useThrottleFn } from '@vueuse/core';
-import { useKeybindings } from '@/composables/useKeybindings';
+import InputPanel from './InputPanel.vue';
+import OutputPanel from './OutputPanel.vue';
+import PanelDragButtonV2 from './PanelDragButtonV2.vue';
+import TriggerPanel from './TriggerPanel.vue';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -68,9 +67,6 @@ const props = withDefaults(
 		readOnly: false,
 	},
 );
-
-const MIN_MAIN_PANEL_WIDTH = 368;
-const MIN_PANEL_WIDTH = 260;
 
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
@@ -104,10 +100,8 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 const dialogRef = ref<HTMLDialogElement>();
-const containerRect = ref<DOMRect>();
-const containerRef = ref<HTMLDivElement>();
-const mainPanelRef = ref<HTMLDivElement>();
-const panelWidth = ref({ left: 40, main: 20, right: 40 });
+const containerRef = useTemplateRef('containerRef');
+const mainPanelRef = useTemplateRef('mainPanelRef');
 
 // computed
 const pushRef = computed(() => ndvStore.pushRef);
@@ -118,6 +112,8 @@ const activeNodeType = computed(() => {
 	}
 	return null;
 });
+
+const { docsUrl } = useNodeDocsUrl({ nodeType: activeNodeType });
 
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
@@ -340,59 +336,21 @@ const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
 
 const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
 
-const isDraggable = computed(() => !isTriggerNode.value);
-
 const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
 
 const supportedResizeDirections = computed<Array<'left' | 'right'>>(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
 
-const containerWidth = computed(() => containerRect.value?.width ?? MIN_MAIN_PANEL_WIDTH);
-
-const mainPanelWidthPixels = computed(() => percentageToPixels(panelWidth.value.main));
-
-const minMainPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_MAIN_PANEL_WIDTH));
-const minPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_PANEL_WIDTH));
-
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputPanel.value) return 'inputless';
-	if (!isDraggable.value) return 'dragless';
 	return activeNodeType.value?.parameterPane ?? 'regular';
 });
 
-const defaultPanelSize = computed(() => {
-	switch (currentNodePaneType.value) {
-		case 'inputless': {
-			const main = pixelsToPercentage(480);
-			return { left: 0, main, right: 100 - main };
-		}
-		case 'wide': {
-			const main = pixelsToPercentage(640);
-			const panels = (100 - main) / 2;
-			return { left: panels, main, right: panels };
-		}
-		case 'dragless':
-		case 'unknown':
-		case 'regular':
-		default: {
-			const main = pixelsToPercentage(420);
-			const panels = (100 - main) / 2;
-			return { left: panels, main, right: panels };
-		}
-	}
-});
+const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
+	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
 
 //methods
-
-const percentageToPixels = (percentage: number) => {
-	return (percentage / 100) * containerWidth.value;
-};
-
-const pixelsToPercentage = (pixels: number) => {
-	return (pixels / containerWidth.value) * 100;
-};
-
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
@@ -454,6 +412,7 @@ const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null)
 };
 
 const onDragEnd = () => {
+	onResizeEnd();
 	isDragging.value = false;
 	telemetry.track('User moved parameters pane', {
 		// example method for tracking
@@ -628,59 +587,8 @@ const onRename = (name: string) => {
 	emit('renameNode', name);
 };
 
-const onResize = (event: ResizeData) => {
-	const newMain = Math.max(minMainPanelWidthPercentage.value, pixelsToPercentage(event.width));
-	const initialLeft = panelWidth.value.left;
-	const initialMain = panelWidth.value.main;
-	const initialRight = panelWidth.value.right;
-	const diffMain = newMain - initialMain;
-
-	if (event.direction === 'left') {
-		const newLeft = Math.max(minPanelWidthPercentage.value, initialLeft - diffMain);
-		if (newLeft + newMain + initialRight <= 100) {
-			panelWidth.value.left = newLeft;
-			panelWidth.value.main = newMain;
-			panelWidth.value.right = 100 - newLeft - newMain;
-		}
-	} else if (event.direction === 'right') {
-		const newRight = Math.max(minPanelWidthPercentage.value, initialRight - diffMain);
-		if (initialLeft + newMain + newRight <= 100) {
-			panelWidth.value.main = newMain;
-			panelWidth.value.right = newRight;
-			panelWidth.value.left = 100 - newRight - newMain;
-		}
-	}
-};
-
-const onResizeThrottled = useThrottleFn(onResize, 16, true);
-
-const onDrag = (position: XYPosition) => {
-	const newLeft = Math.max(
-		minPanelWidthPercentage.value,
-		pixelsToPercentage(position[0]) - panelWidth.value.main / 2,
-	);
-	const newRight = Math.max(minPanelWidthPercentage.value, 100 - newLeft - panelWidth.value.main);
-
-	if (newLeft + panelWidth.value.main + newRight > 100) {
-		return;
-	}
-
-	panelWidth.value.left = newLeft;
-	panelWidth.value.right = newRight;
-};
-
 const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
 	ndvStore.setPanelDisplayMode({ pane, mode });
-};
-
-const onDragThrottled = useThrottleFn(onDrag, 16, true);
-
-const safePanelWidth = ({ left, main, right }: { left: number; main: number; right: number }) => {
-	return {
-		left: Math.max(hasInputPanel.value ? minPanelWidthPercentage.value : 0, left),
-		main: Math.max(minMainPanelWidthPercentage.value, main),
-		right: Math.max(minPanelWidthPercentage.value, right),
-	};
 };
 
 //watchers
@@ -797,13 +705,6 @@ watch(mainPanelRef, (mainPanel) => {
 	}
 });
 
-watch(containerRef, (container) => {
-	if (container) {
-		containerRect.value = container.getBoundingClientRect();
-		panelWidth.value = safePanelWidth(defaultPanelSize.value);
-	}
-});
-
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
@@ -834,6 +735,7 @@ onBeforeUnmount(() => {
 					:node-name="activeNode.name"
 					:node-type-name="activeNodeType.defaults.name ?? activeNodeType.displayName"
 					:icon="getNodeIconSource(activeNodeType)"
+					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"
 				/>
@@ -841,7 +743,7 @@ onBeforeUnmount(() => {
 					<div
 						v-if="hasInputPanel"
 						:class="$style.column"
-						:style="{ width: `${panelWidth.left}%` }"
+						:style="{ width: `${panelWidthPercentage.left}%` }"
 					>
 						<TriggerPanel
 							v-if="showTriggerPanel"
@@ -877,24 +779,24 @@ onBeforeUnmount(() => {
 					</div>
 
 					<N8nResizeWrapper
-						:width="mainPanelWidthPixels"
-						:min-width="MIN_PANEL_WIDTH"
+						:width="panelWidthPixels.main"
+						:min-width="260"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
 						:class="$style.column"
-						:style="{ width: `${panelWidth.main}%` }"
+						:style="{ width: `${panelWidthPercentage.main}%` }"
 						outset
-						@resize="onResizeThrottled"
+						@resize="onResize"
 						@resizestart="onDragStart"
 						@resizeend="onDragEnd"
 					>
 						<div ref="mainPanelRef" :class="$style.main">
 							<PanelDragButtonV2
-								v-if="isDraggable"
+								v-if="hasInputPanel"
 								:class="$style.draggable"
 								:can-move-left="true"
 								:can-move-right="true"
-								@drag="onDragThrottled"
+								@drag="onDrag"
 								@dragstart="onDragStart"
 								@dragend="onDragEnd"
 							/>
@@ -932,7 +834,7 @@ onBeforeUnmount(() => {
 						:is-pane-active="isOutputPaneActive"
 						:display-mode="outputPanelDisplayMode"
 						:class="$style.column"
-						:style="{ width: `${panelWidth.right}%` }"
+						:style="{ width: `${panelWidthPercentage.right}%` }"
 						@activate-pane="activateOutputPane"
 						@link-run="onLinkRunToOutput"
 						@unlink-run="() => onUnlinkRun('output')"
@@ -981,6 +883,7 @@ onBeforeUnmount(() => {
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	color: var(--color-text-base);
+	min-width: 0;
 }
 
 .main {
@@ -991,6 +894,8 @@ onBeforeUnmount(() => {
 }
 
 .column {
+	min-width: 0;
+
 	+ .column {
 		border-left: var(--border-base);
 	}

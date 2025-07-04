@@ -2,10 +2,12 @@
 import type { NodeIconSource } from '@/utils/nodeIcon';
 import { N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	nodeName: string;
 	nodeTypeName: string;
+	docsUrl?: string;
 	icon?: NodeIconSource;
 	readOnly?: boolean;
 }>();
@@ -13,6 +15,15 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
+
+const hasCustomName = computed(() => props.nodeName !== props.nodeTypeName);
+const docsLabel = computed(() => {
+	if (!hasCustomName.value) {
+		return i18n.baseText('nodeSettings.docs');
+	}
+
+	return `${props.nodeTypeName} ${i18n.baseText('nodeSettings.docs')}`;
+});
 
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
@@ -26,14 +37,25 @@ function onRename(newNodeName: string) {
 			<div :class="$style.title">
 				<N8nInlineTextEdit
 					:model-value="nodeName"
+					:min-width="0"
+					:placeholder="i18n.baseText('ndv.title.rename.placeholder')"
 					:read-only="readOnly"
 					@update:model-value="onRename"
 				/>
 			</div>
 
-			<p v-if="nodeName !== nodeTypeName" :class="$style.subtitle">
+			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
+				<span :class="$style.docsLabel">
+					<N8nText size="small" bold>
+						{{ docsLabel }}
+					</N8nText>
+					<N8nIcon icon="external-link" />
+				</span>
+			</N8nLink>
+
+			<N8nText v-else-if="hasCustomName" size="small" bold>
 				{{ nodeTypeName }}
-			</p>
+			</N8nText>
 		</div>
 
 		<N8nTooltip>
@@ -87,10 +109,15 @@ function onRename(newNodeName: string) {
 }
 
 .subtitle {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing-2xs);
 	margin: 0;
+}
+
+.docsLabel {
+	display: flex;
+	gap: var(--spacing-5xs);
 }
 
 .icon {

@@ -29,6 +29,7 @@ const emit = defineEmits<{
 	<div :class="$style.header">
 		<NodeSettingsTabs
 			v-if="!hideTabs"
+			hide-docs
 			:model-value="selectedTab"
 			:node-type="nodeType"
 			:push-ref="pushRef"

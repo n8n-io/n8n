@@ -493,6 +493,7 @@ export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
 	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
+export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -927,3 +928,5 @@ export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
+
+export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;

@@ -1195,6 +1195,7 @@
 	"ndv.output.noToolUsedInfo": "None of your tools were used in this run. Try giving your tools clearer names and descriptions to help the AI",
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
+	"ndv.title.rename.placeholder": "Enter new name...",
 	"ndv.title.renameNode": "Rename node",
 	"ndv.pinData.pin.title": "Pin data",
 	"ndv.pinData.pin.description": "Node will always output current data instead of executing. Doesn't apply to production executions.",
