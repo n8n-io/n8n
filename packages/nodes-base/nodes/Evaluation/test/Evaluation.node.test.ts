@@ -4,6 +4,7 @@ import {
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
 	type INodeTypes,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
@@ -62,7 +63,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -88,7 +89,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -125,7 +126,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 			mockExecuteFunctions.getParentNodes.mockReturnValue([]);
@@ -152,7 +153,7 @@ describe('Test Evaluation', () => {
 						sheetMode: 'id',
 						operation: 'setOutputs',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -299,7 +300,7 @@ describe('Test Evaluation', () => {
 					const mockParams: { [key: string]: unknown } = {
 						operation: 'checkIfEvaluating',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 		});

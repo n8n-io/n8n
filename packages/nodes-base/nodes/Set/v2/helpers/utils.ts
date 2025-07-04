@@ -206,7 +206,7 @@ export const validateEntry = (
 		if (ignoreErrors) {
 			return { name, value: value ?? null };
 		} else {
-			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
+			const message = `${'errorMessage' in validationResult ? validationResult.errorMessage : 'Error'} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
 				itemIndex,
 				description,
