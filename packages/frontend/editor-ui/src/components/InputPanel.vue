@@ -5,6 +5,7 @@ import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NDV_UI_OVERHAUL_EXPERIMENT,
 	START_NODE_TYPE,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -25,8 +26,10 @@ import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import NDVEmptyState from './NDVEmptyState.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 
 type MappingMode = 'debugging' | 'mapping';
@@ -89,6 +92,7 @@ const inputModes = [
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const posthogStore = usePostHog();
 
 const {
 	activeNode,
@@ -237,6 +241,13 @@ const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
 	return parentNode && waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name));
 });
+
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
 
 watch(
 	inputMode,
@@ -389,8 +400,10 @@ function activatePane() {
 		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
-			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
+			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+				<span :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">{{
+					i18n.baseText('ndv.input')
+				}}</span>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -429,80 +442,157 @@ function activatePane() {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<template v-if="isMappingEnabled || hasRootNodeRun">
-					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-						i18n.baseText('ndv.input.noOutputData.title')
-					}}</N8nText>
+				<template v-if="isNDVV2">
+					<NDVEmptyState
+						v-if="isMappingEnabled || hasRootNodeRun"
+						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+					>
+						<template #icon>
+							<N8nIcon icon="arrow-right-to-line" size="xlarge" />
+						</template>
+						<template #description>
+							<i18n-t tag="span" keypath="ndv.input.noOutputData.v2.description">
+								<template #link>
+									<NodeExecuteButton
+										hide-icon
+										transparent
+										type="secondary"
+										:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+										:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
+										:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+										tooltip-placement="bottom"
+										telemetry-source="inputs"
+										data-test-id="execute-previous-node"
+										@execute="onNodeExecute"
+									/>
+									<br />
+								</template>
+							</i18n-t>
+						</template>
+					</NDVEmptyState>
+					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
+						<template #icon>
+							<svg width="16px" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path
+									d="M11 2C10.4375 2 10 1.5625 10 1C10 0.46875 10.4375 0 11 0H13C14.6562 0 16 1.34375 16 3V11C16 12.6562 14.6562 14 13 14H11C10.4375 14 10 13.5625 10 13C10 12.4688 10.4375 12 11 12H13C13.5312 12 14 11.5625 14 11V3C14 2.46875 13.5312 2 13 2H11ZM10.6875 7.71875L6.6875 11.7188C6.3125 12.125 5.65625 12.125 5.28125 11.7188C4.875 11.3438 4.875 10.6875 5.28125 10.3125L7.5625 8H1C0.4375 8 0 7.5625 0 7C0 6.46875 0.4375 6 1 6H7.5625L5.28125 3.71875C4.875 3.34375 4.875 2.6875 5.28125 2.3125C5.65625 1.90625 6.3125 1.90625 6.6875 2.3125L10.6875 6.3125C11.0938 6.6875 11.0938 7.34375 10.6875 7.71875Z"
+									fill="currentColor"
+								/>
+							</svg>
+						</template>
+
+						<template #description>
+							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+								<template #link>
+									<a
+										href="#"
+										data-test-id="switch-to-mapping-mode-link"
+										@click.prevent="onInputModeChange('mapping')"
+									>
+										{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}
+									</a>
+								</template>
+							</i18n-t>
+						</template>
+					</NDVEmptyState>
 				</template>
+
 				<template v-else>
-					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-						i18n.baseText('ndv.input.rootNodeHasNotRun.title')
-					}}</N8nText>
-					<N8nText tag="div" color="text-dark" size="medium">
-						<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
-							<template #link>
-								<a
-									href="#"
-									data-test-id="switch-to-mapping-mode-link"
-									@click.prevent="onInputModeChange('mapping')"
-									>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
-								>
+					<template v-if="isMappingEnabled || hasRootNodeRun">
+						<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+							i18n.baseText('ndv.input.noOutputData.title')
+						}}</N8nText>
+					</template>
+					<template v-else>
+						<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+							i18n.baseText('ndv.input.rootNodeHasNotRun.title')
+						}}</N8nText>
+						<N8nText tag="div" color="text-dark" size="medium">
+							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+								<template #link>
+									<a
+										href="#"
+										data-test-id="switch-to-mapping-mode-link"
+										@click.prevent="onInputModeChange('mapping')"
+										>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
+									>
+								</template>
+							</i18n-t>
+						</N8nText>
+					</template>
+					<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
+						<template #content>
+							<div
+								v-n8n-html="
+									i18n.baseText('dataMapping.dragFromPreviousHint', {
+										interpolate: { name: focusedMappableInput },
+									})
+								"
+							></div>
+						</template>
+						<NodeExecuteButton
+							type="secondary"
+							hide-icon
+							:transparent="true"
+							:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+							:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+							class="mt-m"
+							telemetry-source="inputs"
+							data-test-id="execute-previous-node"
+							@execute="onNodeExecute"
+						/>
+					</N8nTooltip>
+					<N8nText v-if="!readOnly" tag="div" size="small">
+						<i18n-t keypath="ndv.input.noOutputData.hint">
+							<template #info>
+								<N8nTooltip placement="bottom">
+									<template #content>
+										{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
+									</template>
+									<N8nIcon icon="circle-help" />
+								</N8nTooltip>
 							</template>
 						</i18n-t>
 					</N8nText>
 				</template>
-				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
-					<template #content>
-						<div
-							v-n8n-html="
-								i18n.baseText('dataMapping.dragFromPreviousHint', {
-									interpolate: { name: focusedMappableInput },
-								})
-							"
-						></div>
-					</template>
-					<NodeExecuteButton
-						type="secondary"
-						hide-icon
-						:transparent="true"
-						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
-						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-						class="mt-m"
-						telemetry-source="inputs"
-						data-test-id="execute-previous-node"
-						@execute="onNodeExecute"
-					/>
-				</N8nTooltip>
-				<N8nText v-if="!readOnly" tag="div" size="small">
-					<i18n-t keypath="ndv.input.noOutputData.hint">
-						<template #info>
-							<N8nTooltip placement="bottom">
-								<template #content>
-									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</template>
-					</i18n-t>
-				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">
-				<div>
-					<WireMeUp />
-				</div>
-				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					i18n.baseText('ndv.input.notConnected.title')
-				}}</N8nText>
-				<N8nText tag="div">
-					{{ i18n.baseText('ndv.input.notConnected.message') }}
-					<a
-						href="https://docs.n8n.io/workflows/connections/"
-						target="_blank"
-						@click="onConnectionHelpClick"
-					>
-						{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
-					</a>
-				</N8nText>
+				<NDVEmptyState v-if="isNDVV2" :title="i18n.baseText('ndv.input.notConnected.v2.title')">
+					<template #icon>
+						<WireMeUp />
+					</template>
+					<template #description>
+						<i18n-t tag="span" keypath="ndv.input.notConnected.v2.description">
+							<template #link>
+								<a
+									href="https://docs.n8n.io/workflows/connections/"
+									target="_blank"
+									@click="onConnectionHelpClick"
+								>
+									{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
+								</a>
+							</template>
+						</i18n-t>
+					</template>
+				</NDVEmptyState>
+
+				<template v-else>
+					<div>
+						<WireMeUp />
+					</div>
+					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+						i18n.baseText('ndv.input.notConnected.title')
+					}}</N8nText>
+					<N8nText tag="div">
+						{{ i18n.baseText('ndv.input.notConnected.message') }}
+						<a
+							href="https://docs.n8n.io/workflows/connections/"
+							target="_blank"
+							@click="onConnectionHelpClick"
+						>
+							{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
+						</a>
+					</N8nText>
+				</template>
 			</div>
 		</template>
 
@@ -550,6 +640,10 @@ function activatePane() {
 		margin-right: var(--spacing-2xs);
 	}
 }
+
+.titleSectionV2 {
+	padding-left: var(--spacing-4xs);
+}
 .inputModeTab {
 	margin-left: auto;
 }
@@ -589,5 +683,10 @@ function activatePane() {
 	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
+}
+
+.titleV2 {
+	letter-spacing: 2px;
+	font-size: var(--font-size-xs);
 }
 </style>

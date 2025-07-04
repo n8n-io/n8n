@@ -51,6 +51,7 @@ const props = withDefaults(
 		hideIcon?: boolean;
 		hideLabel?: boolean;
 		tooltip?: string;
+		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
 	}>(),
 	{
 		disabled: false,
@@ -387,7 +388,11 @@ async function onClick() {
 </script>
 
 <template>
-	<N8nTooltip placement="right" :disabled="!tooltipText" :content="tooltipText">
+	<N8nTooltip
+		:placement="tooltipPlacement ?? 'right'"
+		:disabled="!tooltipText"
+		:content="tooltipText"
+	>
 		<N8nButton
 			v-bind="$attrs"
 			:loading="isLoading"
