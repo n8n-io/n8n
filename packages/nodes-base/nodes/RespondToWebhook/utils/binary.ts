@@ -4,6 +4,14 @@ import type { Readable } from 'stream';
 
 import { sandboxResponseData } from './sandbox';
 
+const setContentLength = (responseBody: IN8nHttpResponse | Readable, headers: IDataObject) => {
+	if (Buffer.isBuffer(responseBody)) {
+		headers['content-length'] = responseBody.length;
+	} else if (typeof responseBody === 'string') {
+		headers['content-length'] = Buffer.byteLength(responseBody, 'utf8');
+	}
+};
+
 export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject) => {
 	const mimeTypesToSanitize = ['text/html', 'application/xhtml+xml'];
 
@@ -25,7 +33,7 @@ export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject)
 				? sandboxResponseData(responseBuffer.toString(), true)
 				: responseBuffer;
 
-		headers['content-length'] = (responseBody as Buffer).length;
+		setContentLength(responseBody, headers);
 	}
 
 	headers['content-type'] ??= binaryData.mimeType;
