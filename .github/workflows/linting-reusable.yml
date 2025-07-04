@@ -29,7 +29,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Setup Environment
-        uses: ./.github/actions/setup-and-build
+        uses: n8n-io/n8n/.github/actions/setup-and-build@7e870b8f7f5a39bb8bf82d1f42b6d44febc0082c # v1.100.1
         with:
           node-version: ${{ inputs.nodeVersion }}
           enable-caching: true

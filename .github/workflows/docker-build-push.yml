@@ -331,8 +331,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call Success URL - optionally
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success_url }}
         if: ${{ github.event.inputs.success_url != '' }}
-        run: curl -v ${{github.event.inputs.success_url}} || echo ""
+        run: curl -v ${{ env.SUCCESS_URL }} || echo ""
         shell: bash
 
   security-scan:
