@@ -1,4 +1,7 @@
+import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
+import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import {
@@ -73,6 +76,87 @@ function createAgentExecutor(
 	});
 }
 
+async function processEventStream(
+	ctx: IExecuteFunctions,
+	eventStream: IterableReadableStream<StreamEvent>,
+	returnIntermediateSteps: boolean = false,
+): Promise<{ output: string; intermediateSteps?: any[] }> {
+	const agentResult: { output: string; intermediateSteps?: any[] } = {
+		output: '',
+	};
+
+	if (returnIntermediateSteps) {
+		agentResult.intermediateSteps = [];
+	}
+
+	ctx.sendChunk('begin');
+	for await (const event of eventStream) {
+		// Stream chat model tokens as they come in
+		switch (event.event) {
+			case 'on_chat_model_stream':
+				const chunk = event.data?.chunk as AIMessageChunk;
+				if (chunk?.content) {
+					const chunkContent = chunk.content;
+					let chunkText = '';
+					if (Array.isArray(chunkContent)) {
+						for (const message of chunkContent) {
+							chunkText += (message as MessageContentText)?.text;
+						}
+					} else if (typeof chunkContent === 'string') {
+						chunkText = chunkContent;
+					}
+					ctx.sendChunk('item', chunkText);
+
+					agentResult.output += chunkText;
+				}
+				break;
+			case 'on_chat_model_end':
+				// Capture full LLM response with tool calls for intermediate steps
+				if (returnIntermediateSteps && event.data) {
+					const chatModelData = event.data as any;
+					const output = chatModelData.output;
+
+					// Check if this LLM response contains tool calls
+					if (output?.tool_calls && output.tool_calls.length > 0) {
+						for (const toolCall of output.tool_calls) {
+							agentResult.intermediateSteps!.push({
+								action: {
+									tool: toolCall.name,
+									toolInput: toolCall.args,
+									log:
+										output.content ||
+										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+									messageLog: [output], // Include the full LLM response
+									toolCallId: toolCall.id,
+									type: toolCall.type,
+								},
+							});
+						}
+					}
+				}
+				break;
+			case 'on_tool_end':
+				// Capture tool execution results and match with action
+				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+					const toolData = event.data as any;
+					// Find the matching intermediate step for this tool call
+					const matchingStep = agentResult.intermediateSteps!.find(
+						(step) => !step.observation && step.action.tool === event.name,
+					);
+					if (matchingStep) {
+						matchingStep.observation = toolData.output;
+					}
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	ctx.sendChunk('end');
+
+	return agentResult;
+}
+
 /* -----------------------------------------------------------
    Main Executor Function
 ----------------------------------------------------------- */
@@ -108,6 +192,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			'Please connect a model to the Fallback Model input or disable the fallback option',
 		);
 	}
+
+	// Check if streaming is enabled
+	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -159,7 +246,27 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
-			return await executor.invoke(invokeParams, executeOptions);
+			// Check if streaming is actually available
+			const isStreamingAvailable = this.isStreaming();
+
+			if (enableStreaming && isStreamingAvailable && this.getNode().typeVersion >= 2.1) {
+				const chatHistory = await memory?.chatHistory.getMessages();
+				const eventStream = executor.streamEvents(
+					{
+						...invokeParams,
+						chat_history: chatHistory ?? undefined,
+					},
+					{
+						version: 'v2',
+						...executeOptions,
+					},
+				);
+
+				return await processEventStream(this, eventStream, options.returnIntermediateSteps);
+			} else {
+				// Handle regular execution
+				return await executor.invoke(invokeParams, executeOptions);
+			}
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);
