@@ -13,6 +13,7 @@ import { useAsyncState } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import NodeDiff from './NodeDiff.vue';
 import SyncedCanvas from './SyncedCanvas.vue';
 import { useProvideViewportSync } from './viewport.sync';
 import { compareWorkflowsNodes, NodeDiffStatus } from './workflowDiff';
@@ -48,8 +49,8 @@ const { state: workflowHistory } = useAsyncState(
 	[],
 );
 
-async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
-	const data = await getWorkflowVersion(rootStore.restApiContext, 'WuOmWlv48kpnugsQ', id);
+async function fetchWorkflow(id: string, versionId: string): Promise<IWorkflowDb> {
+	const data = await getWorkflowVersion(rootStore.restApiContext, id, versionId);
 	return data as unknown as IWorkflowDb;
 	// const workflowData = await getWorkflow(rootStore.restApiContext, id);
 	// return workflowData;
@@ -58,6 +59,7 @@ async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 const props = defineProps<{
 	sourceWorkflowId: string;
 	targetWorkflowId: string;
+	workflowId: string;
 }>();
 
 type DiffProps = {
@@ -73,7 +75,7 @@ const { state: sourceWorkflow, execute: fetchSourceWorkflow } = useAsyncState<
 	false
 >(
 	async () => {
-		const workflow = await fetchWorkflow(props.sourceWorkflowId);
+		const workflow = await fetchWorkflow(props.workflowId, props.sourceWorkflowId);
 		const workflowObject = workflowsStore.getWorkflow(workflow.nodes, workflow.connections);
 
 		const { nodes, connections } = useCanvasMapping({
@@ -104,7 +106,7 @@ const { state: targetWorkflow, execute: fetchTargetWorkflow } = useAsyncState<
 	false
 >(
 	async () => {
-		const workflow = await fetchWorkflow(props.targetWorkflowId);
+		const workflow = await fetchWorkflow(props.workflowId, props.targetWorkflowId);
 		const workflowObject = workflowsStore.getWorkflow(workflow.nodes, workflow.connections);
 
 		const { nodes, connections } = useCanvasMapping({
@@ -152,7 +154,7 @@ const diff = computed(() => {
 });
 
 const connectionsDiff = computed(() => {
-	if (!(sourceWorkflow.value && targetWorkflow.value)) return undefined;
+	if (!(sourceWorkflow.value && targetWorkflow.value)) return new Map<string, NodeDiffStatus>();
 	const sourceConnections = new Set(sourceWorkflow.value.connections.map((item) => item.id));
 	const targetConnections = new Set(targetWorkflow.value.connections.map((item) => item.id));
 
@@ -187,7 +189,7 @@ function getEdgeStatusClass(id: string) {
 	return status ? `edge-${status}` : 'edge-equal';
 }
 
-useProvideViewportSync();
+const { syncIsEnabled, selectedDetailId } = useProvideViewportSync();
 
 function handleVersionSelection(source: 'sourceWorkflowId' | 'targetWorkflowId', event: Event) {
 	const selectElement = event.target as HTMLSelectElement;
@@ -197,6 +199,68 @@ function handleVersionSelection(source: 'sourceWorkflowId' | 'targetWorkflowId',
 }
 
 const displayChanges = ref(false);
+
+const nodeDiffs = computed(() => {
+	if (!selectedDetailId.value) {
+		return {
+			oldString: '',
+			newString: '',
+		};
+	}
+
+	const sourceNode = sourceWorkflow.value?.workflow.nodes.find(
+		(node) => node.id === selectedDetailId.value,
+	);
+	const targetNode = targetWorkflow.value?.workflow.nodes.find(
+		(node) => node.id === selectedDetailId.value,
+	);
+
+	console.log(sourceNode, targetNode);
+
+	return {
+		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
+		newString: JSON.stringify(targetNode, null, 2) ?? '',
+	};
+});
+
+const outputFormat = ref<'side-by-side' | 'line-by-line'>('line-by-line');
+
+const panelWidth = computed(() => {
+	return outputFormat.value === 'line-by-line' ? '30%' : '45%';
+});
+function toggleOutputFormat() {
+	outputFormat.value = outputFormat.value === 'line-by-line' ? 'side-by-side' : 'line-by-line';
+}
+
+function goToNode(direction: 'next' | 'previous') {
+	if (!nodeChanges.value) return;
+
+	const currentIndex = nodeChanges.value.findIndex(
+		(change) => change.node.id === selectedDetailId.value,
+	);
+
+	if (currentIndex === -1) {
+		if (direction === 'next') {
+			selectedDetailId.value = nodeChanges.value[0]?.node.id;
+		} else {
+			selectedDetailId.value = nodeChanges.value.at(-1)?.node.id;
+		}
+		return;
+	}
+
+	if (direction === 'next') {
+		if (currentIndex <= nodeChanges.value.length - 1) {
+			const next = currentIndex + 1 > nodeChanges.value.length - 1 ? 0 : currentIndex + 1;
+			selectedDetailId.value = nodeChanges.value[next]?.node.id;
+		}
+	} else if (direction === 'previous') {
+		if (currentIndex > 0) {
+			selectedDetailId.value = nodeChanges.value[currentIndex - 1]?.node.id;
+		} else {
+			selectedDetailId.value = nodeChanges.value[nodeChanges.value.length - 1]?.node.id;
+		}
+	}
+}
 </script>
 
 <template>
@@ -211,133 +275,206 @@ const displayChanges = ref(false);
 				border-bottom: 1px solid rgba(231, 231, 231, 1);
 			"
 		>
-			<div style="position: relative">
-				<button type="button" @click="displayChanges = !displayChanges">
-					({{ nodeChanges.length }}) Changes
+			<div style="position: relative; display: flex; gap: 8px">
+				<div style="position: relative">
+					<button type="button" @click="displayChanges = !displayChanges">
+						({{ nodeChanges.length + connectionsDiff.size }}) Changes
+					</button>
+					<ul
+						v-if="displayChanges"
+						style="
+							list-style: none;
+							padding: 0px;
+							margin: 0px;
+							position: absolute;
+							z-index: 2;
+							background: white;
+							right: 0;
+							width: 282px;
+						"
+					>
+						<li>Nodes</li>
+						<li v-for="change in nodeChanges" :key="change.node.id">
+							<span v-if="change.status === 'deleted'"> (Deleted)</span>
+							<span v-else-if="change.status === 'added'"> (Added)</span>
+							<span v-else-if="change.status === 'modified'"> (Modified)</span>
+							<span v-else-if="change.status === 'equal'"> (Equal)</span>
+							<span>{{ change.node.name }}</span>
+						</li>
+						<li>Connections</li>
+						<li v-for="[id, status] in connectionsDiff" :key="id">
+							<span v-if="status === 'added'"> (Added)</span>
+							<span v-else-if="status === 'deleted'"> (Deleted)</span>
+							<span>{{ id }}</span>
+						</li>
+					</ul>
+				</div>
+				<button type="button" @click="syncIsEnabled = !syncIsEnabled">
+					Sync ({{ syncIsEnabled ? 'On' : 'Off' }})
 				</button>
-				<ul
-					v-if="displayChanges"
-					style="
-						list-style: none;
-						padding: 0px;
-						margin: 0px;
-						position: absolute;
-						z-index: 2;
-						background: white;
-						right: 0;
-						width: 282px;
-					"
-				>
-					<li v-for="change in nodeChanges" :key="change.node.id">
-						<span v-if="change.status === 'deleted'"> (Deleted)</span>
-						<span v-else-if="change.status === 'added'"> (Added)</span>
-						<span v-else-if="change.status === 'modified'"> (Modified)</span>
-						<span v-else-if="change.status === 'equal'"> (Equal)</span>
-						<span>{{ change.node.name }}</span>
-					</li>
-				</ul>
+				<div>
+					<button type="button" @click="goToNode('previous')"><</button>
+					<button type="button" @click="goToNode('next')">></button>
+				</div>
 			</div>
 		</div>
 
-		<div class="workflow-diff">
-			<div class="workflow-diff__view">
-				<div class="version-select-container">
-					<select
-						:value="props.sourceWorkflowId"
-						@input="handleVersionSelection('sourceWorkflowId', $event)"
-					>
-						<option
-							v-for="version in workflowHistory"
-							:key="version.versionId"
-							:value="version.versionId"
+		<div style="display: flex; flex: 1; width: 100%; position: relative; overflow: hidden">
+			<div class="workflow-diff">
+				<div class="workflow-diff__view">
+					<div class="version-select-container">
+						<select
+							:value="props.sourceWorkflowId"
+							@input="handleVersionSelection('sourceWorkflowId', $event)"
 						>
-							{{ formatDate(version.createdAt) }}
-						</option>
-					</select>
-				</div>
-				<template v-if="sourceWorkflow">
-					<SyncedCanvas
-						:id="sourceWorkflowId"
-						:nodes="sourceWorkflow.nodes"
-						:connections="sourceWorkflow.connections"
-					>
-						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-								<template #toolbar />
-							</Node>
-						</template>
-						<template #edge="{ edgeProps }">
-							<Edge
-								v-bind="edgeProps"
-								read-only
-								:selected="false"
-								:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-							/>
-						</template>
-					</SyncedCanvas>
-				</template>
-			</div>
-			<div class="workflow-diff__view" style="border-left: 1px solid black">
-				<div class="version-select-container">
-					<select
-						:value="targetWorkflowId"
-						@input="handleVersionSelection('targetWorkflowId', $event)"
-					>
-						<option
-							v-for="version in workflowHistory"
-							:key="version.versionId"
-							:value="version.versionId"
-						>
-							{{ formatDate(version.createdAt) }}
-						</option>
-					</select>
-				</div>
-				<template v-if="sourceWorkflowId === targetWorkflowId">
-					<div
-						style="
-							width: 100%;
-							height: 100%;
-							display: flex;
-							align-items: center;
-							justify-content: center;
-						"
-					>
-						<p>Select a different version to compare</p>
+							<option
+								v-for="version in workflowHistory"
+								:key="version.versionId"
+								:value="version.versionId"
+							>
+								{{ formatDate(version.createdAt) }}
+							</option>
+						</select>
 					</div>
-				</template>
-				<template v-else-if="targetWorkflow">
-					<SyncedCanvas
-						:id="targetWorkflowId"
-						:nodes="targetWorkflow.nodes"
-						:connections="targetWorkflow.connections"
-					>
-						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-								<template #toolbar />
-							</Node>
-						</template>
-						<template #edge="{ edgeProps }">
-							<Edge
-								v-bind="edgeProps"
-								read-only
-								:selected="false"
-								:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-							/>
-						</template>
-					</SyncedCanvas>
-				</template>
+					<template v-if="sourceWorkflow">
+						<SyncedCanvas
+							:id="sourceWorkflowId"
+							:nodes="sourceWorkflow.nodes"
+							:connections="sourceWorkflow.connections"
+						>
+							<template #node="{ nodeProps }">
+								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+									<template #toolbar />
+								</Node>
+							</template>
+							<template #edge="{ edgeProps }">
+								<Edge
+									v-bind="edgeProps"
+									read-only
+									:selected="false"
+									:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
+								/>
+							</template>
+						</SyncedCanvas>
+					</template>
+				</div>
+				<div class="workflow-diff__view" style="border-top: 1px solid black">
+					<div class="version-select-container">
+						<select
+							:value="targetWorkflowId"
+							@input="handleVersionSelection('targetWorkflowId', $event)"
+						>
+							<option
+								v-for="version in workflowHistory"
+								:key="version.versionId"
+								:value="version.versionId"
+							>
+								{{ formatDate(version.createdAt) }}
+							</option>
+						</select>
+					</div>
+					<template v-if="sourceWorkflowId === targetWorkflowId">
+						<div
+							style="
+								width: 100%;
+								height: 100%;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+							"
+						>
+							<p>Select a different version to compare</p>
+						</div>
+					</template>
+					<template v-else-if="targetWorkflow">
+						<SyncedCanvas
+							:id="targetWorkflowId"
+							:nodes="targetWorkflow.nodes"
+							:connections="targetWorkflow.connections"
+						>
+							<template #node="{ nodeProps }">
+								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+									<template #toolbar />
+								</Node>
+							</template>
+							<template #edge="{ edgeProps }">
+								<Edge
+									v-bind="edgeProps"
+									read-only
+									:selected="false"
+									:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
+								/>
+							</template>
+						</SyncedCanvas>
+					</template>
+				</div>
 			</div>
+			<transition name="slide">
+				<div v-if="selectedDetailId" class="details-drawer">
+					<p>
+						<button type="button" @click="selectedDetailId = undefined">close</button>
+						<button type="button" @click="toggleOutputFormat">
+							{{ outputFormat }}
+						</button>
+						{{ diff?.get(selectedDetailId)?.node.name }}
+					</p>
+					<NodeDiff v-bind="nodeDiffs" :output-format />
+				</div>
+			</transition>
 		</div>
 	</div>
 </template>
 
 <style scoped>
+
+.details-drawer {
+	/* position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 1;
+	padding: 12px;
+	width: 340px;
+	height: 100%;;
+	background-color: var(--color-background-xlight); */
+	height: 100%;
+	max-height: 100%;;
+  /* position: absolute;
+  top: 0;
+  right: 0; */
+  background: var(--color-background-xlight);
+  z-index: 2;
+  overflow-y: auto;
+  /* min-width: 340px;
+	max-width: 50%; */
+	width: v-bind(panelWidth);
+}
+
+
+.slide-enter-active {
+  transition: all 0.2s ease;
+  transform: translateX(90%);
+  opacity: 1;
+}
+
+.slide-enter-to {
+  transition: all 0.2s ease;
+  transform: translateX(0%);
+}
+
+.slide-leave-active {
+  transition: all 0.2s ease;
+  transform: translateX(30%);
+  opacity: 0;
+}
+
 .workflow-diff {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-rows: 1fr 1fr;
 	width: 100%;
 	flex: 1;
 	position: relative;
+	overflow: hidden;
+	transition: all 0.2s ease;
 }
 
 .workflow-diff__view {
@@ -518,6 +655,8 @@ const displayChanges = ref(false);
 .equal {
 	opacity: 0.5;
 	position: relative;
+	pointer-events: none;
+	cursor: default;
 
 	--color-node-icon-blue: var(--color-foreground-xdark);
 	--color-node-icon-gray: var(--color-foreground-xdark);
@@ -612,5 +751,9 @@ const displayChanges = ref(false);
 
 :deep(.edge-added) {
 	--color-foreground-xdark: var(--color-node-icon-green);
+}
+
+:deep(.edge-equal) {
+	opacity: 0.5;
 }
 </style>

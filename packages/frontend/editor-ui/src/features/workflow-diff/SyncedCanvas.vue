@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NodeSettings from '@/components/NodeSettings.vue';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
+import { watch } from 'vue';
 import { useInjectViewportSync } from './viewport.sync';
 
 const props = defineProps<{
@@ -14,12 +14,10 @@ const {
 	setViewport,
 	onViewportChange: onLocalViewportChange,
 	onNodeClick,
-	onNodesInitialized,
+	fitView,
+	findNode,
 } = useVueFlow({ id: props.id });
 
-onNodesInitialized(() => {
-	console.log('initialized');
-});
 const { triggerViewportChange, onViewportChange, selectedDetailId } = useInjectViewportSync();
 
 /**
@@ -47,34 +45,26 @@ onViewportChange(({ from, viewport }) => {
 
 onNodeClick(({ event, node }) => {
 	selectedDetailId.value = node.id; // Set selected node ID for details drawer
-	// detailIsOpen.value = true; // Open details drawer on node click
-	console.log('Node clicked:', event, node);
+});
+
+watch(selectedDetailId, (id) => {
+	const node = findNode(id);
+
+	if (!node) {
+		return;
+	}
+
+	const desiredPixelPadding = node.dimensions.width * 3; // or node.height * 0.5
+
+	const nodeBoundingSize = Math.max(node.dimensions.width, node.dimensions.height);
+	const paddingRatio = desiredPixelPadding / nodeBoundingSize;
+
+	fitView({ nodes: [node.id], padding: paddingRatio, duration: 500 });
 });
 </script>
 
 <template>
 	<div style="width: 100%; height: 100%; position: relative">
-		<div
-			v-if="selectedDetailId"
-			style="
-				position: absolute;
-				top: 0;
-				right: 0;
-				width: 100%;
-				height: 100%;
-				z-index: 1000;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				background: #00000026;
-			"
-			@click.self="selectedDetailId = undefined"
-		>
-			<!-- Placeholder for details drawer, can be replaced with actual component -->
-			<div style="background: white; padding: 10px; border: 1px solid #ccc">
-				<NodeSettings />
-			</div>
-		</div>
 		<Canvas :id :nodes :connections :read-only="true" style="width: 100%; height: 100%">
 			<template #node="{ nodeProps }">
 				<slot name="node" v-bind="{ nodeProps }" />

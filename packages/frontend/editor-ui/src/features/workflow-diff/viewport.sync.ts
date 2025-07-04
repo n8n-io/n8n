@@ -16,6 +16,7 @@ const [useProvideViewportSync, useInject] = createInjectionState(() => {
 	const onViewportChange = createEventHook<ViewportUpdate>();
 
 	const selectedDetailId = ref<string>();
+	const syncIsEnabled = ref(true);
 
 	/**
 	 * Batches viewport sync using requestAnimationFrame to avoid flooding listeners
@@ -28,6 +29,9 @@ const [useProvideViewportSync, useInject] = createInjectionState(() => {
 	let pendingUpdate: ViewportUpdate | null = null;
 
 	function triggerViewportChange(update: ViewportUpdate) {
+		if (!syncIsEnabled.value) {
+			return;
+		}
 		pendingUpdate = update;
 
 		scheduledFrameId ??= requestAnimationFrame(() => {
@@ -43,6 +47,7 @@ const [useProvideViewportSync, useInject] = createInjectionState(() => {
 		onViewportChange: onViewportChange.on,
 		triggerViewportChange,
 		selectedDetailId,
+		syncIsEnabled,
 	};
 });
 
