@@ -220,7 +220,7 @@ export const draftFields: INodeProperties[] = [
 				default: '',
 				placeholder: '<message-1@example.com>',
 				description:
-					'The specific message this email is directly replying to. To be used to reply to a thread with a thread ID',
+					'The specific message this email is directly replying to. To be used to reply to a thread with a thread ID.',
 			},
 		],
 	},
