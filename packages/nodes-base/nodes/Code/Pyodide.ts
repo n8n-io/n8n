@@ -1,6 +1,8 @@
 import { dirname } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
 import type { PyodideInterface } from 'pyodide';
+import { Container } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
 
 let pyodideInstance: PyodideInterface | undefined;
 
@@ -43,6 +45,13 @@ from typing import Sequence, Optional
 from _pyodide_core import jsproxy_typedict
 from js import Object
 `);
+		const globalConfig = Container.get(GlobalConfig);
+		const packagesToPreload = globalConfig.nodes.pythonPackagesPreload;
+
+		if (packagesToPreload) {
+			const packages = packagesToPreload.split(',').map((p) => p.trim()).filter(Boolean);
+			await pyodideInstance.loadPackage(packages);
+		}
 	}
 
 	return pyodideInstance;
