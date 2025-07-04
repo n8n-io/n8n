@@ -1,8 +1,10 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
+import { Command } from '@n8n/decorators';
+
 import fs from 'fs';
 import { jsonParse, UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { NodeTypes } from '@/node-types';
 
@@ -42,43 +44,46 @@ async function waitForWorkflowGenerated(aiResponse: AsyncGenerator<{ messages: a
 	return workflowJson;
 }
 
-export class TTWFGenerateCommand extends BaseCommand {
-	static description = 'Create a workflow(s) using AI Text-to-Workflow builder';
+const flagsSchema = z.object({
+	prompt: z
+		.string()
+		.alias('p')
+		.describe('Prompt to generate a workflow from. Mutually exclusive with --input.')
+		.optional(),
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input dataset file name. Mutually exclusive with --prompt.')
+		.optional(),
+	output: z
+		.string()
+		.alias('o')
+		.describe('Output file name to save the results. Default is ttwf-results.jsonl')
+		.default('ttwf-results.jsonl'),
+	limit: z
+		.number()
+		.int()
+		.alias('l')
+		.describe('Number of items from the dataset to process. Only valid with --input.')
+		.default(-1),
+	concurrency: z
+		.number()
+		.int()
+		.alias('c')
+		.describe('Number of items to process in parallel. Only valid with --input.')
+		.default(1),
+});
 
-	static examples = [
+@Command({
+	name: 'ttwf:generate',
+	description: 'Create a workflow(s) using AI Text-to-Workflow builder',
+	examples: [
 		'$ n8n ttwf:generate --prompt "Create a telegram chatbot that can tell current weather in Berlin" --output result.json',
 		'$ n8n ttwf:generate --input dataset.jsonl --output results.jsonl',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		prompt: Flags.string({
-			char: 'p',
-			description: 'Prompt to generate a workflow from. Mutually exclusive with --input.',
-			exclusive: ['input'],
-		}),
-		input: Flags.string({
-			char: 'i',
-			description: 'Input dataset file name. Mutually exclusive with --prompt.',
-			exclusive: ['prompt'],
-		}),
-		output: Flags.string({
-			char: 'o',
-			description: 'Output file name to save the results. Default is ttwf-results.jsonl',
-			default: 'ttwf-results.jsonl',
-		}),
-		limit: Flags.integer({
-			char: 'l',
-			description: 'Number of items from the dataset to process. Only valid with --input.',
-			default: -1,
-		}),
-		concurrency: Flags.integer({
-			char: 'c',
-			description: 'Number of items to process in parallel. Only valid with --input.',
-			default: 1,
-		}),
-	};
-
+	],
+	flagsSchema,
+})
+export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	/**
 	 * Reads the dataset file in JSONL format
 	 */
@@ -105,11 +110,10 @@ export class TTWFGenerateCommand extends BaseCommand {
 	}
 
 	async run() {
-		const { flags } = await this.parse(TTWFGenerateCommand);
+		const { flags } = this;
 
 		if (!flags.input && !flags.prompt) {
-			this.logger.error('Either --input or --prompt must be provided.');
-			this.exit(1);
+			throw new UserError('Either --input or --prompt must be provided.');
 		}
 
 		const nodeTypes = Container.get(NodeTypes);
@@ -145,7 +149,7 @@ export class TTWFGenerateCommand extends BaseCommand {
 					this.logger.info(JSON.stringify(JSON.parse(generatedWorkflow), null, 2));
 				}
 			} catch (e) {
-				const errorMessage = e instanceof UserError ? e.message : 'An error occurred';
+				const errorMessage = e instanceof Error ? e.message : 'An error occurred';
 				this.logger.error(`Error processing prompt "${flags.prompt}": ${errorMessage}`);
 			}
 		} else if (flags.input) {
