@@ -42,6 +42,7 @@ export class OidcController {
 	}
 
 	@Get('/login', { skipAuth: true })
+	@Licensed('feat:oidc')
 	async redirectToAuthProvider(_req: Request, res: Response) {
 		const authorizationURL = await this.oidcService.generateLoginUrl();
 
@@ -49,6 +50,7 @@ export class OidcController {
 	}
 
 	@Get('/callback', { skipAuth: true })
+	@Licensed('feat:oidc')
 	async callbackHandler(req: Request, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
 		const callbackUrl = new URL(fullUrl);

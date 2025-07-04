@@ -417,4 +417,207 @@ describe('toolsAgentExecute', () => {
 		expect(getOptionalOutputParserSpy).toHaveBeenNthCalledWith(5, mockContext, 3);
 		expect(getOptionalOutputParserSpy).toHaveBeenNthCalledWith(6, mockContext, 0);
 	});
+
+	describe('streaming', () => {
+		let mockNode: INode;
+		let mockModel: BaseChatModel;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockNode = mock<INode>();
+			mockNode.typeVersion = 2.2;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+			mockModel = mock<BaseChatModel>();
+			mockModel.bindTools = jest.fn();
+			mockModel.lc_namespace = ['chat_models'];
+			mockContext.getInputConnectionData.mockImplementation(async (type, _index) => {
+				if (type === 'ai_languageModel') return mockModel;
+				if (type === 'ai_memory') return undefined;
+				return undefined;
+			});
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'enableStreaming') return true;
+				if (param === 'text') return 'test input';
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+					};
+				return defaultValue;
+			});
+		});
+
+		it('should handle streaming when enableStreaming is true', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock async generator for streamEvents
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'Hello ',
+						},
+					},
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'world!',
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'Hello ');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 'world!');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end');
+			expect(mockExecutor.streamEvents).toHaveBeenCalledTimes(1);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Hello world!');
+		});
+
+		it('should capture intermediate steps during streaming when returnIntermediateSteps is true', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+			mockContext.isStreaming.mockReturnValue(true);
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'enableStreaming') return true;
+				if (param === 'text') return 'test input';
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: true, // Enable intermediate steps
+						passthroughBinaryImages: true,
+					};
+				return defaultValue;
+			});
+
+			// Mock async generator for streamEvents with tool calls
+			const mockStreamEvents = async function* () {
+				// LLM response with tool call
+				yield {
+					event: 'on_chat_model_end',
+					data: {
+						output: {
+							content: 'I need to call a tool',
+							tool_calls: [
+								{
+									id: 'call_123',
+									name: 'TestTool',
+									args: { input: 'test data' },
+									type: 'function',
+								},
+							],
+						},
+					},
+				};
+				// Tool execution result
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: {
+						output: 'Tool execution result',
+					},
+				};
+				// Final LLM response
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'Final response',
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Final response');
+
+			// Check intermediate steps
+			expect(result[0][0].json.intermediateSteps).toBeDefined();
+			expect(result[0][0].json.intermediateSteps).toHaveLength(1);
+
+			const step = (result[0][0].json.intermediateSteps as any[])[0];
+			expect(step.action).toBeDefined();
+			expect(step.action.tool).toBe('TestTool');
+			expect(step.action.toolInput).toEqual({ input: 'test data' });
+			expect(step.action.toolCallId).toBe('call_123');
+			expect(step.action.type).toBe('function');
+			expect(step.action.messageLog).toBeDefined();
+			expect(step.observation).toBe('Tool execution result');
+		});
+
+		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({ output: 'Regular response' }),
+				streamEvents: jest.fn(),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).not.toHaveBeenCalled();
+			expect(mockExecutor.invoke).toHaveBeenCalledTimes(1);
+			expect(mockExecutor.streamEvents).not.toHaveBeenCalled();
+			expect(result[0][0].json.output).toBe('Regular response');
+		});
+
+		it('should use regular execution on version 2.2 when streaming is not available', async () => {
+			mockContext.isStreaming.mockReturnValue(false);
+
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({ output: 'Regular response' }),
+				streamEvents: jest.fn(),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).not.toHaveBeenCalled();
+			expect(mockExecutor.invoke).toHaveBeenCalledTimes(1);
+			expect(mockExecutor.streamEvents).not.toHaveBeenCalled();
+			expect(result[0][0].json.output).toBe('Regular response');
+		});
+	});
 });
