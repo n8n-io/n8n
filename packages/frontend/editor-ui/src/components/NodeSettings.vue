@@ -976,7 +976,7 @@ function handleWheelEvent(event: WheelEvent) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
-			<div :class="$style.featureRequest" v-if="featureRequestUrl">
+			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
 				<a target="_blank" @click="onFeatureRequestClick">
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}
