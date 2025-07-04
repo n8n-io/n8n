@@ -224,26 +224,56 @@ describe('createChat()', () => {
 			const chunks = [
 				{
 					type: 'begin',
-					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
 				},
 				{
 					type: 'item',
 					content: 'Once upon ',
-					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
 				},
 				{
 					type: 'item',
 					content: 'a time, ',
-					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
 				},
 				{
 					type: 'item',
 					content: 'there was a test.',
-					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
 				},
 				{
 					type: 'end',
-					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
 				},
 			];
 
