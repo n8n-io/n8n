@@ -346,7 +346,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it('should flag issues as soon as params are set', () => {
+	it('webhook shoul fallback to webhookId if path is empty', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -356,13 +356,31 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('path').clear();
 
-		ndv.getters.nodeExecuteButton().should('be.disabled');
-		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		const urrWithUUID =
+			/https?:\/\/[^\/]+\/webhook-test\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urrWithUUID);
+				expect(match, 'Should contain dynamic URL with UUID').to.not.be.null;
+			});
+
 		ndv.actions.close();
-		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.parameterInput('path').type('t');
+		ndv.getters.parameterInput('path').type('test-path');
+
+		const urlWithCustomPath = /https?:\/\/[^\/]+\/webhook-test\/test-path/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urlWithCustomPath);
+				expect(match, 'Should contain URL with custom path').to.not.be.null;
+			});
 
 		ndv.getters.nodeExecuteButton().should('not.be.disabled');
 		ndv.getters.triggerPanelExecuteButton().should('exist');
