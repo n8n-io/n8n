@@ -12,7 +12,8 @@
     "test:clean": "docker rm -f $(docker ps -aq --filter 'name=n8n-*') 2>/dev/null || true && docker network prune -f",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps"
+    "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps --no-shell",
+    "install-browsers:local": "playwright install chromium --with-deps --no-shell"
   },
   "devDependencies": {
     "@currents/playwright": "1.14.1",

@@ -143,11 +143,19 @@
 			"cache": false,
 			"persistent": true
 		},
-		"install-browsers": {
+		"install-browsers:ci": {
 			"cache": true,
 			"inputs": ["package.json"],
 			"outputs": ["ms-playwright-cache/**"],
 			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+		},
+		"install-browsers:local": {
+			"cache": false,
+			"inputs": ["package.json"]
+		},
+		"test:standard": {
+			"dependsOn": ["install-browsers:local"],
+			"cache": false
 		}
 	}
 }
