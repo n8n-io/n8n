@@ -1,6 +1,7 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -21,20 +22,31 @@ export class WorkflowBuilderService {
 		private readonly config: GlobalConfig,
 	) {}
 
-	private getService(): AiWorkflowBuilderService {
+	private async getService(): Promise<AiWorkflowBuilderService> {
 		if (!this.service) {
-			this.service = new AiWorkflowBuilderService(
-				this.license,
-				this.nodeTypes,
-				this.config,
-				N8N_VERSION,
-			);
+			let client: AiAssistantClient | undefined;
+
+			// Create AiAssistantClient if baseUrl is configured
+			const baseUrl = this.config.aiAssistant.baseUrl;
+			if (baseUrl) {
+				const licenseCert = await this.license.loadCertStr();
+				const consumerId = this.license.getConsumerId();
+
+				client = new AiAssistantClient({
+					licenseCert,
+					consumerId,
+					baseUrl,
+					n8nVersion: N8N_VERSION,
+				});
+			}
+
+			this.service = new AiWorkflowBuilderService(this.nodeTypes, client);
 		}
 		return this.service;
 	}
 
 	async *chat(payload: { question: string }, user: IUser) {
-		const service = this.getService();
+		const service = await this.getService();
 		yield* service.chat(payload, user);
 	}
 }
