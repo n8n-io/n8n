@@ -12,7 +12,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	jsonParse,
-	BINARY_ENCODING,
 	NodeOperationError,
 	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
