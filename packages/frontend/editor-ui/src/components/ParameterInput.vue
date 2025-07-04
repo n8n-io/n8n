@@ -234,7 +234,7 @@ const displayValue = computed(() => {
 	if (
 		Array.isArray(returnValue) &&
 		props.parameter.type === 'color' &&
-		getArgument('showAlpha') === true &&
+		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
 		(returnValue as unknown as string).charAt(0) === '#'
 	) {
 		// Convert the value to rgba that el-color-picker can display it correctly
@@ -276,7 +276,10 @@ const expressionDisplayValue = computed(() => {
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
 
 const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = getArgument<string[] | undefined>('loadOptionsDependsOn');
+	const loadOptionsDependsOn = nodeSettingsParameters.getParameterTypeOption<string[] | undefined>(
+		props.parameter,
+		'loadOptionsDependsOn',
+	);
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -318,7 +321,7 @@ const displayTitle = computed<string>(() => {
 });
 
 const getStringInputType = computed(() => {
-	if (getArgument('password') === true) {
+	if (nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true) {
 		return 'password';
 	}
 
@@ -430,16 +433,24 @@ const displayIssues = computed(
 );
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return getArgument<EditorType>('editor');
+	return nodeSettingsParameters.getParameterTypeOption<EditorType>(props.parameter, 'editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
-	return getArgument<boolean>('editorIsReadOnly') ?? false;
+	return (
+		nodeSettingsParameters.getParameterTypeOption<boolean>(props.parameter, 'editorIsReadOnly') ??
+		false
+	);
 });
 
 const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	if (editorType.value === 'json' || props.parameter.type === 'json')
 		return 'json' as CodeNodeEditorLanguage;
-	return getArgument<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
+	return (
+		nodeSettingsParameters.getParameterTypeOption<CodeNodeEditorLanguage>(
+			props.parameter,
+			'editorLanguage',
+		) ?? 'javaScript'
+	);
 });
 
 const parameterOptions = computed(() => {
@@ -501,7 +512,10 @@ const parameterInputWrapperStyle = computed(() => {
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
-	return !!getArgument('loadOptionsMethod') || !!getArgument('loadOptions');
+	return (
+		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptionsMethod') ||
+		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptions')
+	);
 });
 
 const shortPath = computed<string>(() => {
@@ -519,7 +533,7 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 });
 
 const isSecretParameter = computed<boolean>(() => {
-	return getArgument('password') === true;
+	return nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true;
 });
 
 const remoteParameterOptionsKeys = computed<string[]>(() => {
@@ -546,7 +560,9 @@ const modelValueExpressionEdit = computed<string>(() => {
 		: (props.modelValue as string);
 });
 
-const editorRows = computed(() => getArgument<number>('rows'));
+const editorRows = computed(() =>
+	nodeSettingsParameters.getParameterTypeOption<number>(props.parameter, 'rows'),
+);
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
 	return node.value?.parameters.mode as CodeExecutionMode;
@@ -581,12 +597,7 @@ const showDragnDropTip = computed(
 		!props.isForCredential,
 );
 
-const shouldCaptureForPosthog = computed(() => {
-	if (node.value?.type) {
-		return [AI_TRANSFORM_NODE_TYPE].includes(node.value?.type);
-	}
-	return false;
-});
+const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
 function isValidParameterOption(
 	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
@@ -662,8 +673,14 @@ async function loadRemoteParameterOptions() {
 			props.parameter,
 			currentNodeParameters,
 		) as INodeParameters;
-		const loadOptionsMethod = getArgument<string | undefined>('loadOptionsMethod');
-		const loadOptions = getArgument<ILoadOptions | undefined>('loadOptions');
+		const loadOptionsMethod = nodeSettingsParameters.getParameterTypeOption<string | undefined>(
+			props.parameter,
+			'loadOptionsMethod',
+		);
+		const loadOptions = nodeSettingsParameters.getParameterTypeOption<ILoadOptions | undefined>(
+			props.parameter,
+			'loadOptions',
+		);
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
@@ -739,10 +756,6 @@ function displayEditDialog() {
 	}
 }
 
-function getArgument<T = string | number | boolean | undefined>(argumentName: string): T {
-	return props.parameter.typeOptions?.[argumentName] as T;
-}
-
 function expressionUpdated(value: string) {
 	const val: NodeParameterValueType = isResourceLocatorParameter.value
 		? { __rl: true, value, mode: modelValueResourceLocator.value.mode }
@@ -810,7 +823,10 @@ function selectInput() {
 }
 
 async function setFocus() {
-	if (['json'].includes(props.parameter.type) && getArgument('alwaysOpenEditWindow')) {
+	if (
+		['json'].includes(props.parameter.type) &&
+		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'alwaysOpenEditWindow')
+	) {
 		displayEditDialog();
 		return;
 	}
@@ -907,7 +923,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 
 	if (
 		props.parameter.type === 'color' &&
-		getArgument('showAlpha') === true &&
+		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
 		value !== null &&
 		value !== undefined &&
 		(value as string).toString().charAt(0) !== '#'
@@ -1031,7 +1047,7 @@ onMounted(() => {
 
 	if (
 		props.parameter.type === 'color' &&
-		getArgument('showAlpha') === true &&
+		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
 		displayValue.value !== null &&
 		displayValue.value.toString().charAt(0) !== '#'
 	) {
@@ -1102,7 +1118,10 @@ watch(dependentParametersValues, async () => {
 watch(
 	() => props.modelValue,
 	async () => {
-		if (props.parameter.type === 'color' && getArgument('showAlpha') === true) {
+		if (
+			props.parameter.type === 'color' &&
+			nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true
+		) {
 			// Do not set for color with alpha else wrong value gets displayed in field
 			return;
 		}
@@ -1297,7 +1316,9 @@ onUpdated(async () => {
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
-							:dialect="getArgument('sqlDialect')"
+							:dialect="
+								nodeSettingsParameters.getParameterTypeOption(props.parameter, 'sqlDialect')
+							"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
 							fullscreen
@@ -1412,7 +1433,7 @@ onUpdated(async () => {
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
 					:model-value="modelValueString"
-					:dialect="getArgument('sqlDialect')"
+					:dialect="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'sqlDialect')"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
@@ -1541,7 +1562,7 @@ onUpdated(async () => {
 					:model-value="displayValue"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					:show-alpha="getArgument('showAlpha')"
+					:show-alpha="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha')"
 					@focus="setFocus"
 					@blur="onBlur"
 					@update:model-value="valueChanged"
@@ -1587,9 +1608,11 @@ onUpdated(async () => {
 				:size="inputSize"
 				:model-value="displayValue"
 				:controls="false"
-				:max="getArgument('maxValue')"
-				:min="getArgument('minValue')"
-				:precision="getArgument('numberPrecision')"
+				:max="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'maxValue')"
+				:min="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'minValue')"
+				:precision="
+					nodeSettingsParameters.getParameterTypeOption(props.parameter, 'numberPrecision')
+				"
 				:disabled="isReadOnly"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"

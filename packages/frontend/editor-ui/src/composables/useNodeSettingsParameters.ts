@@ -1,6 +1,6 @@
-import type { INodeUi, IUpdateInformation } from '@/Interface';
 import get from 'lodash/get';
 import set from 'lodash/set';
+import { ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -14,15 +14,15 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useTelemetry } from './useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from './useNodeHelpers';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useExternalHooks } from './useExternalHooks';
-import { ref } from 'vue';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { updateDynamicConnections, updateParameterByPath } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -44,6 +44,13 @@ export function useNodeSettingsParameters() {
 		notes: '',
 		parameters: {},
 	});
+
+	function getParameterTypeOption<T = string | number | boolean | undefined>(
+		parameter: INodeProperties,
+		optionName: string,
+	): T {
+		return parameter.typeOptions?.[optionName] as T;
+	}
 
 	function setValue(name: string, value: NodeParameterValue) {
 		const nameParts = name.split('.');
@@ -319,6 +326,7 @@ export function useNodeSettingsParameters() {
 
 	return {
 		nodeValues,
+		getParameterTypeOption,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
