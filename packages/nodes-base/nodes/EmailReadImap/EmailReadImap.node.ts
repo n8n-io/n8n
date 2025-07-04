@@ -12,13 +12,12 @@ export class EmailReadImap extends VersionedNodeType {
 			icon: 'fa:inbox',
 			group: ['trigger'],
 			description: 'Triggers the workflow when a new email is received',
-			defaultVersion: 2.1,
+			defaultVersion: 2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new EmailReadImapV1(baseDescription),
 			2: new EmailReadImapV2(baseDescription),
-			2.1: new EmailReadImapV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

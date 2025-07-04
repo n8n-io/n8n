@@ -137,66 +137,6 @@ describe('ImapSimple', () => {
 		});
 	});
 
-	describe('sort', () => {
-		it('should resolve with messages returned from fetch', async () => {
-			const { imapSimple, mockImap } = createImap();
-
-			const fetchEmitter = new EventEmitter();
-			const mockMessages = [{ uid: 1 }, { uid: 2 }, { uid: 3 }];
-			vi.mocked(mockImap.sort).mockImplementation((_sort, _search, onResult) =>
-				onResult(
-					null as unknown as Error,
-					mockMessages.map((m) => m.uid),
-				),
-			);
-			mockImap.fetch = vi.fn(() => fetchEmitter);
-
-			const sortPromise = imapSimple.sort(['-ARRIVAL'], ['UNSEEN', ['FROM', 'test@n8n.io']], {
-				bodies: ['BODY'],
-			});
-			expect(mockImap.sort).toHaveBeenCalledWith(
-				['-ARRIVAL'],
-				['UNSEEN', ['FROM', 'test@n8n.io']],
-				expect.any(Function),
-			);
-
-			for (const message of mockMessages) {
-				const messageEmitter = new EventEmitter();
-				const body = 'body' + message.uid;
-				const bodyStream = Readable.from(body);
-				fetchEmitter.emit('message', messageEmitter, message.uid);
-				messageEmitter.emit('body', bodyStream, { which: 'TEXT', size: Buffer.byteLength(body) });
-				messageEmitter.emit('attributes', { uid: message.uid });
-				await new Promise((resolve) => {
-					bodyStream.on('end', resolve);
-				});
-				messageEmitter.emit('end');
-			}
-
-			fetchEmitter.emit('end');
-
-			const messages = await sortPromise;
-
-			expect(messages).toEqual([
-				{
-					attributes: { uid: 1 },
-					parts: [{ body: 'body1', size: 5, which: 'TEXT' }],
-					seqNo: 1,
-				},
-				{
-					attributes: { uid: 2 },
-					parts: [{ body: 'body2', size: 5, which: 'TEXT' }],
-					seqNo: 2,
-				},
-				{
-					attributes: { uid: 3 },
-					parts: [{ body: 'body3', size: 5, which: 'TEXT' }],
-					seqNo: 3,
-				},
-			]);
-		});
-	});
-
 	describe('getPartData', () => {
 		it('should return decoded part data', async () => {
 			const { imapSimple, mockImap } = createImap();

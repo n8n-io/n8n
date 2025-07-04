@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
-import { type ImapMessage, type SortCriteria } from 'imap';
+import { type ImapMessage } from 'imap';
 
 import { getMessage } from './helpers/get-message';
 import { PartData } from './part-data';
@@ -81,75 +81,7 @@ export class ImapSimple extends EventEmitter {
 					return;
 				}
 
-				// If limit is specified, take only the last N UIDs
-				let uidsToFetch = uids;
-				if (limit && limit > 0 && uids.length > limit) {
-					// UIDs are typically in ascending order, so we take the last N
-					uidsToFetch = uids.slice(-limit);
-				}
-
-				const fetch = this.imap.fetch(uidsToFetch, fetchOptions);
-				let messagesRetrieved = 0;
-				const messages: Message[] = [];
-
-				const fetchOnMessage = async (message: Imap.ImapMessage, seqNo: number) => {
-					const msg: Message = await getMessage(message);
-					msg.seqNo = seqNo;
-					messages.push(msg);
-
-					messagesRetrieved++;
-					if (messagesRetrieved === uidsToFetch.length) {
-						resolve(messages.filter((m) => !!m));
-					}
-				};
-
-				const fetchOnError = (error: Error) => {
-					fetch.removeListener('message', fetchOnMessage);
-					fetch.removeListener('end', fetchOnEnd);
-					reject(error);
-				};
-
-				const fetchOnEnd = () => {
-					fetch.removeListener('message', fetchOnMessage);
-					fetch.removeListener('error', fetchOnError);
-				};
-
-				fetch.on('message', fetchOnMessage);
-				fetch.once('error', fetchOnError);
-				fetch.once('end', fetchOnEnd);
-			});
-		});
-	}
-
-	/**
-	 * Perform a sorted search in the currently open mailbox, and retrieve the results
-	 *
-	 * Results are in the same form as search().
-	 * Uses the IMAP SORT extension for server-side sorting.
-	 */
-	async sort(
-		/** Sort criteria like ['-ARRIVAL'] or ['DATE']. Prefix with '-' for descending order */
-		sortCriteria: SortCriteria[],
-		/** Search criteria to use. Passed to node-imap's .sort() 1:1 */
-		searchCriteria: SearchCriteria[],
-		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
-		fetchOptions: Imap.FetchOptions,
-		/** Optional limit to restrict the number of messages fetched */
-		limit?: number,
-	) {
-		return await new Promise<Message[]>((resolve, reject) => {
-			this.imap.sort(sortCriteria, searchCriteria, (e, uids) => {
-				if (e) {
-					reject(e);
-					return;
-				}
-
-				if (uids.length === 0) {
-					resolve([]);
-					return;
-				}
-
-				// If limit is specified, take only the first N UIDs (already sorted)
+				// If limit is specified, take only the first N UIDs
 				let uidsToFetch = uids;
 				if (limit && limit > 0 && uids.length > limit) {
 					uidsToFetch = uids.slice(0, limit);

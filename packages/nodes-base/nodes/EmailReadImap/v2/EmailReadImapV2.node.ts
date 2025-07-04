@@ -22,6 +22,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	JsonObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
@@ -34,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:inbox',
 	iconColor: 'green',
 	group: ['trigger'],
-	version: [2, 2.1],
+	version: [2],
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
@@ -176,22 +177,6 @@ const versionDescription: INodeTypeDescription = {
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
-				{
-					displayName: 'Message Limit',
-					name: 'messageLimit',
-					type: 'number',
-					default: 50,
-					description:
-						'Maximum number of messages to fetch (0 for unlimited). Fetches the most recent messages first.',
-					typeOptions: {
-						minValue: 0,
-					},
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
-				},
 			],
 		},
 	],
@@ -270,7 +255,6 @@ export class EmailReadImapV2 implements INodeType {
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const node = this.getNode();
 		const activatedAt = DateTime.now();
 
 		const staticData = this.getWorkflowStaticData('node');
@@ -375,7 +359,11 @@ export class EmailReadImapV2 implements INodeType {
 					tls: credentials.secure,
 					authTimeout: 20000,
 				},
-				onMail: async () => {
+				onMail: async (numEmails) => {
+					this.logger.debug('New emails received in node "EmailReadImap"', {
+						numEmails,
+					});
+
 					if (connection) {
 						/**
 						 * Only process new emails:
@@ -408,20 +396,18 @@ export class EmailReadImapV2 implements INodeType {
 						});
 
 						try {
-							const limit = node.typeVersion >= 2.1 ? ((options.messageLimit as number) ?? 50) : 0;
-							const returnData = await getNewEmails.call(
-								this,
-								connection,
+							await getNewEmails.call(this, {
+								imapConnection: connection,
 								searchCriteria,
-								staticData,
 								postProcessAction,
 								getText,
 								getAttachment,
-								limit,
-							);
-							if (returnData.length) {
-								this.emit([returnData]);
-							}
+								onEmailBatch: async (returnData: INodeExecutionData[]) => {
+									if (returnData.length) {
+										this.emit([returnData]);
+									}
+								},
+							});
 						} catch (error) {
 							this.logger.error('Email Read Imap node encountered an error fetching new emails', {
 								error: error as Error,
