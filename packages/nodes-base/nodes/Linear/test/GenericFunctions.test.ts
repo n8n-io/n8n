@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { capitalizeFirstLetter, linearApiRequest, sort } from '../GenericFunctions';
+import { capitalizeFirstLetter, linearApiRequest, sort } from '../shared/GenericFunctions';
 
 describe('Linear -> GenericFunctions', () => {
 	const mockHttpRequestWithAuthentication = jest.fn();
