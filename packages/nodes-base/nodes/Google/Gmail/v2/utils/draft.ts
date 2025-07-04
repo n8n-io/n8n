@@ -26,21 +26,14 @@ export async function addThreadHeadersToEmail(
 	this: IExecuteFunctions,
 	email: IEmail,
 	threadId: string,
-	references: string | undefined = undefined,
-	inReplyTo: string | undefined = undefined,
 ): Promise<void> {
-	if (references && inReplyTo) {
-		email.inReplyTo = inReplyTo;
-		email.reference = references;
-	} else {
-		const thread = await googleApiRequest.call(
-			this,
-			'GET',
-			`/gmail/v1/users/me/threads/${threadId}`,
-			{},
-			{ format: 'metadata', metadataHeaders: ['Message-ID'] },
-		);
+	const thread = await googleApiRequest.call(
+		this,
+		'GET',
+		`/gmail/v1/users/me/threads/${threadId}`,
+		{},
+		{ format: 'metadata', metadataHeaders: ['Message-ID'] },
+	);
 
-		setThreadHeaders(email, thread);
-	}
+	setThreadHeaders(email, thread);
 }

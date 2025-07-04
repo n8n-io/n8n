@@ -511,9 +511,6 @@ export class GmailV2 implements INodeType {
 						let fromAlias = '';
 						let threadId = null;
 
-						const references = options.references as string | undefined;
-						const inReplyTo = options.inReplyTo as string | undefined;
-
 						if (options.sendTo) {
 							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
 						}
@@ -567,18 +564,7 @@ export class GmailV2 implements INodeType {
 						if (threadId) {
 							// If a threadId is set, we need to add the Message-ID of the last message in the thread
 							// to the email so that Gmail can correctly associate the draft with the thread
-							await addThreadHeadersToEmail.call(
-								this,
-								email,
-								threadId as string,
-								references,
-								inReplyTo,
-							);
-						}
-
-						if (references && inReplyTo) {
-							email.inReplyTo = inReplyTo;
-							email.reference = references;
+							await addThreadHeadersToEmail.call(this, email, threadId as string);
 						}
 
 						const body = {
