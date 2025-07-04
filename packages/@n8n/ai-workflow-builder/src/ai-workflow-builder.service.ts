@@ -40,10 +40,10 @@ export class AiWorkflowBuilderService {
 		if (this.client && user) {
 			const authHeaders = await this.client.generateApiProxyCredentials(user);
 			// Extract baseUrl from client configuration
-			const baseUrl = (this.client as any).baseUrl || '';
+			const baseUrl = this.client.getApiProxyBaseUrl();
 
 			this.llmSimpleTask = await gpt41mini({
-				baseUrl: baseUrl + '/v1/api-proxy/openai',
+				baseUrl: baseUrl + '/openai',
 				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
 				apiKey: '-',
 				headers: {
@@ -51,7 +51,7 @@ export class AiWorkflowBuilderService {
 				},
 			});
 			this.llmComplexTask = await anthropicClaude37Sonnet({
-				baseUrl: baseUrl + '/v1/api-proxy/anthropic',
+				baseUrl: baseUrl + '/anthropic',
 				apiKey: '-',
 				headers: {
 					Authorization: authHeaders.apiKey,
