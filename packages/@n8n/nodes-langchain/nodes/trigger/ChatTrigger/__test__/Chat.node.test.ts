@@ -1,12 +1,19 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { CHAT_TRIGGER_NODE_TYPE, type IExecuteFunctions } from 'n8n-workflow';
+import type { INode, IExecuteFunctions } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { Chat } from '../Chat.node';
 
 describe('Test Chat Node', () => {
 	let chat: Chat;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	const chatNode = mock<INode>({
+		name: 'Chat',
+		type: CHAT_TRIGGER_NODE_TYPE,
+		parameters: {},
+	});
 
 	beforeEach(() => {
 		chat = new Chat();
@@ -27,7 +34,7 @@ describe('Test Chat Node', () => {
 			resumeAmount: 1,
 			resumeUnit: 'minutes',
 		});
-		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Chat' });
+		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
 			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
 		]);
@@ -47,7 +54,7 @@ describe('Test Chat Node', () => {
 			resumeAmount: 1,
 			resumeUnit: 'minutes',
 		});
-		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Chat' });
+		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
 			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
 		]);
@@ -70,7 +77,7 @@ describe('Test Chat Node', () => {
 			resumeAmount: 1,
 			resumeUnit: 'minutes',
 		});
-		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Chat' });
+		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
 			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
 		]);
@@ -89,7 +96,7 @@ describe('Test Chat Node', () => {
 			limitType: 'atSpecifiedTime',
 			maxDateAndTime: new Date().toISOString(),
 		});
-		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Chat' });
+		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
 			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
 		]);
@@ -104,7 +111,7 @@ describe('Test Chat Node', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ memoryConnection: true });
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getInputData.mockReturnValue([data]);
-		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Chat' });
+		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
 			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
 		]);
