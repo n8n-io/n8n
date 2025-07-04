@@ -801,7 +801,6 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					workflow: props.workflow,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});
