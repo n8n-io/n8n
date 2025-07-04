@@ -346,6 +346,7 @@ const activatePane = () => {
 		:callout-message="allToolsWereUnusedNotice"
 		:display-mode="displayMode"
 		:disable-ai-content="true"
+		data-test-id="ndv-output-panel"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"

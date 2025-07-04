@@ -19,7 +19,7 @@ type NdvPanelsSize = {
 
 export function useNdvLayout(options: UseNdvLayoutOptions) {
 	const MIN_MAIN_PANEL_WIDTH_PX = 368;
-	const MIN_PANEL_WIDTH_PX = 180;
+	const MIN_PANEL_WIDTH_PX = 120;
 	const DEFAULT_INPUTLESS_MAIN_WIDTH_PX = 480;
 	const DEFAULT_WIDE_MAIN_WIDTH_PX = 640;
 	const DEFAULT_REGULAR_MAIN_WIDTH_PX = 420;
@@ -127,16 +127,26 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		const diffMain = newMain - initialMain;
 
 		if (event.direction === 'left') {
-			const newLeft = Math.max(minPanelWidthPercentage.value, initialLeft - diffMain);
+			const potentialLeft = initialLeft - diffMain;
+
+			if (potentialLeft < minPanelWidthPercentage.value) return;
+
+			const newLeft = Math.max(minPanelWidthPercentage.value, potentialLeft);
+			const newRight = initialRight;
 			panelWidthPercentage.value = safePanelWidth({
 				left: newLeft,
 				main: newMain,
-				right: 100 - newLeft - newMain,
+				right: newRight,
 			});
 		} else if (event.direction === 'right') {
-			const newRight = Math.max(minPanelWidthPercentage.value, initialRight - diffMain);
+			const potentialRight = initialRight - diffMain;
+
+			if (potentialRight < minPanelWidthPercentage.value) return;
+
+			const newRight = Math.max(minPanelWidthPercentage.value, potentialRight);
+			const newLeft = initialLeft;
 			panelWidthPercentage.value = safePanelWidth({
-				left: 100 - newRight - newMain,
+				left: newLeft,
 				main: newMain,
 				right: newRight,
 			});

@@ -724,7 +724,7 @@ onBeforeUnmount(() => {
 			ref="dialogRef"
 			open
 			aria-modal="true"
-			data-test-id="ndv-modal"
+			data-test-id="ndv"
 			:class="$style.dialog"
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
 		>
@@ -742,13 +742,14 @@ onBeforeUnmount(() => {
 				<main :class="$style.main">
 					<div
 						v-if="hasInputPanel"
-						:class="$style.column"
+						:class="[$style.column, $style.dataColumn]"
 						:style="{ width: `${panelWidthPercentage.left}%` }"
 					>
 						<TriggerPanel
 							v-if="showTriggerPanel"
 							:node-name="activeNode.name"
 							:push-ref="pushRef"
+							:class="$style.input"
 							@execute="onNodeExecute"
 							@activate="onWorkflowActivate"
 						/>
@@ -764,6 +765,7 @@ onBeforeUnmount(() => {
 							:is-production-execution-preview="isProductionExecutionPreview"
 							:is-pane-active="isInputPaneActive"
 							:display-mode="inputPanelDisplayMode"
+							:class="$style.input"
 							@activate-pane="activateInputPane"
 							@link-run="onLinkRunToInput"
 							@unlink-run="() => onUnlinkRun('input')"
@@ -821,31 +823,35 @@ onBeforeUnmount(() => {
 						</div>
 					</N8nResizeWrapper>
 
-					<OutputPanel
-						data-test-id="output-panel"
-						:workflow="workflowObject"
-						:can-link-runs="canLinkRuns"
-						:run-index="outputRun"
-						:linked-runs="linked"
-						:push-ref="pushRef"
-						:is-read-only="readOnly || hasForeignCredential"
-						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
-						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isOutputPaneActive"
-						:display-mode="outputPanelDisplayMode"
-						:class="$style.column"
+					<div
+						:class="[$style.column, $style.dataColumn]"
 						:style="{ width: `${panelWidthPercentage.right}%` }"
-						@activate-pane="activateOutputPane"
-						@link-run="onLinkRunToOutput"
-						@unlink-run="() => onUnlinkRun('output')"
-						@run-change="onRunOutputIndexChange"
-						@open-settings="openSettings"
-						@table-mounted="onOutputTableMounted"
-						@item-hover="onOutputItemHover"
-						@search="onSearch"
-						@execute="onNodeExecute"
-						@display-mode-change="handleChangeDisplayMode('output', $event)"
-					/>
+					>
+						<OutputPanel
+							data-test-id="output-panel"
+							:workflow="workflowObject"
+							:can-link-runs="canLinkRuns"
+							:run-index="outputRun"
+							:linked-runs="linked"
+							:push-ref="pushRef"
+							:is-read-only="readOnly || hasForeignCredential"
+							:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+							:is-production-execution-preview="isProductionExecutionPreview"
+							:is-pane-active="isOutputPaneActive"
+							:display-mode="outputPanelDisplayMode"
+							:class="$style.output"
+							@activate-pane="activateOutputPane"
+							@link-run="onLinkRunToOutput"
+							@unlink-run="() => onUnlinkRun('output')"
+							@run-change="onRunOutputIndexChange"
+							@open-settings="openSettings"
+							@table-mounted="onOutputTableMounted"
+							@item-hover="onOutputItemHover"
+							@search="onSearch"
+							@execute="onNodeExecute"
+							@display-mode-change="handleChangeDisplayMode('output', $event)"
+						/>
+					</div>
 				</main>
 			</div>
 		</dialog>
@@ -907,6 +913,15 @@ onBeforeUnmount(() => {
 	&:last-child {
 		border-bottom-right-radius: var(--border-radius-large);
 	}
+}
+
+.input,
+.output {
+	min-width: 280px;
+}
+
+.dataColumn {
+	overflow-x: auto;
 }
 
 .header {
