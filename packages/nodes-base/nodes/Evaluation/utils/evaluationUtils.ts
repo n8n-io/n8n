@@ -151,7 +151,7 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 	return [metrics];
 }
 
-export async function checkIfEvaluating(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export function checkIfEvaluating(this: IExecuteFunctions): INodeExecutionData[][] {
 	const evaluationExecutionResult: INodeExecutionData[] = [];
 	const normalExecutionResult: INodeExecutionData[] = [];
 
