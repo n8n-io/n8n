@@ -24,47 +24,7 @@ jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
 describe('PrometheusMetricsService', () => {
-	const globalConfig = mockInstance(GlobalConfig, {
-		endpoints: {
-			metrics: {
-				prefix: 'n8n_',
-				includeDefaultMetrics: false,
-				includeApiEndpoints: false,
-				includeCacheMetrics: false,
-				includeMessageEventBusMetrics: false,
-				includeCredentialTypeLabel: false,
-				includeNodeTypeLabel: false,
-				includeWorkflowIdLabel: false,
-				includeApiPathLabel: false,
-				includeApiMethodLabel: false,
-				includeApiStatusCodeLabel: false,
-				includeQueueMetrics: false,
-				includeWorkflowNameLabel: false,
-			},
-			rest: 'rest',
-			form: 'form',
-			formTest: 'form-test',
-			formWaiting: 'form-waiting',
-			webhook: 'webhook',
-			webhookTest: 'webhook-test',
-			webhookWaiting: 'webhook-waiting',
-		},
-	});
-
-	// const app = mock<express.Application>();
-	// const eventBus = mock<MessageEventBus>();
-	// const eventService = mock<EventService>();
-	// const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-	// const workflowRepository = mock<WorkflowRepository>();
-	// const prometheusMetricsService = new PrometheusMetricsService(
-	// 	mock(),
-	// 	eventBus,
-	// 	globalConfig,
-	// 	eventService,
-	// 	instanceSettings,
-	// 	workflowRepository,
-	// );
-
+	let globalConfig: GlobalConfig;
 	let app: express.Application;
 	let eventBus: MessageEventBus;
 	let eventService: EventService;
@@ -73,6 +33,33 @@ describe('PrometheusMetricsService', () => {
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
+		globalConfig = mockInstance(GlobalConfig, {
+			endpoints: {
+				metrics: {
+					prefix: 'n8n_',
+					includeDefaultMetrics: false,
+					includeApiEndpoints: false,
+					includeCacheMetrics: false,
+					includeMessageEventBusMetrics: false,
+					includeCredentialTypeLabel: false,
+					includeNodeTypeLabel: false,
+					includeWorkflowIdLabel: false,
+					includeApiPathLabel: false,
+					includeApiMethodLabel: false,
+					includeApiStatusCodeLabel: false,
+					includeQueueMetrics: false,
+					includeWorkflowNameLabel: false,
+				},
+				rest: 'rest',
+				form: 'form',
+				formTest: 'form-test',
+				formWaiting: 'form-waiting',
+				webhook: 'webhook',
+				webhookTest: 'webhook-test',
+				webhookWaiting: 'webhook-waiting',
+			},
+		});
+
 		app = mock<express.Application>();
 		eventBus = mock<MessageEventBus>();
 		eventService = mock<EventService>();
@@ -232,8 +219,6 @@ describe('PrometheusMetricsService', () => {
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
 			});
 
-			console.log(promClient.Counter.mock.calls);
-
 			expect(promClient.Counter).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_scaling_mode_queue_jobs_completed',
 				help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
@@ -298,6 +283,7 @@ describe('PrometheusMetricsService', () => {
 		it('should create a counter with `credential_type` label for user credentials audit events', async () => {
 			prometheusMetricsService.enableMetric('logs');
 			prometheusMetricsService.enableLabels(['credentialsType']);
+
 			await prometheusMetricsService.init(app);
 
 			const eventHandler = getEventHandler();
@@ -324,6 +310,7 @@ describe('PrometheusMetricsService', () => {
 		it('should create a counter with `workflow_id` label for workflow audit events', async () => {
 			prometheusMetricsService.enableMetric('logs');
 			prometheusMetricsService.enableLabels(['workflowId']);
+
 			await prometheusMetricsService.init(app);
 
 			const eventHandler = getEventHandler();
@@ -341,6 +328,32 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_123' }, 1);
+		});
+
+		it('should create a counter with `workflow_name` label for workflow audit events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowName']);
+
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.audit,
+				eventName: 'n8n.audit.workflow.created',
+				payload: { workflowName: 'Fake Workflow Name' },
+			};
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_audit_workflow_created_total',
+				help: 'Total number of n8n.audit.workflow.created events.',
+				labelNames: ['workflow_name'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{ workflow_name: 'Fake Workflow Name' },
+				1,
+			);
 		});
 
 		it('should create a counter with `node_type` label for node events', async () => {
@@ -366,6 +379,55 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ node_type: 'base_if' }, 1);
 		});
 
+		it('should create a counter with `workflow_id` label for node events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowId']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.node,
+				eventName: 'n8n.node.execution.started',
+				payload: { workflowId: 'wf_123' },
+			};
+
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_node_execution_started_total',
+				help: 'Total number of n8n.node.execution.started events.',
+				labelNames: ['workflow_id'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_123' }, 1);
+		});
+
+		it('should create a counter with `workflow_name` label for node events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowName']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.node,
+				eventName: 'n8n.node.execution.started',
+				payload: { workflowName: 'Fake Workflow Name' },
+			};
+
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_node_execution_started_total',
+				help: 'Total number of n8n.node.execution.started events.',
+				labelNames: ['workflow_name'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{ workflow_name: 'Fake Workflow Name' },
+				1,
+			);
+		});
+
 		it('should create a counter with `workflow_id` label for workflow events', async () => {
 			prometheusMetricsService.enableMetric('logs');
 			prometheusMetricsService.enableLabels(['workflowId']);
@@ -388,9 +450,33 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_456' }, 1);
 		});
 
+		it('should create a counter with `workflow_name` label for workflow events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowName']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.execution.finished',
+				payload: { workflowName: 'Fake Workflow Name' },
+			};
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_workflow_execution_finished_total',
+				help: 'Total number of n8n.workflow.execution.finished events.',
+				labelNames: ['workflow_name'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{ workflow_name: 'Fake Workflow Name' },
+				1,
+			);
+		});
+
 		it('should create a counter with no labels if the corresponding config is disabled', async () => {
 			prometheusMetricsService.enableMetric('logs');
-			// Note: `includeWorkflowIdLabel` is false by default, so we don't enable it
 			await prometheusMetricsService.init(app);
 
 			const eventHandler = getEventHandler();
@@ -401,15 +487,13 @@ describe('PrometheusMetricsService', () => {
 			};
 			eventHandler(mockEvent);
 
-			console.log(promClient.Counter.mock.calls);
-
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_workflow_execution_finished_total',
 				help: 'Total number of n8n.workflow.execution.finished events.',
 				labelNames: [], // Expecting no labels
 			});
 
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1); // Expecting empty labels object
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
 		});
 	});
 });
