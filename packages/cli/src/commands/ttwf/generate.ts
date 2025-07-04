@@ -196,7 +196,7 @@ export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>
 							}) + '\n',
 						);
 					} catch (e) {
-						const errorMessage = e instanceof UserError ? e.message : 'An error occurred';
+						const errorMessage = e instanceof Error ? e.message : 'An error occurred';
 						this.logger.error(`Error processing prompt "${item.prompt}": ${errorMessage}`);
 						// Optionally write the error to the output file
 						outputStream.write(
