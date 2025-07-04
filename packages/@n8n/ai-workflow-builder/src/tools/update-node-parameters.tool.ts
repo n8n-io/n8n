@@ -1,5 +1,4 @@
 import type { INode, INodeTypeDescription, INodeParameters } from 'n8n-workflow';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
 import { parameterUpdaterChain } from '../chains/parameter-updater';

@@ -1,7 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { StateGraph, MemorySaver } from '@langchain/langgraph';
-import { ToolNode } from '@langchain/langgraph/prebuilt';
+import { StateGraph, MemorySaver, isCommand } from '@langchain/langgraph';
+import type { Command } from '@langchain/langgraph';
+import { isAIMessage } from '@langchain/core/messages';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -16,6 +17,7 @@ import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createNodeSearchTool } from './tools/node-search.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { WorkflowState } from './workflow-state';
+import type { SimpleWorkflow } from './types';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -115,20 +117,93 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
+	/**
+	 * Deep merge connections objects
+	 */
+	private deepMergeConnections(
+		base: SimpleWorkflow['connections'],
+		update: SimpleWorkflow['connections'],
+	): SimpleWorkflow['connections'] {
+		const merged = { ...base };
+
+		for (const [nodeName, nodeConnections] of Object.entries(update)) {
+			if (!merged[nodeName]) {
+				merged[nodeName] = nodeConnections;
+			} else {
+				// Merge connections for this node
+				for (const [connectionType, connections] of Object.entries(nodeConnections)) {
+					if (!merged[nodeName][connectionType]) {
+						merged[nodeName][connectionType] = connections;
+					} else {
+						// Merge arrays of connections (NodeInputConnections type)
+						const existingConnections = merged[nodeName][connectionType];
+						const newConnections = connections;
+
+						// Both are arrays where each index can contain IConnection[] or null
+						for (let i = 0; i < newConnections.length; i++) {
+							const newConnArray = newConnections[i];
+							if (!newConnArray) continue;
+
+							if (!existingConnections[i]) {
+								// No existing connections at this index
+								existingConnections[i] = newConnArray;
+							} else {
+								// Merge connections at this index
+								const existingConnArray = existingConnections[i];
+								if (!existingConnArray) continue;
+
+								// Create a set of existing connection strings for comparison
+								const existingSet = new Set(
+									existingConnArray.map((conn) =>
+										JSON.stringify({
+											node: conn.node,
+											type: conn.type,
+											index: conn.index,
+										}),
+									),
+								);
+
+								// Add only new connections
+								for (const conn of newConnArray) {
+									const connString = JSON.stringify({
+										node: conn.node,
+										type: conn.type,
+										index: conn.index,
+									});
+									if (!existingSet.has(connString)) {
+										existingConnArray.push(conn);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return merged;
+	}
+
 	private async getAgent(user: IUser) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}
+
+		const updateNodeParametersTool = createUpdateNodeParametersTool(this.parsedNodeTypes)
+			.withLlm(this.llmComplexTask!)
+			.createLangChainTool();
 
 		const tools = [
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
-			createUpdateNodeParametersTool(this.parsedNodeTypes)
-				.withLlm(this.llmComplexTask!)
-				.createLangChainTool(),
+			updateNodeParametersTool,
 		];
+
+		// Create a map for quick tool lookup
+		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
+
 		const callModel = async (state: typeof WorkflowState.State) => {
 			assert(this.llmComplexTask, 'LLM not setup');
 			assert(this.llmComplexTask.bindTools, 'LLM does not support tools');
@@ -148,11 +223,133 @@ export class AiWorkflowBuilderService {
 			return '__end__';
 		};
 
-		const toolNode = new ToolNode(tools);
+		// Custom tool executor that properly merges state updates
+		const customToolExecutor = async (state: typeof WorkflowState.State) => {
+			const lastMessage = state.messages.at(-1);
+			if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
+				throw new Error('Most recent message must be an AIMessage with tool calls');
+			}
+
+			console.log(`Executing ${lastMessage.tool_calls.length} tools in parallel`);
+
+			// Execute all tools in parallel
+			const toolResults = await Promise.all(
+				lastMessage.tool_calls.map(async (toolCall) => {
+					const tool = toolMap.get(toolCall.name);
+					if (!tool) {
+						throw new Error(`Tool ${toolCall.name} not found`);
+					}
+					console.log(`Executing tool: ${toolCall.name}`);
+					// Pass the tool call arguments and tool call ID in config
+					const result = await (tool as any).invoke(toolCall.args, {
+						toolCall: {
+							id: toolCall.id,
+						},
+					});
+					console.log(`Tool ${toolCall.name} completed`);
+					return result;
+				}),
+			);
+
+			// Separate Command objects from regular results
+			const commands = toolResults.filter((result): result is Command => isCommand(result));
+			const regularResults = toolResults.filter((result): result is any => !isCommand(result));
+
+			// Extract state updates from Command objects
+			const stateUpdates = commands.map((cmd: Command) => cmd.update).filter(Boolean);
+
+			// Merge workflowJSON updates intelligently
+			let mergedWorkflowJSON = state.workflowJSON;
+			const allMessages = [];
+
+			console.log(`Processing ${stateUpdates.length} state updates`);
+			console.log(`Initial workflow has ${mergedWorkflowJSON.nodes.length} nodes`);
+
+			// Process each state update
+			for (let i = 0; i < stateUpdates.length; i++) {
+				const update = stateUpdates[i] as Partial<typeof WorkflowState.State>;
+				if (!update || typeof update !== 'object' || Array.isArray(update)) continue;
+
+				// Collect messages
+				if (update.messages && Array.isArray(update.messages)) {
+					allMessages.push(...update.messages);
+				}
+
+				// Merge workflowJSON if present
+				if (update.workflowJSON && typeof update.workflowJSON === 'object') {
+					const beforeNodeCount = mergedWorkflowJSON.nodes.length;
+					const beforeConnectionCount = Object.keys(mergedWorkflowJSON.connections).length;
+
+					// Deep merge nodes
+					// Start with existing nodes
+					const nodeMap = new Map(mergedWorkflowJSON.nodes.map((node) => [node.id, node]));
+
+					// Add new nodes from the update
+					// Since each tool starts with the same initial state, we need to merge carefully
+					if (update.workflowJSON.nodes && Array.isArray(update.workflowJSON.nodes)) {
+						update.workflowJSON.nodes.forEach((node) => {
+							const existingNode = nodeMap.get(node.id);
+							if (!existingNode) {
+								// This is a new node added by this tool
+								nodeMap.set(node.id, node);
+							} else {
+								// Node exists - merge parameters if they've been updated
+								// This handles the case where update-node-parameters runs in parallel
+								console.log(`Merging node ${node.id} - updating parameters`);
+								const mergedNode = {
+									...existingNode,
+									// Preserve all existing node properties
+									...node,
+									// Deep merge parameters
+									parameters: {
+										...existingNode.parameters,
+										...node.parameters,
+									},
+								};
+								nodeMap.set(node.id, mergedNode);
+							}
+						});
+					}
+
+					const mergedNodes = Array.from(nodeMap.values());
+
+					// Deep merge connections
+					const mergedConnections = this.deepMergeConnections(
+						mergedWorkflowJSON.connections,
+						update.workflowJSON.connections || {},
+					);
+
+					mergedWorkflowJSON = {
+						nodes: mergedNodes,
+						connections: mergedConnections,
+					};
+
+					console.log(
+						`Update ${i + 1}: Added ${mergedNodes.length - beforeNodeCount} nodes, ` +
+							`${Object.keys(mergedConnections).length - beforeConnectionCount} connection groups`,
+					);
+				}
+			}
+
+			console.log(`Final workflow has ${mergedWorkflowJSON.nodes.length} nodes`);
+			console.log(
+				`Final workflow has ${Object.keys(mergedWorkflowJSON.connections).length} connection groups`,
+			);
+
+			// Add any regular tool results as messages
+			allMessages.push(...regularResults);
+
+			// Return the merged state update
+			return {
+				messages: allMessages,
+				workflowJSON: mergedWorkflowJSON,
+			};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addEdge('__start__', 'agent')
-			.addNode('tools', toolNode)
+			.addNode('tools', customToolExecutor)
 			.addEdge('tools', 'agent')
 			.addConditionalEdges('agent', shouldContinue);
 
@@ -214,11 +411,11 @@ export class AiWorkflowBuilderService {
 					4. The "add_nodes" tool must be called sequentially, not in parallel, to ensure proper state management.
 
 					WORKFLOW CREATION SEQUENCE:
-					1. Search for nodes using "search_nodes" to find available node types (can be done in parallel)
-					2. Call "get_node_details" for EACH node type to understand inputs/outputs (MANDATORY, can be done in parallel)
-					5. Update node parameters using "update_node_parameters" for any nodes that need configuration (can be done in parallel for different nodes)
+					1. Search for nodes using "search_nodes" to find available node types (done in parallel)
+					2. Call "get_node_details" for EACH node type to understand inputs/outputs (MANDATORY, done in parallel)
+					5. Update node parameters using "update_node_parameters" for any nodes that need configuration (can be done in parallel)
 					3. Add all nodes at once using "add_nodes" with an array
-					4. Connect nodes using "connect_nodes" based on the input/output information from step 2
+					4. Connect nodes using "connect_nodes"(done in parallel) based on the input/output information from step 2
 
 					IMPORTANT: If you need to use both "add_nodes" and "connect_nodes" tools, use the "add_nodes" tool first, wait for response to get the node IDs, and then use the "connect_nodes" tool. This is to make sure that the nodes are available for the "connect_nodes" tool.
 
@@ -275,8 +472,8 @@ export class AiWorkflowBuilderService {
 						if (Array.isArray(lastMessage.content)) {
 							// @ts-ignore
 							content = lastMessage.content
-								.filter((c) => c.type === 'text')
-								.map((b) => b.text)
+								.filter((c: any) => c.type === 'text')
+								.map((b: any) => b.text)
 								.join('\n');
 						}
 						const messageChunk = {
