@@ -116,6 +116,10 @@ export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>
 			throw new UserError('Either --input or --prompt must be provided.');
 		}
 
+		if (flags.input && flags.prompt) {
+			throw new UserError('You cannot use --input and --prompt together. Use one or the other.');
+		}
+
 		const nodeTypes = Container.get(NodeTypes);
 		const wfBuilder = new AiWorkflowBuilderService(nodeTypes);
 
@@ -209,6 +213,8 @@ export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>
 					}
 				}),
 			);
+
+			outputStream.end();
 		}
 	}
 
