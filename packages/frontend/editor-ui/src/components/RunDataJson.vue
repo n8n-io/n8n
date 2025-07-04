@@ -116,6 +116,10 @@ const getContent = (value: unknown) => {
 	return isString(value) ? `"${value}"` : JSON.stringify(value);
 };
 
+const getJSONContent = (value: unknown) => {
+	return JSON.stringify(value);
+};
+
 const getListItemName = (path: string) => {
 	return path.replace(/^(\["?\d"?]\.?)/g, '');
 };
@@ -184,12 +188,12 @@ const getListItemName = (path: string) => {
 				<template #renderNodeValue="{ node }">
 					<TextWithHighlights
 						v-if="isNaN(node.index)"
-						:content="JSON.stringify(node.content)"
+						:content="getJSONContent(node.content)"
 						:search="search"
 					/>
 					<TextWithHighlights
 						v-else
-						:content="getContent(node.content)"
+						:content="getJSONContent(node.content)"
 						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
