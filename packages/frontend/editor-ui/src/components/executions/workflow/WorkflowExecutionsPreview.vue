@@ -387,7 +387,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	color: var(--color-warning);
 }
 .waiting {
-	color: var(--color-secondary);
+	color: var(--color-text-secondary);
 }
 .success {
 	color: var(--color-success);

@@ -12,6 +12,7 @@
 	--color-text-xlight: var(--p-gray-850);
 	--color-text-xlight-all-modes: var(--p-white);
 	--color-text-danger: var(--p-color-alt-c-330);
+	--color-text-secondary: var(--p-color-secondary-370);
 
 	// Foreground
 	--color-foreground-xdark: var(--p-gray-200);
@@ -250,14 +251,14 @@
 
 	// Execution
 	--execution-card-background: transparent;
-	--execution-card-background-hover: var(--color-background-light-base);
+	--execution-card-background-hover: var(--p-gray-820);
 	--execution-selector-background: var(--p-gray-740);
 	--execution-selector-text: var(--color-text-base);
 	--execution-select-all-text: var(--color-text-base);
 	--execution-card-text-waiting: var(--p-color-secondary-370);
 
 	// Version History
-	--color-version-history-selected-background: var(--color-background-light-base);
+	--color-version-history-selected-background: var(--p-gray-820);
 
 	// NDV
 	--color-ndv-header-background: var(--p-gray-950);

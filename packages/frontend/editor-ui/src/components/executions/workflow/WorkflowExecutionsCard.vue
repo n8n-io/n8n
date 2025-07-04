@@ -194,7 +194,7 @@ function onRetryMenuItemSelect(action: string): void {
 
 	display: flex;
 	flex-direction: column;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing-s);
 
 	&.active {
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
@@ -202,6 +202,10 @@ function onRetryMenuItemSelect(action: string): void {
 		.executionStatus {
 			color: var(--color-text-dark) !important;
 		}
+	}
+
+	& a:active {
+		color: var(--color-text-base);
 	}
 
 	&:hover,
@@ -250,7 +254,7 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-secondary);
+			color: var(--color-text-secondary);
 		}
 	}
 
@@ -303,13 +307,6 @@ function onRetryMenuItemSelect(action: string): void {
 	left: calc(
 		-1 * var(--spacing-4xs)
 	); // Hide link border under card border so it's not visible when not hovered
-
-	&:active {
-		.icon,
-		.statusLabel {
-			color: var(--color-text-base);
-		}
-	}
 }
 
 .icons {
