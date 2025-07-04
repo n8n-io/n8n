@@ -9,6 +9,7 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -126,6 +127,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 */
 	async initOrchestration() {
 		Container.get(Publisher);
+
+		Container.get(WorkerStatusService);
 
 		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
