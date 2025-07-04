@@ -428,6 +428,40 @@ describe('PrometheusMetricsService', () => {
 			);
 		});
 
+		it('should create a counter with workflow and node type labels for node events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowId', 'workflowName', 'nodeType']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.node,
+				eventName: 'n8n.node.execution.started',
+				payload: {
+					workflowId: 'wf_123',
+					workflowName: 'Fake Workflow Name',
+					nodeType: 'n8n-nodes-base.if',
+				},
+			};
+
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_node_execution_started_total',
+				help: 'Total number of n8n.node.execution.started events.',
+				labelNames: ['workflow_id', 'workflow_name', 'node_type'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{
+					workflow_id: 'wf_123',
+					workflow_name: 'Fake Workflow Name',
+					node_type: 'base_if',
+				},
+				1,
+			);
+		});
+
 		it('should create a counter with `workflow_id` label for workflow events', async () => {
 			prometheusMetricsService.enableMetric('logs');
 			prometheusMetricsService.enableLabels(['workflowId']);

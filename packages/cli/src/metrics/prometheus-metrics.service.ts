@@ -332,18 +332,14 @@ export class PrometheusMetricsService {
 				break;
 
 			case EventMessageTypeNames.node:
-				const nodeLabels: Record<string, string> = {};
+				const nodeLabels: Record<string, string> = this.buildWorkflowLabels(payload);
+
 				if (this.includes.labels.nodeType) {
 					nodeLabels.node_type = String(
 						(payload.nodeType ?? 'unknown').replace('n8n-nodes-', '').replace(/\./g, '_'),
 					);
 				}
-				if (this.includes.labels.workflowId) {
-					nodeLabels.workflow_id = String(payload.workflowId ?? 'unknown');
-				}
-				if (this.includes.labels.workflowName) {
-					nodeLabels.workflow_name = String(payload.workflowName ?? 'unknown');
-				}
+
 				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
