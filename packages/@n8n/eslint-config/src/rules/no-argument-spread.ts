@@ -1,6 +1,6 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
-export const NoUnboundedArgumentSpread = ESLintUtils.RuleCreator.withoutDocs({
+export const NoArgumentSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
 		docs: {
@@ -12,7 +12,7 @@ export const NoUnboundedArgumentSpread = ESLintUtils.RuleCreator.withoutDocs({
 			noUnboundedSpread:
 				'Avoid spreading an array in function or constructor calls unless known to be small.',
 			replaceWithApply:
-				'Replace spread with `.apply(null, array)` to avoid potential stack overflows.',
+				'Replace spread with `.apply()` to avoid potential stack overflows and preserve `this` context.',
 			replaceWithReflect:
 				'Replace `new Constructor(...args)` with `Reflect.construct(Constructor, args)` to avoid potential stack overflows.',
 		},
@@ -27,7 +27,7 @@ export const NoUnboundedArgumentSpread = ESLintUtils.RuleCreator.withoutDocs({
 
 					const spreadArg = arg.argument;
 
-					// Allow spread of safe inline arrays
+					// Allow spread of inline arrays
 					if (spreadArg.type === 'ArrayExpression') return;
 
 					// Only autofix if it's the sole argument
@@ -38,10 +38,20 @@ export const NoUnboundedArgumentSpread = ESLintUtils.RuleCreator.withoutDocs({
 						messageId: 'replaceWithApply',
 						fix: canFix
 							? (fixer) => {
-									const source = context.getSourceCode();
-									const calleeText = source.getText(node.callee);
-									const argText = source.getText(spreadArg);
-									return fixer.replaceText(node, `${calleeText}.apply(null, ${argText})`);
+									const source = context.sourceCode;
+
+									if (node.callee.type === 'MemberExpression') {
+										// Preserve `this`
+										const thisText = source.getText(node.callee.object);
+										const calleeText = source.getText(node.callee);
+										const argText = source.getText(spreadArg);
+										return fixer.replaceText(node, `${calleeText}.apply(${thisText}, ${argText})`);
+									} else {
+										// Not a memberexpression, use undefined as thisArg
+										const calleeText = source.getText(node.callee);
+										const argText = source.getText(spreadArg);
+										return fixer.replaceText(node, `${calleeText}.apply(undefined, ${argText})`);
+									}
 								}
 							: null,
 					});
@@ -63,7 +73,7 @@ export const NoUnboundedArgumentSpread = ESLintUtils.RuleCreator.withoutDocs({
 						messageId: 'replaceWithReflect',
 						fix: canFix
 							? (fixer) => {
-									const source = context.getSourceCode();
+									const source = context.sourceCode;
 									const ctorText = source.getText(node.callee);
 									const argText = source.getText(spreadArg);
 									return fixer.replaceText(node, `Reflect.construct(${ctorText}, ${argText})`);

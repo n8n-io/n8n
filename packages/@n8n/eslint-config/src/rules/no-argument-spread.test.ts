@@ -1,12 +1,12 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoUnboundedArgumentSpread } from './no-unbounded-argument-spread.js';
+import { NoArgumentSpreadRule } from './no-argument-spread.js';
 
 const ruleTester = new RuleTester();
 
-ruleTester.run('no-unbounded-argument-spread', NoUnboundedArgumentSpread, {
+ruleTester.run('no-unbounded-argument-spread', NoArgumentSpreadRule, {
 	valid: [
 		{ code: 'fn(1, 2, 3)' },
-		{ code: 'fn(...[1, 2, 3])' }, // safe spread
+		{ code: 'fn(...[1, 2, 3])' },
 		{ code: 'new Foo(...[1, 2])' },
 		{ code: 'fn.apply(null, deps)' },
 		{ code: 'Reflect.construct(Foo, deps)' },
@@ -15,7 +15,17 @@ ruleTester.run('no-unbounded-argument-spread', NoUnboundedArgumentSpread, {
 	invalid: [
 		{
 			code: 'fn(...deps)',
-			output: 'fn.apply(null, deps)',
+			output: 'fn.apply(undefined, deps)',
+			errors: [{ messageId: 'replaceWithApply' }],
+		},
+		{
+			code: 'obj.fn(...deps)',
+			output: 'obj.fn.apply(obj, deps)',
+			errors: [{ messageId: 'replaceWithApply' }],
+		},
+		{
+			code: 'instance = metadata.factory(...dependencies);',
+			output: 'instance = metadata.factory.apply(metadata, dependencies);',
 			errors: [{ messageId: 'replaceWithApply' }],
 		},
 		{
