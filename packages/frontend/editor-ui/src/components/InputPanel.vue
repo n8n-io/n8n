@@ -81,6 +81,7 @@ const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
 
 const mappedNode = ref<string | null>(null);
+const collapsingColumnName = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
@@ -354,6 +355,10 @@ function onConnectionHelpClick() {
 function activatePane() {
 	emit('activatePane');
 }
+
+function handleChangeCollapsingColumn(columnName: string | null) {
+	collapsingColumnName.value = columnName;
+}
 </script>
 
 <template>
@@ -379,6 +384,7 @@ function activatePane() {
 		pane-type="input"
 		data-test-id="ndv-input-panel"
 		:disable-ai-content="true"
+		:collapsing-table-column-name="collapsingColumnName"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -387,6 +393,7 @@ function activatePane() {
 		@table-mounted="onTableMounted"
 		@search="onSearch"
 		@display-mode-change="emit('displayModeChange', $event)"
+		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
