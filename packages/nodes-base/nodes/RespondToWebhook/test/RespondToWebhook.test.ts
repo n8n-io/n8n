@@ -164,7 +164,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: sanitizeResponseData('responseBody', true),
+				body: sanitizeResponseData('responseBody'),
 				headers: {},
 				statusCode: 200,
 			});

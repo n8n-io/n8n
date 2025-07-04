@@ -31,10 +31,8 @@ export const replaceSingleQuotes = (responseBody: string) => {
  * To prevent XSS and CSRF, we sanitize the response body by wrapping it in an iframe.
  * This prevents the API from being accessed since the iframe origin will be empty.
  */
-export const sanitizeResponseData = (responseBody: string, shouldReplaceSingleQuotes: boolean) => {
-	const parsedResponseBody = shouldReplaceSingleQuotes
-		? replaceSingleQuotes(responseBody)
-		: responseBody;
+export const sanitizeResponseData = (responseBody: string) => {
+	const parsedResponseBody = replaceSingleQuotes(responseBody);
 
 	return `
 		<iframe srcdoc='${parsedResponseBody}'
@@ -44,19 +42,24 @@ export const sanitizeResponseData = (responseBody: string, shouldReplaceSingleQu
 };
 
 export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject) => {
+	const mimeTypesToSanitize = ['text/html', 'application/xhtml+xml'];
+
+	const contentType = headers['content-type'] as string;
+	const shouldSandboxContentType = contentType ? mimeTypesToSanitize.includes(contentType) : false;
+
 	let responseBody: IN8nHttpResponse | Readable;
 
 	if (binaryData.id) {
 		responseBody =
-			binaryData.mimeType === 'text/html'
-				? sanitizeResponseData(binaryData.data, false)
+			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
+				? sanitizeResponseData(binaryData.data)
 				: { binaryData };
 	} else {
 		const responseBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 
 		responseBody =
-			binaryData.mimeType === 'text/html'
-				? sanitizeResponseData(responseBuffer.toString(), true)
+			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
+				? sanitizeResponseData(responseBuffer.toString())
 				: responseBuffer;
 
 		headers['content-length'] = (responseBody as Buffer).length;

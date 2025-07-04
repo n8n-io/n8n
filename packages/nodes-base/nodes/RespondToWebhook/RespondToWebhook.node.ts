@@ -411,10 +411,7 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
-				responseBody = sanitizeResponseData(
-					this.getNodeParameter('responseBody', 0) as string,
-					true,
-				);
+				responseBody = sanitizeResponseData(this.getNodeParameter('responseBody', 0) as string);
 			} else if (respondWith === 'binary') {
 				const item = items[0];
 
