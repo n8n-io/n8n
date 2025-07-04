@@ -11,12 +11,12 @@ export class ExecutionsPage extends BasePage {
 		await this.clickButtonByName('Copy to editor');
 	}
 
-	async getExecutionItems(): Promise<Locator> {
+	getExecutionItems(): Locator {
 		return this.page.locator('div.execution-card');
 	}
 
-	async getLastExecutionItem(): Promise<Locator> {
-		const executionItems = await this.getExecutionItems();
+	getLastExecutionItem(): Locator {
+		const executionItems = this.getExecutionItems();
 		return executionItems.nth(0);
 	}
 
