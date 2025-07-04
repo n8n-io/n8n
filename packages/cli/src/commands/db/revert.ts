@@ -78,14 +78,14 @@ export class DbRevertMigrationCommand {
 			logging: ['query', 'error', 'schema'],
 		};
 
-		const connection = new Connection(connectionOptions);
-		await connection.initialize();
+		this.connection = new Connection(connectionOptions);
+		await this.connection.initialize();
 
-		const migrationExecutor = new MigrationExecutor(connection);
+		const migrationExecutor = new MigrationExecutor(this.connection);
 
 		(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 
-		return await main(this.logger, connection, migrationExecutor);
+		return await main(this.logger, this.connection, migrationExecutor);
 	}
 
 	async catch(error: Error) {
