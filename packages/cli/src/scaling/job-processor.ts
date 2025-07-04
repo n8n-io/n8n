@@ -122,6 +122,7 @@ export class JobProcessor {
 			undefined,
 			executionTimeoutTimestamp,
 		);
+		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;
 

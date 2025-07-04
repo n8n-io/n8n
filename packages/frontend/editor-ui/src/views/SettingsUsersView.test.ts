@@ -3,7 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { type FrontendSettings, ROLE, type UsersList } from '@n8n/api-types';
+import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
+import type { IUser } from '@/Interface';
 import {
 	INVITE_USER_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
@@ -25,7 +26,7 @@ import { useSSOStore } from '@/stores/sso.store';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
-// Mock the SettingsUsersTable component to emit events when clicked
+// Mock the SettingsUsersTable component to emit events
 vi.mock('@/components/SettingsUsers/SettingsUsersTable.vue', () => ({
 	default: defineComponent({
 		setup(_, { emit }) {
@@ -64,10 +65,6 @@ vi.mock('@/composables/useDocumentTitle', () => ({
 
 vi.mock('@/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
-}));
-
-vi.mock('@/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn(() => false),
 }));
 
 const mockUsersList: UsersList = {
@@ -142,8 +139,10 @@ describe('SettingsUsersView', () => {
 			.mockResolvedValue({ link: 'https://example.com/reset/123' });
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
+		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 
 		settingsStore.isSmtpSetup = true;
+		settingsStore.isMFAEnforced = false;
 		settingsStore.settings.enterprise = {
 			mfaEnforcement: true,
 		} as FrontendSettings['enterprise'];
@@ -156,7 +155,7 @@ describe('SettingsUsersView', () => {
 		vi.clearAllMocks();
 	});
 
-	it('turn enforcing mfa on', async () => {
+	it('should turn enforcing mfa on', async () => {
 		const { getByTestId } = renderComponent();
 
 		const actionSwitch = getByTestId('enable-force-mfa');
@@ -167,7 +166,7 @@ describe('SettingsUsersView', () => {
 		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
 	});
 
-	it('turn enforcing mfa off', async () => {
+	it('should turn enforcing mfa off', async () => {
 		settingsStore.isMFAEnforced = true;
 		const { getByTestId } = renderComponent();
 
@@ -177,6 +176,32 @@ describe('SettingsUsersView', () => {
 		await userEvent.click(actionSwitch);
 
 		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+	});
+
+	it('should handle MFA enforcement error', async () => {
+		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
+
+		const { getByTestId } = renderComponent();
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		await waitFor(() => {
+			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		});
+	});
+
+	it('should handle missing user settings in SSO actions', async () => {
+		// Remove settings from user
+		usersStore.usersList.state.items[1].settings = undefined;
+
+		renderComponent();
+
+		emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
+
+		expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+			allowSSOManualLogin: true,
+		});
 	});
 
 	it('should render correctly with users list', () => {
@@ -272,6 +297,118 @@ describe('SettingsUsersView', () => {
 
 		// The users container should be visible when there are multiple users
 		expect(getByTestId('settings-users-table')).toBeInTheDocument();
+	});
+
+	describe('search functionality', () => {
+		it('should handle empty search', async () => {
+			renderComponent();
+
+			const searchInput = screen.getByTestId('users-list-search');
+			await userEvent.clear(searchInput);
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0,
+					take: 10,
+					sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: '',
+					},
+				});
+			});
+		});
+
+		it('should handle search with special characters', async () => {
+			renderComponent();
+
+			const searchInput = screen.getByTestId('users-list-search');
+			await userEvent.type(searchInput, '@#$%^&*()');
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0,
+					take: 10,
+					sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: '@#$%^&*()',
+					},
+				});
+			});
+		});
+
+		it('should reset to first page when searching', async () => {
+			renderComponent();
+
+			// Set table to page 2
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 2,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'email', desc: false }],
+			});
+
+			// Now search - should reset to page 0
+			const searchInput = screen.getByTestId('users-list-search');
+			await userEvent.type(searchInput, 'test');
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0, // Should be 0, not 20 (page 2)
+					take: 10,
+					sortBy: ['email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: 'test',
+					},
+				});
+			});
+		});
+
+		it('should handle search with whitespace only', async () => {
+			renderComponent();
+
+			const searchInput = screen.getByTestId('users-list-search');
+			await userEvent.type(searchInput, '   ');
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0,
+					take: 10,
+					sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: '', // Should be trimmed to empty string
+					},
+				});
+			});
+		});
+	});
+
+	describe('component lifecycle', () => {
+		it('should not load users data when showing UM setup warning', async () => {
+			usersStore.currentUser = { isDefaultUser: true } as IUser;
+			renderComponent();
+
+			// Should not call execute when showing setup warning
+			expect(usersStore.usersList.execute).not.toHaveBeenCalled();
+		});
+
+		it('should load users data on mount when not showing setup warning', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0,
+					take: 10,
+					sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: '',
+					},
+				});
+			});
+		});
 	});
 
 	describe('user actions', () => {
@@ -386,6 +523,71 @@ describe('SettingsUsersView', () => {
 				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 			});
 		});
+
+		it('should handle copy invite link with missing inviteAcceptUrl', async () => {
+			// Remove invite URL from user
+			usersStore.usersList.state.items[2].inviteAcceptUrl = undefined;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
+
+			// Should not call clipboard.copy or show toast
+			expect(mockClipboard.copy).not.toHaveBeenCalled();
+			expect(mockToast.showToast).not.toHaveBeenCalled();
+		});
+
+		it('should handle copy password reset link error', async () => {
+			usersStore.getUserPasswordResetLink = vi
+				.fn()
+				.mockRejectedValue(new Error('Reset link failed'));
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'copyPasswordResetLink', userId: '2' });
+
+			await waitFor(() => {
+				expect(usersStore.getUserPasswordResetLink).toHaveBeenCalled();
+				expect(mockClipboard.copy).not.toHaveBeenCalled();
+				expect(mockToast.showToast).not.toHaveBeenCalled();
+			});
+		});
+
+		it('should handle reinvite with invalid role', async () => {
+			// Set user with invalid role
+			usersStore.usersList.state.items[2].role = 'invalid-role' as Role;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			// Should not call reinviteUser with invalid role
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should handle reinvite with missing user data', async () => {
+			// Remove email from user
+			usersStore.usersList.state.items[2].email = undefined;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			// Should not call reinviteUser
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should handle disallow SSO manual login with missing settings', async () => {
+			// Remove settings from user
+			usersStore.usersList.state.items[1].settings = undefined;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
+
+			// Should not call updateOtherUserSettings
+			expect(usersStore.updateOtherUserSettings).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('role updates', () => {
@@ -415,6 +617,37 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
 			await waitFor(() => {
 				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+		});
+
+		it('should handle role update for non-existent user', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: 'non-existent' });
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+
+			// Should not call updateGlobalRole
+			expect(usersStore.updateGlobalRole).not.toHaveBeenCalled();
+		});
+
+		it('should use email as fallback when user has no first/last name', async () => {
+			// Set user with no first/last name
+			usersStore.usersList.state.items[1].firstName = '';
+			usersStore.usersList.state.items[1].lastName = '';
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('member@example.com'),
+				});
 			});
 		});
 	});
@@ -477,6 +710,234 @@ describe('SettingsUsersView', () => {
 				filter: {
 					fullText: '',
 				},
+			});
+		});
+
+		it('should handle multiple mixed sort keys', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [
+					{ id: 'name', desc: false },
+					{ id: 'email', desc: true },
+					{ id: 'invalidKey', desc: false },
+					{ id: 'role', desc: true },
+				],
+			});
+
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 10,
+				sortBy: ['firstName:asc', 'lastName:asc', 'email:asc', 'email:desc', 'role:desc'],
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
+
+		it('should handle pagination correctly', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 3,
+				itemsPerPage: 25,
+				sortBy: [{ id: 'email', desc: false }],
+			});
+
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 75, // page 3 * 25 items per page
+				take: 25,
+				sortBy: ['email:asc'],
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
+	});
+
+	describe('upgrade functionality', () => {
+		it('should handle upgrade banner click', async () => {
+			usersStore.usersLimitNotReached = false;
+
+			renderComponent();
+
+			const upgradeButton = screen.getByRole('button', { name: /view plans/i });
+			await userEvent.click(upgradeButton);
+
+			expect(mockPageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith(
+				'settings-users',
+				'upgrade-users',
+			);
+		});
+
+		it('should handle advanced permissions upgrade click', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions] =
+				false;
+
+			renderComponent();
+
+			const upgradeLink = screen.getByTestId('upgrade-permissions-link');
+			await userEvent.click(upgradeLink);
+
+			expect(mockPageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith(
+				'settings-users',
+				'upgrade-advanced-permissions',
+			);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle empty users list', () => {
+			usersStore.usersList.state = {
+				items: [],
+				count: 0,
+			};
+
+			renderComponent();
+
+			expect(screen.getByTestId('settings-users-table')).toBeInTheDocument();
+		});
+
+		it('should handle loading state', () => {
+			usersStore.usersList.isLoading = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('settings-users-table')).toBeInTheDocument();
+		});
+
+		it('should handle user with missing email', async () => {
+			usersStore.usersList.state.items[1].email = undefined;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining(''),
+				});
+			});
+		});
+
+		it('should handle SSO actions with user not found', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', {
+				action: 'allowSSOManualLogin',
+				userId: 'non-existent',
+			});
+
+			// Should not call updateOtherUserSettings
+			expect(usersStore.updateOtherUserSettings).not.toHaveBeenCalled();
+		});
+
+		it('should handle copy password reset link with user not found', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', {
+				action: 'copyPasswordResetLink',
+				userId: 'non-existent',
+			});
+
+			// Should not call getUserPasswordResetLink
+			expect(usersStore.getUserPasswordResetLink).not.toHaveBeenCalled();
+		});
+
+		it('should handle table data update with network error', async () => {
+			usersStore.usersList.execute = vi.fn().mockRejectedValue(new Error('Network error'));
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'email', desc: false }],
+			});
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalled();
+			});
+		});
+
+		it('should handle sort by multiple fields with same direction', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [
+					{ id: 'email', desc: false },
+					{ id: 'firstName', desc: false },
+					{ id: 'lastName', desc: false },
+				],
+			});
+
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 10,
+				sortBy: ['email:asc', 'firstName:asc', 'lastName:asc'],
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
+
+		it('should handle MFA enforcement with partial success', async () => {
+			let callCount = 0;
+			usersStore.updateEnforceMfa = vi.fn().mockImplementation(async () => {
+				callCount++;
+				if (callCount === 1) {
+					throw Error('First attempt failed');
+				}
+				return await Promise.resolve();
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const actionSwitch = getByTestId('enable-force-mfa');
+			await userEvent.click(actionSwitch);
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+
+			// Try again
+			await userEvent.click(actionSwitch);
+
+			await waitFor(() => {
+				expect(usersStore.updateEnforceMfa).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		it('should handle rapid consecutive search inputs', async () => {
+			renderComponent();
+
+			const searchInput = screen.getByTestId('users-list-search');
+
+			// Type rapidly
+			await userEvent.type(searchInput, 'a');
+			await userEvent.type(searchInput, 'b');
+			await userEvent.type(searchInput, 'c');
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalledTimes(2); // Once on mount, once on search because of debounce
+				expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+					skip: 0,
+					take: 10,
+					sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+					expand: ['projectRelations'],
+					filter: {
+						fullText: 'abc',
+					},
+				});
 			});
 		});
 	});
