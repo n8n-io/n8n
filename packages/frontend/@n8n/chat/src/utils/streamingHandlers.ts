@@ -17,12 +17,6 @@ export function handleStreamingChunk(
 	itemIndex?: number,
 ): void {
 	try {
-		// Only create the bot message when we receive the first actual content
-		if (!receivedMessage.value && chunk.trim()) {
-			receivedMessage.value = createBotMessage();
-			messages.value.push(receivedMessage.value);
-		}
-
 		// Skip empty chunks to avoid showing empty responses
 		if (!chunk.trim()) {
 			return;
@@ -30,26 +24,31 @@ export function handleStreamingChunk(
 
 		if (!nodeId) {
 			// Simple single-node streaming (backwards compatibility)
-			if (receivedMessage.value) {
-				const updatedMessage: ChatMessageText = {
-					...receivedMessage.value,
-					text: receivedMessage.value.text + chunk,
-				};
-
-				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
-				receivedMessage.value = updatedMessage;
+			if (!receivedMessage.value) {
+				receivedMessage.value = createBotMessage();
+				messages.value.push(receivedMessage.value);
 			}
-		} else {
-			// Multi-node parallel streaming
-			if (receivedMessage.value) {
-				const combinedContent = streamingManager.addChunkToNode(nodeId, chunk, runIndex, itemIndex);
-				const updatedMessage: ChatMessageText = {
-					...receivedMessage.value,
-					text: combinedContent,
-				};
 
-				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
-				receivedMessage.value = updatedMessage;
+			const updatedMessage: ChatMessageText = {
+				...receivedMessage.value,
+				text: receivedMessage.value.text + chunk,
+			};
+
+			updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
+			receivedMessage.value = updatedMessage;
+		} else {
+			// Multi-run streaming with separate messages per runIndex
+			// Create message on first chunk if it doesn't exist
+			let runMessage = streamingManager.getRunMessage(nodeId, runIndex);
+			if (!runMessage) {
+				runMessage = streamingManager.addRunToActive(nodeId, runIndex);
+				messages.value.push(runMessage);
+			}
+
+			// Add chunk to the run
+			const updatedMessage = streamingManager.addChunkToRun(nodeId, chunk, runIndex);
+			if (updatedMessage) {
+				updateMessageInArray(messages.value, updatedMessage.id, updatedMessage);
 			}
 		}
 
@@ -65,11 +64,14 @@ export function handleStreamingChunk(
 export function handleNodeStart(
 	nodeId: string,
 	streamingManager: StreamingMessageManager,
+	messages: Ref<unknown[]>,
 	runIndex?: number,
 	itemIndex?: number,
 ): void {
 	try {
-		streamingManager.addNodeToActive(nodeId, runIndex, itemIndex);
+		// Just register the run as starting, don't create a message yet
+		// Message will be created when first chunk arrives
+		streamingManager.registerRunStart(nodeId, runIndex);
 	} catch (error) {
 		console.error('Error handling node start:', error);
 	}
@@ -80,27 +82,11 @@ export function handleNodeComplete(
 	streamingManager: StreamingMessageManager,
 	receivedMessage: Ref<ChatMessageText | null>,
 	messages: Ref<unknown[]>,
-	waitingForResponse: Ref<boolean>,
 	runIndex?: number,
 	itemIndex?: number,
 ): void {
 	try {
-		streamingManager.removeNodeFromActive(nodeId, runIndex, itemIndex);
-
-		if (receivedMessage.value) {
-			const combinedContent = streamingManager.getCombinedContent();
-			const updatedMessage: ChatMessageText = {
-				...receivedMessage.value,
-				text: combinedContent,
-			};
-
-			updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
-			receivedMessage.value = updatedMessage;
-
-			if (streamingManager.areAllNodesComplete()) {
-				waitingForResponse.value = false;
-			}
-		}
+		streamingManager.removeRunFromActive(nodeId, runIndex);
 	} catch (error) {
 		console.error('Error handling node complete:', error);
 	}

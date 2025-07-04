@@ -8,100 +8,104 @@ import {
 } from '@n8n/chat/utils/streaming';
 
 describe('StreamingMessageManager', () => {
-	it('should initialize nodes correctly', () => {
+	it('should initialize runs correctly', () => {
 		const manager = new StreamingMessageManager();
 
-		manager.initializeNode('node-1');
+		const message1 = manager.initializeRun('node-1', 0);
+		const message2 = manager.initializeRun('node-1', 1);
 
-		expect(manager.getNodeCount()).toBe(1);
+		expect(manager.getRunCount()).toBe(2);
+		expect(message1.id).toBeDefined();
+		expect(message2.id).toBeDefined();
+		expect(message1.id).not.toBe(message2.id);
 	});
 
-	it('should add chunks to nodes and return combined content', () => {
+	it('should create separate messages for different runs', () => {
 		const manager = new StreamingMessageManager();
 
-		const content1 = manager.addChunkToNode('node-1', 'Hello ');
-		const content2 = manager.addChunkToNode('node-2', 'World!');
-		const content3 = manager.addChunkToNode('node-1', 'from ');
-		const content4 = manager.addChunkToNode('node-1', 'node1');
+		// Initialize two different runs
+		const message1 = manager.addRunToActive('node-1', 0);
+		const message2 = manager.addRunToActive('node-1', 1);
 
-		expect(content1).toBe('Hello ');
-		expect(content2).toBe('Hello World!');
-		expect(content3).toBe('Hello from World!');
-		expect(content4).toBe('Hello from node1World!');
+		expect(manager.getRunCount()).toBe(2);
+		expect(message1.id).not.toBe(message2.id);
+
+		// Add chunks to different runs
+		const result1 = manager.addChunkToRun('node-1', 'Run 0 content', 0);
+		const result2 = manager.addChunkToRun('node-1', 'Run 1 content', 1);
+
+		expect(result1?.text).toBe('Run 0 content');
+		expect(result2?.text).toBe('Run 1 content');
+		expect(result1?.id).toBe(message1.id);
+		expect(result2?.id).toBe(message2.id);
 	});
 
-	it('should handle runIndex and itemIndex correctly', () => {
+	it('should accumulate chunks within the same run', () => {
 		const manager = new StreamingMessageManager();
 
-		// Same node, different run indexes
-		const content1 = manager.addChunkToNode('node-1', 'Run 0 ', 0);
-		const content2 = manager.addChunkToNode('node-1', 'Run 1 ', 1);
-		const content3 = manager.addChunkToNode('node-1', 'more', 0);
+		const message = manager.addRunToActive('node-1', 0);
 
-		expect(content1).toBe('Run 0 ');
-		expect(content2).toBe('Run 0 Run 1 ');
-		expect(content3).toBe('Run 0 moreRun 1 ');
+		manager.addChunkToRun('node-1', 'Hello ', 0);
+		const result = manager.addChunkToRun('node-1', 'World!', 0);
+
+		expect(result?.text).toBe('Hello World!');
+		expect(result?.id).toBe(message.id);
 	});
 
-	it('should handle itemIndex correctly', () => {
+	it('should handle runs without runIndex (backward compatibility)', () => {
 		const manager = new StreamingMessageManager();
 
-		// Same node, same run, different items
-		const content1 = manager.addChunkToNode('node-1', 'Item 0 ', 0, 0);
-		const content2 = manager.addChunkToNode('node-1', 'Item 1 ', 0, 1);
-		const content3 = manager.addChunkToNode('node-1', 'more', 0, 0);
+		const message = manager.addRunToActive('node-1');
+		const result = manager.addChunkToRun('node-1', 'Single run content');
 
-		expect(content1).toBe('Item 0 ');
-		expect(content2).toBe('Item 0 Item 1 ');
-		expect(content3).toBe('Item 0 moreItem 1 ');
+		expect(result?.text).toBe('Single run content');
+		expect(result?.id).toBe(message.id);
+		expect(manager.getRunCount()).toBe(1);
 	});
 
-	it('should track active nodes correctly', () => {
+	it('should track active runs correctly', () => {
 		const manager = new StreamingMessageManager();
 
-		manager.addNodeToActive('node-1');
-		manager.addNodeToActive('node-2');
+		manager.addRunToActive('node-1', 0);
+		manager.addRunToActive('node-1', 1);
 
-		expect(manager.getNodeCount()).toBe(2);
+		expect(manager.getRunCount()).toBe(2);
 
-		manager.removeNodeFromActive('node-1');
-		expect(manager.areAllNodesComplete()).toBe(false);
+		manager.removeRunFromActive('node-1', 0);
+		expect(manager.areAllRunsComplete()).toBe(false);
 
-		manager.removeNodeFromActive('node-2');
-		expect(manager.areAllNodesComplete()).toBe(true);
+		manager.removeRunFromActive('node-1', 1);
+		expect(manager.areAllRunsComplete()).toBe(true);
 	});
 
-	it('should track active nodes with runIndex and itemIndex correctly', () => {
+	it('should return all messages in order', () => {
 		const manager = new StreamingMessageManager();
 
-		manager.addNodeToActive('node-1', 0, 0);
-		manager.addNodeToActive('node-1', 0, 1);
-		manager.addNodeToActive('node-1', 1, 0);
+		const message1 = manager.addRunToActive('node-1', 0);
+		const message2 = manager.addRunToActive('node-1', 1);
+		const message3 = manager.addRunToActive('node-2', 0);
 
-		expect(manager.getNodeCount()).toBe(3);
+		const allMessages = manager.getAllMessages();
 
-		manager.removeNodeFromActive('node-1', 0, 0);
-		expect(manager.areAllNodesComplete()).toBe(false);
-
-		manager.removeNodeFromActive('node-1', 0, 1);
-		expect(manager.areAllNodesComplete()).toBe(false);
-
-		manager.removeNodeFromActive('node-1', 1, 0);
-		expect(manager.areAllNodesComplete()).toBe(true);
+		expect(allMessages).toHaveLength(3);
+		expect(allMessages[0].id).toBe(message1.id);
+		expect(allMessages[1].id).toBe(message2.id);
+		expect(allMessages[2].id).toBe(message3.id);
 	});
 
 	it('should reset correctly', () => {
 		const manager = new StreamingMessageManager();
 
-		manager.addChunkToNode('node-1', 'test');
-		manager.addNodeToActive('node-2');
+		manager.addRunToActive('node-1', 0);
+		manager.addRunToActive('node-1', 1);
+		manager.addChunkToRun('node-1', 'test', 0);
 
-		expect(manager.getNodeCount()).toBe(2);
+		expect(manager.getRunCount()).toBe(2);
 
 		manager.reset();
 
-		expect(manager.getNodeCount()).toBe(0);
-		expect(manager.getCombinedContent()).toBe('');
+		expect(manager.getRunCount()).toBe(0);
+		expect(manager.getAllMessages()).toHaveLength(0);
 	});
 });
 

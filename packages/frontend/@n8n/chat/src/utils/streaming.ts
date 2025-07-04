@@ -2,79 +2,113 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatMessageText } from '@n8n/chat/types';
 
-export interface NodeStreamingData {
+export interface NodeRunData {
 	content: string;
 	isComplete: boolean;
+	message: ChatMessageText;
 }
 
 export class StreamingMessageManager {
-	private nodeMessages = new Map<string, NodeStreamingData>();
-	private nodeOrder: string[] = [];
-	private activeNodes = new Set<string>();
+	private nodeRuns = new Map<string, NodeRunData>();
+	private runOrder: string[] = [];
+	private activeRuns = new Set<string>();
 
 	constructor() {}
 
-	private getNodeKey(nodeId: string, runIndex?: number, itemIndex?: number): string {
-		if (runIndex !== undefined && itemIndex !== undefined) {
-			return `${nodeId}-${runIndex}-${itemIndex}`;
-		}
+	private getRunKey(nodeId: string, runIndex?: number): string {
 		if (runIndex !== undefined) {
 			return `${nodeId}-${runIndex}`;
 		}
 		return nodeId;
 	}
 
-	initializeNode(nodeId: string, runIndex?: number, itemIndex?: number): void {
-		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
-		if (!this.nodeMessages.has(key)) {
-			this.nodeMessages.set(key, { content: '', isComplete: false });
-			this.nodeOrder.push(key);
+	private getItemKey(nodeId: string, runIndex?: number, itemIndex?: number): string {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		if (itemIndex !== undefined) {
+			return `${runKey}-${itemIndex}`;
+		}
+		return runKey;
+	}
+
+	initializeRun(nodeId: string, runIndex?: number): ChatMessageText {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		if (!this.nodeRuns.has(runKey)) {
+			const message = createBotMessage();
+			this.nodeRuns.set(runKey, {
+				content: '',
+				isComplete: false,
+				message,
+			});
+			this.runOrder.push(runKey);
+			return message;
+		}
+		return this.nodeRuns.get(runKey)!.message;
+	}
+
+	registerRunStart(nodeId: string, runIndex?: number): void {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		this.activeRuns.add(runKey);
+	}
+
+	addRunToActive(nodeId: string, runIndex?: number): ChatMessageText {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		this.activeRuns.add(runKey);
+		return this.initializeRun(nodeId, runIndex);
+	}
+
+	removeRunFromActive(nodeId: string, runIndex?: number): void {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		this.activeRuns.delete(runKey);
+		const runData = this.nodeRuns.get(runKey);
+		if (runData) {
+			runData.isComplete = true;
 		}
 	}
 
-	addNodeToActive(nodeId: string, runIndex?: number, itemIndex?: number): void {
-		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
-		this.activeNodes.add(key);
-		this.initializeNode(nodeId, runIndex, itemIndex);
-	}
-
-	removeNodeFromActive(nodeId: string, runIndex?: number, itemIndex?: number): void {
-		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
-		this.activeNodes.delete(key);
-		const nodeData = this.nodeMessages.get(key);
-		if (nodeData) {
-			nodeData.isComplete = true;
+	addChunkToRun(nodeId: string, chunk: string, runIndex?: number): ChatMessageText | null {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		const runData = this.nodeRuns.get(runKey);
+		if (runData) {
+			runData.content += chunk;
+			// Create a new message object to trigger Vue reactivity
+			const updatedMessage: ChatMessageText = {
+				...runData.message,
+				text: runData.content,
+			};
+			runData.message = updatedMessage;
+			return updatedMessage;
 		}
+		return null;
 	}
 
-	addChunkToNode(nodeId: string, chunk: string, runIndex?: number, itemIndex?: number): string {
-		this.initializeNode(nodeId, runIndex, itemIndex);
-		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
-		const nodeData = this.nodeMessages.get(key)!;
-		nodeData.content += chunk;
-
-		return this.getCombinedContent();
+	getRunMessage(nodeId: string, runIndex?: number): ChatMessageText | null {
+		const runKey = this.getRunKey(nodeId, runIndex);
+		const runData = this.nodeRuns.get(runKey);
+		return runData?.message ?? null;
 	}
 
-	getCombinedContent(): string {
-		return this.nodeOrder
-			.map((id) => this.nodeMessages.get(id)?.content ?? '')
-			.filter((content) => content.length > 0)
-			.join('');
+	areAllRunsComplete(): boolean {
+		return Array.from(this.nodeRuns.values()).every((data) => data.isComplete);
 	}
 
-	areAllNodesComplete(): boolean {
-		return Array.from(this.nodeMessages.values()).every((data) => data.isComplete);
+	getRunCount(): number {
+		return this.runOrder.length;
 	}
 
-	getNodeCount(): number {
-		return this.nodeOrder.length;
+	getActiveRunCount(): number {
+		return this.activeRuns.size;
+	}
+
+	getAllMessages(): ChatMessageText[] {
+		return this.runOrder
+			.map((key) => this.nodeRuns.get(key)?.message)
+			.filter((message): message is ChatMessageText => message !== undefined);
 	}
 
 	reset(): void {
-		this.nodeMessages.clear();
-		this.nodeOrder = [];
-		this.activeNodes.clear();
+		this.nodeRuns.clear();
+		this.runOrder = [];
+		this.activeRuns.clear();
 	}
 }
 

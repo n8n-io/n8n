@@ -44,32 +44,57 @@ describe('streamingHandlers', () => {
 			expect(messages.value).toHaveLength(1);
 		});
 
-		it('should handle multi-node streaming', () => {
-			handleStreamingChunk('Hello', 'node-1', streamingManager, receivedMessage, messages);
+		it('should handle streaming with separate messages per runIndex', () => {
+			// Start the runs (doesn't create messages yet)
+			handleNodeStart('node-1', streamingManager, messages, 0);
+			handleNodeStart('node-1', streamingManager, messages, 1);
 
-			expect(receivedMessage.value).toBeDefined();
-			expect(receivedMessage.value?.text).toBe('Hello');
-			expect(messages.value).toHaveLength(1);
+			expect(messages.value).toHaveLength(0); // No messages created yet
 
-			handleStreamingChunk(' World!', 'node-2', streamingManager, receivedMessage, messages);
+			// Now handle chunks for different runs - this will create the messages
+			handleStreamingChunk(
+				'Run 0 content',
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				0,
+			);
+			handleStreamingChunk(
+				'Run 1 content',
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				1,
+			);
 
-			expect(receivedMessage.value?.text).toBe('Hello World!');
+			expect(messages.value).toHaveLength(2); // Messages created on first chunk
+
+			// Check that we have two separate messages with different content
+			const message1 = messages.value[0] as ChatMessageText;
+			const message2 = messages.value[1] as ChatMessageText;
+
+			expect(message1.text).toBe('Run 0 content');
+			expect(message2.text).toBe('Run 1 content');
+			expect(message1.id).not.toBe(message2.id);
 		});
 
-		it('should handle streaming with runIndex and itemIndex', () => {
-			handleStreamingChunk('Run 0 ', 'node-1', streamingManager, receivedMessage, messages, 0, 0);
+		it('should accumulate chunks within the same run', () => {
+			// Start a run (doesn't create message yet)
+			handleNodeStart('node-1', streamingManager, messages, 0);
 
-			expect(receivedMessage.value).toBeDefined();
-			expect(receivedMessage.value?.text).toBe('Run 0 ');
+			expect(messages.value).toHaveLength(0);
+
+			// Add multiple chunks to the same run - message created on first chunk
+			handleStreamingChunk('Hello ', 'node-1', streamingManager, receivedMessage, messages, 0);
 			expect(messages.value).toHaveLength(1);
 
-			handleStreamingChunk('Run 1 ', 'node-1', streamingManager, receivedMessage, messages, 1, 0);
+			handleStreamingChunk('World!', 'node-1', streamingManager, receivedMessage, messages, 0);
 
-			expect(receivedMessage.value?.text).toBe('Run 0 Run 1 ');
-
-			handleStreamingChunk('Item 1 ', 'node-1', streamingManager, receivedMessage, messages, 0, 1);
-
-			expect(receivedMessage.value?.text).toBe('Run 0 Run 1 Item 1 ');
+			const message = messages.value[0] as ChatMessageText;
+			expect(message.text).toBe('Hello World!');
+			expect(messages.value).toHaveLength(1);
 		});
 
 		it('should handle errors gracefully', () => {
@@ -88,36 +113,28 @@ describe('streamingHandlers', () => {
 	});
 
 	describe('handleNodeStart', () => {
-		it('should initialize node without creating message', () => {
-			handleNodeStart('node-1', streamingManager);
+		it('should register runs but not create messages yet', () => {
+			handleNodeStart('node-1', streamingManager, messages, 0);
+			handleNodeStart('node-1', streamingManager, messages, 1);
 
-			expect(receivedMessage.value).toBeNull(); // No message created yet
-			expect(messages.value).toHaveLength(0); // No messages until first content
-			expect(streamingManager.getNodeCount()).toBe(1); // But node is initialized
-		});
+			// No messages created yet - they'll be created on first chunk
+			expect(messages.value).toHaveLength(0);
 
-		it('should initialize node with runIndex and itemIndex', () => {
-			handleNodeStart('node-1', streamingManager, 0, 0);
-			handleNodeStart('node-1', streamingManager, 1, 0);
-			handleNodeStart('node-1', streamingManager, 0, 1);
-
-			expect(streamingManager.getNodeCount()).toBe(3);
-		});
-
-		it('should not create duplicate message if one exists', () => {
-			const existingMessage = {
-				id: 'existing',
-				type: 'text' as const,
-				text: 'existing',
-				sender: 'bot' as const,
-			};
-			receivedMessage.value = existingMessage;
-			messages.value.push(existingMessage);
-
-			handleNodeStart('node-1', streamingManager);
-
+			// But runs should be registered as active
+			// We can verify this by checking that chunks will create messages
+			handleStreamingChunk('test', 'node-1', streamingManager, receivedMessage, messages, 0);
 			expect(messages.value).toHaveLength(1);
-			expect(receivedMessage.value.id).toBe('existing');
+		});
+
+		it('should handle runs without runIndex', () => {
+			handleNodeStart('node-1', streamingManager, messages);
+
+			// No message created yet
+			expect(messages.value).toHaveLength(0);
+
+			// Verify run is registered by adding a chunk
+			handleStreamingChunk('test', 'node-1', streamingManager, receivedMessage, messages);
+			expect(messages.value).toHaveLength(1);
 		});
 
 		it('should handle errors gracefully', () => {
@@ -126,7 +143,7 @@ describe('streamingHandlers', () => {
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			expect(() => {
-				handleNodeStart('node-1', invalidStreamingManager);
+				handleNodeStart('node-1', invalidStreamingManager, messages);
 			}).not.toThrow();
 
 			expect(consoleSpy).toHaveBeenCalledWith('Error handling node start:', expect.any(Error));
@@ -135,37 +152,9 @@ describe('streamingHandlers', () => {
 	});
 
 	describe('handleNodeComplete', () => {
-		it('should mark node as complete and update message', () => {
+		it('should mark run as complete', () => {
 			// Setup initial state
-			streamingManager.addNodeToActive('node-1');
-			streamingManager.addChunkToNode('node-1', 'Hello');
-			receivedMessage.value = {
-				id: 'msg-1',
-				type: 'text',
-				text: 'Hello',
-				sender: 'bot',
-			};
-			messages.value.push(receivedMessage.value);
-
-			handleNodeComplete('node-1', streamingManager, receivedMessage, messages, waitingForResponse);
-
-			expect(streamingManager.areAllNodesComplete()).toBe(true);
-		});
-
-		it('should handle node completion with runIndex and itemIndex', () => {
-			// Setup initial state
-			streamingManager.addNodeToActive('node-1', 0, 0);
-			streamingManager.addNodeToActive('node-1', 1, 0);
-			streamingManager.addChunkToNode('node-1', 'Run 0 ', 0, 0);
-			streamingManager.addChunkToNode('node-1', 'Run 1 ', 1, 0);
-
-			receivedMessage.value = {
-				id: 'msg-1',
-				type: 'text',
-				text: 'Run 0 Run 1 ',
-				sender: 'bot',
-			};
-			messages.value.push(receivedMessage.value);
+			streamingManager.addRunToActive('node-1', 0);
 
 			handleNodeComplete(
 				'node-1',
@@ -174,10 +163,31 @@ describe('streamingHandlers', () => {
 				messages,
 				waitingForResponse,
 				0,
+			);
+
+			expect(streamingManager.areAllRunsComplete()).toBe(true);
+		});
+
+		it('should handle multiple runs completion', () => {
+			waitingForResponse.value = true;
+
+			// Setup two runs
+			streamingManager.addRunToActive('node-1', 0);
+			streamingManager.addRunToActive('node-1', 1);
+
+			// Complete first run
+			handleNodeComplete(
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				waitingForResponse,
 				0,
 			);
-			expect(streamingManager.areAllNodesComplete()).toBe(false);
+			expect(streamingManager.areAllRunsComplete()).toBe(false);
+			expect(waitingForResponse.value).toBe(true);
 
+			// Complete second run
 			handleNodeComplete(
 				'node-1',
 				streamingManager,
@@ -185,29 +195,46 @@ describe('streamingHandlers', () => {
 				messages,
 				waitingForResponse,
 				1,
-				0,
 			);
-			expect(streamingManager.areAllNodesComplete()).toBe(true);
+			expect(streamingManager.areAllRunsComplete()).toBe(true);
+			expect(waitingForResponse.value).toBe(false);
 		});
 
-		it('should set waitingForResponse to false when all nodes complete', () => {
+		it('should set waitingForResponse to false when all runs complete', () => {
 			waitingForResponse.value = true;
-			streamingManager.addNodeToActive('node-1');
-			streamingManager.addNodeToActive('node-2');
+			streamingManager.addRunToActive('node-1', 0);
+			streamingManager.addRunToActive('node-2', 0);
 
-			receivedMessage.value = {
-				id: 'msg-1',
-				type: 'text',
-				text: '',
-				sender: 'bot',
-			};
-
-			// Complete first node
-			handleNodeComplete('node-1', streamingManager, receivedMessage, messages, waitingForResponse);
+			// Complete first run
+			handleNodeComplete(
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				waitingForResponse,
+				0,
+			);
 			expect(waitingForResponse.value).toBe(true);
 
-			// Complete second node
-			handleNodeComplete('node-2', streamingManager, receivedMessage, messages, waitingForResponse);
+			// Complete second run
+			handleNodeComplete(
+				'node-2',
+				streamingManager,
+				receivedMessage,
+				messages,
+				waitingForResponse,
+				0,
+			);
+			expect(waitingForResponse.value).toBe(false);
+		});
+
+		it('should handle runs without runIndex', () => {
+			waitingForResponse.value = true;
+			streamingManager.addRunToActive('node-1');
+
+			handleNodeComplete('node-1', streamingManager, receivedMessage, messages, waitingForResponse);
+
+			expect(streamingManager.areAllRunsComplete()).toBe(true);
 			expect(waitingForResponse.value).toBe(false);
 		});
 

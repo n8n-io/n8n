@@ -49,6 +49,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			try {
 				if (options?.enableStreaming) {
+					// Set up a safety timeout to ensure typing indicator disappears
 					await api.sendMessageStreaming(
 						text,
 						files,
@@ -66,7 +67,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 							);
 						},
 						(nodeId: string, runIndex?: number, itemIndex?: number) => {
-							handleNodeStart(nodeId, streamingManager, runIndex, itemIndex);
+							handleNodeStart(nodeId, streamingManager, messages, runIndex, itemIndex);
 						},
 						(nodeId: string, runIndex?: number, itemIndex?: number) => {
 							handleNodeComplete(
@@ -74,15 +75,11 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 								streamingManager,
 								receivedMessage,
 								messages,
-								waitingForResponse,
 								runIndex,
 								itemIndex,
 							);
 						},
 					);
-
-					// Mark streaming as complete after the function finishes
-					waitingForResponse.value = false;
 				} else {
 					receivedMessage.value = createBotMessage();
 
