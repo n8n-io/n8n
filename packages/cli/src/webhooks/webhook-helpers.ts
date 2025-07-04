@@ -656,15 +656,6 @@ export async function executeWebhook(
 			);
 		}
 
-		// Start now to run the workflow
-		executionId = await Container.get(WorkflowRunner).run(
-			runData,
-			true,
-			!didSendResponse,
-			executionId,
-			responsePromise,
-		);
-
 		if (responseMode === 'streaming') {
 			Container.get(Logger).debug(
 				`Execution of workflow "${workflow.name}" from with ID ${executionId} is set to streaming`,
@@ -675,6 +666,15 @@ export async function executeWebhook(
 			runData.streamingEnabled = true;
 			didSendResponse = true;
 		}
+
+		// Start now to run the workflow
+		executionId = await Container.get(WorkflowRunner).run(
+			runData,
+			true,
+			!didSendResponse,
+			executionId,
+			responsePromise,
+		);
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });

@@ -248,6 +248,7 @@ export class WorkflowRunner {
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.streamingEnabled = data.streamingEnabled;
 
 		additionalData.executionId = executionId;
 
@@ -357,6 +358,7 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			streamingEnabled: data.streamingEnabled,
 		};
 
 		if (!this.scalingService) {
