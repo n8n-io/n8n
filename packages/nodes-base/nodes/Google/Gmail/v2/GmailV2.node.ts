@@ -564,10 +564,16 @@ export class GmailV2 implements INodeType {
 							attachments,
 						};
 
-						if (threadId && options.replyTo && (!references || !inReplyTo)) {
+						if (threadId) {
 							// If a threadId is set, we need to add the Message-ID of the last message in the thread
 							// to the email so that Gmail can correctly associate the draft with the thread
-							await addThreadHeadersToEmail.call(this, email, threadId as string);
+							await addThreadHeadersToEmail.call(
+								this,
+								email,
+								threadId as string,
+								references,
+								inReplyTo,
+							);
 						}
 
 						if (references && inReplyTo) {

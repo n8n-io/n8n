@@ -4,22 +4,10 @@ import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import { googleApiRequest } from '../../GenericFunctions';
 
-/**
- * Adds inReplyTo and reference headers to the email if threadId is provided.
- */
-export async function addThreadHeadersToEmail(
-	this: IExecuteFunctions,
+function setThreadHeaders(
 	email: IEmail,
-	threadId: string,
-): Promise<void> {
-	const thread = await googleApiRequest.call(
-		this,
-		'GET',
-		`/gmail/v1/users/me/threads/${threadId}`,
-		{},
-		{ format: 'metadata', metadataHeaders: ['Message-ID'] },
-	);
-
+	thread: { messages: Array<{ payload: { headers: Array<{ name: string; value: string }> } }> },
+): void {
 	if (thread?.messages) {
 		const lastMessage = thread.messages.length - 1;
 		const messageId = thread.messages[lastMessage].payload.headers.find(
@@ -28,5 +16,31 @@ export async function addThreadHeadersToEmail(
 
 		email.inReplyTo = messageId;
 		email.reference = messageId;
+	}
+}
+
+/**
+ * Adds inReplyTo and reference headers to the email if threadId is provided.
+ */
+export async function addThreadHeadersToEmail(
+	this: IExecuteFunctions,
+	email: IEmail,
+	threadId: string,
+	references: string | undefined = undefined,
+	inReplyTo: string | undefined = undefined,
+): Promise<void> {
+	if (references && inReplyTo) {
+		email.inReplyTo = inReplyTo;
+		email.reference = references;
+	} else {
+		const thread = await googleApiRequest.call(
+			this,
+			'GET',
+			`/gmail/v1/users/me/threads/${threadId}`,
+			{},
+			{ format: 'metadata', metadataHeaders: ['Message-ID'] },
+		);
+
+		setThreadHeaders(email, thread);
 	}
 }
