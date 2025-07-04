@@ -25,6 +25,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
@@ -120,6 +121,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			});
 		}
 		return output;
+	}
+
+	/**
+	 * Gets the chat trigger node
+	 *
+	 * this is needed for sub-nodes where the parent nodes are not available
+	 */
+	getChatTrigger() {
+		for (const node of Object.values(this.workflow.nodes)) {
+			if (this.workflow.nodes[node.name].type === CHAT_TRIGGER_NODE_TYPE) {
+				return this.workflow.nodes[node.name];
+			}
+		}
+
+		return null;
 	}
 
 	@Memoized

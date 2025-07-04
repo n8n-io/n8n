@@ -23,6 +23,7 @@ import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { NodeTypes } from './node-types';
+import 'jest-expect-message';
 
 type NodeOutputs = WorkflowTestData['output']['nodeData'];
 

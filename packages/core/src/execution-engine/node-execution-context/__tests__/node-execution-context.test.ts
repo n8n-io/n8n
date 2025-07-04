@@ -10,7 +10,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -112,6 +112,31 @@ describe('NodeExecutionContext', () => {
 				{ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
 				{ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
 			]);
+		});
+	});
+
+	describe('getChatTrigger', () => {
+		it('should return a chat trigger node if it exists in the workflow', () => {
+			const chatNode = mock<INode>({ name: 'Chat', type: CHAT_TRIGGER_NODE_TYPE });
+
+			workflow.nodes = {
+				Chat: chatNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toEqual(chatNode);
+		});
+		it('should return a null if there is no chat trigger node in the workflow', () => {
+			const someNode = mock<INode>({ name: 'Some Node', type: 'someType' });
+
+			workflow.nodes = {
+				'Some Node': someNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toBeNull();
 		});
 	});
 
