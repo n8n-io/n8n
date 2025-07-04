@@ -15,10 +15,6 @@ export function handleStreamingChunk(
 	messages: Ref<unknown[]>,
 ): void {
 	try {
-		if (process.env.NODE_ENV === 'development') {
-			console.log('Processing chunk:', { nodeId, length: chunk.length });
-		}
-
 		// Only create the bot message when we receive the first actual content
 		if (!receivedMessage.value && chunk.trim()) {
 			receivedMessage.value = createBotMessage();
@@ -40,10 +36,6 @@ export function handleStreamingChunk(
 
 				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
 				receivedMessage.value = updatedMessage;
-
-				if (process.env.NODE_ENV === 'development') {
-					console.log('Updated single message, total length:', updatedMessage.text.length);
-				}
 			}
 		} else {
 			// Multi-node parallel streaming
@@ -56,10 +48,6 @@ export function handleStreamingChunk(
 
 				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
 				receivedMessage.value = updatedMessage;
-
-				if (process.env.NODE_ENV === 'development') {
-					console.log('Updated combined message with', streamingManager.getNodeCount(), 'nodes');
-				}
 			}
 		}
 
@@ -74,18 +62,7 @@ export function handleStreamingChunk(
 
 export function handleNodeStart(nodeId: string, streamingManager: StreamingMessageManager): void {
 	try {
-		if (process.env.NODE_ENV === 'development') {
-			console.log('Node started:', nodeId);
-		}
-
 		streamingManager.addNodeToActive(nodeId);
-
-		// Don't create the message yet - wait for the first content chunk
-		// This prevents showing <Empty Response> before actual content arrives
-
-		void nextTick(() => {
-			chatEventBus.emit('scrollToBottom');
-		});
 	} catch (error) {
 		console.error('Error handling node start:', error);
 	}
@@ -99,10 +76,6 @@ export function handleNodeComplete(
 	waitingForResponse: Ref<boolean>,
 ): void {
 	try {
-		if (process.env.NODE_ENV === 'development') {
-			console.log('Node completed:', nodeId);
-		}
-
 		streamingManager.removeNodeFromActive(nodeId);
 
 		if (receivedMessage.value) {
@@ -116,9 +89,6 @@ export function handleNodeComplete(
 			receivedMessage.value = updatedMessage;
 
 			if (streamingManager.areAllNodesComplete()) {
-				if (process.env.NODE_ENV === 'development') {
-					console.log('All nodes completed, streaming finished');
-				}
 				waitingForResponse.value = false;
 			}
 		}

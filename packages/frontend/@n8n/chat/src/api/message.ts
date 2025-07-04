@@ -145,9 +145,6 @@ export async function sendMessageStreaming(
 
 		// Process any remaining buffer content
 		if (buffer.trim()) {
-			if (process.env.NODE_ENV === 'development') {
-				console.log('Processing remaining buffer:', buffer);
-			}
 			try {
 				const decoded: StructuredChunk = JSON.parse(buffer);
 				const nodeId = decoded.metadata?.nodeId || 'unknown';

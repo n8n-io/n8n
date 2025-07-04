@@ -30,7 +30,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		);
 
 		async function sendMessage(text: string, files: File[] = []) {
-			console.log('Chat sendMessage called with:', text, files);
 			const sentMessage: ChatMessage = {
 				id: uuidv4(),
 				text,
