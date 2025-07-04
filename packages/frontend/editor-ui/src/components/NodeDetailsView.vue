@@ -911,8 +911,8 @@ $main-panel-width: 360px;
 
 .backToCanvas {
 	position: fixed;
-	top: var(--spacing-xs);
-	left: var(--spacing-l);
+	top: var(--spacing-m);
+	left: var(--spacing-xl);
 	display: flex;
 	align-items: center;
 
@@ -931,8 +931,8 @@ $main-panel-width: 360px;
 
 @media (min-width: $breakpoint-lg) {
 	.backToCanvas {
-		top: var(--spacing-xs);
-		left: var(--spacing-m);
+		top: var(--spacing-m);
+		left: var(--spacing-xl);
 	}
 }
 
