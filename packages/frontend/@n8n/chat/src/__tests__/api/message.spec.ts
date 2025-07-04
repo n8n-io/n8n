@@ -342,7 +342,7 @@ describe('sendMessageStreaming', () => {
 			ok: false,
 			status: 500,
 			headers: new Headers(),
-			text: () => Promise.resolve('Internal Server Error'),
+			text: async () => 'Internal Server Error',
 		} as Response;
 
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
