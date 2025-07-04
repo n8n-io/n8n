@@ -146,11 +146,17 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		return hasHandlers && isStreamingMode && streamingEnabled;
 	}
 
-	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
 		const node = this.getNode();
 		const metadata = {
 			nodeId: node.id,
 			nodeName: node.name,
+			itemIndex,
+			runIndex: this.runIndex,
 			timestamp: Date.now(),
 		};
 

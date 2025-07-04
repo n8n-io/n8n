@@ -2238,6 +2238,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'A detailed error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2296,6 +2302,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'The API returned an error',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2400,6 +2412,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'Custom error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2457,6 +2475,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: undefined, // When no description is available, content should be undefined
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
