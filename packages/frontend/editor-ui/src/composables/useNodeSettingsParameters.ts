@@ -23,6 +23,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -324,6 +325,10 @@ export function useNodeSettingsParameters() {
 		focusPanelStore.focusPanelActive = true;
 	}
 
+	function shouldSkipParamValidation(value: string | number | boolean | null) {
+		return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+	}
+
 	return {
 		nodeValues,
 		getParameterTypeOption,
@@ -335,5 +340,6 @@ export function useNodeSettingsParameters() {
 		formatAsExpression,
 		parseFromExpression,
 		handleFocus,
+		shouldSkipParamValidation,
 	};
 }

@@ -373,7 +373,7 @@ const getIssues = computed<string[]>(() => {
 
 		let checkValues: string[] = [];
 
-		if (!skipCheck(displayValue.value)) {
+		if (!nodeSettingsParameters.shouldSkipParamValidation(displayValue.value)) {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
@@ -621,13 +621,6 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 	}
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
-}
-
-/**
- * Check whether a param value must be skipped when collecting node param issues for validation.
- */
-function skipCheck(value: string | number | boolean | null) {
-	return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
 }
 
 function getPlaceholder(): string {
