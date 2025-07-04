@@ -25,6 +25,7 @@ import type {
 } from './interfaces';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
+import { isExpression } from './expressions/expression-helpers';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -118,7 +119,7 @@ export class Expression {
 		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
-		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
+		if (!isExpression(parameterValue)) {
 			// Is no expression so return value
 			return parameterValue;
 		}
