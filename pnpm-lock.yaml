@@ -231,6 +231,9 @@ patchedDependencies:
   vue-tsc@2.2.8:
     hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.2.8.patch
+  z-vue-scan:
+    hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
+    path: patches/z-vue-scan.patch
 
 importers:
 
@@ -2460,6 +2463,9 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.8.3))
     devDependencies:
       '@faker-js/faker':
         specifier: ^8.0.2
@@ -15609,6 +15615,15 @@ packages:
   yup@0.32.11:
     resolution: {integrity: sha512-Z2Fe1bn+eLstG8DRR6FTavGD+MeAwyfmouhHsIUgaADz8jvFKbO/fXc2trJKZg+5EBjh4gGm3iU/t3onKlXHIg==}
     engines: {node: '>=10'}
+
+  z-vue-scan@0.0.35:
+    resolution: {integrity: sha512-isWALsDyRFhvGJrWCKbZ8ORYXmrWp+ewvoaBxBQe0WWvilzyuoTLW8IG5gL2kORLdTWmyj2j1NvehaJpKavJcw==}
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^2.0.0 || >=3.0.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   zip-stream@6.0.1:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
@@ -31487,6 +31502,11 @@ snapshots:
       nanoclone: 0.2.1
       property-expr: 2.0.5
       toposort: 2.0.2
+
+  z-vue-scan@0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.8.3)):
+    dependencies:
+      vue: 3.5.13(typescript@5.8.3)
+      vue-demi: 0.14.10(vue@3.5.13(typescript@5.8.3))
 
   zip-stream@6.0.1:
     dependencies:
