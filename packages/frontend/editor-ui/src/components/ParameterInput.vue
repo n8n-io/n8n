@@ -18,7 +18,6 @@ import type {
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
-	INodePropertyCollection,
 	INodePropertyOptions,
 	IParameterLabel,
 	NodeParameterValueType,
@@ -68,13 +67,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
-import {
-	hasFocusOnInput,
-	isBlurrableEl,
-	isFocusableEl,
-	isPresent,
-	isSelectableEl,
-} from '@/utils/typesUtils';
+import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -455,7 +448,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
-	const safeOptions = (options ?? []).filter(isValidParameterOption);
+	const safeOptions = (options ?? []).filter(nodeSettingsParameters.isValidParameterOption);
 
 	return safeOptions;
 });
@@ -599,12 +592,6 @@ const showDragnDropTip = computed(
 );
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
-
-function isValidParameterOption(
-	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-): option is INodePropertyOptions {
-	return 'value' in option && isPresent(option.value) && isPresent(option.name);
-}
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1148,7 +1135,9 @@ const unwatchParameterOptions = watch(
 	[remoteParameterOptions, () => props.parameter.options],
 	([remoteOptions, options]) => {
 		const allOptions = [...remoteOptions, ...(options ?? [])];
-		const invalidOptions = allOptions.filter((option) => !isValidParameterOption(option));
+		const invalidOptions = allOptions.filter(
+			(option) => !nodeSettingsParameters.isValidParameterOption(option),
+		);
 
 		if (invalidOptions.length > 0) {
 			captureMessage('Invalid parameter options', {

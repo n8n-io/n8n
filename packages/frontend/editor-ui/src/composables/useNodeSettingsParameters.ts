@@ -9,6 +9,7 @@ import {
 	type NodeParameterValue,
 	type NodePropertyTypes,
 	type NodeParameterValueType,
+	type INodePropertyCollection,
 	NodeHelpers,
 	deepCopy,
 	isResourceLocatorValue,
@@ -24,6 +25,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { isPresent } from '@/utils/typesUtils';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -51,6 +53,12 @@ export function useNodeSettingsParameters() {
 		optionName: string,
 	): T {
 		return parameter.typeOptions?.[optionName] as T;
+	}
+
+	function isValidParameterOption(
+		option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): option is INodePropertyOptions {
+		return 'value' in option && isPresent(option.value) && isPresent(option.name);
 	}
 
 	function setValue(name: string, value: NodeParameterValue) {
@@ -277,28 +285,33 @@ export function useNodeSettingsParameters() {
 	}
 
 	function parseFromExpression(
-		modelValue: NodeParameterValueType,
-		value: unknown,
+		currentParameterValue: NodeParameterValueType,
+		evaluatedExpressionValue: unknown,
 		parameterType: NodePropertyTypes,
 		defaultValue: NodeParameterValueType,
 		parameterOptions: INodePropertyOptions[] = [],
 	) {
-		if (parameterType === 'multiOptions' && typeof value === 'string') {
-			return value
+		if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
+			return evaluatedExpressionValue
 				.split(',')
 				.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
 		}
 
-		if (isResourceLocatorParameterType(parameterType) && isResourceLocatorValue(modelValue)) {
-			return { __rl: true, value, mode: modelValue.mode };
+		if (
+			isResourceLocatorParameterType(parameterType) &&
+			isResourceLocatorValue(currentParameterValue)
+		) {
+			return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
 		}
 
 		if (parameterType === 'string') {
-			return modelValue ? (modelValue as string).toString().replace(/^=+/, '') : null;
+			return currentParameterValue
+				? (currentParameterValue as string).toString().replace(/^=+/, '')
+				: null;
 		}
 
-		if (typeof value !== 'undefined') {
-			return value;
+		if (typeof evaluatedExpressionValue !== 'undefined') {
+			return evaluatedExpressionValue;
 		}
 
 		if (['number', 'boolean'].includes(parameterType)) {
@@ -335,6 +348,7 @@ export function useNodeSettingsParameters() {
 	return {
 		nodeValues,
 		getParameterTypeOption,
+		isValidParameterOption,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
