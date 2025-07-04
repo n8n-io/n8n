@@ -115,7 +115,10 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
-      "js-base64": "patches/js-base64.patch"
+      "js-base64": "patches/js-base64.patch",
+      "ics": "patches/ics.patch",
+      "minifaker": "patches/minifaker.patch",
+      "z-vue-scan": "patches/z-vue-scan.patch"
     }
   }
 }
