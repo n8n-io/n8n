@@ -31,7 +31,7 @@ function onRename(newNodeName: string) {
 </script>
 
 <template>
-	<header :class="[$style.ndvHeader, { [$style.editable]: !readOnly }]">
+	<header :class="$style.ndvHeader">
 		<div :class="$style.content">
 			<NodeIcon v-if="icon" :class="$style.icon" :size="20" :icon-source="icon" />
 			<div :class="$style.title">
@@ -88,24 +88,6 @@ function onRename(newNodeName: string) {
 .title {
 	color: var(--color-text-dark);
 	font-size: var(--font-size-m);
-}
-
-.titleInput input {
-	--icon-width: 20px;
-	font-size: var(--font-size-m);
-	margin-left: calc(-1 * var(--icon-width) - var(--spacing-s));
-	padding-left: calc(var(--icon-width) + var(--spacing-s));
-	z-index: -1;
-}
-
-.editable .title {
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color-background-base);
-		border-radius: var(--border-radius-base);
-		outline: solid 2px var(--color-background-base);
-	}
 }
 
 .subtitle {

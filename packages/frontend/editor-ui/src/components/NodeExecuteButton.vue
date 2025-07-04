@@ -51,7 +51,7 @@ const props = withDefaults(
 		hideIcon?: boolean;
 		hideLabel?: boolean;
 		tooltip?: string;
-		tooltipPlacement?: string;
+		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
 	}>(),
 	{
 		disabled: false,
