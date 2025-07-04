@@ -187,12 +187,6 @@ const getListItemName = (path: string) => {
 				</template>
 				<template #renderNodeValue="{ node }">
 					<TextWithHighlights
-						v-if="isNaN(node.index)"
-						:content="getJSONContent(node.content)"
-						:search="search"
-					/>
-					<TextWithHighlights
-						v-else
 						:content="getJSONContent(node.content)"
 						:search="search"
 						data-target="mappable"
