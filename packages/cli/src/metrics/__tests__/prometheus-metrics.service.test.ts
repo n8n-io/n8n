@@ -51,11 +51,11 @@ describe('PrometheusMetricsService', () => {
 		},
 	});
 
-	const app = mock<express.Application>();
-	const eventBus = mock<MessageEventBus>();
-	const eventService = mock<EventService>();
-	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-	const workflowRepository = mock<WorkflowRepository>();
+	// const app = mock<express.Application>();
+	// const eventBus = mock<MessageEventBus>();
+	// const eventService = mock<EventService>();
+	// const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
+	// const workflowRepository = mock<WorkflowRepository>();
 	// const prometheusMetricsService = new PrometheusMetricsService(
 	// 	mock(),
 	// 	eventBus,
@@ -64,9 +64,21 @@ describe('PrometheusMetricsService', () => {
 	// 	instanceSettings,
 	// 	workflowRepository,
 	// );
+
+	let app: express.Application;
+	let eventBus: MessageEventBus;
+	let eventService: EventService;
+	let instanceSettings: InstanceSettings;
+	let workflowRepository: WorkflowRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
+		app = mock<express.Application>();
+		eventBus = mock<MessageEventBus>();
+		eventService = mock<EventService>();
+		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
+		workflowRepository = mock<WorkflowRepository>();
+
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
 			eventBus,
@@ -208,8 +220,6 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			console.log(promClient.Counter.mock.calls);
-
 			// call 1 is for `n8n_version_info` (always enabled)
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
@@ -221,6 +231,8 @@ describe('PrometheusMetricsService', () => {
 				name: 'n8n_scaling_mode_queue_jobs_active',
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
 			});
+
+			console.log(promClient.Counter.mock.calls);
 
 			expect(promClient.Counter).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_scaling_mode_queue_jobs_completed',
@@ -388,6 +400,8 @@ describe('PrometheusMetricsService', () => {
 				payload: { workflowId: 'wf_789' },
 			};
 			eventHandler(mockEvent);
+
+			console.log(promClient.Counter.mock.calls);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_workflow_execution_finished_total',
