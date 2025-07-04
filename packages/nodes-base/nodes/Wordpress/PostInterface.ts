@@ -4,8 +4,10 @@ export interface IPost {
 	title?: string;
 	content?: string;
 	slug?: string;
+	excerpt?: string;
 	password?: string;
 	status?: string;
+	date?: string;
 	comment_status?: string;
 	ping_status?: string;
 	format?: string;
@@ -13,4 +15,5 @@ export interface IPost {
 	template?: string;
 	categories?: number[];
 	tags?: number[];
+	featured_media?: number;
 }
