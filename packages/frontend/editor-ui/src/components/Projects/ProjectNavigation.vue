@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, onBeforeMount } from 'vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
 type Props = {
 	collapsed: boolean;
@@ -20,10 +21,14 @@ const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
+const hasMultipleVerifiedUsers = computed(
+	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
+);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -78,6 +83,10 @@ const activeTabId = computed(() => {
 			: projectsStore.projectNavActiveId) ?? undefined
 	);
 });
+
+onBeforeMount(async () => {
+	await usersStore.fetchUsers();
+});
 </script>
 
 <template>
@@ -99,7 +108,10 @@ const activeTabId = computed(() => {
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+					hasMultipleVerifiedUsers
+				"
 				:item="shared"
 				:compact="props.collapsed"
 				:active-tab="activeTabId"

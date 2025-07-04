@@ -1,297 +1,483 @@
-import { within } from '@testing-library/vue';
+import { defineComponent } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems, mockedStore } from '@/__tests__/utils';
+import { vi } from 'vitest';
+import { type FrontendSettings, ROLE, type UsersList } from '@n8n/api-types';
+import {
+	INVITE_USER_MODAL_KEY,
+	DELETE_USER_MODAL_KEY,
+	EnterpriseEditionFeature,
+} from '@/constants';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import { useEmitters } from '@/__tests__/utils';
+import {
+	cleanupAppModals,
+	createAppModals,
+	mockedStore,
+	type MockedStore,
+} from '@/__tests__/utils';
 import { useUsersStore } from '@/stores/users.store';
-import { createUser } from '@/__tests__/data/users';
-import { useRBACStore } from '@/stores/rbac.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { createTestingPinia, type TestingOptions } from '@pinia/testing';
-import merge from 'lodash/merge';
 import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { STORES } from '@n8n/stores';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-const loggedInUser = createUser();
-const invitedUser = createUser({
-	firstName: undefined,
-	inviteAcceptUrl: 'dummy',
-	role: 'global:admin',
-});
-const user = createUser();
-const userWithDisabledSSO = createUser({
-	settings: { allowSSOManualLogin: true },
-});
+const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
-const initialState = {
-	[STORES.USERS]: {
-		currentUserId: loggedInUser.id,
-		usersById: {
-			[loggedInUser.id]: loggedInUser,
-			[invitedUser.id]: invitedUser,
-			[user.id]: user,
-			[userWithDisabledSSO.id]: userWithDisabledSSO,
+// Mock the SettingsUsersTable component to emit events when clicked
+vi.mock('@/components/SettingsUsers/SettingsUsersTable.vue', () => ({
+	default: defineComponent({
+		setup(_, { emit }) {
+			addEmitter('settingsUsersTable', emit);
 		},
-	},
-	[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: true } } },
-};
-
-const getInitialState = (state: TestingOptions['initialState'] = {}) =>
-	merge({}, initialState, state);
-
-const copy = vi.fn();
-vi.mock('@/composables/useClipboard', () => ({
-	useClipboard: () => ({
-		copy,
+		template: '<div />',
 	}),
 }));
 
-const renderView = createComponentRenderer(SettingsUsersView);
-
-const triggerUserAction = async (userListItem: HTMLElement, action: string) => {
-	expect(userListItem).toBeInTheDocument();
-
-	const actionToggle = within(userListItem).getByTestId('action-toggle');
-	const actionToggleButton = within(actionToggle).getByRole('button');
-	expect(actionToggleButton).toBeVisible();
-
-	await userEvent.click(actionToggle);
-	const actionToggleId = actionToggleButton.getAttribute('aria-controls');
-
-	const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
-	await userEvent.click(within(actionDropdown).getByTestId(`action-${action}`));
+const mockToast = {
+	showToast: vi.fn(),
+	showError: vi.fn(),
 };
 
-const showToast = vi.fn();
-const showError = vi.fn();
+const mockClipboard = {
+	copy: vi.fn(),
+};
+
+const mockPageRedirectionHelper = {
+	goToUpgrade: vi.fn(),
+};
+
 vi.mock('@/composables/useToast', () => ({
-	useToast: () => ({
-		showToast,
-		showError,
-	}),
+	useToast: vi.fn(() => mockToast),
 }));
 
-vi.mock('@/composables/usePageRedirectionHelper', () => {
-	const goToUpgrade = vi.fn();
-	return {
-		usePageRedirectionHelper: () => ({
-			goToUpgrade,
-		}),
-	};
-});
+vi.mock('@/composables/useClipboard', () => ({
+	useClipboard: vi.fn(() => mockClipboard),
+}));
+
+vi.mock('@/composables/useDocumentTitle', () => ({
+	useDocumentTitle: vi.fn(() => ({
+		set: vi.fn(),
+	})),
+}));
+
+vi.mock('@/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
+}));
+
+vi.mock('@/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn(() => false),
+}));
+
+const mockUsersList: UsersList = {
+	items: [
+		{
+			id: '1',
+			email: 'admin@example.com',
+			firstName: 'Admin',
+			lastName: 'User',
+			role: ROLE.Admin,
+			isOwner: true,
+			isPending: false,
+			settings: {},
+		},
+		{
+			id: '2',
+			email: 'member@example.com',
+			firstName: 'Member',
+			lastName: 'User',
+			role: ROLE.Member,
+			isOwner: false,
+			isPending: false,
+			settings: {},
+		},
+		{
+			id: '3',
+			email: 'pending@example.com',
+			firstName: '',
+			lastName: '',
+			role: ROLE.Member,
+			isOwner: false,
+			isPending: true,
+			settings: {},
+			inviteAcceptUrl: 'https://example.com/invite/123',
+		},
+	],
+	count: 3,
+};
+
+let renderComponent: ReturnType<typeof createComponentRenderer>;
+let usersStore: MockedStore<typeof useUsersStore>;
+let uiStore: MockedStore<typeof useUIStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
+let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
+	beforeEach(() => {
+		createAppModals();
+		renderComponent = createComponentRenderer(SettingsUsersView, {
+			pinia: createTestingPinia(),
+		});
+
+		usersStore = mockedStore(useUsersStore);
+		uiStore = mockedStore(useUIStore);
+		settingsStore = mockedStore(useSettingsStore);
+		ssoStore = mockedStore(useSSOStore);
+
+		// Setup default store states
+		usersStore.usersLimitNotReached = true;
+		usersStore.usersList = {
+			state: mockUsersList,
+			isLoading: false,
+			execute: vi.fn(),
+			isReady: true,
+			error: null,
+			then: vi.fn(),
+		};
+		usersStore.currentUserId = '1';
+		usersStore.reinviteUser = vi.fn().mockResolvedValue(undefined);
+		usersStore.getUserPasswordResetLink = vi
+			.fn()
+			.mockResolvedValue({ link: 'https://example.com/reset/123' });
+		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
+		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
+
+		settingsStore.isSmtpSetup = true;
+		settingsStore.settings.enterprise = {
+			mfaEnforcement: true,
+		} as FrontendSettings['enterprise'];
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
+		ssoStore.isSamlLoginEnabled = false;
+	});
+
 	afterEach(() => {
-		copy.mockReset();
-		showToast.mockReset();
-		showError.mockReset();
+		cleanupAppModals();
+		vi.clearAllMocks();
 	});
 
-	it('hides invite button visibility based on user permissions', async () => {
-		const pinia = createTestingPinia({ initialState: getInitialState() });
-		const userStore = mockedStore(useUsersStore);
-		userStore.currentUser = createUser({ isDefaultUser: true });
+	it('turn enforcing mfa on', async () => {
+		const { getByTestId } = renderComponent();
 
-		const { queryByTestId } = renderView({ pinia });
+		const actionSwitch = getByTestId('enable-force-mfa');
+		expect(actionSwitch).toBeInTheDocument();
 
-		expect(queryByTestId('settings-users-invite-button')).not.toBeInTheDocument();
+		await userEvent.click(actionSwitch);
+
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
 	});
 
-	describe('Below quota', () => {
-		const pinia = createTestingPinia({ initialState: getInitialState() });
+	it('turn enforcing mfa off', async () => {
+		settingsStore.isMFAEnforced = true;
+		const { getByTestId } = renderComponent();
 
-		const usersStore = mockedStore(useUsersStore);
-		usersStore.usersLimitNotReached = false;
+		const actionSwitch = getByTestId('enable-force-mfa');
+		expect(actionSwitch).toBeInTheDocument();
 
-		it('disables the invite button', async () => {
-			const { getByTestId } = renderView({ pinia });
+		await userEvent.click(actionSwitch);
 
-			expect(getByTestId('settings-users-invite-button')).toBeDisabled();
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+	});
+
+	it('should render correctly with users list', () => {
+		renderComponent();
+
+		expect(screen.getByRole('heading', { name: /users/i })).toBeInTheDocument();
+		expect(screen.getByTestId('users-list-search')).toBeInTheDocument();
+		expect(screen.getByTestId('settings-users-invite-button')).toBeInTheDocument();
+	});
+
+	it('should open invite modal when invite button is clicked', async () => {
+		renderComponent();
+
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		await userEvent.click(inviteButton);
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: INVITE_USER_MODAL_KEY,
+			data: {
+				afterInvite: expect.any(Function),
+			},
 		});
-
-		it('allows the user to upgrade', async () => {
-			const { getByTestId } = renderView({ pinia });
-			const pageRedirectionHelper = usePageRedirectionHelper();
-
-			const actionBox = getByTestId('action-box');
-			expect(actionBox).toBeInTheDocument();
-
-			await userEvent.click(await within(actionBox).findByText('View plans'));
-
-			expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith(
-				'settings-users',
-				'upgrade-users',
-			);
-		});
 	});
 
-	it('disables the invite button on SAML login', async () => {
-		const pinia = createTestingPinia({ initialState: getInitialState() });
-		const ssoStore = useSSOStore(pinia);
+	it('should disable invite button when SSO is enabled', () => {
 		ssoStore.isSamlLoginEnabled = true;
 
-		const { getByTestId } = renderView({ pinia });
+		renderComponent();
 
-		expect(getByTestId('settings-users-invite-button')).toBeDisabled();
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
 	});
 
-	it('shows the invite modal', async () => {
-		const pinia = createTestingPinia({ initialState: getInitialState() });
-		const { getByTestId } = renderView({ pinia });
+	it('should disable invite button when users limit is reached', () => {
+		usersStore.usersLimitNotReached = false;
 
-		const uiStore = useUIStore();
-		await userEvent.click(getByTestId('settings-users-invite-button'));
+		renderComponent();
 
-		expect(uiStore.openModal).toHaveBeenCalledWith('inviteUser');
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
 	});
 
-	it('shows warning when advanced permissions are not enabled', async () => {
-		const pinia = createTestingPinia({
-			initialState: getInitialState({
-				[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: false } } },
-			}),
+	it('should handle search input with debouncing', async () => {
+		renderComponent();
+
+		const searchInput = screen.getByTestId('users-list-search');
+		await userEvent.type(searchInput, 'test search');
+
+		await waitFor(() => {
+			expect(usersStore.usersList.execute).toHaveBeenCalled();
 		});
-
-		const { getByText } = renderView({ pinia });
-
-		expect(getByText('to unlock the ability to create additional admin users'));
 	});
 
-	describe('per user actions', () => {
-		it('should copy invite link to clipboard', async () => {
-			const action = 'copyInviteLink';
+	it('should show upgrade banner when users limit is reached', () => {
+		usersStore.usersLimitNotReached = false;
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+		const { getByTestId } = renderComponent();
 
-			const { getByTestId } = renderView({ pinia });
+		expect(getByTestId('action-box')).toBeInTheDocument();
+	});
 
-			await triggerUserAction(getByTestId(`user-list-item-${invitedUser.email}`), action);
+	it('should show advanced permissions notice when feature is disabled', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = false;
 
-			expect(copy).toHaveBeenCalledWith(invitedUser.inviteAcceptUrl);
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		renderComponent();
+
+		expect(screen.getByTestId('upgrade-permissions-link')).toBeInTheDocument();
+		await userEvent.click(screen.getByTestId('upgrade-permissions-link'));
+
+		expect(mockPageRedirectionHelper.goToUpgrade).toHaveBeenCalled();
+	});
+
+	it('should not show users table when limit is reached and only one user exists', () => {
+		usersStore.usersLimitNotReached = false;
+		usersStore.usersList.state = {
+			...mockUsersList,
+			count: 1,
+		};
+
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('settings-users-table')).not.toBeInTheDocument();
+	});
+
+	it('should show users table when limit is reached but multiple users exist', () => {
+		usersStore.usersLimitNotReached = false;
+		usersStore.usersList.state = {
+			...mockUsersList,
+			count: 3,
+		};
+
+		const { getByTestId } = renderComponent();
+
+		// The users container should be visible when there are multiple users
+		expect(getByTestId('settings-users-table')).toBeInTheDocument();
+	});
+
+	describe('user actions', () => {
+		it('should handle delete user action', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'delete', userId: '2' });
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: DELETE_USER_MODAL_KEY,
+				data: {
+					userId: '2',
+					afterDelete: expect.any(Function),
+				},
+			});
 		});
 
-		it('should re invite users', async () => {
-			const action = 'reinvite';
+		it('should handle reinvite user action', async () => {
+			renderComponent();
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
-			const settingsStore = mockedStore(useSettingsStore);
-			settingsStore.isSmtpSetup = true;
-
-			const userStore = useUsersStore();
-
-			const { getByTestId } = renderView({ pinia });
-
-			await triggerUserAction(getByTestId(`user-list-item-${invitedUser.email}`), action);
-
-			expect(userStore.reinviteUser).toHaveBeenCalled();
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(usersStore.reinviteUser).toHaveBeenCalledWith({
+				email: 'pending@example.com',
+				role: ROLE.Member,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
 		});
 
-		it('should show delete users modal with the right permissions', async () => {
-			const action = 'delete';
+		it('should handle copy invite link action', async () => {
+			renderComponent();
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
 
-			const rbacStore = mockedStore(useRBACStore);
-			rbacStore.hasScope.mockReturnValue(true);
-
-			const { getByTestId } = renderView({ pinia });
-
-			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
-
-			const uiStore = useUIStore();
-			expect(uiStore.openDeleteUserModal).toHaveBeenCalledWith(user.id);
+			expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/invite/123');
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
 		});
 
-		it('should allow coping reset password link', async () => {
-			const action = 'copyPasswordResetLink';
+		it('should handle copy password reset link action', async () => {
+			renderComponent();
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+			emitters.settingsUsersTable.emit('action', { action: 'copyPasswordResetLink', userId: '2' });
 
-			const rbacStore = mockedStore(useRBACStore);
-			rbacStore.hasScope.mockReturnValue(true);
-
-			const userStore = mockedStore(useUsersStore);
-			userStore.getUserPasswordResetLink.mockResolvedValue({ link: 'dummy-reset-password' });
-
-			const { getByTestId } = renderView({ pinia });
-
-			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
-
-			expect(userStore.getUserPasswordResetLink).toHaveBeenCalledWith(user);
-
-			expect(copy).toHaveBeenCalledWith('dummy-reset-password');
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(usersStore.getUserPasswordResetLink).toHaveBeenCalledWith(mockUsersList.items[1]);
+			await waitFor(() => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/reset/123');
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
 		});
 
-		it('should enable SSO manual login', async () => {
-			const action = 'allowSSOManualLogin';
+		it('should handle allow SSO manual login action', async () => {
+			renderComponent();
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
 
-			const ssoStore = useSSOStore(pinia);
-			ssoStore.isSamlLoginEnabled = true;
-
-			const userStore = useUsersStore();
-
-			const { getByTestId } = renderView({ pinia });
-
-			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
-			expect(userStore.updateOtherUserSettings).toHaveBeenCalledWith(user.id, {
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
 				allowSSOManualLogin: true,
 			});
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
 		});
 
-		it('should disable SSO manual login', async () => {
-			const action = 'disallowSSOManualLogin';
+		it('should handle disallow SSO manual login action', async () => {
+			// Set user to have SSO manual login enabled
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
-			const pinia = createTestingPinia({ initialState: getInitialState() });
+			renderComponent();
 
-			const ssoStore = useSSOStore(pinia);
-			ssoStore.isSamlLoginEnabled = true;
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
 
-			const userStore = useUsersStore();
-
-			const { getByTestId } = renderView({ pinia });
-
-			await triggerUserAction(getByTestId(`user-list-item-${userWithDisabledSSO.email}`), action);
-
-			expect(userStore.updateOtherUserSettings).toHaveBeenCalledWith(userWithDisabledSSO.id, {
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
 				allowSSOManualLogin: false,
 			});
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle reinvite user error', async () => {
+			usersStore.reinviteUser = vi.fn().mockRejectedValue(new Error('Failed to reinvite'));
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
 		});
 	});
 
-	it("should show success toast when changing a user's role", async () => {
-		const pinia = createTestingPinia({ initialState: getInitialState() });
+	describe('role updates', () => {
+		it('should handle role update', async () => {
+			renderComponent();
 
-		const rbacStore = mockedStore(useRBACStore);
-		rbacStore.hasScope.mockReturnValue(true);
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
 
-		const userStore = useUsersStore();
+			expect(usersStore.updateGlobalRole).toHaveBeenCalledWith({
+				id: '2',
+				newRoleName: ROLE.Admin,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
 
-		const { getByTestId } = renderView({ pinia });
+		it('should handle role update error', async () => {
+			usersStore.updateGlobalRole = vi.fn().mockRejectedValue(new Error('Failed to update role'));
 
-		const userListItem = getByTestId(`user-list-item-${invitedUser.email}`);
-		expect(userListItem).toBeInTheDocument();
+			renderComponent();
 
-		const roleSelect = within(userListItem).getByTestId('user-role-select');
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+		});
+	});
 
-		const roleDropdownItems = await getDropdownItems(roleSelect);
-		await userEvent.click(roleDropdownItems[0]);
+	describe('table functionality', () => {
+		it('should handle table options update', async () => {
+			renderComponent();
 
-		expect(userStore.updateGlobalRole).toHaveBeenCalledWith(
-			expect.objectContaining({ newRoleName: 'global:member' }),
-		);
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 20,
+				sortBy: [{ id: 'role', desc: true }],
+			});
 
-		expect(showToast).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'success', message: expect.stringContaining('Member') }),
-		);
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 20,
+				take: 20,
+				sortBy: ['role:desc'],
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
+
+		it('should transform name sort to firstName, lastName, email', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'name', desc: false }],
+			});
+
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 10,
+				sortBy: ['firstName:asc', 'lastName:asc', 'email:asc'],
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
+
+		it('should filter out invalid sort keys', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:options', {
+				page: 0,
+				itemsPerPage: 10,
+				sortBy: [{ id: 'invalidKey', desc: false }],
+			});
+
+			expect(usersStore.usersList.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 10,
+				sortBy: [], // Invalid keys should be filtered out
+				expand: ['projectRelations'],
+				filter: {
+					fullText: '',
+				},
+			});
+		});
 	});
 });
