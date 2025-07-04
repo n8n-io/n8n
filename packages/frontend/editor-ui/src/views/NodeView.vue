@@ -554,9 +554,6 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 		{
 			workflow_id: workflowId.value,
 		},
-		{
-			withPostHog: true,
-		},
 	);
 }
 
@@ -646,17 +643,11 @@ async function openWorkflowTemplate(templateId: string) {
 }
 
 function trackOpenWorkflowTemplate(templateId: string) {
-	telemetry.track(
-		'User inserted workflow template',
-		{
-			source: 'workflow',
-			template_id: tryToParseNumber(templateId),
-			wf_template_repo_session_id: templatesStore.previousSessionId,
-		},
-		{
-			withPostHog: true,
-		},
-	);
+	telemetry.track('User inserted workflow template', {
+		source: 'workflow',
+		template_id: tryToParseNumber(templateId),
+		wf_template_repo_session_id: templatesStore.previousSessionId,
+	});
 }
 
 /**
@@ -2141,7 +2132,7 @@ onBeforeUnmount(() => {
 			-->
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel v-if="isFocusPanelFeatureEnabled" />
+		<FocusPanel v-if="isFocusPanelFeatureEnabled" :executable="!isCanvasReadOnly" />
 	</div>
 </template>
 

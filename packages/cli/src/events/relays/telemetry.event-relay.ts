@@ -1022,11 +1022,17 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private userSignedUp({ user, userType, wasDisabledLdapUser }: RelayEventMap['user-signed-up']) {
-		this.telemetry.track('User signed up', {
+		const payload = {
 			user_id: user.id,
 			user_type: userType,
 			was_disabled_ldap_user: wasDisabledLdapUser,
-		});
+			...(this.globalConfig.deployment.type === 'cloud' && {
+				user_email: user.email,
+				user_role: user.role,
+			}),
+		};
+
+		this.telemetry.track('User signed up', payload);
 	}
 
 	private userSubmittedPersonalizationSurvey({

@@ -10,6 +10,7 @@ export type IUser = {
 	isPendingUser?: boolean;
 	inviteAcceptUrl?: string;
 	disabled?: boolean;
+	mfaEnabled?: boolean;
 };
 
 export interface UserAction<UserType extends IUser> {

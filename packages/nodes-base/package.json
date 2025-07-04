@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.98.0",
+  "version": "1.99.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -663,6 +663,7 @@
       "dist/nodes/Microsoft/ToDo/MicrosoftToDo.node.js",
       "dist/nodes/Mindee/Mindee.node.js",
       "dist/nodes/Misp/Misp.node.js",
+      "dist/nodes/MistralAI/MistralAi.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",

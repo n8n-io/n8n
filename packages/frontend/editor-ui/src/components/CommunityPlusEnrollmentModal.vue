@@ -160,8 +160,8 @@ const confirm = async () => {
 					:class="$style.skip"
 					type="secondary"
 					text
-					@click="closeModal"
 					:disabled="isLoading"
+					@click="closeModal"
 					>{{ i18n.baseText('communityPlusModal.button.skip') }}</N8nButton
 				>
 				<N8nButton :disabled="!valid || isLoading" type="primary" @click="confirm">

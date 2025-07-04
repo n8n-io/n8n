@@ -39,7 +39,7 @@ export class ChainRetrievalQa implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			NodeConnectionTypes.Main,
 			{
