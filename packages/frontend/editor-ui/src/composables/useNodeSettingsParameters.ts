@@ -58,7 +58,7 @@ export function useNodeSettingsParameters() {
 		let lastNamePart: string | undefined = nameParts.pop();
 
 		let isArray = false;
-		if (lastNamePart !== undefined && lastNamePart.includes('[')) {
+		if (lastNamePart?.includes('[')) {
 			// It includes an index so we have to extract it
 			const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
 			if (lastNameParts) {
@@ -74,7 +74,8 @@ export function useNodeSettingsParameters() {
 			if (value === null) {
 				// Property should be deleted
 				if (lastNamePart) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = nodeValues.value;
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = nodeValues.value;
 					nodeValues.value = remainingNodeValues;
 				}
 			} else {
@@ -93,7 +94,8 @@ export function useNodeSettingsParameters() {
 					| INodeParameters[];
 
 				if (lastNamePart && !Array.isArray(tempValue)) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = tempValue;
 					tempValue = remainingNodeValues;
 				}
 
@@ -103,7 +105,8 @@ export function useNodeSettingsParameters() {
 					lastNamePart = nameParts.pop();
 					tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 					if (lastNamePart) {
-						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { [lastNamePart]: _removedArrayNodeValue, ...remainingArrayNodeValues } =
 							tempValue;
 						tempValue = remainingArrayNodeValues;
 					}

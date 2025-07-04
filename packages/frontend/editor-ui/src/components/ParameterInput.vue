@@ -68,7 +68,13 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
-import { isPresent } from '@/utils/typesUtils';
+import {
+	hasFocusOnInput,
+	isBlurrableEl,
+	isFocusableEl,
+	isPresent,
+	isSelectableEl,
+} from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -296,7 +302,7 @@ const dependentParametersValues = computed<string | null>(() => {
 		}
 
 		return returnValues.join('|');
-	} catch (error) {
+	} catch {
 		return null;
 	}
 });
@@ -383,9 +389,7 @@ const getIssues = computed<string[]>(() => {
 
 		for (const checkValue of checkValues) {
 			if (checkValue === null || !validOptions.includes(checkValue)) {
-				if (issues.parameters === undefined) {
-					issues.parameters = {};
-				}
+				issues.parameters = issues.parameters ?? {};
 
 				const issue = i18n.baseText('parameterInput.theValueIsNotSupported', {
 					interpolate: { checkValue },
@@ -395,9 +399,7 @@ const getIssues = computed<string[]>(() => {
 			}
 		}
 	} else if (remoteParameterOptionsLoadingIssues.value !== null && !isModelValueExpression.value) {
-		if (issues.parameters === undefined) {
-			issues.parameters = {};
-		}
+		issues.parameters = issues.parameters ?? {};
 		issues.parameters[props.parameter.name] = [
 			`There was a problem loading the parameter options from server: "${remoteParameterOptionsLoadingIssues.value}"`,
 		];
@@ -409,9 +411,7 @@ const getIssues = computed<string[]>(() => {
 			);
 
 			if (isSelectedArchived) {
-				if (issues.parameters === undefined) {
-					issues.parameters = {};
-				}
+				issues.parameters = issues.parameters ?? {};
 				const issue = i18n.baseText('parameterInput.selectedWorkflowIsArchived');
 				issues.parameters[props.parameter.name] = [issue];
 			}
@@ -580,6 +580,7 @@ const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
 const isDropDisabled = computed(
 	() =>
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean OR logic is intentional
 		props.parameter.noDataExpression ||
 		props.isReadOnly ||
 		isResourceLocatorParameter.value ||
@@ -688,8 +689,12 @@ async function loadRemoteParameterOptions() {
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
-	} catch (error) {
-		remoteParameterOptionsLoadingIssues.value = error.message;
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			remoteParameterOptionsLoadingIssues.value = error.message;
+		} else {
+			remoteParameterOptionsLoadingIssues.value = String(error);
+		}
 	}
 
 	remoteParameterOptionsLoading.value = false;
@@ -727,12 +732,15 @@ function trackExpressionEditOpen() {
 	}
 }
 
-async function closeTextEditDialog() {
+function closeTextEditDialog() {
 	textEditDialogVisible.value = false;
 
 	editDialogClosing.value = true;
 	void nextTick().then(() => {
-		inputField.value?.blur?.();
+		if (isBlurrableEl(inputField.value)) {
+			inputField.value.blur();
+		}
+
 		editDialogClosing.value = false;
 	});
 }
@@ -807,10 +815,9 @@ function onResourceLocatorDrop(data: string) {
 }
 
 function selectInput() {
-	const inputRef = inputField.value;
-	if (inputRef) {
-		if ('select' in inputRef) {
-			inputRef.select();
+	if (inputField.value) {
+		if (isSelectableEl(inputField.value)) {
+			inputField.value.select();
 		}
 	}
 }
@@ -836,12 +843,11 @@ async function setFocus() {
 
 	await nextTick();
 
-	const inputRef = inputField.value;
-	if (inputRef) {
-		if ('focusOnInput' in inputRef) {
-			inputRef.focusOnInput();
-		} else if (inputRef.focus) {
-			inputRef.focus();
+	if (inputField.value) {
+		if (hasFocusOnInput(inputField.value)) {
+			inputField.value.focusOnInput();
+		} else if (isFocusableEl(inputField.value)) {
+			inputField.value.focus();
 		}
 
 		isFocused.value = true;
@@ -881,12 +887,13 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
 
-	const oldValue = get(node.value, props.path);
+	const oldValue = get(node.value, props.path) as unknown;
 
 	if (oldValue !== undefined && oldValue === value) {
 		// Only update the value if it has changed
@@ -901,7 +908,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		shouldConvertToExpression(value, isSpecializedEditor)
 	) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
-		value = '=' + value;
+		value = '=' + (value as string);
 	}
 
 	if (props.parameter.name === 'nodeCredentialType') {
@@ -1052,6 +1059,7 @@ onMounted(() => {
 
 	void externalHooks.run('parameterInput.mount', {
 		parameter: props.parameter,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion
 		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
 	});
 });
@@ -1110,7 +1118,7 @@ watch(dependentParametersValues, async () => {
 
 watch(
 	() => props.modelValue,
-	async () => {
+	() => {
 		if (
 			props.parameter.type === 'color' &&
 			nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true
