@@ -40,6 +40,27 @@ describe('If Node (filter component)', () => {
 		ndv.getters.filterConditions(FILTER_PARAM_NAME).should('have.length', 1);
 	});
 
+	it('should handle numeric comparisons', () => {
+		workflowPage.actions.addInitialNodeToCanvas(IF_NODE_NAME, { keepNdvOpen: true });
+
+		// Set up numeric comparison
+		ndv.getters.filterConditionLeft(FILTER_PARAM_NAME, 0).find('input').type('42');
+		ndv.actions.setFilterConditionOperator(FILTER_PARAM_NAME, 0, 'is greater than');
+		ndv.getters.filterConditionRight(FILTER_PARAM_NAME, 0).find('input').type('10');
+		
+		// Verify operator persists
+		ndv.getters
+			.filterConditionOperator(FILTER_PARAM_NAME)
+			.find('input')
+			.should('have.value', 'is greater than');
+
+		// Add another condition
+		ndv.actions.addFilterCondition(FILTER_PARAM_NAME);
+		ndv.getters.filterConditionLeft(FILTER_PARAM_NAME, 1).find('input').type('100');
+		ndv.actions.setFilterConditionOperator(FILTER_PARAM_NAME, 1, 'is less than');
+		ndv.getters.filterConditionRight(FILTER_PARAM_NAME, 1).find('input').type('200');
+	});
+
 	it('should correctly evaluate conditions', () => {
 		cy.fixture('Test_workflow_filter.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
