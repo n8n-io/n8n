@@ -298,26 +298,36 @@ export const setMetricsProperties: INodeProperties[] = [
 			{
 				name: 'Correctness',
 				value: 'correctness',
+				description:
+					'AI-powered comparison of expected vs actual answers (on a 1-5 scale, where 5 is best)',
 			},
 			{
 				name: 'Helpfulness',
 				value: 'helpfulness',
+				description:
+					'AI-powered evaluation of response helpfulness based on user query (on a 1-5 scale, where 5 is best)',
 			},
 			{
 				name: 'String Similarity',
 				value: 'stringSimilarity',
+				description: 'Measures text similarity using edit distance (lower = more similar)',
 			},
 			{
 				name: 'Accuracy',
 				value: 'accuracy',
+				description:
+					'Exact comparison between expected and actual answers (0 = no match, 1 = exact match)',
 			},
 			{
 				name: 'Tools Used',
 				value: 'toolsUsed',
+				description:
+					'Tracks which expected tools were used during agent execution (where 0 means the tool was not used, and 1 means it was used)',
 			},
 			{
 				name: 'Custom Metrics',
 				value: 'customMetrics',
+				description: 'Define your own custom metrics with names and numeric values',
 			},
 		],
 		default: 'correctness',
