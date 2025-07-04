@@ -219,9 +219,15 @@ patchedDependencies:
   element-plus@2.4.3:
     hash: 3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661
     path: patches/element-plus@2.4.3.patch
+  ics:
+    hash: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
+    path: patches/ics.patch
   js-base64:
     hash: bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500
     path: patches/js-base64.patch
+  minifaker:
+    hash: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
+    path: patches/minifaker.patch
   pdfjs-dist@5.3.31:
     hash: 421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd
     path: patches/pdfjs-dist@5.3.31.patch
@@ -2665,7 +2671,7 @@ importers:
         version: 0.6.3
       ics:
         specifier: 2.40.0
-        version: 2.40.0
+        version: 2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d)
       isbot:
         specifier: 3.6.13
         version: 3.6.13
@@ -2701,7 +2707,7 @@ importers:
         version: 3.6.7
       minifaker:
         specifier: 1.34.1
-        version: 1.34.1
+        version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       moment-timezone:
         specifier: 0.5.37
         version: 0.5.37
@@ -21141,7 +21147,7 @@ snapshots:
   '@types/serve-static@1.15.0':
     dependencies:
       '@types/mime': 3.0.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
 
   '@types/shelljs@0.8.11':
     dependencies:
@@ -21162,11 +21168,11 @@ snapshots:
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
 
   '@types/ssh2@0.5.52':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       '@types/ssh2-streams': 0.1.12
 
   '@types/ssh2@1.11.6':
@@ -25392,7 +25398,7 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  ics@2.40.0:
+  ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
       nanoid: 3.3.11
       yup: 0.32.11
@@ -27070,7 +27076,7 @@ snapshots:
 
   min-indent@1.0.1: {}
 
-  minifaker@1.34.1:
+  minifaker@1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33):
     dependencies:
       '@types/uuid': 8.3.4
       nanoid: 3.3.11
