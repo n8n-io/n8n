@@ -143,8 +143,8 @@ describe('addThreadHeadersToEmail', () => {
 		const mockMessageId = '<message-id@example.com>';
 		const mockThread = {
 			messages: [
-				{ payload: { headers: [{ value: '<old-id@example.com>' }] } },
-				{ payload: { headers: [{ value: mockMessageId }] } },
+				{ payload: { headers: [{ name: 'Message-ID', value: '<old-id@example.com>' }] } },
+				{ payload: { headers: [{ name: 'Message-ID', value: mockMessageId }] } },
 			],
 		};
 
@@ -166,7 +166,7 @@ describe('addThreadHeadersToEmail', () => {
 		const mockThreadId = 'thread123';
 		const mockMessageId = '<message-id@example.com>';
 		const mockThread = {
-			messages: [{ payload: { headers: [{ value: mockMessageId }] } }],
+			messages: [{ payload: { headers: [{ name: 'Message-ID', value: mockMessageId }] } }],
 		};
 
 		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
