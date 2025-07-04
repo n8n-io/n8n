@@ -250,7 +250,8 @@ function onSeePlans() {
 							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
-								!evaluationStore.evaluationSetOutputsNodeExist
+								(!evaluationStore.evaluationSetOutputsNodeExist &&
+									!evaluationStore.evaluationSetMetricsNodeExist)
 							"
 							@click="navigateToWorkflow('executeEvaluation')"
 						>

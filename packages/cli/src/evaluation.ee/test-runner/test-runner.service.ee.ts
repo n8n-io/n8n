@@ -129,8 +129,9 @@ export class TestRunnerService {
 	 */
 	private validateSetOutputsNodes(workflow: IWorkflowBase) {
 		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
+		const setMetricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		if (setOutputsNodes.length === 0) {
-			throw new TestRunError('SET_OUTPUTS_NODE_NOT_FOUND');
+			return; // No outputs nodes are strictly required, so we can skip validation
 		}
 
 		const unconfiguredSetOutputsNode = setOutputsNodes.find(
