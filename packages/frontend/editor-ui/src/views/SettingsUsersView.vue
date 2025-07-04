@@ -158,12 +158,12 @@ async function onDelete(userId: string) {
 	});
 }
 async function onReinvite(userId: string) {
-	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
-	if (user?.email && user?.role) {
-		if (!['global:admin', 'global:member'].includes(user.role)) {
-			throw new Error('Invalid role name on reinvite');
-		}
-		try {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user?.email && user?.role) {
+			if (!['global:admin', 'global:member'].includes(user.role)) {
+				throw new Error('Invalid role name on reinvite');
+			}
 			await usersStore.reinviteUser({
 				email: user.email,
 				role: user.role as InvitableRoleName,
@@ -175,9 +175,9 @@ async function onReinvite(userId: string) {
 					interpolate: { email: user.email ?? '' },
 				}),
 			});
-		} catch (e) {
-			showError(e, i18n.baseText('settings.users.userReinviteError'));
 		}
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
 async function onCopyInviteLink(userId: string) {
@@ -193,16 +193,20 @@ async function onCopyInviteLink(userId: string) {
 	}
 }
 async function onCopyPasswordResetLink(userId: string) {
-	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
-	if (user) {
-		const url = await usersStore.getUserPasswordResetLink(user);
-		void clipboard.copy(url.link);
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.getUserPasswordResetLink(user);
+			void clipboard.copy(url.link);
 
-		showToast({
-			type: 'success',
-			title: i18n.baseText('settings.users.passwordResetUrlCreated'),
-			message: i18n.baseText('settings.users.passwordResetUrlCreated.message'),
-		});
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.passwordResetUrlCreated'),
+				message: i18n.baseText('settings.users.passwordResetUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.passwordResetLinkError'));
 	}
 }
 async function onAllowSSOManualLogin(userId: string) {
@@ -281,37 +285,42 @@ const isValidSortKey = (key: string): key is UsersListSortOptions =>
 	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
 
 const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
-	usersTableState.value = {
-		page,
-		itemsPerPage,
-		sortBy,
-	};
+	try {
+		usersTableState.value = {
+			page,
+			itemsPerPage,
+			sortBy,
+		};
 
-	const skip = page * itemsPerPage;
-	const take = itemsPerPage;
+		const skip = page * itemsPerPage;
+		const take = itemsPerPage;
 
-	const transformedSortBy = sortBy
-		.flatMap(({ id, desc }) => {
-			const dir = desc ? 'desc' : 'asc';
-			if (id === 'name') {
-				return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
-			}
-			return `${id}:${dir}`;
-		})
-		.filter(isValidSortKey);
+		const transformedSortBy = sortBy
+			.flatMap(({ id, desc }) => {
+				const dir = desc ? 'desc' : 'asc';
+				if (id === 'name') {
+					return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+				}
+				return `${id}:${dir}`;
+			})
+			.filter(isValidSortKey);
 
-	await usersStore.usersList.execute(0, {
-		skip,
-		take,
-		sortBy: transformedSortBy,
-		expand: ['projectRelations'],
-		filter: {
-			fullText: search.value.trim(),
-		},
-	});
+		await usersStore.usersList.execute(0, {
+			skip,
+			take,
+			sortBy: transformedSortBy,
+			expand: ['projectRelations'],
+			filter: {
+				fullText: search.value.trim(),
+			},
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.table.update.error'));
+	}
 };
 
 const debouncedUpdateUsersTableData = useDebounceFn(() => {
+	usersTableState.value.page = 0; // Reset to first page on search
 	void updateUsersTableData(usersTableState.value);
 }, 300);
 
@@ -442,6 +451,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			:class="$style.usersContainer"
 		>
 			<SettingsUsersTable
+				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"

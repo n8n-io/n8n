@@ -133,7 +133,6 @@ export class Webhook extends Node {
 				type: 'string',
 				default: '',
 				placeholder: 'webhook',
-				required: true,
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},

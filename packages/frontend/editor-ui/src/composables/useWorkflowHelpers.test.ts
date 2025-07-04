@@ -448,6 +448,56 @@ describe('useWorkflowHelpers', () => {
 			});
 			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
 		});
+
+		it('should return trigger.parameters.path when both trigger.parameters.path and trigger.webhookId are strings', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						parameters: {
+							method: 'GET',
+							path: 'test-path',
+						},
+						webhookId: 'test-webhook-id',
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const findWebhookSpy = vi.spyOn(apiWebhooks, 'findWebhook');
+			findWebhookSpy.mockResolvedValue(null);
+			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			expect(findWebhookSpy).toBeCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-path',
+			});
+			findWebhookSpy.mockRestore();
+		});
+
+		it('should return trigger.webhookId when trigger.parameters.path is an empty string', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						parameters: {
+							method: 'GET',
+							path: '',
+						},
+						webhookId: 'test-webhook-id',
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const findWebhookSpy = vi.spyOn(apiWebhooks, 'findWebhook');
+			findWebhookSpy.mockResolvedValue(null);
+			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			expect(findWebhookSpy).toBeCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-webhook-id',
+			});
+			findWebhookSpy.mockRestore();
+		});
 	});
 
 	describe('executeData', () => {

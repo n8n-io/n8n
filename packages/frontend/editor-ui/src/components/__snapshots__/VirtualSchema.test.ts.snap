@@ -446,7 +446,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              icon="zap"
+              icon="bolt-filled"
               size="xsmall"
               spin="false"
             />
@@ -1335,7 +1335,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              icon="zap"
+              icon="bolt-filled"
               size="xsmall"
               spin="false"
             />
@@ -1868,7 +1868,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              icon="zap"
+              icon="bolt-filled"
               size="xsmall"
               spin="false"
             />
@@ -2690,7 +2690,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              icon="zap"
+              icon="bolt-filled"
               size="xsmall"
               spin="false"
             />

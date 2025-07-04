@@ -8,22 +8,14 @@ import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vu
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import type { IUser } from '@/Interface';
-import type { PermissionType, PermissionTypeOptions } from '@/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<
 	'settingsUsersRoleCell' | 'settingsUsersActionsCell' | 'n8nDataTableServer'
 >();
 
-// Mock child components and composables
-const hasPermission = vi.fn(
-	(permissionNames: PermissionType[], options?: Partial<PermissionTypeOptions>) =>
-		!!(permissionNames || options || []),
-);
+const hasPermission = vi.fn(() => true);
 vi.mock('@/utils/rbac/permissions', () => ({
-	hasPermission: (
-		permissionNames: PermissionType[],
-		options?: Partial<PermissionTypeOptions>,
-	): boolean => hasPermission(permissionNames, options),
+	hasPermission: () => hasPermission(),
 }));
 
 vi.mock('@/components/SettingsUsers/SettingsUsersRoleCell.vue', () => ({
