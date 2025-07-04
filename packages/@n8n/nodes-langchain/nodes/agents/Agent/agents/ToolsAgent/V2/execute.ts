@@ -65,7 +65,10 @@ function createAgentExecutor(
 		fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
 		getAgentStepsParser(outputParser, memory),
 		fixEmptyContentMessage,
-	]);
+	]) as AgentRunnableSequence;
+
+	runnableAgent.singleAction = false;
+	runnableAgent.streamRunnable = false;
 
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
