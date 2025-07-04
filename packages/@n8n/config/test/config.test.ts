@@ -255,6 +255,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			heartbeatInterval: 30,
+			insecureMode: false,
 		},
 		sentry: {
 			backendDsn: '',

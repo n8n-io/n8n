@@ -297,7 +297,7 @@ describe('ExecuteContext', () => {
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
 					type: 'item',
-					content: '"test"',
+					content: 'test',
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
