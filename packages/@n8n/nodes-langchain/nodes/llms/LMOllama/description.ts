@@ -229,5 +229,13 @@ export const ollamaOptions: INodeProperties = {
 			default: 'default',
 			description: 'Specifies the format of the API response',
 		},
+		{
+			displayName: 'Think',
+			name: 'think',
+			type: 'boolean',
+			default: false,
+			description:
+				'Enable or disable the models thinking behavior in Ollama. When disabled, the model generates output directly without intermediate reasoning.',
+		},
 	],
 };
