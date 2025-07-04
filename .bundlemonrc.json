@@ -15,6 +15,14 @@
 		{
 			"path": "*.wasm",
 			"friendlyName": "WASM Dependencies"
+		},
+		{
+			"path": "**/index-<hash>.js",
+			"friendlyName": "JavaScript entrypoint"
+		},
+		{
+			"path": "**/index-<hash>.css",
+			"friendlyName": "CSS entrypoint"
 		}
 	],
 	"groups": [
