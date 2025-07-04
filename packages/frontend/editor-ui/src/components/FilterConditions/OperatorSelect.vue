@@ -137,7 +137,7 @@ function onGroupSelect(group: string) {
 	justify-content: space-between;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
-	color: var(--color-text-dark);
+	color: var(--color-floating-list-item-font);
 	padding: var(--spacing-2xs) var(--spacing-s);
 	cursor: pointer;
 
@@ -146,7 +146,8 @@ function onGroupSelect(group: string) {
 	}
 
 	&:hover {
-		background: var(--color-background-base);
+		background: var(--color-floating-list-item-hover-background);
+		color: var(--color-floating-list-item-hover-font);
 	}
 }
 

@@ -140,7 +140,13 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
-				<div v-if="isAnnotationEnabled" :class="$style.annotation">
+				<div
+					v-if="
+						isAnnotationEnabled &&
+						(execution.annotation?.vote || executionUIDetails.tags.length > 0)
+					"
+					:class="$style.annotation"
+				>
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />
 						<N8nIcon v-else :class="$style.down" icon="thumbs-down" />
@@ -188,7 +194,7 @@ function onRetryMenuItemSelect(action: string): void {
 
 	display: flex;
 	flex-direction: column;
-	padding-right: var(--spacing-m);
+	padding-right: var(--spacing-s);
 
 	&.active {
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
@@ -196,6 +202,10 @@ function onRetryMenuItemSelect(action: string): void {
 		.executionStatus {
 			color: var(--color-text-dark) !important;
 		}
+	}
+
+	& a:active {
+		color: var(--color-text-base);
 	}
 
 	&:hover,
@@ -244,7 +254,7 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-secondary);
+			color: var(--color-text-secondary);
 		}
 	}
 
@@ -270,7 +280,7 @@ function onRetryMenuItemSelect(action: string): void {
 		flex-direction: row;
 		gap: var(--spacing-3xs);
 		align-items: center;
-		margin: var(--spacing-4xs) 0 0;
+		margin: var(--spacing-2xs) 0 0;
 
 		.ratingIcon {
 			.up {
@@ -297,13 +307,6 @@ function onRetryMenuItemSelect(action: string): void {
 	left: calc(
 		-1 * var(--spacing-4xs)
 	); // Hide link border under card border so it's not visible when not hovered
-
-	&:active {
-		.icon,
-		.statusLabel {
-			color: var(--color-text-base);
-		}
-	}
 }
 
 .icons {

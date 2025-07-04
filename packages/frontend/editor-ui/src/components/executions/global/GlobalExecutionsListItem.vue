@@ -319,8 +319,12 @@ async function handleActionItemClick(commandData: Command) {
 </template>
 
 <style lang="scss" module>
-tr.dangerBg {
-	background-color: rgba(215, 56, 58, 0.1);
+table tr.dangerBg {
+	background-color: var(--execution-table-row-error-background);
+
+	&:hover {
+		background-color: var(--execution-table-row-error-hover-background);
+	}
 }
 
 .workflowName {

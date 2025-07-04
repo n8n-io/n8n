@@ -174,7 +174,7 @@ onMounted(() => {
 	}
 
 	&.active {
-		background-color: var(--color-background-base);
+		background-color: var(--color-version-history-selected-background);
 		border-left-color: var(--color-primary);
 
 		p {

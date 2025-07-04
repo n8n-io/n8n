@@ -6,7 +6,7 @@
 	width: 100%;
 	height: 16px;
 	border-radius: var(--border-radius-large);
-	background: var(--color-background-base);
+	background: var(--color-skeleton-background);
 	display: inline-block;
 }
 
@@ -51,7 +51,7 @@
 
 .el-skeleton__first-line,
 .el-skeleton__paragraph {
-	background: var(--color-background-base);
+	background: var(--color-skeleton-background);
 }
 
 .el-skeleton.is-animated .el-skeleton__item {
@@ -59,15 +59,15 @@
 		linear,
 		left top,
 		right top,
-		color-stop(25%, var(--color-background-base)),
-		color-stop(37%, var(--color-background-medium)),
-		color-stop(63%, var(--color-background-base))
+		color-stop(25%, var(--color-skeleton-background)),
+		color-stop(37%, var(--color-skeleton-background-tint)),
+		color-stop(63%, var(--color-skeleton-background))
 	);
 	background: linear-gradient(
 		90deg,
-		var(--color-background-base) 25%,
-		var(--color-background-medium) 37%,
-		var(--color-background-base) 63%
+		var(--color-skeleton-background) 25%,
+		var(--color-skeleton-background-tint) 37%,
+		var(--color-skeleton-background) 63%
 	);
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;

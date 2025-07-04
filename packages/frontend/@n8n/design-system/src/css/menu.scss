@@ -186,12 +186,24 @@
 		}
 	}
 	@include mixins.m(popup) {
+		background-color: var(--color-floating-list-background);
 		z-index: 100;
 		min-width: 200px;
 		border: none;
 		padding: 5px 0;
 		border-radius: var(--border-radius-small);
 		box-shadow: var.$box-shadow-light;
+
+		& .el-menu {
+			& .el-menu-item,
+			& .el-sub-menu__title {
+				background-color: var(--color-floating-list-item-background);
+			}
+			& .el-menu-item.is-active,
+			& .el-sub-menu.is-active > .el-sub-menu__title {
+				background-color: var(--color-floating-list-item-selected-background);
+			}
+		}
 
 		&-bottom-start {
 			margin-top: 5px;

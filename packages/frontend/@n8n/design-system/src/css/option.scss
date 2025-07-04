@@ -9,7 +9,8 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		color: var.$select-option-color;
+		color: var(--color-floating-list-item-font);
+		background-color: var(--color-floating-list-background);
 		min-height: var.$select-option-height;
 		height: auto;
 		line-height: var(--select-option-line-height, var.$select-option-height);
@@ -19,21 +20,23 @@
 		align-items: center;
 
 		@include mixins.when(disabled) {
-			color: var.$select-option-disabled-color;
+			color: var(--color-floating-list-item-disabled-font);
 			cursor: not-allowed;
 
 			&:hover {
-				background-color: var.$color-white;
+				background-color: var(--color-floating-list-background);
 			}
 		}
 
 		&.hover,
 		&:hover {
-			background-color: var.$select-option-hover-background;
+			background-color: var(--color-floating-list-item-hover-background);
+			color: var(--color-floating-list-item-hover-font);
 		}
 
 		&.selected {
-			color: var.$select-option-selected-font-color;
+			background-color: var(--color-floating-list-item-selected-background);
+			color: var(--color-floating-list-item-selected-font);
 			font-weight: var(--font-weight-bold);
 		}
 	}

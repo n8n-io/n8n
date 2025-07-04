@@ -451,7 +451,7 @@ function onDragEnd() {
 	height: 100%;
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
+	box-shadow: var(--color-ndv-params-panel-shadow);
 	overflow: hidden;
 
 	&.dragging {

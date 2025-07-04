@@ -8,6 +8,7 @@ const TEXT_COLOR = [
 	'text-base',
 	'text-light',
 	'text-xlight',
+	'text-xlight-all-modes',
 	'danger',
 	'success',
 	'warning',

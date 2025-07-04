@@ -2093,7 +2093,7 @@ defineExpose({ enterEditMode });
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
-	--color-tabs-arrow-buttons: var(--color-run-data-background);
+	--color-tabs-arrow-buttons: var(--color-ndv-input-output-panels-background);
 }
 
 .itemsCount {

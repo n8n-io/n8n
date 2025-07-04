@@ -438,7 +438,7 @@ const activatePane = () => {
 	display: none;
 }
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--color-ndv-input-output-panels-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);

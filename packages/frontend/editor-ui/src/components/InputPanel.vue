@@ -534,7 +534,7 @@ function activatePane() {
 
 <style lang="scss" module>
 .runData {
-	background-color: var(--color-run-data-background);
+	background-color: var(--color-ndv-input-output-panels-background);
 }
 
 .mappedNode {

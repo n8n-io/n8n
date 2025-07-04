@@ -278,7 +278,7 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 	}
 
 	&:hover {
-		background-color: var(--color-foreground-base) !important;
+		background-color: var(--color-menu-hover-background) !important;
 		svg {
 			color: var(--color-text-dark) !important;
 		}
@@ -291,7 +291,7 @@ const getIconColor = (item: IMenuItem): IconColor | undefined => {
 .active {
 	&,
 	& :global(.el-sub-menu__title) {
-		background-color: var(--color-foreground-base);
+		background-color: var(---color-menu-active-background);
 		border-radius: var(--border-radius-base);
 		.icon {
 			color: var(--color-text-dark);

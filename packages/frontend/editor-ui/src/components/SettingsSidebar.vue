@@ -130,9 +130,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		<n8n-menu :items="sidebarMenuItems">
 			<template #header>
 				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
-					<i class="mr-xs">
-						<n8n-icon icon="arrow-left" />
-					</i>
+					<n8n-icon icon="arrow-left" :stroke-width="3" />
 					<n8n-heading size="large" :bold="true">{{ i18n.baseText('settings') }}</n8n-heading>
 				</div>
 			</template>
@@ -158,7 +156,11 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 }
 
 .returnButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
 	padding: var(--spacing-s) var(--spacing-l);
+
 	cursor: pointer;
 	&:hover {
 		color: var(--color-primary);

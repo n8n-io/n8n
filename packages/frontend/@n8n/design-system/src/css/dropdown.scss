@@ -86,8 +86,8 @@
 	z-index: 10;
 	padding: 10px 0;
 	margin: 5px 0;
-	background-color: var.$color-white;
-	border: 1px solid var(--border-color-light);
+	background-color: var(--color-floating-list-background);
+	border: 1px solid var(--color-floating-list-border);
 	border-radius: var(--border-radius-base);
 	position: relative;
 	list-style: none;
@@ -99,14 +99,14 @@
 		margin: 0;
 		font-size: var.$font-size-base;
 		font-weight: var(--font-weight-regular);
-		color: var(--color-text-base);
+		color: var(--color-floating-list-item-font);
 		cursor: pointer;
 		outline: none;
 		white-space: nowrap;
 		&:not(.is-disabled):hover,
 		&:focus {
-			background-color: var.$dropdown-menuItem-hover-fill;
-			color: var.$dropdown-menuItem-hover-color;
+			background-color: var(--color-floating-list-item-hover-background);
+			color: var(--color-floating-list-item-hover-font);
 		}
 
 		i {
@@ -124,13 +124,12 @@
 				content: '';
 				height: $divided-offset;
 				display: block;
-				background-color: var.$color-white;
 			}
 		}
 
 		@include mixins.when(disabled) {
 			cursor: default;
-			color: var(--color-text-lighter);
+			color: var(--color-floating-list-item-disabled-font);
 			pointer-events: none;
 		}
 	}

@@ -6,8 +6,9 @@
 	position: absolute;
 	z-index: #{var.$index-top + 1};
 	border: var.$select-dropdown-border;
+	border-color: var(--color-floating-list-border);
 	border-radius: var(--border-radius-base);
-	background-color: var.$select-dropdown-background;
+	background-color: var(--color-floating-list-background);
 	box-shadow: var.$select-dropdown-shadow;
 	box-sizing: border-box;
 	margin: 5px 0;
@@ -15,11 +16,12 @@
 
 	@include mixins.when(multiple) {
 		& .el-select-dropdown__item.selected {
-			color: var.$select-option-selected-font-color;
-			background-color: var.$select-dropdown-background;
+			background-color: var(--color-floating-list-item-selected-background);
+			color: var(--color-floating-list-item-selected-font);
 
 			&.hover {
-				background-color: var.$select-option-hover-background;
+				background-color: var(--color-floating-list-item-selected-background);
+				color: var(--color-floating-list-item-selected-font);
 			}
 
 			&::after {

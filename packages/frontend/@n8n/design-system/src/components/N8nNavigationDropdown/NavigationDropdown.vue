@@ -158,13 +158,19 @@ defineExpose({
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
-		color: var(--color-text-dark);
-		background-color: var(--color-menu-background);
+		background-color: var(--color-floating-list-item-background);
+		color: var(--color-floating-list-item-font);
 	}
 
+	// Hover
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--color-menu-hover-background);
+		background-color: var(--color-floating-list-item-hover-background);
+		color: var(--color-floating-list-item-hover-font);
+
+		.submenu__icon {
+			color: var(--color-floating-list-item-hover-font);
+		}
 	}
 
 	:global(.el-popper) {
@@ -176,10 +182,11 @@ defineExpose({
 		border-radius: var(--border-radius-base);
 	}
 
+	// Disabled
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
 		opacity: 1;
 		cursor: default;
-		color: var(--color-text-light);
+		color: var(--color-floating-list-item-disabled-font);
 	}
 
 	:global(.el-sub-menu__icon-arrow svg) {
@@ -190,5 +197,6 @@ defineExpose({
 .submenu__icon {
 	margin-right: var(--spacing-2xs);
 	color: var(--color-text-base);
+	color: var(--color-floating-list-item-font);
 }
 </style>

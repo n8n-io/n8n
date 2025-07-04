@@ -55,13 +55,13 @@
 		bottom: -(var.$popover-arrow-size);
 		left: 50%;
 		margin: 0 #{var.$tooltip-arrow-size * 0.5};
-		border-top-color: var.$popover-border-color;
+		border-top-color: var(--color-floating-list-border);
 		border-bottom-width: 0;
 
 		&::after {
 			bottom: 1px;
 			margin-left: -(var.$popover-arrow-size);
-			border-top-color: var.$popover-background-color;
+			border-top-color: var(--color-floating-list-background);
 			border-bottom-width: 0;
 		}
 	}
@@ -71,13 +71,13 @@
 		left: 50%;
 		margin: 0 #{var.$tooltip-arrow-size * 0.5};
 		border-top-width: 0;
-		border-bottom-color: var.$popover-border-color;
+		border-bottom-color: var(--color-floating-list-border);
 
 		&::after {
 			top: 1px;
 			margin-left: -(var.$popover-arrow-size);
 			border-top-width: 0;
-			border-bottom-color: var.$popover-background-color;
+			border-bottom-color: var(--color-floating-list-background);
 		}
 	}
 
@@ -85,13 +85,13 @@
 		top: 50%;
 		left: -(var.$popover-arrow-size);
 		margin: #{var.$tooltip-arrow-size * 0.5} 0;
-		border-right-color: var.$popover-border-color;
+		border-right-color: var(--color-floating-list-border);
 		border-left-width: 0;
 
 		&::after {
 			bottom: -(var.$popover-arrow-size);
 			left: 1px;
-			border-right-color: var.$popover-background-color;
+			border-right-color: var(--color-floating-list-background);
 			border-left-width: 0;
 		}
 	}
@@ -101,14 +101,14 @@
 		right: -(var.$popover-arrow-size);
 		margin: #{var.$tooltip-arrow-size * 0.5} 0;
 		border-right-width: 0;
-		border-left-color: var.$popover-border-color;
+		border-left-color: var(--color-floating-list-border);
 
 		&::after {
 			right: 1px;
 			bottom: -(var.$popover-arrow-size);
 			margin-left: -(var.$popover-arrow-size);
 			border-right-width: 0;
-			border-left-color: var.$popover-background-color;
+			border-left-color: var(--color-floating-list-background);
 		}
 	}
 

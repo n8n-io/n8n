@@ -110,7 +110,7 @@ const i18n = useI18n();
 	}
 
 	.link:hover {
-		color: var(--prim-color-primary);
+		color: var(--p-color-primary-320); // ! TODO Token should be used here
 		text-decoration: none;
 	}
 }

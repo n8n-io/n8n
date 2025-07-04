@@ -74,7 +74,7 @@ const onDragStart = () => {
 	pointer-events: all;
 }
 .dragButton {
-	background-color: var(--color-background-base);
+	background-color: var(--color-ndv-header-background);
 	width: 64px;
 	height: 21px;
 	border-top-left-radius: var(--border-radius-base);
@@ -101,7 +101,7 @@ const onDragStart = () => {
 
 .arrow {
 	position: absolute;
-	color: var(--color-background-xlight);
+	color: var(--color-text-xlight-all-modes);
 	font-size: var(--font-size-3xs);
 	visibility: hidden;
 	top: 0;

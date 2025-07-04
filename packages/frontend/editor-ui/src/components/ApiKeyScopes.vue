@@ -151,9 +151,13 @@ function goToUpgradeApiKeyScopes() {
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__item) {
-	color: var(--color-text-base);
+	color: var(--color-floating-list-item-font);
 	font-weight: var(--font-weight-regular);
 	padding-left: var(--spacing-xs);
+}
+
+.scopes-dropdown-container :global(.el-select-dropdown__item:hover) {
+	color: var(--color-floating-list-item-hover-font);
 }
 
 .scopes-dropdown-container
