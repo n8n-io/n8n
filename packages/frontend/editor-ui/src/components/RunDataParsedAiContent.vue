@@ -7,14 +7,20 @@ import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import { splitTextBySearch } from '@/utils/stringUtils';
+import { escapeHtml } from 'xss';
+import { type Token } from 'markdown-it';
+import { computed } from 'vue';
 
 const {
 	content,
 	compact = false,
 	renderType,
+	search,
 } = defineProps<{
 	content: ParsedAiContent;
 	compact?: boolean;
+	search?: string;
 	renderType: 'rendered' | 'json';
 }>();
 
@@ -92,6 +98,27 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 		});
 	} catch {}
 }
+
+const vueMarkdownPlugins = computed(() => [
+	(md: { renderer: { rules: { text: (tokens: Token[], idx: number) => string } } }) => {
+		debugger;
+		md.renderer.rules.text = (tokens, idx) => {
+			const escaped = escapeHtml(tokens[idx].content);
+
+			if (!search) {
+				return escaped;
+			}
+
+			const parts: string[] = [];
+
+			for (const part of splitTextBySearch(escaped, search ?? '')) {
+				parts.push(part.isMatched ? `<mark>${part.content}</mark>` : part.content);
+			}
+
+			return parts.join('');
+		};
+	},
+]);
 </script>
 
 <template>
@@ -108,17 +135,20 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
 					:class="$style.markdown"
 					:options="markdownOptions"
+					:plugins="vueMarkdownPlugins"
 				/>
 				<VueMarkdown
 					v-else-if="parsedContent.type === 'markdown'"
 					:source="parsedContent.data"
 					:class="$style.markdown"
 					:options="markdownOptions"
+					:plugins="vueMarkdownPlugins"
 				/>
-				<p
+				<TextWithHighlights
 					v-else-if="parsedContent.type === 'text'"
 					:class="$style.runText"
-					v-text="parsedContent.data"
+					:content="String(parsedContent.data)"
+					:search="search"
 				/>
 			</template>
 			<!-- We weren't able to parse text or raw switch -->
@@ -131,7 +161,11 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					icon="files"
 					@click="onCopyToClipboard(raw)"
 				/>
-				<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+				<VueMarkdown
+					:source="jsonToMarkdown(raw as JsonMarkdown)"
+					:class="$style.markdown"
+					:plugins="vueMarkdownPlugins"
+				/>
 			</div>
 		</div>
 	</div>
