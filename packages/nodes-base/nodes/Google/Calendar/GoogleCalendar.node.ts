@@ -617,14 +617,34 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.start) {
 							body.start = {
 								dateTime: moment.tz(updateFields.start, updateTimezone).utc().format(),
+								date:  null,
 								timeZone: updateTimezone,
 							};
+							if(updateFields.allday === 'yes'){
+								body.start = {
+									dateTime: null,
+									date: updateTimezone
+										? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
+										: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+									timeZone: updateTimezone,
+								};
+							}
 						}
 						if (updateFields.end) {
 							body.end = {
 								dateTime: moment.tz(updateFields.end, updateTimezone).utc().format(),
+								date: null,
 								timeZone: updateTimezone,
 							};
+							if(updateFields.allday === 'yes'){
+								body.end = {
+									dateTime: null,
+									date: updateTimezone
+										? moment.tz(updateFields.end, updateTimezone).utc(true).format('YYYY-MM-DD')
+										: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
+									timeZone: updateTimezone,
+								};
+							}
 						}
 						// nodeVersion < 1.2
 						if (updateFields.attendees) {
@@ -711,18 +731,6 @@ export class GoogleCalendar implements INodeType {
 							}
 						}
 
-						if (updateFields.allday === 'yes' && updateFields.start && updateFields.end) {
-							body.start = {
-								date: updateTimezone
-									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
-									: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
-							};
-							body.end = {
-								date: updateTimezone
-									? moment.tz(updateFields.end, updateTimezone).utc(true).format('YYYY-MM-DD')
-									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
-							};
-						}
 						//example: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
