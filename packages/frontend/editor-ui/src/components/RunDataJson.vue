@@ -112,11 +112,11 @@ const onDragEnd = (el: HTMLElement) => {
 	}, 1000); // ensure dest data gets set if drop
 };
 
-const getContent = (value: unknown) => {
+const getNodeKey = (value: unknown) => {
 	return isString(value) ? `"${value}"` : JSON.stringify(value);
 };
 
-const getJSONContent = (value: unknown) => {
+const getNodeContent = (value: unknown) => {
 	return JSON.stringify(value);
 };
 
@@ -172,7 +172,7 @@ const getListItemName = (path: string) => {
 			>
 				<template #renderNodeKey="{ node }">
 					<TextWithHighlights
-						:content="getContent(node.key)"
+						:content="getNodeKey(node.key)"
 						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
@@ -187,7 +187,7 @@ const getListItemName = (path: string) => {
 				</template>
 				<template #renderNodeValue="{ node }">
 					<TextWithHighlights
-						:content="getJSONContent(node.content)"
+						:content="getNodeContent(node.content)"
 						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
