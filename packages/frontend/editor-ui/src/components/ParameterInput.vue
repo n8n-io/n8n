@@ -54,6 +54,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -70,7 +71,6 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -125,6 +125,7 @@ const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
+const nodeSettingsParameters = useNodeSettingsParameters();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
@@ -133,7 +134,6 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -515,7 +515,7 @@ const parameterId = computed(() => {
 });
 
 const isResourceLocatorParameter = computed<boolean>(() => {
-	return props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector';
+	return nodeSettingsParameters.isResourceLocatorParameterType(props.parameter.type);
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -740,7 +740,7 @@ function displayEditDialog() {
 }
 
 function getArgument<T = string | number | boolean | undefined>(argumentName: string): T {
-	return props.parameter.typeOptions?.[argumentName];
+	return props.parameter.typeOptions?.[argumentName] as T;
 }
 
 function expressionUpdated(value: string) {
@@ -961,75 +961,44 @@ function trackWorkflowInputModeEvent(value: string) {
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
 
-	if (command === 'resetValue') {
-		valueChanged(props.parameter.default);
-	} else if (command === 'addExpression') {
-		if (isResourceLocatorParameter.value) {
-			if (isResourceLocatorValue(props.modelValue)) {
-				valueChanged({
-					__rl: true,
-					value: `=${props.modelValue.value}`,
-					mode: props.modelValue.mode,
-				});
-			} else {
-				valueChanged({ __rl: true, value: `=${props.modelValue}`, mode: '' });
+	switch (command) {
+		case 'resetValue':
+			return valueChanged(props.parameter.default);
+
+		case 'addExpression':
+			valueChanged(
+				nodeSettingsParameters.formatAsExpression(props.modelValue, props.parameter.type),
+			);
+			await setFocus();
+			break;
+
+		case 'removeExpression':
+			isFocused.value = false;
+			valueChanged(
+				nodeSettingsParameters.parseFromExpression(
+					props.modelValue,
+					props.expressionEvaluated,
+					props.parameter.type,
+					props.parameter.default,
+					parameterOptions.value,
+				),
+			);
+			break;
+
+		case 'refreshOptions':
+			if (isResourceLocatorParameter.value) {
+				props.eventBus.emit('refreshList');
 			}
-		} else if (
-			props.parameter.type === 'number' &&
-			(!props.modelValue || props.modelValue === '[Object: null]')
-		) {
-			valueChanged('={{ 0 }}');
-		} else if (props.parameter.type === 'multiOptions') {
-			valueChanged(`={{ ${JSON.stringify(props.modelValue)} }}`);
-		} else if (
-			props.parameter.type === 'number' ||
-			props.parameter.type === 'boolean' ||
-			typeof props.modelValue !== 'string'
-		) {
-			valueChanged(`={{ ${props.modelValue} }}`);
-		} else {
-			valueChanged(`=${props.modelValue}`);
-		}
+			void loadRemoteParameterOptions();
+			return;
 
-		await setFocus();
-	} else if (command === 'removeExpression') {
-		let value = props.expressionEvaluated;
+		case 'formatHtml':
+			htmlEditorEventBus.emit('format-html');
+			return;
 
-		isFocused.value = false;
-
-		if (props.parameter.type === 'multiOptions' && typeof value === 'string') {
-			value = (value || '')
-				.split(',')
-				.filter((valueItem) =>
-					(parameterOptions.value ?? []).find((option) => option.value === valueItem),
-				);
-		}
-
-		if (isResourceLocatorParameter.value && isResourceLocatorValue(props.modelValue)) {
-			valueChanged({ __rl: true, value, mode: props.modelValue.mode });
-		} else {
-			let newValue: NodeParameterValueType | {} = typeof value !== 'undefined' ? value : null;
-
-			if (props.parameter.type === 'string') {
-				// Strip the '=' from the beginning
-				newValue = modelValueString.value
-					? modelValueString.value.toString().replace(/^=+/, '')
-					: null;
-			} else if (newValue === null) {
-				// Invalid expressions land here
-				if (['number', 'boolean'].includes(props.parameter.type)) {
-					newValue = props.parameter.default;
-				}
-			}
-			valueChanged(newValue);
-		}
-	} else if (command === 'refreshOptions') {
-		if (isResourceLocatorParameter.value) {
-			props.eventBus.emit('refreshList');
-		}
-		void loadRemoteParameterOptions();
-	} else if (command === 'formatHtml') {
-		htmlEditorEventBus.emit('format-html');
+		case 'focus':
+			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
+			return;
 	}
 
 	if (node.value && (command === 'addExpression' || command === 'removeExpression')) {
@@ -1044,22 +1013,6 @@ async function optionSelected(command: string) {
 		};
 		telemetry.track('User switched parameter mode', telemetryPayload);
 		void externalHooks.run('parameterInput.modeSwitch', telemetryPayload);
-	}
-
-	if (node.value && command === 'focus') {
-		focusPanelStore.setFocusedNodeParameter({
-			nodeId: node.value.id,
-			parameterPath: props.path,
-			parameter: props.parameter,
-		});
-
-		if (ndvStore.activeNode) {
-			ndvStore.activeNodeName = null;
-			// TODO: check what this does - close method on NodeDetailsView
-			ndvStore.resetNDVPushRef();
-		}
-
-		focusPanelStore.focusPanelActive = true;
 	}
 }
 

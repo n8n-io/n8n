@@ -1,12 +1,17 @@
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import {
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyOptions,
 	type NodeParameterValue,
+	type NodePropertyTypes,
+	type NodeParameterValueType,
 	NodeHelpers,
 	deepCopy,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useTelemetry } from './useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -16,6 +21,8 @@ import { useExternalHooks } from './useExternalHooks';
 import { ref } from 'vue';
 import { updateDynamicConnections, updateParameterByPath } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -221,11 +228,104 @@ export function useNodeSettingsParameters() {
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
+	function isResourceLocatorParameterType(type: NodePropertyTypes) {
+		return type === 'resourceLocator' || type === 'workflowSelector';
+	}
+
+	function formatAsExpression(value: NodeParameterValueType, parameterType: NodePropertyTypes) {
+		if (isResourceLocatorParameterType(parameterType)) {
+			if (isResourceLocatorValue(value)) {
+				return {
+					__rl: true,
+					value: `=${value.value}`,
+					mode: value.mode,
+				};
+			}
+
+			return { __rl: true, value: `=${value as string}`, mode: '' };
+		}
+
+		const isNumber = parameterType === 'number';
+		const isBoolean = parameterType === 'boolean';
+		const isMultiOptions = parameterType === 'multiOptions';
+
+		if (isNumber && (!value || value === '[Object: null]')) {
+			return '={{ 0 }}';
+		}
+
+		if (isMultiOptions) {
+			return `={{ ${JSON.stringify(value)} }}`;
+		}
+
+		if (isNumber || isBoolean || typeof value !== 'string') {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			return `={{ ${String(value)} }}`;
+		}
+
+		return `=${value}`;
+	}
+
+	function parseFromExpression(
+		modelValue: NodeParameterValueType,
+		value: unknown,
+		parameterType: NodePropertyTypes,
+		defaultValue: NodeParameterValueType,
+		parameterOptions: INodePropertyOptions[] = [],
+	) {
+		if (parameterType === 'multiOptions' && typeof value === 'string') {
+			return value
+				.split(',')
+				.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
+		}
+
+		if (isResourceLocatorParameterType(parameterType) && isResourceLocatorValue(modelValue)) {
+			return { __rl: true, value, mode: modelValue.mode };
+		}
+
+		if (parameterType === 'string') {
+			return modelValue ? (modelValue as string).toString().replace(/^=+/, '') : null;
+		}
+
+		if (typeof value !== 'undefined') {
+			return value;
+		}
+
+		if (['number', 'boolean'].includes(parameterType)) {
+			return defaultValue;
+		}
+
+		return null;
+	}
+
+	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
+		if (!node) return;
+
+		const ndvStore = useNDVStore();
+		const focusPanelStore = useFocusPanelStore();
+
+		focusPanelStore.setFocusedNodeParameter({
+			nodeId: node.id,
+			parameterPath: path,
+			parameter,
+		});
+
+		if (ndvStore.activeNode) {
+			ndvStore.setActiveNodeName(null);
+			ndvStore.resetNDVPushRef();
+		}
+
+		focusPanelStore.focusPanelActive = true;
+	}
+
 	return {
 		nodeValues,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
 		nameIsParameter,
+		isResourceLocatorParameterType,
+		formatAsExpression,
+		parseFromExpression,
+		handleFocus,
 	};
 }
