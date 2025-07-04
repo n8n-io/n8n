@@ -17,8 +17,6 @@ describe('ConnectNodesTool', () => {
 		mockState = {
 			messages: [],
 			prompt: '',
-			steps: [],
-			nodes: [],
 			workflowJSON: {
 				nodes: [
 					{
@@ -65,7 +63,6 @@ describe('ConnectNodesTool', () => {
 				connections: {},
 			},
 			isWorkflowPrompt: false,
-			next: 'PLAN',
 		};
 	});
 

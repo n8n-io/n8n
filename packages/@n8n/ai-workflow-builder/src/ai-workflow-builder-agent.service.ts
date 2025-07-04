@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver, isCommand } from '@langchain/langgraph';
 import type { Command } from '@langchain/langgraph';
 import { isAIMessage } from '@langchain/core/messages';
@@ -15,6 +15,7 @@ import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createNodeSearchTool } from './tools/node-search.tool';
+import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { WorkflowState } from './workflow-state';
 import type { SimpleWorkflow } from './types';
@@ -199,6 +200,7 @@ export class AiWorkflowBuilderService {
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
+			createRemoveNodeTool(this.parsedNodeTypes),
 			updateNodeParametersTool,
 		];
 
@@ -235,7 +237,7 @@ export class AiWorkflowBuilderService {
 			console.log(`Executing ${lastMessage.tool_calls.length} tools in parallel`);
 
 			// Execute all tools in parallel
-			const toolResults = await Promise.all(
+			const toolResultsWithNames = await Promise.all(
 				lastMessage.tool_calls.map(async (toolCall) => {
 					const tool = toolMap.get(toolCall.name);
 					if (!tool) {
@@ -249,27 +251,39 @@ export class AiWorkflowBuilderService {
 						},
 					});
 					console.log(`Tool ${toolCall.name} completed`);
-					return result;
+					return { result, toolName: toolCall.name };
 				}),
 			);
 
-			// Separate Command objects from regular results
-			const commands = toolResults.filter((result): result is Command => isCommand(result));
-			const regularResults = toolResults.filter((result): result is any => !isCommand(result));
+			// Process results and track which tool generated each update
+			const stateUpdatesWithTools: Array<{
+				update: Partial<typeof WorkflowState.State>;
+				toolName: string;
+			}> = [];
+			const regularResults: any[] = [];
 
-			// Extract state updates from Command objects
-			const stateUpdates = commands.map((cmd: Command) => cmd.update).filter(Boolean);
+			toolResultsWithNames.forEach(({ result, toolName }) => {
+				if (isCommand(result)) {
+					const cmd = result as Command;
+					const update = cmd.update as Partial<typeof WorkflowState.State>;
+					if (update) {
+						stateUpdatesWithTools.push({ update: update, toolName });
+					}
+				} else {
+					regularResults.push(result);
+				}
+			});
 
 			// Merge workflowJSON updates intelligently
 			let mergedWorkflowJSON = state.workflowJSON;
 			const allMessages = [];
 
-			console.log(`Processing ${stateUpdates.length} state updates`);
+			console.log(`Processing ${stateUpdatesWithTools.length} state updates`);
 			console.log(`Initial workflow has ${mergedWorkflowJSON.nodes.length} nodes`);
 
 			// Process each state update
-			for (let i = 0; i < stateUpdates.length; i++) {
-				const update = stateUpdates[i] as Partial<typeof WorkflowState.State>;
+			for (let i = 0; i < stateUpdatesWithTools.length; i++) {
+				const { update, toolName } = stateUpdatesWithTools[i];
 				if (!update || typeof update !== 'object' || Array.isArray(update)) continue;
 
 				// Collect messages
@@ -283,43 +297,61 @@ export class AiWorkflowBuilderService {
 					const beforeConnectionCount = Object.keys(mergedWorkflowJSON.connections).length;
 
 					// Deep merge nodes
-					// Start with existing nodes
-					const nodeMap = new Map(mergedWorkflowJSON.nodes.map((node) => [node.id, node]));
+					let mergedNodes: any[];
 
-					// Add new nodes from the update
-					// Since each tool starts with the same initial state, we need to merge carefully
-					if (update.workflowJSON.nodes && Array.isArray(update.workflowJSON.nodes)) {
-						update.workflowJSON.nodes.forEach((node) => {
-							const existingNode = nodeMap.get(node.id);
-							if (!existingNode) {
-								// This is a new node added by this tool
-								nodeMap.set(node.id, node);
-							} else {
-								// Node exists - merge parameters if they've been updated
-								// This handles the case where update-node-parameters runs in parallel
-								console.log(`Merging node ${node.id} - updating parameters`);
-								const mergedNode = {
-									...existingNode,
-									// Preserve all existing node properties
-									...node,
-									// Deep merge parameters
-									parameters: {
-										...existingNode.parameters,
-										...node.parameters,
-									},
-								};
-								nodeMap.set(node.id, mergedNode);
-							}
-						});
+					// If remove_node tool was called, use its result directly
+					if (toolName === 'remove_node') {
+						// For remove_node operations, we trust its output completely
+						console.log(`Tool ${toolName} removed nodes, using its node list directly`);
+						mergedNodes = update.workflowJSON.nodes;
+					} else {
+						// Normal node merging for non-removal operations
+						// Start with existing nodes
+						const nodeMap = new Map(mergedWorkflowJSON.nodes.map((node) => [node.id, node]));
+
+						// Add new nodes from the update
+						// Since each tool starts with the same initial state, we need to merge carefully
+						if (update.workflowJSON.nodes && Array.isArray(update.workflowJSON.nodes)) {
+							update.workflowJSON.nodes.forEach((node) => {
+								const existingNode = nodeMap.get(node.id);
+								if (!existingNode) {
+									// This is a new node added by this tool
+									nodeMap.set(node.id, node);
+								} else {
+									// Node exists - merge parameters if they've been updated
+									// This handles the case where update-node-parameters runs in parallel
+									console.log(`Merging node ${node.id} - updating parameters`);
+									const mergedNode = {
+										...existingNode,
+										// Preserve all existing node properties
+										...node,
+										// Deep merge parameters
+										parameters: {
+											...existingNode.parameters,
+											...node.parameters,
+										},
+									};
+									nodeMap.set(node.id, mergedNode);
+								}
+							});
+						}
+
+						mergedNodes = Array.from(nodeMap.values());
 					}
 
-					const mergedNodes = Array.from(nodeMap.values());
-
 					// Deep merge connections
-					const mergedConnections = this.deepMergeConnections(
-						mergedWorkflowJSON.connections,
-						update.workflowJSON.connections || {},
-					);
+					let mergedConnections;
+
+					if (toolName === 'remove_node') {
+						// For remove_node, use its connections directly as it already cleaned them up
+						mergedConnections = update.workflowJSON.connections || {};
+					} else {
+						// Normal connection merging for other tools
+						mergedConnections = this.deepMergeConnections(
+							mergedWorkflowJSON.connections,
+							update.workflowJSON.connections || {},
+						);
+					}
 
 					mergedWorkflowJSON = {
 						nodes: mergedNodes,
@@ -422,7 +454,9 @@ export class AiWorkflowBuilderService {
 						messages: [chunk],
 					};
 					if (
-						['add_nodes', 'connect_nodes', 'update_node_parameters'].includes(chunk.toolName) &&
+						['add_nodes', 'connect_nodes', 'update_node_parameters', 'remove_node'].includes(
+							chunk.toolName,
+						) &&
 						chunk.status === 'completed'
 					) {
 						const currentState = await agent.getState(threadConfig);

@@ -1,10 +1,4 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk } from '@langchain/core/messages';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { OperationalError } from 'n8n-workflow';
-import { z } from 'zod';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 const systemPrompt = `You are an AI assistant that helps users create and edit workflows in n8n. Before adding any node or responding with node details, make sure to search for each node first using the "search_nodes" tool. If you don't know the node, respond with "I don't know".
 

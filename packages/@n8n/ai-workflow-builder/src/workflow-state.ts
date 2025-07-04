@@ -1,5 +1,5 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { Annotation, END } from '@langchain/langgraph';
+import { Annotation } from '@langchain/langgraph';
 
 import type { SimpleWorkflow } from './types';
 

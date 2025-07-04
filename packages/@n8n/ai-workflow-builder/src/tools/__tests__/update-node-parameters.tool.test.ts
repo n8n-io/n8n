@@ -43,7 +43,6 @@ describe('UpdateNodeParametersTool', () => {
 		mockState = {
 			messages: [],
 			prompt: 'Create a workflow to fetch weather data',
-			steps: [],
 			nodes: [],
 			workflowJSON: {
 				nodes: [
@@ -93,7 +92,6 @@ describe('UpdateNodeParametersTool', () => {
 				connections: {},
 			},
 			isWorkflowPrompt: false,
-			next: 'PLAN',
 		};
 	});
 

@@ -17,14 +17,11 @@ describe('AddNodesTool', () => {
 		mockState = {
 			messages: [],
 			prompt: '',
-			steps: [],
-			nodes: [],
 			workflowJSON: {
 				nodes: [],
 				connections: {},
 			},
 			isWorkflowPrompt: false,
-			next: 'PLAN',
 		};
 	});
 
