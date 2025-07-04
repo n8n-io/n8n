@@ -57,20 +57,10 @@ describe('sanitizeResponseData', () => {
 				"John's company \"TechCorp & Associates\" announced: 'We're launching a revolutionary product at €1,299.99 — it's 50% faster than competitors!' The CEO said, \"This isn't just an upgrade; it's a complete transformation.\" Users praised the app's ability to handle complex data like <script>alert('XSS')</script> and symbols such as @, #, $, %, ^, &, *, (, ), [, ], {, }, |, , /, ?, <, >, ~, `, +, =, -, _, and even emojis like 🚀 & 💡. The product description reads: \"It supports UTF-8 encoding, handles apostrophes in names like O'Connor & D'Angelo, processes mathematical expressions like 2 < 5 > 1, and manages URLs such as https://example.com/path?param=value&other='test'. We've tested it with HTML entities like &amp;, &lt;, &gt;, &quot;, &#39;, and even complex strings like `console.log(\"Hello 'World'!\");`\" — truly impressive!",
 		},
 	])('wraps the response body in an iframe', ({ srcdoc }) => {
-		const result = sandboxResponseData(srcdoc);
+		const result = sandboxResponseData(srcdoc, true);
 		const singleQuoteReplaced = replaceSingleQuotes(srcdoc);
 
-		expect(result).toContain('<iframe');
-		expect(result).toContain(`srcdoc='${singleQuoteReplaced}'`);
-		expect(result).toContain('width:100vw');
-		expect(result).toContain('height:100vh');
-		expect(result).toContain('position:fixed');
-		expect(result).toContain('top:0');
-		expect(result).toContain('left:0');
-		expect(result).toContain('border:none');
-		expect(result).toContain('allowtransparency="true"');
-		expect(result.trim().startsWith('<iframe')).toBe(true);
-		expect(result.trim().endsWith('</iframe>')).toBe(true);
+		expect(result).toMatchSnapshot();
 	});
 });
 
@@ -85,7 +75,7 @@ describe('getBinaryResponse', () => {
 
 		const result = getBinaryResponse(binaryData, headers);
 
-		expect(result).toBe(sandboxResponseData(binaryData.data));
+		expect(result).toBe(sandboxResponseData(binaryData.data, true));
 		expect(headers['content-type']).toBe('text/html');
 	});
 
@@ -113,7 +103,7 @@ describe('getBinaryResponse', () => {
 		const result = getBinaryResponse(binaryData, headers);
 
 		expect(result).toBe(
-			sandboxResponseData(Buffer.from(binaryData.data, BINARY_ENCODING).toString()),
+			sandboxResponseData(Buffer.from(binaryData.data, BINARY_ENCODING).toString(), true),
 		);
 		expect(headers['content-type']).toBe('text/html');
 	});

