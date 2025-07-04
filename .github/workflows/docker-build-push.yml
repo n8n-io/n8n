@@ -111,39 +111,60 @@ jobs:
       - name: Determine build context values
         id: context
         run: |
-          if [[ -n "${{ inputs.release_type }}" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            # workflow_call has n8n_version input (Used in release)
             echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
             echo "n8n_version=${{ inputs.n8n_version }}" >> $GITHUB_OUTPUT
             echo "push_enabled=${{ inputs.push_enabled }}" >> $GITHUB_OUTPUT
+
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            # Nightly builds, build with nightly tag/snapshot
             echo "release_type=nightly" >> $GITHUB_OUTPUT
             echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
             echo "push_enabled=true" >> $GITHUB_OUTPUT
+
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual dispatch, used for building branches for Nathan deploy
             if [[ "${{ inputs.release_type }}" == "branch" ]]; then
-              BRANCH_NAME="${{ github.ref_name }}"
+              # Get branch name with multiple fallbacks
+              if [[ -n "${{ github.ref_name }}" ]]; then
+                BRANCH_NAME="${{ github.ref_name }}"
+              elif [[ "${{ github.ref }}" =~ ^refs/heads/(.+)$ ]]; then
+                BRANCH_NAME="${BASH_REMATCH[1]}"
+              else
+                BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD || echo "unknown")
+              fi
+
               SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
+
+              # Ensure we have a valid branch name
+              if [[ -z "$SAFE_BRANCH_NAME" ]]; then
+                echo "Error: Could not determine branch name"
+                exit 1
+              fi
+
               echo "release_type=branch" >> $GITHUB_OUTPUT
               echo "n8n_version=branch-${SAFE_BRANCH_NAME}" >> $GITHUB_OUTPUT
               echo "push_enabled=${{ inputs.push_to_registry }}" >> $GITHUB_OUTPUT
             else
+              # Other manual dispatch types (dev, stable, nightly), are these used, could cleanup?
               echo "release_type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
               echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-              echo "push_enabled=true" >> $GITHUB_OUTPUT
+              echo "push_enabled=${{ inputs.push_to_registry }}" >> $GITHUB_OUTPUT
             fi
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "release_type=dev" >> $GITHUB_OUTPUT
-            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
+
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Pull requests, used for changes to the Dockerfile to test
             echo "release_type=dev" >> $GITHUB_OUTPUT
             echo "n8n_version=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
             echo "push_enabled=false" >> $GITHUB_OUTPUT
-          else
-            echo "release_type=dev" >> $GITHUB_OUTPUT
-            echo "n8n_version=snapshot" >> $GITHUB_OUTPUT
-            echo "push_enabled=false" >> $GITHUB_OUTPUT
           fi
+
+          # Debug output
+          echo "Event: ${{ github.event_name }}"
+          echo "Release type: $(grep release_type $GITHUB_OUTPUT | cut -d= -f2)"
+          echo "N8N version: $(grep n8n_version $GITHUB_OUTPUT | cut -d= -f2)"
+          echo "Push enabled: $(grep push_enabled $GITHUB_OUTPUT | cut -d= -f2)"
 
       - name: Determine Docker tags
         id: determine-tags
@@ -160,11 +181,18 @@ jobs:
           PRIMARY_GHCR_MANIFEST_TAG_VALUE=""
           PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
 
+          # Validate inputs
           if [[ "$RELEASE_TYPE" == "stable" && -z "$N8N_VERSION_TAG" ]]; then
             echo "Error: N8N_VERSION_TAG is empty for a stable release."
             exit 1
           fi
 
+          if [[ "$RELEASE_TYPE" == "branch" && -z "$N8N_VERSION_TAG" ]]; then
+            echo "Error: N8N_VERSION_TAG is empty for a branch release."
+            exit 1
+          fi
+
+          # Determine tags based on release type
           case "$RELEASE_TYPE" in
             "stable")
               PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
@@ -181,16 +209,19 @@ jobs:
             "branch")
               PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
               GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
+              # No Docker Hub tags for branch builds
               PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
               DOCKER_TAGS_FOR_PUSH=""
               ;;
             "dev"|*)
               if [[ "$N8N_VERSION_TAG" == pr-* ]]; then
+                # PR builds only go to GHCR
                 PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
                 GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
                 PRIMARY_DOCKER_MANIFEST_TAG_VALUE=""
                 DOCKER_TAGS_FOR_PUSH=""
               else
+                # Regular dev builds go to both registries
                 PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:dev"
                 PRIMARY_DOCKER_MANIFEST_TAG_VALUE="${DOCKER_BASE}:dev"
                 GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
@@ -199,6 +230,7 @@ jobs:
               ;;
           esac
 
+          # Combine all tags
           ALL_TAGS="${GHCR_TAGS_FOR_PUSH}"
           if [[ -n "$DOCKER_TAGS_FOR_PUSH" ]]; then
             ALL_TAGS="${ALL_TAGS}\n${DOCKER_TAGS_FOR_PUSH}"
@@ -225,7 +257,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
-        if: steps.context.outputs.push_enabled == 'true'
+        if: steps.context.outputs.push_enabled == 'true' && needs.build-and-push-docker.outputs.release_type != 'branch'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -242,7 +274,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ steps.context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false
-          push: ${{ steps.context.outputs.push_enabled }}
+          push: ${{ steps.context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.tags }}
 
   create_multi_arch_manifest:
@@ -264,6 +296,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
+        if: needs.build-and-push-docker.outputs.release_type != 'branch' && needs.build-and-push-docker.outputs.release_type != 'pr'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -311,7 +344,6 @@ jobs:
             ${MANIFEST_TAG}-amd64 \
             ${MANIFEST_TAG}-arm64
 
-      # Create Docker Hub multi-arch manifest
       - name: Create Docker Hub multi-arch manifest
         if: env.PRIMARY_DOCKER_MANIFEST_TAG != ''
         run: |
@@ -329,10 +361,13 @@ jobs:
     name: Call Success URL
     needs: [create_multi_arch_manifest]
     runs-on: ubuntu-latest
+    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
     steps:
-      - name: Call Success URL - optionally
-        if: ${{ github.event.inputs.success_url != '' }}
-        run: curl -v ${{github.event.inputs.success_url}} || echo ""
+      - name: Call Success URL
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != ''
+        run: |
+          echo "Calling success URL: ${{ github.event.inputs.success_url }}"
+          curl -v "${{ github.event.inputs.success_url }}" || echo "Failed to call success URL"
         shell: bash
 
   security-scan:
