@@ -1419,7 +1419,7 @@ defineExpose({ enterEditMode });
 				</Suspense>
 
 				<N8nIconButton
-					v-if="displayMode === 'table' && collapsingTableColumnName !== undefined"
+					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
 					:class="$style.resetCollapseButton"
 					text
 					icon="chevrons-up-down"
