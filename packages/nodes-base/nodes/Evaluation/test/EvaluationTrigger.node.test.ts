@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { EvaluationTrigger } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
@@ -72,7 +72,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -123,7 +123,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -174,7 +174,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -213,7 +213,7 @@ describe('Evaluation Trigger Node', () => {
 							limitRows: true,
 							maxRows: 1,
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -282,7 +282,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -364,7 +364,7 @@ describe('Evaluation Trigger Node', () => {
 						limitRows: true,
 						maxRows: 2,
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -431,7 +431,7 @@ describe('Evaluation Trigger Node', () => {
 						sheetName,
 						sheetMode: 'id',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
