@@ -51,6 +51,7 @@ export class SourceControlGitService {
 			});
 			this.logger.debug(`Git binary found: ${gitResult.toString()}`);
 		} catch (error) {
+			this.logger.error('Git binary check failed', { error });
 			throw new UnexpectedError('Git binary not found', { cause: error });
 		}
 		try {
@@ -59,6 +60,7 @@ export class SourceControlGitService {
 			});
 			this.logger.debug(`SSH binary found: ${sshResult.toString()}`);
 		} catch (error) {
+			this.logger.error('SSH binary check failed', { error });
 			throw new UnexpectedError('SSH binary not found', { cause: error });
 		}
 		return true;
@@ -153,6 +155,7 @@ export class SourceControlGitService {
 				return true;
 			}
 		} catch (error) {
+			this.logger.error('Git remote check failed', { error });
 			throw new UnexpectedError('Git is not initialized', { cause: error });
 		}
 		this.logger.debug(`Git remote not found: ${remote}`);
@@ -256,6 +259,7 @@ export class SourceControlGitService {
 				currentBranch: current,
 			};
 		} catch (error) {
+			this.logger.error('Failed to get branches', { error });
 			throw new UnexpectedError('Could not get remote branches from repository', { cause: error });
 		}
 	}

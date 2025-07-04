@@ -38,7 +38,7 @@ const defaultConfig = new MainConfig();
 defaultConfig.jsRunnerConfig ??= {
 	allowedBuiltInModules: '',
 	allowedExternalModules: '',
-	allowPrototypeMutation: true, // needed for jest
+	insecureMode: false,
 };
 
 describe('JsTaskRunner', () => {
@@ -1455,9 +1455,9 @@ describe('JsTaskRunner', () => {
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
 		});
 
-		it('should allow prototype mutation when `allowPrototypeMutation` is true', async () => {
+		it('should allow prototype mutation when `insecureMode` is true', async () => {
 			const runner = createRunnerWithOpts({
-				allowPrototypeMutation: true,
+				insecureMode: true,
 			});
 
 			const outcome = await executeForAllItems({
