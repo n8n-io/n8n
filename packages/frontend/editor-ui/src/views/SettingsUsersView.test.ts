@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { type FrontendSettings, ROLE, type UsersList } from '@n8n/api-types';
+import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@/Interface';
 import {
 	INVITE_USER_MODAL_KEY,
@@ -555,7 +555,7 @@ describe('SettingsUsersView', () => {
 
 		it('should handle reinvite with invalid role', async () => {
 			// Set user with invalid role
-			usersStore.usersList.state.items[2].role = 'invalid-role' as ROLE;
+			usersStore.usersList.state.items[2].role = 'invalid-role' as Role;
 
 			renderComponent();
 
