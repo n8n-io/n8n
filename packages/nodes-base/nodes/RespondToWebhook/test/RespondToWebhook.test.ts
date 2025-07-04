@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
-import { sanitizeResponseData } from '../utils';
+import { sanitizeResponseData } from '../utils/utils';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;

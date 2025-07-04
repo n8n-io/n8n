@@ -1,12 +1,8 @@
 import type { IDataObject } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
-
-import {
-	configuredOutputs,
-	getBinaryResponse,
-	replaceSingleQuotes,
-	sanitizeResponseData,
-} from '../utils';
+import { configuredOutputs } from '../utils/outputs';
+import { replaceSingleQuotes, sanitizeResponseData } from '../utils/sanitization';
+import { getBinaryResponse } from '../utils/binary';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {

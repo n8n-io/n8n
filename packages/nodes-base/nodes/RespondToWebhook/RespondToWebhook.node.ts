@@ -21,8 +21,10 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { configuredOutputs, getBinaryResponse, sanitizeResponseData } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import { configuredOutputs } from './utils/outputs';
+import { sanitizeResponseData } from './utils/sanitization';
+import { getBinaryResponse } from './utils/binary';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
