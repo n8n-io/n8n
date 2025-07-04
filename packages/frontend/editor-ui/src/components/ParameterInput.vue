@@ -1873,7 +1873,7 @@ onUpdated(async () => {
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
 		line-height: var(--font-line-height-xloose);
-		color: $custom-font-very-light;
+		color: var(--color-floating-list-item-description);
 	}
 }
 

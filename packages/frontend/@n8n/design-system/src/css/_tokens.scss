@@ -244,7 +244,7 @@
 	--tag-font-weight: var(--font-weight-regular);
 	--tag-line-height: 0;
 
-	// ProjectCardBadge
+	// Project card badge
 	--color-project-card-badge-background: var(--color-background-xlight);
 	--color-project-card-badge-border: var(--color-foreground-base);
 
@@ -298,9 +298,6 @@
 
 	// Input fields
 	--input-background-color: var(--p-white);
-
-	// Select
-	--select-option-hover-background: var(--color-background-base);
 
 	// Radio buttons
 	--color-radio-buttons-background: var(--color-foreground-base);
@@ -390,9 +387,6 @@
 	--color-nps-survey-background: var(--p-gray-740);
 	--color-nps-survey-font: var(--p-white);
 
-	// Action Dropdown
-	--color-action-dropdown-item-active-background: var(--color-background-base);
-
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--p-gray-420);
 	--color-switch-active-background: var(--p-color-alt-f-560);
@@ -447,8 +441,22 @@
 
 	// Menu
 	--color-menu-background: var(--p-white);
-	--color-menu-hover-background: var(--p-gray-120);
-	--color-menu-active-background: var(--p-gray-120);
+	--color-menu-hover-background: var(--p-gray-070);
+	--color-menu-active-background: var(--p-gray-070);
+
+	// Floating lists: Popup menus, Dropdowns, Select options...
+	// Used to guarantee visual consistency across multiple components
+	--color-floating-list-background: var(--color-background-xlight);
+	--color-floating-list-border: var(--color-foreground-base);
+	--color-floating-list-divider: var(--color-foreground-base);
+	--color-floating-list-item-background: transparent;
+	--color-floating-list-item-font: var(--color-text-base);
+	--color-floating-list-item-description: var(--color-text-light);
+	--color-floating-list-item-hover-background: var(--p-gray-040);
+	--color-floating-list-item-hover-font: var(--color-text-dark);
+	--color-floating-list-item-selected-background: var(--p-gray-040);
+	--color-floating-list-item-selected-font: var(--color-primary);
+	--color-floating-list-item-disabled-font: var(--color-text-light);
 
 	// Skeleton loader
 	--color-skeleton-background: var(--color-background-base);

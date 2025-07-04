@@ -264,21 +264,15 @@ $select-input-focus-border-color: var(--color-secondary);
 /// fontSize||Font|1
 $select-input-font-size: 14px;
 
-$select-option-color: var(--color-text-dark);
-$select-option-disabled-color: var(--color-text-lighter);
-$select-option-disabled-background: var(--color-background-xlight);
 /// height||Other|4
 $select-option-height: 34px;
-$select-option-hover-background: var(--select-option-hover-background);
+
 /// color||Color|0
-$select-option-selected-font-color: var(--color-primary);
-$select-option-selected-hover: $background-color-base;
 
 $select-group-color: var(--color-info);
 $select-group-height: 30px;
 $select-group-font-size: 12px;
 
-$select-dropdown-background: $color-white;
 $select-dropdown-shadow: $box-shadow-light;
 $select-dropdown-empty-color: var(--color-text-light);
 /// height||Other|4
@@ -731,11 +725,11 @@ $popup-modal-opacity: 0.65;
 /* Popover
 -------------------------- */
 /// color||Color|0
-$popover-background-color: $color-white;
+$popover-background-color: var(--color-floating-list-background);
 /// fontSize||Font|1
 $popover-font-size: $font-size-base;
 /// color||Color|0
-$popover-border-color: var(--border-color-light);
+$popover-border-color: var(--color-floating-list-border);
 $popover-arrow-size: 6px;
 /// padding||Spacing|3
 $popover-padding: var(--spacing-s);
@@ -788,8 +782,8 @@ $tree-expand-icon-color: var(--color-text-lighter);
 /* Dropdown
 -------------------------- */
 $dropdown-menu-box-shadow: $box-shadow-light;
-$dropdown-menuItem-hover-fill: var(--color-action-dropdown-item-active-background);
-$dropdown-menuItem-hover-color: var(--color-text-dark);
+$dropdown-menuItem-hover-fill: var(--color-floating-list-item-hover-background);
+$dropdown-menuItem-hover-color: var(--color-floating-list-item-hover-font);
 
 /* Badge
 -------------------------- */
@@ -849,12 +843,12 @@ $menu-item-font-weight: var(--menu-item-font-weight, var(--font-weight-regular))
 $menu-item-font-color: var(--menu-font-color, var(--color-text-dark));
 $menu-item-icon-font-color: var(--menu-item-font-color, var(--color-text-light));
 /// color||Color|0
-$menu-background-color: var(--menu-background-color, var(--color-background-xlight));
-$menu-item-hover-fill: var(--menu-item-hover-fill, transparent);
+$menu-background-color: var(--color-menu-background, var(--color-background-xlight));
+$menu-item-hover-fill: var(--color-menu-hover-background, transparent);
 $menu-item-hover-font-color: var(--menu-item-hover-font-color, var(--color-text-dark));
 $menu-item-active-font-color: var(--menu-item-active-font-color, var(--color-primary));
 $menu-item-active-font-weight: var(--font-weight-regular);
-$menu-item-active-background-color: var(--menu-item-active-background-color, transparent);
+$menu-item-active-background-color: var(--color-menu-active-background, transparent);
 $menu-item-border-radius: var(--menu-item-border-radius, 0);
 $menu-item-height: var(--menu-item-height, 56px);
 

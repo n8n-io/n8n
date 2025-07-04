@@ -14,9 +14,9 @@
 	margin: 5px 0;
 	box-shadow: var.$box-shadow-light;
 	border-radius: var(--border-radius-base);
-	border: 1px solid var(--border-color-base);
+	border: 1px solid var(--color-floating-list-border);
 	box-sizing: border-box;
-	background-color: var.$color-white;
+	background-color: var(--color-floating-list-background);
 
 	@include mixins.e(wrap) {
 		max-height: 280px;
@@ -34,7 +34,7 @@
 		margin: 0;
 		line-height: 34px;
 		cursor: pointer;
-		color: var(--color-text-dark);
+		color: var(--color-floating-list-item-font);
 		font-size: var.$font-size-base;
 		list-style: none;
 		white-space: nowrap;
@@ -42,16 +42,18 @@
 		text-overflow: ellipsis;
 
 		&:hover {
-			background-color: var.$select-option-hover-background;
+			background-color: var(--color-floating-list-item-hover-background);
+			color: var(--color-floating-list-item-hover-font);
 		}
 
 		&.highlighted {
-			background-color: var.$select-option-hover-background;
+			background-color: var(--color-floating-list-item-selected-background);
+			color: var(--color-floating-list-item-selected-font);
 		}
 
 		&.divider {
 			margin-top: 6px;
-			border-top: 1px solid var.$color-black;
+			border-top: 1px solid var(--color-floating-list-divider);
 		}
 
 		&.divider:last-child {

@@ -6,8 +6,8 @@
 
 	// Text
 	--color-text-dark: var(--p-white);
-	--color-text-base: var(--p-gray-200);
-	--color-text-light: var(--p-gray-320);
+	--color-text-base: var(--p-gray-250);
+	--color-text-light: var(--p-gray-490);
 	--color-text-lighter: var(--p-gray-740);
 	--color-text-xlight: var(--p-gray-850);
 	--color-text-xlight-all-modes: var(--p-white);
@@ -183,7 +183,7 @@
 	--tag-border-hover-color: var(--p-gray-600);
 	--tag-text-color: var(--color-text-base);
 
-	// ProjectCardBadge
+	// Project card badge
 	--color-project-card-badge-background: var(--p-gray-850);
 	--color-project-card-badge-border: var(--color-foreground-base);
 
@@ -227,9 +227,6 @@
 
 	// Input fields
 	--input-background-color: var(--p-gray-850);
-
-	// Select
-	--select-option-hover-background: var(--p-gray-800);
 
 	// Radio buttons
 	--color-radio-buttons-background: var(--p-gray-850);
@@ -312,9 +309,6 @@
 	--color-switch-border-color: var(--p-gray-740);
 	--color-switch-toggle: var(--p-gray-040);
 
-	// Action Dropdown
-	--color-action-dropdown-item-active-background: var(--color-background-xlight);
-
 	// Input Triple
 	--color-background-input-triple: var(--p-gray-800);
 
@@ -366,9 +360,25 @@
 	--color-secondary-link-hover: var(--p-color-secondary-370);
 
 	// Menu
-	--color-menu-background: var(--p-gray-740);
-	--color-menu-hover-background: var(--p-gray-670);
-	--color-menu-active-background: var(--p-gray-670);
+	--color-menu-background: var(--p-gray-900);
+	--color-menu-hover-background: var(--p-gray-780);
+	--color-menu-active-background: var(--p-gray-780);
+
+	// Floating lists: Popup menus, Dropdowns, Select options...
+	// Used to guarantee visual consistency across multiple components
+	--color-floating-list-background: var(--p-gray-850);
+	--color-floating-list-border: var(--color-foreground-base);
+	--color-floating-list-divider: var(--color-foreground-base);
+	--color-floating-list-item-background: transparent;
+	--color-floating-list-item-font: var(--color-text-base);
+	--color-floating-list-item-description: var(--color-text-light);
+	--color-floating-list-item-hover-background: var(--p-gray-800);
+	--color-floating-list-item-hover-font: var(--color-text-dark);
+	--color-floating-list-item-selected-background: var(--p-gray-800);
+	--color-floating-list-item-selected-font: var(--color-primary);
+	--color-floating-list-item-disabled-font: var(--color-text-light);
+
+	// Floating lists: Dropdowns, select options...
 
 	// Skeleton loader
 	--color-skeleton-background: var(--p-gray-820);

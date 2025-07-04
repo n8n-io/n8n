@@ -4,7 +4,7 @@
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
-	--h-gray: 235;
+	--h-gray: 220; // 235
 
 	// Gray
 	--p-gray-950: hsl(var(--h-gray), 20%, 5%);
@@ -23,6 +23,7 @@
 	--p-gray-490: hsl(var(--h-gray), 8%, 51%);
 	--p-gray-420: hsl(var(--h-gray), 8%, 58%);
 	--p-gray-320: hsl(var(--h-gray), 10%, 68%);
+	--p-gray-250: hsl(var(--h-gray), 10%, 75%);
 	--p-gray-200: hsl(var(--h-gray), 10%, 80%);
 	--p-gray-120: hsl(var(--h-gray), 15%, 88%);
 	--p-gray-070: hsl(var(--h-gray), 32%, 93%);
