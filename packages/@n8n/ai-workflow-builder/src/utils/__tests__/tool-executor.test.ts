@@ -2,9 +2,9 @@ import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { Command } from '@langchain/langgraph';
 import type { INode } from 'n8n-workflow';
 
-import { executeToolsInParallel } from '../tool-executor';
-import type { WorkflowState } from '../../workflow-state';
 import type { SimpleWorkflow } from '../../types';
+import type { WorkflowState } from '../../workflow-state';
+import { executeToolsInParallel } from '../tool-executor';
 
 describe('executeToolsInParallel', () => {
 	// Helper function to create a mock AI message with tool calls

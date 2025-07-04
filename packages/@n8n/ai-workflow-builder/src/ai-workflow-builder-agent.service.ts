@@ -13,11 +13,11 @@ import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createNodeSearchTool } from './tools/node-search.tool';
+import { mainAgentPrompt } from './tools/prompts/mainAgent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
-import { WorkflowState } from './workflow-state';
-import { mainAgentPrompt } from './tools/prompts/mainAgent.prompt';
 import { executeToolsInParallel } from './utils/tool-executor';
+import { WorkflowState } from './workflow-state';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -160,7 +160,7 @@ export class AiWorkflowBuilderService {
 
 		// Use the new tool executor helper
 		const customToolExecutor = async (state: typeof WorkflowState.State) => {
-			return executeToolsInParallel({ state, toolMap });
+			return await executeToolsInParallel({ state, toolMap });
 		};
 
 		const workflow = new StateGraph(WorkflowState)

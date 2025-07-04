@@ -1,10 +1,8 @@
 import { isAIMessage } from '@langchain/core/messages';
-import type { AIMessage } from '@langchain/core/messages';
 import { isCommand } from '@langchain/langgraph';
-import type { Command } from '@langchain/langgraph';
 
-import type { WorkflowState } from '../workflow-state';
 import type { SimpleWorkflow } from '../types';
+import type { WorkflowState } from '../workflow-state';
 
 /**
  * PARALLEL TOOL EXECUTION CHALLENGES IN LANGGRAPH
@@ -153,7 +151,7 @@ export async function executeToolsInParallel(
 		throw new Error('Most recent message must be an AIMessage with tool calls');
 	}
 
-	const aiMessage = lastMessage as AIMessage;
+	const aiMessage = lastMessage;
 	if (!aiMessage.tool_calls?.length) {
 		throw new Error('AIMessage must have tool calls');
 	}
@@ -187,7 +185,7 @@ export async function executeToolsInParallel(
 	toolResultsWithNames.forEach(({ result, toolName }: ToolResultWithName) => {
 		if (isCommand(result)) {
 			// Tool returned a Command with state updates
-			const cmd = result as Command;
+			const cmd = result;
 			const update = cmd.update as Partial<typeof WorkflowState.State>;
 			if (update) {
 				// Track which tool produced this update for context-aware merging

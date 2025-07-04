@@ -504,7 +504,7 @@ export const parameterUpdaterChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			if (!toolCall || !toolCall.args) {
+			if (!toolCall?.args) {
 				throw new Error('No tool call found in LLM response');
 			}
 			const args = toolCall.args as z.infer<typeof parametersSchema>;

@@ -1,6 +1,6 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
+import type { z, BaseWorkflowBuilderTool, type ToolContext, type ToolResult } from './base';
 import type { WorkflowState } from '../workflow-state';
 import { addNodesSchema, type AddedNode } from './types/node.types';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
@@ -77,7 +77,7 @@ export class AddNodesTool extends BaseWorkflowBuilderTool<typeof addNodesSchema,
 				name: newNode.name,
 				type: newNode.type,
 				displayName: nodeTypeDesc.displayName,
-				position: newNode.position as [number, number],
+				position: newNode.position,
 			});
 			currentNodes.push(newNode);
 		}
