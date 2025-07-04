@@ -357,7 +357,7 @@ const activatePane = () => {
 		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
-			<div :class="$style.titleSection">
+			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
 				<template v-if="hasAiMetadata">
 					<N8nRadioButtons
 						v-model="outputMode"
@@ -365,7 +365,7 @@ const activatePane = () => {
 						:options="outputTypes"
 					/>
 				</template>
-				<span v-else :class="$style.title">
+				<span v-else :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">
 					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
@@ -520,12 +520,21 @@ const activatePane = () => {
 	}
 }
 
+.titleSectionV2 {
+	padding-left: var(--spacing-4xs);
+}
+
 .title {
 	text-transform: uppercase;
 	color: var(--color-text-light);
-	letter-spacing: 3px;
+	letter-spacing: 2px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
+}
+
+.titleV2 {
+	letter-spacing: 2px;
+	font-size: var(--font-size-xs);
 }
 
 .noOutputData {

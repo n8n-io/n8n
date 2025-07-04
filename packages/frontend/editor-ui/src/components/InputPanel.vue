@@ -400,8 +400,10 @@ function activatePane() {
 		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
-			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
+			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+				<span :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">{{
+					i18n.baseText('ndv.input')
+				}}</span>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -638,6 +640,10 @@ function activatePane() {
 		margin-right: var(--spacing-2xs);
 	}
 }
+
+.titleSectionV2 {
+	padding-left: var(--spacing-4xs);
+}
 .inputModeTab {
 	margin-left: auto;
 }
@@ -677,5 +683,10 @@ function activatePane() {
 	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
+}
+
+.titleV2 {
+	letter-spacing: 2px;
+	font-size: var(--font-size-xs);
 }
 </style>

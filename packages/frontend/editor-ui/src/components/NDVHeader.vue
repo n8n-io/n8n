@@ -38,6 +38,7 @@ function onRename(newNodeName: string) {
 				<N8nInlineTextEdit
 					:model-value="nodeName"
 					:min-width="0"
+					:max-width="500"
 					:placeholder="i18n.baseText('ndv.title.rename.placeholder')"
 					:read-only="readOnly"
 					@update:model-value="onRename"
@@ -99,7 +100,7 @@ function onRename(newNodeName: string) {
 
 .docsLabel {
 	display: flex;
-	gap: var(--spacing-5xs);
+	gap: var(--spacing-4xs);
 }
 
 .icon {

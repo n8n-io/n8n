@@ -883,6 +883,7 @@ function handleWheelEvent(event: WheelEvent) {
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
+				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
 			@wheel="noWheel ? handleWheelEvent : undefined"
@@ -1071,6 +1072,10 @@ function handleWheelEvent(event: WheelEvent) {
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+
+		&.ndv-v2 {
+			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+		}
 	}
 
 	&.embedded .node-parameters-wrapper {

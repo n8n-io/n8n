@@ -2122,6 +2122,10 @@ defineExpose({ enterEditMode });
 	flex-flow: wrap;
 }
 
+.ndv-v2 .itemsCount {
+	padding-left: var(--spacing-xs);
+}
+
 .inputSelect {
 	padding-left: var(--ndv-spacing);
 	padding-right: var(--ndv-spacing);
