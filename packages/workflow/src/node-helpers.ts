@@ -960,7 +960,7 @@ export function getNodeWebhookPath(
 	let webhookPath = '';
 
 	if (restartWebhook === true) {
-		return path || node.id;
+		return path;
 	}
 
 	if (node.webhookId === undefined) {
