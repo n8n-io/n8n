@@ -114,6 +114,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
+	const hideAssistantFloatingButton = computed(
+		() => route.name === VIEWS.WORKFLOW && !route.params.nodeId,
+	);
+
 	const unreadCount = computed(
 		() =>
 			chatMessages.value.filter(
@@ -159,6 +163,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				resetAssistantChat();
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
+	}
+
+	function toggleChatOpen() {
+		if (chatWindowOpen.value) {
+			closeChat();
+		} else {
+			openChat();
+		}
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
@@ -814,6 +826,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	return {
 		isAssistantEnabled,
 		canShowAssistantButtonsOnCanvas,
+		hideAssistantFloatingButton,
 		chatWidth,
 		chatMessages,
 		unreadCount,
@@ -827,6 +840,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		trackUserOpenedAssistant,
 		closeChat,
 		openChat,
+		toggleChatOpen,
 		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,
