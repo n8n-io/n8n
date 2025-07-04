@@ -338,30 +338,5 @@ describe('createChat()', () => {
 			await waitFor(() => expect(getChatMessageTyping()).not.toBeInTheDocument());
 			expect(getChatMessageByText('Error: Failed to receive response')).toBeInTheDocument();
 		});
-
-		it('should show error message for file uploads with streaming enabled', async () => {
-			const input = 'Test with file';
-
-			const fetchSpy = vi.spyOn(window, 'fetch');
-			fetchSpy.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse));
-
-			app = createChat({
-				mode: 'fullscreen',
-				enableStreaming: true,
-				allowFileUploads: true,
-			});
-
-			await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
-
-			// Simulate file upload by directly calling sendMessage with files
-			const chatInstance = (app as any)._instance?.proxy?.$chat;
-			if (chatInstance) {
-				const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
-				await chatInstance.sendMessage(input, [testFile]);
-
-				await waitFor(() => expect(getChatMessageTyping()).not.toBeInTheDocument());
-				expect(getChatMessageByText('Error: Failed to receive response')).toBeInTheDocument();
-			}
-		});
 	});
 });

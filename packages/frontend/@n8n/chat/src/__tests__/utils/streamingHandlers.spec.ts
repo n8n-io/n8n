@@ -72,12 +72,12 @@ describe('streamingHandlers', () => {
 	});
 
 	describe('handleNodeStart', () => {
-		it('should initialize node and create message if needed', () => {
-			handleNodeStart('node-1', streamingManager, receivedMessage, messages);
+		it('should initialize node without creating message', () => {
+			handleNodeStart('node-1', streamingManager);
 
-			expect(receivedMessage.value).toBeDefined();
-			expect(messages.value).toHaveLength(1);
-			expect(streamingManager.getNodeCount()).toBe(1);
+			expect(receivedMessage.value).toBeNull(); // No message created yet
+			expect(messages.value).toHaveLength(0); // No messages until first content
+			expect(streamingManager.getNodeCount()).toBe(1); // But node is initialized
 		});
 
 		it('should not create duplicate message if one exists', () => {
@@ -90,7 +90,7 @@ describe('streamingHandlers', () => {
 			receivedMessage.value = existingMessage;
 			messages.value.push(existingMessage);
 
-			handleNodeStart('node-1', streamingManager, receivedMessage, messages);
+			handleNodeStart('node-1', streamingManager);
 
 			expect(messages.value).toHaveLength(1);
 			expect(receivedMessage.value.id).toBe('existing');
@@ -102,7 +102,7 @@ describe('streamingHandlers', () => {
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			expect(() => {
-				handleNodeStart('node-1', invalidStreamingManager, receivedMessage, messages);
+				handleNodeStart('node-1', invalidStreamingManager);
 			}).not.toThrow();
 
 			expect(consoleSpy).toHaveBeenCalledWith('Error handling node start:', expect.any(Error));

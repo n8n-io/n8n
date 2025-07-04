@@ -19,42 +19,47 @@ export function handleStreamingChunk(
 			console.log('Processing chunk:', { nodeId, length: chunk.length });
 		}
 
+		// Only create the bot message when we receive the first actual content
+		if (!receivedMessage.value && chunk.trim()) {
+			receivedMessage.value = createBotMessage();
+			messages.value.push(receivedMessage.value);
+		}
+
+		// Skip empty chunks to avoid showing empty responses
+		if (!chunk.trim()) {
+			return;
+		}
+
 		if (!nodeId) {
 			// Simple single-node streaming (backwards compatibility)
-			if (!receivedMessage.value) {
-				receivedMessage.value = createBotMessage();
-				messages.value.push(receivedMessage.value);
-			}
+			if (receivedMessage.value) {
+				const updatedMessage: ChatMessageText = {
+					...receivedMessage.value,
+					text: receivedMessage.value.text + chunk,
+				};
 
-			const updatedMessage: ChatMessageText = {
-				...receivedMessage.value,
-				text: receivedMessage.value.text + chunk,
-			};
+				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
+				receivedMessage.value = updatedMessage;
 
-			updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
-			receivedMessage.value = updatedMessage;
-
-			if (process.env.NODE_ENV === 'development') {
-				console.log('Updated single message, total length:', updatedMessage.text.length);
+				if (process.env.NODE_ENV === 'development') {
+					console.log('Updated single message, total length:', updatedMessage.text.length);
+				}
 			}
 		} else {
 			// Multi-node parallel streaming
-			if (!receivedMessage.value) {
-				receivedMessage.value = createBotMessage();
-				messages.value.push(receivedMessage.value);
-			}
+			if (receivedMessage.value) {
+				const combinedContent = streamingManager.addChunkToNode(nodeId, chunk);
+				const updatedMessage: ChatMessageText = {
+					...receivedMessage.value,
+					text: combinedContent,
+				};
 
-			const combinedContent = streamingManager.addChunkToNode(nodeId, chunk);
-			const updatedMessage: ChatMessageText = {
-				...receivedMessage.value,
-				text: combinedContent,
-			};
+				updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
+				receivedMessage.value = updatedMessage;
 
-			updateMessageInArray(messages.value, receivedMessage.value.id, updatedMessage);
-			receivedMessage.value = updatedMessage;
-
-			if (process.env.NODE_ENV === 'development') {
-				console.log('Updated combined message with', streamingManager.getNodeCount(), 'nodes');
+				if (process.env.NODE_ENV === 'development') {
+					console.log('Updated combined message with', streamingManager.getNodeCount(), 'nodes');
+				}
 			}
 		}
 
@@ -67,19 +72,16 @@ export function handleStreamingChunk(
 	}
 }
 
-export function handleNodeStart(
-	nodeId: string,
-	streamingManager: StreamingMessageManager,
-	receivedMessage: Ref<ChatMessageText | null>,
-	messages: Ref<unknown[]>,
-): void {
+export function handleNodeStart(nodeId: string, streamingManager: StreamingMessageManager): void {
 	try {
+		if (process.env.NODE_ENV === 'development') {
+			console.log('Node started:', nodeId);
+		}
+
 		streamingManager.addNodeToActive(nodeId);
 
-		if (!receivedMessage.value) {
-			receivedMessage.value = createBotMessage();
-			messages.value.push(receivedMessage.value);
-		}
+		// Don't create the message yet - wait for the first content chunk
+		// This prevents showing <Empty Response> before actual content arrives
 
 		void nextTick(() => {
 			chatEventBus.emit('scrollToBottom');

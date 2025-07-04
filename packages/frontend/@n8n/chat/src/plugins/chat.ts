@@ -59,7 +59,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 							handleStreamingChunk(chunk, nodeId, streamingManager, receivedMessage, messages);
 						},
 						(nodeId: string) => {
-							handleNodeStart(nodeId, streamingManager, receivedMessage, messages);
+							handleNodeStart(nodeId, streamingManager);
 						},
 						(nodeId: string) => {
 							handleNodeComplete(
