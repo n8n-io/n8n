@@ -60,16 +60,16 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
-import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
+import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
-import { useUIStore } from '@/stores/ui.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -180,6 +180,86 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
+const node = computed(() => ndvStore.activeNode ?? undefined);
+const nodeType = computed(
+	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+);
+
+const shortPath = computed<string>(() => {
+	const short = props.path.split('.');
+	short.shift();
+	return short.join('.');
+});
+
+const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
+
+const isResourceLocatorParameter = computed<boolean>(() => {
+	return nodeSettingsParameters.isResourceLocatorParameterType(props.parameter.type);
+});
+
+const isSecretParameter = computed<boolean>(() => {
+	return nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true;
+});
+
+const hasRemoteMethod = computed<boolean>(() => {
+	return (
+		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptionsMethod') ||
+		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptions')
+	);
+});
+
+const parameterOptions = computed(() => {
+	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const safeOptions = (options ?? []).filter(nodeSettingsParameters.isValidParameterOption);
+
+	return safeOptions;
+});
+
+const modelValueString = computed<string>(() => {
+	return props.modelValue as string;
+});
+
+const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {
+	return props.modelValue as INodeParameterResourceLocator;
+});
+
+const modelValueExpressionEdit = computed<string>(() => {
+	return isResourceLocatorParameter.value && typeof props.modelValue !== 'string'
+		? props.modelValue
+			? ((props.modelValue as INodeParameterResourceLocator).value as string)
+			: ''
+		: (props.modelValue as string);
+});
+
+const editorRows = computed(() =>
+	nodeSettingsParameters.getParameterTypeOption<number>(props.parameter, 'rows'),
+);
+
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
+	return nodeSettingsParameters.getParameterTypeOption<EditorType>(props.parameter, 'editor');
+});
+const editorIsReadOnly = computed<boolean>(() => {
+	return (
+		nodeSettingsParameters.getParameterTypeOption<boolean>(props.parameter, 'editorIsReadOnly') ??
+		false
+	);
+});
+
+const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
+	if (editorType.value === 'json' || props.parameter.type === 'json')
+		return 'json' as CodeNodeEditorLanguage;
+	return (
+		nodeSettingsParameters.getParameterTypeOption<CodeNodeEditorLanguage>(
+			props.parameter,
+			'editorLanguage',
+		) ?? 'javaScript'
+	);
+});
+
+const codeEditorMode = computed<CodeExecutionMode>(() => {
+	return node.value?.parameters.mode as CodeExecutionMode;
+});
+
 const displayValue = computed(() => {
 	if (remoteParameterOptionsLoadingIssues.value) {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
@@ -272,8 +352,6 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
-
 const dependentParametersValues = computed<string | null>(() => {
 	const loadOptionsDependsOn = nodeSettingsParameters.getParameterTypeOption<string[] | undefined>(
 		props.parameter,
@@ -298,25 +376,6 @@ const dependentParametersValues = computed<string | null>(() => {
 	} catch {
 		return null;
 	}
-});
-
-const node = computed(() => ndvStore.activeNode ?? undefined);
-const nodeType = computed(
-	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
-);
-
-const displayTitle = computed<string>(() => {
-	const interpolation = { interpolate: { shortPath: shortPath.value } };
-
-	if (getIssues.value.length && isModelValueExpression.value) {
-		return i18n.baseText('parameterInput.parameterHasIssuesAndExpression', interpolation);
-	} else if (getIssues.value.length && !isModelValueExpression.value) {
-		return i18n.baseText('parameterInput.parameterHasIssues', interpolation);
-	} else if (!getIssues.value.length && isModelValueExpression.value) {
-		return i18n.baseText('parameterInput.parameterHasExpression', interpolation);
-	}
-
-	return i18n.baseText('parameterInput.parameter', interpolation);
 });
 
 const getStringInputType = computed(() => {
@@ -418,40 +477,26 @@ const getIssues = computed<string[]>(() => {
 	return [];
 });
 
+const displayTitle = computed<string>(() => {
+	const interpolation = { interpolate: { shortPath: shortPath.value } };
+
+	if (getIssues.value.length && isModelValueExpression.value) {
+		return i18n.baseText('parameterInput.parameterHasIssuesAndExpression', interpolation);
+	} else if (getIssues.value.length && !isModelValueExpression.value) {
+		return i18n.baseText('parameterInput.parameterHasIssues', interpolation);
+	} else if (!getIssues.value.length && isModelValueExpression.value) {
+		return i18n.baseText('parameterInput.parameterHasExpression', interpolation);
+	}
+
+	return i18n.baseText('parameterInput.parameter', interpolation);
+});
+
 const displayIssues = computed(
 	() =>
 		props.parameter.type !== 'credentialsSelect' &&
 		!isResourceLocatorParameter.value &&
 		getIssues.value.length > 0,
 );
-
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return nodeSettingsParameters.getParameterTypeOption<EditorType>(props.parameter, 'editor');
-});
-const editorIsReadOnly = computed<boolean>(() => {
-	return (
-		nodeSettingsParameters.getParameterTypeOption<boolean>(props.parameter, 'editorIsReadOnly') ??
-		false
-	);
-});
-
-const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
-	if (editorType.value === 'json' || props.parameter.type === 'json')
-		return 'json' as CodeNodeEditorLanguage;
-	return (
-		nodeSettingsParameters.getParameterTypeOption<CodeNodeEditorLanguage>(
-			props.parameter,
-			'editorLanguage',
-		) ?? 'javaScript'
-	);
-});
-
-const parameterOptions = computed(() => {
-	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
-	const safeOptions = (options ?? []).filter(nodeSettingsParameters.isValidParameterOption);
-
-	return safeOptions;
-});
 
 const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
@@ -504,29 +549,8 @@ const parameterInputWrapperStyle = computed(() => {
 	return styles;
 });
 
-const hasRemoteMethod = computed<boolean>(() => {
-	return (
-		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptionsMethod') ||
-		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptions')
-	);
-});
-
-const shortPath = computed<string>(() => {
-	const short = props.path.split('.');
-	short.shift();
-	return short.join('.');
-});
-
 const parameterId = computed(() => {
 	return `${node.value?.id ?? crypto.randomUUID()}${props.path}`;
-});
-
-const isResourceLocatorParameter = computed<boolean>(() => {
-	return nodeSettingsParameters.isResourceLocatorParameterType(props.parameter.type);
-});
-
-const isSecretParameter = computed<boolean>(() => {
-	return nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true;
 });
 
 const remoteParameterOptionsKeys = computed<string[]>(() => {
@@ -535,30 +559,6 @@ const remoteParameterOptionsKeys = computed<string[]>(() => {
 
 const shouldRedactValue = computed<boolean>(() => {
 	return getStringInputType.value === 'password' || props.isForCredential;
-});
-
-const modelValueString = computed<string>(() => {
-	return props.modelValue as string;
-});
-
-const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {
-	return props.modelValue as INodeParameterResourceLocator;
-});
-
-const modelValueExpressionEdit = computed<string>(() => {
-	return isResourceLocatorParameter.value && typeof props.modelValue !== 'string'
-		? props.modelValue
-			? ((props.modelValue as INodeParameterResourceLocator).value as string)
-			: ''
-		: (props.modelValue as string);
-});
-
-const editorRows = computed(() =>
-	nodeSettingsParameters.getParameterTypeOption<number>(props.parameter, 'rows'),
-);
-
-const codeEditorMode = computed<CodeExecutionMode>(() => {
-	return node.value?.parameters.mode as CodeExecutionMode;
 });
 
 const isCodeNode = computed(
@@ -727,7 +727,6 @@ function closeTextEditDialog() {
 		if (isBlurrableEl(inputField.value)) {
 			inputField.value.blur();
 		}
-
 		editDialogClosing.value = false;
 	});
 }
@@ -744,61 +743,11 @@ function displayEditDialog() {
 	}
 }
 
-function expressionUpdated(value: string) {
-	const val: NodeParameterValueType = isResourceLocatorParameter.value
-		? { __rl: true, value, mode: modelValueResourceLocator.value.mode }
-		: value;
-	valueChanged(val);
-}
-
 function openExpressionEditorModal() {
 	if (!isModelValueExpression.value) return;
 
 	expressionEditDialogVisible.value = true;
 	trackExpressionEditOpen();
-}
-
-function onBlur() {
-	emit('blur');
-	isFocused.value = false;
-}
-
-function onPaste(event: ClipboardEvent) {
-	const pastedText = event.clipboardData?.getData('text');
-	const input = event.target;
-
-	if (!(input instanceof HTMLInputElement)) return;
-
-	const start = input.selectionStart ?? 0;
-
-	// When a value starting with `=` is pasted that does not contain expression syntax ({{}})
-	// Add an extra `=` to go into expression mode and preserve the original pasted text
-	if (pastedText && pastedText.startsWith('=') && !pastedText.match(/{{.*?}}/g) && start === 0) {
-		event.preventDefault();
-
-		const end = input.selectionEnd ?? start;
-		const text = input.value;
-		const withExpressionPrefix = '=' + pastedText;
-
-		input.value = text.substring(0, start) + withExpressionPrefix + text.substring(end);
-		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
-
-		valueChanged(input.value);
-	}
-}
-
-function onPasteNumber(event: ClipboardEvent) {
-	const pastedText = event.clipboardData?.getData('text');
-
-	if (shouldConvertToExpression(pastedText)) {
-		event.preventDefault();
-		valueChanged('=' + pastedText);
-		return;
-	}
-}
-
-function onResourceLocatorDrop(data: string) {
-	emit('drop', data);
 }
 
 function selectInput() {
@@ -867,11 +816,17 @@ function onTextInputChange(value: string) {
 	emit('textInput', parameterData);
 }
 
-const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
-
-function onUpdateTextInput(value: string) {
-	valueChanged(value);
-	onTextInputChange(value);
+function trackWorkflowInputModeEvent(value: string) {
+	const telemetryValuesMap: Record<string, string> = {
+		workflowInputs: 'fields',
+		jsonExample: 'json',
+		passthrough: 'all',
+	};
+	telemetry.track('User chose input data mode', {
+		option: telemetryValuesMap[value],
+		workflow_id: workflowsStore.workflowId,
+		node_id: node.value?.id,
+	});
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -948,17 +903,61 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	}
 }
 
-function trackWorkflowInputModeEvent(value: string) {
-	const telemetryValuesMap: Record<string, string> = {
-		workflowInputs: 'fields',
-		jsonExample: 'json',
-		passthrough: 'all',
-	};
-	telemetry.track('User chose input data mode', {
-		option: telemetryValuesMap[value],
-		workflow_id: workflowsStore.workflowId,
-		node_id: node.value?.id,
-	});
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
+
+function expressionUpdated(value: string) {
+	const val: NodeParameterValueType = isResourceLocatorParameter.value
+		? { __rl: true, value, mode: modelValueResourceLocator.value.mode }
+		: value;
+	valueChanged(val);
+}
+
+function onBlur() {
+	emit('blur');
+	isFocused.value = false;
+}
+
+function onPaste(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+	const input = event.target;
+
+	if (!(input instanceof HTMLInputElement)) return;
+
+	const start = input.selectionStart ?? 0;
+
+	// When a value starting with `=` is pasted that does not contain expression syntax ({{}})
+	// Add an extra `=` to go into expression mode and preserve the original pasted text
+	if (pastedText && pastedText.startsWith('=') && !pastedText.match(/{{.*?}}/g) && start === 0) {
+		event.preventDefault();
+
+		const end = input.selectionEnd ?? start;
+		const text = input.value;
+		const withExpressionPrefix = '=' + pastedText;
+
+		input.value = text.substring(0, start) + withExpressionPrefix + text.substring(end);
+		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
+
+		valueChanged(input.value);
+	}
+}
+
+function onPasteNumber(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+
+	if (shouldConvertToExpression(pastedText)) {
+		event.preventDefault();
+		valueChanged('=' + pastedText);
+		return;
+	}
+}
+
+function onResourceLocatorDrop(data: string) {
+	emit('drop', data);
+}
+
+function onUpdateTextInput(value: string) {
+	valueChanged(value);
+	onTextInputChange(value);
 }
 
 async function optionSelected(command: string) {
