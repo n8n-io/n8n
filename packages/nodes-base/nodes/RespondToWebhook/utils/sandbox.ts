@@ -6,8 +6,10 @@ export const replaceSingleQuotes = (responseBody: string) => {
  * To prevent XSS and CSRF, we sanitize the response body by wrapping it in an iframe.
  * This prevents the API from being accessed since the iframe origin will be empty.
  */
-export const sanitizeResponseData = (responseBody: string) => {
-	const parsedResponseBody = replaceSingleQuotes(responseBody);
+export const sandboxResponseData = (responseBody: string, shouldReplaceSingleQuotes: boolean) => {
+	const parsedResponseBody = shouldReplaceSingleQuotes
+		? replaceSingleQuotes(responseBody)
+		: responseBody;
 
 	return `
 		<iframe srcdoc='${parsedResponseBody}'

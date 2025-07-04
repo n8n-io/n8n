@@ -23,7 +23,7 @@ import type { Readable } from 'stream';
 
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 import { configuredOutputs } from './utils/outputs';
-import { sanitizeResponseData } from './utils/sanitization';
+import { sandboxResponseData } from './utils/sandbox';
 import { getBinaryResponse } from './utils/binary';
 
 const respondWithProperty: INodeProperties = {
@@ -413,7 +413,10 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
-				responseBody = sanitizeResponseData(this.getNodeParameter('responseBody', 0) as string);
+				responseBody = sandboxResponseData(
+					this.getNodeParameter('responseBody', 0) as string,
+					true,
+				);
 			} else if (respondWith === 'binary') {
 				const item = items[0];
 

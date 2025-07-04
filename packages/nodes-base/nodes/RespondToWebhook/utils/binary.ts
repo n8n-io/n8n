@@ -2,7 +2,7 @@ import type { IBinaryData, IDataObject, IN8nHttpResponse } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { sanitizeResponseData } from './sanitization';
+import { sandboxResponseData } from './sandbox';
 
 export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject) => {
 	const mimeTypesToSanitize = ['text/html', 'application/xhtml+xml'];
@@ -15,14 +15,14 @@ export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject)
 	if (binaryData.id) {
 		responseBody =
 			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
-				? sanitizeResponseData(binaryData.data)
+				? sandboxResponseData(binaryData.data, false)
 				: { binaryData };
 	} else {
 		const responseBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 
 		responseBody =
 			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
-				? sanitizeResponseData(responseBuffer.toString())
+				? sandboxResponseData(responseBuffer.toString(), true)
 				: responseBuffer;
 
 		headers['content-length'] = (responseBody as Buffer).length;
