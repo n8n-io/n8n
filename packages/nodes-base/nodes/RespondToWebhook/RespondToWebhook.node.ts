@@ -82,7 +82,9 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		// Keep the default version at 1.4 until streaming is fully supported
+		defaultVersion: 1.4,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
@@ -332,6 +334,8 @@ export class RespondToWebhook implements INodeType {
 
 		let response: IN8nHttpFullResponse;
 
+		const shouldStream = this.isStreaming();
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
@@ -474,7 +478,13 @@ export class RespondToWebhook implements INodeType {
 				statusCode,
 			};
 
-			this.sendResponse(response);
+			if (nodeVersion >= 1.5 && shouldStream && respondWith !== 'binary') {
+				this.sendChunk('begin');
+				this.sendChunk('item', responseBody?.toString());
+				this.sendChunk('end');
+			} else {
+				this.sendResponse(response);
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const itemData = generatePairedItemData(items.length);
