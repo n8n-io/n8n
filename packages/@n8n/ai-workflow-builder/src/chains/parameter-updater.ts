@@ -81,8 +81,8 @@ Updated parameters: { "url": "https://api.openweathermap.org/data/2.5/weather?q=
 ### Example 2: Add a header
 Change: "Add an API key header with value from credentials"
 Current parameters: { "url": "...", "sendHeaders": false }
-Updated parameters: { 
-  "url": "...", 
+Updated parameters: {
+  "url": "...",
   "sendHeaders": true,
   "headerParameters": {
     "parameters": [
@@ -300,13 +300,18 @@ export const parameterUpdaterPrompt = ChatPromptTemplate.fromMessages([
 	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
 ]);
 
-const parametersSchema = z.object({
-	parameters: z
-		.record(z.string(), z.any())
-		.describe(
-			'The complete updated parameters object for the node. This should be a JSON object that matches the node\'s parameter structure. Include ALL existing parameters plus the requested changes. For example: {"method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "Content-Type", "value": "application/json"}]}}',
-		),
-});
+const parametersSchema = z
+	.object({
+		configured_node_properties_definition: z
+			.object({})
+			.passthrough()
+			.describe(
+				"The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes.",
+			),
+	})
+	.describe(
+		'The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { "configured_node_properties_definition": { "method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] } } }}',
+	);
 
 const updateParametersTool = new DynamicStructuredTool({
 	name: 'update_node_parameters',
@@ -314,7 +319,7 @@ const updateParametersTool = new DynamicStructuredTool({
 		'Update the parameters of an n8n node based on the requested changes while preserving unmodified parameters.',
 	schema: parametersSchema,
 	func: async (input) => {
-		return { parameters: input.parameters };
+		return { parameters: input.configured_node_properties_definition };
 	},
 });
 
@@ -335,9 +340,9 @@ export const parameterUpdaterChain = (llm: BaseChatModel) => {
 				throw new Error('No tool call found in LLM response');
 			}
 			const args = toolCall.args as z.infer<typeof parametersSchema>;
-			if (!args.parameters) {
-				throw new Error('No parameters found in tool call arguments');
+			if (!args.configured_node_properties_definition) {
+				throw new Error('No configured_node_properties_definition found in tool call arguments');
 			}
-			return args.parameters;
+			return args.configured_node_properties_definition;
 		});
 };

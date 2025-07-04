@@ -37,7 +37,7 @@ export function getLatestVersion(nodeType: INodeTypeDescription): number {
  * @returns A unique node identifier
  */
 export function generateNodeId(): string {
-	return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+	return crypto.randomUUID();
 }
 
 /**
@@ -45,7 +45,7 @@ export function generateNodeId(): string {
  * @returns A unique webhook identifier
  */
 export function generateWebhookId(): string {
-	return `webhook_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+	return crypto.randomUUID();
 }
 
 /**

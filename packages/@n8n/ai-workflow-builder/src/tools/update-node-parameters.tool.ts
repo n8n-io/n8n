@@ -138,7 +138,10 @@ export class UpdateNodeParametersTool extends BaseWorkflowBuilderTool<
 			}
 
 			// Merge the new parameters with existing ones
-			const updatedParameters = mergeParameters(currentParameters, newParameters);
+			const updatedParameters = mergeParameters(
+				currentParameters,
+				newParameters as INodeParameters,
+			);
 
 			// Validate the updated parameters
 			const validation = validateParameters(updatedParameters, nodeType);

@@ -93,7 +93,7 @@ export class ResponseBuilder<TState = typeof WorkflowState.State> {
 				Object.assign(update, this.stateUpdates);
 			}
 		}
-
+		console.log('Returning command with update: ', update, 'for tool: ', this.toolCallId);
 		return new Command({ update });
 	}
 

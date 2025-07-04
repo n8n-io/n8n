@@ -83,12 +83,12 @@ export class AiWorkflowBuilderService {
 			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 		});
 
-		// this.llmComplexTask = await gpt41({
-		// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-		// });
-		this.llmComplexTask = await anthropicClaudeSonnet4({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+		this.llmComplexTask = await gpt41({
+			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 		});
+		// this.llmComplexTask = await anthropicClaudeSonnet4({
+		// 	apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+		// });
 	}
 
 	private getNodeTypes(): INodeTypeDescription[] {
@@ -133,6 +133,7 @@ export class AiWorkflowBuilderService {
 			assert(this.llmComplexTask, 'LLM not setup');
 			assert(this.llmComplexTask.bindTools, 'LLM does not support tools');
 
+			// @ts-ignore
 			const response = await this.llmComplexTask.bindTools(tools).invoke(state.messages);
 
 			return { messages: [response] };
@@ -190,11 +191,32 @@ export class AiWorkflowBuilderService {
 					1. BEFORE ADDING NODES: You MUST call "get_node_details" for EACH node type you plan to add. This is MANDATORY to understand the node's input/output structure and ensure proper connections.
 					2. ALWAYS use the "add_nodes" tool with an array of nodes when adding multiple nodes. NEVER call "add_nodes" multiple times in parallel.
 					3. When you need to add multiple nodes, collect all nodes you want to add and call "add_nodes" ONCE with the complete array.
+					PARALLEL TOOL EXECUTION (FOR PERFORMANCE):
+					1. "search_nodes" and "get_node_details" can and SHOULD be called in parallel when gathering information about multiple node types
+					2. "update_node_parameters" can be called in parallel AS LONG AS it's for different nodes
+					3. Always batch information-gathering operations to minimize wait time
+
+					PARAMETER UPDATES:
+					1. Use "update_node_parameters" to modify existing node parameters based on natural language instructions
+					2. You can update multiple nodes' parameters in parallel if they are different nodes
+					3. If you have all the information needed, proceed directly with parameter updates without asking for confirmation
+					4. The tool intelligently preserves existing parameters while applying only the requested changes
+
+					PROACTIVE WORKFLOW DESIGN:
+					When asked to generate a workflow, proactively think about and suggest:
+					- Flow control nodes: IF nodes for conditional logic, Switch nodes for multiple branches
+					- Data manipulation: Set nodes for transforming data, Code nodes for custom logic
+					- Timing control: Schedule Trigger for recurring workflows, Wait nodes for delays
+					- Error handling: Error Trigger nodes, Try-Catch patterns
+					- Data aggregation: Merge nodes, Split In Batches for processing large datasets
+					Don't wait to be asked - suggest these when they would improve the workflow!
+
 					4. The "add_nodes" tool must be called sequentially, not in parallel, to ensure proper state management.
 
 					WORKFLOW CREATION SEQUENCE:
-					1. Search for nodes using "search_nodes" to find available node types
-					2. Call "get_node_details" for EACH node type to understand inputs/outputs (MANDATORY)
+					1. Search for nodes using "search_nodes" to find available node types (can be done in parallel)
+					2. Call "get_node_details" for EACH node type to understand inputs/outputs (MANDATORY, can be done in parallel)
+					5. Update node parameters using "update_node_parameters" for any nodes that need configuration (can be done in parallel for different nodes)
 					3. Add all nodes at once using "add_nodes" with an array
 					4. Connect nodes using "connect_nodes" based on the input/output information from step 2
 
@@ -248,10 +270,19 @@ export class AiWorkflowBuilderService {
 				if ((chunk?.agent?.messages ?? [])?.length > 0) {
 					const lastMessage = chunk.agent.messages[chunk.agent.messages.length - 1];
 					if (lastMessage.content) {
+						let content = lastMessage.content;
+
+						if (Array.isArray(lastMessage.content)) {
+							// @ts-ignore
+							content = lastMessage.content
+								.filter((c) => c.type === 'text')
+								.map((b) => b.text)
+								.join('\n');
+						}
 						const messageChunk = {
 							role: 'assistant',
 							type: 'message',
-							text: lastMessage.content,
+							text: content,
 						};
 						yield { messages: [messageChunk] };
 					}
@@ -262,9 +293,12 @@ export class AiWorkflowBuilderService {
 					yield {
 						messages: [chunk],
 					};
-					if (['add_nodes', 'connect_nodes', 'update_node_parameters'].includes(chunk.toolName)) {
+					if (
+						['add_nodes', 'connect_nodes', 'update_node_parameters'].includes(chunk.toolName) &&
+						chunk.status === 'completed'
+					) {
 						const currentState = await agent.getState(threadConfig);
-						console.log('Updating WF', currentState);
+						// console.log('Updating WF', currentState);
 						yield {
 							messages: [
 								{
