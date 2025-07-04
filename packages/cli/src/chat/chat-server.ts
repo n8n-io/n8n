@@ -1,10 +1,13 @@
 import { Service } from '@n8n/di';
+import { OnShutdown } from '@n8n/decorators';
 import type { Application } from 'express';
 import type { Server as HttpServer } from 'http';
 import { ServerResponse } from 'http';
 import { parse as parseUrl } from 'url';
 import type { WebSocket } from 'ws';
 import { Server as WebSocketServer } from 'ws';
+
+import { parse as parseQuery } from 'querystring';
 
 import { ChatService } from './chat-service';
 import type { ChatRequest } from './chat-service.types';
@@ -28,6 +31,14 @@ export class ChatServer {
 
 	setup(server: HttpServer, app: Application) {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
+			const parsedUrl = parseUrl(req.url ?? '');
+			const params = parseQuery(parsedUrl.query ?? '');
+
+			const { sessionId, executionId } = params;
+
+			if (!sessionId || !executionId) {
+				return;
+			}
 			const ip = req.socket.remoteAddress;
 
 			if (!ip) {
@@ -53,7 +64,7 @@ export class ChatServer {
 
 			this.upgradeAttempts.set(ip, record);
 
-			if (parseUrl(req.url).pathname?.startsWith('/chat')) {
+			if (parsedUrl.pathname?.startsWith('/chat')) {
 				this.wsServer.handleUpgrade(req, socket, head, (ws) => {
 					this.attachToApp(req, ws, app as ExpressApplication);
 				});
@@ -74,5 +85,11 @@ export class ChatServer {
 		};
 
 		app.handle(req, res);
+	}
+
+	@OnShutdown()
+	shutdown() {
+		this.wsServer.close();
+		this.upgradeAttempts.clear();
 	}
 }

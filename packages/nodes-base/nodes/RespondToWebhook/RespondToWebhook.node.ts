@@ -340,9 +340,10 @@ export class RespondToWebhook implements INodeType {
 
 		let response: IN8nHttpFullResponse;
 
+		const connectedNodes = this.getParentNodes(this.getNode().name);
+
 		try {
 			if (nodeVersion >= 1.1) {
-				const connectedNodes = this.getParentNodes(this.getNode().name);
 				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -467,7 +468,9 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const chatTrigger = this.getChatTrigger();
+			const chatTrigger = connectedNodes.find(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+			);
 
 			if (chatTrigger && !chatTrigger.disabled) {
 				let message = '';

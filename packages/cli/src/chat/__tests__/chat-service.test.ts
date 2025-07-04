@@ -55,22 +55,6 @@ describe('ChatService', () => {
 	});
 
 	describe('startSession', () => {
-		it('should reject if sessionId or executionId is missing', () => {
-			const req = {
-				ws: mockWs,
-				query: {
-					sessionId: '',
-					executionId: '',
-					isPublic: false,
-				},
-			} as unknown as ChatRequest;
-
-			void chatService.startSession(req);
-
-			expect(mockWs.send).toHaveBeenCalledWith('The query parameter "sessionId" is missing');
-			expect(mockWs.close).toHaveBeenCalledWith(1008);
-		});
-
 		it('should start a session and store it in sessions map', async () => {
 			const mockWs = mock<WebSocket>();
 

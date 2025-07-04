@@ -1,6 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from 'langchain/memory';
-import { CHAT_WAIT_USER_REPLY, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_WAIT_USER_REPLY,
+	NodeConnectionTypes,
+	NodeOperationError,
+} from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -204,9 +209,13 @@ export class Chat implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const chatTrigger = this.getChatTrigger();
+		const connectedNodes = this.getParentNodes(this.getNode().name);
 
-		if (!chatTrigger || chatTrigger.disabled) {
+		const chatTrigger = connectedNodes.find(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+		);
+
+		if (!chatTrigger) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Workflow must be started from a chat trigger node',

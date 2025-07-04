@@ -123,6 +123,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
+	/**
+	 * Gets the chat trigger node
+	 *
+	 * this is needed for sub-nodes where the parent nodes are not available
+	 */
 	getChatTrigger() {
 		for (const node of Object.values(this.workflow.nodes)) {
 			if (this.workflow.nodes[node.name].type === CHAT_TRIGGER_NODE_TYPE) {

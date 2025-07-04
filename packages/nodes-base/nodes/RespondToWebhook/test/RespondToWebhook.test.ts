@@ -8,6 +8,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type NodeTypeAndVersion,
+	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
@@ -28,9 +29,9 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.4 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
-				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }),
 			]);
-			mockExecuteFunctions.getChatTrigger.mockReturnValue({ disabled: false } as any);
+
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'json';
 				if (paramName === 'responseBody') return { message: 'Hello World' };
@@ -46,9 +47,9 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
-				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }),
 			]);
-			mockExecuteFunctions.getChatTrigger.mockReturnValue({ disabled: false } as any);
+
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'text';
 				if (paramName === 'responseBody') return 'Just a string';
@@ -64,9 +65,9 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
-				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true }),
 			]);
-			mockExecuteFunctions.getChatTrigger.mockReturnValue({ disabled: true } as any);
+
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'json';
 				if (paramName === 'responseBody') return { message: 'Hello World' };

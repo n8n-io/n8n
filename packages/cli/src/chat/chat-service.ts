@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { OnShutdown } from '@n8n/decorators';
 import { jsonParse, UnexpectedError, ensureError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 
@@ -35,12 +36,16 @@ function closeConnection(ws: WebSocket) {
 @Service()
 export class ChatService {
 	private readonly sessions = new Map<string, Session>();
+	private heartbeatIntervalId: NodeJS.Timeout;
 
 	constructor(
 		private readonly executionManager: ChatExecutionManager,
 		private readonly logger: Logger,
 	) {
-		setInterval(async () => await this.checkHeartbeats(), HEARTBEAT_INTERVAL);
+		this.heartbeatIntervalId = setInterval(
+			async () => await this.checkHeartbeats(),
+			HEARTBEAT_INTERVAL,
+		);
 	}
 
 	async startSession(req: ChatRequest) {
@@ -51,13 +56,6 @@ export class ChatService {
 
 		if (!ws) {
 			throw new UnexpectedError('WebSocket connection is missing');
-		}
-
-		if (!sessionId || !executionId) {
-			const parameter = sessionId ? 'executionId' : 'sessionId';
-			ws.send(`The query parameter "${parameter}" is missing`);
-			ws.close(1008);
-			return;
 		}
 
 		const execution = await this.executionManager.checkExecutionExists(executionId);
@@ -306,5 +304,15 @@ export class ChatService {
 			const error = ensureError(e);
 			this.logger.error(`Error checking heartbeats: ${error.message}`);
 		}
+	}
+
+	@OnShutdown()
+	shutdown() {
+		for (const session of this.sessions.values()) {
+			this.cleanupSession(session);
+		}
+
+		this.sessions.clear();
+		clearInterval(this.heartbeatIntervalId);
 	}
 }
