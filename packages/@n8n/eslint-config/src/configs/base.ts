@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
-// Slowest rules are disabled locally (for lint, not lintifx) to improve performance in development
+// Slowest rules are disabled locally (for lint, not lintfix) to improve performance in development
 // They are enabled in CI to ensure code quality
 const runAllRules =
 	process.env.CI === 'true' ||
