@@ -480,6 +480,7 @@ watch(
 				[$style.highlight]: highlight,
 				[$style.lightHeader]: headerBgColor === 'light',
 				[$style.compact]: props.compact,
+				[$style.hasCollapsingColumn]: fixedColumnWidths !== undefined,
 			},
 		]"
 	>
@@ -543,14 +544,7 @@ watch(
 				</tr>
 			</tbody>
 		</table>
-		<table
-			v-else
-			ref="tableRef"
-			:class="{
-				[$style.table]: true,
-				[$style.hasCollapsingColumn]: fixedColumnWidths !== undefined,
-			}"
-		>
+		<table v-else ref="tableRef" :class="$style.table">
 			<colgroup v-if="fixedColumnWidths">
 				<col v-for="(width, i) in fixedColumnWidths" :key="i" :width="width" />
 			</colgroup>
@@ -834,7 +828,7 @@ watch(
 		border-right: var(--border-base);
 	}
 
-	&.hasCollapsingColumn {
+	.hasCollapsingColumn & {
 		table-layout: fixed;
 
 		td:not(.isCollapsingColumn) {
