@@ -141,6 +141,10 @@ export async function execute(
 
 			const body: IDataObject = { typecast };
 
+			if (options.returnFieldsByFieldId !== undefined) {
+				body.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
+			}
+
 			const responseData = await batchUpdate.call(this, endpoint, body, records);
 
 			const executionData = this.helpers.constructExecutionMetaData(
