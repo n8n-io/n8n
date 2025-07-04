@@ -1834,10 +1834,12 @@ export function useCanvasOperations() {
 			trackBulk = true,
 			trackHistory = true,
 			viewport,
+			regenerateIds = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
 			trackHistory?: boolean;
+			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
@@ -1883,8 +1885,10 @@ export function useCanvasOperations() {
 					// Set all new ids when pasting/importing workflows
 					if (node.id) {
 						const previousId = node.id;
-						const newId = nodeHelpers.assignNodeId(node);
-						nodeIdMap[newId] = previousId;
+						if (regenerateIds) {
+							const newId = nodeHelpers.assignNodeId(node);
+							nodeIdMap[newId] = previousId;
+						}
 					} else {
 						nodeHelpers.assignNodeId(node);
 					}

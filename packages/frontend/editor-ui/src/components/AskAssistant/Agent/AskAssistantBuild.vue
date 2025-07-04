@@ -126,6 +126,7 @@ function onUpdateWorkflow(code: string) {
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: workflowData,
 		tidyUp: false,
+		regenerateIds: false,
 	});
 }
 
