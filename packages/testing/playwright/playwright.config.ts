@@ -1,4 +1,4 @@
-/* eslint-disable import/no-default-export */
+/* eslint-disable import-x/no-default-export */
 import type { Project } from '@playwright/test';
 import { defineConfig } from '@playwright/test';
 
