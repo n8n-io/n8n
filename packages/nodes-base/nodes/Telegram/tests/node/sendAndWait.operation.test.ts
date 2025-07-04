@@ -26,7 +26,43 @@ describe('Test Telegram, message => sendAndWait', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should send message and put execution to wait', async () => {
+	const dataset = [
+		{
+			form: { messageThreadId: '' },
+			expected: {
+				payload: {
+					chat_id: 'chatID',
+					disable_web_page_preview: true,
+					parse_mode: 'Markdown',
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: 'Approve', url: 'http://localhost/waiting-webhook/nodeID?approved=true' }],
+						],
+					},
+					text: 'my message\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId)',
+				},
+			},
+		},
+		{
+			form: { messageThreadId: 'message_thread_id' },
+			expected: {
+				payload: {
+					chat_id: 'chatID',
+					message_thread_id: 'message_thread_id',
+					disable_web_page_preview: true,
+					parse_mode: 'Markdown',
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: 'Approve', url: 'http://localhost/waiting-webhook/nodeID?approved=true' }],
+						],
+					},
+					text: 'my message\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId)',
+				},
+			},
+		},
+	];
+
+	it.each(dataset)('should send message and put execution to wait', async ({ form, expected }) => {
 		const items = [{ json: { data: 'test' } }];
 		//node
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
@@ -38,6 +74,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 
 		//createSendAndWaitMessageBody
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(form.messageThreadId);
 
 		//getSendAndWaitConfig
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
@@ -57,16 +94,10 @@ describe('Test Telegram, message => sendAndWait', () => {
 		expect(genericFunctions.apiRequest).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(genericFunctions.apiRequest).toHaveBeenCalledWith('POST', 'sendMessage', {
-			chat_id: 'chatID',
-			disable_web_page_preview: true,
-			parse_mode: 'Markdown',
-			reply_markup: {
-				inline_keyboard: [
-					[{ text: 'Approve', url: 'http://localhost/waiting-webhook/nodeID?approved=true' }],
-				],
-			},
-			text: 'my message\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId)',
-		});
+		expect(genericFunctions.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'sendMessage',
+			expected.payload,
+		);
 	});
 });
