@@ -10,13 +10,15 @@
 // PD denotes that the node has pinned data
 
 import { AssertionError } from 'assert';
-import type {
-	INodeExecutionData,
-	ISourceData,
-	IWaitingForExecution,
-	IWaitingForExecutionSource,
+import {
+	NodeConnectionTypes,
+	type INodeExecutionData,
+	type ISourceData,
+	type IWaitingForExecution,
+	type IWaitingForExecutionSource,
+	type IPinData,
+	type IRunData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, type IPinData, type IRunData } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
