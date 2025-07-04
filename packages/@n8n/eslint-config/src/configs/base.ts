@@ -11,9 +11,12 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
-// Slowest rules are disabled locally to improve performance in development
+// Slowest rules are disabled locally (for lint, not lintfix) to improve performance in development
 // They are enabled in CI to ensure code quality
-const runAllRules = process.env.CI === 'true' || process.env.INCLUDE_SLOW_RULES === 'true';
+const runAllRules =
+	process.env.CI === 'true' ||
+	process.env.INCLUDE_SLOW_RULES === 'true' ||
+	process.argv.includes('--fix');
 
 export const baseConfig = tseslint.config(
 	globalIgnores([
