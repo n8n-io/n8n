@@ -17,5 +17,5 @@ export const WorkflowState = Annotation.Root({
 	// Whether the user prompt is a workflow prompt.
 	isWorkflowPrompt: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
 	// The next phase to be executed in the workflow graph.
-	next: Annotation<string>({ reducer: (x, y) => y ?? x ?? END, default: () => END }),
+	// next: Annotation<string>({ reducer: (x, y) => y ?? x ?? END, default: () => END }),
 });

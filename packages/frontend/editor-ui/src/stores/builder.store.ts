@@ -118,7 +118,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Message handling functions
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		// console.log("🚀 ~ addAssistantMessages ~ newMessages:", newMessages)
 		const read = true; // Always mark as read in builder
 		const messages = [...chatMessages.value];
 

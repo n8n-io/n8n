@@ -24,11 +24,12 @@ You will receive:
 1. START WITH CURRENT: If current parameters is empty {}, start with an empty object and add the requested parameters
 2. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes
 3. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type
-4. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes
-5. VALIDATE TYPES: Ensure parameter values match their expected types
-6. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
-7. SIMPLE VALUES: For simple parameter updates like "Set X to Y", directly set the parameter without unnecessary nesting
-8. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like "id-1", "id-2", etc.
+4. CHECK FOR RESOURCELOCATOR: If a parameter is type 'resourceLocator' in the node definition, it MUST use the ResourceLocator structure with __rl, mode, and value fields
+5. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes
+6. VALIDATE TYPES: Ensure parameter values match their expected types
+7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
+8. SIMPLE VALUES: For simple parameter updates like "Set X to Y", directly set the parameter without unnecessary nesting
+9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like "id-1", "id-2", etc.
 
 ## CRITICAL: Correctly Formatting n8n Expressions
 When using expressions to reference data from other nodes:
@@ -40,6 +41,97 @@ When using expressions to reference data from other nodes:
 - INCORRECT: \`{{ $('Node Name').item.json.field }}\` (missing =)
 - INCORRECT: \`={{ $('👍 Node').item.json.field }}\` (contains emoji)
 - CORRECT: \`={{ $('Previous Node').item.json.field }}\`
+
+## IMPORTANT: ResourceLocator Parameter Handling
+
+ResourceLocator parameters are special fields used for selecting resources like Slack channels, Google Drive files, Notion pages, etc. They MUST have a specific structure:
+
+### Required ResourceLocator Structure:
+\`\`\`json
+{
+  "__rl": true,
+  "mode": "id" | "url" | "list" | "name",
+  "value": "the-actual-value"
+}
+\`\`\`
+
+### Mode Detection Guidelines:
+- Use mode "url" when the value is a URL (starts with http:// or https://)
+- Use mode "id" when the value looks like an ID (alphanumeric string)
+- Use mode "name" when the value has a prefix like # (Slack channels) or @ (users)
+- Use mode "list" when referencing a dropdown selection (rarely needed in updates)
+
+### ResourceLocator Examples:
+
+#### Example 1: Slack Channel by ID
+Parameter name: channelId
+Change: "Set channel to C0122KQ70S7E"
+Output:
+\`\`\`json
+{
+  "channelId": {
+    "__rl": true,
+    "mode": "id",
+    "value": "C0122KQ70S7E"
+  }
+}
+\`\`\`
+
+#### Example 2: Google Drive File by URL
+Parameter name: fileId
+Change: "Use file https://drive.google.com/file/d/1Nvdl7bEfDW33cKQuwfItPhIk479--WYY/view"
+Output:
+\`\`\`json
+{
+  "fileId": {
+    "__rl": true,
+    "mode": "url",
+    "value": "https://drive.google.com/file/d/1Nvdl7bEfDW33cKQuwfItPhIk479--WYY/view"
+  }
+}
+\`\`\`
+
+#### Example 3: Notion Page by ID
+Parameter name: pageId
+Change: "Set page ID to 123e4567-e89b-12d3"
+Output:
+\`\`\`json
+{
+  "pageId": {
+    "__rl": true,
+    "mode": "id",
+    "value": "123e4567-e89b-12d3"
+  }
+}
+\`\`\`
+
+#### Example 4: Slack Channel by Name
+Parameter name: channelId
+Change: "Send to #general channel"
+Output:
+\`\`\`json
+{
+  "channelId": {
+    "__rl": true,
+    "mode": "name",
+    "value": "#general"
+  }
+}
+\`\`\`
+
+#### Example 5: Using Expression with ResourceLocator
+Parameter name: channelId
+Change: "Use channel ID from previous node"
+Output:
+\`\`\`json
+{
+  "channelId": {
+    "__rl": true,
+    "mode": "id",
+    "value": "={{ $('Previous Node').item.json.channelId }}"
+  }
+}
+\`\`\`
 
 ## Common Parameter Update Patterns
 
@@ -261,6 +353,82 @@ Expected Output:
         "type": "string"
       }
     ]
+  }
+}
+
+### Example 4: Slack Node (ResourceLocator Parameter)
+Current Parameters:
+{
+  "select": "channel",
+  "channelId": {
+    "__rl": true,
+    "value": "",
+    "mode": "list"
+  },
+  "otherOptions": {}
+}
+
+Requested Changes:
+- Send to channel C0122KQ70S7E
+
+Expected Output:
+{
+  "select": "channel",
+  "channelId": {
+    "__rl": true,
+    "mode": "id",
+    "value": "C0122KQ70S7E"
+  },
+  "otherOptions": {}
+}
+
+### Example 5: Google Drive Node (ResourceLocator with URL)
+Current Parameters:
+{
+  "operation": "download",
+  "fileId": {
+    "__rl": true,
+    "value": "",
+    "mode": "list"
+  }
+}
+
+Requested Changes:
+- Use file https://drive.google.com/file/d/1ABC123XYZ/view
+
+Expected Output:
+{
+  "operation": "download",
+  "fileId": {
+    "__rl": true,
+    "mode": "url",
+    "value": "https://drive.google.com/file/d/1ABC123XYZ/view"
+  }
+}
+
+### Example 6: Notion Node (ResourceLocator with Expression)
+Current Parameters:
+{
+  "resource": "databasePage",
+  "operation": "get",
+  "pageId": {
+    "__rl": true,
+    "value": "hardcoded-page-id",
+    "mode": "id"
+  }
+}
+
+Requested Changes:
+- Use page ID from the previous node's output
+
+Expected Output:
+{
+  "resource": "databasePage",
+  "operation": "get",
+  "pageId": {
+    "__rl": true,
+    "mode": "id",
+    "value": "={{ $('Previous Node').item.json.pageId }}"
   }
 }
 
