@@ -13,6 +13,7 @@ import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.j
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
 import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-module.js';
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
+import { NoUnboundedArgumentSpread } from './no-unbounded-argument-spread.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -29,4 +30,5 @@ export const rules = {
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
 	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
+	'no-unbounded-argument-spread': NoUnboundedArgumentSpread,
 } satisfies Record<string, AnyRuleModule>;
