@@ -55,7 +55,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						files,
 						currentSessionId.value as string,
 						options,
-						(chunk: string, nodeId?: string, runIndex?: number, itemIndex?: number) => {
+						(chunk: string, nodeId?: string, runIndex?: number) => {
 							handleStreamingChunk(
 								chunk,
 								nodeId,
@@ -63,21 +63,13 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 								receivedMessage,
 								messages,
 								runIndex,
-								itemIndex,
 							);
 						},
-						(nodeId: string, runIndex?: number, itemIndex?: number) => {
-							handleNodeStart(nodeId, streamingManager, messages, runIndex, itemIndex);
+						(nodeId: string, runIndex?: number) => {
+							handleNodeStart(nodeId, streamingManager, runIndex);
 						},
-						(nodeId: string, runIndex?: number, itemIndex?: number) => {
-							handleNodeComplete(
-								nodeId,
-								streamingManager,
-								receivedMessage,
-								messages,
-								runIndex,
-								itemIndex,
-							);
+						(nodeId: string, runIndex?: number) => {
+							handleNodeComplete(nodeId, streamingManager, runIndex);
 						},
 					);
 				} else {

@@ -14,7 +14,6 @@ export function handleStreamingChunk(
 	receivedMessage: Ref<ChatMessageText | null>,
 	messages: Ref<unknown[]>,
 	runIndex?: number,
-	itemIndex?: number,
 ): void {
 	try {
 		// Skip empty chunks to avoid showing empty responses
@@ -64,9 +63,7 @@ export function handleStreamingChunk(
 export function handleNodeStart(
 	nodeId: string,
 	streamingManager: StreamingMessageManager,
-	messages: Ref<unknown[]>,
 	runIndex?: number,
-	itemIndex?: number,
 ): void {
 	try {
 		// Just register the run as starting, don't create a message yet
@@ -80,10 +77,7 @@ export function handleNodeStart(
 export function handleNodeComplete(
 	nodeId: string,
 	streamingManager: StreamingMessageManager,
-	receivedMessage: Ref<ChatMessageText | null>,
-	messages: Ref<unknown[]>,
 	runIndex?: number,
-	itemIndex?: number,
 ): void {
 	try {
 		streamingManager.removeRunFromActive(nodeId, runIndex);

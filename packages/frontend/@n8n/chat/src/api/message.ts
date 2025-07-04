@@ -62,14 +62,13 @@ export async function sendMessageStreaming(
 	files: File[],
 	sessionId: string,
 	options: ChatOptions,
-	onChunk: (chunk: string, nodeId?: string, runIndex?: number, itemIndex?: number) => void,
-	onBeginMessage: (nodeId: string, runIndex?: number, itemIndex?: number) => void,
-	onEndMessage: (nodeId: string, runIndex?: number, itemIndex?: number) => void,
+	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void,
+	onBeginMessage: (nodeId: string, runIndex?: number) => void,
+	onEndMessage: (nodeId: string, runIndex?: number) => void,
 ): Promise<void> {
 	let response: Response;
 
 	if (files.length > 0) {
-		console.log('Files message');
 		// Handle file uploads with FormData for streaming
 		const formData = new FormData();
 		formData.append('action', 'sendMessage');
@@ -94,7 +93,6 @@ export async function sendMessageStreaming(
 			body: formData,
 		});
 	} else {
-		console.log('Text only message');
 		// Handle text-only messages with JSON
 		const body = {
 			action: 'sendMessage',
@@ -146,28 +144,22 @@ export async function sendMessageStreaming(
 
 				if (line.trim()) {
 					try {
-						console.log(line);
 						const decoded: StructuredChunk = JSON.parse(line);
 						const nodeId = decoded.metadata?.nodeId || 'unknown';
 						const runIndex = decoded.metadata?.runIndex;
-						const itemIndex = decoded.metadata?.itemIndex;
 
 						if (decoded?.type === 'begin') {
-							console.log('Begin message:', decoded);
-							onBeginMessage(nodeId, runIndex, itemIndex);
+							onBeginMessage(nodeId, runIndex);
 						}
 						if (decoded?.type === 'item') {
-							console.log('item message:', decoded);
-							onChunk(decoded?.content ?? '', nodeId, runIndex, itemIndex);
+							onChunk(decoded?.content ?? '', nodeId, runIndex);
 						}
 						if (decoded?.type === 'end') {
-							console.log('end message:', decoded);
-							onEndMessage(nodeId, runIndex, itemIndex);
+							onEndMessage(nodeId, runIndex);
 						}
 						if (decoded?.type === 'error') {
-							console.log('error message:', decoded);
-							onChunk(`Error: ${decoded.content ?? 'Unknown error'}`, nodeId, runIndex, itemIndex);
-							onEndMessage(nodeId, runIndex, itemIndex);
+							onChunk(`Error: ${decoded.content ?? 'Unknown error'}`, nodeId, runIndex);
+							onEndMessage(nodeId, runIndex);
 						}
 					} catch (error) {
 						console.warn('Failed to parse JSON line:', line, error);
@@ -184,9 +176,8 @@ export async function sendMessageStreaming(
 				const decoded: StructuredChunk = JSON.parse(buffer);
 				const nodeId = decoded.metadata?.nodeId || 'unknown';
 				const runIndex = decoded.metadata?.runIndex;
-				const itemIndex = decoded.metadata?.itemIndex;
 				if (decoded?.type === 'item') {
-					onChunk(decoded?.content ?? '', nodeId, runIndex, itemIndex);
+					onChunk(decoded?.content ?? '', nodeId, runIndex);
 				}
 			} catch (error) {
 				console.warn('Failed to parse remaining buffer as JSON, treating as plain text:', buffer);

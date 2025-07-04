@@ -118,12 +118,12 @@ describe('sendMessageStreaming', () => {
 		});
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(1);
-		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0);
 		expect(onChunk).toHaveBeenCalledTimes(2);
-		expect(onChunk).toHaveBeenCalledWith('Hello ', 'node-1', 0, 0);
-		expect(onChunk).toHaveBeenCalledWith('World!', 'node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledWith('Hello ', 'node-1', 0);
+		expect(onChunk).toHaveBeenCalledWith('World!', 'node-1', 0);
 		expect(onEndMessage).toHaveBeenCalledTimes(1);
-		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0);
 	});
 
 	it('should handle multiple runs and items correctly', async () => {
@@ -227,14 +227,14 @@ describe('sendMessageStreaming', () => {
 		);
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(2);
-		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
-		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 1, 0);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 1);
 		expect(onChunk).toHaveBeenCalledTimes(2);
-		expect(onChunk).toHaveBeenCalledWith('Run 0 Item 0 ', 'node-1', 0, 0);
-		expect(onChunk).toHaveBeenCalledWith('Run 1 Item 0 ', 'node-1', 1, 0);
+		expect(onChunk).toHaveBeenCalledWith('Run 0 Item 0 ', 'node-1', 0);
+		expect(onChunk).toHaveBeenCalledWith('Run 1 Item 0 ', 'node-1', 1);
 		expect(onEndMessage).toHaveBeenCalledTimes(2);
-		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
-		expect(onEndMessage).toHaveBeenCalledWith('node-1', 1, 0);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 1);
 	});
 
 	it('should support file uploads with streaming', async () => {
@@ -329,12 +329,12 @@ describe('sendMessageStreaming', () => {
 		});
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(1);
-		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0);
 		expect(onChunk).toHaveBeenCalledTimes(2);
-		expect(onChunk).toHaveBeenCalledWith('File processed: ', 'node-1', 0, 0);
-		expect(onChunk).toHaveBeenCalledWith('test.txt', 'node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledWith('File processed: ', 'node-1', 0);
+		expect(onChunk).toHaveBeenCalledWith('test.txt', 'node-1', 0);
 		expect(onEndMessage).toHaveBeenCalledTimes(1);
-		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0);
 	});
 
 	it('should handle HTTP errors', async () => {

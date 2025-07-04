@@ -22,14 +22,6 @@ export class StreamingMessageManager {
 		return nodeId;
 	}
 
-	private getItemKey(nodeId: string, runIndex?: number, itemIndex?: number): string {
-		const runKey = this.getRunKey(nodeId, runIndex);
-		if (itemIndex !== undefined) {
-			return `${runKey}-${itemIndex}`;
-		}
-		return runKey;
-	}
-
 	initializeRun(nodeId: string, runIndex?: number): ChatMessageText {
 		const runKey = this.getRunKey(nodeId, runIndex);
 		if (!this.nodeRuns.has(runKey)) {
