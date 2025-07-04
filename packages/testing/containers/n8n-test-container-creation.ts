@@ -1,23 +1,26 @@
 /**
  * n8n Test Containers Setup
  * This file provides a complete n8n container stack for testing with support for:
- * - Single instances (SQLite or PostgreSQL)
+ * - Single instances (SQLite or PostgreSQL) - now also using load balancer
  * - Queue mode with Redis
- * - Multi-main instances with nginx load balancing
+ * - Multi-main instances with load balancing
  * - Parallel execution (multiple stacks running simultaneously)
  *
  * Key features for parallel execution:
  * - Dynamic port allocation to avoid conflicts (handled by testcontainers)
- * - WebSocket support through nginx load balancer
+ * - WebSocket support through load balancer (used for all configurations)
+ * - Consistent WEBHOOK_URL configuration through load balancer
  */
 
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
+import { Readable } from 'stream';
 
 import {
-	setupNginxLoadBalancer,
 	setupPostgres,
 	setupRedis,
+	setupCaddyLoadBalancer,
+	pollContainerHttpEndpoint,
 } from './n8n-test-container-dependencies';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
@@ -25,7 +28,7 @@ import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
-const NGINX_IMAGE = 'nginx:stable';
+const CADDY_IMAGE = 'caddy:2-alpine';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
@@ -38,11 +41,9 @@ const BASE_ENV: Record<string, string> = {
 	E2E_TESTS: 'true',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
+	N8N_RUNNERS_ENABLED: 'true',
 	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
-};
-
-const MULTI_MAIN_LICENSE = {
-	N8N_LICENSE_TENANT_ID: '1001',
+	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 };
 
@@ -76,11 +77,11 @@ export interface N8NStack {
  * Create an n8n container stack
  *
  * @example
- * // Simple SQLite instance
+ * // Simple SQLite instance (now with load balancer)
  * const stack = await createN8NStack();
  *
  * @example
- * // PostgreSQL without queue mode
+ * // PostgreSQL without queue mode (now with load balancer)
  * const stack = await createN8NStack({ postgres: true });
  *
  * @example
@@ -98,22 +99,22 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const { postgres = false, queueMode = false, env = {}, projectName } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
-	const uniqueProjectName = projectName ?? `n8n-${Math.random().toString(36).substring(7)}`;
+	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
-	let network: StartedNetwork | undefined;
-	let nginxContainer: StartedTestContainer | undefined;
 
-	let environment: Record<string, string> = { ...BASE_ENV, ...env };
+	const network = await new Network().start();
 
-	if (usePostgres || queueConfig) {
-		network = await new Network().start();
-	}
+	let environment: Record<string, string> = {
+		...BASE_ENV,
+		...env,
+		N8N_PROXY_HOPS: '1',
+	};
 
 	if (usePostgres) {
 		const postgresContainer = await setupPostgres({
 			postgresImage: POSTGRES_IMAGE,
 			projectName: uniqueProjectName,
-			network: network!,
+			network: network,
 		});
 		containers.push(postgresContainer.container);
 		environment = {
@@ -133,7 +134,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const redis = await setupRedis({
 			redisImage: REDIS_IMAGE,
 			projectName: uniqueProjectName,
-			network: network!,
+			network: network,
 		});
 		containers.push(redis);
 		environment = {
@@ -141,6 +142,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			EXECUTIONS_MODE: 'queue',
 			QUEUE_BULL_REDIS_HOST: 'redis',
 			QUEUE_BULL_REDIS_PORT: '6379',
+			OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: 'true',
 		};
 
 		if (queueConfig.mains > 1) {
@@ -149,17 +151,31 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			}
 			environment = {
 				...environment,
-				N8N_PROXY_HOPS: '1',
 				N8N_MULTI_MAIN_SETUP_ENABLED: 'true',
-				...MULTI_MAIN_LICENSE,
 			};
 		}
 	}
 
-	let baseUrl: string;
+	const mainCount = queueConfig?.mains ?? 1;
+
+	const loadBalancerContainer = await setupCaddyLoadBalancer({
+		caddyImage: CADDY_IMAGE,
+		projectName: uniqueProjectName,
+		mainCount: mainCount,
+		network: network,
+	});
+	containers.push(loadBalancerContainer);
+
+	const loadBalancerPort = loadBalancerContainer.getMappedPort(80);
+	const baseUrl = `http://localhost:${loadBalancerPort}`;
+
+	environment = {
+		...environment,
+		WEBHOOK_URL: baseUrl,
+	};
 
 	const instances = await createN8NInstances({
-		mainCount: queueConfig?.mains ?? 1,
+		mainCount: mainCount,
 		workerCount: queueConfig?.workers ?? 0,
 		uniqueProjectName: uniqueProjectName,
 		environment,
@@ -167,19 +183,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	});
 	containers.push(...instances);
 
-	if (queueConfig && queueConfig.mains > 1) {
-		nginxContainer = await setupNginxLoadBalancer({
-			nginxImage: NGINX_IMAGE,
-			projectName: uniqueProjectName,
-			mainInstances: instances.slice(0, queueConfig.mains),
-			network: network!,
-		});
-		containers.push(nginxContainer);
-		baseUrl = `http://localhost:${nginxContainer.getMappedPort(80)}`;
-	} else {
-		baseUrl = `http://localhost:${instances[0].getMappedPort(5678)}`;
-	}
-
+	// Wait for all containers to be ready behind the load balancer
+	await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 	return {
 		baseUrl,
 		stop: async () => {
@@ -191,7 +196,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 async function stopN8NStack(
 	containers: StartedTestContainer[],
-	network: StartedNetwork | undefined,
+	network: StartedNetwork,
 	uniqueProjectName: string,
 ): Promise<void> {
 	const errors: Error[] = [];
@@ -205,12 +210,10 @@ async function stopN8NStack(
 		});
 		await Promise.allSettled(stopPromises);
 
-		if (network) {
-			try {
-				await network.stop();
-			} catch (error) {
-				errors.push(new Error(`Failed to stop network ${network.getName()}: ${error as string}`));
-			}
+		try {
+			await network.stop();
+		} catch (error) {
+			errors.push(new Error(`Failed to stop network ${network.getName()}: ${error as string}`));
 		}
 
 		if (errors.length > 0) {
@@ -243,7 +246,7 @@ interface CreateInstancesOptions {
 	workerCount: number;
 	uniqueProjectName: string;
 	environment: Record<string, string>;
-	network?: StartedNetwork;
+	network: StartedNetwork;
 }
 
 async function createN8NInstances({
@@ -255,8 +258,10 @@ async function createN8NInstances({
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 
+	// Create main instances
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
+		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
@@ -264,18 +269,19 @@ async function createN8NInstances({
 			network,
 			isWorker: false,
 			instanceNumber: i,
-			networkAlias: mainCount > 1 ? name : undefined,
+			networkAlias,
 		});
 		instances.push(container);
 	}
 
+	// Create worker instances
 	for (let i = 1; i <= workerCount; i++) {
 		const name = `${uniqueProjectName}-n8n-worker-${i}`;
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
 			environment,
-			network: network!,
+			network,
 			isWorker: true,
 			instanceNumber: i,
 		});
@@ -289,7 +295,7 @@ interface CreateContainerOptions {
 	name: string;
 	uniqueProjectName: string;
 	environment: Record<string, string>;
-	network?: StartedNetwork;
+	network: StartedNetwork;
 	isWorker: boolean;
 	instanceNumber: number;
 	networkAlias?: string;
@@ -304,6 +310,15 @@ async function createN8NContainer({
 	instanceNumber,
 	networkAlias,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
+	const logs: string[] = [];
+
+	// Collect logs and display them on failure
+	const silentLogConsumer = (stream: Readable) => {
+		stream.on('data', (chunk) => {
+			logs.push(chunk.toString().trim());
+		});
+	};
+
 	let container = new GenericContainer(N8N_IMAGE);
 
 	container = container
@@ -313,8 +328,14 @@ async function createN8NContainer({
 			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
 			instance: instanceNumber.toString(),
 		})
+		.withLogConsumer(silentLogConsumer)
 		.withName(name)
-		.withReuse();
+		.withReuse()
+		.withNetwork(network);
+
+	if (networkAlias) {
+		container = container.withNetworkAliases(networkAlias);
+	}
 
 	if (isWorker) {
 		container = container.withCommand(['worker']);
@@ -322,19 +343,21 @@ async function createN8NContainer({
 		container = container.withExposedPorts(5678).withWaitStrategy(N8N_WAIT_STRATEGY);
 	}
 
-	if (network) {
-		container = container.withNetwork(network);
-		if (networkAlias) {
-			container = container.withNetworkAliases(networkAlias);
-		}
-	}
-
 	try {
 		return await container.start();
-	} catch (error) {
+	} catch (error: any) {
 		if (error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
 			throw new DockerImageNotFoundError(name, error);
 		}
+		console.error(`Container "${name}" failed to start!`);
+		console.error('Original error:', error.message);
+
+		if (logs.length > 0) {
+			console.error('\n--- Container Logs ---');
+			console.error(logs.join('\n'));
+			console.error('---------------------\n');
+		}
+
 		throw error;
 	}
 }
