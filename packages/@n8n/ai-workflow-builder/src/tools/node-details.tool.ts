@@ -100,9 +100,9 @@ export class NodeDetailsTool extends BaseWorkflowBuilderTool<
 
 		// Basic details
 		parts.push('<node_details>');
-		parts.push(`  <name>${details.name}</name>`);
-		parts.push(`  <display_name>${details.displayName}</display_name>`);
-		parts.push(`  <description>${details.description}</description>`);
+		parts.push(`<name>${details.name}</name>`);
+		parts.push(`<display_name>${details.displayName}</display_name>`);
+		parts.push(`<description>${details.description}</description>`);
 
 		if (details.subtitle) {
 			parts.push(`  <subtitle>${details.subtitle}</subtitle>`);
@@ -110,19 +110,19 @@ export class NodeDetailsTool extends BaseWorkflowBuilderTool<
 
 		// Parameters
 		if (withParameters && details.properties.length > 0) {
-			parts.push('  <properties>');
+			parts.push('<properties>');
 			for (const prop of details.properties) {
-				parts.push(`    <property>${JSON.stringify(prop)}</property>`);
+				parts.push(`<property>${JSON.stringify(prop)}</property>`);
 			}
-			parts.push('  </properties>');
+			parts.push('</properties>');
 		}
 
 		// Connections
 		if (withConnections) {
-			parts.push('  <connections>');
+			parts.push('<connections>');
 			parts.push(this.formatInputs(details.inputs));
 			parts.push(this.formatOutputs(details.outputs));
-			parts.push('  </connections>');
+			parts.push('</connections>');
 		}
 
 		parts.push('</node_details>');
@@ -135,26 +135,19 @@ export class NodeDetailsTool extends BaseWorkflowBuilderTool<
 	 */
 	private formatInputs(inputs: INodeTypeDescription['inputs']): string {
 		if (!inputs || inputs.length === 0) {
-			return '    <inputs>none</inputs>';
+			return '<inputs>none</inputs>';
 		}
-
-		const parts: string[] = ['    <inputs>'];
-		for (const input of inputs) {
+		if (typeof inputs === 'string') {
+			return `<input>${inputs}</input>`;
+		}
+		const formattedInputs = inputs.map((input) => {
 			if (typeof input === 'string') {
-				parts.push(`      <input type="${input}" />`);
-			} else {
-				const attrs = [
-					`type="${input.type}"`,
-					input.displayName && `displayName="${input.displayName}"`,
-					input.required !== undefined && `required="${input.required}"`,
-				]
-					.filter(Boolean)
-					.join(' ');
-				parts.push(`      <input ${attrs} />`);
+				return `<input>${input}</input>`;
 			}
-		}
-		parts.push('    </inputs>');
-		return parts.join('\n');
+
+			return `<input>${JSON.stringify(input)}</input>`;
+		});
+		return formattedInputs.join('\n');
 	}
 
 	/**
@@ -162,25 +155,19 @@ export class NodeDetailsTool extends BaseWorkflowBuilderTool<
 	 */
 	private formatOutputs(outputs: INodeTypeDescription['outputs']): string {
 		if (!outputs || outputs.length === 0) {
-			return '    <outputs>none</outputs>';
+			return '<outputs>none</outputs>';
 		}
-
-		const parts: string[] = ['    <outputs>'];
-		for (const output of outputs) {
+		if (typeof outputs === 'string') {
+			return `<output>${outputs}</output>`;
+		}
+		const formattedOutputs = outputs.map((output) => {
 			if (typeof output === 'string') {
-				parts.push(`      <output type="${output}" />`);
-			} else {
-				const attrs = [
-					`type="${output.type}"`,
-					output.displayName && `displayName="${output.displayName}"`,
-				]
-					.filter(Boolean)
-					.join(' ');
-				parts.push(`      <output ${attrs} />`);
+				return `<output>${output}</output>`;
 			}
-		}
-		parts.push('    </outputs>');
-		return parts.join('\n');
+
+			return `<output>${JSON.stringify(output)}</output>`;
+		});
+		return formattedOutputs.join('\n');
 	}
 
 	/**
