@@ -28,7 +28,13 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ICredentialsHelper, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
+import {
+	ICredentialsHelper,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	isExpression,
+} from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -208,7 +214,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		workflow: Workflow,
 		node: INode,
 	): string {
-		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
+		if (!isExpression(parameterValue)) {
 			return parameterValue;
 		}
 
