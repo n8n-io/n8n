@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
+import { sanitizeResponseData } from '../utils';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;
@@ -163,7 +164,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: 'responseBody',
+				body: sanitizeResponseData('responseBody', true),
 				headers: {},
 				statusCode: 200,
 			});
