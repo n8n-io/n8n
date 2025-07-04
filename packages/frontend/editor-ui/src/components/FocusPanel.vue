@@ -7,6 +7,19 @@ import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import {
+	AI_TRANSFORM_NODE_TYPE,
+	type CodeExecutionMode,
+	type CodeNodeEditorLanguage,
+	type EditorType,
+	HTML_NODE_TYPE,
+	isResourceLocatorValue,
+} from 'n8n-workflow';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useDebounce } from '@/composables/useDebounce';
+import { htmlEditorEventBus } from '@/event-bus';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -19,6 +32,9 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
+const externalSecretsStore = useExternalSecretsStore();
+const environmentsStore = useEnvironmentsStore();
+const { debounce } = useDebounce();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -42,8 +58,33 @@ const isExecutable = computed(() => {
 	);
 });
 
+function getArgument<T = string | number | boolean | undefined>(argumentName: string): T {
+	return resolvedParameter.value?.parameter.typeOptions?.[argumentName] as T;
+}
+
+const codeEditorMode = computed<CodeExecutionMode>(() => {
+	return resolvedParameter.value?.node.parameters.mode as CodeExecutionMode;
+});
+
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
+	return getArgument('editor');
+});
+
+const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
+	if (editorType.value === 'json' || resolvedParameter.value?.parameter.type === 'json')
+		return 'json' as CodeNodeEditorLanguage;
+
+	return getArgument('editorLanguage') ?? 'javaScript';
+});
+
+const editorRows = computed(() => getArgument<number>('rows'));
+
 const isToolNode = computed(() =>
 	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
+);
+
+const isHtmlNode = computed(
+	() => !!resolvedParameter.value && resolvedParameter.value.node.type === HTML_NODE_TYPE,
 );
 
 const expressionModeEnabled = computed(
@@ -52,15 +93,43 @@ const expressionModeEnabled = computed(
 		isValueExpression(resolvedParameter.value.parameter, resolvedParameter.value.value),
 );
 
-function optionSelected() {
-	// TODO: Handle the option selected (command: string) from the dropdown
-}
+const expression = computed(() => {
+	if (!expressionModeEnabled.value) return '';
+	return isResourceLocatorValue(resolvedParameter.value)
+		? resolvedParameter.value.value
+		: resolvedParameter.value;
+});
+
+const shouldCaptureForPosthog = computed(
+	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
+);
+
+// TODO: get correct value
+const isReadOnly = false;
+// TODO: get correct value
+const isForCredential = false;
+
+const resolvedAdditionalExpressionData = computed(() => {
+	return {
+		$vars: environmentsStore.variablesAsObject,
+		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && isForCredential
+			? { $secrets: externalSecretsStore.secretsAsObject }
+			: {}),
+	};
+});
+
+const { resolvedExpression } = useResolvedExpression({
+	expression,
+	additionalData: resolvedAdditionalExpressionData,
+	isForCredential,
+	stringifyObject:
+		resolvedParameter.value && resolvedParameter.value.parameter.type !== 'multiOptions',
+});
 
 function valueChanged(value: string) {
 	if (resolvedParameter.value === undefined) {
 		return;
 	}
-
 	nodeSettingsParameters.updateNodeParameter(
 		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
 		value,
@@ -68,6 +137,51 @@ function valueChanged(value: string) {
 		isToolNode.value,
 	);
 }
+
+function optionSelected(command: string) {
+	if (!resolvedParameter.value) return;
+
+	switch (command) {
+		case 'resetValue':
+			return (
+				typeof resolvedParameter.value.parameter.default === 'string' &&
+				valueChanged(resolvedParameter.value.parameter.default)
+			);
+
+		case 'addExpression': {
+			const newValue = nodeSettingsParameters.formatAsExpression(
+				resolvedParameter.value.value,
+				resolvedParameter.value.parameter.type,
+			);
+			valueChanged(typeof newValue === 'string' ? newValue : newValue.value);
+			// await setFocus();
+			break;
+		}
+
+		case 'removeExpression': {
+			// isFocused.value = false;
+			const newValue = nodeSettingsParameters.parseFromExpression(
+				resolvedParameter.value.value,
+				resolvedExpression.value,
+				resolvedParameter.value.parameter.type,
+				resolvedParameter.value.parameter.default,
+				[], // TODO: get parameterOptions
+			);
+			if (typeof newValue === 'string') {
+				valueChanged(newValue);
+			} else if (newValue && typeof (newValue as { value?: unknown }).value === 'string') {
+				valueChanged((newValue as { value: string }).value);
+			}
+			break;
+		}
+
+		case 'formatHtml':
+			htmlEditorEventBus.emit('format-html');
+			return;
+	}
+}
+
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 </script>
 
 <template>
@@ -106,7 +220,7 @@ function valueChanged(value: string) {
 					<ParameterOptions
 						:parameter="resolvedParameter.parameter"
 						:value="resolvedParameter.value"
-						:is-read-only="false"
+						:is-read-only="isReadOnly"
 						@update:model-value="optionSelected"
 					/>
 				</div>
@@ -115,23 +229,75 @@ function valueChanged(value: string) {
 						v-if="expressionModeEnabled"
 						:model-value="resolvedParameter.value"
 						:class="$style.editor"
-						:is-read-only="false"
+						:is-read-only="isReadOnly"
 						:path="resolvedParameter.parameterPath"
 						data-test-id="expression-modal-input"
 						:target-node-parameter-context="{
 							nodeName: resolvedParameter.node.name,
 							parameterPath: resolvedParameter.parameterPath,
 						}"
-						@change="valueChanged($event.value)"
+						@change="valueChangedDebounced($event.value)"
 					/>
-					<N8nInput
-						v-else
-						:model-value="resolvedParameter.value"
-						:class="$style.editor"
-						type="textarea"
-						resize="none"
-						@update:model-value="valueChanged($event)"
-					></N8nInput>
+					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
+						<CodeNodeEditor
+							v-if="editorType === 'codeNodeEditor'"
+							:id="resolvedParameter.parameterPath"
+							:mode="codeEditorMode"
+							:model-value="resolvedParameter.value"
+							:default-value="resolvedParameter.parameter.default"
+							:language="editorLanguage"
+							:is-read-only="isReadOnly"
+							fill-parent
+							@update:model-value="valueChangedDebounced" />
+						<HtmlEditor
+							v-else-if="editorType === 'htmlEditor'"
+							:model-value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							:disable-expression-coloring="!isHtmlNode"
+							:disable-expression-completions="!isHtmlNode"
+							fullscreen
+							@update:model-value="valueChangedDebounced" />
+						<CssEditor
+							v-else-if="editorType === 'cssEditor'"
+							:model-value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced" />
+						<SqlEditor
+							v-else-if="editorType === 'sqlEditor'"
+							:model-value="resolvedParameter.value"
+							:dialect="getArgument('sqlDialect')"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced" />
+						<JsEditor
+							v-else-if="editorType === 'jsEditor'"
+							:model-value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							:posthog-capture="shouldCaptureForPosthog"
+							fill-parent
+							@update:model-value="valueChangedDebounced" />
+						<JsonEditor
+							v-else-if="resolvedParameter.parameter.type === 'json'"
+							:model-value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							fill-parent
+							@update:model-value="valueChangedDebounced" />
+						<N8nInput
+							v-else
+							:model-value="resolvedParameter.value"
+							:class="$style.editor"
+							type="textarea"
+							resize="none"
+							@update:model-value="valueChangedDebounced"
+						></N8nInput
+					></template>
 				</div>
 			</div>
 		</div>
@@ -216,7 +382,6 @@ function valueChanged(value: string) {
 		}
 
 		.editorContainer {
-			display: flex;
 			height: 100%;
 			overflow-y: auto;
 
