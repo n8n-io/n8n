@@ -1,21 +1,31 @@
-import type { IUpdateInformation } from '@/Interface';
 import get from 'lodash/get';
 import set from 'lodash/set';
+import { ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyOptions,
 	type NodeParameterValue,
+	type NodePropertyTypes,
+	type NodeParameterValueType,
+	type INodePropertyCollection,
 	NodeHelpers,
 	deepCopy,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useTelemetry } from './useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from './useNodeHelpers';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useExternalHooks } from './useExternalHooks';
-import { ref } from 'vue';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { updateDynamicConnections, updateParameterByPath } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { isPresent } from '@/utils/typesUtils';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -38,12 +48,25 @@ export function useNodeSettingsParameters() {
 		parameters: {},
 	});
 
+	function getParameterTypeOption<T = string | number | boolean | undefined>(
+		parameter: INodeProperties,
+		optionName: string,
+	): T {
+		return parameter.typeOptions?.[optionName] as T;
+	}
+
+	function isValidParameterOption(
+		option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): option is INodePropertyOptions {
+		return 'value' in option && isPresent(option.value) && isPresent(option.name);
+	}
+
 	function setValue(name: string, value: NodeParameterValue) {
 		const nameParts = name.split('.');
 		let lastNamePart: string | undefined = nameParts.pop();
 
 		let isArray = false;
-		if (lastNamePart !== undefined && lastNamePart.includes('[')) {
+		if (lastNamePart?.includes('[')) {
 			// It includes an index so we have to extract it
 			const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
 			if (lastNameParts) {
@@ -59,7 +82,8 @@ export function useNodeSettingsParameters() {
 			if (value === null) {
 				// Property should be deleted
 				if (lastNamePart) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = nodeValues.value;
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = nodeValues.value;
 					nodeValues.value = remainingNodeValues;
 				}
 			} else {
@@ -78,7 +102,8 @@ export function useNodeSettingsParameters() {
 					| INodeParameters[];
 
 				if (lastNamePart && !Array.isArray(tempValue)) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = tempValue;
 					tempValue = remainingNodeValues;
 				}
 
@@ -88,7 +113,8 @@ export function useNodeSettingsParameters() {
 					lastNamePart = nameParts.pop();
 					tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 					if (lastNamePart) {
-						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { [lastNamePart]: _removedArrayNodeValue, ...remainingArrayNodeValues } =
 							tempValue;
 						tempValue = remainingArrayNodeValues;
 					}
@@ -221,11 +247,116 @@ export function useNodeSettingsParameters() {
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
+	function isResourceLocatorParameterType(type: NodePropertyTypes) {
+		return type === 'resourceLocator' || type === 'workflowSelector';
+	}
+
+	function formatAsExpression(value: NodeParameterValueType, parameterType: NodePropertyTypes) {
+		if (isResourceLocatorParameterType(parameterType)) {
+			if (isResourceLocatorValue(value)) {
+				return {
+					__rl: true,
+					value: `=${value.value}`,
+					mode: value.mode,
+				};
+			}
+
+			return { __rl: true, value: `=${value as string}`, mode: '' };
+		}
+
+		const isNumber = parameterType === 'number';
+		const isBoolean = parameterType === 'boolean';
+		const isMultiOptions = parameterType === 'multiOptions';
+
+		if (isNumber && (!value || value === '[Object: null]')) {
+			return '={{ 0 }}';
+		}
+
+		if (isMultiOptions) {
+			return `={{ ${JSON.stringify(value)} }}`;
+		}
+
+		if (isNumber || isBoolean || typeof value !== 'string') {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			return `={{ ${String(value)} }}`;
+		}
+
+		return `=${value}`;
+	}
+
+	function parseFromExpression(
+		currentParameterValue: NodeParameterValueType,
+		evaluatedExpressionValue: unknown,
+		parameterType: NodePropertyTypes,
+		defaultValue: NodeParameterValueType,
+		parameterOptions: INodePropertyOptions[] = [],
+	) {
+		if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
+			return evaluatedExpressionValue
+				.split(',')
+				.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
+		}
+
+		if (
+			isResourceLocatorParameterType(parameterType) &&
+			isResourceLocatorValue(currentParameterValue)
+		) {
+			return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
+		}
+
+		if (parameterType === 'string') {
+			return currentParameterValue
+				? (currentParameterValue as string).toString().replace(/^=+/, '')
+				: null;
+		}
+
+		if (typeof evaluatedExpressionValue !== 'undefined') {
+			return evaluatedExpressionValue;
+		}
+
+		if (['number', 'boolean'].includes(parameterType)) {
+			return defaultValue;
+		}
+
+		return null;
+	}
+
+	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
+		if (!node) return;
+
+		const ndvStore = useNDVStore();
+		const focusPanelStore = useFocusPanelStore();
+
+		focusPanelStore.setFocusedNodeParameter({
+			nodeId: node.id,
+			parameterPath: path,
+			parameter,
+		});
+
+		if (ndvStore.activeNode) {
+			ndvStore.setActiveNodeName(null);
+			ndvStore.resetNDVPushRef();
+		}
+
+		focusPanelStore.focusPanelActive = true;
+	}
+
+	function shouldSkipParamValidation(value: string | number | boolean | null) {
+		return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+	}
+
 	return {
 		nodeValues,
+		getParameterTypeOption,
+		isValidParameterOption,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
 		nameIsParameter,
+		isResourceLocatorParameterType,
+		formatAsExpression,
+		parseFromExpression,
+		handleFocus,
+		shouldSkipParamValidation,
 	};
 }

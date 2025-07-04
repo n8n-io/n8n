@@ -170,3 +170,39 @@ export const tryToParseNumber = (value: string): number | string => {
 export function isPresent<T>(arg: T): arg is Exclude<T, null | undefined> {
 	return arg !== null && arg !== undefined;
 }
+
+export function isFocusableEl(el: unknown): el is HTMLElement & { focus: () => void } {
+	return (
+		typeof el === 'object' &&
+		el !== null &&
+		'focus' in el &&
+		typeof (el as { focus?: unknown }).focus === 'function'
+	);
+}
+
+export function isBlurrableEl(el: unknown): el is HTMLElement & { blur: () => void } {
+	return (
+		typeof el === 'object' &&
+		el !== null &&
+		'blur' in el &&
+		typeof (el as { blur?: unknown }).blur === 'function'
+	);
+}
+
+export function isSelectableEl(el: unknown): el is HTMLInputElement | { select: () => void } {
+	return (
+		typeof el === 'object' &&
+		el !== null &&
+		'select' in el &&
+		typeof (el as { select?: unknown }).select === 'function'
+	);
+}
+
+export function hasFocusOnInput(el: unknown): el is { focusOnInput: () => void } {
+	return (
+		typeof el === 'object' &&
+		el !== null &&
+		'focusOnInput' in el &&
+		typeof (el as { focusOnInput?: unknown }).focusOnInput === 'function'
+	);
+}
