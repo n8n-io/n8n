@@ -26,6 +26,7 @@ const {
 	outputs,
 	connections,
 	isDisabled,
+	isReadOnly,
 	isSelected,
 	hasPinnedData,
 	executionStatus,
@@ -136,6 +137,8 @@ function onActivate(event: MouseEvent) {
 		:node-id="id"
 		:class="classes"
 		:style="styles"
+		:is-read-only="isReadOnly"
+		:is-configurable="renderOptions.configurable ?? false"
 	/>
 	<div
 		v-else

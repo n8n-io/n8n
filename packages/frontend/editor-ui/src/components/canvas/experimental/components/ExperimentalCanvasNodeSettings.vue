@@ -6,7 +6,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 
-const { nodeId, noWheel } = defineProps<{ nodeId: string; noWheel?: boolean }>();
+const { nodeId, noWheel, isReadOnly } = defineProps<{
+	nodeId: string;
+	noWheel?: boolean;
+	isReadOnly?: boolean;
+}>();
 
 defineSlots<{ actions?: {} }>();
 
@@ -30,7 +34,7 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 		:active-node="activeNode"
 		push-ref=""
 		:foreign-credentials="[]"
-		:read-only="false"
+		:read-only="isReadOnly"
 		:block-u-i="false"
 		:executable="false"
 		:input-size="0"
