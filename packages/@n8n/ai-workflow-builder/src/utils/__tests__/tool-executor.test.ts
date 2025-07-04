@@ -16,7 +16,7 @@ describe('executeToolsInParallel', () => {
 	}
 
 	// Helper function to create a mock tool that returns a Command
-	function createMockTool(name: string, stateUpdate: Partial<typeof WorkflowState.State>) {
+	function createMockTool(_name: string, stateUpdate: Partial<typeof WorkflowState.State>) {
 		return {
 			invoke: jest.fn().mockResolvedValue(
 				new Command({
@@ -27,7 +27,7 @@ describe('executeToolsInParallel', () => {
 	}
 
 	// Helper function to create a mock tool that returns a ToolMessage
-	function createMockMessageTool(name: string, message: string) {
+	function createMockMessageTool(_name: string, message: string) {
 		return {
 			invoke: jest.fn().mockResolvedValue(
 				new ToolMessage({
@@ -226,7 +226,6 @@ describe('executeToolsInParallel', () => {
 			};
 
 			const mockTool1 = createMockTool('remove_node', tool1Update);
-			const mockTool2 = createMockTool('remove_node', tool2Update);
 
 			const toolMap = new Map([
 				['remove_node', mockTool1], // Both calls will use the same tool
@@ -674,7 +673,6 @@ describe('executeToolsInParallel', () => {
 			};
 
 			const mockTool1 = createMockTool('add_node', tool1Update);
-			const mockTool2 = createMockTool('add_node', tool2Update);
 
 			const toolMap = new Map([['add_node', mockTool1]]);
 

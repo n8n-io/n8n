@@ -26,6 +26,7 @@ describe('UpdateNodeParametersTool', () => {
 		jest.clearAllMocks();
 
 		// Import and setup chain mock
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const { parameterUpdaterChain } = require('../../chains/parameter-updater');
 		mockChainInvoke = jest.fn();
 		(parameterUpdaterChain as jest.Mock).mockReturnValue({
@@ -43,7 +44,6 @@ describe('UpdateNodeParametersTool', () => {
 		mockState = {
 			messages: [],
 			prompt: 'Create a workflow to fetch weather data',
-			nodes: [],
 			workflowJSON: {
 				nodes: [
 					{
@@ -99,7 +99,7 @@ describe('UpdateNodeParametersTool', () => {
 		it('should update node parameters successfully', async () => {
 			const mockContext = createMockToolContext(nodeTypes, () => mockState);
 			// Add LLM to context
-			(mockContext as any).llm = mockLlm;
+			mockContext.llm = mockLlm;
 
 			// Mock chain response
 			mockChainInvoke.mockResolvedValue({
@@ -153,6 +153,7 @@ describe('UpdateNodeParametersTool', () => {
 			if (!result.success) {
 				expect(result.error.message).toContain('not found');
 				expect(result.error.code).toBe('NODE_NOT_FOUND');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				expect(result.error.details?.nodeId).toBe('non_existent');
 			}
 		});
@@ -222,7 +223,7 @@ describe('UpdateNodeParametersTool', () => {
 
 		it('should update IF node conditions', async () => {
 			const mockContext = createMockToolContext(nodeTypes, () => mockState);
-			(mockContext as any).llm = mockLlm;
+			mockContext.llm = mockLlm;
 
 			// Mock chain response for IF node
 			mockChainInvoke.mockResolvedValue({
@@ -324,7 +325,7 @@ describe('UpdateNodeParametersTool', () => {
 
 		it('should pass correct parameters to chain', async () => {
 			const mockContext = createMockToolContext(nodeTypes, () => mockState);
-			(mockContext as any).llm = mockLlm;
+			mockContext.llm = mockLlm;
 
 			mockChainInvoke.mockResolvedValue({});
 
