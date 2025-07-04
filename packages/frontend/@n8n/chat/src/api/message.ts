@@ -62,30 +62,55 @@ export async function sendMessageStreaming(
 	files: File[],
 	sessionId: string,
 	options: ChatOptions,
-	onChunk: (chunk: string, nodeId?: string) => void,
-	onBeginMessage: (nodeId: string) => void,
-	onEndMessage: (nodeId: string) => void,
+	onChunk: (chunk: string, nodeId?: string, runIndex?: number, itemIndex?: number) => void,
+	onBeginMessage: (nodeId: string, runIndex?: number, itemIndex?: number) => void,
+	onEndMessage: (nodeId: string, runIndex?: number, itemIndex?: number) => void,
 ): Promise<void> {
+	let response: Response;
+
 	if (files.length > 0) {
-		throw new Error('File uploads are not supported with streaming responses');
+		// Handle file uploads with FormData for streaming
+		const formData = new FormData();
+		formData.append('action', 'sendMessage');
+		formData.append(options.chatSessionKey as string, sessionId);
+		formData.append(options.chatInputKey as string, message);
+
+		if (options.metadata) {
+			formData.append('metadata', JSON.stringify(options.metadata));
+		}
+
+		// Add all files
+		for (const file of files) {
+			formData.append('files', file);
+		}
+
+		response = await fetch(options.webhookUrl, {
+			method: 'POST',
+			headers: {
+				Accept: 'text/plain',
+				...options.webhookConfig?.headers,
+			},
+			body: formData,
+		});
+	} else {
+		// Handle text-only messages with JSON
+		const body = {
+			action: 'sendMessage',
+			[options.chatSessionKey as string]: sessionId,
+			[options.chatInputKey as string]: message,
+			...(options.metadata ? { metadata: options.metadata } : {}),
+		};
+
+		response = await fetch(options.webhookUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'text/plain',
+				...options.webhookConfig?.headers,
+			},
+			body: JSON.stringify(body),
+		});
 	}
-
-	const body = {
-		action: 'sendMessage',
-		[options.chatSessionKey as string]: sessionId,
-		[options.chatInputKey as string]: message,
-		...(options.metadata ? { metadata: options.metadata } : {}),
-	};
-
-	const response = await fetch(options.webhookUrl, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'text/plain',
-			...options.webhookConfig?.headers,
-		},
-		body: JSON.stringify(body),
-	});
 
 	if (!response.ok) {
 		const errorText = await response.text();
@@ -121,18 +146,20 @@ export async function sendMessageStreaming(
 					try {
 						const decoded: StructuredChunk = JSON.parse(line);
 						const nodeId = decoded.metadata?.nodeId || 'unknown';
+						const runIndex = decoded.metadata?.runIndex;
+						const itemIndex = decoded.metadata?.itemIndex;
 
 						if (decoded?.type === 'begin') {
-							onBeginMessage(nodeId);
+							onBeginMessage(nodeId, runIndex, itemIndex);
 						}
 						if (decoded?.type === 'item') {
-							onChunk(decoded?.content ?? '', nodeId);
+							onChunk(decoded?.content ?? '', nodeId, runIndex, itemIndex);
 						}
 						if (decoded?.type === 'end') {
-							onEndMessage(nodeId);
+							onEndMessage(nodeId, runIndex, itemIndex);
 						}
 						if (decoded?.type === 'error') {
-							onChunk(`Error: ${decoded.content ?? 'Unknown error'}`, nodeId);
+							onChunk(`Error: ${decoded.content ?? 'Unknown error'}`, nodeId, runIndex, itemIndex);
 						}
 					} catch (error) {
 						console.warn('Failed to parse JSON line:', line, error);
@@ -148,8 +175,10 @@ export async function sendMessageStreaming(
 			try {
 				const decoded: StructuredChunk = JSON.parse(buffer);
 				const nodeId = decoded.metadata?.nodeId || 'unknown';
+				const runIndex = decoded.metadata?.runIndex;
+				const itemIndex = decoded.metadata?.itemIndex;
 				if (decoded?.type === 'item') {
-					onChunk(decoded?.content ?? '', nodeId);
+					onChunk(decoded?.content ?? '', nodeId, runIndex, itemIndex);
 				}
 			} catch (error) {
 				console.warn('Failed to parse remaining buffer as JSON, treating as plain text:', buffer);

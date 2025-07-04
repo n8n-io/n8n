@@ -56,6 +56,22 @@ describe('streamingHandlers', () => {
 			expect(receivedMessage.value?.text).toBe('Hello World!');
 		});
 
+		it('should handle streaming with runIndex and itemIndex', () => {
+			handleStreamingChunk('Run 0 ', 'node-1', streamingManager, receivedMessage, messages, 0, 0);
+
+			expect(receivedMessage.value).toBeDefined();
+			expect(receivedMessage.value?.text).toBe('Run 0 ');
+			expect(messages.value).toHaveLength(1);
+
+			handleStreamingChunk('Run 1 ', 'node-1', streamingManager, receivedMessage, messages, 1, 0);
+
+			expect(receivedMessage.value?.text).toBe('Run 0 Run 1 ');
+
+			handleStreamingChunk('Item 1 ', 'node-1', streamingManager, receivedMessage, messages, 0, 1);
+
+			expect(receivedMessage.value?.text).toBe('Run 0 Run 1 Item 1 ');
+		});
+
 		it('should handle errors gracefully', () => {
 			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -78,6 +94,14 @@ describe('streamingHandlers', () => {
 			expect(receivedMessage.value).toBeNull(); // No message created yet
 			expect(messages.value).toHaveLength(0); // No messages until first content
 			expect(streamingManager.getNodeCount()).toBe(1); // But node is initialized
+		});
+
+		it('should initialize node with runIndex and itemIndex', () => {
+			handleNodeStart('node-1', streamingManager, 0, 0);
+			handleNodeStart('node-1', streamingManager, 1, 0);
+			handleNodeStart('node-1', streamingManager, 0, 1);
+
+			expect(streamingManager.getNodeCount()).toBe(3);
 		});
 
 		it('should not create duplicate message if one exists', () => {
@@ -125,6 +149,44 @@ describe('streamingHandlers', () => {
 
 			handleNodeComplete('node-1', streamingManager, receivedMessage, messages, waitingForResponse);
 
+			expect(streamingManager.areAllNodesComplete()).toBe(true);
+		});
+
+		it('should handle node completion with runIndex and itemIndex', () => {
+			// Setup initial state
+			streamingManager.addNodeToActive('node-1', 0, 0);
+			streamingManager.addNodeToActive('node-1', 1, 0);
+			streamingManager.addChunkToNode('node-1', 'Run 0 ', 0, 0);
+			streamingManager.addChunkToNode('node-1', 'Run 1 ', 1, 0);
+
+			receivedMessage.value = {
+				id: 'msg-1',
+				type: 'text',
+				text: 'Run 0 Run 1 ',
+				sender: 'bot',
+			};
+			messages.value.push(receivedMessage.value);
+
+			handleNodeComplete(
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				waitingForResponse,
+				0,
+				0,
+			);
+			expect(streamingManager.areAllNodesComplete()).toBe(false);
+
+			handleNodeComplete(
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				waitingForResponse,
+				1,
+				0,
+			);
 			expect(streamingManager.areAllNodesComplete()).toBe(true);
 		});
 

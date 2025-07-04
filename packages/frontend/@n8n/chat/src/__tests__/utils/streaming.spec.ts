@@ -30,6 +30,32 @@ describe('StreamingMessageManager', () => {
 		expect(content4).toBe('Hello from node1World!');
 	});
 
+	it('should handle runIndex and itemIndex correctly', () => {
+		const manager = new StreamingMessageManager();
+
+		// Same node, different run indexes
+		const content1 = manager.addChunkToNode('node-1', 'Run 0 ', 0);
+		const content2 = manager.addChunkToNode('node-1', 'Run 1 ', 1);
+		const content3 = manager.addChunkToNode('node-1', 'more', 0);
+
+		expect(content1).toBe('Run 0 ');
+		expect(content2).toBe('Run 0 Run 1 ');
+		expect(content3).toBe('Run 0 moreRun 1 ');
+	});
+
+	it('should handle itemIndex correctly', () => {
+		const manager = new StreamingMessageManager();
+
+		// Same node, same run, different items
+		const content1 = manager.addChunkToNode('node-1', 'Item 0 ', 0, 0);
+		const content2 = manager.addChunkToNode('node-1', 'Item 1 ', 0, 1);
+		const content3 = manager.addChunkToNode('node-1', 'more', 0, 0);
+
+		expect(content1).toBe('Item 0 ');
+		expect(content2).toBe('Item 0 Item 1 ');
+		expect(content3).toBe('Item 0 moreItem 1 ');
+	});
+
 	it('should track active nodes correctly', () => {
 		const manager = new StreamingMessageManager();
 
@@ -42,6 +68,25 @@ describe('StreamingMessageManager', () => {
 		expect(manager.areAllNodesComplete()).toBe(false);
 
 		manager.removeNodeFromActive('node-2');
+		expect(manager.areAllNodesComplete()).toBe(true);
+	});
+
+	it('should track active nodes with runIndex and itemIndex correctly', () => {
+		const manager = new StreamingMessageManager();
+
+		manager.addNodeToActive('node-1', 0, 0);
+		manager.addNodeToActive('node-1', 0, 1);
+		manager.addNodeToActive('node-1', 1, 0);
+
+		expect(manager.getNodeCount()).toBe(3);
+
+		manager.removeNodeFromActive('node-1', 0, 0);
+		expect(manager.areAllNodesComplete()).toBe(false);
+
+		manager.removeNodeFromActive('node-1', 0, 1);
+		expect(manager.areAllNodesComplete()).toBe(false);
+
+		manager.removeNodeFromActive('node-1', 1, 0);
 		expect(manager.areAllNodesComplete()).toBe(true);
 	});
 

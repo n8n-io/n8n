@@ -6,6 +6,8 @@ export interface StructuredChunk {
 		nodeId: string;
 		nodeName: string;
 		timestamp: number;
+		runIndex?: number;
+		itemIndex?: number;
 	};
 }
 

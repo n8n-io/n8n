@@ -13,6 +13,8 @@ export function handleStreamingChunk(
 	streamingManager: StreamingMessageManager,
 	receivedMessage: Ref<ChatMessageText | null>,
 	messages: Ref<unknown[]>,
+	runIndex?: number,
+	itemIndex?: number,
 ): void {
 	try {
 		// Only create the bot message when we receive the first actual content
@@ -40,7 +42,7 @@ export function handleStreamingChunk(
 		} else {
 			// Multi-node parallel streaming
 			if (receivedMessage.value) {
-				const combinedContent = streamingManager.addChunkToNode(nodeId, chunk);
+				const combinedContent = streamingManager.addChunkToNode(nodeId, chunk, runIndex, itemIndex);
 				const updatedMessage: ChatMessageText = {
 					...receivedMessage.value,
 					text: combinedContent,
@@ -60,9 +62,14 @@ export function handleStreamingChunk(
 	}
 }
 
-export function handleNodeStart(nodeId: string, streamingManager: StreamingMessageManager): void {
+export function handleNodeStart(
+	nodeId: string,
+	streamingManager: StreamingMessageManager,
+	runIndex?: number,
+	itemIndex?: number,
+): void {
 	try {
-		streamingManager.addNodeToActive(nodeId);
+		streamingManager.addNodeToActive(nodeId, runIndex, itemIndex);
 	} catch (error) {
 		console.error('Error handling node start:', error);
 	}
@@ -74,9 +81,11 @@ export function handleNodeComplete(
 	receivedMessage: Ref<ChatMessageText | null>,
 	messages: Ref<unknown[]>,
 	waitingForResponse: Ref<boolean>,
+	runIndex?: number,
+	itemIndex?: number,
 ): void {
 	try {
-		streamingManager.removeNodeFromActive(nodeId);
+		streamingManager.removeNodeFromActive(nodeId, runIndex, itemIndex);
 
 		if (receivedMessage.value) {
 			const combinedContent = streamingManager.getCombinedContent();

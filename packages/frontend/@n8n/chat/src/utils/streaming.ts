@@ -14,29 +14,43 @@ export class StreamingMessageManager {
 
 	constructor() {}
 
-	initializeNode(nodeId: string): void {
-		if (!this.nodeMessages.has(nodeId)) {
-			this.nodeMessages.set(nodeId, { content: '', isComplete: false });
-			this.nodeOrder.push(nodeId);
+	private getNodeKey(nodeId: string, runIndex?: number, itemIndex?: number): string {
+		if (runIndex !== undefined && itemIndex !== undefined) {
+			return `${nodeId}-${runIndex}-${itemIndex}`;
+		}
+		if (runIndex !== undefined) {
+			return `${nodeId}-${runIndex}`;
+		}
+		return nodeId;
+	}
+
+	initializeNode(nodeId: string, runIndex?: number, itemIndex?: number): void {
+		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
+		if (!this.nodeMessages.has(key)) {
+			this.nodeMessages.set(key, { content: '', isComplete: false });
+			this.nodeOrder.push(key);
 		}
 	}
 
-	addNodeToActive(nodeId: string): void {
-		this.activeNodes.add(nodeId);
-		this.initializeNode(nodeId);
+	addNodeToActive(nodeId: string, runIndex?: number, itemIndex?: number): void {
+		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
+		this.activeNodes.add(key);
+		this.initializeNode(nodeId, runIndex, itemIndex);
 	}
 
-	removeNodeFromActive(nodeId: string): void {
-		this.activeNodes.delete(nodeId);
-		const nodeData = this.nodeMessages.get(nodeId);
+	removeNodeFromActive(nodeId: string, runIndex?: number, itemIndex?: number): void {
+		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
+		this.activeNodes.delete(key);
+		const nodeData = this.nodeMessages.get(key);
 		if (nodeData) {
 			nodeData.isComplete = true;
 		}
 	}
 
-	addChunkToNode(nodeId: string, chunk: string): string {
-		this.initializeNode(nodeId);
-		const nodeData = this.nodeMessages.get(nodeId)!;
+	addChunkToNode(nodeId: string, chunk: string, runIndex?: number, itemIndex?: number): string {
+		this.initializeNode(nodeId, runIndex, itemIndex);
+		const key = this.getNodeKey(nodeId, runIndex, itemIndex);
+		const nodeData = this.nodeMessages.get(key)!;
 		nodeData.content += chunk;
 
 		return this.getCombinedContent();

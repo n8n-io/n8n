@@ -28,19 +28,46 @@ describe('sendMessageStreaming', () => {
 		const chunks = [
 			{
 				type: 'begin',
-				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
 			},
 			{
 				type: 'item',
 				content: 'Hello ',
-				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
 			},
 			{
 				type: 'item',
 				content: 'World!',
-				metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
 			},
-			{ type: 'end', metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() } },
+			{
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
 		];
 
 		const encoder = new TextEncoder();
@@ -61,7 +88,7 @@ describe('sendMessageStreaming', () => {
 			headers: new Headers(),
 		} as Response;
 
-		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		const onChunk = vi.fn();
 		const onBeginMessage = vi.fn();
@@ -77,7 +104,7 @@ describe('sendMessageStreaming', () => {
 			onEndMessage,
 		);
 
-		expect(fetchSpy).toHaveBeenCalledWith('https://test.example.com/webhook', {
+		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -91,28 +118,223 @@ describe('sendMessageStreaming', () => {
 		});
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(1);
-		expect(onBeginMessage).toHaveBeenCalledWith('node-1');
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
 		expect(onChunk).toHaveBeenCalledTimes(2);
-		expect(onChunk).toHaveBeenCalledWith('Hello ', 'node-1');
-		expect(onChunk).toHaveBeenCalledWith('World!', 'node-1');
+		expect(onChunk).toHaveBeenCalledWith('Hello ', 'node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledWith('World!', 'node-1', 0, 0);
 		expect(onEndMessage).toHaveBeenCalledTimes(1);
-		expect(onEndMessage).toHaveBeenCalledWith('node-1');
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
 	});
 
-	it('should reject file uploads', async () => {
+	it('should handle multiple runs and items correctly', async () => {
+		const chunks = [
+			{
+				type: 'begin',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'item',
+				content: 'Run 0 Item 0 ',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'begin',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 1,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'item',
+				content: 'Run 1 Item 0 ',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 1,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 1,
+					itemIndex: 0,
+				},
+			},
+		];
+
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			start(controller) {
+				chunks.forEach((chunk) => {
+					const data = JSON.stringify(chunk) + '\n';
+					controller.enqueue(encoder.encode(data));
+				});
+				controller.close();
+			},
+		});
+
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			body: stream,
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		const onChunk = vi.fn();
+		const onBeginMessage = vi.fn();
+		const onEndMessage = vi.fn();
+
+		await sendMessageStreaming(
+			'Test message',
+			[],
+			'test-session-id',
+			mockOptions,
+			onChunk,
+			onBeginMessage,
+			onEndMessage,
+		);
+
+		expect(onBeginMessage).toHaveBeenCalledTimes(2);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 1, 0);
+		expect(onChunk).toHaveBeenCalledTimes(2);
+		expect(onChunk).toHaveBeenCalledWith('Run 0 Item 0 ', 'node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledWith('Run 1 Item 0 ', 'node-1', 1, 0);
+		expect(onEndMessage).toHaveBeenCalledTimes(2);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 1, 0);
+	});
+
+	it('should support file uploads with streaming', async () => {
 		const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
 
-		await expect(
-			sendMessageStreaming(
-				'Test message',
-				[testFile],
-				'test-session-id',
-				mockOptions,
-				vi.fn(),
-				vi.fn(),
-				vi.fn(),
-			),
-		).rejects.toThrow('File uploads are not supported with streaming responses');
+		const chunks = [
+			{
+				type: 'begin',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'item',
+				content: 'File processed: ',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'item',
+				content: 'test.txt',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+			{
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			},
+		];
+
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			start(controller) {
+				chunks.forEach((chunk) => {
+					const data = JSON.stringify(chunk) + '\n';
+					controller.enqueue(encoder.encode(data));
+				});
+				controller.close();
+			},
+		});
+
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			body: stream,
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		const onChunk = vi.fn();
+		const onBeginMessage = vi.fn();
+		const onEndMessage = vi.fn();
+
+		await sendMessageStreaming(
+			'Test message',
+			[testFile],
+			'test-session-id',
+			mockOptions,
+			onChunk,
+			onBeginMessage,
+			onEndMessage,
+		);
+
+		// Verify FormData was used for file upload
+		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
+			method: 'POST',
+			headers: {
+				Accept: 'text/plain',
+			},
+			body: expect.any(FormData),
+		});
+
+		expect(onBeginMessage).toHaveBeenCalledTimes(1);
+		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledTimes(2);
+		expect(onChunk).toHaveBeenCalledWith('File processed: ', 'node-1', 0, 0);
+		expect(onChunk).toHaveBeenCalledWith('test.txt', 'node-1', 0, 0);
+		expect(onEndMessage).toHaveBeenCalledTimes(1);
+		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0, 0);
 	});
 
 	it('should handle HTTP errors', async () => {
@@ -197,7 +419,7 @@ describe('sendMessageStreaming', () => {
 			headers: new Headers(),
 		} as Response;
 
-		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		await sendMessageStreaming(
 			'Test message',
@@ -209,7 +431,7 @@ describe('sendMessageStreaming', () => {
 			vi.fn(),
 		);
 
-		expect(fetchSpy).toHaveBeenCalledWith('https://test.example.com/webhook', {
+		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -259,7 +481,7 @@ describe('sendMessageStreaming', () => {
 			headers: new Headers(),
 		} as Response;
 
-		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		await sendMessageStreaming(
 			'Test message',
@@ -271,7 +493,7 @@ describe('sendMessageStreaming', () => {
 			vi.fn(),
 		);
 
-		expect(fetchSpy).toHaveBeenCalledWith('https://test.example.com/webhook', {
+		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
