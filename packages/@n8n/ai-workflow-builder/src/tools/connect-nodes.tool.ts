@@ -1,6 +1,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { z, BaseWorkflowBuilderTool, type ToolContext, type ToolResult } from './base';
+import type { ToolContext, ToolResult, z } from './base';
+import { BaseWorkflowBuilderTool } from './base';
 import type { WorkflowState } from '../workflow-state';
 import { nodeConnectionSchema, type ConnectionResult } from './types/node.types';
 import {
@@ -106,7 +107,7 @@ Note: If you specify nodes in the wrong order for ai_* connections, they will be
 			return {
 				success: false,
 				error: {
-					message: validation.error || 'Invalid connection',
+					message: validation.error ?? 'Invalid connection',
 					code: 'INVALID_CONNECTION',
 					details: {
 						sourceNode: matchedSourceNode.name,
@@ -118,8 +119,8 @@ Note: If you specify nodes in the wrong order for ai_* connections, they will be
 		}
 
 		// Use potentially swapped nodes
-		const actualSourceNode = validation.swappedSource || matchedSourceNode;
-		const actualTargetNode = validation.swappedTarget || matchedTargetNode;
+		const actualSourceNode = validation.swappedSource ?? matchedSourceNode;
+		const actualTargetNode = validation.swappedTarget ?? matchedTargetNode;
 		const swapped = !!validation.shouldSwap;
 
 		// Create the connection
