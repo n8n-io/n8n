@@ -540,7 +540,7 @@ describe('SettingsUsersView', () => {
 		it('should handle copy password reset link error', async () => {
 			usersStore.getUserPasswordResetLink = vi
 				.fn()
-				.mockImplementation(() => Promise.reject(new Error('Reset link failed')));
+				.mockRejectedValue(new Error('Reset link failed'));
 
 			renderComponent();
 
@@ -892,12 +892,12 @@ describe('SettingsUsersView', () => {
 
 		it('should handle MFA enforcement with partial success', async () => {
 			let callCount = 0;
-			usersStore.updateEnforceMfa = vi.fn().mockImplementation(() => {
+			usersStore.updateEnforceMfa = vi.fn().mockImplementation(async () => {
 				callCount++;
 				if (callCount === 1) {
-					return Promise.reject(new Error('First attempt failed'));
+					throw Error('First attempt failed');
 				}
-				return Promise.resolve();
+				return await Promise.resolve();
 			});
 
 			const { getByTestId } = renderComponent();
