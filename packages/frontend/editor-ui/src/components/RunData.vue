@@ -217,7 +217,7 @@ const outputIndex = ref(0);
 const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
-const pageSize = ref(RUN_DATA_DEFAULT_PAGE_SIZE);
+const pageSize = ref(10);
 
 const pinDataDiscoveryTooltipVisible = ref(false);
 const isControlledPinDataTooltip = ref(false);
@@ -1212,6 +1212,7 @@ function init() {
 	outputIndex.value = determineInitialOutputIndex();
 	refreshDataSize();
 	closeBinaryDataDisplay();
+
 	let outputTypes: NodeConnectionType[] = [];
 	if (node.value && nodeType.value) {
 		const outputs = getResolvedNodeOutputs();
@@ -1222,6 +1223,10 @@ function init() {
 		emit('displayModeChange', 'binary');
 	} else if (props.displayMode === 'binary') {
 		emit('displayModeChange', 'schema');
+	}
+
+	if (isNDVV2.value) {
+		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 	}
 }
 
