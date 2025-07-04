@@ -158,4 +158,27 @@ describe('WebhookContext', () => {
 			expect(parameter).toBe('fallback');
 		});
 	});
+
+	describe('getWorkflowDataProxy', () => {
+		it('should return the workflow data proxy correctly', () => {
+			const workflowDataProxy = webhookContext.getWorkflowDataProxy(0);
+			expect(workflowDataProxy.isProxy).toBe(true);
+			expect(Object.keys(workflowDataProxy.$input)).toEqual([
+				'all',
+				'context',
+				'first',
+				'item',
+				'last',
+				'params',
+			]);
+		});
+
+		it('should return the workflow data proxy with custom data', () => {
+			const workflowDataProxy = webhookContext.getWorkflowDataProxy(0);
+			workflowDataProxy.$execution.customData.setAll({
+				key1: 'test',
+			});
+			expect(workflowDataProxy.$execution.customData.getAll()).toEqual({ key1: 'test' });
+		});
+	});
 });
