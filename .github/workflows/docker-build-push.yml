@@ -6,9 +6,6 @@
 name: 'Docker: Build and Push'
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-
   workflow_call:
     inputs:
       n8n_version:
