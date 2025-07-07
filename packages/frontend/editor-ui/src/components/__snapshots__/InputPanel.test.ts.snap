@@ -73,6 +73,7 @@ exports[`InputPanel > should render 1`] = `
         data-v-2e5cd75c=""
       >
         <!---->
+        <!--v-if-->
         <div
           class="n8n-radio-buttons radioGroup displayModeSelect"
           data-test-id="ndv-run-data-display-mode"

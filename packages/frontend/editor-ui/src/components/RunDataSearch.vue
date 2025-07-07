@@ -130,6 +130,7 @@ watch(
 	.ioSearchIcon {
 		color: var(--color-foreground-xdark);
 		cursor: pointer;
+		vertical-align: middle;
 	}
 
 	:global(.el-input__prefix) {
