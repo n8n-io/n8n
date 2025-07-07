@@ -751,7 +751,7 @@ watch(
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing-xs);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
@@ -963,7 +963,7 @@ th.isCollapsingColumn + th {
 
 .tableRightMargin {
 	// becomes necessary with large tables
-	width: var(--spacing-s);
+	width: var(--ndv-spacing);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;

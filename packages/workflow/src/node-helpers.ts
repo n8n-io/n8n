@@ -956,17 +956,22 @@ export function getNodeWebhookPath(
 	path: string,
 	isFullPath?: boolean,
 	restartWebhook?: boolean,
-): string {
+) {
 	let webhookPath = '';
+
 	if (restartWebhook === true) {
 		return path;
 	}
+
 	if (node.webhookId === undefined) {
-		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+		const nodeName = encodeURIComponent(node.name.toLowerCase());
+
+		webhookPath = `${workflowId}/${nodeName}/${path}`;
 	} else {
 		if (isFullPath === true) {
-			return path;
+			return path || node.webhookId;
 		}
+
 		webhookPath = `${node.webhookId}/${path}`;
 	}
 	return webhookPath;

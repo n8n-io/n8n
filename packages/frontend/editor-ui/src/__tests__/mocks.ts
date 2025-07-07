@@ -96,6 +96,7 @@ export const mockNodeTypeDescription = ({
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
+		parameterPane: undefined,
 		hidden,
 	});
 

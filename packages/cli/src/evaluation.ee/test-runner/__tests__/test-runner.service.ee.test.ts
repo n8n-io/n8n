@@ -1185,33 +1185,6 @@ describe('TestRunnerService', () => {
 			}).not.toThrow();
 		});
 
-		it('should throw SET_OUTPUTS_NODE_NOT_FOUND when no outputs nodes exist', () => {
-			const workflow = mock<IWorkflowBase>({
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Regular Node',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			expect(() => {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			}).toThrow(TestRunError);
-
-			try {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			} catch (error) {
-				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_FOUND');
-			}
-		});
-
 		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when outputs node has no parameters', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [

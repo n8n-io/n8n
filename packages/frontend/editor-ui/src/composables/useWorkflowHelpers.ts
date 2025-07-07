@@ -922,7 +922,7 @@ export function useWorkflowHelpers() {
 
 	function getWebhookPath(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
-			return trigger.parameters.path as string;
+			return (trigger.parameters.path as string) || (trigger.webhookId as string);
 		}
 		if (trigger.type === FORM_TRIGGER_NODE_TYPE) {
 			return ((trigger.parameters.options as { path: string }) || {}).path ?? trigger.webhookId;

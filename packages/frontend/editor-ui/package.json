@@ -99,7 +99,8 @@
     "vue3-touch-events": "^4.1.3",
     "vuedraggable": "4.1.0",
     "web-tree-sitter": "0.24.3",
-    "xss": "catalog:"
+    "xss": "catalog:",
+    "z-vue-scan": "^0.0.35"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.0.2",
