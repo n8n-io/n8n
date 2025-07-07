@@ -285,8 +285,8 @@ export class LmChatAnthropic implements INodeType {
 		};
 		let invocationKwargs = {};
 
-		const tokensUsageParser = (llmOutput: LLMResult) => {
-			const usage = (llmOutput?.llmOutput?.usage as {
+		const tokensUsageParser = (result: LLMResult) => {
+			const usage = (result?.llmOutput?.usage as {
 				input_tokens: number;
 				output_tokens: number;
 			}) ?? {

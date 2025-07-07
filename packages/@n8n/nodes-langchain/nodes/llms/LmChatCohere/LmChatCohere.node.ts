@@ -12,7 +12,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
-export function tokensUsageParser(llmOutput: LLMResult): {
+export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
@@ -20,7 +20,7 @@ export function tokensUsageParser(llmOutput: LLMResult): {
 	let totalInputTokens = 0;
 	let totalOutputTokens = 0;
 
-	llmOutput.generations?.forEach((generationArray) => {
+	result.generations?.forEach((generationArray) => {
 		generationArray.forEach((gen) => {
 			const inputTokens = gen.generationInfo?.meta?.tokens?.inputTokens ?? 0;
 			const outputTokens = gen.generationInfo?.meta?.tokens?.outputTokens ?? 0;

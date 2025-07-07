@@ -152,7 +152,8 @@
     "@types/temp": "^0.9.1",
     "fast-glob": "catalog:",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:"
+    "tsup": "catalog:",
+    "jest-mock-extended": "^3.0.4"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",

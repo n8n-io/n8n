@@ -15,7 +15,7 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 import { logAiEvent } from '@utils/helpers';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
-type TokensUsageParser = (llmOutput: LLMResult) => {
+type TokensUsageParser = (result: LLMResult) => {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
@@ -53,9 +53,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	options = {
 		// Default(OpenAI format) parser
-		tokensUsageParser: (llmOutput: LLMResult) => {
-			const completionTokens = (llmOutput?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (llmOutput?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
+		tokensUsageParser: (result: LLMResult) => {
+			const completionTokens = (result?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
+			const promptTokens = (result?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
 
 			return {
 				completionTokens,
