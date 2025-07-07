@@ -46,6 +46,16 @@ const canUpdate = computed(
 	() => hasUnverifiedPackagesUpdate.value || hasVerifiedPackageUpdate.value,
 );
 
+const versionToUpdate = computed(() => {
+	if (hasUnverifiedPackagesUpdate.value) {
+		return props.communityPackage?.updateAvailable;
+	}
+	if (hasVerifiedPackageUpdate.value) {
+		return latestVerifiedVersion.value;
+	}
+	return '';
+});
+
 const packageActions: Array<UserAction<IUser>> = [
 	{
 		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
@@ -78,7 +88,7 @@ async function onAction(value: string) {
 
 function onUpdateClick() {
 	if (!props.communityPackage) return;
-	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName);
+	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName, versionToUpdate.value);
 }
 
 watch(

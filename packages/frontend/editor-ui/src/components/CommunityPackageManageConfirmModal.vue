@@ -18,6 +18,7 @@ interface Props {
 	modalName: string;
 	activePackageName: string;
 	mode: CommunityPackageManageMode;
+	versionToUpdate?: string;
 }
 
 const props = defineProps<Props>();
@@ -43,6 +44,9 @@ const communityStorePackage = computed(
 	() => communityNodesStore.installedPackages[props.activePackageName],
 );
 const updateVersion = computed(() => {
+	if (props.versionToUpdate) {
+		return props.versionToUpdate;
+	}
 	return settingsStore.isUnverifiedPackagesEnabled
 		? communityStorePackage.value.updateAvailable
 		: nodeTypeStorePackage.value?.npmVersion;
@@ -51,7 +55,7 @@ const nodeTypeStorePackage = ref<CommunityNodeType>();
 
 const isLatestPackageVerified = ref<boolean>(true);
 
-const packageVersion = ref<string>(communityStorePackage.value.updateAvailable ?? '');
+const packageVersion = ref<string>('');
 
 const getModalContent = computed(() => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
@@ -195,8 +199,12 @@ function setIsVerifiedLatestPackage() {
 }
 
 function setPackageVersion() {
-	if (isUsingVerifiedPackagesOnly) {
-		packageVersion.value = nodeTypeStorePackage.value?.npmVersion ?? packageVersion.value;
+	if (props.versionToUpdate) {
+		packageVersion.value = props.versionToUpdate;
+	} else if (isUsingVerifiedPackagesOnly) {
+		packageVersion.value = nodeTypeStorePackage.value?.npmVersion ?? '';
+	} else {
+		packageVersion.value = communityStorePackage.value.updateAvailable ?? '';
 	}
 }
 

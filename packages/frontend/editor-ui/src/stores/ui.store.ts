@@ -133,6 +133,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			mode: '',
 			activeId: null,
+			data: {},
 		},
 		[IMPORT_CURL_MODAL_KEY]: {
 			open: false,
@@ -437,9 +438,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
-	const openCommunityPackageUpdateConfirmModal = (packageName: string) => {
+	const openCommunityPackageUpdateConfirmModal = (
+		packageName: string,
+		versionToUpdate?: string,
+	) => {
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
 		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
+		if (versionToUpdate) {
+			setModalData({ name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, data: { versionToUpdate } });
+		}
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 

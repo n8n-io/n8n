@@ -201,11 +201,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
-			<template #default="{ modalName, activeId, mode }">
+			<template #default="{ modalName, activeId, mode, data }">
 				<CommunityPackageManageConfirmModal
 					:modal-name="modalName"
 					:active-package-name="activeId"
 					:mode="mode"
+					:version-to-update="data?.versionToUpdate"
 				/>
 			</template>
 		</ModalRoot>
