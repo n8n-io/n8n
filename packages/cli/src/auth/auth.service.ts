@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { ApiKey, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -68,8 +68,15 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean) {
+	createAuthMiddleware(allowSkipMFA: boolean, apiKeyAuth: boolean = false) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
+			// TODO: Check if there is a better way to handle this
+			if (apiKeyAuth) {
+				await this.checkAPIKey(req, res, next);
+				return;
+			}
+
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
 				try {
@@ -106,6 +113,40 @@ export class AuthService {
 			if (req.user) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
+		const apiKey = req.headers['x-n8n-api-key'];
+		if (!apiKey || typeof apiKey !== 'string') {
+			response.status(401).json({ status: 'error', message: 'API key is required' });
+			return;
+		}
+
+		try {
+			const user = await this.getUserForApiKey(apiKey);
+			req.user = user;
+			next();
+		} catch (error) {
+			if (error instanceof AuthError) {
+				response.status(401).json({ status: 'error', message: 'Invalid API key' });
+			} else {
+				response.status(500).json({ status: 'error', message: 'Internal server error' });
+			}
+		}
+	}
+
+	private async getUserForApiKey(apiKey: string) {
+		const keyOwner = await this.userRepository
+			.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select('user')
+			.getOne();
+
+		if (!keyOwner) {
+			throw new AuthError('Unauthorized');
+		}
+		return keyOwner;
 	}
 
 	clearCookie(res: Response) {
