@@ -32,6 +32,7 @@ export async function apiRequest(
 	const options = {
 		headers: {
 			'anthropic-version': '2023-06-01',
+			'anthropic-beta': 'files-api-2025-04-14',
 			...headers,
 		},
 		method,
@@ -46,19 +47,4 @@ export async function apiRequest(
 	}
 
 	return await this.helpers.httpRequestWithAuthentication.call(this, 'anthropicApi', options);
-}
-
-export async function filesApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	parameters?: RequestParameters,
-) {
-	return await apiRequest.call(this, method, endpoint, {
-		...parameters,
-		headers: {
-			'anthropic-beta': 'files-api-2025-04-14',
-			...parameters?.headers,
-		},
-	});
 }

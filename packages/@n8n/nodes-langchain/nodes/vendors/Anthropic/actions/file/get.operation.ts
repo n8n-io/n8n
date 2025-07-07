@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { File } from '../../helpers/interfaces';
-import { filesApiRequest } from '../../transport';
+import { apiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	{
@@ -28,7 +28,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const fileId = this.getNodeParameter('fileId', i, '') as string;
 	const credentials = await this.getCredentials('anthropicApi');
 	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
-	const response = (await filesApiRequest.call(this, 'GET', `/v1/files/${fileId}`)) as File;
+	const response = (await apiRequest.call(this, 'GET', `/v1/files/${fileId}`)) as File;
 	return [
 		{
 			json: { ...response, url: `${baseUrl}/v1/files/${response.id}` },
