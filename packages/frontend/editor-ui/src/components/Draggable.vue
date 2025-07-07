@@ -109,13 +109,17 @@ const onDragEnd = () => {
 		window.cancelAnimationFrame(animationFrameId.value);
 	}
 
-	if (draggingElement.value) emit('dragend', draggingElement.value);
-	isDragging.value = false;
-	draggingElement.value = undefined;
+	setTimeout(() => {
+		if (draggingElement.value) emit('dragend', draggingElement.value);
+		isDragging.value = false;
+		draggingElement.value = undefined;
+	});
 };
 
 onBeforeUnmount(() => {
-	if (draggingElement.value) onDragEnd();
+	if (draggingElement.value) {
+		emit('dragend', draggingElement.value);
+	}
 });
 </script>
 
