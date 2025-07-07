@@ -6,8 +6,7 @@ import * as transport from '../transport';
 
 describe('GoogleGemini -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	(transport as any).apiRequest = jest.fn();
-	const apiRequestMock = transport.apiRequest as jest.Mock;
+	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
 		jest.clearAllMocks();

@@ -1,7 +1,12 @@
 import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { audioModelSearch, imageModelSearch, modelSearch, videoModelSearch } from './listSearch';
+import {
+	audioModelSearch,
+	imageGenerationModelSearch,
+	modelSearch,
+	videoGenerationModelSearch,
+} from './listSearch';
 import * as transport from '../transport';
 
 const mockResponse = {
@@ -38,8 +43,8 @@ const mockResponse = {
 
 describe('GoogleGemini -> listSearch', () => {
 	const mockExecuteFunctions = mock<ILoadOptionsFunctions>();
-	(transport as any).apiRequest = jest.fn();
-	const apiRequestMock = transport.apiRequest as jest.Mock;
+	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -109,21 +114,13 @@ describe('GoogleGemini -> listSearch', () => {
 		it('should return image models', async () => {
 			apiRequestMock.mockResolvedValue(mockResponse);
 
-			const result = await imageModelSearch.call(mockExecuteFunctions);
+			const result = await imageGenerationModelSearch.call(mockExecuteFunctions);
 
 			expect(result).toEqual({
 				results: [
 					{
-						name: 'models/gemini-2.5-flash',
-						value: 'models/gemini-2.5-flash',
-					},
-					{
 						name: 'models/gemini-2.0-flash-exp-image-generation',
 						value: 'models/gemini-2.0-flash-exp-image-generation',
-					},
-					{
-						name: 'models/gemma-3-1b-it',
-						value: 'models/gemma-3-1b-it',
 					},
 					{
 						name: 'models/imagen-3.0-generate-002',
@@ -138,18 +135,10 @@ describe('GoogleGemini -> listSearch', () => {
 		it('should return video models', async () => {
 			apiRequestMock.mockResolvedValue(mockResponse);
 
-			const result = await videoModelSearch.call(mockExecuteFunctions);
+			const result = await videoGenerationModelSearch.call(mockExecuteFunctions);
 
 			expect(result).toEqual({
 				results: [
-					{
-						name: 'models/gemini-2.5-flash',
-						value: 'models/gemini-2.5-flash',
-					},
-					{
-						name: 'models/gemma-3-1b-it',
-						value: 'models/gemma-3-1b-it',
-					},
 					{
 						name: 'models/veo-2.0-generate-001',
 						value: 'models/veo-2.0-generate-001',
