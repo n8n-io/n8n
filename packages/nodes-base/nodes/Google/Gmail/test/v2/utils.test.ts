@@ -159,7 +159,7 @@ describe('addThreadHeadersToEmail', () => {
 		await addThreadHeadersToEmail.call(thisArg, email, mockThreadId);
 
 		expect(email.inReplyTo).toBe(mockMessageId);
-		expect(email.reference).toBe(mockMessageId);
+		expect(email.references).toBe(mockMessageId);
 	});
 
 	it('should set inReplyTo and reference on the email object even if the message has only one item', async () => {
@@ -180,7 +180,7 @@ describe('addThreadHeadersToEmail', () => {
 		await addThreadHeadersToEmail.call(thisArg, email, mockThreadId);
 
 		expect(email.inReplyTo).toBe(mockMessageId);
-		expect(email.reference).toBe(mockMessageId);
+		expect(email.references).toBe(mockMessageId);
 	});
 
 	it('should not do anything if the thread has no messages', async () => {
@@ -199,6 +199,6 @@ describe('addThreadHeadersToEmail', () => {
 
 		// We are using mock<IEmail>({}) which means the value of these will be a mock function
 		expect(typeof email.inReplyTo).toBe('function');
-		expect(typeof email.reference).toBe('function');
+		expect(typeof email.references).toBe('function');
 	});
 });
