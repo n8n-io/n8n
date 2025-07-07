@@ -81,10 +81,10 @@ export function getPromptInputByType(options: {
 	inputKey: string;
 }) {
 	const { ctx, i, promptTypeKey, inputKey } = options;
-	const prompt = ctx.getNodeParameter(promptTypeKey, i) as string;
+	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
 	let input;
-	if (prompt === 'auto') {
+	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
