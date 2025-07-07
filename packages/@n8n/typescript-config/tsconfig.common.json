@@ -19,7 +19,6 @@
 		"incremental": true,
 		"declaration": false,
 		"sourceMap": true,
-		"skipLibCheck": true,
-		"types": ["jest-expect-message"]
+		"skipLibCheck": true
 	}
 }
