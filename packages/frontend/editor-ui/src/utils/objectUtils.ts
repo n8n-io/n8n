@@ -51,6 +51,9 @@ export const getObjectSizeInKB = (obj: unknown): number => {
 	}
 };
 
-export function omitKey<T extends Record<string, unknown>>(obj: T, key: string): T {
-	return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== key)) as T;
+export function omitKey<T extends Record<string, unknown>, S extends string>(
+	obj: T,
+	key: S,
+): Omit<T, S> {
+	return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== key)) as Omit<T, S>;
 }
