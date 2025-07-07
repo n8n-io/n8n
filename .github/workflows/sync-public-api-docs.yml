@@ -8,7 +8,7 @@ on:
     paths:
       # Trigger if:
       # - any of the public API files change
-      - 'packages/cli/src/public-api/*.{css,yaml,yml}'
+      - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
       # - the build script or dependencies change
       - 'packages/cli/package.json'
       # - any main dependencies change
