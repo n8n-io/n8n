@@ -88,7 +88,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
-import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
