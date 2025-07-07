@@ -249,7 +249,7 @@ export class CommunityPackagesService {
 				{
 					method: 'POST',
 					...(process.env.HTTPS_PROXY
-						? { httpsAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+						? { httpsAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY), proxy: false }
 						: {}),
 				},
 			);
