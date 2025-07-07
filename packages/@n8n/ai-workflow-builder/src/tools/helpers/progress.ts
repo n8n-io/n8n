@@ -1,3 +1,4 @@
+import type { ToolRunnableConfig } from '@langchain/core/tools';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { ZodIssue } from 'zod';
 
@@ -41,12 +42,10 @@ export interface BatchReporter {
  * Create a progress reporter for a tool execution
  */
 export function createProgressReporter<TToolName extends string = string>(
-	config: LangGraphRunnableConfig,
+	config: ToolRunnableConfig & LangGraphRunnableConfig,
 	toolName: TToolName,
 ): ProgressReporter {
-	// @ts-expect-error - toolCall exists but not in types
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	const toolCallId = config.toolCall?.id as string;
+	const toolCallId = config.toolCall?.id;
 
 	const emit = (message: ToolProgressMessage<TToolName>): void => {
 		config.writer?.(message);

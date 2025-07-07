@@ -1,4 +1,5 @@
 import { ToolMessage } from '@langchain/core/messages';
+import type { ToolRunnableConfig } from '@langchain/core/tools';
 import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
 
 import type { ToolError } from './progress';
@@ -13,12 +14,10 @@ export type StateUpdater<TState = typeof WorkflowState.State> =
  * Create a success response with optional state updates
  */
 export function createSuccessResponse<TState = typeof WorkflowState.State>(
-	config: LangGraphRunnableConfig,
+	config: ToolRunnableConfig,
 	message: string,
 	stateUpdates?: StateUpdater<TState>,
 ): Command {
-	// @ts-expect-error - toolCall exists but not in types
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const toolCallId = config.toolCall?.id as string;
 
 	const messages = [
@@ -44,9 +43,7 @@ export function createSuccessResponse<TState = typeof WorkflowState.State>(
 /**
  * Create an error response
  */
-export function createErrorResponse(config: LangGraphRunnableConfig, error: ToolError): Command {
-	// @ts-expect-error - toolCall exists but not in types
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+export function createErrorResponse(config: ToolRunnableConfig, error: ToolError): Command {
 	const toolCallId = config.toolCall?.id as string;
 
 	const messages = [

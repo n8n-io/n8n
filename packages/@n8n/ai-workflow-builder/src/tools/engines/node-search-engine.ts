@@ -20,6 +20,7 @@ export const SCORE_WEIGHTS = {
 	NAME_CONTAINS: 10,
 	DISPLAY_NAME_CONTAINS: 8,
 	DESCRIPTION_CONTAINS: 5,
+	ALIAS_CONTAINS: 8,
 	NAME_EXACT: 20,
 	DISPLAY_NAME_EXACT: 15,
 	CONNECTION_EXACT: 100,
@@ -133,6 +134,11 @@ export class NodeSearchEngine {
 		// Check description match
 		if (nodeType.description?.toLowerCase().includes(normalizedQuery)) {
 			score += SCORE_WEIGHTS.DESCRIPTION_CONTAINS;
+		}
+
+		// Check alias match
+		if (nodeType.codex?.alias?.some((alias) => alias.toLowerCase().includes(normalizedQuery))) {
+			score += SCORE_WEIGHTS.ALIAS_CONTAINS;
 		}
 
 		// Check exact matches (boost score)

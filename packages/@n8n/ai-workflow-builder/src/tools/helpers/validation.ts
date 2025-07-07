@@ -42,11 +42,7 @@ export function findNodeType(
 /**
  * Validate that a connection is possible between two nodes
  */
-export function validateConnection(
-	sourceNode: INode,
-	targetNode: INode,
-	// nodes: INode[],
-): ToolError | null {
+export function validateConnection(sourceNode: INode, targetNode: INode): ToolError | null {
 	// Check if source and target are the same
 	if (sourceNode.id === targetNode.id) {
 		return {
@@ -56,7 +52,6 @@ export function validateConnection(
 		};
 	}
 
-	// Additional validation can be added here (e.g., cycle detection)
 	return null;
 }
 
@@ -128,28 +123,6 @@ export function createNodeTypeNotFoundError(nodeTypeName: string): ToolError {
 	return createValidationError(`Node type "${nodeTypeName}" not found`, 'NODE_TYPE_NOT_FOUND', {
 		nodeTypeName,
 	});
-}
-
-/**
- * Validate parameter value type
- */
-export function validateParameterValue(value: unknown, expectedType?: string): boolean {
-	if (!expectedType) return true;
-
-	switch (expectedType) {
-		case 'string':
-			return typeof value === 'string';
-		case 'number':
-			return typeof value === 'number' && !isNaN(value);
-		case 'boolean':
-			return typeof value === 'boolean';
-		case 'array':
-			return Array.isArray(value);
-		case 'object':
-			return typeof value === 'object' && value !== null && !Array.isArray(value);
-		default:
-			return true;
-	}
 }
 
 /**
